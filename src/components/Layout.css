@@ -1,0 +1,159 @@
+/* Layout Styles */
+.layout {
+  display: flex;
+  height: 100vh;
+  background-color: #f8f9fa;
+  position: relative;
+}
+
+/* Main Content Area */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 0; /* Prevents flex item from overflowing */
+}
+
+.main-content.sidebar-collapsed {
+  margin-left: -200px; /* Adjust based on sidebar width difference */
+}
+
+.content-wrapper {
+  flex: 1;
+  overflow: auto;
+  padding: 0;
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: 100vh;
+}
+
+/* Coming Soon Placeholder */
+.coming-soon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 60vh;
+  text-align: center;
+  padding: 40px;
+}
+
+.coming-soon h2 {
+  font-size: 32px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.coming-soon p {
+  font-size: 18px;
+  color: #666;
+  margin: 0;
+}
+
+/* Responsive Sidebar Overlay */
+.sidebar-overlay {
+  display: none;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .main-content {
+    margin-left: 0;
+  }
+
+  .main-content.sidebar-collapsed {
+    margin-left: 0;
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    backdrop-filter: blur(4px);
+  }
+
+  /* Hide overlay when sidebar is collapsed */
+  .layout:has(.sidebar.collapsed) .sidebar-overlay {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .content-wrapper {
+    padding: 0;
+  }
+
+  .coming-soon {
+    height: 50vh;
+    padding: 20px;
+  }
+
+  .coming-soon h2 {
+    font-size: 24px;
+  }
+
+  .coming-soon p {
+    font-size: 16px;
+  }
+}
+
+/* Enhanced scrollbar for content */
+.content-wrapper::-webkit-scrollbar {
+  width: 8px;
+}
+
+.content-wrapper::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.content-wrapper::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.content-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Smooth transitions for responsive behavior */
+@media (prefers-reduced-motion: no-preference) {
+  .layout,
+  .main-content,
+  .content-wrapper {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+/* Focus management for accessibility */
+.main-content:focus-within {
+  outline: 2px solid #667eea;
+  outline-offset: -2px;
+}
+
+/* Print styles */
+@media print {
+  .sidebar {
+    display: none;
+  }
+
+  .main-content {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .content-wrapper {
+    background: white;
+    padding: 0;
+  }
+}
