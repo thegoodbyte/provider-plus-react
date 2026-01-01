@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { Retreat, House, Client, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary } from '../types';
 
-const API_BASE_URL = 'http://localhost:3007';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3007';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
