@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Client, ClientMedical, ClientRequirement, Reminder } from '../types';
-import { clientsApi, clientMedicalApi, clientRequirementsApi, remindersApi, retreatsApi, bookingsApi } from '../services/api';
+import { clientsApi, clientMedicalApi, clientRequirementsApi, remindersApi, bookingsApi } from '../services/api';
 import MedicalTrackingTab from './MedicalTrackingTab';
 import './ClientsGrid.css';
 
