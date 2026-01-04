@@ -6,6 +6,7 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3007';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true, // Enable sending cookies and auth headers with CORS
   headers: {
     'Content-Type': 'application/json',
   },
