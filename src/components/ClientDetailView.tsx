@@ -14,6 +14,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
   const [medicalData, setMedicalData] = useState<ClientMedical[]>([]);
   const [requirements, setRequirements] = useState<ClientRequirement[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [clientBookings, setClientBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -38,7 +39,6 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
   const fetchClientData = async () => {
     try {
       setLoading(true);
-      // Only call endpoints that exist - requirements and reminders APIs don't exist yet
       const [clientResponse, medicalResponse, bookingsResponse] = await Promise.all([
         clientsApi.getOne(clientId),
         clientMedicalApi.getByClient(clientId),
@@ -47,9 +47,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
 
       setClient(clientResponse.data);
       setMedicalData(medicalResponse.data || []);
-      // Set empty arrays for features not yet implemented
-      setRequirements([]);
-      setReminders([]);
+      setClientBookings(bookingsResponse.data || []);
 
       // Extract retreats from bookings
       const clientRetreats = bookingsResponse.data.map((booking: any) => booking.retreatDetails || booking.retreatId).filter(Boolean);
@@ -58,10 +56,30 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
       // Set first retreat as selected by default
       if (clientRetreats.length > 0) {
         setSelectedRetreatId(clientRetreats[0]._id || clientRetreats[0]);
+
+        // Fetch requirements for this client
+        try {
+          const requirementsResponse = await clientRequirementsApi.getByClient(clientId);
+          setRequirements(requirementsResponse.data || []);
+        } catch (reqError) {
+          console.error('Error fetching requirements:', reqError);
+          setRequirements([]);
+        }
+
+        // Fetch reminders for this client
+        try {
+          const remindersResponse = await remindersApi.getByClient(clientId);
+          setReminders(remindersResponse.data || []);
+        } catch (remError) {
+          console.error('Error fetching reminders:', remError);
+          setReminders([]);
+        }
+      } else {
+        setRequirements([]);
+        setReminders([]);
       }
     } catch (error) {
       console.error('Error fetching client data:', error);
-      // Set error state or show user-friendly message
       alert('Error loading client details. Please try again.');
     } finally {
       setLoading(false);
@@ -260,6 +278,12 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
         >
           🔔 Reminders
         </button>
+        <button
+          className={`tab-btn ${activeTab === 'retreats' ? 'active' : ''}`}
+          onClick={() => setActiveTab('retreats')}
+        >
+          🏃‍♂️ Retreat History
+        </button>
       </div>
 
       <div className="client-detail-content">
@@ -389,99 +413,313 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
 
         {activeTab === 'requirements' && (
           <div className="requirements-tab">
-            <div className="requirements-summary">
-              <h3>📊 Requirements Summary</h3>
-              <div className="summary-stats">
-                <div className="stat-card completed">
-                  <span className="stat-number">{requirements.filter(r => r.status === 'approved').length}</span>
-                  <span className="stat-label">Completed</span>
+            {/* Retreat Selector for Requirements */}
+            {retreats.length > 0 ? (
+              <>
+                <div className="retreat-selector" style={{ marginBottom: '24px' }}>
+                  <label htmlFor="retreat-req-select" style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
+                    Select Retreat for Requirements:
+                  </label>
+                  <select
+                    id="retreat-req-select"
+                    value={selectedRetreatId}
+                    onChange={async (e) => {
+                      setSelectedRetreatId(e.target.value);
+                      if (e.target.value) {
+                        try {
+                          const requirementsResponse = await clientRequirementsApi.getByClientAndRetreat(clientId, e.target.value);
+                          setRequirements(requirementsResponse.data || []);
+                        } catch (error) {
+                          console.error('Error fetching requirements for retreat:', error);
+                          setRequirements([]);
+                        }
+                      }
+                    }}
+                    style={{ padding: '12px', borderRadius: '8px', border: '2px solid #e1e5e9', fontSize: '14px', minWidth: '300px' }}
+                  >
+                    <option value="">Select a retreat...</option>
+                    {retreats.map((retreat) => (
+                      <option key={retreat._id || retreat} value={retreat._id || retreat}>
+                        {retreat.name || `Retreat ${retreat._id || retreat}`} - {retreat.location || 'Location TBD'}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedRetreatId && (
+                    <button
+                      onClick={async () => {
+                        try {
+                          await clientRequirementsApi.initialize(clientId, selectedRetreatId);
+                          const requirementsResponse = await clientRequirementsApi.getByClientAndRetreat(clientId, selectedRetreatId);
+                          setRequirements(requirementsResponse.data || []);
+                        } catch (error) {
+                          console.error('Error initializing requirements:', error);
+                          alert('Error initializing requirements');
+                        }
+                      }}
+                      className="add-btn"
+                      style={{ marginLeft: '16px' }}
+                    >
+                      🏗️ Initialize Requirements
+                    </button>
+                  )}
                 </div>
-                <div className="stat-card pending">
-                  <span className="stat-number">{requirements.filter(r => r.status === 'pending' || r.status === 'sent').length}</span>
-                  <span className="stat-label">Pending</span>
-                </div>
-                <div className="stat-card overdue">
-                  <span className="stat-number">{requirements.filter(r => r.isOverdue).length}</span>
-                  <span className="stat-label">Overdue</span>
-                </div>
-                <div className="stat-card total">
-                  <span className="stat-number">{requirements.length}</span>
-                  <span className="stat-label">Total</span>
-                </div>
+
+                {selectedRetreatId && (
+                  <>
+                    <div className="requirements-summary">
+                      <h3>📊 Requirements Summary</h3>
+                      <div className="summary-stats">
+                        <div className="stat-card completed">
+                          <span className="stat-number">{requirements.filter(r => r.status === 'approved').length}</span>
+                          <span className="stat-label">Approved</span>
+                        </div>
+                        <div className="stat-card received">
+                          <span className="stat-number">{requirements.filter(r => r.status === 'received' || r.status === 'reviewed').length}</span>
+                          <span className="stat-label">Received</span>
+                        </div>
+                        <div className="stat-card pending">
+                          <span className="stat-number">{requirements.filter(r => r.status === 'pending').length}</span>
+                          <span className="stat-label">Pending</span>
+                        </div>
+                        <div className="stat-card total">
+                          <span className="stat-number">{requirements.length}</span>
+                          <span className="stat-label">Total</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="requirements-list">
+                      {requirements.sort((a, b) => (a.requirementId?.order || 0) - (b.requirementId?.order || 0)).map((req) => (
+                        <div key={req._id} className="requirement-card">
+                          <div className="requirement-header">
+                            <h4>
+                              {req.requirementId?.name || 'Unknown Requirement'}
+                              <span className="requirement-category" style={{
+                                marginLeft: '12px',
+                                fontSize: '12px',
+                                padding: '2px 8px',
+                                borderRadius: '12px',
+                                backgroundColor: '#e9ecef',
+                                color: '#495057'
+                              }}>
+                                {req.requirementId?.category || 'general'}
+                              </span>
+                            </h4>
+                            <span
+                              className="status-badge"
+                              style={{ backgroundColor: getStatusColor(req.status || 'pending') }}
+                            >
+                              {req.status}
+                            </span>
+                          </div>
+
+                          {req.requirementId?.description && (
+                            <div className="requirement-description">
+                              <p>{req.requirementId.description}</p>
+                            </div>
+                          )}
+
+                          <div className="requirement-details">
+                            <div className="detail-row">
+                              <strong>Due Date:</strong> {req.dueDate ? new Date(req.dueDate).toLocaleDateString() : 'Not set'}
+                            </div>
+
+                            {req.requirementId?.requiresAmount && req.amount && (
+                              <div className="detail-row">
+                                <strong>Amount:</strong> €{req.amount} {req.receivedDate && '✅ Received'}
+                              </div>
+                            )}
+
+                            {req.fileName && (
+                              <div className="detail-row">
+                                <strong>File:</strong> 📄 {req.fileName}
+                                <span style={{ marginLeft: '8px', fontSize: '12px', color: '#666' }}>
+                                  ({req.fileSize ? `${Math.round(req.fileSize / 1024)}KB` : 'Unknown size'})
+                                </span>
+                              </div>
+                            )}
+
+                            {req.receivedDate && (
+                              <div className="detail-row">
+                                <strong>Received:</strong> {new Date(req.receivedDate).toLocaleDateString()}
+                              </div>
+                            )}
+
+                            {req.reviewedDate && (
+                              <div className="detail-row">
+                                <strong>Reviewed:</strong> {new Date(req.reviewedDate).toLocaleDateString()}
+                              </div>
+                            )}
+
+                            {req.approvedDate && (
+                              <div className="detail-row">
+                                <strong>Approved:</strong> {new Date(req.approvedDate).toLocaleDateString()}
+                                {req.approvedBy && ` by ${req.approvedBy}`}
+                              </div>
+                            )}
+
+                            {req.rejectedBy && (
+                              <div className="detail-row">
+                                <strong>Rejected by:</strong> {req.rejectedBy}
+                                {req.rejectionReason && (
+                                  <div className="text-content" style={{ color: '#dc3545' }}>
+                                    {req.rejectionReason}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {req.reviewerNotes && (
+                              <div className="detail-row">
+                                <strong>Notes:</strong>
+                                <div className="text-content">{req.reviewerNotes}</div>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="requirement-actions">
+                            {req.requirementId?.requiresFile && req.status === 'pending' && (
+                              <label className="file-upload-btn">
+                                📄 Upload File
+                                <input
+                                  type="file"
+                                  style={{ display: 'none' }}
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      try {
+                                        await clientRequirementsApi.uploadFile(req._id!, file);
+                                        fetchClientData();
+                                      } catch (error) {
+                                        console.error('Error uploading file:', error);
+                                        alert('Error uploading file');
+                                      }
+                                    }
+                                  }}
+                                />
+                              </label>
+                            )}
+
+                            {req.requirementId?.requiresAmount && req.status === 'pending' && (
+                              <button
+                                onClick={async () => {
+                                  const amount = prompt('Enter amount received:');
+                                  if (amount && !isNaN(Number(amount))) {
+                                    try {
+                                      await clientRequirementsApi.markReceived(req._id!, {
+                                        amount: Number(amount),
+                                        receivedDate: new Date()
+                                      });
+                                      fetchClientData();
+                                    } catch (error) {
+                                      console.error('Error marking amount received:', error);
+                                      alert('Error marking amount received');
+                                    }
+                                  }
+                                }}
+                                className="mark-received-btn"
+                              >
+                                💰 Mark Amount Received
+                              </button>
+                            )}
+
+                            {(req.status === 'pending' || req.status === 'received') && !req.requirementId?.requiresAmount && !req.requirementId?.requiresFile && (
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    await clientRequirementsApi.markReceived(req._id!, {});
+                                    fetchClientData();
+                                  } catch (error) {
+                                    console.error('Error marking received:', error);
+                                    alert('Error marking received');
+                                  }
+                                }}
+                                className="mark-received-btn"
+                              >
+                                ✅ Mark Received
+                              </button>
+                            )}
+
+                            {(req.status === 'received' && req.requirementId?.requiresApproval) && (
+                              <>
+                                <button
+                                  onClick={async () => {
+                                    const notes = prompt('Review notes (optional):');
+                                    try {
+                                      await clientRequirementsApi.markReviewed(req._id!, notes || '');
+                                      fetchClientData();
+                                    } catch (error) {
+                                      console.error('Error marking reviewed:', error);
+                                      alert('Error marking reviewed');
+                                    }
+                                  }}
+                                  className="review-btn"
+                                >
+                                  📋 Mark Reviewed
+                                </button>
+                              </>
+                            )}
+
+                            {(req.status === 'reviewed' || (req.status === 'received' && !req.requirementId?.requiresApproval)) && (
+                              <button
+                                onClick={async () => {
+                                  const approverName = prompt('Approver name:') || 'Admin';
+                                  const notes = prompt('Approval notes (optional):');
+                                  try {
+                                    await clientRequirementsApi.markApproved(req._id!, approverName, notes || '');
+                                    fetchClientData();
+                                  } catch (error) {
+                                    console.error('Error approving:', error);
+                                    alert('Error approving requirement');
+                                  }
+                                }}
+                                className="approve-btn"
+                              >
+                                ✅ Approve
+                              </button>
+                            )}
+
+                            {(req.status === 'received' || req.status === 'reviewed') && (
+                              <button
+                                onClick={async () => {
+                                  const rejectorName = prompt('Rejector name:') || 'Admin';
+                                  const reason = prompt('Rejection reason:');
+                                  if (reason) {
+                                    try {
+                                      await clientRequirementsApi.markRejected(req._id!, rejectorName, reason);
+                                      fetchClientData();
+                                    } catch (error) {
+                                      console.error('Error rejecting:', error);
+                                      alert('Error rejecting requirement');
+                                    }
+                                  }
+                                }}
+                                className="reject-btn"
+                                style={{ backgroundColor: '#dc3545' }}
+                              >
+                                ❌ Reject
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+
+                      {requirements.length === 0 && (
+                        <div className="no-requirements">
+                          <h3>📋 No Requirements Initialized</h3>
+                          <p>Click "Initialize Requirements" to set up the requirements for this retreat.</p>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </>
+            ) : (
+              <div className="no-requirements">
+                <h3>📋 No Retreat Bookings</h3>
+                <p>This client has no retreat bookings. Requirements are tied to specific retreats.</p>
               </div>
-            </div>
-
-            <div className="requirements-list">
-              {requirements.map((req) => (
-                <div key={req._id} className="requirement-card">
-                  <div className="requirement-header">
-                    <h4>{req.requirementId}</h4>
-                    <span
-                      className="status-badge"
-                      style={{ backgroundColor: getStatusColor(req.status || 'pending') }}
-                    >
-                      {req.status}
-                    </span>
-                  </div>
-                  <div className="requirement-details">
-                    <div className="detail-row">
-                      <strong>Due Date:</strong> {req.dueDate ? new Date(req.dueDate).toLocaleDateString() : 'Not set'}
-                    </div>
-                    <div className="detail-row">
-                      <strong>Sent Date:</strong> {req.sentDate ? new Date(req.sentDate).toLocaleDateString() : 'Not sent'}
-                    </div>
-                    <div className="detail-row">
-                      <strong>Received Date:</strong> {req.receivedDate ? new Date(req.receivedDate).toLocaleDateString() : 'Not received'}
-                    </div>
-                    {req.isOverdue && (
-                      <div className="detail-row overdue-warning">
-                        <strong>⚠️ Overdue by:</strong> {req.daysPastDue} days
-                      </div>
-                    )}
-                    {req.fileName && (
-                      <div className="detail-row">
-                        <strong>File:</strong> 📄 {req.fileName}
-                      </div>
-                    )}
-                    {req.notes && (
-                      <div className="detail-row">
-                        <strong>Notes:</strong>
-                        <div className="text-content">{req.notes}</div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="requirement-actions">
-                    <button
-                      onClick={() => handleRequirementUpdate(req._id!, {
-                        status: 'received',
-                        receivedDate: new Date()
-                      })}
-                      className="mark-received-btn"
-                      disabled={req.status === 'approved' || req.status === 'received'}
-                    >
-                      ✅ Mark Received
-                    </button>
-                    <button
-                      onClick={() => handleRequirementUpdate(req._id!, {
-                        status: 'approved',
-                        approvedDate: new Date()
-                      })}
-                      className="approve-btn"
-                      disabled={req.status === 'approved'}
-                    >
-                      ✅ Approve
-                    </button>
-                  </div>
-                </div>
-              ))}
-
-              {requirements.length === 0 && (
-                <div className="no-requirements">
-                  <h3>📋 No Requirements</h3>
-                  <p>No requirements found for this client.</p>
-                </div>
-              )}
-            </div>
+            )}
           </div>
         )}
 
@@ -566,6 +804,122 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                 <div className="no-reminders">
                   <h3>🔔 No Reminders</h3>
                   <p>No reminders found for this client.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'retreats' && (
+          <div className="retreats-tab">
+            <div className="retreats-header">
+              <h3>🏃‍♂️ Retreat History</h3>
+              <div className="retreat-stats">
+                <div className="stat-card">
+                  <strong>{clientBookings.length}</strong>
+                  <span>Total Retreats</span>
+                </div>
+                <div className="stat-card">
+                  <strong>{clientBookings.filter(b => new Date(b.registrationDate) < new Date()).length}</strong>
+                  <span>Past Retreats</span>
+                </div>
+                <div className="stat-card">
+                  <strong>{clientBookings.filter(b => new Date(b.registrationDate) >= new Date()).length}</strong>
+                  <span>Upcoming</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="retreat-bookings">
+              {clientBookings.sort((a, b) => new Date(b.registrationDate).getTime() - new Date(a.registrationDate).getTime()).map((booking) => (
+                <div key={booking._id} className={`booking-card ${booking.status || 'pending'}`}>
+                  <div className="booking-header">
+                    <h4>🏃‍♂️ {booking.retreatId?.name || 'Unknown Retreat'}</h4>
+                    <span
+                      className={`status-badge status-${booking.status || 'pending'}`}
+                      style={{ backgroundColor: getStatusColor(booking.status || 'pending') }}
+                    >
+                      {(booking.status || 'pending').toUpperCase()}
+                    </span>
+                  </div>
+
+                  <div className="booking-details">
+                    <div className="detail-row">
+                      <strong>Retreat Type:</strong>
+                      <span className="retreat-type">
+                        {booking.retreatId?.type ? booking.retreatId.type.charAt(0).toUpperCase() + booking.retreatId.type.slice(1) : 'Regular'}
+                      </span>
+                    </div>
+
+                    <div className="detail-row">
+                      <strong>Location:</strong> {booking.retreatId?.location || 'N/A'}
+                    </div>
+
+                    <div className="detail-row">
+                      <strong>Registration Date:</strong>
+                      {new Date(booking.registrationDate).toLocaleDateString()}
+                    </div>
+
+                    {booking.retreatId?.startDate && (
+                      <div className="detail-row">
+                        <strong>Retreat Dates:</strong>
+                        {new Date(booking.retreatId.startDate).toLocaleDateString()}
+                        {booking.retreatId.endDate && ` - ${new Date(booking.retreatId.endDate).toLocaleDateString()}`}
+                      </div>
+                    )}
+
+                    <div className="detail-row">
+                      <strong>Total Amount:</strong>
+                      <span className="amount">{booking.totalAmount?.toFixed(2) || '0.00'} {booking.currency || 'EUR'}</span>
+                    </div>
+
+                    <div className="detail-row">
+                      <strong>Amount Paid:</strong>
+                      <span className="amount paid">{booking.amountPaid?.toFixed(2) || '0.00'} {booking.currency || 'EUR'}</span>
+                    </div>
+
+                    {booking.roomAssignment && (
+                      <div className="detail-row">
+                        <strong>Room Assignment:</strong> {booking.roomAssignment}
+                      </div>
+                    )}
+
+                    {booking.specialRequests && (
+                      <div className="detail-row">
+                        <strong>Special Requests:</strong>
+                        <div className="text-content">{booking.specialRequests}</div>
+                      </div>
+                    )}
+
+                    {booking.notes && (
+                      <div className="detail-row">
+                        <strong>Notes:</strong>
+                        <div className="text-content">{booking.notes}</div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="booking-timeline">
+                    {booking.checkInDate && (
+                      <div className="timeline-item completed">
+                        <span className="timeline-icon">✅</span>
+                        <span>Checked In: {new Date(booking.checkInDate).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                    {booking.checkOutDate && (
+                      <div className="timeline-item completed">
+                        <span className="timeline-icon">🏁</span>
+                        <span>Checked Out: {new Date(booking.checkOutDate).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {clientBookings.length === 0 && (
+                <div className="no-bookings">
+                  <h3>🏃‍♂️ No Retreat History</h3>
+                  <p>This client has not been assigned to any retreats yet.</p>
                 </div>
               )}
             </div>

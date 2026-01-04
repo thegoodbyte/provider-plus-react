@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Retreat, House, Client, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary } from '../types';
+import { Retreat, House, Client, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, ScreeningClient } from '../types';
 import { authService } from './authService';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3007';
@@ -171,4 +171,51 @@ export const paymentsApi = {
   update: (id: string, data: Partial<Payment>) => api.put<Payment>(`/payments/${id}`, data),
   delete: (id: string) => api.delete(`/payments/${id}`),
   processRefund: (id: string, refundAmount: number) => api.put<Payment>(`/payments/${id}/refund`, { refundAmount }),
+};
+
+export const screeningClientsApi = {
+  getAll: () => api.get<ScreeningClient[]>('/screening-clients'),
+  getOne: (id: string) => api.get<ScreeningClient>(`/screening-clients/${id}`),
+  getByStatus: (status: string) => api.get<ScreeningClient[]>(`/screening-clients?status=${status}`),
+  getOverdue: () => api.get<ScreeningClient[]>('/screening-clients/overdue'),
+  create: (data: Omit<ScreeningClient, '_id'>) => api.post<ScreeningClient>('/screening-clients', data),
+  update: (id: string, data: Partial<ScreeningClient>) => api.patch<ScreeningClient>(`/screening-clients/${id}`, data),
+  delete: (id: string) => api.delete(`/screening-clients/${id}`),
+  promoteToClient: (id: string) => api.post<{ screeningClient: ScreeningClient; client: Client }>(`/screening-clients/${id}/promote`, {}),
+};
+
+export const requirementsApi = {
+  getAll: () => api.get<Requirement[]>('/requirements'),
+  getOne: (id: string) => api.get<Requirement>(`/requirements/${id}`),
+  getByCategory: (category: string) => api.get<Requirement[]>(`/requirements/category/${category}`),
+  create: (data: Omit<Requirement, '_id'>) => api.post<Requirement>('/requirements', data),
+  update: (id: string, data: Partial<Requirement>) => api.patch<Requirement>(`/requirements/${id}`, data),
+  updateOrder: (requirements: { id: string; order: number }[]) => api.put('/requirements/reorder', requirements),
+  delete: (id: string) => api.delete(`/requirements/${id}`),
+  seed: () => api.post('/requirements/seed', {}),
+};
+
+export const clientRequirementsApi = {
+  getAll: () => api.get<ClientRequirement[]>('/client-requirements'),
+  getOne: (id: string) => api.get<ClientRequirement>(`/client-requirements/${id}`),
+  getByClient: (clientId: string) => api.get<ClientRequirement[]>(`/client-requirements/client/${clientId}`),
+  getByRetreat: (retreatId: string) => api.get<ClientRequirement[]>(`/client-requirements/retreat/${retreatId}`),
+  getByClientAndRetreat: (clientId: string, retreatId: string) => api.get<ClientRequirement[]>(`/client-requirements/client/${clientId}/retreat/${retreatId}`),
+  getRetreatOverview: (retreatId: string) => api.get<any>(`/client-requirements/retreat/${retreatId}/overview`),
+  create: (data: Omit<ClientRequirement, '_id'>) => api.post<ClientRequirement>('/client-requirements', data),
+  update: (id: string, data: Partial<ClientRequirement>) => api.patch<ClientRequirement>(`/client-requirements/${id}`, data),
+  uploadFile: (id: string, file: File, uploadDir?: string) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const url = `/client-requirements/${id}/upload${uploadDir ? `?uploadDir=${uploadDir}` : ''}`;
+    return api.post<ClientRequirement>(url, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  markReceived: (id: string, data: any) => api.patch<ClientRequirement>(`/client-requirements/${id}/received`, data),
+  markReviewed: (id: string, reviewerNotes: string) => api.patch<ClientRequirement>(`/client-requirements/${id}/reviewed`, { reviewerNotes }),
+  markApproved: (id: string, approvedBy: string, notes?: string) => api.patch<ClientRequirement>(`/client-requirements/${id}/approved`, { approvedBy, notes }),
+  markRejected: (id: string, rejectedBy: string, rejectionReason: string) => api.patch<ClientRequirement>(`/client-requirements/${id}/rejected`, { rejectedBy, rejectionReason }),
+  initialize: (clientId: string, retreatId: string) => api.post<ClientRequirement[]>(`/client-requirements/initialize/${clientId}/${retreatId}`, {}),
+  delete: (id: string) => api.delete(`/client-requirements/${id}`),
 };

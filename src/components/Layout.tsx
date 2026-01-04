@@ -3,11 +3,13 @@ import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import RetreatsGrid from './RetreatsGrid';
 import HousesGrid from './HousesGrid';
+import ScreeningClientsGrid from './ScreeningClientsGrid';
 import ClientsGrid from './ClientsGrid';
 import BookingsGrid from './BookingsGrid';
 import MedicalGrid from './MedicalGrid';
 import RemindersPage from './RemindersPage';
 import PaymentsPage from './PaymentsPage';
+import RequirementsGrid from './RequirementsGrid';
 import { useAuth } from '../context/AuthContext';
 import './Layout.css';
 
@@ -22,11 +24,13 @@ const Layout: React.FC = () => {
   const getActiveItemFromPath = () => {
     const path = location.pathname;
     if (path.startsWith('/houses')) return 'houses';
+    if (path.startsWith('/screening')) return 'screening';
     if (path.startsWith('/clients')) return 'clients';
     if (path.startsWith('/bookings')) return 'bookings';
     if (path.startsWith('/medical')) return 'medical';
     if (path.startsWith('/reminders')) return 'reminders';
     if (path.startsWith('/payments')) return 'payments';
+    if (path.startsWith('/requirements')) return 'requirements';
     if (path.startsWith('/analytics')) return 'analytics';
     return 'retreats'; // default to retreats
   };
@@ -80,11 +84,13 @@ const Layout: React.FC = () => {
           <Routes>
             <Route path="/retreats" element={<RetreatsGrid />} />
             <Route path="/houses" element={<HousesGrid />} />
+            <Route path="/screening" element={<ScreeningClientsGrid />} />
             <Route path="/clients" element={<ClientsGrid />} />
             <Route path="/bookings" element={<BookingsGrid />} />
             <Route path="/medical" element={<MedicalGrid />} />
             <Route path="/reminders" element={<RemindersPage />} />
             <Route path="/payments" element={<PaymentsPage />} />
+            <Route path="/requirements" element={<RequirementsGrid />} />
             <Route path="/analytics" element={
               <div className="coming-soon">
                 <h2>Analytics & Reports</h2>

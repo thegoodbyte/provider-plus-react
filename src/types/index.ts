@@ -129,11 +129,15 @@ export interface Requirement {
   description: string;
   weeksBeforeRetreat: number;
   gracePeriodWeeks?: number;
-  category: 'questionnaire' | 'medical' | 'dietary' | 'document' | 'other';
+  category: 'questionnaire' | 'medical' | 'dietary' | 'document' | 'payment' | 'other';
   isActive?: boolean;
   requiresFile?: boolean;
+  requiresAmount?: boolean;
+  requiresApproval?: boolean;
   instructions?: string;
   priority?: 'low' | 'medium' | 'high' | 'critical';
+  order?: number;
+  dependsOn?: string[]; // Array of requirement IDs that must be completed first
   createdAt?: string;
   updatedAt?: string;
 }
@@ -143,7 +147,7 @@ export interface ClientRequirement {
   clientId: string;
   retreatId: string;
   requirementId: string;
-  status?: 'pending' | 'sent' | 'received' | 'reviewed' | 'approved' | 'overdue' | 'waived';
+  status?: 'pending' | 'sent' | 'received' | 'reviewed' | 'approved' | 'rejected' | 'overdue' | 'waived';
   sentDate?: Date | string;
   dueDate?: Date | string;
   receivedDate?: Date | string;
@@ -156,14 +160,37 @@ export interface ClientRequirement {
   fileSize?: number;
   fileType?: string;
 
+  // Payment/Amount information
+  amount?: number;
+  currency?: 'CZK' | 'EUR' | 'PLN';
+  paymentMethod?: string;
+
+  // Approval information
+  approvalStatus?: 'pending' | 'approved' | 'rejected' | 'needs_review';
+  approvedBy?: string;
+  rejectedBy?: string;
+  rejectionReason?: string;
+
+  // Links and external references
+  linkUrl?: string;
+  externalReference?: string;
+
   notes?: string;
   reviewerNotes?: string;
   clientNotes?: string;
   isOverdue?: boolean;
   daysPastDue?: number;
 
+  // Medical specific fields
+  medicalReviewed?: boolean;
+  medicalApproved?: boolean;
+  medicalNotes?: string;
+
   createdAt?: string;
   updatedAt?: string;
+
+  // Populated fields
+  requirement?: Requirement;
 }
 
 export interface Reminder {
@@ -261,4 +288,65 @@ export interface PaymentSummary {
   depositsEUR: number;
   finalPaymentsPaid: number;
   finalPaymentsEUR: number;
+}
+
+export interface ScreeningClient {
+  _id?: string;
+
+  // Basic Information
+  firstName: string;
+  lastName: string;
+  phone: string;
+  country: string;
+  email?: string;
+  firstContactDate: Date | string;
+
+  // Screening Status
+  status?: 'initial' | 'in_progress' | 'completed' | 'approved' | 'rejected' | 'converted';
+  priority?: 'low' | 'medium' | 'high' | 'urgent';
+
+  // Motivation & Goals
+  whySeekingIboga: string;
+  whatToChange: string;
+  previousPlantMedicines?: string;
+  spiritualBackground?: string;
+
+  // Personal History
+  childhood?: string;
+  traumaHistory?: string;
+  mentalHealthHistory?: string;
+  addictionHistory?: string;
+
+  // Health Information
+  heartConditions?: string;
+  liverConditions?: string;
+  asthmaConditions?: string;
+  otherMedicalComplications?: string;
+  bloodPressureIssues?: string;
+  seizureHistory?: string;
+  psychoticEpisodes?: string;
+
+  // Current Medications & Substances
+  currentMedications?: string;
+  recreationalDrugs?: string;
+  vitaminsSupplements?: string;
+  alcoholConsumption?: string;
+
+  // Safety Considerations
+  suicidalThoughts?: string;
+  hospitalizations?: string;
+  allergies?: string;
+  weightRange?: string;
+  pregnancyStatus?: string;
+
+  // Administrative
+  notes?: string;
+  followUpDate?: Date | string;
+  screeningCompletedDate?: Date | string;
+  rejectionReason?: string;
+  convertedToClientId?: string;
+  convertedDate?: Date | string;
+
+  createdAt?: string;
+  updatedAt?: string;
 }

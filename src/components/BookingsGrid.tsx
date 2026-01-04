@@ -47,6 +47,8 @@ const BookingsGrid: React.FC = () => {
   const [retreats, setRetreats] = useState<Retreat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBooking, setEditingBooking] = useState<BookingWithDetails | null>(null);
   const [formData, setFormData] = useState<Partial<RetreatClient>>({});
@@ -85,9 +87,35 @@ const BookingsGrid: React.FC = () => {
         // Check both retreatDetails (legacy) and retreatId (populated by Mongoose)
         const retreat = params.data.retreatDetails || params.data.retreatId;
         if (retreat) {
-          return retreat.name;
+          const type = retreat.type ? ` (${retreat.type.charAt(0).toUpperCase() + retreat.type.slice(1)})` : '';
+          return `${retreat.name}${type}`;
         }
         return 'Unknown Retreat';
+      },
+      sortable: true,
+      filter: true,
+      flex: 1.5
+    },
+    {
+      headerName: 'Retreat Type',
+      valueGetter: (params) => {
+        const retreat = params.data.retreatDetails || params.data.retreatId;
+        return retreat?.type ? retreat.type.charAt(0).toUpperCase() + retreat.type.slice(1) : 'Regular';
+      },
+      sortable: true,
+      filter: true,
+      width: 120
+    },
+    {
+      headerName: 'Retreat Dates',
+      valueGetter: (params) => {
+        const retreat = params.data.retreatDetails || params.data.retreatId;
+        if (retreat && retreat.startDate) {
+          const startDate = new Date(retreat.startDate).toLocaleDateString();
+          const endDate = retreat.endDate ? ` - ${new Date(retreat.endDate).toLocaleDateString()}` : '';
+          return `${startDate}${endDate}`;
+        }
+        return '';
       },
       sortable: true,
       filter: true,
@@ -311,8 +339,26 @@ const BookingsGrid: React.FC = () => {
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
+    applyFilters(e.target.value, statusFilter, typeFilter);
+  };
+
+  const handleStatusFilter = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setStatusFilter(e.target.value);
+    applyFilters(searchTerm, e.target.value, typeFilter);
+  };
+
+  const handleRetreatTypeFilter = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setTypeFilter(e.target.value);
+    applyFilters(searchTerm, statusFilter, e.target.value);
+  };
+
+  const applyFilters = (search: string, status: string, type: string) => {
     if (gridApiRef.current) {
-      gridApiRef.current.setQuickFilter(e.target.value);
+      gridApiRef.current.setFilterModel({
+        status: status ? { type: 'equals', filter: status } : null,
+        'retreatDetails.type': type ? { type: 'equals', filter: type } : null
+      });
+      gridApiRef.current.setQuickFilter(search);
     }
   };
 
@@ -333,13 +379,34 @@ const BookingsGrid: React.FC = () => {
           <div className="search-box">
             <input
               type="text"
-              placeholder="Search bookings..."
+              placeholder="Search clients, retreats, or locations..."
               value={searchTerm}
               onChange={handleSearch}
               className="search-input"
             />
           </div>
-          <button onClick={handleAdd} className="add-btn">Book Client to Retreat</button>
+          <select
+            className="filter-select"
+            onChange={handleStatusFilter}
+            style={{ marginRight: '10px' }}
+          >
+            <option value="">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="checked-in">Checked In</option>
+            <option value="checked-out">Checked Out</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+          <select
+            className="filter-select"
+            onChange={handleRetreatTypeFilter}
+            style={{ marginRight: '10px' }}
+          >
+            <option value="">All Types</option>
+            <option value="regular">Regular</option>
+            <option value="booster">Booster</option>
+          </select>
+          <button onClick={handleAdd} className="add-btn">📅 Book Client to Retreat</button>
           <div className="status-info">
             {bookings.length} booking{bookings.length !== 1 ? 's' : ''} found
           </div>

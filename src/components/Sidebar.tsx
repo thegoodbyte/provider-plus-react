@@ -30,6 +30,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed,
       description: 'Manage retreat houses'
     },
     {
+      id: 'screening',
+      label: 'Screening',
+      icon: '🔍',
+      description: 'Screen potential clients'
+    },
+    {
       id: 'clients',
       label: 'Clients',
       icon: '👥',
@@ -58,6 +64,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed,
       label: 'Medical',
       icon: '🏥',
       description: 'EKG and liver panel tracking'
+    },
+    {
+      id: 'requirements',
+      label: 'Requirements',
+      icon: '📋',
+      description: 'Manage retreat requirements'
     },
     {
       id: 'analytics',
