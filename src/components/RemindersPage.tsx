@@ -312,7 +312,7 @@ const RemindersPage: React.FC = () => {
 
       {/* Add/Edit Form */}
       {showAddForm && (
-        <div className="modal-overlay" onClick={() => setShowAddForm(false)}>
+        <div className="modal-overlay">
           <div className="modal reminder-modal" onClick={(e) => e.stopPropagation()}>
             <h3>{editingReminder ? 'Edit Reminder' : 'Create New Reminder'}</h3>
             <form onSubmit={handleFormSubmit}>

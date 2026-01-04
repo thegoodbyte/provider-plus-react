@@ -220,7 +220,7 @@ const HousesGrid: React.FC = () => {
       )}
 
       {isModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
+        <div className="modal-overlay">
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h3>{editingHouse ? 'Edit House' : 'Add New House'}</h3>
             <form onSubmit={handleSubmit}>

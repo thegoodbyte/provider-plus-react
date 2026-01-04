@@ -27,6 +27,49 @@
   min-height: 100vh;
 }
 
+/* App Header */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 2rem;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.app-header h1 {
+  font-size: 1.5rem;
+  color: #333;
+  margin: 0;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-info span {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.logout-btn {
+  padding: 0.5rem 1rem;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+.logout-btn:hover {
+  background: #dc2626;
+}
+
 /* Coming Soon Placeholder */
 .coming-soon {
   display: flex;

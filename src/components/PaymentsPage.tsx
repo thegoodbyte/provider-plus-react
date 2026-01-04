@@ -381,7 +381,7 @@ const PaymentsPage: React.FC = () => {
 
       {/* Add/Edit Form */}
       {showAddForm && (
-        <div className="modal-overlay" onClick={() => setShowAddForm(false)}>
+        <div className="modal-overlay">
           <div className="modal payment-modal" onClick={(e) => e.stopPropagation()}>
             <h3>{editingPayment ? 'Edit Payment' : 'Record New Payment'}</h3>
             <form onSubmit={handleFormSubmit}>

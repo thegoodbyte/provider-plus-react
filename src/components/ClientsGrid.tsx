@@ -313,7 +313,7 @@ const ClientsGrid: React.FC = () => {
       )}
 
       {isModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
+        <div className="modal-overlay">
           <div className="modal large-modal" onClick={(e) => e.stopPropagation()}>
             <h3>{editingClient ? 'Edit Client' : 'Add New Client'}</h3>
             <form onSubmit={handleSubmit}>

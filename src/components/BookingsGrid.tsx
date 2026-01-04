@@ -370,7 +370,7 @@ const BookingsGrid: React.FC = () => {
       </div>
 
       {isModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
+        <div className="modal-overlay">
           <div className="modal large-modal" onClick={(e) => e.stopPropagation()}>
             <h3>{editingBooking ? 'Edit Booking' : 'Add New Booking'}</h3>
             <form onSubmit={handleSubmit}>

@@ -9,6 +9,7 @@ export interface Retreat {
   description?: string;
   houseId?: string;
   status?: 'active' | 'completed' | 'cancelled' | 'upcoming';
+  type?: 'regular' | 'booster';
   createdAt?: string;
   updatedAt?: string;
   // Legacy format support

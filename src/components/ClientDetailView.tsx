@@ -574,7 +574,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
 
       {/* Reminder Add/Edit Modal */}
       {showReminderModal && (
-        <div className="modal-overlay" onClick={() => setShowReminderModal(false)}>
+        <div className="modal-overlay">
           <div className="modal reminder-modal" onClick={(e) => e.stopPropagation()}>
             <h3>{editingReminder ? 'Edit Reminder' : 'Add New Reminder'}</h3>
             <form onSubmit={handleReminderSubmit}>

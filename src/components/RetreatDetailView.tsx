@@ -521,7 +521,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
 
       {/* Edit Booking Modal */}
       {showEditModal && (
-        <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
+        <div className="modal-overlay">
           <div className="modal large-modal" onClick={(e) => e.stopPropagation()}>
             <h3>✏️ Edit Booking</h3>
             <form onSubmit={handleEditSubmit}>

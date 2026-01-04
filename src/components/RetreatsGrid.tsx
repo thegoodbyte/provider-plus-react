@@ -62,6 +62,7 @@ const RetreatsGrid: React.FC = () => {
     setEditingRetreat(null);
     setFormData({
       status: 'upcoming',
+      type: 'regular',
       currentOccupancy: 0
     });
     setIsModalOpen(true);
@@ -154,13 +155,20 @@ const RetreatsGrid: React.FC = () => {
       valueFormatter: (params) => params.value || '0'
     },
     { field: 'status', headerName: 'Status', sortable: true, filter: true },
+    { field: 'type', headerName: 'Type', sortable: true, filter: true, width: 120 },
     { field: 'description', headerName: 'Description', flex: 1 },
     {
       field: 'houseId',
       headerName: 'House',
+      width: 250,
       valueGetter: (params) => {
         const house = houses.find(h => h._id === params.data.houseId);
-        return house ? (house.name || house.city || 'Unnamed House') : '';
+        if (house) {
+          const houseName = house.name || house.city || 'Unnamed House';
+          const houseAddress = house.address ? `, ${house.address}` : '';
+          return `${houseName}${houseAddress}`;
+        }
+        return '';
       }
     },
     {
@@ -193,6 +201,7 @@ const RetreatsGrid: React.FC = () => {
       if (formData.description?.trim()) cleanData.description = formData.description.trim();
       if (formData.houseId?.trim()) cleanData.houseId = formData.houseId.trim();
       if (formData.status) cleanData.status = formData.status;
+      if (formData.type) cleanData.type = formData.type;
 
       console.log('Cleaned data for submission:', cleanData);
 
@@ -258,7 +267,7 @@ const RetreatsGrid: React.FC = () => {
       )}
 
       {isModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
+        <div className="modal-overlay">
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h3>{editingRetreat ? 'Edit Retreat' : 'Add New Retreat'}</h3>
             <form onSubmit={handleSubmit}>
@@ -342,7 +351,7 @@ const RetreatsGrid: React.FC = () => {
                   <option value="">Select a house</option>
                   {houses.map(house => (
                     <option key={house._id} value={house._id}>
-                      {house.name || house.city || 'Unnamed House'}
+                      {house.name || house.city || 'Unnamed House'}{house.address ? ` - ${house.address}` : ''}
                     </option>
                   ))}
                 </select>
@@ -360,6 +369,19 @@ const RetreatsGrid: React.FC = () => {
                   <option value="active">Active</option>
                   <option value="completed">Completed</option>
                   <option value="cancelled">Cancelled</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="type">Type:</label>
+                <select
+                  id="type"
+                  name="type"
+                  value={formData.type || 'regular'}
+                  onChange={handleInputChange}
+                >
+                  <option value="regular">Regular</option>
+                  <option value="booster">Booster</option>
                 </select>
               </div>
 

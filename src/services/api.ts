@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { Retreat, House, Client, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary } from '../types';
+import { authService } from './authService';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3007';
 
@@ -9,6 +10,33 @@ const api = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// Add auth token to requests
+api.interceptors.request.use(
+  (config) => {
+    const token = authService.getToken();
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
+// Handle 401 responses
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Token expired or invalid
+      authService.logout();
+      window.location.href = '/';
+    }
+    return Promise.reject(error);
+  }
+);
 
 export const retreatsApi = {
   getAll: () => api.get<Retreat[]>('/retreats'),
