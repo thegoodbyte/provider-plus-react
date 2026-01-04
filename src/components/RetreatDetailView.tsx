@@ -6,6 +6,8 @@ import { Retreat, ExpenseSummary, PaymentSummary } from '../types';
 import ExpensesTab from './ExpensesTab';
 import PaymentsTab from './PaymentsTab';
 import ClientDetailView from './ClientDetailView';
+import CeremoniesGrid from './CeremoniesGrid';
+import CeremonyAnalytics from './CeremonyAnalytics';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 import './ClientsGrid.css';
@@ -42,7 +44,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [expensesSummary, setExpensesSummary] = useState<ExpenseSummary | null>(null);
   const [paymentsSummary, setPaymentsSummary] = useState<PaymentSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'clients' | 'expenses' | 'payments'>('clients');
+  const [activeTab, setActiveTab] = useState<'clients' | 'expenses' | 'payments' | 'ceremonies' | 'analytics'>('clients');
   const [viewingClientId, setViewingClientId] = useState<string | null>(null);
   const [editingBookingId, setEditingBookingId] = useState<string | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -471,6 +473,18 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         >
           💳 Payments
         </button>
+        <button
+          className={`tab-btn ${activeTab === 'ceremonies' ? 'active' : ''}`}
+          onClick={() => setActiveTab('ceremonies')}
+        >
+          🔮 Ceremonies
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'analytics' ? 'active' : ''}`}
+          onClick={() => setActiveTab('analytics')}
+        >
+          📊 Analytics
+        </button>
       </div>
 
       {/* Tab Content */}
@@ -516,6 +530,18 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       {activeTab === 'payments' && (
         <div className="payments-section">
           <PaymentsTab retreatId={retreatId} />
+        </div>
+      )}
+
+      {activeTab === 'ceremonies' && (
+        <div className="ceremonies-section">
+          <CeremoniesGrid retreatId={retreatId} />
+        </div>
+      )}
+
+      {activeTab === 'analytics' && (
+        <div className="analytics-section">
+          <CeremonyAnalytics retreatId={retreatId} />
         </div>
       )}
 

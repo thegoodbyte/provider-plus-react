@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Retreat, House, Client, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, ScreeningClient } from '../types';
+import { Retreat, House, Client, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, ScreeningClient, Ceremony, CeremonyParticipant } from '../types';
 import { authService } from './authService';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3007';
@@ -89,24 +89,7 @@ export const clientMedicalApi = {
   }) => api.patch(`/client-medical/${id}/medical-clearance`, clearanceData),
 };
 
-export const requirementsApi = {
-  getAll: () => api.get<Requirement[]>('/requirements'),
-  getOne: (id: string) => api.get<Requirement>(`/requirements/${id}`),
-  create: (data: Omit<Requirement, '_id'>) => api.post<Requirement>('/requirements', data),
-  update: (id: string, data: Partial<Requirement>) => api.patch<Requirement>(`/requirements/${id}`, data),
-  delete: (id: string) => api.delete(`/requirements/${id}`),
-};
 
-export const clientRequirementsApi = {
-  getAll: () => api.get<ClientRequirement[]>('/client-requirements'),
-  getByClient: (clientId: string) => api.get<ClientRequirement[]>(`/client-requirements/client/${clientId}`),
-  getByRetreat: (retreatId: string) => api.get<ClientRequirement[]>(`/client-requirements/retreat/${retreatId}`),
-  getByClientAndRetreat: (clientId: string, retreatId: string) => api.get<ClientRequirement[]>(`/client-requirements/client/${clientId}/retreat/${retreatId}`),
-  create: (data: Omit<ClientRequirement, '_id'>) => api.post<ClientRequirement>('/client-requirements', data),
-  update: (id: string, data: Partial<ClientRequirement>) => api.patch<ClientRequirement>(`/client-requirements/${id}`, data),
-  markCompleted: (id: string) => api.patch(`/client-requirements/${id}/complete`, {}),
-  delete: (id: string) => api.delete(`/client-requirements/${id}`),
-};
 
 export const remindersApi = {
   getAll: () => api.get<Reminder[]>('/reminders'),
@@ -218,4 +201,25 @@ export const clientRequirementsApi = {
   markRejected: (id: string, rejectedBy: string, rejectionReason: string) => api.patch<ClientRequirement>(`/client-requirements/${id}/rejected`, { rejectedBy, rejectionReason }),
   initialize: (clientId: string, retreatId: string) => api.post<ClientRequirement[]>(`/client-requirements/initialize/${clientId}/${retreatId}`, {}),
   delete: (id: string) => api.delete(`/client-requirements/${id}`),
+};
+
+export const ceremoniesApi = {
+  getAll: () => api.get<Ceremony[]>('/ceremonies'),
+  getOne: (id: string) => api.get<Ceremony>(`/ceremonies/${id}`),
+  getByRetreat: (retreatId: string) => api.get<Ceremony[]>(`/ceremonies/retreat/${retreatId}`),
+  create: (data: Omit<Ceremony, '_id'>) => api.post<Ceremony>('/ceremonies', data),
+  update: (id: string, data: Partial<Ceremony>) => api.patch<Ceremony>(`/ceremonies/${id}`, data),
+  updateStatus: (id: string, status: string) => api.patch<Ceremony>(`/ceremonies/${id}/status`, { status }),
+  updateMedicalApproval: (id: string, approvalData: any) => api.patch<Ceremony>(`/ceremonies/${id}/medical-approval`, approvalData),
+  delete: (id: string) => api.delete(`/ceremonies/${id}`),
+
+  // Participant endpoints
+  addParticipant: (data: Omit<CeremonyParticipant, '_id'>) => api.post<CeremonyParticipant>('/ceremonies/participant', data),
+  getParticipants: (ceremonyId: string) => api.get<CeremonyParticipant[]>(`/ceremonies/${ceremonyId}/participants`),
+  getClientParticipations: (clientId: string) => api.get<CeremonyParticipant[]>(`/ceremonies/client/${clientId}/participations`),
+  updateParticipant: (id: string, data: Partial<CeremonyParticipant>) => api.patch<CeremonyParticipant>(`/ceremonies/participant/${id}`, data),
+  updateMedicalCheck: (id: string, medicalData: any) => api.patch<CeremonyParticipant>(`/ceremonies/participant/${id}/medical`, medicalData),
+  recordSpoonIntake: (id: string, spoonData: any) => api.patch<CeremonyParticipant>(`/ceremonies/participant/${id}/spoons`, spoonData),
+  recordPurge: (id: string, purgeData: any) => api.patch<CeremonyParticipant>(`/ceremonies/participant/${id}/purge`, purgeData),
+  getRetreatSummary: (retreatId: string) => api.get<any>(`/ceremonies/retreat/${retreatId}/summary`),
 };

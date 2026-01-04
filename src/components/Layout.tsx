@@ -71,6 +71,7 @@ const Layout: React.FC = () => {
         onItemClick={handleItemClick}
         isCollapsed={sidebarCollapsed}
         onToggle={handleSidebarToggle}
+        onLogout={logout}
       />
       <div className={`main-content ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
         <div className="app-header">

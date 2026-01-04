@@ -6,6 +6,7 @@ interface SidebarProps {
   onItemClick: (item: string) => void;
   isCollapsed: boolean;
   onToggle: () => void;
+  onLogout?: () => void;
 }
 
 interface MenuItem {
@@ -15,7 +16,7 @@ interface MenuItem {
   description: string;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed, onToggle }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed, onToggle, onLogout }) => {
   const menuItems: MenuItem[] = [
     {
       id: 'retreats',
@@ -129,7 +130,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed,
           {!isCollapsed && <span className="nav-label">Settings</span>}
         </button>
 
-        <button className="nav-link logout-link" title={isCollapsed ? 'Logout' : ''}>
+        <button className="nav-link logout-link" title={isCollapsed ? 'Logout' : ''} onClick={onLogout}>
           <span className="nav-icon">
             🚪
           </span>

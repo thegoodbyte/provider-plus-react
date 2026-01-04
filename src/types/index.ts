@@ -350,3 +350,89 @@ export interface ScreeningClient {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export interface Ceremony {
+  _id?: string;
+  retreatId: string;
+  ceremonyNumber: number; // 1st, 2nd, 3rd ceremony etc.
+  date: Date | string;
+  startTime: string; // HH:MM format
+  endTime: string; // HH:MM format
+
+  // General ceremony notes
+  majorNotes?: string;
+  spiritualVerificationNotes?: string;
+
+  // Medical checks (done before ceremony)
+  medicalChecksCompleted?: boolean;
+  medicalAdvisorApproval?: boolean;
+  medicalAdvisorNotes?: string;
+  medicalAdvisorName?: string;
+
+  status?: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CeremonyParticipant {
+  _id?: string;
+  ceremonyId: string;
+  clientId: string;
+  retreatId: string;
+
+  // Pre-ceremony medical checks
+  preCeremonyEkg?: {
+    fileUrl?: string;
+    fileName?: string;
+    uploadedAt?: Date | string;
+    approved?: boolean;
+    notes?: string;
+    reviewedBy?: string;
+    reviewedAt?: Date | string;
+  };
+
+  preCeremonyBloodPressure?: {
+    systolic?: number;
+    diastolic?: number;
+    pulse?: number;
+    recordedAt?: Date | string;
+    approved?: boolean;
+    notes?: string;
+    reviewedBy?: string;
+    reviewedAt?: Date | string;
+  };
+
+  medicalClearance?: 'approved' | 'not_approved' | 'conditional' | 'pending';
+  medicalClearanceNotes?: string;
+
+  // Ceremony participation details
+  participated?: boolean;
+  arrivalTime?: string; // HH:MM when client arrived
+
+  // Medicine intake
+  spoonsTaken?: number;
+  firstSpoonTime?: string; // HH:MM
+  additionalSpoons?: Array<{
+    spoonNumber: number;
+    time: string; // HH:MM
+    amount?: 'full' | 'half' | 'quarter';
+  }>;
+
+  // Purging information
+  purged?: boolean;
+  purgeTime?: string; // HH:MM first purge
+  purgeDetails?: string;
+
+  // Individual notes
+  individualNotes?: string;
+  experienceNotes?: string;
+  facilitatorObservations?: string;
+
+  // Post ceremony
+  departureTime?: string; // HH:MM when client left
+  postCeremonyStatus?: 'good' | 'needs_support' | 'monitoring' | 'medical_attention';
+  postCeremonyNotes?: string;
+
+  createdAt?: string;
+  updatedAt?: string;
+}

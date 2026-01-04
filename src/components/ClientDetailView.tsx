@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Client, ClientMedical, ClientRequirement, Reminder } from '../types';
 import { clientsApi, clientMedicalApi, clientRequirementsApi, remindersApi, bookingsApi } from '../services/api';
 import MedicalTrackingTab from './MedicalTrackingTab';
+import ClientCeremoniesTab from './ClientCeremoniesTab';
 import './ClientsGrid.css';
 
 interface ClientDetailViewProps {
@@ -284,6 +285,12 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
         >
           🏃‍♂️ Retreat History
         </button>
+        <button
+          className={`tab-btn ${activeTab === 'ceremonies' ? 'active' : ''}`}
+          onClick={() => setActiveTab('ceremonies')}
+        >
+          🔮 Ceremonies
+        </button>
       </div>
 
       <div className="client-detail-content">
@@ -489,11 +496,15 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                     </div>
 
                     <div className="requirements-list">
-                      {requirements.sort((a, b) => (a.requirementId?.order || 0) - (b.requirementId?.order || 0)).map((req) => (
+                      {requirements.sort((a, b) => {
+                        const aOrder = (a.requirementId as any)?.order || 0;
+                        const bOrder = (b.requirementId as any)?.order || 0;
+                        return aOrder - bOrder;
+                      }).map((req) => (
                         <div key={req._id} className="requirement-card">
                           <div className="requirement-header">
                             <h4>
-                              {req.requirementId?.name || 'Unknown Requirement'}
+                              {(req.requirementId as any)?.name || 'Unknown Requirement'}
                               <span className="requirement-category" style={{
                                 marginLeft: '12px',
                                 fontSize: '12px',
@@ -502,7 +513,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                                 backgroundColor: '#e9ecef',
                                 color: '#495057'
                               }}>
-                                {req.requirementId?.category || 'general'}
+                                {(req.requirementId as any)?.category || 'general'}
                               </span>
                             </h4>
                             <span
@@ -513,9 +524,9 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                             </span>
                           </div>
 
-                          {req.requirementId?.description && (
+                          {(req.requirementId as any)?.description && (
                             <div className="requirement-description">
-                              <p>{req.requirementId.description}</p>
+                              <p>{(req.requirementId as any)?.description}</p>
                             </div>
                           )}
 
@@ -524,7 +535,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                               <strong>Due Date:</strong> {req.dueDate ? new Date(req.dueDate).toLocaleDateString() : 'Not set'}
                             </div>
 
-                            {req.requirementId?.requiresAmount && req.amount && (
+                            {(req.requirementId as any)?.requiresAmount && req.amount && (
                               <div className="detail-row">
                                 <strong>Amount:</strong> €{req.amount} {req.receivedDate && '✅ Received'}
                               </div>
@@ -578,7 +589,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                           </div>
 
                           <div className="requirement-actions">
-                            {req.requirementId?.requiresFile && req.status === 'pending' && (
+                            {(req.requirementId as any)?.requiresFile && req.status === 'pending' && (
                               <label className="file-upload-btn">
                                 📄 Upload File
                                 <input
@@ -600,7 +611,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                               </label>
                             )}
 
-                            {req.requirementId?.requiresAmount && req.status === 'pending' && (
+                            {(req.requirementId as any)?.requiresAmount && req.status === 'pending' && (
                               <button
                                 onClick={async () => {
                                   const amount = prompt('Enter amount received:');
@@ -623,7 +634,9 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                               </button>
                             )}
 
-                            {(req.status === 'pending' || req.status === 'received') && !req.requirementId?.requiresAmount && !req.requirementId?.requiresFile && (
+                            {(req.status === 'pending' || req.status === 'received') &&
+                             !(req.requirementId as any)?.requiresAmount &&
+                             !(req.requirementId as any)?.requiresFile && (
                               <button
                                 onClick={async () => {
                                   try {
@@ -640,7 +653,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                               </button>
                             )}
 
-                            {(req.status === 'received' && req.requirementId?.requiresApproval) && (
+                            {(req.status === 'received' && (req.requirementId as any)?.requiresApproval) && (
                               <>
                                 <button
                                   onClick={async () => {
@@ -660,7 +673,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                               </>
                             )}
 
-                            {(req.status === 'reviewed' || (req.status === 'received' && !req.requirementId?.requiresApproval)) && (
+                            {(req.status === 'reviewed' || (req.status === 'received' && !(req.requirementId as any)?.requiresApproval)) && (
                               <button
                                 onClick={async () => {
                                   const approverName = prompt('Approver name:') || 'Admin';
@@ -924,6 +937,10 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
               )}
             </div>
           </div>
+        )}
+
+        {activeTab === 'ceremonies' && (
+          <ClientCeremoniesTab clientId={clientId} />
         )}
 
       {/* Reminder Add/Edit Modal */}

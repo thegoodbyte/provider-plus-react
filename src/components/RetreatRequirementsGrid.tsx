@@ -95,11 +95,11 @@ const RetreatRequirementsGrid: React.FC = () => {
 
   const RequirementStatusCellRenderer = (params: ICellRendererParams) => {
     const { data, colDef } = params;
-    const requirementName = colDef.headerName;
+    const requirementName = colDef?.headerName;
 
     // Find the requirement for this client
     const requirement = data.requirements?.find((req: ClientRequirement) =>
-      req.requirementId?.name === requirementName
+      (req.requirementId as any)?.name === requirementName
     );
 
     if (!requirement) {

@@ -27,6 +27,7 @@ interface ReminderWithDetails {
 
 const RemindersPage: React.FC = () => {
   const [reminders, setReminders] = useState<ReminderWithDetails[]>([]);
+  const [filteredReminders, setFilteredReminders] = useState<ReminderWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingReminder, setEditingReminder] = useState<ReminderWithDetails | null>(null);
@@ -42,6 +43,8 @@ const RemindersPage: React.FC = () => {
   });
   const [clients, setClients] = useState<Client[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
+  const [selectedClientFilter, setSelectedClientFilter] = useState<string>('');
+  const [selectedRetreatFilter, setSelectedRetreatFilter] = useState<string>('');
   const gridApiRef = useRef<GridApi | null>(null);
 
   const fetchReminders = useCallback(async () => {
@@ -68,6 +71,7 @@ const RemindersPage: React.FC = () => {
       });
 
       setReminders(enrichedReminders);
+      setFilteredReminders(enrichedReminders);
       setClients(clientsResponse.data);
       setRetreats(retreatsResponse.data);
     } catch (error) {
@@ -80,6 +84,20 @@ const RemindersPage: React.FC = () => {
   useEffect(() => {
     fetchReminders();
   }, [fetchReminders]);
+
+  useEffect(() => {
+    let filtered = [...reminders];
+
+    if (selectedClientFilter) {
+      filtered = filtered.filter(r => r.clientId === selectedClientFilter);
+    }
+
+    if (selectedRetreatFilter) {
+      filtered = filtered.filter(r => r.retreatId === selectedRetreatFilter);
+    }
+
+    setFilteredReminders(filtered);
+  }, [selectedClientFilter, selectedRetreatFilter, reminders]);
 
   const StatusCellRenderer = (params: ICellRendererParams) => {
     const status = params.value?.toLowerCase() || 'pending';
@@ -279,32 +297,72 @@ const RemindersPage: React.FC = () => {
     <div className="reminders-page-container">
       <div className="reminders-header">
         <h2>🔔 Reminders Management</h2>
-        <button
-          onClick={() => setShowAddForm(true)}
-          className="add-btn"
-          disabled={showAddForm}
-        >
-          ➕ Add New Reminder
-        </button>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <select
+            value={selectedClientFilter}
+            onChange={(e) => setSelectedClientFilter(e.target.value)}
+            style={{
+              padding: '8px',
+              borderRadius: '4px',
+              border: '1px solid #ddd',
+              fontSize: '14px',
+              minWidth: '200px'
+            }}
+          >
+            <option value="">All Clients</option>
+            {clients.map((client) => (
+              <option key={client._id} value={client._id}>
+                {client.firstName} {client.lastName}
+              </option>
+            ))}
+          </select>
+
+          <select
+            value={selectedRetreatFilter}
+            onChange={(e) => setSelectedRetreatFilter(e.target.value)}
+            style={{
+              padding: '8px',
+              borderRadius: '4px',
+              border: '1px solid #ddd',
+              fontSize: '14px',
+              minWidth: '200px'
+            }}
+          >
+            <option value="">All Retreats</option>
+            {retreats.map((retreat) => (
+              <option key={retreat._id} value={retreat._id}>
+                {retreat.name} - {retreat.location}
+              </option>
+            ))}
+          </select>
+
+          <button
+            onClick={() => setShowAddForm(true)}
+            className="add-btn"
+            disabled={showAddForm}
+          >
+            ➕ Add New Reminder
+          </button>
+        </div>
       </div>
 
       {/* Summary Cards */}
       <div className="reminders-summary">
         <div className="summary-cards">
           <div className="summary-card">
-            <div className="summary-number">{reminders.filter(r => r.status === 'pending' || r.status === undefined).length}</div>
+            <div className="summary-number">{filteredReminders.filter(r => r.status === 'pending' || r.status === undefined).length}</div>
             <div className="summary-label">Pending</div>
           </div>
           <div className="summary-card">
-            <div className="summary-number">{reminders.filter(r => r.status === 'completed').length}</div>
+            <div className="summary-number">{filteredReminders.filter(r => r.status === 'completed').length}</div>
             <div className="summary-label">Completed</div>
           </div>
           <div className="summary-card">
-            <div className="summary-number">{reminders.filter(r => r.priority === 'urgent').length}</div>
+            <div className="summary-number">{filteredReminders.filter(r => r.priority === 'urgent').length}</div>
             <div className="summary-label">Urgent</div>
           </div>
           <div className="summary-card">
-            <div className="summary-number">{reminders.length}</div>
+            <div className="summary-number">{filteredReminders.length}</div>
             <div className="summary-label">Total</div>
           </div>
         </div>
@@ -452,7 +510,7 @@ const RemindersPage: React.FC = () => {
       <div className="reminders-grid">
         <div className="ag-theme-alpine" style={{ height: 600, width: '100%' }}>
           <AgGridReact
-            rowData={reminders}
+            rowData={filteredReminders}
             columnDefs={columnDefs}
             defaultColDef={defaultColDef}
             onGridReady={onGridReady}
