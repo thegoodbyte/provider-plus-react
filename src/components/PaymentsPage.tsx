@@ -3,6 +3,7 @@ import { AgGridReact } from 'ag-grid-react';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams, ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import { paymentsApi, clientsApi, retreatsApi } from '../services/api';
 import { Payment, Client, Retreat } from '../types';
+import CurrencyDisplay from './CurrencyDisplay';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 import './ClientsGrid.css';
@@ -12,15 +13,20 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 interface PaymentWithDetails {
   _id?: string;
   amount: number;
-  currency: 'CZK' | 'EUR' | 'PLN';
+  currency: 'EUR' | 'USD' | 'CZK' | 'PLN';
   status: 'pending' | 'completed' | 'failed' | 'refunded';
-  paymentMethod: 'bank_transfer' | 'card' | 'cash' | 'paypal' | 'crypto' | 'other';
+  paymentMethod: 'bank_transfer' | 'card' | 'cash' | 'paypal' | 'crypto' | 'stripe' | 'wise' | 'revolut' | 'other';
+  paymentType?: 'deposit_non_refundable' | 'deposit_refundable' | 'regular_payment' | 'balance_payment' | 'refund' | 'adjustment';
   description?: string;
   transactionId?: string;
+  transactionReference?: string;
   paymentDate: Date | string;
   notes?: string;
   isDeposit: boolean;
   isFinalPayment: boolean;
+  isRefundable?: boolean;
+  refundedAmount?: number;
+  processedBy?: string;
   amountInEUR?: number;
   clientId: string | undefined;
   retreatId: string | undefined;
@@ -38,15 +44,18 @@ const PaymentsPage: React.FC = () => {
     clientId: '',
     retreatId: '',
     amount: 0,
-    currency: 'EUR' as 'CZK' | 'EUR' | 'PLN',
+    currency: 'EUR' as 'EUR' | 'USD' | 'CZK' | 'PLN',
     status: 'pending' as 'pending' | 'completed' | 'failed' | 'refunded',
-    paymentMethod: 'bank_transfer' as 'bank_transfer' | 'card' | 'cash' | 'paypal' | 'crypto' | 'other',
+    paymentMethod: 'bank_transfer' as 'bank_transfer' | 'card' | 'cash' | 'paypal' | 'crypto' | 'stripe' | 'wise' | 'revolut' | 'other',
+    paymentType: 'regular_payment' as 'deposit_non_refundable' | 'deposit_refundable' | 'regular_payment' | 'balance_payment' | 'refund' | 'adjustment',
     description: '',
     transactionId: '',
+    transactionReference: '',
     paymentDate: new Date().toISOString().split('T')[0],
     notes: '',
     isDeposit: false,
-    isFinalPayment: false
+    isFinalPayment: false,
+    isRefundable: true
   });
   const [clients, setClients] = useState<Client[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
@@ -61,15 +70,15 @@ const PaymentsPage: React.FC = () => {
         retreatsApi.getAll()
       ]);
 
-      const clientsMap = new Map(clientsResponse.data.map(client => [client._id, client]));
-      const retreatsMap = new Map(retreatsResponse.data.map(retreat => [retreat._id, retreat]));
+      const clientsMap = new Map<string, Client>(clientsResponse.data.filter((client: Client) => client._id).map((client: Client) => [client._id!, client]));
+      const retreatsMap = new Map<string, Retreat>(retreatsResponse.data.filter((retreat: Retreat) => retreat._id).map((retreat: Retreat) => [retreat._id!, retreat]));
 
-      const enrichedPayments: PaymentWithDetails[] = paymentsResponse.data.map(payment => {
+      const enrichedPayments: PaymentWithDetails[] = paymentsResponse.data.map((payment: Payment) => {
         const clientId = typeof payment.clientId === 'string' ? payment.clientId : payment.clientId._id;
         const retreatId = typeof payment.retreatId === 'string' ? payment.retreatId : payment.retreatId._id;
 
-        const client = clientsMap.get(clientId);
-        const retreat = retreatsMap.get(retreatId);
+        const client = clientId ? clientsMap.get(clientId) : undefined;
+        const retreat = retreatId ? retreatsMap.get(retreatId) : undefined;
 
         return {
           ...payment,
@@ -107,13 +116,17 @@ const PaymentsPage: React.FC = () => {
   const AmountCellRenderer = (params: ICellRendererParams) => {
     const amount = params.value || 0;
     const currency = params.data.currency || 'EUR';
-    const amountEUR = params.data.amountInEUR || amount;
 
-    if (currency === 'EUR') {
-      return `€${amount.toLocaleString()}`;
-    }
+    // For now, use simple currency formatting - the USD conversion will happen in background
+    const symbols: { [key: string]: string } = {
+      EUR: '€',
+      USD: '$',
+      CZK: 'Kč',
+      PLN: 'zł'
+    };
 
-    return `${amount.toLocaleString()} ${currency} (€${amountEUR.toLocaleString()})`;
+    const symbol = symbols[currency] || currency;
+    return `${symbol}${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   const PaymentMethodCellRenderer = (params: ICellRendererParams) => {
@@ -121,8 +134,11 @@ const PaymentsPage: React.FC = () => {
       bank_transfer: '🏦',
       card: '💳',
       cash: '💵',
-      paypal: '🌐',
+      paypal: '🅿️',
       crypto: '₿',
+      stripe: '💳',
+      wise: '🌐',
+      revolut: '🔄',
       other: '📄'
     };
 
@@ -241,15 +257,18 @@ const PaymentsPage: React.FC = () => {
           clientId: payment.clientId || '',
           retreatId: payment.retreatId || '',
           amount: payment.amount,
-          currency: payment.currency,
+          currency: payment.currency as 'EUR' | 'USD' | 'CZK' | 'PLN',
           status: payment.status,
-          paymentMethod: payment.paymentMethod,
+          paymentMethod: payment.paymentMethod as typeof formData.paymentMethod,
+          paymentType: payment.paymentType || 'regular_payment',
           description: payment.description || '',
           transactionId: payment.transactionId || '',
+          transactionReference: payment.transactionReference || '',
           paymentDate: new Date(payment.paymentDate).toISOString().split('T')[0],
           notes: payment.notes || '',
           isDeposit: payment.isDeposit,
-          isFinalPayment: payment.isFinalPayment
+          isFinalPayment: payment.isFinalPayment,
+          isRefundable: payment.isRefundable || true
         });
         setShowAddForm(true);
       }
@@ -313,12 +332,15 @@ const PaymentsPage: React.FC = () => {
         currency: 'EUR',
         status: 'pending',
         paymentMethod: 'bank_transfer',
+        paymentType: 'regular_payment',
         description: '',
         transactionId: '',
+        transactionReference: '',
         paymentDate: new Date().toISOString().split('T')[0],
         notes: '',
         isDeposit: false,
-        isFinalPayment: false
+        isFinalPayment: false,
+        isRefundable: true
       });
       await fetchPayments();
     } catch (error) {
@@ -336,10 +358,16 @@ const PaymentsPage: React.FC = () => {
     );
   }
 
+  // For now, let's show the total in EUR (we can make this configurable later)
   const totalAmount = payments.reduce((sum, payment) => {
     if (payment.status === 'completed') {
-      const amountInEUR = payment.currency === 'EUR' ? payment.amount : (payment.amountInEUR || payment.amount);
-      return sum + amountInEUR;
+      // Simple approximation - in real app we'd convert properly
+      const eurAmount = payment.currency === 'EUR' ? payment.amount :
+                       payment.currency === 'USD' ? payment.amount * 0.85 :
+                       payment.currency === 'CZK' ? payment.amount * 0.04 :
+                       payment.currency === 'PLN' ? payment.amount * 0.22 :
+                       payment.amount;
+      return sum + eurAmount;
     }
     return sum;
   }, 0);
@@ -361,8 +389,10 @@ const PaymentsPage: React.FC = () => {
       <div className="payments-summary">
         <div className="summary-cards">
           <div className="summary-card">
-            <div className="summary-number">€{totalAmount.toLocaleString()}</div>
-            <div className="summary-label">Total Completed</div>
+            <div className="summary-number">
+              <CurrencyDisplay amount={totalAmount} currency="EUR" />
+            </div>
+            <div className="summary-label">Total Completed (approx)</div>
           </div>
           <div className="summary-card">
             <div className="summary-number">{payments.filter(p => p.status === 'pending').length}</div>
@@ -440,9 +470,10 @@ const PaymentsPage: React.FC = () => {
                     value={formData.currency}
                     onChange={(e) => setFormData({...formData, currency: e.target.value as any})}
                   >
-                    <option value="EUR">EUR</option>
-                    <option value="CZK">CZK</option>
-                    <option value="PLN">PLN</option>
+                    <option value="EUR">EUR (Euro)</option>
+                    <option value="USD">USD (US Dollar)</option>
+                    <option value="CZK">CZK (Czech Koruna)</option>
+                    <option value="PLN">PLN (Polish Złoty)</option>
                   </select>
                 </div>
 
@@ -453,12 +484,30 @@ const PaymentsPage: React.FC = () => {
                     value={formData.paymentMethod}
                     onChange={(e) => setFormData({...formData, paymentMethod: e.target.value as any})}
                   >
-                    <option value="bank_transfer">Bank Transfer</option>
-                    <option value="card">Card</option>
-                    <option value="cash">Cash</option>
-                    <option value="paypal">PayPal</option>
-                    <option value="crypto">Cryptocurrency</option>
-                    <option value="other">Other</option>
+                    <option value="bank_transfer">🏦 Bank Transfer</option>
+                    <option value="cash">💵 Cash</option>
+                    <option value="card">💳 Card/Credit Card</option>
+                    <option value="stripe">💳 Stripe</option>
+                    <option value="paypal">🅿️ PayPal</option>
+                    <option value="wise">🌐 Wise (TransferWise)</option>
+                    <option value="revolut">🔄 Revolut</option>
+                    <option value="crypto">₿ Cryptocurrency</option>
+                    <option value="other">🔧 Other</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="payment-type">Payment Type</label>
+                  <select
+                    id="payment-type"
+                    value={formData.paymentType}
+                    onChange={(e) => setFormData({...formData, paymentType: e.target.value as any})}
+                  >
+                    <option value="deposit_non_refundable">💰 Deposit (Non-Refundable)</option>
+                    <option value="deposit_refundable">💳 Deposit (Refundable)</option>
+                    <option value="regular_payment">💵 Regular Payment</option>
+                    <option value="balance_payment">⚖️ Balance Payment</option>
+                    <option value="adjustment">🔧 Adjustment</option>
                   </select>
                 </div>
 
@@ -495,6 +544,17 @@ const PaymentsPage: React.FC = () => {
                     value={formData.transactionId}
                     onChange={(e) => setFormData({...formData, transactionId: e.target.value})}
                     placeholder="e.g., TXN123456789"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="payment-transaction-reference">Transaction Reference</label>
+                  <input
+                    type="text"
+                    id="payment-transaction-reference"
+                    value={formData.transactionReference}
+                    onChange={(e) => setFormData({...formData, transactionReference: e.target.value})}
+                    placeholder="e.g., REF123456"
                   />
                 </div>
 

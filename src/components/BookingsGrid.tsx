@@ -4,6 +4,8 @@ import { ColDef, GridReadyEvent } from 'ag-grid-community';
 import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
 import { RetreatClient, Client, Retreat } from '../types';
 import { bookingsApi, clientsApi, retreatsApi } from '../services/api';
+import BookingDetailView from './BookingDetailView';
+import { formatBookingHashForDisplay } from '../utils/hashGenerator';
 import './ClientsGrid.css';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -26,6 +28,15 @@ const ActionsCellRenderer = (props: any) => {
       >
         Edit
       </button>
+      {!data.bookingHash && (
+        <button
+          className="generate-hash-btn"
+          onClick={() => context.componentParent.handleGenerateHash(data._id)}
+          title="Generate Booking Hash"
+        >
+          🔑
+        </button>
+      )}
       <button
         className="delete-btn"
         onClick={() => context.componentParent.handleDelete(data._id)}
@@ -52,9 +63,27 @@ const BookingsGrid: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBooking, setEditingBooking] = useState<BookingWithDetails | null>(null);
   const [formData, setFormData] = useState<Partial<RetreatClient>>({});
+  const [viewingBookingId, setViewingBookingId] = useState<string | null>(null);
   const gridApiRef = useRef<any>(null);
 
   const columnDefs: ColDef[] = [
+    {
+      headerName: 'Booking #',
+      field: 'bookingNumber',
+      sortable: true,
+      filter: true,
+      width: 120
+    },
+    {
+      headerName: 'Booking Hash',
+      field: 'bookingHash',
+      valueFormatter: (params) => {
+        return params.value ? formatBookingHashForDisplay(params.value) : 'Not Generated';
+      },
+      sortable: true,
+      filter: true,
+      width: 160
+    },
     {
       headerName: 'Client',
       valueGetter: (params) => {
@@ -71,16 +100,16 @@ const BookingsGrid: React.FC = () => {
       filter: true,
       flex: 1
     },
-    {
-      headerName: 'Email',
-      valueGetter: (params) => {
-        const client = params.data.clientDetails || params.data.clientId;
-        return client?.email || '';
-      },
-      sortable: true,
-      filter: true,
-      flex: 1
-    },
+    // {
+    //   headerName: 'Email',
+    //   valueGetter: (params) => {
+    //     const client = params.data.clientDetails || params.data.clientId;
+    //     return client?.email || '';
+    //   },
+    //   sortable: true,
+    //   filter: true,
+    //   flex: 1
+    // },
     {
       headerName: 'Retreat',
       valueGetter: (params) => {
@@ -96,6 +125,23 @@ const BookingsGrid: React.FC = () => {
       filter: true,
       flex: 1.5
     },
+    // {
+    //   headerName: 'Booking Type',
+    //   field: 'bookingType',
+    //   valueFormatter: (params) => {
+    //     if (params.value === 'booster') return 'Booster';
+    //     return 'Full Retreat';
+    //   },
+    //   cellStyle: (params) => {
+    //     if (params.value === 'booster') {
+    //       return { backgroundColor: '#e3f2fd', fontWeight: 'bold' };
+    //     }
+    //     return { backgroundColor: '#f3e5f5', fontWeight: 'bold' };
+    //   },
+    //   sortable: true,
+    //   filter: true,
+    //   width: 120
+    // },
     {
       headerName: 'Retreat Type',
       valueGetter: (params) => {
@@ -121,36 +167,36 @@ const BookingsGrid: React.FC = () => {
       filter: true,
       flex: 1
     },
-    {
-      headerName: 'Location',
-      valueGetter: (params) => {
-        const retreat = params.data.retreatDetails || params.data.retreatId;
-        return retreat?.location || '';
-      },
-      sortable: true,
-      filter: true,
-      flex: 1
-    },
-    {
-      headerName: 'Registration Date',
-      field: 'registrationDate',
-      valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString() : '',
-      sortable: true,
-      filter: true,
-      flex: 1
-    },
-    {
-      headerName: 'Status',
-      field: 'status',
-      cellRenderer: (params: any) => {
-        const status = params.value || 'pending';
-        const statusClass = `status-${status}`;
-        return `<span class="status-badge ${statusClass}">${status.charAt(0).toUpperCase() + status.slice(1)}</span>`;
-      },
-      sortable: true,
-      filter: true,
-      flex: 1
-    },
+    // {
+    //   headerName: 'Location',
+    //   valueGetter: (params) => {
+    //     const retreat = params.data.retreatDetails || params.data.retreatId;
+    //     return retreat?.location || '';
+    //   },
+    //   sortable: true,
+    //   filter: true,
+    //   flex: 1
+    // },
+    // {
+    //   headerName: 'Registration Date',
+    //   field: 'registrationDate',
+    //   valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString() : '',
+    //   sortable: true,
+    //   filter: true,
+    //   flex: 1
+    // },
+    // {
+    //   headerName: 'Status',
+    //   field: 'status',
+    //   cellRenderer: (params: any) => {
+    //     const status = params.value || 'pending';
+    //     const statusClass = `status-${status}`;
+    //     return `<span class="status-badge ${statusClass}">${status.charAt(0).toUpperCase() + status.slice(1)}</span>`;
+    //   },
+    //   sortable: true,
+    //   filter: true,
+    //   flex: 1
+    // },
     {
       headerName: 'Total Amount',
       valueGetter: (params) => {
@@ -174,13 +220,6 @@ const BookingsGrid: React.FC = () => {
       flex: 1
     },
     {
-      headerName: 'Room',
-      field: 'roomAssignment',
-      sortable: true,
-      filter: true,
-      flex: 1
-    },
-    {
       headerName: 'Actions',
       cellRenderer: 'actionsCellRenderer',
       sortable: false,
@@ -196,44 +235,50 @@ const BookingsGrid: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchBookings();
-    fetchClients();
-    fetchRetreats();
+    fetchAllData();
   }, []);
 
-  const fetchBookings = async () => {
+  const fetchAllData = async () => {
     try {
       setIsLoading(true);
-      const response = await bookingsApi.getAll();
-      const bookingsData = response.data;
 
-      // Enhance bookings with client and retreat details
-      const enhancedBookings = await Promise.all(
-        bookingsData.map(async (booking) => {
-          try {
-            const [clientResponse, retreatResponse] = await Promise.all([
-              clientsApi.getOne(booking.clientId),
-              retreatsApi.getOne(booking.retreatId)
-            ]);
+      // Fetch all data in parallel for maximum speed
+      const [bookingsResponse, clientsResponse, retreatsResponse] = await Promise.all([
+        bookingsApi.getAll(),
+        clientsApi.getAll(),
+        retreatsApi.getAll()
+      ]);
 
-            return {
-              ...booking,
-              clientDetails: clientResponse.data,
-              retreatDetails: retreatResponse.data
-            };
-          } catch (error) {
-            console.warn(`Failed to fetch details for booking ${booking._id}:`, error);
-            return booking;
-          }
-        })
-      );
+      const bookingsData = bookingsResponse.data;
+      const clientsData = clientsResponse.data;
+      const retreatsData = retreatsResponse.data;
+
+      // Set clients and retreats for dropdowns
+      setClients(clientsData);
+      setRetreats(retreatsData);
+
+      // Create lookup maps for O(1) access instead of making API calls
+      const clientsMap = new Map<string, Client>(clientsData.filter((client: Client) => client._id).map((client: Client) => [client._id!, client]));
+      const retreatsMap = new Map<string, Retreat>(retreatsData.filter((retreat: Retreat) => retreat._id).map((retreat: Retreat) => [retreat._id!, retreat]));
+
+      // Enhance bookings with cached data - no additional API calls needed!
+      const enhancedBookings = bookingsData.map((booking: RetreatClient) => ({
+        ...booking,
+        clientDetails: clientsMap.get(booking.clientId),
+        retreatDetails: retreatsMap.get(booking.retreatId)
+      }));
 
       setBookings(enhancedBookings);
     } catch (error) {
-      console.error('Error fetching bookings:', error);
+      console.error('Error fetching data:', error);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Keep these for backwards compatibility but they're not used in initial load
+  const fetchBookings = async () => {
+    await fetchAllData();
   };
 
   const fetchClients = async () => {
@@ -271,11 +316,11 @@ const BookingsGrid: React.FC = () => {
   };
 
   const handleView = (id: string) => {
-    const booking = bookings.find(b => b._id === id);
-    if (booking) {
-      // Navigate to booking detail view or show detail modal
-      console.log('Viewing booking:', booking);
-    }
+    setViewingBookingId(id);
+  };
+
+  const handleBackFromDetail = () => {
+    setViewingBookingId(null);
   };
 
   const handleEdit = (id: string) => {
@@ -291,9 +336,21 @@ const BookingsGrid: React.FC = () => {
     if (window.confirm('Are you sure you want to delete this booking?')) {
       try {
         await bookingsApi.delete(id);
-        fetchBookings();
+        fetchAllData(); // Use the optimized fetch
       } catch (error: any) {
         console.error('Error deleting booking:', error);
+      }
+    }
+  };
+
+  const handleGenerateHash = async (id: string) => {
+    if (window.confirm('Generate a unique booking hash for this booking? This will enable payment linking.')) {
+      try {
+        await bookingsApi.regenerateBookingHash(id);
+        fetchAllData(); // Use the optimized fetch
+      } catch (error: any) {
+        console.error('Error generating booking hash:', error);
+        alert('Error generating booking hash: ' + (error.response?.data?.message || error.message));
       }
     }
   };
@@ -303,13 +360,16 @@ const BookingsGrid: React.FC = () => {
     try {
       const cleanData: any = {};
 
+      // Include booking number if provided
+      if (formData.bookingNumber) cleanData.bookingNumber = formData.bookingNumber;
       if (formData.clientId) cleanData.clientId = formData.clientId;
       if (formData.retreatId) cleanData.retreatId = formData.retreatId;
+      if (formData.bookingType) cleanData.bookingType = formData.bookingType || 'full_retreat';
       if (formData.registrationDate) cleanData.registrationDate = formData.registrationDate;
       if (formData.totalAmount !== undefined) cleanData.totalAmount = Number(formData.totalAmount);
+      if (formData.currency) cleanData.currency = formData.currency || 'EUR';
       if (formData.amountPaid !== undefined) cleanData.amountPaid = Number(formData.amountPaid);
       if (formData.status) cleanData.status = formData.status;
-      if (formData.roomAssignment) cleanData.roomAssignment = formData.roomAssignment;
       if (formData.specialRequests) cleanData.specialRequests = formData.specialRequests;
       if (formData.notes) cleanData.notes = formData.notes;
 
@@ -322,7 +382,7 @@ const BookingsGrid: React.FC = () => {
       setIsModalOpen(false);
       setFormData({});
       setEditingBooking(null);
-      fetchBookings();
+      fetchAllData(); // Use the optimized fetch
     } catch (error: any) {
       console.error('Error saving booking:', error);
       alert('Error saving booking: ' + (error.response?.data?.message || error.message));
@@ -369,6 +429,11 @@ const BookingsGrid: React.FC = () => {
         <p>Loading bookings...</p>
       </div>
     );
+  }
+
+  // If viewing a booking's detail, show the detail view
+  if (viewingBookingId) {
+    return <BookingDetailView bookingId={viewingBookingId} onBack={handleBackFromDetail} />;
   }
 
   return (
@@ -430,7 +495,8 @@ const BookingsGrid: React.FC = () => {
             componentParent: {
               handleView,
               handleEdit,
-              handleDelete
+              handleDelete,
+              handleGenerateHash
             }
           }}
         />
@@ -444,6 +510,18 @@ const BookingsGrid: React.FC = () => {
               <div className="form-grid">
                 <div className="form-section">
                   <h4>Booking Details</h4>
+
+                  <div className="form-group">
+                    <label htmlFor="bookingNumber">Booking Number (optional - auto-generated if empty):</label>
+                    <input
+                      type="text"
+                      id="bookingNumber"
+                      name="bookingNumber"
+                      value={formData.bookingNumber || ''}
+                      onChange={handleInputChange}
+                      placeholder="Auto-generated (e.g., BK000001)"
+                    />
+                  </div>
 
                   <div className="form-group">
                     <label htmlFor="clientId">Client:</label>
@@ -494,6 +572,20 @@ const BookingsGrid: React.FC = () => {
                   </div>
 
                   <div className="form-group">
+                    <label htmlFor="bookingType">Booking Type:</label>
+                    <select
+                      id="bookingType"
+                      name="bookingType"
+                      value={formData.bookingType || 'full_retreat'}
+                      onChange={handleInputChange}
+                      required
+                    >
+                      <option value="full_retreat">Full Retreat</option>
+                      <option value="booster">Booster</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
                     <label htmlFor="status">Status:</label>
                     <select
                       id="status"
@@ -514,7 +606,23 @@ const BookingsGrid: React.FC = () => {
                   <h4>Financial Information</h4>
 
                   <div className="form-group">
-                    <label htmlFor="totalAmount">Total Amount ($):</label>
+                    <label htmlFor="currency">Currency:</label>
+                    <select
+                      id="currency"
+                      name="currency"
+                      value={formData.currency || 'EUR'}
+                      onChange={handleInputChange}
+                      required
+                    >
+                      <option value="EUR">EUR (Euro)</option>
+                      <option value="USD">USD (US Dollar)</option>
+                      <option value="CZK">CZK (Czech Koruna)</option>
+                      <option value="PLN">PLN (Polish Złoty)</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="totalAmount">Total Amount:</label>
                     <input
                       type="number"
                       id="totalAmount"
@@ -528,7 +636,7 @@ const BookingsGrid: React.FC = () => {
                   </div>
 
                   <div className="form-group">
-                    <label htmlFor="amountPaid">Amount Paid ($):</label>
+                    <label htmlFor="amountPaid">Amount Paid:</label>
                     <input
                       type="number"
                       id="amountPaid"
@@ -537,18 +645,6 @@ const BookingsGrid: React.FC = () => {
                       onChange={handleInputChange}
                       min="0"
                       step="0.01"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="roomAssignment">Room Assignment:</label>
-                    <input
-                      type="text"
-                      id="roomAssignment"
-                      name="roomAssignment"
-                      value={formData.roomAssignment || ''}
-                      onChange={handleInputChange}
-                      placeholder="e.g., Room 101"
                     />
                   </div>
                 </div>

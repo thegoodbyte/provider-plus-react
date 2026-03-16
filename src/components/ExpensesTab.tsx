@@ -16,7 +16,7 @@ interface ExpensesTabProps {
 interface ExpenseFormData {
   expenseTypeId: string;
   amount: number;
-  currency: 'CZK' | 'EUR' | 'PLN';
+  currency: 'EUR' | 'USD' | 'CZK' | 'PLN';
   description: string;
   vendor: string;
   expenseDate: string;
@@ -366,11 +366,12 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
                 <label>Currency</label>
                 <select
                   value={formData.currency}
-                  onChange={(e) => setFormData({...formData, currency: e.target.value as 'CZK' | 'EUR' | 'PLN'})}
+                  onChange={(e) => setFormData({...formData, currency: e.target.value as 'EUR' | 'USD' | 'CZK' | 'PLN'})}
                 >
-                  <option value="CZK">CZK</option>
-                  <option value="EUR">EUR</option>
-                  <option value="PLN">PLN</option>
+                  <option value="EUR">EUR (Euro)</option>
+                  <option value="USD">USD (US Dollar)</option>
+                  <option value="CZK">CZK (Czech Koruna)</option>
+                  <option value="PLN">PLN (Polish Złoty)</option>
                 </select>
               </div>
 

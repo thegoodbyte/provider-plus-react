@@ -1,0 +1,460 @@
+.medical-review-detail {
+  padding: 24px;
+  background-color: #f8f9fa;
+  min-height: 100vh;
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.back-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: white;
+  border: 1px solid #e1e8ed;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  font-weight: 500;
+  color: #5a6c7d;
+}
+
+.back-button:hover {
+  background: #f0f8ff;
+  border-color: #3498db;
+  color: #3498db;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.urgency-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #ffebee;
+  border-radius: 8px;
+  color: #e74c3c;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.detail-content {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.client-overview {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.overview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #ecf0f1;
+}
+
+.client-identity h2 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0 0 8px 0;
+}
+
+.client-number {
+  display: inline-block;
+  padding: 4px 12px;
+  background: #ecf0f1;
+  border-radius: 6px;
+  color: #7f8c8d;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.retreat-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: #f0f8ff;
+  border-radius: 8px;
+  color: #3498db;
+}
+
+.retreat-date {
+  font-weight: 600;
+}
+
+.client-basic-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.info-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #7f8c8d;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.info-value {
+  font-size: 15px;
+  color: #2c3e50;
+  font-weight: 500;
+}
+
+.medical-records-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 24px;
+}
+
+.record-card {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.record-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.record-header svg {
+  color: #3498db;
+}
+
+.record-header h3 {
+  flex: 1;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.status-badge.pending {
+  background: #fff4e6;
+  color: #f39c12;
+}
+
+.status-badge.approved {
+  background: #e8f8f5;
+  color: #27ae60;
+}
+
+.status-badge.declined {
+  background: #ffebee;
+  color: #e74c3c;
+}
+
+.record-info {
+  margin-bottom: 20px;
+}
+
+.record-info p {
+  margin: 8px 0;
+  color: #7f8c8d;
+  font-size: 14px;
+}
+
+.previous-notes {
+  margin-top: 16px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.previous-notes strong {
+  display: block;
+  margin-bottom: 8px;
+  color: #5a6c7d;
+  font-size: 13px;
+}
+
+.previous-notes p {
+  color: #2c3e50;
+  font-size: 14px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.view-document-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #3498db;
+  color: white;
+  border-radius: 8px;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.view-document-btn:hover {
+  background: #2980b9;
+  transform: translateY(-1px);
+}
+
+.medical-history-section {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.medical-history-section h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0 0 20px 0;
+}
+
+.history-item {
+  margin-bottom: 24px;
+}
+
+.history-item:last-child {
+  margin-bottom: 0;
+}
+
+.history-item h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #5a6c7d;
+  margin: 0 0 12px 0;
+}
+
+.history-item p {
+  color: #2c3e50;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.history-item ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.history-item li {
+  color: #2c3e50;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.previous-retreats-section {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.previous-retreats-section h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0 0 20px 0;
+}
+
+.retreats-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.previous-retreat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.retreat-name {
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.retreat-outcome {
+  padding: 2px 8px;
+  background: #e8f8f5;
+  color: #27ae60;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.review-decision-section {
+  background: white;
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.review-decision-section h3 {
+  font-size: 20px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin: 0 0 24px 0;
+}
+
+.decision-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.decision-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border: 2px solid #e1e8ed;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.decision-option:hover {
+  border-color: #3498db;
+  background: #f0f8ff;
+}
+
+.decision-option input[type="radio"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+}
+
+.decision-option input[type="radio"]:checked + svg {
+  color: #3498db;
+}
+
+.decision-option span {
+  font-size: 15px;
+  font-weight: 500;
+  color: #2c3e50;
+}
+
+.review-notes {
+  margin-bottom: 24px;
+}
+
+.review-notes label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #5a6c7d;
+}
+
+.review-notes textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e1e8ed;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  transition: border-color 0.2s;
+}
+
+.review-notes textarea:focus {
+  outline: none;
+  border-color: #3498db;
+}
+
+.review-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.cancel-btn,
+.submit-review-btn {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.cancel-btn {
+  background: white;
+  border: 1px solid #e1e8ed;
+  color: #7f8c8d;
+}
+
+.cancel-btn:hover {
+  background: #f8f9fa;
+  border-color: #bdc3c7;
+}
+
+.submit-review-btn {
+  background: #3498db;
+  color: white;
+}
+
+.submit-review-btn:hover:not(:disabled) {
+  background: #2980b9;
+  transform: translateY(-1px);
+}
+
+.submit-review-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.loading,
+.error {
+  background: white;
+  border-radius: 12px;
+  padding: 60px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  color: #7f8c8d;
+  font-size: 16px;
+}

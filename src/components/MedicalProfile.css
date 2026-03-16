@@ -1,0 +1,514 @@
+.medical-profile {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.profile-header {
+  margin-bottom: 30px;
+}
+
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  color: #333;
+  transition: all 0.2s;
+}
+
+.back-button:hover {
+  background: #f5f5f5;
+  border-color: #ccc;
+}
+
+.profile-content {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  padding: 30px;
+}
+
+.client-header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #f0f0f0;
+  margin-bottom: 30px;
+}
+
+.client-avatar {
+  width: 80px;
+  height: 80px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.client-info {
+  flex: 1;
+}
+
+.client-info h1 {
+  margin: 0 0 5px 0;
+  font-size: 28px;
+  color: #333;
+}
+
+.client-number {
+  color: #666;
+  font-size: 14px;
+}
+
+.client-stats {
+  display: flex;
+  gap: 30px;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #999;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
+}
+
+.retreat-selector {
+  margin-bottom: 30px;
+  padding: 15px;
+  background: #f9f9f9;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.retreat-selector label {
+  font-weight: 600;
+  color: #555;
+}
+
+.retreat-selector select {
+  flex: 1;
+  max-width: 400px;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background: white;
+  font-size: 14px;
+}
+
+.medical-documents {
+  margin-bottom: 40px;
+}
+
+.medical-documents h2 {
+  margin-bottom: 20px;
+  color: #333;
+  font-size: 20px;
+}
+
+.document-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 20px;
+}
+
+.document-card {
+  background: #f9f9f9;
+  border: 1px solid #e0e0e0;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.document-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px;
+  background: white;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.document-header h3 {
+  flex: 1;
+  margin: 0;
+  font-size: 16px;
+  color: #333;
+}
+
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-badge.status-pending {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.status-badge.status-received {
+  background: #cce5ff;
+  color: #004085;
+}
+
+.status-badge.status-reviewed {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.status-badge.status-approved {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-badge.status-declined {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.document-content {
+  padding: 20px;
+}
+
+.document-empty {
+  padding: 40px 20px;
+  text-align: center;
+  color: #999;
+  font-style: italic;
+}
+
+.upload-date {
+  margin: 0 0 10px 0;
+  color: #666;
+  font-size: 14px;
+}
+
+.file-name {
+  margin: 5px 0;
+  color: #555;
+  font-size: 13px;
+  font-family: monospace;
+  background: white;
+  padding: 5px 8px;
+  border-radius: 4px;
+  word-break: break-all;
+}
+
+.advisor-notes {
+  margin: 15px 0;
+  padding: 12px;
+  background: white;
+  border-radius: 6px;
+  border-left: 3px solid #667eea;
+}
+
+.advisor-notes strong {
+  display: block;
+  margin-bottom: 5px;
+  color: #555;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.advisor-notes p {
+  margin: 0;
+  color: #333;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.view-document-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #667eea;
+  color: white;
+  text-decoration: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s;
+  margin-top: 15px;
+}
+
+.view-document-btn:hover {
+  background: #5568d3;
+}
+
+.medical-info-section {
+  margin-bottom: 40px;
+  padding: 25px;
+  background: #f9f9f9;
+  border-radius: 10px;
+}
+
+.medical-info-section h2 {
+  margin-bottom: 20px;
+  color: #333;
+  font-size: 20px;
+}
+
+.info-block {
+  margin-bottom: 20px;
+  padding: 15px;
+  background: white;
+  border-radius: 6px;
+}
+
+.info-block:last-child {
+  margin-bottom: 0;
+}
+
+.info-block h3 {
+  margin: 0 0 10px 0;
+  color: #555;
+  font-size: 14px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.info-block p {
+  margin: 0;
+  color: #333;
+  line-height: 1.6;
+}
+
+.medication-list,
+.allergy-list {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.medication-list li,
+.allergy-list li {
+  margin: 5px 0;
+  color: #333;
+}
+
+.clearance-section {
+  margin-bottom: 40px;
+  padding: 25px;
+  background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+  border-radius: 10px;
+}
+
+.clearance-section h2 {
+  margin-bottom: 20px;
+  color: #333;
+  font-size: 20px;
+}
+
+.clearance-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 15px;
+  background: white;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.clearance-status.approved {
+  color: #155724;
+  border: 2px solid #28a745;
+}
+
+.clearance-status.pending {
+  color: #856404;
+  border: 2px solid #ffc107;
+}
+
+.clearance-notes {
+  margin-top: 20px;
+  padding: 15px;
+  background: white;
+  border-radius: 6px;
+}
+
+.clearance-notes strong {
+  display: block;
+  margin-bottom: 10px;
+  color: #555;
+  font-size: 14px;
+}
+
+.clearance-notes p {
+  margin: 5px 0;
+  color: #333;
+  line-height: 1.6;
+}
+
+.clearance-date {
+  margin-top: 10px !important;
+  font-size: 13px;
+  color: #666;
+  font-style: italic;
+}
+
+.review-section {
+  padding: 25px;
+  background: #f0f4f8;
+  border-radius: 10px;
+}
+
+.review-section h2 {
+  margin-bottom: 20px;
+  color: #333;
+  font-size: 20px;
+}
+
+.decision-options {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.decision-option {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 15px;
+  background: white;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.decision-option:hover {
+  border-color: #667eea;
+  background: #f8f9ff;
+}
+
+.decision-option input[type="radio"] {
+  margin: 0;
+}
+
+.decision-option input[type="radio"]:checked + svg + span {
+  font-weight: 600;
+}
+
+.decision-option input[type="radio"]:checked ~ svg {
+  color: #667eea;
+}
+
+.review-notes {
+  margin-bottom: 20px;
+}
+
+.review-notes label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #555;
+}
+
+.review-notes textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.review-notes textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.review-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.submit-review-btn {
+  padding: 12px 30px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.submit-review-btn:hover:not(:disabled) {
+  background: #5568d3;
+}
+
+.submit-review-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.loading,
+.error {
+  text-align: center;
+  padding: 60px 20px;
+  font-size: 16px;
+  color: #666;
+}
+
+.error {
+  color: #dc3545;
+}
+
+@media (max-width: 768px) {
+  .client-header {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .client-stats {
+    width: 100%;
+    justify-content: space-around;
+  }
+
+  .document-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .decision-options {
+    flex-direction: column;
+  }
+
+  .retreat-selector {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .retreat-selector select {
+    max-width: none;
+  }
+}

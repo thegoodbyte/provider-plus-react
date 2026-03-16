@@ -1,16 +1,21 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams, ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
-import { retreatsApi, bookingsApi, retreatExpensesApi, paymentsApi } from '../services/api';
+import { retreatsApi, bookingsApi, retreatExpensesApi, paymentsApi, clientsApi } from '../services/api';
 import { Retreat, ExpenseSummary, PaymentSummary } from '../types';
 import ExpensesTab from './ExpensesTab';
 import PaymentsTab from './PaymentsTab';
 import ClientDetailView from './ClientDetailView';
 import CeremoniesGrid from './CeremoniesGrid';
 import CeremonyAnalytics from './CeremonyAnalytics';
+import { Modal, Form, Input, Select, Button, message, Collapse } from 'antd';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 import './ClientsGrid.css';
+
+const { Option } = Select;
+const { TextArea } = Input;
+const { Panel } = Collapse;
 
 // Register AG Grid modules
 ModuleRegistry.registerModules([AllCommunityModule]);
@@ -18,6 +23,19 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 interface RetreatDetailViewProps {
   retreatId: string;
   onBack: () => void;
+}
+
+interface QuickBookingFormData {
+  firstName: string;
+  lastName: string;
+  phoneCountryCode: string;
+  phone: string;
+  email: string;
+  country: string;
+  source: string;
+  totalAmount: number;
+  currency: string;
+  notes: string;
 }
 
 interface RetreatClientData {
@@ -48,6 +66,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [viewingClientId, setViewingClientId] = useState<string | null>(null);
   const [editingBookingId, setEditingBookingId] = useState<string | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showQuickBookingModal, setShowQuickBookingModal] = useState(false);
+  const [metricsCollapsed, setMetricsCollapsed] = useState(true);
   const [editFormData, setEditFormData] = useState({
     checkInDate: '',
     checkOutDate: '',
@@ -60,6 +80,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     notes: ''
   });
   const gridApiRef = useRef<GridApi | null>(null);
+  const [quickBookingForm] = Form.useForm();
+  const [quickBookingLoading, setQuickBookingLoading] = useState(false);
 
   const StatusCellRenderer = (params: ICellRendererParams) => {
     const status = params.value?.toLowerCase() || 'pending';
@@ -117,10 +139,16 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
 
   const columnDefs: ColDef[] = [
     {
+      headerName: 'Booking #',
+      field: 'bookingNumber',
+      width: 110,
+      pinned: 'left',
+      cellStyle: { fontWeight: 'bold' }
+    },
+    {
       headerName: 'Client Name',
       field: 'clientName',
       width: 180,
-      pinned: 'left',
       cellStyle: { fontWeight: 'bold' }
     },
     {
@@ -140,18 +168,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       cellRenderer: DateCellRenderer
     },
     {
-      headerName: 'Check-in Date',
-      field: 'checkInDate',
-      width: 130,
-      cellRenderer: DateCellRenderer
-    },
-    {
-      headerName: 'Check-out Date',
-      field: 'checkOutDate',
-      width: 130,
-      cellRenderer: DateCellRenderer
-    },
-    {
       headerName: 'Status',
       field: 'status',
       width: 120,
@@ -168,31 +184,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       field: 'amountPaid',
       width: 130,
       cellRenderer: AmountCellRenderer
-    },
-    {
-      headerName: 'Room',
-      field: 'roomAssignment',
-      width: 100
-    },
-    {
-      headerName: 'Special Requests',
-      field: 'specialRequests',
-      width: 150,
-      cellRenderer: (params: ICellRendererParams) => {
-        if (!params.value) return '<span style="color: #999;">None</span>';
-        const truncated = params.value.length > 30 ? `${params.value.substring(0, 30)}...` : params.value;
-        return `<span title="${params.value}">${truncated}</span>`;
-      }
-    },
-    {
-      headerName: 'Notes',
-      field: 'notes',
-      width: 150,
-      cellRenderer: (params: ICellRendererParams) => {
-        if (!params.value) return '<span style="color: #999;">None</span>';
-        const truncated = params.value.length > 30 ? `${params.value.substring(0, 30)}...` : params.value;
-        return `<span title="${params.value}">${truncated}</span>`;
-      }
     },
     {
       headerName: 'Actions',
@@ -327,6 +318,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         checkInDate: editFormData.checkInDate ? editFormData.checkInDate : undefined,
         checkOutDate: editFormData.checkOutDate ? editFormData.checkOutDate : undefined,
         status: editFormData.status as "pending" | "confirmed" | "checked-in" | "checked-out" | "cancelled",
+        currency: editFormData.currency as 'EUR' | 'USD' | 'CZK' | 'PLN' | undefined,
         totalAmount: Number(editFormData.totalAmount),
         amountPaid: Number(editFormData.amountPaid)
       };
@@ -349,6 +341,87 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       });
     }
   }, [retreat]);
+
+  const handleQuickBooking = async (values: QuickBookingFormData) => {
+    try {
+      setQuickBookingLoading(true);
+
+      // First, create the client
+      const clientData = {
+        firstName: values.firstName,
+        lastName: values.lastName,
+        phoneCountryCode: values.phoneCountryCode,
+        phone: values.phone,
+        email: values.email,
+        country: values.country,
+        source: values.source,
+        notes: values.notes,
+        address: 'TBD',
+        workflowStatus: 'booked'
+      };
+
+      const clientResponse = await clientsApi.create(clientData);
+      const clientId = clientResponse.data._id;
+
+      // Then create the booking
+      const bookingData = {
+        clientId: clientId!,
+        retreatId: retreatId,
+        totalAmount: values.totalAmount,
+        currency: values.currency as 'EUR' | 'USD' | 'CZK' | 'PLN',
+        status: 'confirmed' as const,
+        registrationDate: new Date().toISOString(),
+        amountPaid: 0,
+        checkInDate: retreat?.startDate || new Date().toISOString(),
+        checkOutDate: retreat?.endDate || new Date().toISOString()
+      };
+
+      await bookingsApi.create(bookingData);
+
+      message.success(`${values.firstName} ${values.lastName} has been booked for this retreat!`);
+      quickBookingForm.resetFields();
+      setShowQuickBookingModal(false);
+      await fetchRetreatData(); // Refresh the data
+    } catch (error: any) {
+      console.error('Error creating quick booking:', error);
+      message.error(error.response?.data?.message || 'Failed to create booking');
+    } finally {
+      setQuickBookingLoading(false);
+    }
+  };
+
+  const countryCodeOptions = [
+    { label: 'United States (+1)', value: '+1' },
+    { label: 'Canada (+1)', value: '+1' },
+    { label: 'United Kingdom (+44)', value: '+44' },
+    { label: 'Germany (+49)', value: '+49' },
+    { label: 'France (+33)', value: '+33' },
+    { label: 'Spain (+34)', value: '+34' },
+    { label: 'Italy (+39)', value: '+39' },
+    { label: 'Poland (+48)', value: '+48' },
+    { label: 'Czech Republic (+420)', value: '+420' },
+    { label: 'Netherlands (+31)', value: '+31' },
+    { label: 'Belgium (+32)', value: '+32' },
+    { label: 'Switzerland (+41)', value: '+41' },
+    { label: 'Austria (+43)', value: '+43' }
+  ];
+
+  const countryOptions = [
+    'USA', 'Canada', 'UK', 'Germany', 'France', 'Spain', 'Italy',
+    'Poland', 'Czech Republic', 'Netherlands', 'Belgium', 'Switzerland', 'Austria', 'Other'
+  ];
+
+  const sourceOptions = [
+    'Website', 'Referral', 'Social Media', 'Google Search',
+    'Friend', 'Previous Client', 'Other'
+  ];
+
+  const currencyOptions = [
+    { label: 'EUR (Euro)', value: 'EUR' },
+    { label: 'USD (Dollar)', value: 'USD' },
+    { label: 'CZK (Czech Crown)', value: 'CZK' },
+    { label: 'PLN (Polish Złoty)', value: 'PLN' }
+  ];
 
   if (isLoading) {
     return (
@@ -416,42 +489,50 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         </div>
       </div>
 
-      <div className="retreat-stats">
-        <div className="stat-card">
-          <div className="stat-number">{clients.length}</div>
-          <div className="stat-label">Total Clients</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-number">{occupancyRate}%</div>
-          <div className="stat-label">Occupancy Rate</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-number">{totalRevenue.toFixed(2)} EUR</div>
-          <div className="stat-label">Revenue Collected</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-number">{totalExpected.toFixed(2)} EUR</div>
-          <div className="stat-label">Expected Revenue</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-number">{clients.filter(c => c.status === 'confirmed').length}</div>
-          <div className="stat-label">Confirmed</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-number">{clients.filter(c => c.status === 'checked-in').length}</div>
-          <div className="stat-label">Checked In</div>
-        </div>
-        <div className="stat-card">
-          <div className="stat-number">{totalExpensesEUR.toFixed(2)} EUR</div>
-          <div className="stat-label">Total Expenses</div>
-        </div>
-        <div className="stat-card">
-          <div className={`stat-number ${profit >= 0 ? 'profit-positive' : 'profit-negative'}`}>
-            {profit.toFixed(2)} EUR
+      <Collapse
+        activeKey={metricsCollapsed ? [] : ['metrics']}
+        onChange={(keys) => setMetricsCollapsed(!keys.includes('metrics'))}
+        style={{ marginBottom: '20px' }}
+      >
+        <Panel header="📊 Financial Metrics" key="metrics">
+          <div className="retreat-stats">
+            <div className="stat-card">
+              <div className="stat-number">{clients.length}</div>
+              <div className="stat-label">Total Clients</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number">{occupancyRate}%</div>
+              <div className="stat-label">Occupancy Rate</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number">{totalRevenue.toFixed(2)} EUR</div>
+              <div className="stat-label">Revenue Collected</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number">{totalExpected.toFixed(2)} EUR</div>
+              <div className="stat-label">Expected Revenue</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number">{clients.filter(c => c.status === 'confirmed').length}</div>
+              <div className="stat-label">Confirmed</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number">{clients.filter(c => c.status === 'checked-in').length}</div>
+              <div className="stat-label">Checked In</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number">{totalExpensesEUR.toFixed(2)} EUR</div>
+              <div className="stat-label">Total Expenses</div>
+            </div>
+            <div className="stat-card">
+              <div className={`stat-number ${profit >= 0 ? 'profit-positive' : 'profit-negative'}`}>
+                {profit.toFixed(2)} EUR
+              </div>
+              <div className="stat-label">Profit</div>
+            </div>
           </div>
-          <div className="stat-label">Profit</div>
-        </div>
-      </div>
+        </Panel>
+      </Collapse>
 
       {/* Tab Navigation */}
       <div className="tab-navigation">
@@ -493,6 +574,22 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           <div className="section-header">
             <h2>📋 Retreat Clients ({clients.length})</h2>
             <div className="section-actions">
+              <button
+                onClick={() => setShowQuickBookingModal(true)}
+                className="add-booking-btn"
+                style={{
+                  background: 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  marginRight: '8px',
+                  fontWeight: '500'
+                }}
+              >
+                ➕ Quick Book Client
+              </button>
               <button onClick={handleExport} className="export-btn">
                 📊 Export CSV
               </button>
@@ -673,6 +770,173 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           </div>
         </div>
       )}
+
+      {/* Quick Booking Modal */}
+      <Modal
+        title="📅 Quick Book Client for Retreat"
+        open={showQuickBookingModal}
+        onCancel={() => {
+          setShowQuickBookingModal(false);
+          quickBookingForm.resetFields();
+        }}
+        footer={null}
+        width={700}
+      >
+        <Form
+          form={quickBookingForm}
+          layout="vertical"
+          onFinish={handleQuickBooking}
+          autoComplete="off"
+          initialValues={{
+            phoneCountryCode: '+1',
+            country: 'USA',
+            currency: 'EUR',
+            totalAmount: 3000
+          }}
+        >
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <Form.Item
+              name="firstName"
+              label="First Name"
+              rules={[{ required: true, message: 'Please enter first name' }]}
+              style={{ flex: 1 }}
+            >
+              <Input placeholder="John" />
+            </Form.Item>
+
+            <Form.Item
+              name="lastName"
+              label="Last Name"
+              rules={[{ required: true, message: 'Please enter last name' }]}
+              style={{ flex: 1 }}
+            >
+              <Input placeholder="Doe" />
+            </Form.Item>
+          </div>
+
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <Form.Item
+              name="phoneCountryCode"
+              label="Country Code"
+              style={{ flex: 0.3 }}
+            >
+              <Select placeholder="Code">
+                {countryCodeOptions.map(option => (
+                  <Option key={option.value} value={option.value}>{option.label}</Option>
+                ))}
+              </Select>
+            </Form.Item>
+
+            <Form.Item
+              name="phone"
+              label="Phone Number"
+              rules={[{ required: true, message: 'Please enter phone number' }]}
+              style={{ flex: 0.7 }}
+            >
+              <Input placeholder="234 567 8900" />
+            </Form.Item>
+          </div>
+
+          <Form.Item
+            name="email"
+            label="Email"
+            rules={[{ required: true, type: 'email', message: 'Please enter valid email' }]}
+          >
+            <Input placeholder="john.doe@example.com" />
+          </Form.Item>
+
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <Form.Item
+              name="country"
+              label="Country"
+              rules={[{ required: true, message: 'Please select country' }]}
+              style={{ flex: 1 }}
+            >
+              <Select placeholder="Select country">
+                {countryOptions.map(country => (
+                  <Option key={country} value={country}>{country}</Option>
+                ))}
+              </Select>
+            </Form.Item>
+
+            <Form.Item
+              name="source"
+              label="Source"
+              style={{ flex: 1 }}
+            >
+              <Select placeholder="How did they find you?">
+                {sourceOptions.map(source => (
+                  <Option key={source} value={source}>{source}</Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </div>
+
+          <div style={{ display: 'flex', gap: '16px' }}>
+            <Form.Item
+              name="totalAmount"
+              label="Total Amount"
+              rules={[{ required: true, message: 'Please enter total amount' }]}
+              style={{ flex: 1 }}
+            >
+              <Input type="number" placeholder="3000" min="0" step="50" />
+            </Form.Item>
+
+            <Form.Item
+              name="currency"
+              label="Currency"
+              rules={[{ required: true, message: 'Please select currency' }]}
+              style={{ flex: 1 }}
+            >
+              <Select placeholder="Select currency">
+                {currencyOptions.map(option => (
+                  <Option key={option.value} value={option.value}>{option.label}</Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </div>
+
+          <Form.Item
+            name="notes"
+            label="Initial Notes"
+          >
+            <TextArea
+              rows={3}
+              placeholder="Any notes about this booking..."
+            />
+          </Form.Item>
+
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginTop: '20px',
+            padding: '16px',
+            background: '#f8f9fa',
+            borderRadius: '6px'
+          }}>
+            <div>
+              <strong>Status:</strong> <span style={{ color: '#28a745', fontWeight: '500' }}>BOOKED & CONFIRMED</span>
+            </div>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <Button onClick={() => {
+                setShowQuickBookingModal(false);
+                quickBookingForm.resetFields();
+              }}>
+                Cancel
+              </Button>
+              <Button
+                type="primary"
+                htmlType="submit"
+                loading={quickBookingLoading}
+                style={{ background: '#28a745', borderColor: '#28a745' }}
+              >
+                Book Client
+              </Button>
+            </div>
+          </div>
+        </Form>
+      </Modal>
     </div>
   );
 };

@@ -1,0 +1,38 @@
+.quick-add-modal .form-row {
+    display: flex;
+    gap: 16px;
+}
+
+.quick-add-modal .form-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid #f0f0f0;
+}
+
+.quick-add-modal .status-info {
+    color: #666;
+    font-size: 14px;
+}
+
+.quick-add-modal .status-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 12px;
+    margin-left: 8px;
+}
+
+.quick-add-modal .status-badge.potential {
+    background-color: #fff7e6;
+    color: #fa8c16;
+    border: 1px solid #ffd591;
+}
+
+.quick-add-modal .form-buttons {
+    display: flex;
+    gap: 8px;
+}

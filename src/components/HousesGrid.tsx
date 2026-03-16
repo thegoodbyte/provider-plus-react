@@ -13,6 +13,7 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 const HousesGrid: React.FC = () => {
   const [houses, setHouses] = useState<House[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingHouse, setEditingHouse] = useState<House | null>(null);
   const [formData, setFormData] = useState<Partial<House>>({});
@@ -53,19 +54,10 @@ const HousesGrid: React.FC = () => {
       valueGetter: (params) => params.data.numberOfRooms || params.data.bedrooms || 0
     },
     { field: 'numberOfBathrooms', headerName: 'Bathrooms', sortable: true, filter: true },
-    { field: 'status', headerName: 'Status', sortable: true, filter: true },
-    { field: 'pricePerNight', headerName: 'Price/Night', sortable: true, filter: true,
+    { field: 'pricePerNight', headerName: 'Avg Price/Week', sortable: true, filter: true,
       valueFormatter: (params) => params.value ? `$${params.value}` : 'N/A'
     },
-    {
-      field: 'amenities',
-      headerName: 'Amenities',
-      flex: 1,
-      valueGetter: (params) => {
-        const amenities = params.data.amenities;
-        return amenities && amenities.length > 0 ? amenities.join(', ') : 'None';
-      }
-    },
+    { field: 'bookingSource', headerName: 'Booking Source', sortable: true, filter: true },
     {
       headerName: 'Actions',
       cellRenderer: ActionCellRenderer,
@@ -84,12 +76,14 @@ const HousesGrid: React.FC = () => {
     try {
       console.log('Fetching houses...');
       setIsLoading(true);
+      setApiError(false);
       const response = await housesApi.getAll();
       console.log('Houses data:', response.data);
       setHouses(response.data || []);
     } catch (error: any) {
       console.error('Error fetching houses:', error);
       setHouses([]);
+      setApiError(true);
     } finally {
       setIsLoading(false);
     }
@@ -205,18 +199,25 @@ const HousesGrid: React.FC = () => {
       {isLoading ? (
         <div style={{ padding: '20px', textAlign: 'center' }}>Loading houses...</div>
       ) : (
-        <div className="ag-theme-alpine" style={{ height: 600, width: '100%' }}>
-          <AgGridReact
-            rowData={houses}
-            columnDefs={columnDefs}
-            defaultColDef={defaultColDef}
-            onGridReady={handleGridReady}
-            animateRows={true}
-            pagination={true}
-            paginationPageSize={10}
-            suppressNoRowsOverlay={false}
-          />
-        </div>
+        <>
+          {apiError && (
+            <div style={{ padding: '10px', textAlign: 'center', color: '#d32f2f', backgroundColor: '#ffebee', borderRadius: '4px', margin: '10px 0' }}>
+              API Error: Unable to load houses data
+            </div>
+          )}
+          <div className="ag-theme-alpine" style={{ height: 600, width: '100%' }}>
+            <AgGridReact
+              rowData={houses}
+              columnDefs={columnDefs}
+              defaultColDef={defaultColDef}
+              onGridReady={handleGridReady}
+              animateRows={true}
+              pagination={true}
+              paginationPageSize={10}
+              suppressNoRowsOverlay={false}
+            />
+          </div>
+        </>
       )}
 
       {isModalOpen && (
@@ -288,7 +289,7 @@ const HousesGrid: React.FC = () => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="pricePerNight">Price per Night ($):</label>
+                <label htmlFor="pricePerNight">Average Price per Week ($):</label>
                 <input
                   type="number"
                   id="pricePerNight"
@@ -301,29 +302,40 @@ const HousesGrid: React.FC = () => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="status">Status:</label>
-                <select
-                  id="status"
-                  name="status"
-                  value={formData.status || 'available'}
-                  onChange={handleInputChange}
-                >
-                  <option value="available">Available</option>
-                  <option value="occupied">Occupied</option>
-                  <option value="maintenance">Maintenance</option>
-                </select>
+                <label>
+                  <input
+                    type="checkbox"
+                    name="allInclusive"
+                    checked={formData.allInclusive || false}
+                    onChange={(e) => setFormData(prev => ({ ...prev, allInclusive: e.target.checked }))}
+                  />
+                  All Inclusive
+                </label>
               </div>
 
               <div className="form-group">
-                <label htmlFor="amenities">Amenities (comma-separated):</label>
-                <input
-                  type="text"
-                  id="amenities"
-                  name="amenities"
-                  value={formData.amenities?.join(', ') || ''}
+                <label>
+                  <input
+                    type="checkbox"
+                    name="payingForElectricity"
+                    checked={formData.payingForElectricity || false}
+                    onChange={(e) => setFormData(prev => ({ ...prev, payingForElectricity: e.target.checked }))}
+                  />
+                  Paying for Electricity
+                </label>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="bookingSource">Booking Source:</label>
+                <select
+                  id="bookingSource"
+                  name="bookingSource"
+                  value={formData.bookingSource || 'Airbnb'}
                   onChange={handleInputChange}
-                  placeholder="WiFi, Pool, Gym, Parking"
-                />
+                >
+                  <option value="Airbnb">Airbnb</option>
+                  <option value="Owner">Owner</option>
+                </select>
               </div>
 
               <div className="form-group">

@@ -1,8 +1,9 @@
 import axios from 'axios';
 import { Retreat, House, Client, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, ScreeningClient, Ceremony, CeremonyParticipant } from '../types';
 import { authService } from './authService';
+import { cacheService } from './cacheService';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3007';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3005';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -39,31 +40,85 @@ api.interceptors.response.use(
   }
 );
 
+// Helper function to cache GET requests
+const cachedGet = async <T>(key: string, fetcher: () => Promise<any>, ttl: number = 30000): Promise<any> => {
+  const cached = cacheService.get<T>(key);
+  if (cached) {
+    return { data: cached };
+  }
+
+  const response = await fetcher();
+  cacheService.set(key, response.data, ttl);
+  return response;
+};
+
 export const retreatsApi = {
   getAll: () => api.get<Retreat[]>('/retreats'),
   getOne: (id: string) => api.get<Retreat>(`/retreats/${id}`),
-  create: (data: Omit<Retreat, '_id'>) => api.post<Retreat>('/retreats', data),
-  update: (id: string, data: Partial<Retreat>) => api.patch<Retreat>(`/retreats/${id}`, data),
-  delete: (id: string) => api.delete(`/retreats/${id}`),
+  create: (data: Omit<Retreat, '_id'>) => {
+    cacheService.clearPattern('retreats:');
+    return api.post<Retreat>('/retreats', data);
+  },
+  update: (id: string, data: Partial<Retreat>) => {
+    cacheService.clearPattern('retreats:');
+    return api.patch<Retreat>(`/retreats/${id}`, data);
+  },
+  delete: (id: string) => {
+    cacheService.clearPattern('retreats:');
+    return api.delete(`/retreats/${id}`);
+  },
 };
 
 export const housesApi = {
-  getAll: () => api.get<House[]>('/houses'),
-  getOne: (id: string) => api.get<House>(`/houses/${id}`),
-  create: (data: Omit<House, '_id'>) => api.post<House>('/houses', data),
-  update: (id: string, data: Partial<House>) => api.patch<House>(`/houses/${id}`, data),
-  delete: (id: string) => api.delete(`/houses/${id}`),
+  getAll: () => cachedGet<House[]>('houses:all', () => api.get<House[]>('/houses')),
+  getOne: (id: string) => cachedGet<House>(`houses:${id}`, () => api.get<House>(`/houses/${id}`)),
+  create: (data: Omit<House, '_id'>) => {
+    cacheService.clearPattern('houses:');
+    return api.post<House>('/houses', data);
+  },
+  update: (id: string, data: Partial<House>) => {
+    cacheService.clearPattern('houses:');
+    return api.patch<House>(`/houses/${id}`, data);
+  },
+  delete: (id: string) => {
+    cacheService.clearPattern('houses:');
+    return api.delete(`/houses/${id}`);
+  },
 };
 
 export const clientsApi = {
-  getAll: () => api.get<Client[]>('/clients'),
-  getOne: (id: string) => api.get<Client>(`/clients/${id}`),
-  create: (data: Omit<Client, '_id'>) => api.post<Client>('/clients', data),
-  update: (id: string, data: Partial<Client>) => api.patch<Client>(`/clients/${id}`, data),
-  delete: (id: string) => api.delete(`/clients/${id}`),
+  getAll: () => cachedGet<Client[]>('clients:all', () => api.get<Client[]>('/clients')),
+  getOne: (id: string) => cachedGet<Client>(`clients:${id}`, () => api.get<Client>(`/clients/${id}`)),
+  create: (data: Omit<Client, '_id'>) => {
+    cacheService.clearPattern('clients:');
+    return api.post<Client>('/clients', data);
+  },
+  quickAdd: (data: Partial<Client>) => {
+    cacheService.clearPattern('clients:');
+    return api.post<Client>('/clients/quick-add', data);
+  },
+  update: (id: string, data: Partial<Client>) => {
+    cacheService.clearPattern('clients:');
+    return api.patch<Client>(`/clients/${id}`, data);
+  },
+  delete: (id: string) => {
+    cacheService.clearPattern('clients:');
+    return api.delete(`/clients/${id}`);
+  },
   search: (searchTerm: string) => api.get<Client[]>(`/clients?search=${searchTerm}`),
   getByEmail: (email: string) => api.get<Client>(`/clients/by-email/${email}`),
-  getByRetreat: (retreatId: string) => api.get<Client[]>(`/clients/by-retreat/${retreatId}`),
+  getByRetreat: (retreatId: string) => cachedGet<Client[]>(`clients:retreat:${retreatId}`, () => api.get<Client[]>(`/clients/by-retreat/${retreatId}`)),
+  regenerateDepositHash: (id: string) => api.post<{ hash: string }>(`/clients/${id}/regenerate-deposit-hash`, {}),
+  getPotential: () => api.get<Client[]>('/clients/potential'),
+  getBlacklisted: () => api.get<Client[]>('/clients/blacklisted'),
+  blacklist: (id: string, reason: string) => {
+    cacheService.clearPattern('clients:');
+    return api.put(`/clients/${id}/blacklist`, { reason });
+  },
+  updateWorkflowStatus: (id: string, status: string, reason?: string) => {
+    cacheService.clearPattern('clients:');
+    return api.put(`/clients/${id}/workflow-status`, { status, reason });
+  },
 };
 
 export const clientMedicalApi = {
@@ -105,16 +160,36 @@ export const remindersApi = {
 };
 
 export const bookingsApi = {
-  getAll: () => api.get<RetreatClient[]>('/bookings'),
-  getOne: (id: string) => api.get<RetreatClient>(`/bookings/${id}`),
-  getByRetreat: (retreatId: string) => api.get<RetreatClient[]>(`/bookings/retreat/${retreatId}`),
-  getByClient: (clientId: string) => api.get<RetreatClient[]>(`/bookings/client/${clientId}`),
-  getByRetreatWithDetails: (retreatId: string) => api.get<RetreatClient[]>(`/bookings/retreat/${retreatId}/with-details`),
-  create: (data: Omit<RetreatClient, '_id'>) => api.post<RetreatClient>('/bookings', data),
-  update: (id: string, data: Partial<RetreatClient>) => api.patch<RetreatClient>(`/bookings/${id}`, data),
-  checkIn: (id: string) => api.patch<RetreatClient>(`/bookings/${id}/check-in`, {}),
-  checkOut: (id: string) => api.patch<RetreatClient>(`/bookings/${id}/check-out`, {}),
-  delete: (id: string) => api.delete(`/bookings/${id}`),
+  getAll: () => cachedGet<RetreatClient[]>('bookings:all', () => api.get<RetreatClient[]>('/bookings')),
+  getOne: (id: string) => cachedGet<RetreatClient>(`bookings:${id}`, () => api.get<RetreatClient>(`/bookings/${id}`)),
+  getByHash: (hash: string) => cachedGet<RetreatClient>(`bookings:hash:${hash}`, () => api.get<RetreatClient>(`/bookings/by-hash/${hash}`)),
+  getByRetreat: (retreatId: string) => cachedGet<RetreatClient[]>(`bookings:retreat:${retreatId}`, () => api.get<RetreatClient[]>(`/bookings/retreat/${retreatId}`)),
+  getByClient: (clientId: string) => cachedGet<RetreatClient[]>(`bookings:client:${clientId}`, () => api.get<RetreatClient[]>(`/bookings/client/${clientId}`)),
+  getByRetreatWithDetails: (retreatId: string) => cachedGet<RetreatClient[]>(`bookings:retreat-details:${retreatId}`, () => api.get<RetreatClient[]>(`/bookings/retreat/${retreatId}/with-details`)),
+  create: (data: Omit<RetreatClient, '_id'>) => {
+    cacheService.clearPattern('bookings:');
+    return api.post<RetreatClient>('/bookings', data);
+  },
+  update: (id: string, data: Partial<RetreatClient>) => {
+    cacheService.clearPattern('bookings:');
+    return api.patch<RetreatClient>(`/bookings/${id}`, data);
+  },
+  checkIn: (id: string) => {
+    cacheService.clearPattern('bookings:');
+    return api.patch<RetreatClient>(`/bookings/${id}/check-in`, {});
+  },
+  checkOut: (id: string) => {
+    cacheService.clearPattern('bookings:');
+    return api.patch<RetreatClient>(`/bookings/${id}/check-out`, {});
+  },
+  delete: (id: string) => {
+    cacheService.clearPattern('bookings:');
+    return api.delete(`/bookings/${id}`);
+  },
+  regenerateBookingHash: (id: string) => {
+    cacheService.clearPattern('bookings:');
+    return api.post<{ bookingHash: string }>(`/bookings/${id}/regenerate-booking-hash`, {});
+  },
 };
 
 // Keep the old retreat-clients API for backward compatibility
@@ -145,27 +220,63 @@ export const retreatExpensesApi = {
 };
 
 export const paymentsApi = {
-  getAll: () => api.get<Payment[]>('/payments'),
-  getOne: (id: string) => api.get<Payment>(`/payments/${id}`),
-  getByRetreat: (retreatId: string) => api.get<Payment[]>(`/payments/by-retreat/${retreatId}`),
-  getByClient: (clientId: string) => api.get<Payment[]>(`/payments/by-client/${clientId}`),
-  getByClientAndRetreat: (clientId: string, retreatId: string) => api.get<Payment[]>(`/payments/by-client-and-retreat?clientId=${clientId}&retreatId=${retreatId}`),
-  getRetreatSummary: (retreatId: string) => api.get<PaymentSummary>(`/payments/retreat-summary/${retreatId}`),
-  create: (data: Omit<Payment, '_id'>) => api.post<Payment>('/payments', data),
-  update: (id: string, data: Partial<Payment>) => api.put<Payment>(`/payments/${id}`, data),
-  delete: (id: string) => api.delete(`/payments/${id}`),
-  processRefund: (id: string, refundAmount: number) => api.put<Payment>(`/payments/${id}/refund`, { refundAmount }),
+  getAll: () => cachedGet<Payment[]>('payments:all', () => api.get<Payment[]>('/payments')),
+  getOne: (id: string) => cachedGet<Payment>(`payments:${id}`, () => api.get<Payment>(`/payments/${id}`)),
+  getByRetreat: (retreatId: string) => cachedGet<Payment[]>(`payments:retreat:${retreatId}`, () => api.get<Payment[]>(`/payments/by-retreat/${retreatId}`)),
+  getByClient: (clientId: string) => cachedGet<Payment[]>(`payments:client:${clientId}`, () => api.get<Payment[]>(`/payments/by-client/${clientId}`)),
+  getByBooking: (bookingId: string) => cachedGet<Payment[]>(`payments:booking:${bookingId}`, () => api.get<Payment[]>(`/payments/by-booking/${bookingId}`)),
+  getByBookingHash: (bookingHash: string) => cachedGet<Payment[]>(`payments:hash:${bookingHash}`, () => api.get<Payment[]>(`/payments/by-booking-hash/${bookingHash}`)),
+  getByClientAndRetreat: (clientId: string, retreatId: string) => cachedGet<Payment[]>(`payments:client-retreat:${clientId}-${retreatId}`, () => api.get<Payment[]>(`/payments/by-client-and-retreat?clientId=${clientId}&retreatId=${retreatId}`)),
+  getRetreatSummary: (retreatId: string) => cachedGet<PaymentSummary>(`payments:summary:${retreatId}`, () => api.get<PaymentSummary>(`/payments/retreat-summary/${retreatId}`)),
+  create: (data: Omit<Payment, '_id'>) => {
+    cacheService.clearPattern('payments:');
+    cacheService.clearPattern('bookings:'); // Clear bookings cache too as payments affect booking status
+    return api.post<Payment>('/payments', data);
+  },
+  update: (id: string, data: Partial<Payment>) => {
+    cacheService.clearPattern('payments:');
+    cacheService.clearPattern('bookings:');
+    return api.put<Payment>(`/payments/${id}`, data);
+  },
+  delete: (id: string) => {
+    cacheService.clearPattern('payments:');
+    cacheService.clearPattern('bookings:');
+    return api.delete(`/payments/${id}`);
+  },
+  refund: (id: string, refundData: { amount: number; reason: string }) => {
+    cacheService.clearPattern('payments:');
+    cacheService.clearPattern('bookings:');
+    return api.patch<Payment>(`/payments/${id}/refund`, refundData);
+  },
+  processRefund: (id: string, refundAmount: number) => {
+    cacheService.clearPattern('payments:');
+    cacheService.clearPattern('bookings:');
+    return api.put<Payment>(`/payments/${id}/refund`, { refundAmount });
+  },
 };
 
 export const screeningClientsApi = {
-  getAll: () => api.get<ScreeningClient[]>('/screening-clients'),
-  getOne: (id: string) => api.get<ScreeningClient>(`/screening-clients/${id}`),
-  getByStatus: (status: string) => api.get<ScreeningClient[]>(`/screening-clients?status=${status}`),
-  getOverdue: () => api.get<ScreeningClient[]>('/screening-clients/overdue'),
-  create: (data: Omit<ScreeningClient, '_id'>) => api.post<ScreeningClient>('/screening-clients', data),
-  update: (id: string, data: Partial<ScreeningClient>) => api.patch<ScreeningClient>(`/screening-clients/${id}`, data),
-  delete: (id: string) => api.delete(`/screening-clients/${id}`),
-  promoteToClient: (id: string) => api.post<{ screeningClient: ScreeningClient; client: Client }>(`/screening-clients/${id}/promote`, {}),
+  getAll: () => cachedGet<ScreeningClient[]>('screening:all', () => api.get<ScreeningClient[]>('/screening-clients')),
+  getOne: (id: string) => cachedGet<ScreeningClient>(`screening:${id}`, () => api.get<ScreeningClient>(`/screening-clients/${id}`)),
+  getByStatus: (status: string) => cachedGet<ScreeningClient[]>(`screening:status:${status}`, () => api.get<ScreeningClient[]>(`/screening-clients?status=${status}`)),
+  getOverdue: () => cachedGet<ScreeningClient[]>('screening:overdue', () => api.get<ScreeningClient[]>('/screening-clients/overdue')),
+  create: (data: Omit<ScreeningClient, '_id'>) => {
+    cacheService.clearPattern('screening:');
+    return api.post<ScreeningClient>('/screening-clients', data);
+  },
+  update: (id: string, data: Partial<ScreeningClient>) => {
+    cacheService.clearPattern('screening:');
+    return api.patch<ScreeningClient>(`/screening-clients/${id}`, data);
+  },
+  delete: (id: string) => {
+    cacheService.clearPattern('screening:');
+    return api.delete(`/screening-clients/${id}`);
+  },
+  promoteToClient: (id: string) => {
+    cacheService.clearPattern('screening:');
+    cacheService.clearPattern('clients:'); // Clear clients cache as we're creating a new client
+    return api.post<{ screeningClient: ScreeningClient; client: Client }>(`/screening-clients/${id}/promote`, {});
+  },
 };
 
 export const requirementsApi = {

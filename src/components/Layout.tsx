@@ -10,19 +10,31 @@ import MedicalGrid from './MedicalGrid';
 import RemindersPage from './RemindersPage';
 import PaymentsPage from './PaymentsPage';
 import RequirementsGrid from './RequirementsGrid';
+import CurrencySettings from './CurrencySettings';
+import MedicalAdvisorDashboard from './MedicalAdvisorDashboard';
+import MedicalReviewDetail from './MedicalReviewDetail';
+import MedicalRetreats from './MedicalRetreats';
+import MedicalProfile from './MedicalProfile';
 import { useAuth } from '../context/AuthContext';
 import './Layout.css';
 
 const Layout: React.FC = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [showCurrencySettings, setShowCurrencySettings] = useState(false);
   const { logout, user } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Check if user is medical advisor
+  const isMedicalAdvisor = user?.role === 'medical_advisor';
+
   // Get active item from current path
   const getActiveItemFromPath = () => {
     const path = location.pathname;
+    if (path.startsWith('/medical-dashboard')) return 'medical-dashboard';
+    if (path.startsWith('/medical-review')) return 'medical-dashboard';
+    if (path.startsWith('/medical-retreats')) return 'medical-retreats';
     if (path.startsWith('/houses')) return 'houses';
     if (path.startsWith('/screening')) return 'screening';
     if (path.startsWith('/clients')) return 'clients';
@@ -32,7 +44,7 @@ const Layout: React.FC = () => {
     if (path.startsWith('/payments')) return 'payments';
     if (path.startsWith('/requirements')) return 'requirements';
     if (path.startsWith('/analytics')) return 'analytics';
-    return 'retreats'; // default to retreats
+    return isMedicalAdvisor ? 'medical-dashboard' : 'clients'; // default based on role
   };
 
   const activeItem = getActiveItemFromPath();
@@ -48,12 +60,16 @@ const Layout: React.FC = () => {
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
-  // Redirect to /retreats if on root path
+  // Redirect based on role if on root path
   useEffect(() => {
     if (location.pathname === '/') {
-      navigate('/retreats', { replace: true });
+      if (isMedicalAdvisor) {
+        navigate('/medical-dashboard', { replace: true });
+      } else {
+        navigate('/clients', { replace: true });
+      }
     }
-  }, [location.pathname, navigate]);
+  }, [location.pathname, navigate, isMedicalAdvisor]);
 
   const handleItemClick = (item: string) => {
     navigate(`/${item}`);
@@ -64,6 +80,8 @@ const Layout: React.FC = () => {
   };
 
 
+  // Keep the same layout for medical advisors, just show limited content
+
   return (
     <div className="layout">
       <Sidebar
@@ -72,17 +90,34 @@ const Layout: React.FC = () => {
         isCollapsed={sidebarCollapsed}
         onToggle={handleSidebarToggle}
         onLogout={logout}
+        userRole={user?.role}
       />
       <div className={`main-content ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
         <div className="app-header">
           <h1>Provider Plus</h1>
-          <div className="user-info">
-            <span>Welcome, {user?.username || 'Admin'}</span>
-            <button onClick={logout} className="logout-btn">Logout</button>
+          <div className="header-actions">
+            <button
+              onClick={() => setShowCurrencySettings(true)}
+              className="currency-settings-btn"
+              title="Currency Settings"
+            >
+              💱 Currency
+            </button>
+            <div className="user-info">
+              <span>Welcome, {user?.username || 'Admin'}</span>
+              <button onClick={logout} className="logout-btn">Logout</button>
+            </div>
           </div>
         </div>
         <div className="content-wrapper">
           <Routes>
+            {/* Medical Advisor Routes */}
+            <Route path="/medical-dashboard" element={<MedicalAdvisorDashboard />} />
+            <Route path="/medical-review/:clientId/:retreatId" element={<MedicalReviewDetail />} />
+            <Route path="/medical-retreats" element={<MedicalRetreats />} />
+            <Route path="/medical-profile/:clientId" element={<MedicalProfile />} />
+
+            {/* Regular Routes */}
             <Route path="/retreats" element={<RetreatsGrid />} />
             <Route path="/houses" element={<HousesGrid />} />
             <Route path="/screening" element={<ScreeningClientsGrid />} />
@@ -102,6 +137,9 @@ const Layout: React.FC = () => {
         </div>
       </div>
       {!sidebarCollapsed && isMobile && <div className="sidebar-overlay" onClick={handleSidebarToggle}></div>}
+      {showCurrencySettings && (
+        <CurrencySettings onClose={() => setShowCurrencySettings(false)} />
+      )}
     </div>
   );
 };

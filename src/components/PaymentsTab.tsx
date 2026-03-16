@@ -17,9 +17,9 @@ interface PaymentFormData {
   clientId: string;
   bookingId?: string;
   amount: number;
-  currency: 'CZK' | 'EUR' | 'PLN';
+  currency: 'EUR' | 'USD' | 'CZK' | 'PLN';
   status: 'pending' | 'completed' | 'failed' | 'refunded';
-  paymentMethod: 'bank_transfer' | 'card' | 'cash' | 'paypal' | 'crypto' | 'other';
+  paymentMethod: 'bank_transfer' | 'card' | 'cash' | 'paypal' | 'crypto' | 'stripe' | 'wise' | 'revolut' | 'other';
   description?: string;
   transactionId?: string;
   paymentDate: string;
@@ -40,7 +40,7 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
     amount: 0,
     currency: 'EUR',
     status: 'pending',
-    paymentMethod: 'bank_transfer',
+    paymentMethod: 'bank_transfer' as 'bank_transfer' | 'card' | 'cash' | 'paypal' | 'crypto' | 'stripe' | 'wise' | 'revolut' | 'other',
     description: '',
     transactionId: '',
     paymentDate: new Date().toISOString().split('T')[0],
@@ -222,9 +222,9 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
           clientId: typeof payment.clientId === 'string' ? payment.clientId : payment.clientId._id || '',
           bookingId: typeof payment.bookingId === 'string' ? payment.bookingId : payment.bookingId?._id,
           amount: payment.amount,
-          currency: payment.currency,
+          currency: payment.currency as 'EUR' | 'USD' | 'CZK' | 'PLN',
           status: payment.status,
-          paymentMethod: payment.paymentMethod,
+          paymentMethod: payment.paymentMethod as 'bank_transfer' | 'card' | 'cash' | 'paypal' | 'crypto' | 'stripe' | 'wise' | 'revolut' | 'other',
           description: payment.description || '',
           transactionId: payment.transactionId || '',
           paymentDate: new Date(payment.paymentDate).toISOString().split('T')[0],
@@ -266,7 +266,9 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
       const submitData = {
         ...formData,
         retreatId,
-        paymentDate: new Date(formData.paymentDate)
+        paymentDate: new Date(formData.paymentDate),
+        paymentType: 'regular_payment' as const,
+        isRefundable: true
       };
 
       if (editingPayment) {
@@ -282,7 +284,7 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
         amount: 0,
         currency: 'EUR',
         status: 'pending',
-        paymentMethod: 'bank_transfer',
+        paymentMethod: 'bank_transfer' as 'bank_transfer' | 'card' | 'cash' | 'paypal' | 'crypto' | 'stripe' | 'wise' | 'revolut' | 'other',
         description: '',
         transactionId: '',
         paymentDate: new Date().toISOString().split('T')[0],

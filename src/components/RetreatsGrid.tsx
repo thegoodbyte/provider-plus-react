@@ -15,6 +15,9 @@ const RetreatsGrid: React.FC = () => {
   const [retreats, setRetreats] = useState<Retreat[]>([]);
   const [houses, setHouses] = useState<House[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [apiError, setApiError] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [validationErrors, setValidationErrors] = useState<{[key: string]: string}>({});
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRetreat, setEditingRetreat] = useState<Retreat | null>(null);
   const [formData, setFormData] = useState<Partial<Retreat>>({});
@@ -25,12 +28,14 @@ const RetreatsGrid: React.FC = () => {
     try {
       console.log('Starting to fetch retreats...');
       setIsLoading(true);
+      setApiError(false);
       const response = await retreatsApi.getAll();
       console.log('Retreats API response received:', response);
       setRetreats(response.data || []);
     } catch (error: any) {
       console.error('Error fetching retreats:', error);
       setRetreats([]);
+      setApiError(true);
     } finally {
       setIsLoading(false);
     }
@@ -62,9 +67,10 @@ const RetreatsGrid: React.FC = () => {
     setEditingRetreat(null);
     setFormData({
       status: 'upcoming',
-      type: 'regular',
-      currentOccupancy: 0
+      type: 'regular'
     });
+    setSubmitError('');
+    setValidationErrors({});
     setIsModalOpen(true);
   };
 
@@ -78,8 +84,7 @@ const RetreatsGrid: React.FC = () => {
       ...retreat,
       startDate: retreat.startDate || retreat.dates?.startDate || '',
       endDate: retreat.endDate || '',
-      capacity: retreat.capacity || 0,
-      currentOccupancy: retreat.currentOccupancy || 0
+      capacity: retreat.capacity || 0
     };
     setFormData(formattedRetreat);
     setIsModalOpen(true);
@@ -109,7 +114,6 @@ const RetreatsGrid: React.FC = () => {
   const columnDefs: ColDef[] = [
     { field: '_id', headerName: 'ID', hide: true },
     { field: 'name', headerName: 'Name', sortable: true, filter: true },
-    { field: 'location', headerName: 'Location', sortable: true, filter: true },
     {
       field: 'startDate',
       headerName: 'Start Date',
@@ -120,7 +124,12 @@ const RetreatsGrid: React.FC = () => {
       },
       valueFormatter: (params) => {
         if (params.value) {
-          return new Date(params.value).toLocaleDateString();
+          // Parse date without timezone conversion
+          const date = new Date(params.value);
+          const year = date.getUTCFullYear();
+          const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+          const day = String(date.getUTCDate()).padStart(2, '0');
+          return `${month}/${day}/${year}`;
         }
         return '';
       }
@@ -135,7 +144,12 @@ const RetreatsGrid: React.FC = () => {
       },
       valueFormatter: (params) => {
         if (params.value) {
-          return new Date(params.value).toLocaleDateString();
+          // Parse date without timezone conversion
+          const date = new Date(params.value);
+          const year = date.getUTCFullYear();
+          const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+          const day = String(date.getUTCDate()).padStart(2, '0');
+          return `${month}/${day}/${year}`;
         }
         return '';
       }
@@ -154,23 +168,9 @@ const RetreatsGrid: React.FC = () => {
       filter: true,
       valueFormatter: (params) => params.value || '0'
     },
+    { field: 'helpers', headerName: 'Helpers', sortable: true, filter: true },
     { field: 'status', headerName: 'Status', sortable: true, filter: true },
     { field: 'type', headerName: 'Type', sortable: true, filter: true, width: 120 },
-    { field: 'description', headerName: 'Description', flex: 1 },
-    {
-      field: 'houseId',
-      headerName: 'House',
-      width: 250,
-      valueGetter: (params) => {
-        const house = houses.find(h => h._id === params.data.houseId);
-        if (house) {
-          const houseName = house.name || house.city || 'Unnamed House';
-          const houseAddress = house.address ? `, ${house.address}` : '';
-          return `${houseName}${houseAddress}`;
-        }
-        return '';
-      }
-    },
     {
       headerName: 'Actions',
       cellRenderer: ActionCellRenderer,
@@ -185,19 +185,47 @@ const RetreatsGrid: React.FC = () => {
     flex: 1
   };
 
+  const parseValidationErrors = (errorMessage: any) => {
+    const errors: {[key: string]: string} = {};
+    const fieldMappings: {[key: string]: string} = {
+      'location': 'Location',
+      'startDate': 'Start Date',
+      'endDate': 'End Date',
+      'capacity': 'Capacity',
+      'name': 'Name'
+    };
+
+    // Convert errorMessage to string if it's not already
+    const messageStr = typeof errorMessage === 'string' ? errorMessage : String(errorMessage || '');
+
+    // Split by field names and extract errors
+    Object.keys(fieldMappings).forEach(field => {
+      const regex = new RegExp(`${field}[^a-zA-Z]*([^a-zA-Z]+(?:${field}[^a-zA-Z]*[^a-zA-Z]*)*(?:should not be empty|must be|is required))[^a-zA-Z]*`, 'gi');
+      const matches = messageStr.match(regex);
+      if (matches) {
+        errors[field] = matches[0].replace(field, fieldMappings[field]).trim();
+      }
+    });
+
+    return errors;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError('');
+    setValidationErrors({});
+
     try {
       console.log('Submitting form with data:', formData);
 
       const cleanData: any = {};
 
       if (formData.name?.trim()) cleanData.name = formData.name.trim();
-      if (formData.location?.trim()) cleanData.location = formData.location.trim();
+      cleanData.location = 'Default Location'; // Backend requires location but we removed it from UI
       if (formData.startDate) cleanData.startDate = formData.startDate;
       if (formData.endDate) cleanData.endDate = formData.endDate;
       if (formData.capacity && formData.capacity > 0) cleanData.capacity = Number(formData.capacity);
-      if (formData.currentOccupancy !== undefined) cleanData.currentOccupancy = Number(formData.currentOccupancy);
+      if (formData.helpers?.trim()) cleanData.helpers = formData.helpers.trim();
       if (formData.description?.trim()) cleanData.description = formData.description.trim();
       if (formData.houseId?.trim()) cleanData.houseId = formData.houseId.trim();
       if (formData.status) cleanData.status = formData.status;
@@ -210,12 +238,24 @@ const RetreatsGrid: React.FC = () => {
       } else {
         await retreatsApi.create(cleanData);
       }
+
       setIsModalOpen(false);
       setFormData({});
       setEditingRetreat(null);
+      setSubmitError('');
+      setValidationErrors({});
       fetchRetreats();
     } catch (error: any) {
       console.error('Error saving retreat:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'An error occurred while saving the retreat';
+
+      // Parse field-specific validation errors
+      const fieldErrors = parseValidationErrors(errorMessage);
+      if (Object.keys(fieldErrors).length > 0) {
+        setValidationErrors(fieldErrors);
+      } else {
+        setSubmitError(errorMessage);
+      }
     }
   };
 
@@ -252,18 +292,25 @@ const RetreatsGrid: React.FC = () => {
           Loading retreats...
         </div>
       ) : (
-        <div className="ag-theme-alpine" style={{ height: 600, width: '100%' }}>
-          <AgGridReact
-            rowData={retreats}
-            columnDefs={columnDefs}
-            defaultColDef={defaultColDef}
-            onGridReady={handleGridReady}
-            animateRows={true}
-            pagination={true}
-            paginationPageSize={10}
-            suppressNoRowsOverlay={false}
-          />
-        </div>
+        <>
+          {apiError && (
+            <div style={{ padding: '10px', textAlign: 'center', color: '#d32f2f', backgroundColor: '#ffebee', borderRadius: '4px', margin: '10px 0' }}>
+              API Error: Unable to load retreats data
+            </div>
+          )}
+          <div className="ag-theme-alpine" style={{ height: 600, width: '100%' }}>
+            <AgGridReact
+              rowData={retreats}
+              columnDefs={columnDefs}
+              defaultColDef={defaultColDef}
+              onGridReady={handleGridReady}
+              animateRows={true}
+              pagination={true}
+              paginationPageSize={10}
+              suppressNoRowsOverlay={false}
+            />
+          </div>
+        </>
       )}
 
       {isModalOpen && (
@@ -280,20 +327,15 @@ const RetreatsGrid: React.FC = () => {
                   value={formData.name || ''}
                   onChange={handleInputChange}
                   required
+                  style={{ borderColor: validationErrors.name ? '#d32f2f' : '' }}
                 />
+                {validationErrors.name && (
+                  <div style={{ color: '#d32f2f', fontSize: '12px', marginTop: '4px' }}>
+                    {validationErrors.name}
+                  </div>
+                )}
               </div>
 
-              <div className="form-group">
-                <label htmlFor="location">Location:</label>
-                <input
-                  type="text"
-                  id="location"
-                  name="location"
-                  value={formData.location || ''}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
 
               <div className="form-group">
                 <label htmlFor="startDate">Start Date:</label>
@@ -303,7 +345,13 @@ const RetreatsGrid: React.FC = () => {
                   name="startDate"
                   value={formData.startDate ? new Date(formData.startDate).toISOString().split('T')[0] : ''}
                   onChange={handleInputChange}
+                  style={{ borderColor: validationErrors.startDate ? '#d32f2f' : '' }}
                 />
+                {validationErrors.startDate && (
+                  <div style={{ color: '#d32f2f', fontSize: '12px', marginTop: '4px' }}>
+                    {validationErrors.startDate}
+                  </div>
+                )}
               </div>
 
               <div className="form-group">
@@ -314,7 +362,13 @@ const RetreatsGrid: React.FC = () => {
                   name="endDate"
                   value={formData.endDate ? new Date(formData.endDate).toISOString().split('T')[0] : ''}
                   onChange={handleInputChange}
+                  style={{ borderColor: validationErrors.endDate ? '#d32f2f' : '' }}
                 />
+                {validationErrors.endDate && (
+                  <div style={{ color: '#d32f2f', fontSize: '12px', marginTop: '4px' }}>
+                    {validationErrors.endDate}
+                  </div>
+                )}
               </div>
 
               <div className="form-group">
@@ -326,18 +380,27 @@ const RetreatsGrid: React.FC = () => {
                   value={formData.capacity || ''}
                   onChange={handleInputChange}
                   min="0"
+                  style={{ borderColor: validationErrors.capacity ? '#d32f2f' : '' }}
                 />
+                {validationErrors.capacity && (
+                  <div style={{ color: '#d32f2f', fontSize: '12px', marginTop: '4px' }}>
+                    {validationErrors.capacity}
+                  </div>
+                )}
               </div>
 
               <div className="form-group">
-                <label htmlFor="currentOccupancy">Current Occupancy:</label>
-                <input
-                  type="number"
-                  id="currentOccupancy"
-                  name="currentOccupancy"
-                  value={formData.currentOccupancy || 0}
+                <label htmlFor="helpers">Helpers:</label>
+                <select
+                  id="helpers"
+                  name="helpers"
+                  value={formData.helpers || ''}
                   onChange={handleInputChange}
-                />
+                >
+                  <option value="">Select a helper</option>
+                  <option value="Martina">Martina</option>
+                  <option value="Radim">Radim</option>
+                </select>
               </div>
 
               <div className="form-group">
@@ -395,6 +458,19 @@ const RetreatsGrid: React.FC = () => {
                   rows={3}
                 />
               </div>
+
+              {submitError && (
+                <div style={{
+                  padding: '10px',
+                  backgroundColor: '#ffebee',
+                  color: '#d32f2f',
+                  borderRadius: '4px',
+                  marginBottom: '15px',
+                  fontSize: '14px'
+                }}>
+                  {submitError}
+                </div>
+              )}
 
               <div className="form-buttons">
                 <button type="submit" className="save-btn">Save</button>

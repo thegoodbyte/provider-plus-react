@@ -1,0 +1,263 @@
+.currency-settings-modal {
+  background: white;
+  border-radius: 12px;
+  padding: 0;
+  max-width: 800px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.currency-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 24px 16px 24px;
+  border-bottom: 1px solid #e0e0e0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 12px 12px 0 0;
+}
+
+.currency-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.close-btn {
+  background: rgba(255,255,255,0.2);
+  border: none;
+  color: white;
+  font-size: 20px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+.close-btn:hover {
+  background: rgba(255,255,255,0.3);
+}
+
+.currency-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 24px;
+  text-align: center;
+}
+
+.loading-spinner {
+  font-size: 48px;
+  margin-bottom: 16px;
+  animation: spin 2s linear infinite;
+}
+
+.error-message {
+  background: #ffebee;
+  color: #c62828;
+  padding: 12px 24px;
+  border-left: 4px solid #c62828;
+  margin: 16px 24px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.currency-info {
+  padding: 24px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.currency-info p {
+  margin: 8px 0;
+  color: #495057;
+}
+
+.exchange-rates-table {
+  padding: 24px;
+}
+
+.exchange-rates-table h3 {
+  margin: 0 0 20px 0;
+  color: #333;
+  font-size: 18px;
+}
+
+.rates-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.rates-table th {
+  background: #f8f9fa;
+  padding: 16px 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #495057;
+  border-bottom: 1px solid #e0e0e0;
+  font-size: 14px;
+}
+
+.rates-table td {
+  padding: 16px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: middle;
+}
+
+.rates-table tr:last-child td {
+  border-bottom: none;
+}
+
+.rates-table tr:hover {
+  background: #f8f9fa;
+}
+
+.test-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.test-btn:hover {
+  background: #0056b3;
+}
+
+.base-currency {
+  background: #28a745;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.currency-actions {
+  padding: 24px;
+  border-top: 1px solid #e0e0e0;
+  background: #f8f9fa;
+}
+
+.refresh-btn {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.refresh-btn:hover:not(:disabled) {
+  background: #1e7e34;
+}
+
+.refresh-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.currency-note {
+  background: #e3f2fd;
+  border: 1px solid #bbdefb;
+  border-radius: 6px;
+  padding: 16px;
+  color: #1565c0;
+}
+
+.currency-note p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.currency-footer {
+  padding: 16px 24px;
+  text-align: center;
+  border-top: 1px solid #e0e0e0;
+}
+
+.close-settings-btn {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 12px 32px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.close-settings-btn:hover {
+  background: #545b62;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .currency-settings-modal {
+    width: 95%;
+    max-height: 95vh;
+  }
+
+  .currency-header {
+    padding: 16px;
+  }
+
+  .currency-header h2 {
+    font-size: 20px;
+  }
+
+  .rates-table {
+    font-size: 14px;
+  }
+
+  .rates-table th,
+  .rates-table td {
+    padding: 12px 8px;
+  }
+
+  .currency-info,
+  .exchange-rates-table,
+  .currency-actions {
+    padding: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .rates-table {
+    font-size: 12px;
+  }
+
+  .rates-table th,
+  .rates-table td {
+    padding: 8px 4px;
+  }
+
+  .test-btn {
+    padding: 4px 8px;
+    font-size: 10px;
+  }
+}

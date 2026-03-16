@@ -3,9 +3,12 @@ import { AgGridReact } from 'ag-grid-react';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams, ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
 import { screeningClientsApi, clientsApi } from '../services/api';
 import { ScreeningClient } from '../types';
+import { Collapse } from 'antd';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 import './RetreatsGrid.css';
+
+const { Panel } = Collapse;
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -16,6 +19,14 @@ const ScreeningClientsGrid: React.FC = () => {
   const [editingClient, setEditingClient] = useState<ScreeningClient | null>(null);
   const [formData, setFormData] = useState<Partial<ScreeningClient>>({});
   const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [showPotentialClientForm, setShowPotentialClientForm] = useState(false);
+  const [savePotentialClient, setSavePotentialClient] = useState(false);
+  const [potentialClientData, setPotentialClientData] = useState({
+    firstName: '',
+    phone: '',
+    country: '',
+    age: ''
+  });
   const gridApiRef = useRef<GridApi | null>(null);
 
   const fetchScreeningClients = useCallback(async () => {
@@ -49,6 +60,13 @@ const ScreeningClientsGrid: React.FC = () => {
       priority: 'medium',
       firstContactDate: new Date()
     });
+    setSavePotentialClient(false);
+    setPotentialClientData({
+      firstName: '',
+      phone: '',
+      country: '',
+      age: ''
+    });
     setIsModalOpen(true);
   };
 
@@ -58,6 +76,13 @@ const ScreeningClientsGrid: React.FC = () => {
       ...client,
       firstContactDate: client.firstContactDate || new Date(),
       followUpDate: client.followUpDate || undefined
+    });
+    setSavePotentialClient(false);
+    setPotentialClientData({
+      firstName: '',
+      phone: '',
+      country: '',
+      age: ''
     });
     setIsModalOpen(true);
   };
@@ -287,9 +312,40 @@ const ScreeningClientsGrid: React.FC = () => {
         await screeningClientsApi.create(cleanData);
       }
 
+      // Save potential client if checkbox is checked and has data
+      if (savePotentialClient && potentialClientData.firstName.trim()) {
+        try {
+          const potentialClientPayload = {
+            firstName: potentialClientData.firstName.trim(),
+            lastName: '', // Not collected in potential client form
+            email: '', // Not collected in potential client form
+            phone: potentialClientData.phone.trim() || '',
+            address: '', // Not collected in potential client form
+            country: potentialClientData.country.trim() || '',
+            age: potentialClientData.age ? parseInt(potentialClientData.age) : undefined,
+            notes: `Created from screening for ${formData.firstName} ${formData.lastName}`,
+            status: 'active' as const
+          };
+
+          await clientsApi.create(potentialClientPayload);
+          alert('Potential client saved successfully!');
+        } catch (potentialClientError: any) {
+          console.error('Error saving potential client:', potentialClientError);
+          alert('Screening saved but failed to save potential client: ' +
+                (potentialClientError.response?.data?.message || potentialClientError.message));
+        }
+      }
+
       setIsModalOpen(false);
       setFormData({});
       setEditingClient(null);
+      setSavePotentialClient(false);
+      setPotentialClientData({
+        firstName: '',
+        phone: '',
+        country: '',
+        age: ''
+      });
       fetchScreeningClients();
     } catch (error: any) {
       console.error('Error saving screening client:', error);
@@ -351,7 +407,16 @@ const ScreeningClientsGrid: React.FC = () => {
       )}
 
       {isModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
+        <div className="modal-overlay" onClick={() => {
+          setIsModalOpen(false);
+          setSavePotentialClient(false);
+          setPotentialClientData({
+            firstName: '',
+            phone: '',
+            country: '',
+            age: ''
+          });
+        }}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '900px', maxHeight: '90vh', overflow: 'auto' }}>
             <h3>{editingClient ? 'Edit Screening Client' : 'Add New Screening Client'}</h3>
             <form onSubmit={handleSubmit}>
@@ -772,9 +837,123 @@ const ScreeningClientsGrid: React.FC = () => {
                 </div>
               </div>
 
+              {/* Potential Client Section */}
+              <div style={{ marginBottom: '20px' }}>
+                <Collapse
+                  ghost
+                  expandIconPosition="end"
+                  style={{
+                    backgroundColor: '#f8f9fa',
+                    border: '1px solid #dee2e6',
+                    borderRadius: '6px'
+                  }}
+                >
+                  <Panel
+                    header={
+                      <span style={{ fontWeight: 'bold', color: '#495057', fontSize: '16px' }}>
+                        💾 Save Potential Client Information
+                      </span>
+                    }
+                    key="1"
+                  >
+                    <div style={{ padding: '10px 0' }}>
+                      <div className="form-group" style={{ marginBottom: '15px' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={savePotentialClient}
+                            onChange={(e) => setSavePotentialClient(e.target.checked)}
+                            style={{ transform: 'scale(1.2)' }}
+                          />
+                          <span style={{ fontWeight: '500', color: '#28a745' }}>
+                            Save as potential client
+                          </span>
+                        </label>
+                      </div>
+
+                      {savePotentialClient && (
+                        <div style={{
+                          backgroundColor: '#ffffff',
+                          padding: '15px',
+                          borderRadius: '4px',
+                          border: '1px solid #e9ecef',
+                          marginTop: '10px'
+                        }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                            <div className="form-group">
+                              <label htmlFor="potentialFirstName">First Name:</label>
+                              <input
+                                type="text"
+                                id="potentialFirstName"
+                                value={potentialClientData.firstName}
+                                onChange={(e) => setPotentialClientData(prev => ({
+                                  ...prev,
+                                  firstName: e.target.value
+                                }))}
+                                placeholder="Enter first name"
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label htmlFor="potentialPhone">Phone:</label>
+                              <input
+                                type="tel"
+                                id="potentialPhone"
+                                value={potentialClientData.phone}
+                                onChange={(e) => setPotentialClientData(prev => ({
+                                  ...prev,
+                                  phone: e.target.value
+                                }))}
+                                placeholder="Enter phone number"
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label htmlFor="potentialCountry">Country:</label>
+                              <input
+                                type="text"
+                                id="potentialCountry"
+                                value={potentialClientData.country}
+                                onChange={(e) => setPotentialClientData(prev => ({
+                                  ...prev,
+                                  country: e.target.value
+                                }))}
+                                placeholder="Enter country"
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label htmlFor="potentialAge">Age:</label>
+                              <input
+                                type="number"
+                                id="potentialAge"
+                                value={potentialClientData.age}
+                                onChange={(e) => setPotentialClientData(prev => ({
+                                  ...prev,
+                                  age: e.target.value
+                                }))}
+                                placeholder="Enter age"
+                                min="1"
+                                max="120"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </Panel>
+                </Collapse>
+              </div>
+
               <div className="form-buttons">
                 <button type="submit" className="save-btn">Save Screening</button>
-                <button type="button" onClick={() => setIsModalOpen(false)} className="cancel-btn">Cancel</button>
+                <button type="button" onClick={() => {
+                  setIsModalOpen(false);
+                  setSavePotentialClient(false);
+                  setPotentialClientData({
+                    firstName: '',
+                    phone: '',
+                    country: '',
+                    age: ''
+                  });
+                }} className="cancel-btn">Cancel</button>
               </div>
             </form>
           </div>

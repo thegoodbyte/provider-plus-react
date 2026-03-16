@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams, ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
-import { remindersApi, clientsApi, retreatsApi } from '../services/api';
-import { Reminder, Client, Retreat } from '../types';
+import { remindersApi, clientsApi, retreatsApi, bookingsApi } from '../services/api';
+import { Reminder, Client, Retreat, RetreatClient } from '../types';
+import { AutoReminderTemplates } from './AutoReminderTemplates';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
 import './ClientsGrid.css';
@@ -34,7 +35,7 @@ const RemindersPage: React.FC = () => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    dueDate: new Date().toISOString().split('T')[0],
+    dueDate: new Date().toLocaleDateString('en-CA'), // Use local date format YYYY-MM-DD
     priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent',
     actionType: 'general' as 'ask_for_document' | 'review_document' | 'follow_up' | 'medical_clearance' | 'general' | 'payment',
     notes: '',
@@ -43,23 +44,27 @@ const RemindersPage: React.FC = () => {
   });
   const [clients, setClients] = useState<Client[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
+  const [filteredClientsForForm, setFilteredClientsForForm] = useState<Client[]>([]);
+  const [bookings, setBookings] = useState<RetreatClient[]>([]);
   const [selectedClientFilter, setSelectedClientFilter] = useState<string>('');
   const [selectedRetreatFilter, setSelectedRetreatFilter] = useState<string>('');
+  const [activeTab, setActiveTab] = useState<'reminders' | 'templates'>('reminders');
   const gridApiRef = useRef<GridApi | null>(null);
 
   const fetchReminders = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [remindersResponse, clientsResponse, retreatsResponse] = await Promise.all([
+      const [remindersResponse, clientsResponse, retreatsResponse, bookingsResponse] = await Promise.all([
         remindersApi.getAll(),
         clientsApi.getAll(),
-        retreatsApi.getAll()
+        retreatsApi.getAll(),
+        bookingsApi.getAll()
       ]);
 
-      const clientsMap = new Map(clientsResponse.data.map(client => [client._id, client]));
-      const retreatsMap = new Map(retreatsResponse.data.map(retreat => [retreat._id, retreat]));
+      const clientsMap = new Map<string, Client>(clientsResponse.data.filter((client: Client) => client._id).map((client: Client) => [client._id!, client]));
+      const retreatsMap = new Map<string, Retreat>(retreatsResponse.data.filter((retreat: Retreat) => retreat._id).map((retreat: Retreat) => [retreat._id!, retreat]));
 
-      const enrichedReminders: ReminderWithDetails[] = remindersResponse.data.map(reminder => {
+      const enrichedReminders: ReminderWithDetails[] = remindersResponse.data.map((reminder: Reminder) => {
         const client = clientsMap.get(reminder.clientId);
         const retreat = retreatsMap.get(reminder.retreatId);
 
@@ -74,6 +79,7 @@ const RemindersPage: React.FC = () => {
       setFilteredReminders(enrichedReminders);
       setClients(clientsResponse.data);
       setRetreats(retreatsResponse.data);
+      setBookings(bookingsResponse.data);
     } catch (error) {
       console.error('Error fetching reminders:', error);
     } finally {
@@ -84,6 +90,55 @@ const RemindersPage: React.FC = () => {
   useEffect(() => {
     fetchReminders();
   }, [fetchReminders]);
+
+  // Filter clients based on selected retreat in the form
+  useEffect(() => {
+    if (formData.retreatId && bookings.length > 0 && clients.length > 0) {
+      const retreatBookings = bookings.filter(booking => booking.retreatId === formData.retreatId);
+      const retreatClientIds = retreatBookings.map(booking => booking.clientId);
+      const retreatClients = clients.filter(client => client._id && retreatClientIds.includes(client._id));
+      setFilteredClientsForForm(retreatClients);
+      // Clear client selection if previously selected client is not in this retreat
+      if (formData.clientId && !retreatClientIds.includes(formData.clientId)) {
+        setFormData(prev => ({ ...prev, clientId: '' }));
+      }
+    } else {
+      setFilteredClientsForForm(clients);
+    }
+  }, [formData.retreatId, bookings, clients, formData.clientId]);
+
+  // Populate form when editing a reminder
+  useEffect(() => {
+    if (editingReminder) {
+      // Convert date to YYYY-MM-DD format for date input, handling timezone issues
+      const dateValue = editingReminder.dueDate ?
+        new Date(editingReminder.dueDate + 'T00:00:00').toLocaleDateString('en-CA') :
+        new Date().toLocaleDateString('en-CA');
+
+      setFormData({
+        title: editingReminder.title || '',
+        description: editingReminder.description || '',
+        dueDate: dateValue,
+        priority: (editingReminder.priority as any) || 'medium',
+        actionType: (editingReminder.actionType as any) || 'general',
+        notes: editingReminder.notes || '',
+        clientId: editingReminder.clientId || '',
+        retreatId: editingReminder.retreatId || ''
+      });
+    } else {
+      // Reset form for new reminder
+      setFormData({
+        title: '',
+        description: '',
+        dueDate: new Date().toLocaleDateString('en-CA'),
+        priority: 'medium',
+        actionType: 'general',
+        notes: '',
+        clientId: '',
+        retreatId: ''
+      });
+    }
+  }, [editingReminder]);
 
   useEffect(() => {
     let filtered = [...reminders];
@@ -164,7 +219,10 @@ const RemindersPage: React.FC = () => {
       field: 'dueDate',
       width: 120,
       cellRenderer: (params: ICellRendererParams) => {
-        return params.value ? new Date(params.value).toLocaleDateString() : '';
+        if (!params.value) return '';
+        // Handle date properly to avoid timezone issues
+        const date = new Date(params.value + 'T00:00:00');
+        return date.toLocaleDateString();
       }
     },
     {
@@ -297,6 +355,24 @@ const RemindersPage: React.FC = () => {
     <div className="reminders-page-container">
       <div className="reminders-header">
         <h2>🔔 Reminders Management</h2>
+
+        {/* Tab Navigation */}
+        <div className="tab-navigation">
+          <button
+            className={`tab-button ${activeTab === 'reminders' ? 'active' : ''}`}
+            onClick={() => setActiveTab('reminders')}
+          >
+            📝 Active Reminders
+          </button>
+          <button
+            className={`tab-button ${activeTab === 'templates' ? 'active' : ''}`}
+            onClick={() => setActiveTab('templates')}
+          >
+            🤖 Auto Templates
+          </button>
+        </div>
+
+        {activeTab === 'reminders' && (
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <select
             value={selectedClientFilter}
@@ -344,8 +420,11 @@ const RemindersPage: React.FC = () => {
             ➕ Add New Reminder
           </button>
         </div>
+        )}
       </div>
 
+      {activeTab === 'reminders' && (
+        <>
       {/* Summary Cards */}
       <div className="reminders-summary">
         <div className="summary-cards">
@@ -429,37 +508,43 @@ const RemindersPage: React.FC = () => {
                 </div>
 
                 <div className="form-group">
-                  <label htmlFor="reminder-client">Client *</label>
-                  <select
-                    id="reminder-client"
-                    value={formData.clientId}
-                    onChange={(e) => setFormData({...formData, clientId: e.target.value})}
-                    required
-                  >
-                    <option value="">Select a client...</option>
-                    {clients.map((client) => (
-                      <option key={client._id} value={client._id}>
-                        {client.firstName} {client.lastName} ({client.email})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="form-group">
                   <label htmlFor="reminder-retreat">Retreat *</label>
                   <select
                     id="reminder-retreat"
                     value={formData.retreatId}
-                    onChange={(e) => setFormData({...formData, retreatId: e.target.value})}
+                    onChange={(e) => setFormData({...formData, retreatId: e.target.value, clientId: ''})}
                     required
                   >
-                    <option value="">Select a retreat...</option>
+                    <option value="">Select a retreat first...</option>
                     {retreats.map((retreat) => (
                       <option key={retreat._id} value={retreat._id}>
                         {retreat.name} - {retreat.location}
                       </option>
                     ))}
                   </select>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="reminder-client">Client *</label>
+                  <select
+                    id="reminder-client"
+                    value={formData.clientId}
+                    onChange={(e) => setFormData({...formData, clientId: e.target.value})}
+                    required
+                    disabled={!formData.retreatId}
+                  >
+                    <option value="">{!formData.retreatId ? 'Select a retreat first...' : 'Select a client...'}</option>
+                    {filteredClientsForForm.map((client) => (
+                      <option key={client._id} value={client._id}>
+                        {client.firstName} {client.lastName} ({client.email})
+                      </option>
+                    ))}
+                  </select>
+                  {formData.retreatId && filteredClientsForForm.length === 0 && (
+                    <small style={{color: '#ff6b6b', fontSize: '12px', marginTop: '4px', display: 'block'}}>
+                      No clients found for this retreat. Make sure clients have bookings for this retreat.
+                    </small>
+                  )}
                 </div>
 
                 <div className="form-group full-width">
@@ -525,6 +610,12 @@ const RemindersPage: React.FC = () => {
           />
         </div>
       </div>
+        </>
+      )}
+
+      {activeTab === 'templates' && (
+        <AutoReminderTemplates />
+      )}
     </div>
   );
 };

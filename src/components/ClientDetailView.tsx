@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Client, ClientMedical, ClientRequirement, Reminder } from '../types';
 import { clientsApi, clientMedicalApi, clientRequirementsApi, remindersApi, bookingsApi } from '../services/api';
 import MedicalTrackingTab from './MedicalTrackingTab';
+import ComprehensiveMedicalTrackingTab from './ComprehensiveMedicalTrackingTab';
 import ClientCeremoniesTab from './ClientCeremoniesTab';
 import './ClientsGrid.css';
+import './ComprehensiveMedicalTrackingTab.css';
 
 interface ClientDetailViewProps {
   clientId: string;
@@ -119,6 +121,21 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
       fetchClientData(); // Refresh data
     } catch (error) {
       console.error('Error updating medical data:', error);
+    }
+  };
+
+  const handleRegenerateHash = async () => {
+    if (!window.confirm('Are you sure you want to regenerate the deposit form hash? The old link will no longer work.')) {
+      return;
+    }
+
+    try {
+      const response = await clientsApi.regenerateDepositHash(clientId);
+      alert(`New deposit hash generated: ${response.data.hash}`);
+      fetchClientData(); // Refresh client data to show new hash
+    } catch (error) {
+      console.error('Error regenerating hash:', error);
+      alert('Error regenerating deposit hash. Please try again.');
     }
   };
 
@@ -296,83 +313,151 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
       <div className="client-detail-content">
         {activeTab === 'overview' && (
           <div className="overview-tab">
-            <div className="info-grid">
-              <div className="info-card">
-                <h3>👤 Personal Information</h3>
-                <div className="info-row">
-                  <strong>Full Name:</strong> {client.firstName} {client.lastName}
-                </div>
-                <div className="info-row">
-                  <strong>Preferred Name:</strong> {client.preferredName || 'N/A'}
-                </div>
-                <div className="info-row">
-                  <strong>Email:</strong> {client.email}
-                </div>
-                <div className="info-row">
-                  <strong>Phone:</strong> {client.phone}
-                </div>
-                <div className="info-row">
-                  <strong>Date of Birth:</strong> {client.dateOfBirth ? new Date(client.dateOfBirth).toLocaleDateString() : 'N/A'}
-                </div>
-                <div className="info-row">
-                  <strong>Gender:</strong> {client.gender || 'N/A'}
-                </div>
-                <div className="info-row">
-                  <strong>Occupation:</strong> {client.occupation || 'N/A'}
-                </div>
-              </div>
-
-              <div className="info-card">
-                <h3>🏠 Address Information</h3>
-                <div className="info-row">
-                  <strong>Address:</strong> {client.address}
-                </div>
-                <div className="info-row">
-                  <strong>City:</strong> {client.city || 'N/A'}
-                </div>
-                <div className="info-row">
-                  <strong>State:</strong> {client.state || 'N/A'}
-                </div>
-                <div className="info-row">
-                  <strong>Zip Code:</strong> {client.zipCode || 'N/A'}
-                </div>
-                <div className="info-row">
-                  <strong>Country:</strong> {client.country || 'N/A'}
-                </div>
-              </div>
-
-              <div className="info-card">
-                <h3>🚨 Emergency Contact</h3>
-                <div className="info-row">
-                  <strong>Emergency Contact:</strong> {client.emergencyContact || 'N/A'}
-                </div>
-                <div className="info-row">
-                  <strong>Emergency Phone:</strong> {client.emergencyContactPhone || 'N/A'}
-                </div>
-              </div>
-
-              <div className="info-card">
-                <h3>🏥 Health Information</h3>
-                <div className="info-row">
-                  <strong>Height:</strong> {client.height || 'N/A'}
-                </div>
-                <div className="info-row">
-                  <strong>Weight:</strong> {client.weight ? `${client.weight} lbs` : 'N/A'}
-                </div>
-                <div className="info-row">
-                  <strong>Medical Conditions:</strong>
-                  <div className="text-content">{client.medicalConditions || 'None reported'}</div>
-                </div>
-                <div className="info-row">
-                  <strong>Dietary Restrictions:</strong>
-                  <div className="text-content">{client.dietaryRestrictions || 'None reported'}</div>
-                </div>
-                {client.notes && (
+            <div className="info-columns">
+              <div className="info-column">
+                <div className="info-card">
+                  <h3>👤 Personal Information</h3>
                   <div className="info-row">
-                    <strong>Notes:</strong>
-                    <div className="text-content">{client.notes}</div>
+                    <strong>Full Name:</strong> {client.firstName} {client.lastName}
+                  </div>
+                  <div className="info-row">
+                    <strong>Preferred Name:</strong> {client.preferredName || 'N/A'}
+                  </div>
+                  <div className="info-row">
+                    <strong>Email:</strong> {client.email}
+                  </div>
+                  <div className="info-row">
+                    <strong>Phone:</strong> {client.phone}
+                  </div>
+                  <div className="info-row">
+                    <strong>Year of Birth:</strong> {client.dateOfBirth ? new Date(client.dateOfBirth).getFullYear() : 'N/A'}
+                  </div>
+                  <div className="info-row">
+                    <strong>Gender:</strong> {client.gender || 'N/A'}
+                  </div>
+                  <div className="info-row">
+                    <strong>Occupation:</strong> {client.occupation || 'N/A'}
+                  </div>
+                </div>
+
+                <div className="info-card">
+                  <h3>🚨 Emergency Contact</h3>
+                  <div className="info-row">
+                    <strong>Emergency Contact:</strong> {client.emergencyContact || 'N/A'}
+                  </div>
+                  <div className="info-row">
+                    <strong>Emergency Phone:</strong> {client.emergencyContactPhone || 'N/A'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="info-column">
+                <div className="info-card">
+                  <h3>🏠 Address Information</h3>
+                  <div className="info-row">
+                    <strong>Address:</strong> {client.address}
+                  </div>
+                  <div className="info-row">
+                    <strong>City:</strong> {client.city || 'N/A'}
+                  </div>
+                  <div className="info-row">
+                    <strong>State:</strong> {client.state || 'N/A'}
+                  </div>
+                  <div className="info-row">
+                    <strong>Zip Code:</strong> {client.zipCode || 'N/A'}
+                  </div>
+                  <div className="info-row">
+                    <strong>Country:</strong> {(() => {
+                      if (!client.country) return 'N/A';
+                      // Map common country codes to full names
+                      const countryNames: { [key: string]: string } = {
+                        'US': 'United States',
+                        'CZ': 'Czech Republic',
+                        'PL': 'Poland',
+                        'GB': 'United Kingdom',
+                        'CA': 'Canada',
+                        'DE': 'Germany',
+                        'FR': 'France',
+                        'ES': 'Spain',
+                        'IT': 'Italy',
+                        'NL': 'Netherlands'
+                      };
+                      return countryNames[client.country] || client.country;
+                    })()}
+                  </div>
+                </div>
+
+                <div className="info-card">
+                  <h3>🍴 Dietary Information</h3>
+                  <div className="info-row">
+                    <strong>Dietary Restrictions:</strong>
+                    <div className="text-content">{client.dietaryRestrictions || 'None reported'}</div>
+                  </div>
+                  {client.notes && (
+                    <div className="info-row">
+                      <strong>Notes:</strong>
+                      <div className="text-content">{client.notes}</div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="info-card">
+                  <h3>📋 Deposit Agreement Form</h3>
+                <div className="info-row">
+                  <strong>Hash:</strong> {client.depositFormHash || 'Not generated yet'}
+                </div>
+                {client.depositFormHash && (
+                  <div className="info-row">
+                    <strong>Public Link:</strong>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '5px' }}>
+                      <input
+                        type="text"
+                        value={`${window.location.origin}/api/clients/public/deposit-agreement/${client.depositFormHash}`}
+                        readOnly
+                        style={{
+                          flex: 1,
+                          padding: '8px',
+                          border: '1px solid #ddd',
+                          borderRadius: '4px',
+                          backgroundColor: '#f9f9f9'
+                        }}
+                      />
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${window.location.origin}/api/clients/public/deposit-agreement/${client.depositFormHash}`);
+                          alert('Link copied to clipboard!');
+                        }}
+                        style={{
+                          padding: '8px 12px',
+                          backgroundColor: '#007bff',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Copy
+                      </button>
+                    </div>
                   </div>
                 )}
+                <div className="info-row" style={{ marginTop: '15px' }}>
+                  <button
+                    onClick={handleRegenerateHash}
+                    style={{
+                      padding: '10px 20px',
+                      backgroundColor: client.depositFormHash ? '#ffc107' : '#28a745',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontWeight: '500'
+                    }}
+                  >
+                    {client.depositFormHash ? '🔄 Regenerate Hash' : '✨ Generate Hash'}
+                  </button>
+                </div>
+              </div>
               </div>
             </div>
           </div>
@@ -402,7 +487,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                 </div>
 
                 {selectedRetreatId && (
-                  <MedicalTrackingTab
+                  <ComprehensiveMedicalTrackingTab
                     clientId={clientId}
                     retreatId={selectedRetreatId}
                   />

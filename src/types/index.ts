@@ -8,6 +8,7 @@ export interface Retreat {
   currentOccupancy?: number;
   description?: string;
   houseId?: string;
+  helpers?: string;
   status?: 'active' | 'completed' | 'cancelled' | 'upcoming';
   type?: 'regular' | 'booster';
   createdAt?: string;
@@ -31,6 +32,9 @@ export interface House {
   description?: string;
   status?: 'available' | 'occupied' | 'maintenance';
   pricePerNight?: number;
+  allInclusive?: boolean;
+  payingForElectricity?: boolean;
+  bookingSource?: 'Airbnb' | 'Owner';
   createdAt?: string;
   updatedAt?: string;
   // Legacy format support
@@ -44,6 +48,7 @@ export interface Client {
   firstName: string;
   lastName: string;
   email: string;
+  phoneCountryCode?: string;
   phone: string;
   address: string;
   city?: string;
@@ -56,12 +61,14 @@ export interface Client {
   medicalConditions?: string;
   dietaryRestrictions?: string;
   status?: 'active' | 'inactive' | 'suspended';
+  source?: string;
   notes?: string;
   preferredName?: string;
   occupation?: string;
   gender?: 'male' | 'female' | 'other' | 'prefer-not-to-say';
   height?: string;
   weight?: number;
+  depositFormHash?: string;
   createdAt?: string;
   updatedAt?: string;
   // Legacy support
@@ -71,12 +78,16 @@ export interface Client {
 
 export interface RetreatClient {
   _id?: string;
+  bookingNumber?: string;
+  bookingHash?: string; // 20-character alphanumeric hash for linking payments
   retreatId: string;
   clientId: string;
+  bookingType?: 'full_retreat' | 'booster'; // Type of booking
   registrationDate: Date | string;
   checkInDate: Date | string;
   checkOutDate: Date | string;
   totalAmount: number;
+  currency?: 'EUR' | 'USD' | 'CZK' | 'PLN';
   amountPaid?: number;
   status?: 'pending' | 'confirmed' | 'checked-in' | 'checked-out' | 'cancelled';
   roomAssignment?: string;
@@ -110,6 +121,26 @@ export interface ClientMedical {
   ekgSentToAdvisorDate?: Date | string;
   ekgAdvisorNotes?: string;
   ekgStatus?: 'pending' | 'received' | 'reviewed' | 'approved' | 'rejected';
+
+  // Questionnaire
+  questionnaireReceivedDate?: Date | string;
+  questionnaireStatus?: 'pending' | 'received' | 'reviewed' | 'approved' | 'rejected';
+  questionnaireNotes?: string;
+
+  // Medications Form
+  medicationsFormReceivedDate?: Date | string;
+  medicationsFormFilePath?: string;
+  medicationsFormFileName?: string;
+  medicationsFormStatus?: 'pending' | 'received' | 'reviewed' | 'approved' | 'rejected';
+  medicationsFormNotes?: string;
+
+  // Food Intake
+  foodIntakeReceivedDate?: Date | string;
+  foodIntakeFilePath?: string;
+  foodIntakeFileName?: string;
+  foodIntakeStatus?: 'pending' | 'received' | 'sent_to_cook';
+  foodIntakeSentToCookDate?: Date | string;
+  foodIntakeNotes?: string;
 
   // Medical Advisor
   medicalAdvisorName?: string;
@@ -231,7 +262,7 @@ export interface RetreatExpense {
   retreatId: string;
   expenseTypeId: string | ExpenseType;
   amount: number;
-  currency: 'CZK' | 'EUR' | 'PLN';
+  currency: 'EUR' | 'USD' | 'CZK' | 'PLN';
   description?: string;
   vendor?: string;
   expenseDate: Date | string;
@@ -253,13 +284,16 @@ export interface Payment {
   _id?: string;
   clientId: string | Client;
   retreatId: string | Retreat;
-  bookingId?: string | RetreatClient;
+  bookingId?: string | RetreatClient; // Legacy - for backward compatibility
+  bookingHash?: string; // New field - 20-character hash for linking to specific booking
   amount: number;
-  currency: 'CZK' | 'EUR' | 'PLN';
+  currency: 'EUR' | 'USD' | 'CZK' | 'PLN';
   status: 'pending' | 'completed' | 'failed' | 'refunded';
-  paymentMethod: 'bank_transfer' | 'card' | 'cash' | 'paypal' | 'crypto' | 'other';
+  paymentMethod: 'bank_transfer' | 'card' | 'cash' | 'paypal' | 'crypto' | 'stripe' | 'wise' | 'revolut' | 'other';
+  paymentType: 'deposit_non_refundable' | 'deposit_refundable' | 'regular_payment' | 'balance_payment' | 'refund' | 'adjustment';
   description?: string;
   transactionId?: string;
+  transactionReference?: string;
   paymentDate: Date | string;
   processedDate?: Date | string;
   refundedAmount?: number;
@@ -267,8 +301,10 @@ export interface Payment {
   notes?: string;
   isDeposit: boolean;
   isFinalPayment: boolean;
+  isRefundable: boolean;
   exchangeRate?: number;
   amountInEUR?: number;
+  processedBy?: string;
   createdAt?: string;
   updatedAt?: string;
 }

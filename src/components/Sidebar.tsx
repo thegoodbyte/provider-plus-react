@@ -7,6 +7,7 @@ interface SidebarProps {
   isCollapsed: boolean;
   onToggle: () => void;
   onLogout?: () => void;
+  userRole?: string;
 }
 
 interface MenuItem {
@@ -16,8 +17,31 @@ interface MenuItem {
   description: string;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed, onToggle, onLogout }) => {
-  const menuItems: MenuItem[] = [
+const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed, onToggle, onLogout, userRole }) => {
+  // Medical advisor specific menu
+  const medicalAdvisorMenuItems: MenuItem[] = [
+    {
+      id: 'medical-dashboard',
+      label: 'Reviews',
+      icon: '🏥',
+      description: 'Review medical records'
+    },
+    {
+      id: 'medical-retreats',
+      label: 'Retreats',
+      icon: '📅',
+      description: 'View upcoming retreats'
+    }
+  ];
+
+  // Regular menu items for admins and other users
+  const regularMenuItems: MenuItem[] = [
+    {
+      id: 'clients',
+      label: 'Clients',
+      icon: '👥',
+      description: 'Manage client information'
+    },
     {
       id: 'retreats',
       label: 'Retreats',
@@ -25,10 +49,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed,
       description: 'Manage retreat programs'
     },
     {
-      id: 'houses',
-      label: 'Houses',
-      icon: '🏠',
-      description: 'Manage retreat houses'
+      id: 'bookings',
+      label: 'Bookings',
+      icon: '📋',
+      description: 'Retreat-client bookings'
     },
     {
       id: 'screening',
@@ -37,16 +61,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed,
       description: 'Screen potential clients'
     },
     {
-      id: 'clients',
-      label: 'Clients',
-      icon: '👥',
-      description: 'Manage client information'
-    },
-    {
-      id: 'bookings',
-      label: 'Bookings',
-      icon: '📋',
-      description: 'Retreat-client bookings'
+      id: 'houses',
+      label: 'Houses',
+      icon: '🏠',
+      description: 'Manage retreat houses'
     },
     {
       id: 'reminders',
@@ -79,6 +97,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed,
       description: 'View reports and analytics'
     }
   ];
+
+  // Choose menu items based on user role
+  const menuItems = userRole === 'medical_advisor' ? medicalAdvisorMenuItems : regularMenuItems;
 
   return (
     <div className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>

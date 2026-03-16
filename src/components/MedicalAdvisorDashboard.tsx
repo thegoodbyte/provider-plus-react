@@ -1,0 +1,260 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Heart, FileText, Clock, Calendar, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import './MedicalAdvisorDashboard.css';
+
+interface MedicalReviewItem {
+  id: string;
+  clientId: string;
+  clientNumber: string;
+  type: 'EKG' | 'Liver Panel';
+  status: 'pending' | 'approved' | 'declined' | 'needs_review';
+  submittedDate: Date;
+  retreatId: string;
+  retreatName: string;
+  retreatDate: Date;
+  urgency: 'high' | 'medium' | 'low';
+  daysAgo: number;
+  daysUntilRetreat: number;
+}
+
+const MedicalAdvisorDashboard: React.FC = () => {
+  const navigate = useNavigate();
+  const [reviewItems, setReviewItems] = useState<MedicalReviewItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<'all' | 'ekg' | 'liver'>('all');
+  const [sortBy, setSortBy] = useState<'date' | 'retreat' | 'urgency'>('urgency');
+
+  useEffect(() => {
+    fetchPendingReviews();
+  }, []);
+
+  const fetchPendingReviews = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+
+      // Fetch medical records that need review
+      const response = await fetch('http://localhost:3005/client-medical/pending-reviews', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+
+        // Transform the data into review items
+        const items: MedicalReviewItem[] = data.map((record: any) => {
+          const submittedDate = new Date(record.createdAt);
+          const retreatDate = new Date(record.retreat?.startDate || Date.now());
+          const now = new Date();
+
+          const daysAgo = Math.floor((now.getTime() - submittedDate.getTime()) / (1000 * 60 * 60 * 24));
+          const daysUntilRetreat = Math.floor((retreatDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+          // Determine urgency based on days until retreat
+          let urgency: 'high' | 'medium' | 'low' = 'low';
+          if (daysUntilRetreat <= 7) urgency = 'high';
+          else if (daysUntilRetreat <= 14) urgency = 'medium';
+
+          return {
+            id: record._id,
+            clientId: record.clientId,
+            clientNumber: `#${record.client?.clientNumber || '0000'}`,
+            type: record.hasEkg ? 'EKG' : 'Liver Panel',
+            status: record.medicalClearance || 'pending',
+            submittedDate,
+            retreatId: record.retreatId,
+            retreatName: record.retreat?.name || 'Unknown',
+            retreatDate,
+            urgency,
+            daysAgo,
+            daysUntilRetreat
+          };
+        });
+
+        setReviewItems(items);
+      }
+    } catch (error) {
+      console.error('Error fetching pending reviews:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleItemClick = (item: MedicalReviewItem) => {
+    navigate(`/medical-review/${item.clientId}/${item.retreatId}`);
+  };
+
+  const getFilteredItems = () => {
+    let filtered = reviewItems;
+
+    if (filter === 'ekg') {
+      filtered = reviewItems.filter(item => item.type === 'EKG');
+    } else if (filter === 'liver') {
+      filtered = reviewItems.filter(item => item.type === 'Liver Panel');
+    }
+
+    // Sort items
+    return filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'date':
+          return b.submittedDate.getTime() - a.submittedDate.getTime();
+        case 'retreat':
+          return a.daysUntilRetreat - b.daysUntilRetreat;
+        case 'urgency':
+          const urgencyOrder = { high: 0, medium: 1, low: 2 };
+          return urgencyOrder[a.urgency] - urgencyOrder[b.urgency];
+        default:
+          return 0;
+      }
+    });
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'approved':
+        return <CheckCircle className="status-icon approved" />;
+      case 'declined':
+        return <XCircle className="status-icon declined" />;
+      default:
+        return <Clock className="status-icon pending" />;
+    }
+  };
+
+  const getUrgencyClass = (urgency: string) => {
+    return `urgency-${urgency}`;
+  };
+
+  const formatDaysAgo = (days: number) => {
+    if (days === 0) return 'Today';
+    if (days === 1) return 'Yesterday';
+    return `${days} days ago`;
+  };
+
+  const formatDaysUntil = (days: number) => {
+    if (days < 0) return 'Past';
+    if (days === 0) return 'Today';
+    if (days === 1) return 'Tomorrow';
+    if (days <= 7) return `in ${days} days`;
+    const weeks = Math.floor(days / 7);
+    return `in ${weeks} week${weeks > 1 ? 's' : ''}`;
+  };
+
+  if (loading) {
+    return (
+      <div className="medical-advisor-dashboard">
+        <div className="loading">Loading pending reviews...</div>
+      </div>
+    );
+  }
+
+  const filteredItems = getFilteredItems();
+
+  return (
+    <div className="medical-advisor-dashboard">
+      <div className="dashboard-header">
+        <h1>Medical Review Queue</h1>
+        <div className="header-stats">
+          <div className="stat">
+            <span className="stat-value">{reviewItems.length}</span>
+            <span className="stat-label">Total Pending</span>
+          </div>
+          <div className="stat urgent">
+            <span className="stat-value">{reviewItems.filter(i => i.urgency === 'high').length}</span>
+            <span className="stat-label">Urgent</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="dashboard-controls">
+        <div className="filter-controls">
+          <button
+            className={filter === 'all' ? 'active' : ''}
+            onClick={() => setFilter('all')}
+          >
+            All Records
+          </button>
+          <button
+            className={filter === 'ekg' ? 'active' : ''}
+            onClick={() => setFilter('ekg')}
+          >
+            <Heart size={16} />
+            EKG Only
+          </button>
+          <button
+            className={filter === 'liver' ? 'active' : ''}
+            onClick={() => setFilter('liver')}
+          >
+            <FileText size={16} />
+            Liver Panel Only
+          </button>
+        </div>
+
+        <div className="sort-controls">
+          <label>Sort by:</label>
+          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}>
+            <option value="urgency">Urgency</option>
+            <option value="date">Submission Date</option>
+            <option value="retreat">Retreat Date</option>
+          </select>
+        </div>
+      </div>
+
+      <div className="review-items-list">
+        {filteredItems.length === 0 ? (
+          <div className="no-items">
+            <p>No pending reviews at this time</p>
+          </div>
+        ) : (
+          filteredItems.map(item => (
+            <div
+              key={item.id}
+              className={`review-item ${getUrgencyClass(item.urgency)}`}
+              onClick={() => handleItemClick(item)}
+            >
+              <div className="item-icon">
+                {item.type === 'EKG' ? (
+                  <Heart size={24} />
+                ) : (
+                  <FileText size={24} />
+                )}
+              </div>
+
+              <div className="item-main">
+                <div className="item-title">
+                  <span className="item-type">{item.type} Review</span>
+                  <span className="client-number">{item.clientNumber}</span>
+                </div>
+                <div className="item-details">
+                  <span className="submission-date">
+                    <Clock size={14} />
+                    Posted {formatDaysAgo(item.daysAgo)}
+                  </span>
+                  <span className="retreat-info">
+                    <Calendar size={14} />
+                    {item.retreatName} ({formatDaysUntil(item.daysUntilRetreat)})
+                  </span>
+                </div>
+              </div>
+
+              <div className="item-status">
+                {item.urgency === 'high' && (
+                  <div className="urgency-indicator">
+                    <AlertCircle size={20} />
+                    <span>Urgent</span>
+                  </div>
+                )}
+                {getStatusIcon(item.status)}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default MedicalAdvisorDashboard;
