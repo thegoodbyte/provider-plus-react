@@ -108,7 +108,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
         bookingId, // Keep for backward compatibility
         bookingHash, // New field - prioritize this for linking
         amount: parseFloat(newPayment.amount),
-        currency: currency as 'EUR' | 'USD' | 'CZK' | 'PLN',
+        currency: currency as 'EUR' | 'CZK' | 'PLN' | 'USD',
         paymentMethod: newPayment.paymentMethod as 'bank_transfer' | 'card' | 'cash' | 'paypal' | 'crypto' | 'stripe' | 'wise' | 'revolut' | 'other',
         paymentType: newPayment.paymentType as 'deposit_non_refundable' | 'deposit_refundable' | 'regular_payment' | 'balance_payment' | 'refund' | 'adjustment',
         description: newPayment.description || `${selectedPaymentType?.label} for booking ${bookingHash || bookingId}`,

@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { AgGridReact } from 'ag-grid-react';
-import { ColDef, GridApi, GridReadyEvent, ICellRendererParams, ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
+import React, { useState, useEffect, useCallback } from 'react';
 import { requirementsApi } from '../services/api';
 import { Requirement } from '../types';
 import RetreatRequirementsGrid from './RetreatRequirementsGrid';
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-alpine.css';
-import './RetreatsGrid.css';
+import AppleButton from './AppleButton';
+import { FiPlus, FiEdit2, FiTrash2, FiCheck, FiX, FiPackage } from 'react-icons/fi';
 
-ModuleRegistry.registerModules([AllCommunityModule]);
+// Simple wrapper to fix TypeScript icon issues
+const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
+  return <IconComponent className={className} />;
+};
 
 const RequirementsGrid: React.FC = () => {
   const [requirements, setRequirements] = useState<Requirement[]>([]);
@@ -17,7 +17,6 @@ const RequirementsGrid: React.FC = () => {
   const [editingRequirement, setEditingRequirement] = useState<Requirement | null>(null);
   const [formData, setFormData] = useState<Partial<Requirement>>({});
   const [activeTab, setActiveTab] = useState<'requirements' | 'overview'>('requirements');
-  const gridApiRef = useRef<GridApi | null>(null);
 
   const fetchRequirements = useCallback(async () => {
     try {
@@ -36,9 +35,26 @@ const RequirementsGrid: React.FC = () => {
     fetchRequirements();
   }, [fetchRequirements]);
 
-  const handleGridReady = (params: GridReadyEvent) => {
-    gridApiRef.current = params.api;
-    params.api.sizeColumnsToFit();
+  const getCategoryColor = (category: string) => {
+    const colors: { [key: string]: string } = {
+      payment: 'bg-green-100 text-green-800',
+      medical: 'bg-red-100 text-red-800',
+      questionnaire: 'bg-blue-100 text-blue-800',
+      dietary: 'bg-yellow-100 text-yellow-800',
+      document: 'bg-purple-100 text-purple-800',
+      other: 'bg-gray-100 text-gray-800'
+    };
+    return colors[category] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getPriorityColor = (priority: string) => {
+    const colors: { [key: string]: string } = {
+      low: 'bg-gray-100 text-gray-800',
+      medium: 'bg-yellow-100 text-yellow-800',
+      high: 'bg-orange-100 text-orange-800',
+      critical: 'bg-red-100 text-red-800'
+    };
+    return colors[priority] || 'bg-gray-100 text-gray-800';
   };
 
   const handleAdd = () => {
@@ -87,130 +103,6 @@ const RequirementsGrid: React.FC = () => {
     }
   };
 
-  const CategoryCellRenderer = (params: ICellRendererParams) => {
-    const categoryColors: { [key: string]: string } = {
-      payment: '#27ae60',
-      medical: '#e74c3c',
-      questionnaire: '#3498db',
-      dietary: '#f39c12',
-      document: '#9b59b6',
-      other: '#95a5a6'
-    };
-    const color = categoryColors[params.value] || '#95a5a6';
-    return (
-      <span style={{
-        color: color,
-        fontWeight: 'bold',
-        textTransform: 'capitalize'
-      }}>
-        {params.value}
-      </span>
-    );
-  };
-
-  const PriorityCellRenderer = (params: ICellRendererParams) => {
-    const priorityColors: { [key: string]: string } = {
-      low: '#95a5a6',
-      medium: '#f39c12',
-      high: '#e67e22',
-      critical: '#e74c3c'
-    };
-    const color = priorityColors[params.value] || '#95a5a6';
-    return (
-      <span style={{
-        color: color,
-        fontWeight: 'bold',
-        textTransform: 'capitalize'
-      }}>
-        {params.value}
-      </span>
-    );
-  };
-
-  const RequirementsCellRenderer = (params: ICellRendererParams) => {
-    const requirements = [];
-    if (params.data.requiresFile) requirements.push('📄 File');
-    if (params.data.requiresAmount) requirements.push('💰 Amount');
-    if (params.data.requiresApproval) requirements.push('✅ Approval');
-
-    return (
-      <span style={{ fontSize: '12px' }}>
-        {requirements.join(', ') || 'None'}
-      </span>
-    );
-  };
-
-  const ActionCellRenderer = (params: ICellRendererParams) => {
-    return (
-      <div className="action-buttons">
-        <button onClick={() => handleEdit(params.data)} className="edit-btn">✏️ Edit</button>
-        <button onClick={() => handleDelete(params.data._id)} className="delete-btn">🗑️ Delete</button>
-      </div>
-    );
-  };
-
-  const columnDefs: ColDef[] = [
-    { field: '_id', headerName: 'ID', hide: true },
-    {
-      field: 'order',
-      headerName: 'Order',
-      sortable: true,
-      width: 80
-    },
-    {
-      field: 'name',
-      headerName: 'Requirement Name',
-      sortable: true,
-      filter: true,
-      flex: 1
-    },
-    {
-      field: 'category',
-      headerName: 'Category',
-      sortable: true,
-      filter: true,
-      cellRenderer: CategoryCellRenderer,
-      width: 120
-    },
-    {
-      field: 'weeksBeforeRetreat',
-      headerName: 'Weeks Before',
-      sortable: true,
-      width: 120,
-      valueFormatter: (params) => `${params.value} weeks`
-    },
-    {
-      field: 'priority',
-      headerName: 'Priority',
-      sortable: true,
-      filter: true,
-      cellRenderer: PriorityCellRenderer,
-      width: 100
-    },
-    {
-      headerName: 'Requirements',
-      cellRenderer: RequirementsCellRenderer,
-      width: 150
-    },
-    {
-      field: 'isActive',
-      headerName: 'Active',
-      sortable: true,
-      width: 80,
-      valueFormatter: (params) => params.value ? '✅' : '❌'
-    },
-    {
-      headerName: 'Actions',
-      cellRenderer: ActionCellRenderer,
-      width: 150,
-      suppressSizeToFit: true
-    }
-  ];
-
-  const defaultColDef = {
-    resizable: true,
-    minWidth: 100
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -257,52 +149,51 @@ const RequirementsGrid: React.FC = () => {
     }));
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-gray-500">Loading requirements...</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="retreats-container">
-      <div className="retreats-header">
-        <h2>📋 Requirements Management</h2>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <div className="tab-buttons" style={{ display: 'flex', gap: '8px' }}>
+    <div className="p-6 h-full">
+      <div className="mb-6 flex justify-between items-center">
+        <h1 className="text-2xl font-semibold text-gray-900">📋 Requirements Management</h1>
+        <div className="flex items-center gap-4">
+          <div className="flex bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setActiveTab('requirements')}
-              className={`tab-btn ${activeTab === 'requirements' ? 'active' : ''}`}
-              style={{
-                padding: '8px 16px',
-                borderRadius: '6px',
-                border: '2px solid #e1e5e9',
-                backgroundColor: activeTab === 'requirements' ? '#007bff' : 'white',
-                color: activeTab === 'requirements' ? 'white' : '#333',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                activeTab === 'requirements'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
             >
               ⚙️ Manage Requirements
             </button>
             <button
               onClick={() => setActiveTab('overview')}
-              className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`}
-              style={{
-                padding: '8px 16px',
-                borderRadius: '6px',
-                border: '2px solid #e1e5e9',
-                backgroundColor: activeTab === 'overview' ? '#007bff' : 'white',
-                color: activeTab === 'overview' ? 'white' : '#333',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
+              className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                activeTab === 'overview'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
             >
               👁️ Retreat Overview
             </button>
           </div>
           {activeTab === 'requirements' && (
             <>
-              <button onClick={handleSeedRequirements} className="add-btn" style={{ backgroundColor: '#27ae60' }}>
-                🌱 Seed Default Requirements
-              </button>
-              <button onClick={handleAdd} className="add-btn">➕ Add New Requirement</button>
-              <div style={{ fontSize: '14px', color: '#666' }}>
-                {isLoading ? 'Loading...' : `${requirements.length} requirements`}
-              </div>
+              <AppleButton onClick={handleSeedRequirements} className="apple-button-secondary">
+                <Icon icon={FiPackage} className="w-4 h-4 mr-2" />
+                Seed Defaults
+              </AppleButton>
+              <AppleButton onClick={handleAdd} className="apple-button-primary">
+                <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
+                Add Requirement
+              </AppleButton>
             </>
           )}
         </div>
@@ -312,190 +203,333 @@ const RequirementsGrid: React.FC = () => {
         <RetreatRequirementsGrid />
       ) : (
         <>
-
-      {isLoading ? (
-        <div style={{ padding: '40px', textAlign: 'center', fontSize: '18px', color: '#666' }}>
-          Loading requirements...
-        </div>
-      ) : (
-        <div className="ag-theme-alpine" style={{ height: 600, width: '100%' }}>
-          <AgGridReact
-            rowData={requirements}
-            columnDefs={columnDefs}
-            defaultColDef={defaultColDef}
-            onGridReady={handleGridReady}
-            animateRows={true}
-            pagination={true}
-            paginationPageSize={15}
-            suppressNoRowsOverlay={false}
-          />
-        </div>
-      )}
-
-      {isModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px' }}>
-            <h3>{editingRequirement ? 'Edit Requirement' : 'Add New Requirement'}</h3>
-            <form onSubmit={handleSubmit}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                <div className="form-group">
-                  <label htmlFor="name">Name*:</label>
-                  <input
-                    type="text"
-                    id="name"
-                    name="name"
-                    value={formData.name || ''}
-                    onChange={handleInputChange}
-                    required
-                  />
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Order
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Requirement Name
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Category
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Timing
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Priority
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Requirements
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {requirements.map((requirement) => (
+                    <tr key={requirement._id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {requirement.order}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{requirement.name}</div>
+                        {requirement.description && (
+                          <div className="text-sm text-gray-500">{requirement.description}</div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getCategoryColor(requirement.category)}`}>
+                          {requirement.category}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {requirement.weeksBeforeRetreat} weeks before
+                        {requirement.gracePeriodWeeks && (
+                          <div className="text-xs text-gray-500">
+                            +{requirement.gracePeriodWeeks} week grace
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityColor(requirement.priority || 'medium')}`}>
+                          {requirement.priority || 'medium'}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex flex-wrap gap-1 text-xs">
+                          {requirement.requiresFile && (
+                            <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded">📄 File</span>
+                          )}
+                          {requirement.requiresAmount && (
+                            <span className="px-2 py-1 bg-green-100 text-green-700 rounded">💰 Amount</span>
+                          )}
+                          {requirement.requiresApproval && (
+                            <span className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded">✅ Approval</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          {requirement.isActive ? (
+                            <Icon icon={FiCheck} className="w-5 h-5 text-green-500" />
+                          ) : (
+                            <Icon icon={FiX} className="w-5 h-5 text-red-500" />
+                          )}
+                          <span className="ml-2 text-sm text-gray-900">
+                            {requirement.isActive ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleEdit(requirement)}
+                            className="text-indigo-600 hover:text-indigo-900"
+                            title="Edit"
+                          >
+                            <Icon icon={FiEdit2} className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(requirement._id!)}
+                            className="text-red-600 hover:text-red-900"
+                            title="Delete"
+                          >
+                            <Icon icon={FiTrash2} className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {requirements.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  No requirements found
                 </div>
-
-                <div className="form-group">
-                  <label htmlFor="category">Category*:</label>
-                  <select
-                    id="category"
-                    name="category"
-                    value={formData.category || 'medical'}
-                    onChange={handleInputChange}
-                    required
-                  >
-                    <option value="payment">Payment</option>
-                    <option value="medical">Medical</option>
-                    <option value="questionnaire">Questionnaire</option>
-                    <option value="dietary">Dietary</option>
-                    <option value="document">Document</option>
-                    <option value="other">Other</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="weeksBeforeRetreat">Weeks Before Retreat*:</label>
-                  <input
-                    type="number"
-                    id="weeksBeforeRetreat"
-                    name="weeksBeforeRetreat"
-                    value={formData.weeksBeforeRetreat || 4}
-                    onChange={handleInputChange}
-                    min="1"
-                    max="52"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="gracePeriodWeeks">Grace Period (weeks):</label>
-                  <input
-                    type="number"
-                    id="gracePeriodWeeks"
-                    name="gracePeriodWeeks"
-                    value={formData.gracePeriodWeeks || 1}
-                    onChange={handleInputChange}
-                    min="0"
-                    max="4"
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="priority">Priority:</label>
-                  <select
-                    id="priority"
-                    name="priority"
-                    value={formData.priority || 'medium'}
-                    onChange={handleInputChange}
-                  >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                    <option value="critical">Critical</option>
-                  </select>
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="order">Order:</label>
-                  <input
-                    type="number"
-                    id="order"
-                    name="order"
-                    value={formData.order || 1}
-                    onChange={handleInputChange}
-                    min="1"
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="description">Description*:</label>
-                <textarea
-                  id="description"
-                  name="description"
-                  value={formData.description || ''}
-                  onChange={handleInputChange}
-                  rows={3}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="instructions">Instructions:</label>
-                <textarea
-                  id="instructions"
-                  name="instructions"
-                  value={formData.instructions || ''}
-                  onChange={handleInputChange}
-                  rows={2}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '15px' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <input
-                    type="checkbox"
-                    name="requiresFile"
-                    checked={formData.requiresFile || false}
-                    onChange={handleInputChange}
-                  />
-                  Requires File Upload
-                </label>
-
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <input
-                    type="checkbox"
-                    name="requiresAmount"
-                    checked={formData.requiresAmount || false}
-                    onChange={handleInputChange}
-                  />
-                  Requires Amount
-                </label>
-
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <input
-                    type="checkbox"
-                    name="requiresApproval"
-                    checked={formData.requiresApproval || false}
-                    onChange={handleInputChange}
-                  />
-                  Requires Approval
-                </label>
-
-                <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <input
-                    type="checkbox"
-                    name="isActive"
-                    checked={formData.isActive !== false}
-                    onChange={handleInputChange}
-                  />
-                  Active
-                </label>
-              </div>
-
-              <div className="form-buttons">
-                <button type="submit" className="save-btn">Save Requirement</button>
-                <button type="button" onClick={() => setIsModalOpen(false)} className="cancel-btn">Cancel</button>
-              </div>
-            </form>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+
+          <div className="mt-4 text-sm text-gray-700">
+            Showing {requirements.length} requirement{requirements.length !== 1 ? 's' : ''}
+          </div>
+
+          {isModalOpen && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
+              <div className="bg-white p-6 rounded-lg shadow-xl max-w-2xl w-full mx-4" onClick={(e) => e.stopPropagation()}>
+                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                  {editingRequirement ? 'Edit Requirement' : 'Add New Requirement'}
+                </h3>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                        Name*
+                      </label>
+                      <input
+                        type="text"
+                        id="name"
+                        name="name"
+                        value={formData.name || ''}
+                        onChange={handleInputChange}
+                        required
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="category" className="block text-sm font-medium text-gray-700">
+                        Category*
+                      </label>
+                      <select
+                        id="category"
+                        name="category"
+                        value={formData.category || 'medical'}
+                        onChange={handleInputChange}
+                        required
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                      >
+                        <option value="payment">Payment</option>
+                        <option value="medical">Medical</option>
+                        <option value="questionnaire">Questionnaire</option>
+                        <option value="dietary">Dietary</option>
+                        <option value="document">Document</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-4">
+                    <div>
+                      <label htmlFor="weeksBeforeRetreat" className="block text-sm font-medium text-gray-700">
+                        Weeks Before*
+                      </label>
+                      <input
+                        type="number"
+                        id="weeksBeforeRetreat"
+                        name="weeksBeforeRetreat"
+                        value={formData.weeksBeforeRetreat || 4}
+                        onChange={handleInputChange}
+                        min="1"
+                        max="52"
+                        required
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="gracePeriodWeeks" className="block text-sm font-medium text-gray-700">
+                        Grace Period
+                      </label>
+                      <input
+                        type="number"
+                        id="gracePeriodWeeks"
+                        name="gracePeriodWeeks"
+                        value={formData.gracePeriodWeeks || 1}
+                        onChange={handleInputChange}
+                        min="0"
+                        max="4"
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="priority" className="block text-sm font-medium text-gray-700">
+                        Priority
+                      </label>
+                      <select
+                        id="priority"
+                        name="priority"
+                        value={formData.priority || 'medium'}
+                        onChange={handleInputChange}
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                      >
+                        <option value="low">Low</option>
+                        <option value="medium">Medium</option>
+                        <option value="high">High</option>
+                        <option value="critical">Critical</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label htmlFor="order" className="block text-sm font-medium text-gray-700">
+                        Order
+                      </label>
+                      <input
+                        type="number"
+                        id="order"
+                        name="order"
+                        value={formData.order || 1}
+                        onChange={handleInputChange}
+                        min="1"
+                        className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                      Description*
+                    </label>
+                    <textarea
+                      id="description"
+                      name="description"
+                      value={formData.description || ''}
+                      onChange={handleInputChange}
+                      rows={3}
+                      required
+                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="instructions" className="block text-sm font-medium text-gray-700">
+                      Instructions
+                    </label>
+                    <textarea
+                      id="instructions"
+                      name="instructions"
+                      value={formData.instructions || ''}
+                      onChange={handleInputChange}
+                      rows={2}
+                      className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-4">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        name="requiresFile"
+                        checked={formData.requiresFile || false}
+                        onChange={handleInputChange}
+                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="ml-2 text-sm text-gray-900">File Upload</span>
+                    </label>
+
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        name="requiresAmount"
+                        checked={formData.requiresAmount || false}
+                        onChange={handleInputChange}
+                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="ml-2 text-sm text-gray-900">Amount</span>
+                    </label>
+
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        name="requiresApproval"
+                        checked={formData.requiresApproval || false}
+                        onChange={handleInputChange}
+                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="ml-2 text-sm text-gray-900">Approval</span>
+                    </label>
+
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        name="isActive"
+                        checked={formData.isActive !== false}
+                        onChange={handleInputChange}
+                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      <span className="ml-2 text-sm text-gray-900">Active</span>
+                    </label>
+                  </div>
+
+                  <div className="flex justify-end space-x-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setIsModalOpen(false)}
+                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700"
+                    >
+                      Save Requirement
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

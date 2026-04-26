@@ -51,12 +51,21 @@
   height: 100%;
 }
 
-.edit-btn, .delete-btn {
+.view-btn, .edit-btn, .delete-btn {
   padding: 5px 10px;
   border: none;
   border-radius: 3px;
   cursor: pointer;
   font-size: 12px;
+}
+
+.view-btn {
+  background-color: #28a745;
+  color: white;
+}
+
+.view-btn:hover {
+  background-color: #218838;
 }
 
 .edit-btn {

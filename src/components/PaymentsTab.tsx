@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { AgGridReact } from 'ag-grid-react';
-import { ColDef, GridApi, GridReadyEvent, ICellRendererParams, ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
+import React, { useState, useEffect, useCallback } from 'react';
 import { paymentsApi } from '../services/api';
 import { Payment, PaymentSummary } from '../types';
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-alpine.css';
+import { FiPlus, FiEdit2, FiTrash2, FiRefreshCw } from 'react-icons/fi';
 import './ClientsGrid.css';
 
-ModuleRegistry.registerModules([AllCommunityModule]);
+// Simple wrapper to fix TypeScript icon issues
+const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
+  return <IconComponent className={className} />;
+};
 
 interface PaymentsTabProps {
   retreatId: string;
@@ -48,130 +48,8 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
     isDeposit: false,
     isFinalPayment: false
   });
-  const gridApiRef = useRef<GridApi | null>(null);
 
-  const StatusCellRenderer = (params: ICellRendererParams) => {
-    const status = params.value?.toLowerCase() || 'pending';
-    const statusClass = `status-${status}`;
-    return `<span class="status-badge ${statusClass}">${params.value || 'Pending'}</span>`;
-  };
 
-  const AmountCellRenderer = (params: ICellRendererParams) => {
-    const amount = params.value || 0;
-    const currency = params.data.currency || 'EUR';
-    const amountEUR = params.data.amountInEUR || amount;
-
-    if (currency === 'EUR') {
-      return `€${amount.toLocaleString()}`;
-    }
-
-    return `${amount.toLocaleString()} ${currency} (€${amountEUR.toLocaleString()})`;
-  };
-
-  const PaymentMethodCellRenderer = (params: ICellRendererParams) => {
-    const methodIcons = {
-      bank_transfer: '🏦',
-      card: '💳',
-      cash: '💵',
-      paypal: '🌐',
-      crypto: '₿',
-      other: '📄'
-    };
-
-    const method = params.value;
-    const icon = methodIcons[method as keyof typeof methodIcons] || '📄';
-    const displayName = method?.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || '';
-
-    return `${icon} ${displayName}`;
-  };
-
-  const TypeCellRenderer = (params: ICellRendererParams) => {
-    const isDeposit = params.data.isDeposit;
-    const isFinalPayment = params.data.isFinalPayment;
-
-    if (isDeposit) return '🏠 Deposit';
-    if (isFinalPayment) return '✅ Final Payment';
-    return '💰 Payment';
-  };
-
-  const ActionsCellRenderer = (params: ICellRendererParams) => {
-    return `
-      <div class="cell-actions">
-        <button class="edit-btn" data-action="edit" data-id="${params.data._id}">✏️</button>
-        <button class="delete-btn" data-action="delete" data-id="${params.data._id}">🗑️</button>
-        ${params.data.status === 'completed' ? `<button class="refund-btn" data-action="refund" data-id="${params.data._id}">↩️</button>` : ''}
-      </div>
-    `;
-  };
-
-  const columnDefs: ColDef[] = [
-    {
-      headerName: 'Client',
-      field: 'clientId.firstName',
-      width: 150,
-      pinned: 'left',
-      cellStyle: { fontWeight: 'bold' },
-      valueGetter: (params) => {
-        const client = params.data.clientId;
-        return typeof client === 'object' ? `${client.firstName} ${client.lastName}` : '';
-      }
-    },
-    {
-      headerName: 'Amount',
-      field: 'amount',
-      width: 150,
-      cellRenderer: AmountCellRenderer
-    },
-    {
-      headerName: 'Type',
-      width: 120,
-      cellRenderer: TypeCellRenderer
-    },
-    {
-      headerName: 'Method',
-      field: 'paymentMethod',
-      width: 130,
-      cellRenderer: PaymentMethodCellRenderer
-    },
-    {
-      headerName: 'Status',
-      field: 'status',
-      width: 120,
-      cellRenderer: StatusCellRenderer
-    },
-    {
-      headerName: 'Description',
-      field: 'description',
-      width: 200
-    },
-    {
-      headerName: 'Transaction ID',
-      field: 'transactionId',
-      width: 150
-    },
-    {
-      headerName: 'Payment Date',
-      field: 'paymentDate',
-      width: 120,
-      cellRenderer: (params: ICellRendererParams) => {
-        return params.value ? new Date(params.value).toLocaleDateString() : '';
-      }
-    },
-    {
-      headerName: 'Actions',
-      field: 'actions',
-      width: 120,
-      cellRenderer: ActionsCellRenderer,
-      sortable: false,
-      filter: false
-    }
-  ];
-
-  const defaultColDef: ColDef = {
-    sortable: true,
-    filter: true,
-    resizable: true,
-  };
 
   const fetchData = useCallback(async () => {
     try {
@@ -194,10 +72,6 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
     fetchData();
   }, [fetchData]);
 
-  const onGridReady = useCallback((params: GridReadyEvent) => {
-    gridApiRef.current = params.api;
-    params.api.sizeColumnsToFit();
-  }, []);
 
   const handleDeletePayment = useCallback(async (paymentId: string) => {
     if (window.confirm('Are you sure you want to delete this payment?')) {
@@ -211,38 +85,25 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
     }
   }, [fetchData]);
 
-  const onCellClicked = useCallback((event: any) => {
-    const target = event.event?.target;
-    if (target?.dataset?.action === 'edit') {
-      const paymentId = target.dataset.id;
-      const payment = payments.find(p => p._id === paymentId);
-      if (payment) {
-        setEditingPayment(payment);
-        setFormData({
-          clientId: typeof payment.clientId === 'string' ? payment.clientId : payment.clientId._id || '',
-          bookingId: typeof payment.bookingId === 'string' ? payment.bookingId : payment.bookingId?._id,
-          amount: payment.amount,
-          currency: payment.currency as 'EUR' | 'USD' | 'CZK' | 'PLN',
-          status: payment.status,
-          paymentMethod: payment.paymentMethod as 'bank_transfer' | 'card' | 'cash' | 'paypal' | 'crypto' | 'stripe' | 'wise' | 'revolut' | 'other',
-          description: payment.description || '',
-          transactionId: payment.transactionId || '',
-          paymentDate: new Date(payment.paymentDate).toISOString().split('T')[0],
-          notes: payment.notes || '',
-          isDeposit: payment.isDeposit,
-          isFinalPayment: payment.isFinalPayment,
-          exchangeRate: payment.exchangeRate
-        });
-        setShowAddForm(true);
-      }
-    } else if (target?.dataset?.action === 'delete') {
-      const paymentId = target.dataset.id;
-      handleDeletePayment(paymentId);
-    } else if (target?.dataset?.action === 'refund') {
-      const paymentId = target.dataset.id;
-      handleRefund(paymentId);
-    }
-  }, [payments, handleDeletePayment]);
+  const handleEditPayment = useCallback((payment: Payment) => {
+    setEditingPayment(payment);
+    setFormData({
+      clientId: typeof payment.clientId === 'string' ? payment.clientId : payment.clientId._id || '',
+      bookingId: typeof payment.bookingId === 'string' ? payment.bookingId : payment.bookingId?._id,
+      amount: payment.amount,
+      currency: payment.currency as 'EUR' | 'USD' | 'CZK' | 'PLN',
+      status: payment.status,
+      paymentMethod: payment.paymentMethod as 'bank_transfer' | 'card' | 'cash' | 'paypal' | 'crypto' | 'stripe' | 'wise' | 'revolut' | 'other',
+      description: payment.description || '',
+      transactionId: payment.transactionId || '',
+      paymentDate: new Date(payment.paymentDate).toISOString().split('T')[0],
+      notes: payment.notes || '',
+      isDeposit: payment.isDeposit,
+      isFinalPayment: payment.isFinalPayment,
+      exchangeRate: payment.exchangeRate
+    });
+    setShowAddForm(true);
+  }, []);
 
   const handleRefund = async (paymentId: string) => {
     const payment = payments.find(p => p._id === paymentId);
@@ -500,23 +361,147 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
         </div>
       )}
 
-      {/* Payments Grid */}
-      <div className="payments-grid">
-        <div className="ag-theme-alpine" style={{ height: 400, width: '100%' }}>
-          <AgGridReact
-            rowData={payments}
-            columnDefs={columnDefs}
-            defaultColDef={defaultColDef}
-            onGridReady={onGridReady}
-            onCellClicked={onCellClicked}
-            rowSelection="multiple"
-            suppressRowClickSelection={true}
-            pagination={true}
-            paginationPageSize={15}
-            enableBrowserTooltips={true}
-            headerHeight={40}
-            rowHeight={45}
-          />
+      {/* Payments Table */}
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Client
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Amount
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Type
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Method
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Description
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Transaction ID
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Date
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {payments.map((payment: any) => {
+                const client = typeof payment.clientId === 'object' ? payment.clientId : null;
+                const clientName = client ? `${client.firstName || ''} ${client.lastName || ''}`.trim() : 'Unknown Client';
+
+                const getStatusColor = (status: string) => {
+                  switch (status) {
+                    case 'completed': return 'bg-green-100 text-green-800';
+                    case 'pending': return 'bg-yellow-100 text-yellow-800';
+                    case 'failed': return 'bg-red-100 text-red-800';
+                    case 'refunded': return 'bg-gray-100 text-gray-800';
+                    default: return 'bg-gray-100 text-gray-800';
+                  }
+                };
+
+                const getPaymentType = () => {
+                  if (payment.isDeposit) return '🏠 Deposit';
+                  if (payment.isFinalPayment) return '✅ Final Payment';
+                  return '💰 Payment';
+                };
+
+                const getPaymentMethodDisplay = (method: string) => {
+                  const methodIcons = {
+                    bank_transfer: '🏦',
+                    card: '💳',
+                    cash: '💵',
+                    paypal: '🌐',
+                    crypto: '₿',
+                    stripe: '💳',
+                    wise: '🏦',
+                    revolut: '🏦',
+                    other: '📄'
+                  };
+                  const icon = methodIcons[method as keyof typeof methodIcons] || '📄';
+                  const displayName = method?.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || '';
+                  return `${icon} ${displayName}`;
+                };
+
+                return (
+                  <tr key={payment._id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {clientName}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {payment.currency === 'EUR'
+                        ? `€${payment.amount.toLocaleString()}`
+                        : `${payment.amount.toLocaleString()} ${payment.currency}${payment.amountInEUR ? ` (€${payment.amountInEUR.toLocaleString()})` : ''}`
+                      }
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {getPaymentType()}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {getPaymentMethodDisplay(payment.paymentMethod)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(payment.status)}`}>
+                        {payment.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {payment.description || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {payment.transactionId || '-'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : 'N/A'}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleEditPayment(payment)}
+                          className="text-indigo-600 hover:text-indigo-900"
+                          title="Edit Payment"
+                        >
+                          <Icon icon={FiEdit2} className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeletePayment(payment._id)}
+                          className="text-red-600 hover:text-red-900"
+                          title="Delete Payment"
+                        >
+                          <Icon icon={FiTrash2} className="w-4 h-4" />
+                        </button>
+                        {payment.status === 'completed' && (
+                          <button
+                            onClick={() => handleRefund(payment._id)}
+                            className="text-orange-600 hover:text-orange-900"
+                            title="Process Refund"
+                          >
+                            <Icon icon={FiRefreshCw} className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {payments.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              No payments found
+            </div>
+          )}
         </div>
       </div>
     </div>

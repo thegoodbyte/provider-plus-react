@@ -1,14 +1,14 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { AgGridReact } from 'ag-grid-react';
-import { ColDef, GridApi, GridReadyEvent, ICellRendererParams, ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
+import React, { useState, useEffect, useCallback } from 'react';
 import { remindersApi, clientsApi, retreatsApi, bookingsApi } from '../services/api';
 import { Reminder, Client, Retreat, RetreatClient } from '../types';
 import { AutoReminderTemplates } from './AutoReminderTemplates';
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-alpine.css';
+import { FiPlus, FiEdit2, FiTrash2, FiCheck, FiClock, FiUser, FiCalendar } from 'react-icons/fi';
 import './ClientsGrid.css';
 
-ModuleRegistry.registerModules([AllCommunityModule]);
+// Simple wrapper to fix TypeScript icon issues
+const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
+  return <IconComponent className={className} />;
+};
 
 interface ReminderWithDetails {
   _id?: string;
@@ -49,7 +49,6 @@ const RemindersPage: React.FC = () => {
   const [selectedClientFilter, setSelectedClientFilter] = useState<string>('');
   const [selectedRetreatFilter, setSelectedRetreatFilter] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'reminders' | 'templates'>('reminders');
-  const gridApiRef = useRef<GridApi | null>(null);
 
   const fetchReminders = useCallback(async () => {
     try {
@@ -154,137 +153,51 @@ const RemindersPage: React.FC = () => {
     setFilteredReminders(filtered);
   }, [selectedClientFilter, selectedRetreatFilter, reminders]);
 
-  const StatusCellRenderer = (params: ICellRendererParams) => {
-    const status = params.value?.toLowerCase() || 'pending';
-    const statusClass = `status-${status}`;
-    return `<span class="status-badge ${statusClass}">${params.value || 'Pending'}</span>`;
-  };
-
-  const PriorityCellRenderer = (params: ICellRendererParams) => {
-    const priority = params.value?.toLowerCase() || 'medium';
-    const priorityIcons = {
-      low: '🟢',
-      medium: '🟡',
-      high: '🟠',
-      urgent: '🔴'
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      pending: 'bg-yellow-100 text-yellow-800',
+      sent: 'bg-blue-100 text-blue-800',
+      completed: 'bg-green-100 text-green-800',
+      dismissed: 'bg-gray-100 text-gray-800',
+      overdue: 'bg-red-100 text-red-800'
     };
-    const icon = priorityIcons[priority as keyof typeof priorityIcons] || '🟡';
-    const displayName = priority.charAt(0).toUpperCase() + priority.slice(1);
-    return `${icon} ${displayName}`;
+    return colors[status] || 'bg-yellow-100 text-yellow-800';
   };
 
-  const ActionsCellRenderer = (params: ICellRendererParams) => {
-    const id = params.data._id || '';
-    return `
-      <div class="cell-actions">
-        <button class="edit-btn" data-action="edit" data-id="${id}">✏️</button>
-        <button class="delete-btn" data-action="delete" data-id="${id}">🗑️</button>
-        <button class="complete-btn" data-action="complete" data-id="${id}">✅</button>
-      </div>
-    `;
+  const getPriorityColor = (priority: string) => {
+    const colors: Record<string, string> = {
+      low: 'bg-green-100 text-green-800',
+      medium: 'bg-yellow-100 text-yellow-800',
+      high: 'bg-orange-100 text-orange-800',
+      urgent: 'bg-red-100 text-red-800'
+    };
+    return colors[priority] || 'bg-yellow-100 text-yellow-800';
   };
 
-  const columnDefs: ColDef[] = [
-    {
-      headerName: 'Title',
-      field: 'title',
-      width: 200,
-      pinned: 'left',
-      cellStyle: { fontWeight: 'bold' }
-    },
-    {
-      headerName: 'Client',
-      field: 'clientName',
-      width: 150
-    },
-    {
-      headerName: 'Retreat',
-      field: 'retreatName',
-      width: 150
-    },
-    {
-      headerName: 'Priority',
-      field: 'priority',
-      width: 120,
-      cellRenderer: PriorityCellRenderer
-    },
-    {
-      headerName: 'Status',
-      field: 'status',
-      width: 120,
-      cellRenderer: StatusCellRenderer
-    },
-    {
-      headerName: 'Due Date',
-      field: 'dueDate',
-      width: 120,
-      cellRenderer: (params: ICellRendererParams) => {
-        if (!params.value) return '';
-        // Handle date properly to avoid timezone issues
-        const date = new Date(params.value + 'T00:00:00');
-        return date.toLocaleDateString();
-      }
-    },
-    {
-      headerName: 'Action Type',
-      field: 'actionType',
-      width: 140
-    },
-    {
-      headerName: 'Description',
-      field: 'description',
-      width: 300,
-      flex: 1
-    },
-    {
-      headerName: 'Actions',
-      field: 'actions',
-      width: 120,
-      cellRenderer: ActionsCellRenderer,
-      sortable: false,
-      filter: false,
-      pinned: 'right'
-    }
-  ];
-
-  const defaultColDef: ColDef = {
-    sortable: true,
-    filter: true,
-    resizable: true,
+  const formatDate = (date: string | Date) => {
+    if (!date) return 'N/A';
+    const dateObj = new Date(date);
+    return dateObj.toLocaleDateString();
   };
 
-  const onGridReady = useCallback((params: GridReadyEvent) => {
-    gridApiRef.current = params.api;
-    params.api.sizeColumnsToFit();
-  }, []);
+  const handleEditReminder = (reminder: ReminderWithDetails) => {
+    setEditingReminder(reminder);
+    const dateValue = reminder.dueDate ?
+      new Date(reminder.dueDate + 'T00:00:00').toLocaleDateString('en-CA') :
+      new Date().toLocaleDateString('en-CA');
 
-  const onCellClicked = useCallback((event: any) => {
-    const target = event.event?.target;
-    if (target?.dataset?.action === 'edit') {
-      const reminderId = target.dataset.id;
-      const reminder = reminders.find(r => r._id === reminderId);
-      if (reminder) {
-        setEditingReminder(reminder);
-        setFormData({
-          title: reminder.title,
-          description: reminder.description,
-          dueDate: new Date(reminder.dueDate).toISOString().split('T')[0],
-          priority: reminder.priority || 'medium',
-          actionType: reminder.actionType as any,
-          notes: reminder.notes || '',
-          clientId: reminder.clientId,
-          retreatId: reminder.retreatId
-        });
-        setShowAddForm(true);
-      }
-    } else if (target?.dataset?.action === 'delete') {
-      const reminderId = target.dataset.id;
-      handleDeleteReminder(reminderId);
-    } else if (target?.dataset?.action === 'complete') {
-      const reminderId = target.dataset.id;
-      handleCompleteReminder(reminderId);
-    }
-  }, [reminders]);
+    setFormData({
+      title: reminder.title || '',
+      description: reminder.description || '',
+      dueDate: dateValue,
+      priority: (reminder.priority as any) || 'medium',
+      actionType: (reminder.actionType as any) || 'general',
+      notes: reminder.notes || '',
+      clientId: reminder.clientId || '',
+      retreatId: reminder.retreatId || ''
+    });
+    setShowAddForm(true);
+  };
 
   const handleDeleteReminder = async (reminderId: string) => {
     if (window.confirm('Are you sure you want to delete this reminder?')) {
@@ -414,10 +327,11 @@ const RemindersPage: React.FC = () => {
 
           <button
             onClick={() => setShowAddForm(true)}
-            className="add-btn"
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50"
             disabled={showAddForm}
           >
-            ➕ Add New Reminder
+            <Icon icon={FiPlus} className="w-4 h-4" />
+            Add New Reminder
           </button>
         </div>
         )}
@@ -592,22 +506,111 @@ const RemindersPage: React.FC = () => {
       )}
 
       {/* Reminders Grid */}
-      <div className="reminders-grid">
-        <div className="ag-theme-alpine" style={{ height: 600, width: '100%' }}>
-          <AgGridReact
-            rowData={filteredReminders}
-            columnDefs={columnDefs}
-            defaultColDef={defaultColDef}
-            onGridReady={onGridReady}
-            onCellClicked={onCellClicked}
-            rowSelection="multiple"
-            suppressRowClickSelection={true}
-            pagination={true}
-            paginationPageSize={20}
-            enableBrowserTooltips={true}
-            headerHeight={40}
-            rowHeight={45}
-          />
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Title
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Client
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Retreat
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Priority
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Due Date
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Action Type
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredReminders.map((reminder) => (
+                <tr key={reminder._id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">{reminder.title}</div>
+                    <div className="text-sm text-gray-500 truncate max-w-xs">
+                      {reminder.description}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center text-sm text-gray-900">
+                      <Icon icon={FiUser} className="w-4 h-4 mr-2 text-gray-400" />
+                      {reminder.clientName}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center text-sm text-gray-900">
+                      <Icon icon={FiCalendar} className="w-4 h-4 mr-2 text-gray-400" />
+                      {reminder.retreatName}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityColor(reminder.priority || 'medium')}`}>
+                      {reminder.priority || 'medium'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(reminder.status || 'pending')}`}>
+                      {reminder.status || 'pending'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center text-sm text-gray-900">
+                      <Icon icon={FiClock} className="w-4 h-4 mr-2 text-gray-400" />
+                      {formatDate(reminder.dueDate)}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {reminder.actionType}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleEditReminder(reminder)}
+                        className="text-indigo-600 hover:text-indigo-900"
+                        title="Edit"
+                      >
+                        <Icon icon={FiEdit2} className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleCompleteReminder(reminder._id!)}
+                        className="text-green-600 hover:text-green-900"
+                        title="Mark Complete"
+                      >
+                        <Icon icon={FiCheck} className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteReminder(reminder._id!)}
+                        className="text-red-600 hover:text-red-900"
+                        title="Delete"
+                      >
+                        <Icon icon={FiTrash2} className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {filteredReminders.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              No reminders found
+            </div>
+          )}
         </div>
       </div>
         </>

@@ -1,13 +1,12 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { AgGridReact } from 'ag-grid-react';
-import { ColDef, GridApi, GridReadyEvent, ICellRendererParams, ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
+import React, { useState, useEffect, useCallback } from 'react';
 import { clientMedicalApi } from '../services/api';
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-alpine.css';
-import './ClientsGrid.css';
+import AppleButton from './AppleButton';
+import { FiRefreshCw, FiDownload, FiMail, FiFileText, FiCheck, FiX } from 'react-icons/fi';
 
-// Register AG Grid modules
-ModuleRegistry.registerModules([AllCommunityModule]);
+// Simple wrapper to fix TypeScript icon issues
+const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
+  return <IconComponent className={className} />;
+};
 
 interface MedicalGridData {
   _id: string;
@@ -43,7 +42,6 @@ const MedicalGrid: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [filteredData, setFilteredData] = useState<MedicalGridData[]>([]);
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const gridApiRef = useRef<GridApi | null>(null);
 
   const fetchMedicalData = useCallback(async () => {
     try {
@@ -120,191 +118,90 @@ const MedicalGrid: React.FC = () => {
     setFilteredData(filtered);
   }, [medicalData, filterStatus]);
 
-  const onGridReady = useCallback((params: GridReadyEvent) => {
-    gridApiRef.current = params.api;
-    params.api.sizeColumnsToFit();
-  }, []);
-
-  const statusRenderer = useCallback((params: ICellRendererParams) => {
-    const status = params.value?.toLowerCase() || 'pending';
-    const statusClass = `status-${status}`;
-    return `<span class="status-badge ${statusClass}">${params.value || 'Pending'}</span>`;
-  }, []);
-
-  const dateRenderer = useCallback((params: ICellRendererParams) => {
-    if (!params.value) return '<span style="color: #999;">Not set</span>';
-    return new Date(params.value).toLocaleDateString();
-  }, []);
-
-  const booleanRenderer = useCallback((params: ICellRendererParams) => {
-    const isTrue = params.value === true;
-    return `<span class="status-badge ${isTrue ? 'status-approved' : 'status-pending'}">${isTrue ? 'Yes' : 'No'}</span>`;
-  }, []);
-
-  const notesRenderer = useCallback((params: ICellRendererParams) => {
-    if (!params.value) return '<span style="color: #999;">No notes</span>';
-    const truncated = params.value.length > 50 ? `${params.value.substring(0, 50)}...` : params.value;
-    return `<span title="${params.value}">${truncated}</span>`;
-  }, []);
-
-  const columnDefs: ColDef[] = [
-    {
-      headerName: 'Client',
-      field: 'clientName',
-      width: 180,
-      pinned: 'left',
-      cellStyle: { fontWeight: 'bold' }
-    },
-    {
-      headerName: 'Retreat',
-      field: 'retreatName',
-      width: 200,
-      pinned: 'left'
-    },
-    {
-      headerName: 'Location',
-      field: 'retreatLocation',
-      width: 150
-    },
-    {
-      headerName: 'Start Date',
-      field: 'retreatStartDate',
-      width: 120,
-      cellRenderer: dateRenderer
-    },
-    {
-      headerName: 'EKG Status',
-      field: 'ekgStatus',
-      width: 120,
-      cellRenderer: statusRenderer
-    },
-    {
-      headerName: 'EKG Received',
-      field: 'ekgReceivedDate',
-      width: 130,
-      cellRenderer: dateRenderer
-    },
-    {
-      headerName: 'EKG Sent to Advisor',
-      field: 'ekgSentToAdvisorDate',
-      width: 150,
-      cellRenderer: dateRenderer
-    },
-    {
-      headerName: 'EKG File',
-      field: 'ekgFileName',
-      width: 150,
-      cellRenderer: (params: ICellRendererParams) => {
-        if (!params.value) return '<span style="color: #999;">No file</span>';
-        return `<span title="${params.value}">📄 ${params.value}</span>`;
-      }
-    },
-    {
-      headerName: 'EKG Notes',
-      field: 'ekgAdvisorNotes',
-      width: 200,
-      cellRenderer: notesRenderer
-    },
-    {
-      headerName: 'Liver Panel Status',
-      field: 'liverPanelStatus',
-      width: 140,
-      cellRenderer: statusRenderer
-    },
-    {
-      headerName: 'Liver Received',
-      field: 'liverPanelReceivedDate',
-      width: 130,
-      cellRenderer: dateRenderer
-    },
-    {
-      headerName: 'Liver Sent to Advisor',
-      field: 'liverPanelSentToAdvisorDate',
-      width: 160,
-      cellRenderer: dateRenderer
-    },
-    {
-      headerName: 'Liver File',
-      field: 'liverPanelFileName',
-      width: 150,
-      cellRenderer: (params: ICellRendererParams) => {
-        if (!params.value) return '<span style="color: #999;">No file</span>';
-        return `<span title="${params.value}">📄 ${params.value}</span>`;
-      }
-    },
-    {
-      headerName: 'Liver Notes',
-      field: 'liverPanelAdvisorNotes',
-      width: 200,
-      cellRenderer: notesRenderer
-    },
-    {
-      headerName: 'Medical Clearance',
-      field: 'finalMedicalClearance',
-      width: 140,
-      cellRenderer: booleanRenderer
-    },
-    {
-      headerName: 'Clearance Date',
-      field: 'medicalClearanceDate',
-      width: 130,
-      cellRenderer: dateRenderer
-    },
-    {
-      headerName: 'Clearance Notes',
-      field: 'medicalClearanceNotes',
-      width: 200,
-      cellRenderer: notesRenderer
-    },
-    {
-      headerName: 'Medical Advisor',
-      field: 'medicalAdvisorName',
-      width: 150,
-      cellRenderer: (params: ICellRendererParams) => {
-        if (!params.value) return '<span style="color: #999;">Not assigned</span>';
-        return params.value;
-      }
-    },
-    {
-      headerName: 'Advisor Email',
-      field: 'medicalAdvisorEmail',
-      width: 200,
-      cellRenderer: (params: ICellRendererParams) => {
-        if (!params.value) return '<span style="color: #999;">No email</span>';
-        return `<a href="mailto:${params.value}">${params.value}</a>`;
-      }
-    }
-  ];
-
-  const defaultColDef: ColDef = {
-    sortable: true,
-    filter: true,
-    resizable: true,
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      pending: 'bg-yellow-100 text-yellow-800',
+      received: 'bg-blue-100 text-blue-800',
+      reviewed: 'bg-purple-100 text-purple-800',
+      approved: 'bg-green-100 text-green-800',
+      rejected: 'bg-red-100 text-red-800'
+    };
+    return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
+  const formatDate = (date: string | null) => {
+    if (!date) return 'Not set';
+    return new Date(date).toLocaleDateString();
+  };
+
+  const formatNotes = (notes: string | null, maxLength = 50) => {
+    if (!notes) return 'No notes';
+    return notes.length > maxLength ? `${notes.substring(0, maxLength)}...` : notes;
+  };
+
+
   const handleExport = useCallback(() => {
-    if (gridApiRef.current) {
-      gridApiRef.current.exportDataAsCsv({
-        fileName: `medical-tracking-${new Date().toISOString().split('T')[0]}.csv`
-      });
-    }
-  }, []);
+    const csvContent = [
+      ['Client', 'Retreat', 'Location', 'Start Date', 'EKG Status', 'EKG Received', 'EKG Sent', 'EKG File', 'EKG Notes', 'Liver Status', 'Liver Received', 'Liver Sent', 'Liver File', 'Liver Notes', 'Medical Clearance', 'Clearance Date', 'Clearance Notes', 'Medical Advisor', 'Advisor Email'].join(','),
+      ...filteredData.map(record => [
+        record.clientName,
+        record.retreatName,
+        record.retreatLocation,
+        formatDate(record.retreatStartDate),
+        record.ekgStatus,
+        formatDate(record.ekgReceivedDate),
+        formatDate(record.ekgSentToAdvisorDate),
+        record.ekgFileName || '',
+        record.ekgAdvisorNotes || '',
+        record.liverPanelStatus,
+        formatDate(record.liverPanelReceivedDate),
+        formatDate(record.liverPanelSentToAdvisorDate),
+        record.liverPanelFileName || '',
+        record.liverPanelAdvisorNotes || '',
+        record.finalMedicalClearance ? 'Yes' : 'No',
+        formatDate(record.medicalClearanceDate),
+        record.medicalClearanceNotes || '',
+        record.medicalAdvisorName || '',
+        record.medicalAdvisorEmail || ''
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `medical-tracking-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  }, [filteredData]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-gray-500">Loading medical data...</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="grid-container">
-      <div className="grid-header">
-        <div className="header-left">
-          <h1>🏥 Medical Tracking</h1>
-          <p>Monitor EKG and liver panel status across all retreats and clients</p>
+    <div className="p-6 h-full">
+      <div className="mb-6 flex justify-between items-center">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900 flex items-center">
+            🏥 Medical Tracking
+          </h1>
+          <p className="text-gray-600">Monitor EKG and liver panel status across all retreats and clients</p>
         </div>
-        <div className="header-actions">
-          <div className="filter-group">
-            <label htmlFor="status-filter">Filter by Status:</label>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <label htmlFor="status-filter" className="text-sm font-medium text-gray-700">
+              Filter by Status:
+            </label>
             <select
               id="status-filter"
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="filter-select"
+              className="border border-gray-300 rounded-md px-3 py-2 text-sm"
             >
               <option value="all">All Records</option>
               <option value="pending">Pending Items</option>
@@ -315,49 +212,176 @@ const MedicalGrid: React.FC = () => {
               <option value="not-cleared">Not Cleared</option>
             </select>
           </div>
-          <button onClick={handleExport} className="export-btn">
-            📊 Export CSV
-          </button>
-          <button onClick={fetchMedicalData} className="refresh-btn">
-            🔄 Refresh
-          </button>
+          <AppleButton onClick={handleExport} className="apple-button-secondary">
+            <Icon icon={FiDownload} className="w-4 h-4 mr-2" />
+            Export CSV
+          </AppleButton>
+          <AppleButton onClick={fetchMedicalData} className="apple-button-primary">
+            <Icon icon={FiRefreshCw} className="w-4 h-4 mr-2" />
+            Refresh
+          </AppleButton>
         </div>
       </div>
 
-      <div className="summary-stats" style={{ marginBottom: '20px', display: 'flex', gap: '16px' }}>
-        <div className="stat-card">
-          <div className="stat-number">{filteredData.length}</div>
-          <div className="stat-label">Total Records</div>
+      <div className="mb-6 grid grid-cols-4 gap-4">
+        <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <div className="text-2xl font-bold text-gray-900">{filteredData.length}</div>
+          <div className="text-sm text-gray-600">Total Records</div>
         </div>
-        <div className="stat-card">
-          <div className="stat-number">{filteredData.filter(r => r.ekgStatus === 'pending' || r.liverPanelStatus === 'pending').length}</div>
-          <div className="stat-label">Pending Items</div>
+        <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <div className="text-2xl font-bold text-yellow-600">
+            {filteredData.filter(r => r.ekgStatus === 'pending' || r.liverPanelStatus === 'pending').length}
+          </div>
+          <div className="text-sm text-gray-600">Pending Items</div>
         </div>
-        <div className="stat-card">
-          <div className="stat-number">{filteredData.filter(r => r.finalMedicalClearance).length}</div>
-          <div className="stat-label">Cleared</div>
+        <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <div className="text-2xl font-bold text-green-600">
+            {filteredData.filter(r => r.finalMedicalClearance).length}
+          </div>
+          <div className="text-sm text-gray-600">Cleared</div>
         </div>
-        <div className="stat-card">
-          <div className="stat-number">{filteredData.filter(r => (r.ekgStatus === 'received' || r.liverPanelStatus === 'received') && !r.finalMedicalClearance).length}</div>
-          <div className="stat-label">Needs Review</div>
+        <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <div className="text-2xl font-bold text-blue-600">
+            {filteredData.filter(r => (r.ekgStatus === 'received' || r.liverPanelStatus === 'received') && !r.finalMedicalClearance).length}
+          </div>
+          <div className="text-sm text-gray-600">Needs Review</div>
         </div>
       </div>
 
-      <div className="ag-theme-alpine grid-wrapper">
-        <AgGridReact
-          rowData={filteredData}
-          columnDefs={columnDefs}
-          defaultColDef={defaultColDef}
-          onGridReady={onGridReady}
-          rowSelection="multiple"
-          suppressRowClickSelection={true}
-          loading={isLoading}
-          pagination={true}
-          paginationPageSize={50}
-          enableBrowserTooltips={true}
-          headerHeight={40}
-          rowHeight={45}
-        />
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Client
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Retreat
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Start Date
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  EKG Status
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  EKG Received
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Liver Status
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Liver Received
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Medical Clearance
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Advisor
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredData.map((record) => (
+                <tr key={record._id} className="hover:bg-gray-50">
+                  <td className="px-4 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">{record.clientName}</div>
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{record.retreatName}</div>
+                    <div className="text-xs text-gray-500">{record.retreatLocation}</div>
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {formatDate(record.retreatStartDate)}
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(record.ekgStatus)}`}>
+                      {record.ekgStatus}
+                    </span>
+                    {record.ekgFileName && (
+                      <div className="text-xs text-gray-500 mt-1 flex items-center">
+                        <Icon icon={FiFileText} className="w-3 h-3 mr-1" />
+                        {record.ekgFileName}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {formatDate(record.ekgReceivedDate)}
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(record.liverPanelStatus)}`}>
+                      {record.liverPanelStatus}
+                    </span>
+                    {record.liverPanelFileName && (
+                      <div className="text-xs text-gray-500 mt-1 flex items-center">
+                        <Icon icon={FiFileText} className="w-3 h-3 mr-1" />
+                        {record.liverPanelFileName}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {formatDate(record.liverPanelReceivedDate)}
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      {record.finalMedicalClearance ? (
+                        <Icon icon={FiCheck} className="w-5 h-5 text-green-500" />
+                      ) : (
+                        <Icon icon={FiX} className="w-5 h-5 text-red-500" />
+                      )}
+                      <span className="ml-2 text-sm text-gray-900">
+                        {record.finalMedicalClearance ? 'Cleared' : 'Not Cleared'}
+                      </span>
+                    </div>
+                    {record.medicalClearanceDate && (
+                      <div className="text-xs text-gray-500">
+                        {formatDate(record.medicalClearanceDate)}
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{record.medicalAdvisorName || 'Not assigned'}</div>
+                    {record.medicalAdvisorEmail && (
+                      <div className="text-xs text-gray-500">
+                        <a href={`mailto:${record.medicalAdvisorEmail}`} className="text-blue-600 hover:text-blue-900">
+                          {record.medicalAdvisorEmail}
+                        </a>
+                      </div>
+                    )}
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex items-center gap-2">
+                      {record.medicalAdvisorEmail && (
+                        <button
+                          onClick={() => window.location.href = `mailto:${record.medicalAdvisorEmail}`}
+                          className="text-blue-600 hover:text-blue-900"
+                          title="Email Advisor"
+                        >
+                          <Icon icon={FiMail} className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {filteredData.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              No medical records found
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between">
+        <div className="text-sm text-gray-700">
+          Showing {filteredData.length} record{filteredData.length !== 1 ? 's' : ''}
+        </div>
       </div>
     </div>
   );

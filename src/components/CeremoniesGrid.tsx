@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { AgGridReact } from 'ag-grid-react';
-import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { ceremoniesApi } from '../services/api';
 import { Ceremony } from '../types';
 import { Button, Modal, Form, Input, DatePicker, TimePicker, Select, message, Popconfirm } from 'antd';
@@ -15,120 +13,25 @@ interface CeremoniesGridProps {
 const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId }) => {
   const [ceremonies, setCeremonies] = useState<Ceremony[]>([]);
   const [loading, setLoading] = useState(false);
-  const [gridApi, setGridApi] = useState<GridApi | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingCeremony, setEditingCeremony] = useState<Ceremony | null>(null);
   const [trackingCeremonyId, setTrackingCeremonyId] = useState<string | null>(null);
   const [form] = Form.useForm();
 
-  const columnDefs: ColDef[] = [
-    {
-      headerName: 'Ceremony #',
-      field: 'ceremonyNumber',
-      width: 120,
-      sortable: true
-    },
-    {
-      headerName: 'Date',
-      field: 'date',
-      width: 120,
-      sortable: true,
-      valueFormatter: (params) => {
-        if (!params.value) return '';
-        return moment(params.value).format('MM/DD/YYYY');
-      }
-    },
-    {
-      headerName: 'Start Time',
-      field: 'startTime',
-      width: 120,
-      sortable: true
-    },
-    {
-      headerName: 'End Time',
-      field: 'endTime',
-      width: 120,
-      sortable: true
-    },
-    {
-      headerName: 'Status',
-      field: 'status',
-      width: 130,
-      sortable: true,
-      cellRenderer: (params: any) => {
-        const status = params.value || 'scheduled';
-        const statusColors = {
-          scheduled: '#1890ff',
-          in_progress: '#faad14',
-          completed: '#52c41a',
-          cancelled: '#ff4d4f'
-        };
-        return (
-          <span style={{
-            color: statusColors[status as keyof typeof statusColors],
-            fontWeight: 'bold'
-          }}>
-            {status.replace('_', ' ').toUpperCase()}
-          </span>
-        );
-      }
-    },
-    {
-      headerName: 'Medical Approval',
-      field: 'medicalAdvisorApproval',
-      width: 150,
-      cellRenderer: (params: any) => {
-        if (params.value === true) return '✅ Approved';
-        if (params.value === false) return '❌ Not Approved';
-        return '⏳ Pending';
-      }
-    },
-    {
-      headerName: 'Medical Checks',
-      field: 'medicalChecksCompleted',
-      width: 150,
-      cellRenderer: (params: any) => {
-        return params.value ? '✅ Complete' : '⏳ Pending';
-      }
-    },
-    {
-      headerName: 'Actions',
-      field: 'actions',
-      width: 140,
-      cellRenderer: (params: any) => (
-        <div style={{ display: 'flex', gap: '4px' }}>
-          <Button
-            type="text"
-            icon={<UserOutlined />}
-            onClick={() => setTrackingCeremonyId(params.data._id)}
-            size="small"
-            title="Track Participants"
-          />
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            onClick={() => handleEdit(params.data)}
-            size="small"
-            title="Edit Ceremony"
-          />
-          <Popconfirm
-            title="Are you sure you want to delete this ceremony?"
-            onConfirm={() => handleDelete(params.data._id)}
-            okText="Yes"
-            cancelText="No"
-          >
-            <Button
-              type="text"
-              icon={<DeleteOutlined />}
-              danger
-              size="small"
-              title="Delete Ceremony"
-            />
-          </Popconfirm>
-        </div>
-      )
-    }
-  ];
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      scheduled: 'bg-blue-100 text-blue-800',
+      in_progress: 'bg-yellow-100 text-yellow-800',
+      completed: 'bg-green-100 text-green-800',
+      cancelled: 'bg-red-100 text-red-800'
+    };
+    return colors[status] || 'bg-blue-100 text-blue-800';
+  };
+
+  const formatDate = (date: string | Date) => {
+    if (!date) return '';
+    return moment(date).format('MM/DD/YYYY');
+  };
 
   useEffect(() => {
     loadCeremonies();
@@ -145,11 +48,6 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId }) => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const onGridReady = (params: GridReadyEvent) => {
-    setGridApi(params.api);
-    params.api.sizeColumnsToFit();
   };
 
   const handleAdd = () => {
@@ -229,14 +127,112 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId }) => {
         </Button>
       </div>
 
-      <div className="ag-theme-alpine" style={{ height: '100%', width: '100%' }}>
-        <AgGridReact
-          columnDefs={columnDefs}
-          rowData={ceremonies}
-          onGridReady={onGridReady}
-          loading={loading}
-          animateRows={true}
-        />
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Ceremony #
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Date
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Start Time
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  End Time
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Medical Approval
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Medical Checks
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {ceremonies.map((ceremony) => (
+                <tr key={ceremony._id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {ceremony.ceremonyNumber}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {formatDate(ceremony.date)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {ceremony.startTime}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {ceremony.endTime}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(ceremony.status || 'scheduled')}`}>
+                      {(ceremony.status || 'scheduled').replace('_', ' ').toUpperCase()}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {ceremony.medicalAdvisorApproval === true ? '✅ Approved' :
+                     ceremony.medicalAdvisorApproval === false ? '❌ Not Approved' :
+                     '⏳ Pending'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {ceremony.medicalChecksCompleted ? '✅ Complete' : '⏳ Pending'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      <Button
+                        type="text"
+                        icon={<UserOutlined />}
+                        onClick={() => setTrackingCeremonyId(ceremony._id!)}
+                        size="small"
+                        title="Track Participants"
+                      />
+                      <Button
+                        type="text"
+                        icon={<EditOutlined />}
+                        onClick={() => handleEdit(ceremony)}
+                        size="small"
+                        title="Edit Ceremony"
+                      />
+                      <Popconfirm
+                        title="Are you sure you want to delete this ceremony?"
+                        onConfirm={() => handleDelete(ceremony._id!)}
+                        okText="Yes"
+                        cancelText="No"
+                      >
+                        <Button
+                          type="text"
+                          icon={<DeleteOutlined />}
+                          danger
+                          size="small"
+                          title="Delete Ceremony"
+                        />
+                      </Popconfirm>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {ceremonies.length === 0 && !loading && (
+            <div className="text-center py-8 text-gray-500">
+              No ceremonies found
+            </div>
+          )}
+          {loading && (
+            <div className="text-center py-8 text-gray-500">
+              Loading ceremonies...
+            </div>
+          )}
+        </div>
       </div>
 
       <Modal

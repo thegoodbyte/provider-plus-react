@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { AgGridReact } from 'ag-grid-react';
 import { ColDef, GridApi, GridReadyEvent, ICellRendererParams, ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
-import { screeningClientsApi, clientsApi } from '../services/api';
-import { ScreeningClient } from '../types';
+import { clientsApi } from '../services/api';
+import { Client } from '../types';
 import { Collapse } from 'antd';
 import 'ag-grid-community/styles/ag-grid.css';
 import 'ag-grid-community/styles/ag-theme-alpine.css';
@@ -13,11 +13,11 @@ const { Panel } = Collapse;
 ModuleRegistry.registerModules([AllCommunityModule]);
 
 const ScreeningClientsGrid: React.FC = () => {
-  const [screeningClients, setScreeningClients] = useState<ScreeningClient[]>([]);
+  const [screeningClients, setScreeningClients] = useState<Client[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingClient, setEditingClient] = useState<ScreeningClient | null>(null);
-  const [formData, setFormData] = useState<Partial<ScreeningClient>>({});
+  const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [formData, setFormData] = useState<Partial<Client>>({});
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [showPotentialClientForm, setShowPotentialClientForm] = useState(false);
   const [savePotentialClient, setSavePotentialClient] = useState(false);
@@ -29,12 +29,36 @@ const ScreeningClientsGrid: React.FC = () => {
   });
   const gridApiRef = useRef<GridApi | null>(null);
 
+  // Generate unique screening ID
+  const generateScreeningId = () => {
+    const timestamp = Date.now();
+    const random = Math.floor(Math.random() * 1000);
+    return `ISCZ-P-${timestamp.toString().slice(-4)}${random.toString().padStart(3, '0')}`;
+  };
+
   const fetchScreeningClients = useCallback(async () => {
     try {
       setIsLoading(true);
-      const response = filterStatus === 'all' ?
-        await screeningClientsApi.getAll() :
-        await screeningClientsApi.getByStatus(filterStatus);
+      let response;
+      if (filterStatus === 'all') {
+        response = await clientsApi.getPotential();
+      } else {
+        response = await clientsApi.getAll();
+        // Filter by workflowStatus
+        const filtered = response.data.filter((client: Client) => {
+          if (filterStatus === 'initial' || filterStatus === 'in_progress') {
+            return client.workflowStatus === 'screening';
+          } else if (filterStatus === 'approved') {
+            return client.workflowStatus === 'approved';
+          } else if (filterStatus === 'rejected') {
+            return client.workflowStatus === 'rejected';
+          } else if (filterStatus === 'converted') {
+            return client.workflowStatus === 'booked';
+          }
+          return true;
+        });
+        response = { data: filtered };
+      }
       setScreeningClients(response.data || []);
     } catch (error: any) {
       console.error('Error fetching screening clients:', error);
@@ -56,9 +80,10 @@ const ScreeningClientsGrid: React.FC = () => {
   const handleAdd = () => {
     setEditingClient(null);
     setFormData({
-      status: 'initial',
+      workflowStatus: 'potential',
       priority: 'medium',
-      firstContactDate: new Date()
+      firstContactDate: new Date(),
+      status: 'active'
     });
     setSavePotentialClient(false);
     setPotentialClientData({
@@ -273,7 +298,7 @@ const ScreeningClientsGrid: React.FC = () => {
       if (formData.whatToChange?.trim()) cleanData.whatToChange = formData.whatToChange.trim();
 
       // Optional fields
-      if (formData.previousPlantMedicines?.trim()) cleanData.previousPlantMedicines = formData.previousPlantMedicines.trim();
+      if (formData.previousPlantMedicines) cleanData.previousPlantMedicines = formData.previousPlantMedicines;
       if (formData.spiritualBackground?.trim()) cleanData.spiritualBackground = formData.spiritualBackground.trim();
       if (formData.childhood?.trim()) cleanData.childhood = formData.childhood.trim();
       if (formData.traumaHistory?.trim()) cleanData.traumaHistory = formData.traumaHistory.trim();
@@ -281,8 +306,8 @@ const ScreeningClientsGrid: React.FC = () => {
       if (formData.addictionHistory?.trim()) cleanData.addictionHistory = formData.addictionHistory.trim();
 
       // Health fields
-      if (formData.heartConditions?.trim()) cleanData.heartConditions = formData.heartConditions.trim();
-      if (formData.liverConditions?.trim()) cleanData.liverConditions = formData.liverConditions.trim();
+      if (formData.heartConditions) cleanData.heartConditions = formData.heartConditions;
+      if (formData.liverConditions) cleanData.liverConditions = formData.liverConditions;
       if (formData.asthmaConditions?.trim()) cleanData.asthmaConditions = formData.asthmaConditions.trim();
       if (formData.otherMedicalComplications?.trim()) cleanData.otherMedicalComplications = formData.otherMedicalComplications.trim();
       if (formData.bloodPressureIssues?.trim()) cleanData.bloodPressureIssues = formData.bloodPressureIssues.trim();
@@ -290,20 +315,21 @@ const ScreeningClientsGrid: React.FC = () => {
       if (formData.psychoticEpisodes?.trim()) cleanData.psychoticEpisodes = formData.psychoticEpisodes.trim();
 
       // Substances
-      if (formData.currentMedications?.trim()) cleanData.currentMedications = formData.currentMedications.trim();
+      if (formData.currentMedications) cleanData.currentMedications = formData.currentMedications;
       if (formData.recreationalDrugs?.trim()) cleanData.recreationalDrugs = formData.recreationalDrugs.trim();
-      if (formData.vitaminsSupplements?.trim()) cleanData.vitaminsSupplements = formData.vitaminsSupplements.trim();
+      if (formData.vitaminsSupplements) cleanData.vitaminsSupplements = formData.vitaminsSupplements;
       if (formData.alcoholConsumption?.trim()) cleanData.alcoholConsumption = formData.alcoholConsumption.trim();
 
       // Safety
       if (formData.suicidalThoughts?.trim()) cleanData.suicidalThoughts = formData.suicidalThoughts.trim();
       if (formData.hospitalizations?.trim()) cleanData.hospitalizations = formData.hospitalizations.trim();
       if (formData.allergies?.trim()) cleanData.allergies = formData.allergies.trim();
-      if (formData.weightRange?.trim()) cleanData.weightRange = formData.weightRange.trim();
-      if (formData.pregnancyStatus?.trim()) cleanData.pregnancyStatus = formData.pregnancyStatus.trim();
+      if (formData.medicalIssues?.trim()) cleanData.medicalIssues = formData.medicalIssues.trim();
 
       // Admin
       if (formData.notes?.trim()) cleanData.notes = formData.notes.trim();
+      if (formData.observations?.trim()) cleanData.observations = formData.observations.trim();
+      if (formData.nzingoInsights?.trim()) cleanData.nzingoInsights = formData.nzingoInsights.trim();
       if (formData.followUpDate) cleanData.followUpDate = formData.followUpDate;
 
       if (editingClient) {
@@ -418,7 +444,22 @@ const ScreeningClientsGrid: React.FC = () => {
           });
         }}>
           <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '900px', maxHeight: '90vh', overflow: 'auto' }}>
-            <h3>{editingClient ? 'Edit Screening Client' : 'Add New Screening Client'}</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <h3 style={{ margin: 0 }}>{editingClient ? 'Edit Screening Client' : 'Add New Screening Client'}</h3>
+              {formData.screeningId && (
+                <div style={{
+                  backgroundColor: '#f0f8ff',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid #3498db',
+                  fontWeight: 'bold',
+                  color: '#2c3e50',
+                  fontSize: '14px'
+                }}>
+                  {formData.screeningId}
+                </div>
+              )}
+            </div>
             <form onSubmit={handleSubmit}>
               {/* Basic Information Section */}
               <div style={{ marginBottom: '20px' }}>
@@ -565,14 +606,80 @@ const ScreeningClientsGrid: React.FC = () => {
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                   <div className="form-group">
-                    <label htmlFor="previousPlantMedicines">Previous Plant Medicines:</label>
-                    <textarea
-                      id="previousPlantMedicines"
-                      name="previousPlantMedicines"
-                      value={formData.previousPlantMedicines || ''}
-                      onChange={handleInputChange}
-                      rows={2}
-                    />
+                    <label>Previous Plant Medicines:</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.previousPlantMedicines?.ayahuasca || false}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            previousPlantMedicines: {
+                              ...prev.previousPlantMedicines,
+                              ayahuasca: e.target.checked
+                            }
+                          }))}
+                        />
+                        Ayahuasca
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.previousPlantMedicines?.marijuana || false}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            previousPlantMedicines: {
+                              ...prev.previousPlantMedicines,
+                              marijuana: e.target.checked
+                            }
+                          }))}
+                        />
+                        Marijuana
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.previousPlantMedicines?.psilocybin || false}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            previousPlantMedicines: {
+                              ...prev.previousPlantMedicines,
+                              psilocybin: e.target.checked
+                            }
+                          }))}
+                        />
+                        Psilocybin
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.previousPlantMedicines?.other || false}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            previousPlantMedicines: {
+                              ...prev.previousPlantMedicines,
+                              other: e.target.checked
+                            }
+                          }))}
+                        />
+                        Other
+                      </label>
+                    </div>
+                    {formData.previousPlantMedicines?.other && (
+                      <input
+                        type="text"
+                        placeholder="Please specify other plant medicines"
+                        value={formData.previousPlantMedicines?.otherDetails || ''}
+                        onChange={(e) => setFormData(prev => ({
+                          ...prev,
+                          previousPlantMedicines: {
+                            ...prev.previousPlantMedicines,
+                            otherDetails: e.target.value
+                          }
+                        }))}
+                        style={{ marginTop: '5px' }}
+                      />
+                    )}
                   </div>
                   <div className="form-group">
                     <label htmlFor="spiritualBackground">Spiritual Background:</label>
@@ -639,23 +746,115 @@ const ScreeningClientsGrid: React.FC = () => {
                 <h4 style={{ color: '#2c3e50', borderBottom: '2px solid #e74c3c', paddingBottom: '5px' }}>Health Information</h4>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                   <div className="form-group">
-                    <label htmlFor="heartConditions">Heart Conditions:</label>
+                    <label>Heart Conditions:</label>
+                    <div style={{ display: 'flex', gap: '10px', marginBottom: '5px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                        <input
+                          type="checkbox"
+                          checked={typeof formData.heartConditions === 'object' && formData.heartConditions?.ok || false}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            heartConditions: e.target.checked
+                              ? { ok: true, na: false, details: '' }
+                              : typeof prev.heartConditions === 'object'
+                                ? { ...prev.heartConditions, ok: false }
+                                : { ok: false, na: false, details: prev.heartConditions || '' }
+                          }))}
+                        />
+                        OK
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                        <input
+                          type="checkbox"
+                          checked={typeof formData.heartConditions === 'object' && formData.heartConditions?.na || false}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            heartConditions: e.target.checked
+                              ? { ok: false, na: true, details: '' }
+                              : typeof prev.heartConditions === 'object'
+                                ? { ...prev.heartConditions, na: false }
+                                : { ok: false, na: false, details: prev.heartConditions || '' }
+                          }))}
+                        />
+                        N/A
+                      </label>
+                    </div>
                     <textarea
                       id="heartConditions"
                       name="heartConditions"
-                      value={formData.heartConditions || ''}
-                      onChange={handleInputChange}
+                      value={typeof formData.heartConditions === 'object'
+                        ? formData.heartConditions?.details || ''
+                        : formData.heartConditions || ''}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        heartConditions: typeof prev.heartConditions === 'object'
+                          ? { ...prev.heartConditions, details: e.target.value }
+                          : e.target.value
+                      }))}
+                      disabled={typeof formData.heartConditions === 'object' && (formData.heartConditions.ok || formData.heartConditions.na)}
                       rows={2}
+                      style={{
+                        backgroundColor: typeof formData.heartConditions === 'object' && (formData.heartConditions.ok || formData.heartConditions.na)
+                          ? '#f5f5f5' : 'white',
+                        cursor: typeof formData.heartConditions === 'object' && (formData.heartConditions.ok || formData.heartConditions.na)
+                          ? 'not-allowed' : 'text'
+                      }}
                     />
                   </div>
                   <div className="form-group">
-                    <label htmlFor="liverConditions">Liver Conditions:</label>
+                    <label>Liver Conditions:</label>
+                    <div style={{ display: 'flex', gap: '10px', marginBottom: '5px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                        <input
+                          type="checkbox"
+                          checked={typeof formData.liverConditions === 'object' && formData.liverConditions?.ok || false}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            liverConditions: e.target.checked
+                              ? { ok: true, na: false, details: '' }
+                              : typeof prev.liverConditions === 'object'
+                                ? { ...prev.liverConditions, ok: false }
+                                : { ok: false, na: false, details: prev.liverConditions || '' }
+                          }))}
+                        />
+                        OK
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                        <input
+                          type="checkbox"
+                          checked={typeof formData.liverConditions === 'object' && formData.liverConditions?.na || false}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            liverConditions: e.target.checked
+                              ? { ok: false, na: true, details: '' }
+                              : typeof prev.liverConditions === 'object'
+                                ? { ...prev.liverConditions, na: false }
+                                : { ok: false, na: false, details: prev.liverConditions || '' }
+                          }))}
+                        />
+                        N/A
+                      </label>
+                    </div>
                     <textarea
                       id="liverConditions"
                       name="liverConditions"
-                      value={formData.liverConditions || ''}
-                      onChange={handleInputChange}
+                      value={typeof formData.liverConditions === 'object'
+                        ? formData.liverConditions?.details || ''
+                        : formData.liverConditions || ''}
+                      onChange={(e) => setFormData(prev => ({
+                        ...prev,
+                        liverConditions: typeof prev.liverConditions === 'object'
+                          ? { ...prev.liverConditions, details: e.target.value }
+                          : e.target.value
+                      }))}
+                      disabled={typeof formData.liverConditions === 'object' && (formData.liverConditions.ok || formData.liverConditions.na)}
                       rows={2}
+                      style={{
+                        backgroundColor: typeof formData.liverConditions === 'object' && (formData.liverConditions.ok || formData.liverConditions.na)
+                          ? '#f5f5f5' : 'white',
+                        cursor: typeof formData.liverConditions === 'object' && (formData.liverConditions.ok || formData.liverConditions.na)
+                          ? 'not-allowed' : 'text'
+                      }}
                     />
                   </div>
                   <div className="form-group">
@@ -726,14 +925,198 @@ const ScreeningClientsGrid: React.FC = () => {
                 <h4 style={{ color: '#2c3e50', borderBottom: '2px solid #f39c12', paddingBottom: '5px' }}>Current Medications & Substances</h4>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                   <div className="form-group">
-                    <label htmlFor="currentMedications">Current Medications:</label>
-                    <textarea
-                      id="currentMedications"
-                      name="currentMedications"
-                      value={formData.currentMedications || ''}
-                      onChange={handleInputChange}
-                      rows={2}
-                    />
+                    <label>Current Medications:</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.currentMedications?.ssri || false}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            currentMedications: {
+                              ...prev.currentMedications,
+                              ssri: e.target.checked
+                            }
+                          }))}
+                        />
+                        SSRI
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.currentMedications?.antidepressants || false}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            currentMedications: {
+                              ...prev.currentMedications,
+                              antidepressants: e.target.checked
+                            }
+                          }))}
+                        />
+                        Antidepressants
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.currentMedications?.other || false}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            currentMedications: {
+                              ...prev.currentMedications,
+                              other: e.target.checked
+                            }
+                          }))}
+                        />
+                        Other
+                      </label>
+                    </div>
+                    {formData.currentMedications?.other && (
+                      <div style={{ marginTop: '10px', padding: '10px', border: '1px solid #ddd', borderRadius: '4px', backgroundColor: '#f9f9f9' }}>
+                        <h5 style={{ marginTop: 0, marginBottom: '10px', color: '#2c3e50' }}>Medication Details</h5>
+                        {(formData.currentMedications?.medications || []).map((med, index) => (
+                          <div key={index} style={{ marginBottom: '15px', padding: '10px', backgroundColor: 'white', borderRadius: '4px', border: '1px solid #e1e1e1' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                              <input
+                                type="text"
+                                placeholder="Medication Name"
+                                value={med.name}
+                                onChange={(e) => {
+                                  const meds = [...(formData.currentMedications?.medications || [])];
+                                  meds[index] = { ...meds[index], name: e.target.value };
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    currentMedications: {
+                                      ...prev.currentMedications,
+                                      medications: meds
+                                    }
+                                  }));
+                                }}
+                                style={{ padding: '5px', fontSize: '12px' }}
+                              />
+                              <input
+                                type="text"
+                                placeholder="Since (e.g., 2020, 3 months ago)"
+                                value={med.since}
+                                onChange={(e) => {
+                                  const meds = [...(formData.currentMedications?.medications || [])];
+                                  meds[index] = { ...meds[index], since: e.target.value };
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    currentMedications: {
+                                      ...prev.currentMedications,
+                                      medications: meds
+                                    }
+                                  }));
+                                }}
+                                style={{ padding: '5px', fontSize: '12px' }}
+                              />
+                              <input
+                                type="text"
+                                placeholder="Mg Daily (e.g., 50mg)"
+                                value={med.mgDaily}
+                                onChange={(e) => {
+                                  const meds = [...(formData.currentMedications?.medications || [])];
+                                  meds[index] = { ...meds[index], mgDaily: e.target.value };
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    currentMedications: {
+                                      ...prev.currentMedications,
+                                      medications: meds
+                                    }
+                                  }));
+                                }}
+                                style={{ padding: '5px', fontSize: '12px' }}
+                              />
+                              <input
+                                type="text"
+                                placeholder="Frequency (e.g., 2x daily, once daily)"
+                                value={med.frequency}
+                                onChange={(e) => {
+                                  const meds = [...(formData.currentMedications?.medications || [])];
+                                  meds[index] = { ...meds[index], frequency: e.target.value };
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    currentMedications: {
+                                      ...prev.currentMedications,
+                                      medications: meds
+                                    }
+                                  }));
+                                }}
+                                style={{ padding: '5px', fontSize: '12px' }}
+                              />
+                            </div>
+                            <input
+                              type="text"
+                              placeholder="Reason for taking"
+                              value={med.reason}
+                              onChange={(e) => {
+                                const meds = [...(formData.currentMedications?.medications || [])];
+                                meds[index] = { ...meds[index], reason: e.target.value };
+                                setFormData(prev => ({
+                                  ...prev,
+                                  currentMedications: {
+                                    ...prev.currentMedications,
+                                    medications: meds
+                                  }
+                                }));
+                              }}
+                              style={{ width: '100%', marginTop: '5px', padding: '5px', fontSize: '12px' }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const meds = [...(formData.currentMedications?.medications || [])];
+                                meds.splice(index, 1);
+                                setFormData(prev => ({
+                                  ...prev,
+                                  currentMedications: {
+                                    ...prev.currentMedications,
+                                    medications: meds
+                                  }
+                                }));
+                              }}
+                              style={{
+                                marginTop: '5px',
+                                padding: '3px 8px',
+                                backgroundColor: '#e74c3c',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '3px',
+                                cursor: 'pointer',
+                                fontSize: '11px'
+                              }}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const meds = [...(formData.currentMedications?.medications || [])];
+                            meds.push({ name: '', since: '', mgDaily: '', reason: '', frequency: '' });
+                            setFormData(prev => ({
+                              ...prev,
+                              currentMedications: {
+                                ...prev.currentMedications,
+                                medications: meds
+                              }
+                            }));
+                          }}
+                          style={{
+                            padding: '6px 12px',
+                            backgroundColor: '#27ae60',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '12px'
+                          }}
+                        >
+                          + Add Medication
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div className="form-group">
                     <label htmlFor="recreationalDrugs">Recreational Drugs:</label>
@@ -746,14 +1129,164 @@ const ScreeningClientsGrid: React.FC = () => {
                     />
                   </div>
                   <div className="form-group">
-                    <label htmlFor="vitaminsSupplements">Vitamins/Supplements:</label>
-                    <textarea
-                      id="vitaminsSupplements"
-                      name="vitaminsSupplements"
-                      value={formData.vitaminsSupplements || ''}
-                      onChange={handleInputChange}
-                      rows={2}
-                    />
+                    <label>Vitamins/Supplements:</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px', fontSize: '12px', marginBottom: '10px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.vitaminsSupplements?.vitaminD || false}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            vitaminsSupplements: {
+                              ...prev.vitaminsSupplements,
+                              vitaminD: e.target.checked
+                            }
+                          }))}
+                        />
+                        Vitamin D
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.vitaminsSupplements?.vitaminB12 || false}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            vitaminsSupplements: {
+                              ...prev.vitaminsSupplements,
+                              vitaminB12: e.target.checked
+                            }
+                          }))}
+                        />
+                        B12
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.vitaminsSupplements?.vitaminC || false}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            vitaminsSupplements: {
+                              ...prev.vitaminsSupplements,
+                              vitaminC: e.target.checked
+                            }
+                          }))}
+                        />
+                        Vitamin C
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.vitaminsSupplements?.omega3 || false}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            vitaminsSupplements: {
+                              ...prev.vitaminsSupplements,
+                              omega3: e.target.checked
+                            }
+                          }))}
+                        />
+                        Omega-3
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.vitaminsSupplements?.magnesium || false}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            vitaminsSupplements: {
+                              ...prev.vitaminsSupplements,
+                              magnesium: e.target.checked
+                            }
+                          }))}
+                        />
+                        Magnesium
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.vitaminsSupplements?.probiotics || false}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            vitaminsSupplements: {
+                              ...prev.vitaminsSupplements,
+                              probiotics: e.target.checked
+                            }
+                          }))}
+                        />
+                        Probiotics
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.vitaminsSupplements?.multivitamin || false}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            vitaminsSupplements: {
+                              ...prev.vitaminsSupplements,
+                              multivitamin: e.target.checked
+                            }
+                          }))}
+                        />
+                        Multi
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.vitaminsSupplements?.kratom || false}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            vitaminsSupplements: {
+                              ...prev.vitaminsSupplements,
+                              kratom: e.target.checked
+                            }
+                          }))}
+                        />
+                        Kratom
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.vitaminsSupplements?.creatine || false}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            vitaminsSupplements: {
+                              ...prev.vitaminsSupplements,
+                              creatine: e.target.checked
+                            }
+                          }))}
+                        />
+                        Creatine
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                        <input
+                          type="checkbox"
+                          checked={formData.vitaminsSupplements?.other || false}
+                          onChange={(e) => setFormData(prev => ({
+                            ...prev,
+                            vitaminsSupplements: {
+                              ...prev.vitaminsSupplements,
+                              other: e.target.checked
+                            }
+                          }))}
+                        />
+                        Other
+                      </label>
+                    </div>
+                    {formData.vitaminsSupplements?.other && (
+                      <input
+                        type="text"
+                        placeholder="Specify other supplements"
+                        value={formData.vitaminsSupplements?.otherDetails || ''}
+                        onChange={(e) => setFormData(prev => ({
+                          ...prev,
+                          vitaminsSupplements: {
+                            ...prev.vitaminsSupplements,
+                            otherDetails: e.target.value
+                          }
+                        }))}
+                        style={{ marginTop: '5px', fontSize: '12px' }}
+                      />
+                    )}
                   </div>
                   <div className="form-group">
                     <label htmlFor="alcoholConsumption">Alcohol Consumption:</label>
@@ -793,46 +1326,57 @@ const ScreeningClientsGrid: React.FC = () => {
                     />
                   </div>
                   <div className="form-group">
-                    <label htmlFor="weightRange">Weight Range:</label>
-                    <input
-                      type="text"
-                      id="weightRange"
-                      name="weightRange"
-                      value={formData.weightRange || ''}
+                    <label htmlFor="medicalIssues">Medical Issues:</label>
+                    <textarea
+                      id="medicalIssues"
+                      name="medicalIssues"
+                      value={formData.medicalIssues || ''}
                       onChange={handleInputChange}
-                      placeholder="e.g., 70-80 kg"
+                      rows={3}
+                      placeholder="List any current medical issues, diagnoses, or ongoing health concerns..."
                     />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="pregnancyStatus">Pregnancy Status:</label>
-                    <select
-                      id="pregnancyStatus"
-                      name="pregnancyStatus"
-                      value={formData.pregnancyStatus || ''}
-                      onChange={handleInputChange}
-                    >
-                      <option value="">Not Applicable</option>
-                      <option value="not_pregnant">Not Pregnant</option>
-                      <option value="pregnant">Pregnant</option>
-                      <option value="trying_to_conceive">Trying to Conceive</option>
-                      <option value="breastfeeding">Breastfeeding</option>
-                    </select>
                   </div>
                 </div>
               </div>
 
               {/* Notes Section */}
               <div style={{ marginBottom: '20px' }}>
-                <h4 style={{ color: '#2c3e50', borderBottom: '2px solid #95a5a6', paddingBottom: '5px' }}>Additional Notes</h4>
+                <h4 style={{ color: '#2c3e50', borderBottom: '2px solid #95a5a6', paddingBottom: '5px' }}>Additional Notes & Insights</h4>
                 <div className="form-group">
-                  <label htmlFor="notes">Notes:</label>
+                  <label htmlFor="notes">General Notes:</label>
                   <textarea
                     id="notes"
                     name="notes"
                     value={formData.notes || ''}
                     onChange={handleInputChange}
-                    rows={4}
-                    placeholder="Additional notes, observations, or important information..."
+                    rows={3}
+                    placeholder="Additional notes or important information..."
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="observations">Observations:</label>
+                  <textarea
+                    id="observations"
+                    name="observations"
+                    value={formData.observations || ''}
+                    onChange={handleInputChange}
+                    rows={3}
+                    placeholder="Behavioral observations, demeanor, readiness assessment, emotional state..."
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="nzingoInsights">Nzingo Insights:</label>
+                  <textarea
+                    id="nzingoInsights"
+                    name="nzingoInsights"
+                    value={formData.nzingoInsights || ''}
+                    onChange={handleInputChange}
+                    rows={3}
+                    placeholder="Spiritual insights, intuitive impressions, energetic observations, guidance received..."
+                    style={{
+                      backgroundColor: '#f9f5ff',
+                      borderColor: '#9b59b6'
+                    }}
                   />
                 </div>
               </div>

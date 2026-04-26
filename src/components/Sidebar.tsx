@@ -1,5 +1,18 @@
 import React from 'react';
 import './Sidebar.css';
+import {
+  FiUsers,
+  FiCalendar,
+  FiActivity,
+  FiHome,
+  FiBell,
+  FiCreditCard,
+  FiClipboard,
+  FiBarChart2,
+  FiLogOut,
+  FiMenu,
+  FiX
+} from 'react-icons/fi';
 
 interface SidebarProps {
   activeItem: string;
@@ -13,7 +26,7 @@ interface SidebarProps {
 interface MenuItem {
   id: string;
   label: string;
-  icon: string;
+  icon: any;
   description: string;
 }
 
@@ -23,13 +36,13 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed,
     {
       id: 'medical-dashboard',
       label: 'Reviews',
-      icon: '🏥',
+      icon: FiActivity,
       description: 'Review medical records'
     },
     {
       id: 'medical-retreats',
       label: 'Retreats',
-      icon: '📅',
+      icon: FiCalendar,
       description: 'View upcoming retreats'
     }
   ];
@@ -39,61 +52,55 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed,
     {
       id: 'clients',
       label: 'Clients',
-      icon: '👥',
-      description: 'Manage client information'
+      icon: FiUsers,
+      description: 'Manage all clients (potential, screening, active)'
     },
     {
       id: 'retreats',
       label: 'Retreats',
-      icon: '📅',
+      icon: FiCalendar,
       description: 'Manage retreat programs'
     },
     {
       id: 'bookings',
       label: 'Bookings',
-      icon: '📋',
+      icon: FiClipboard,
       description: 'Retreat-client bookings'
-    },
-    {
-      id: 'screening',
-      label: 'Screening',
-      icon: '🔍',
-      description: 'Screen potential clients'
     },
     {
       id: 'houses',
       label: 'Houses',
-      icon: '🏠',
+      icon: FiHome,
       description: 'Manage retreat houses'
     },
     {
       id: 'reminders',
       label: 'Reminders',
-      icon: '🔔',
+      icon: FiBell,
       description: 'Manage client reminders'
     },
     {
       id: 'payments',
       label: 'Payments',
-      icon: '💳',
+      icon: FiCreditCard,
       description: 'Manage retreat payments'
     },
     {
       id: 'medical',
       label: 'Medical',
-      icon: '🏥',
+      icon: FiActivity,
       description: 'EKG and liver panel tracking'
     },
     {
       id: 'requirements',
       label: 'Requirements',
-      icon: '📋',
+      icon: FiClipboard,
       description: 'Manage retreat requirements'
     },
     {
       id: 'analytics',
       label: 'Analytics',
-      icon: '📊',
+      icon: FiBarChart2,
       description: 'View reports and analytics'
     }
   ];

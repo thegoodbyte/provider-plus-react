@@ -17,6 +17,27 @@
   margin-left: auto;
   display: flex;
   gap: 10px;
+  align-items: center;
+}
+
+.language-selector {
+  padding: 10px 15px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.language-selector:hover:not(:disabled) {
+  border-color: #2196F3;
+  background: #f5f5f5;
+}
+
+.language-selector:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .back-btn {
@@ -77,14 +98,132 @@
 /* PDF-specific styles */
 .pdf-header {
   page-break-inside: avoid;
+  display: none;
+}
+
+.pdf-footer {
+  display: none;
 }
 
 /* Styles for PDF generation */
 .generating-pdf .pdf-header {
   display: block !important;
+  background: white !important;
+  padding: 40px !important;
+  margin-bottom: 30px !important;
 }
 
-.generating-pdf .detail-header {
+.generating-pdf .pdf-footer {
+  display: block !important;
+  margin-top: 50px !important;
+}
+
+.generating-pdf .detail-header,
+.generating-pdf .header-actions,
+.generating-pdf .back-btn,
+.generating-pdf .pdf-btn,
+.generating-pdf .edit-btn,
+.generating-pdf .section-header button {
+  display: none !important;
+}
+
+.generating-pdf .detail-section {
+  background: white !important;
+  border: 1px solid #e0e0e0 !important;
+  border-radius: 12px !important;
+  padding: 25px !important;
+  margin-bottom: 25px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
+  page-break-inside: avoid;
+}
+
+.generating-pdf .detail-section h3.pdf-section-title {
+  color: #2196F3 !important;
+  font-size: 20px !important;
+  font-weight: 600 !important;
+  margin-bottom: 20px !important;
+  padding-bottom: 12px !important;
+  border-bottom: 2px solid #e8f4fd !important;
+  display: block !important;
+}
+
+.generating-pdf .section-header {
+  border-bottom: none !important;
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.generating-pdf .section-header h3 {
+  color: #2196F3 !important;
+  font-size: 20px !important;
+  font-weight: 600 !important;
+  margin-bottom: 20px !important;
+  padding-bottom: 12px !important;
+  border-bottom: 2px solid #e8f4fd !important;
+}
+
+.generating-pdf .info-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 20px !important;
+}
+
+.generating-pdf .info-item {
+  padding: 10px !important;
+  background: #f9f9f9 !important;
+  border-radius: 6px !important;
+}
+
+.generating-pdf .info-item label {
+  font-weight: 600 !important;
+  color: #666 !important;
+  font-size: 13px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  margin-bottom: 5px !important;
+  display: block !important;
+}
+
+.generating-pdf .info-item span {
+  color: #333 !important;
+  font-size: 15px !important;
+  display: block !important;
+}
+
+.generating-pdf .booking-number {
+  font-size: 18px !important;
+  font-weight: bold !important;
+  color: #2196F3 !important;
+}
+
+.generating-pdf .status-badge {
+  display: inline-block !important;
+  padding: 6px 12px !important;
+  border-radius: 20px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+}
+
+.generating-pdf .status-confirmed {
+  background: #e8f5e9 !important;
+  color: #2e7d32 !important;
+}
+
+.generating-pdf .status-pending {
+  background: #fff3e0 !important;
+  color: #f57c00 !important;
+}
+
+.generating-pdf .booking-type {
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+  font-size: 14px !important;
+}
+
+/* Hide payment management and medical upload sections in PDF */
+.generating-pdf .booking-payment-management,
+.generating-pdf .medical-upload-container {
   display: none !important;
 }
 
@@ -135,6 +274,42 @@
   color: #333;
   border-bottom: 1px solid #e0e0e0;
   padding-bottom: 10px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #e0e0e0;
+  padding-bottom: 10px;
+  margin-bottom: 20px;
+}
+
+.section-header h3 {
+  margin: 0;
+  padding: 0;
+  border: none;
+}
+
+.edit-btn {
+  padding: 8px 16px;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.edit-btn:hover {
+  background: #45a049;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .info-grid {

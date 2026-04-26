@@ -1,691 +1,443 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { AgGridReact } from 'ag-grid-react';
-import { ColDef, GridReadyEvent } from 'ag-grid-community';
-import { AllCommunityModule, ModuleRegistry } from 'ag-grid-community';
-import { RetreatClient, Client, Retreat } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
 import { bookingsApi, clientsApi, retreatsApi } from '../services/api';
-import BookingDetailView from './BookingDetailView';
-import { formatBookingHashForDisplay } from '../utils/hashGenerator';
-import './ClientsGrid.css';
+import { RetreatClient, Client, Retreat } from '../types';
+import AppleButton from './AppleButton';
+import { FiPlus, FiEdit2, FiTrash2, FiEye, FiUser, FiCalendar } from 'react-icons/fi';
 
-ModuleRegistry.registerModules([AllCommunityModule]);
-
-// Actions cell renderer component
-const ActionsCellRenderer = (props: any) => {
-  const { data, context } = props;
-
-  return (
-    <div className="action-buttons">
-      <button
-        className="view-btn"
-        onClick={() => context.componentParent.handleView(data._id)}
-      >
-        View
-      </button>
-      <button
-        className="edit-btn"
-        onClick={() => context.componentParent.handleEdit(data._id)}
-      >
-        Edit
-      </button>
-      {!data.bookingHash && (
-        <button
-          className="generate-hash-btn"
-          onClick={() => context.componentParent.handleGenerateHash(data._id)}
-          title="Generate Booking Hash"
-        >
-          🔑
-        </button>
-      )}
-      <button
-        className="delete-btn"
-        onClick={() => context.componentParent.handleDelete(data._id)}
-      >
-        Delete
-      </button>
-    </div>
-  );
+// Simple wrapper to fix TypeScript icon issues
+const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
+  return <IconComponent className={className} />;
 };
 
 interface BookingWithDetails extends RetreatClient {
-  clientDetails?: Client;
-  retreatDetails?: Retreat;
+  clientName?: string;
+  retreatName?: string;
 }
 
 const BookingsGrid: React.FC = () => {
   const [bookings, setBookings] = useState<BookingWithDetails[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showAddModal, setShowAddModal] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingBooking, setEditingBooking] = useState<BookingWithDetails | null>(null);
-  const [formData, setFormData] = useState<Partial<RetreatClient>>({});
-  const [viewingBookingId, setViewingBookingId] = useState<string | null>(null);
-  const gridApiRef = useRef<any>(null);
-
-  const columnDefs: ColDef[] = [
-    {
-      headerName: 'Booking #',
-      field: 'bookingNumber',
-      sortable: true,
-      filter: true,
-      width: 120
-    },
-    {
-      headerName: 'Booking Hash',
-      field: 'bookingHash',
-      valueFormatter: (params) => {
-        return params.value ? formatBookingHashForDisplay(params.value) : 'Not Generated';
-      },
-      sortable: true,
-      filter: true,
-      width: 160
-    },
-    {
-      headerName: 'Client',
-      valueGetter: (params) => {
-        // Check both clientDetails (legacy) and clientId (populated by Mongoose)
-        const client = params.data.clientDetails || params.data.clientId;
-        if (client) {
-          const firstName = client.firstName || client.fname;
-          const lastName = client.lastName || client.lname;
-          return `${firstName || ''} ${lastName || ''}`.trim();
-        }
-        return 'Unknown Client';
-      },
-      sortable: true,
-      filter: true,
-      flex: 1
-    },
-    // {
-    //   headerName: 'Email',
-    //   valueGetter: (params) => {
-    //     const client = params.data.clientDetails || params.data.clientId;
-    //     return client?.email || '';
-    //   },
-    //   sortable: true,
-    //   filter: true,
-    //   flex: 1
-    // },
-    {
-      headerName: 'Retreat',
-      valueGetter: (params) => {
-        // Check both retreatDetails (legacy) and retreatId (populated by Mongoose)
-        const retreat = params.data.retreatDetails || params.data.retreatId;
-        if (retreat) {
-          const type = retreat.type ? ` (${retreat.type.charAt(0).toUpperCase() + retreat.type.slice(1)})` : '';
-          return `${retreat.name}${type}`;
-        }
-        return 'Unknown Retreat';
-      },
-      sortable: true,
-      filter: true,
-      flex: 1.5
-    },
-    // {
-    //   headerName: 'Booking Type',
-    //   field: 'bookingType',
-    //   valueFormatter: (params) => {
-    //     if (params.value === 'booster') return 'Booster';
-    //     return 'Full Retreat';
-    //   },
-    //   cellStyle: (params) => {
-    //     if (params.value === 'booster') {
-    //       return { backgroundColor: '#e3f2fd', fontWeight: 'bold' };
-    //     }
-    //     return { backgroundColor: '#f3e5f5', fontWeight: 'bold' };
-    //   },
-    //   sortable: true,
-    //   filter: true,
-    //   width: 120
-    // },
-    {
-      headerName: 'Retreat Type',
-      valueGetter: (params) => {
-        const retreat = params.data.retreatDetails || params.data.retreatId;
-        return retreat?.type ? retreat.type.charAt(0).toUpperCase() + retreat.type.slice(1) : 'Regular';
-      },
-      sortable: true,
-      filter: true,
-      width: 120
-    },
-    {
-      headerName: 'Retreat Dates',
-      valueGetter: (params) => {
-        const retreat = params.data.retreatDetails || params.data.retreatId;
-        if (retreat && retreat.startDate) {
-          const startDate = new Date(retreat.startDate).toLocaleDateString();
-          const endDate = retreat.endDate ? ` - ${new Date(retreat.endDate).toLocaleDateString()}` : '';
-          return `${startDate}${endDate}`;
-        }
-        return '';
-      },
-      sortable: true,
-      filter: true,
-      flex: 1
-    },
-    // {
-    //   headerName: 'Location',
-    //   valueGetter: (params) => {
-    //     const retreat = params.data.retreatDetails || params.data.retreatId;
-    //     return retreat?.location || '';
-    //   },
-    //   sortable: true,
-    //   filter: true,
-    //   flex: 1
-    // },
-    // {
-    //   headerName: 'Registration Date',
-    //   field: 'registrationDate',
-    //   valueFormatter: (params) => params.value ? new Date(params.value).toLocaleDateString() : '',
-    //   sortable: true,
-    //   filter: true,
-    //   flex: 1
-    // },
-    // {
-    //   headerName: 'Status',
-    //   field: 'status',
-    //   cellRenderer: (params: any) => {
-    //     const status = params.value || 'pending';
-    //     const statusClass = `status-${status}`;
-    //     return `<span class="status-badge ${statusClass}">${status.charAt(0).toUpperCase() + status.slice(1)}</span>`;
-    //   },
-    //   sortable: true,
-    //   filter: true,
-    //   flex: 1
-    // },
-    {
-      headerName: 'Total Amount',
-      valueGetter: (params) => {
-        const amount = params.data.totalAmount || 0;
-        const currency = params.data.currency || 'EUR';
-        return `${amount.toFixed(2)} ${currency}`;
-      },
-      sortable: true,
-      filter: true,
-      flex: 1
-    },
-    {
-      headerName: 'Amount Paid',
-      valueGetter: (params) => {
-        const amount = params.data.amountPaid || 0;
-        const currency = params.data.currency || 'EUR';
-        return `${amount.toFixed(2)} ${currency}`;
-      },
-      sortable: true,
-      filter: true,
-      flex: 1
-    },
-    {
-      headerName: 'Actions',
-      cellRenderer: 'actionsCellRenderer',
-      sortable: false,
-      filter: false,
-      width: 180
-    }
-  ];
-
-  const defaultColDef = {
-    resizable: true,
-    sortable: true,
-    filter: true,
-  };
+  const [formData, setFormData] = useState({
+    clientId: '',
+    retreatId: '',
+    totalAmount: 0,
+    currency: 'EUR' as 'EUR' | 'USD' | 'CZK' | 'PLN',
+    status: 'pending' as 'pending' | 'confirmed' | 'checked-in' | 'checked-out' | 'cancelled'
+  });
 
   useEffect(() => {
-    fetchAllData();
+    fetchBookings();
+    fetchClientsAndRetreats();
   }, []);
 
-  const fetchAllData = async () => {
+  const fetchClientsAndRetreats = async () => {
     try {
-      setIsLoading(true);
-
-      // Fetch all data in parallel for maximum speed
-      const [bookingsResponse, clientsResponse, retreatsResponse] = await Promise.all([
-        bookingsApi.getAll(),
+      const [clientsResponse, retreatsResponse] = await Promise.all([
         clientsApi.getAll(),
         retreatsApi.getAll()
       ]);
-
-      const bookingsData = bookingsResponse.data;
-      const clientsData = clientsResponse.data;
-      const retreatsData = retreatsResponse.data;
-
-      // Set clients and retreats for dropdowns
-      setClients(clientsData);
-      setRetreats(retreatsData);
-
-      // Create lookup maps for O(1) access instead of making API calls
-      const clientsMap = new Map<string, Client>(clientsData.filter((client: Client) => client._id).map((client: Client) => [client._id!, client]));
-      const retreatsMap = new Map<string, Retreat>(retreatsData.filter((retreat: Retreat) => retreat._id).map((retreat: Retreat) => [retreat._id!, retreat]));
-
-      // Enhance bookings with cached data - no additional API calls needed!
-      const enhancedBookings = bookingsData.map((booking: RetreatClient) => ({
-        ...booking,
-        clientDetails: clientsMap.get(booking.clientId),
-        retreatDetails: retreatsMap.get(booking.retreatId)
-      }));
-
-      setBookings(enhancedBookings);
+      setClients(clientsResponse.data || []);
+      setRetreats(retreatsResponse.data || []);
     } catch (error) {
-      console.error('Error fetching data:', error);
+      console.error('Error fetching clients and retreats:', error);
+    }
+  };
+
+  const fetchBookings = async () => {
+    try {
+      setIsLoading(true);
+
+      // First get bookings
+      const bookingsResponse = await bookingsApi.getAll();
+
+      if (!bookingsResponse.data || bookingsResponse.data.length === 0) {
+        setBookings([]);
+        return;
+      }
+
+      // Extract unique client and retreat IDs from bookings
+      const clientIdsSet = new Set(
+        bookingsResponse.data
+          .map((booking: RetreatClient) =>
+            typeof booking.clientId === 'string' ? booking.clientId : (booking.clientId as any)?._id
+          )
+          .filter(Boolean)
+      );
+      const clientIds = Array.from(clientIdsSet);
+
+      const retreatIdsSet = new Set(
+        bookingsResponse.data
+          .map((booking: RetreatClient) =>
+            typeof booking.retreatId === 'string' ? booking.retreatId : (booking.retreatId as any)?._id
+          )
+          .filter(Boolean)
+      );
+      const retreatIds = Array.from(retreatIdsSet);
+
+      // Optimize: Only fetch needed data if we have IDs, otherwise use minimal data
+      const [clientsResponse, retreatsResponse] = await Promise.all([
+        clientIds.length > 0 ? clientsApi.getAll() : Promise.resolve({ data: [] }),
+        retreatIds.length > 0 ? retreatsApi.getAll() : Promise.resolve({ data: [] })
+      ]);
+
+      // Create efficient lookups with only needed data
+      const clientsMap = new Map<string, Client>();
+      if (clientsResponse.data && clientIds.length > 0) {
+        clientsResponse.data
+          .filter((client: Client) => client._id && clientIds.includes(client._id))
+          .forEach((client: Client) => clientsMap.set(client._id!, client));
+      }
+
+      const retreatsMap = new Map<string, Retreat>();
+      if (retreatsResponse.data && retreatIds.length > 0) {
+        retreatsResponse.data
+          .filter((retreat: Retreat) => retreat._id && retreatIds.includes(retreat._id))
+          .forEach((retreat: Retreat) => retreatsMap.set(retreat._id!, retreat));
+      }
+
+      // Process bookings with optimized lookups
+      const enrichedBookings: BookingWithDetails[] = bookingsResponse.data.map((booking: RetreatClient) => {
+        const clientId = typeof booking.clientId === 'string' ? booking.clientId : (booking.clientId as any)?._id;
+        const retreatId = typeof booking.retreatId === 'string' ? booking.retreatId : (booking.retreatId as any)?._id;
+
+        const client = clientId ? clientsMap.get(clientId) : undefined;
+        const retreat = retreatId ? retreatsMap.get(retreatId) : undefined;
+
+        return {
+          ...booking,
+          clientName: client ? `${client.firstName} ${client.lastName}` : 'Unknown Client',
+          retreatName: retreat ? retreat.name : 'Unknown Retreat'
+        };
+      });
+
+      setBookings(enrichedBookings);
+    } catch (error) {
+      console.error('Error fetching bookings:', error);
+      setBookings([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Keep these for backwards compatibility but they're not used in initial load
-  const fetchBookings = async () => {
-    await fetchAllData();
-  };
-
-  const fetchClients = async () => {
-    try {
-      const response = await clientsApi.getAll();
-      setClients(response.data);
-    } catch (error) {
-      console.error('Error fetching clients:', error);
-    }
-  };
-
-  const fetchRetreats = async () => {
-    try {
-      const response = await retreatsApi.getAll();
-      setRetreats(response.data);
-    } catch (error) {
-      console.error('Error fetching retreats:', error);
-    }
-  };
-
-  const handleGridReady = (params: GridReadyEvent) => {
-    gridApiRef.current = params.api;
-    params.api.sizeColumnsToFit();
-  };
-
-  const handleAdd = () => {
-    setEditingBooking(null);
-    setFormData({
-      status: 'pending',
-      registrationDate: new Date().toISOString(),
-      totalAmount: 0,
-      amountPaid: 0
-    });
-    setIsModalOpen(true);
-  };
-
-  const handleView = (id: string) => {
-    setViewingBookingId(id);
-  };
-
-  const handleBackFromDetail = () => {
-    setViewingBookingId(null);
-  };
-
-  const handleEdit = (id: string) => {
-    const booking = bookings.find(b => b._id === id);
-    if (booking) {
-      setEditingBooking(booking);
-      setFormData(booking);
-      setIsModalOpen(true);
-    }
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      confirmed: 'bg-green-100 text-green-800',
+      pending: 'bg-yellow-100 text-yellow-800',
+      cancelled: 'bg-red-100 text-red-800',
+      completed: 'bg-blue-100 text-blue-800'
+    };
+    return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
   const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this booking?')) {
       try {
         await bookingsApi.delete(id);
-        fetchAllData(); // Use the optimized fetch
-      } catch (error: any) {
+        fetchBookings();
+      } catch (error) {
         console.error('Error deleting booking:', error);
       }
     }
   };
 
-  const handleGenerateHash = async (id: string) => {
-    if (window.confirm('Generate a unique booking hash for this booking? This will enable payment linking.')) {
-      try {
-        await bookingsApi.regenerateBookingHash(id);
-        fetchAllData(); // Use the optimized fetch
-      } catch (error: any) {
-        console.error('Error generating booking hash:', error);
-        alert('Error generating booking hash: ' + (error.response?.data?.message || error.message));
-      }
-    }
+  const formatDate = (date: string | Date) => {
+    if (!date) return 'N/A';
+    return new Date(date).toLocaleDateString();
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const cleanData: any = {};
-
-      // Include booking number if provided
-      if (formData.bookingNumber) cleanData.bookingNumber = formData.bookingNumber;
-      if (formData.clientId) cleanData.clientId = formData.clientId;
-      if (formData.retreatId) cleanData.retreatId = formData.retreatId;
-      if (formData.bookingType) cleanData.bookingType = formData.bookingType || 'full_retreat';
-      if (formData.registrationDate) cleanData.registrationDate = formData.registrationDate;
-      if (formData.totalAmount !== undefined) cleanData.totalAmount = Number(formData.totalAmount);
-      if (formData.currency) cleanData.currency = formData.currency || 'EUR';
-      if (formData.amountPaid !== undefined) cleanData.amountPaid = Number(formData.amountPaid);
-      if (formData.status) cleanData.status = formData.status;
-      if (formData.specialRequests) cleanData.specialRequests = formData.specialRequests;
-      if (formData.notes) cleanData.notes = formData.notes;
-
-      if (editingBooking) {
-        await bookingsApi.update(editingBooking._id!, cleanData);
-      } else {
-        await bookingsApi.create(cleanData);
-      }
-
-      setIsModalOpen(false);
-      setFormData({});
-      setEditingBooking(null);
-      fetchAllData(); // Use the optimized fetch
-    } catch (error: any) {
-      console.error('Error saving booking:', error);
-      alert('Error saving booking: ' + (error.response?.data?.message || error.message));
-    }
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: ['totalAmount', 'amountPaid'].includes(name) ? parseFloat(value) || 0 : value
-    }));
-  };
-
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-    applyFilters(e.target.value, statusFilter, typeFilter);
-  };
-
-  const handleStatusFilter = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setStatusFilter(e.target.value);
-    applyFilters(searchTerm, e.target.value, typeFilter);
-  };
-
-  const handleRetreatTypeFilter = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setTypeFilter(e.target.value);
-    applyFilters(searchTerm, statusFilter, e.target.value);
-  };
-
-  const applyFilters = (search: string, status: string, type: string) => {
-    if (gridApiRef.current) {
-      gridApiRef.current.setFilterModel({
-        status: status ? { type: 'equals', filter: status } : null,
-        'retreatDetails.type': type ? { type: 'equals', filter: type } : null
-      });
-      gridApiRef.current.setQuickFilter(search);
-    }
-  };
+  // Memoize computed values to prevent unnecessary re-calculations
+  const bookingStats = useMemo(() => ({
+    total: bookings.length,
+    confirmed: bookings.filter(b => b.status === 'confirmed').length,
+    pending: bookings.filter(b => b.status === 'pending').length,
+    checkedOut: bookings.filter(b => (b.status as string) === 'checked-out').length
+  }), [bookings]);
 
   if (isLoading) {
     return (
-      <div className="loading-container">
-        <div className="loading-spinner">📅</div>
-        <p>Loading bookings...</p>
+      <div className="flex items-center justify-center h-full">
+        <div className="text-gray-500">Loading bookings...</div>
       </div>
     );
   }
 
-  // If viewing a booking's detail, show the detail view
-  if (viewingBookingId) {
-    return <BookingDetailView bookingId={viewingBookingId} onBack={handleBackFromDetail} />;
-  }
-
   return (
-    <div className="clients-container">
-      <div className="clients-header">
-        <h2>📅 Retreat Bookings</h2>
-        <div className="header-actions">
-          <div className="search-box">
-            <input
-              type="text"
-              placeholder="Search clients, retreats, or locations..."
-              value={searchTerm}
-              onChange={handleSearch}
-              className="search-input"
-            />
+    <div className="p-6 h-full">
+      <div className="mb-6 flex justify-between items-center">
+        <h1 className="text-2xl font-semibold text-gray-900">Bookings</h1>
+        <AppleButton
+          onClick={() => setShowAddModal(true)}
+          className="apple-button-primary"
+        >
+          <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
+          Add Booking
+        </AppleButton>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Booking #
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Client
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Retreat
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Booking Date
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {bookings.map((booking) => (
+                <tr key={booking._id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">
+                      #{booking.bookingNumber || booking._id?.slice(-6)}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <Icon icon={FiUser} className="w-4 h-4 mr-2 text-gray-400" />
+                      <div className="text-sm text-gray-900">{booking.clientName}</div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <Icon icon={FiCalendar} className="w-4 h-4 mr-2 text-gray-400" />
+                      <div className="text-sm text-gray-900">{booking.retreatName}</div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {formatDate(booking.createdAt || (booking as any).bookingDate)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(booking.status || 'pending')}`}>
+                      {booking.status || 'pending'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => console.log('View booking:', booking._id)}
+                        className="text-blue-600 hover:text-blue-900"
+                        title="View Details"
+                      >
+                        <Icon icon={FiEye} className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => console.log('Edit booking:', booking._id)}
+                        className="text-indigo-600 hover:text-indigo-900"
+                        title="Edit"
+                      >
+                        <Icon icon={FiEdit2} className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(booking._id!)}
+                        className="text-red-600 hover:text-red-900"
+                        title="Delete"
+                      >
+                        <Icon icon={FiTrash2} className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {bookings.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              No bookings found
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between">
+        <div className="text-sm text-gray-700">
+          Showing {bookingStats.total} booking{bookingStats.total !== 1 ? 's' : ''}
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-700">
+            Confirmed: {bookingStats.confirmed}
           </div>
-          <select
-            className="filter-select"
-            onChange={handleStatusFilter}
-            style={{ marginRight: '10px' }}
-          >
-            <option value="">All Statuses</option>
-            <option value="pending">Pending</option>
-            <option value="confirmed">Confirmed</option>
-            <option value="checked-in">Checked In</option>
-            <option value="checked-out">Checked Out</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-          <select
-            className="filter-select"
-            onChange={handleRetreatTypeFilter}
-            style={{ marginRight: '10px' }}
-          >
-            <option value="">All Types</option>
-            <option value="regular">Regular</option>
-            <option value="booster">Booster</option>
-          </select>
-          <button onClick={handleAdd} className="add-btn">📅 Book Client to Retreat</button>
-          <div className="status-info">
-            {bookings.length} booking{bookings.length !== 1 ? 's' : ''} found
+          <div className="text-sm text-gray-700">
+            Pending: {bookingStats.pending}
+          </div>
+          <div className="text-sm text-gray-700">
+            Checked-out: {bookingStats.checkedOut}
           </div>
         </div>
       </div>
 
-      <div className="ag-theme-alpine" style={{ height: 600, width: '100%' }}>
-        <AgGridReact
-          rowData={bookings}
-          columnDefs={columnDefs}
-          defaultColDef={defaultColDef}
-          onGridReady={handleGridReady}
-          animateRows={true}
-          pagination={true}
-          paginationPageSize={20}
-          suppressNoRowsOverlay={false}
-          components={{
-            actionsCellRenderer: ActionsCellRenderer
-          }}
-          context={{
-            componentParent: {
-              handleView,
-              handleEdit,
-              handleDelete,
-              handleGenerateHash
-            }
-          }}
-        />
-      </div>
+      {/* Add Booking Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96 max-w-md">
+            <h2 className="text-lg font-semibold mb-4">Add New Booking</h2>
 
-      {isModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal large-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>{editingBooking ? 'Edit Booking' : 'Add New Booking'}</h3>
-            <form onSubmit={handleSubmit}>
-              <div className="form-grid">
-                <div className="form-section">
-                  <h4>Booking Details</h4>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Client
+                </label>
+                <select
+                  value={formData.clientId}
+                  onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Select a client...</option>
+                  {clients.map((client) => (
+                    <option key={client._id} value={client._id}>
+                      {client.firstName} {client.lastName} - {client.email}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                  <div className="form-group">
-                    <label htmlFor="bookingNumber">Booking Number (optional - auto-generated if empty):</label>
-                    <input
-                      type="text"
-                      id="bookingNumber"
-                      name="bookingNumber"
-                      value={formData.bookingNumber || ''}
-                      onChange={handleInputChange}
-                      placeholder="Auto-generated (e.g., BK000001)"
-                    />
-                  </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Retreat
+                </label>
+                <select
+                  value={formData.retreatId}
+                  onChange={(e) => setFormData({ ...formData, retreatId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Select a retreat...</option>
+                  {retreats.map((retreat) => (
+                    <option key={retreat._id} value={retreat._id}>
+                      {retreat.name} - {retreat.location}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                  <div className="form-group">
-                    <label htmlFor="clientId">Client:</label>
-                    <select
-                      id="clientId"
-                      name="clientId"
-                      value={formData.clientId || ''}
-                      onChange={handleInputChange}
-                      required
-                    >
-                      <option value="">Select a client...</option>
-                      {clients.map(client => (
-                        <option key={client._id} value={client._id}>
-                          {(client.firstName || client.fname)} {(client.lastName || client.lname)} {client.email ? `(${client.email})` : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="retreatId">Retreat:</label>
-                    <select
-                      id="retreatId"
-                      name="retreatId"
-                      value={formData.retreatId || ''}
-                      onChange={handleInputChange}
-                      required
-                    >
-                      <option value="">Select a retreat...</option>
-                      {retreats.map(retreat => (
-                        <option key={retreat._id} value={retreat._id}>
-                          {retreat.name} - {retreat.location}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="registrationDate">Registration Date:</label>
-                    <input
-                      type="datetime-local"
-                      id="registrationDate"
-                      name="registrationDate"
-                      value={formData.registrationDate ? new Date(formData.registrationDate).toISOString().slice(0, 16) : ''}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="bookingType">Booking Type:</label>
-                    <select
-                      id="bookingType"
-                      name="bookingType"
-                      value={formData.bookingType || 'full_retreat'}
-                      onChange={handleInputChange}
-                      required
-                    >
-                      <option value="full_retreat">Full Retreat</option>
-                      <option value="booster">Booster</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="status">Status:</label>
-                    <select
-                      id="status"
-                      name="status"
-                      value={formData.status || 'pending'}
-                      onChange={handleInputChange}
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="confirmed">Confirmed</option>
-                      <option value="checked-in">Checked In</option>
-                      <option value="checked-out">Checked Out</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                  </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Amount
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.totalAmount}
+                    onChange={(e) => setFormData({ ...formData, totalAmount: parseFloat(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="0.00"
+                  />
                 </div>
 
-                <div className="form-section">
-                  <h4>Financial Information</h4>
-
-                  <div className="form-group">
-                    <label htmlFor="currency">Currency:</label>
-                    <select
-                      id="currency"
-                      name="currency"
-                      value={formData.currency || 'EUR'}
-                      onChange={handleInputChange}
-                      required
-                    >
-                      <option value="EUR">EUR (Euro)</option>
-                      <option value="USD">USD (US Dollar)</option>
-                      <option value="CZK">CZK (Czech Koruna)</option>
-                      <option value="PLN">PLN (Polish Złoty)</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="totalAmount">Total Amount:</label>
-                    <input
-                      type="number"
-                      id="totalAmount"
-                      name="totalAmount"
-                      value={formData.totalAmount || ''}
-                      onChange={handleInputChange}
-                      min="0"
-                      step="0.01"
-                      required
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="amountPaid">Amount Paid:</label>
-                    <input
-                      type="number"
-                      id="amountPaid"
-                      name="amountPaid"
-                      value={formData.amountPaid || ''}
-                      onChange={handleInputChange}
-                      min="0"
-                      step="0.01"
-                    />
-                  </div>
-                </div>
-
-                <div className="form-section">
-                  <h4>Additional Information</h4>
-
-
-                  <div className="form-group">
-                    <label htmlFor="specialRequests">Special Requests:</label>
-                    <textarea
-                      id="specialRequests"
-                      name="specialRequests"
-                      value={formData.specialRequests || ''}
-                      onChange={handleInputChange}
-                      placeholder="Any special dietary or accommodation requests..."
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="notes">Notes:</label>
-                    <textarea
-                      id="notes"
-                      name="notes"
-                      value={formData.notes || ''}
-                      onChange={handleInputChange}
-                      placeholder="Any additional notes about this booking..."
-                    />
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Currency
+                  </label>
+                  <select
+                    value={formData.currency}
+                    onChange={(e) => setFormData({ ...formData, currency: e.target.value as 'EUR' | 'USD' | 'CZK' | 'PLN' })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="EUR">EUR</option>
+                    <option value="USD">USD</option>
+                    <option value="CZK">CZK</option>
+                    <option value="PLN">PLN</option>
+                  </select>
                 </div>
               </div>
 
-              <div className="form-buttons">
-                <button type="submit" className="save-btn">
-                  {editingBooking ? 'Update Booking' : 'Create Booking'}
-                </button>
-                <button type="button" onClick={() => setIsModalOpen(false)} className="cancel-btn">
-                  Cancel
-                </button>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Status
+                </label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'pending' | 'confirmed' | 'checked-in' | 'checked-out' | 'cancelled' })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="confirmed">Confirmed</option>
+                  <option value="checked-in">Checked In</option>
+                  <option value="checked-out">Checked Out</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
               </div>
-            </form>
+            </div>
+
+            <div className="flex justify-end space-x-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowAddModal(false);
+                  setFormData({
+                    clientId: '',
+                    retreatId: '',
+                    totalAmount: 0,
+                    currency: 'EUR',
+                    status: 'pending'
+                  });
+                }}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+              >
+                Cancel
+              </button>
+              <AppleButton
+                onClick={async () => {
+                  try {
+                    if (!formData.clientId || !formData.retreatId) {
+                      alert('Please select both client and retreat');
+                      return;
+                    }
+
+                    const selectedRetreat = retreats.find(r => r._id === formData.retreatId);
+
+                    const bookingData = {
+                      clientId: formData.clientId,
+                      retreatId: formData.retreatId,
+                      totalAmount: formData.totalAmount,
+                      currency: formData.currency,
+                      status: formData.status,
+                      registrationDate: new Date().toISOString(),
+                      amountPaid: 0,
+                      checkInDate: selectedRetreat?.startDate || new Date().toISOString(),
+                      checkOutDate: selectedRetreat?.endDate || new Date().toISOString()
+                    };
+
+                    await bookingsApi.create(bookingData);
+                    fetchBookings();
+                    setShowAddModal(false);
+                    setFormData({
+                      clientId: '',
+                      retreatId: '',
+                      totalAmount: 0,
+                      currency: 'EUR',
+                      status: 'pending'
+                    });
+                  } catch (error) {
+                    console.error('Error creating booking:', error);
+                    alert('Error creating booking. Please try again.');
+                  }
+                }}
+                className="apple-button-primary"
+              >
+                Create Booking
+              </AppleButton>
+            </div>
           </div>
         </div>
       )}

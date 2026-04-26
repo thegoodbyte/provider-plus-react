@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { AgGridReact } from 'ag-grid-react';
-import { ColDef, GridApi, GridReadyEvent } from 'ag-grid-community';
 import { ceremoniesApi } from '../services/api';
 import { CeremonyParticipant, Ceremony } from '../types';
 import { Button, Modal, Form, Input, InputNumber, TimePicker, Select, message, Card, Statistic, Row, Col } from 'antd';
@@ -16,125 +14,35 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
   const [ceremony, setCeremony] = useState<Ceremony | null>(null);
   const [participants, setParticipants] = useState<CeremonyParticipant[]>([]);
   const [loading, setLoading] = useState(false);
-  const [gridApi, setGridApi] = useState<GridApi | null>(null);
   const [selectedParticipant, setSelectedParticipant] = useState<CeremonyParticipant | null>(null);
   const [actionModalVisible, setActionModalVisible] = useState(false);
   const [actionType, setActionType] = useState<'medical' | 'spoons' | 'purge' | 'notes'>('spoons');
   const [form] = Form.useForm();
 
-  const columnDefs: ColDef[] = [
-    {
-      headerName: 'Client',
-      field: 'clientId.firstName',
-      width: 150,
-      valueFormatter: (params) => {
-        const client = params.data.clientId;
-        return client ? `${client.firstName || ''} ${client.lastName || ''}`.trim() : 'Unknown';
-      }
-    },
-    {
-      headerName: 'Arrived',
-      field: 'arrivalTime',
-      width: 100,
-      cellRenderer: (params: any) => {
-        return params.value ? moment(params.value, 'HH:mm').format('HH:mm') : '⏳ Not yet';
-      }
-    },
-    {
-      headerName: 'Medical Clearance',
-      field: 'medicalClearance',
-      width: 150,
-      cellRenderer: (params: any) => {
-        const clearance = params.value || 'pending';
-        const colors = {
-          approved: '#52c41a',
-          not_approved: '#ff4d4f',
-          conditional: '#faad14',
-          pending: '#8c8c8c'
-        };
-        return `<span style="color: ${colors[clearance as keyof typeof colors]}; font-weight: bold;">
-          ${clearance.replace('_', ' ').toUpperCase()}
-        </span>`;
-      }
-    },
-    {
-      headerName: 'Spoons',
-      field: 'spoonsTaken',
-      width: 80,
-      cellRenderer: (params: any) => {
-        const count = params.value || 0;
-        return `<span style="font-weight: bold; color: #1890ff;">${count}</span>`;
-      }
-    },
-    {
-      headerName: 'First Spoon',
-      field: 'firstSpoonTime',
-      width: 110,
-      cellRenderer: (params: any) => {
-        return params.value ? moment(params.value, 'HH:mm').format('HH:mm') : '-';
-      }
-    },
-    {
-      headerName: 'Purged',
-      field: 'purged',
-      width: 80,
-      cellRenderer: (params: any) => {
-        if (params.value === true) return '✅ Yes';
-        if (params.value === false) return '❌ No';
-        return '⏳ Pending';
-      }
-    },
-    {
-      headerName: 'Status',
-      field: 'postCeremonyStatus',
-      width: 120,
-      cellRenderer: (params: any) => {
-        const status = params.value;
-        if (!status) return '⏳ In progress';
+  const getMedicalClearanceColor = (clearance: string) => {
+    const colors: Record<string, string> = {
+      approved: 'bg-green-100 text-green-800',
+      not_approved: 'bg-red-100 text-red-800',
+      conditional: 'bg-yellow-100 text-yellow-800',
+      pending: 'bg-gray-100 text-gray-800'
+    };
+    return colors[clearance] || 'bg-gray-100 text-gray-800';
+  };
 
-        const statusColors = {
-          good: '#52c41a',
-          needs_support: '#faad14',
-          monitoring: '#ff7875',
-          medical_attention: '#ff4d4f'
-        };
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      good: 'bg-green-100 text-green-800',
+      needs_support: 'bg-yellow-100 text-yellow-800',
+      monitoring: 'bg-orange-100 text-orange-800',
+      medical_attention: 'bg-red-100 text-red-800'
+    };
+    return colors[status] || 'bg-gray-100 text-gray-800';
+  };
 
-        return `<span style="color: ${statusColors[status as keyof typeof statusColors]}; font-weight: bold;">
-          ${status.replace('_', ' ').toUpperCase()}
-        </span>`;
-      }
-    },
-    {
-      headerName: 'Actions',
-      field: 'actions',
-      width: 200,
-      cellRenderer: (params: any) => (
-        <div style={{ display: 'flex', gap: '4px', height: '100%', alignItems: 'center' }}>
-          <Button
-            size="small"
-            onClick={() => handleActionClick(params.data, 'medical')}
-            icon={<MedicineBoxOutlined />}
-          >
-            Medical
-          </Button>
-          <Button
-            size="small"
-            onClick={() => handleActionClick(params.data, 'spoons')}
-            type="primary"
-          >
-            Spoons
-          </Button>
-          <Button
-            size="small"
-            onClick={() => handleActionClick(params.data, 'purge')}
-            danger={!params.data.purged}
-          >
-            Purge
-          </Button>
-        </div>
-      )
-    }
-  ];
+  const getClientName = (participant: CeremonyParticipant) => {
+    const client = participant.clientId as any;
+    return client ? `${client.firstName || ''} ${client.lastName || ''}`.trim() : 'Unknown';
+  };
 
   useEffect(() => {
     loadData();
@@ -156,11 +64,6 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
     } finally {
       setLoading(false);
     }
-  };
-
-  const onGridReady = (params: GridReadyEvent) => {
-    setGridApi(params.api);
-    params.api.sizeColumnsToFit();
   };
 
   const handleActionClick = (participant: CeremonyParticipant, type: 'medical' | 'spoons' | 'purge' | 'notes') => {
@@ -345,16 +248,112 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
         </Col>
       </Row>
 
-      {/* Participants Grid */}
-      <div className="ag-theme-alpine" style={{ height: 500, width: '100%' }}>
-        <AgGridReact
-          columnDefs={columnDefs}
-          rowData={participants}
-          onGridReady={onGridReady}
-          loading={loading}
-          animateRows={true}
-          rowHeight={50}
-        />
+      {/* Participants Table */}
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Client
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Arrived
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Medical Clearance
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Spoons
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  First Spoon
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Purged
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {participants.map((participant) => (
+                <tr key={participant._id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {getClientName(participant)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {participant.arrivalTime ? moment(participant.arrivalTime, 'HH:mm').format('HH:mm') : '⏳ Not yet'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getMedicalClearanceColor(participant.medicalClearance || 'pending')}`}>
+                      {(participant.medicalClearance || 'pending').replace('_', ' ').toUpperCase()}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-blue-600">
+                    {participant.spoonsTaken || 0}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {participant.firstSpoonTime ? moment(participant.firstSpoonTime, 'HH:mm').format('HH:mm') : '-'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {participant.purged === true ? '✅ Yes' :
+                     participant.purged === false ? '❌ No' :
+                     '⏳ Pending'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {participant.postCeremonyStatus ? (
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(participant.postCeremonyStatus)}`}>
+                        {participant.postCeremonyStatus.replace('_', ' ').toUpperCase()}
+                      </span>
+                    ) : (
+                      <span className="text-gray-500">⏳ In progress</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                      <Button
+                        size="small"
+                        onClick={() => handleActionClick(participant, 'medical')}
+                        icon={<MedicineBoxOutlined />}
+                      >
+                        Medical
+                      </Button>
+                      <Button
+                        size="small"
+                        onClick={() => handleActionClick(participant, 'spoons')}
+                        type="primary"
+                      >
+                        Spoons
+                      </Button>
+                      <Button
+                        size="small"
+                        onClick={() => handleActionClick(participant, 'purge')}
+                        danger={!participant.purged}
+                      >
+                        Purge
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {participants.length === 0 && !loading && (
+            <div className="text-center py-8 text-gray-500">
+              No participants found
+            </div>
+          )}
+          {loading && (
+            <div className="text-center py-8 text-gray-500">
+              Loading participants...
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Action Modal */}

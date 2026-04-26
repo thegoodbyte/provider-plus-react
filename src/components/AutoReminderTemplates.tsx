@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { AgGridReact } from 'ag-grid-react';
-import { ColDef, ICellRendererParams } from 'ag-grid-community';
+import { FiPlus, FiEdit2, FiTrash2, FiPlay, FiPause, FiRefreshCw } from 'react-icons/fi';
 import './AutoReminderTemplates.css';
+
+// Simple wrapper to fix TypeScript icon issues
+const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
+  return <IconComponent className={className} />;
+};
 
 export interface ReminderTemplate {
   _id?: string;
@@ -172,101 +176,33 @@ export const AutoReminderTemplates: React.FC = () => {
     localStorage.setItem('reminderTemplates', JSON.stringify(updatedTemplates));
   };
 
-  const columnDefs: ColDef[] = [
-    {
-      headerName: 'Name',
-      field: 'name',
-      width: 200,
-      pinned: 'left'
-    },
-    {
-      headerName: 'Days Before',
-      field: 'daysBeforeRetreat',
-      width: 120,
-      cellRenderer: (params: ICellRendererParams) => `${params.value} days`
-    },
-    {
-      headerName: 'Action Type',
-      field: 'actionType',
-      width: 140,
-      cellRenderer: (params: ICellRendererParams) => {
-        const actionTypeMap: { [key: string]: string } = {
-          'ask_for_document': 'Ask for Document',
-          'review_document': 'Review Document',
-          'follow_up': 'Follow Up',
-          'medical_clearance': 'Medical Clearance',
-          'general': 'General',
-          'payment': 'Payment'
-        };
-        return actionTypeMap[params.value] || params.value;
-      }
-    },
-    {
-      headerName: 'Priority',
-      field: 'priority',
-      width: 100,
-      cellRenderer: (params: ICellRendererParams) => {
-        const colors = {
-          low: '#28a745',
-          medium: '#ffc107',
-          high: '#fd7e14',
-          urgent: '#dc3545'
-        };
-        return `<span style="color: ${colors[params.value as keyof typeof colors]}; font-weight: bold;">${params.value.toUpperCase()}</span>`;
-      }
-    },
-    {
-      headerName: 'Auto Assign',
-      field: 'autoAssignToAllClients',
-      width: 120,
-      cellRenderer: (params: ICellRendererParams) => params.value ? '✅ All Clients' : '❌ Manual'
-    },
-    {
-      headerName: 'Status',
-      field: 'isActive',
-      width: 100,
-      cellRenderer: (params: ICellRendererParams) => {
-        return `<span style="color: ${params.value ? '#28a745' : '#dc3545'}; font-weight: bold;">${params.value ? 'Active' : 'Inactive'}</span>`;
-      }
-    },
-    {
-      headerName: 'Title',
-      field: 'title',
-      width: 250,
-      flex: 1
-    },
-    {
-      headerName: 'Actions',
-      width: 150,
-      cellRenderer: (params: ICellRendererParams) => {
-        const template = params.data as ReminderTemplate;
-        return `
-          <div class="action-buttons">
-            <button class="edit-btn" onclick="window.editTemplate('${template._id}')">✏️</button>
-            <button class="toggle-btn" onclick="window.toggleActive('${template._id}')">${template.isActive ? '⏸️' : '▶️'}</button>
-            <button class="delete-btn" onclick="window.deleteTemplate('${template._id}')">🗑️</button>
-          </div>
-        `;
-      }
-    }
-  ];
+  const getPriorityColor = (priority: string) => {
+    const colors: Record<string, string> = {
+      low: 'bg-green-100 text-green-800',
+      medium: 'bg-yellow-100 text-yellow-800',
+      high: 'bg-orange-100 text-orange-800',
+      urgent: 'bg-red-100 text-red-800'
+    };
+    return colors[priority] || 'bg-yellow-100 text-yellow-800';
+  };
 
-  // Expose functions to window for button clicks
-  React.useEffect(() => {
-    (window as any).editTemplate = (id: string) => {
-      const template = templates.find(t => t._id === id);
-      if (template) handleEdit(template);
+  const getActionTypeLabel = (actionType: string) => {
+    const actionTypeMap: { [key: string]: string } = {
+      'ask_for_document': 'Ask for Document',
+      'review_document': 'Review Document',
+      'follow_up': 'Follow Up',
+      'medical_clearance': 'Medical Clearance',
+      'general': 'General',
+      'payment': 'Payment'
     };
-    (window as any).toggleActive = (id: string) => {
-      const template = templates.find(t => t._id === id);
-      if (template) handleToggleActive(template);
-    };
-    (window as any).deleteTemplate = (id: string) => {
-      if (window.confirm('Are you sure you want to delete this template?')) {
-        deleteTemplate(id);
-      }
-    };
-  }, [templates]);
+    return actionTypeMap[actionType] || actionType;
+  };
+
+  const handleDeleteTemplate = (id: string) => {
+    if (window.confirm('Are you sure you want to delete this template?')) {
+      deleteTemplate(id);
+    }
+  };
 
   return (
     <div className="auto-reminder-templates">
@@ -274,31 +210,127 @@ export const AutoReminderTemplates: React.FC = () => {
         <h2>🤖 Automatic Reminder Templates</h2>
         <p>Configure automatic reminders that will be created for retreat participants based on retreat dates.</p>
 
-        <div className="templates-controls">
+        <div className="flex gap-2">
           <button
             onClick={() => setShowAddForm(true)}
-            className="add-btn"
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50"
             disabled={showAddForm}
           >
-            ➕ Add Template
+            <Icon icon={FiPlus} className="w-4 h-4" />
+            Add Template
           </button>
-          <button onClick={loadTemplates} className="refresh-btn">
-            🔄 Refresh
+          <button
+            onClick={loadTemplates}
+            className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 flex items-center gap-2"
+          >
+            <Icon icon={FiRefreshCw} className="w-4 h-4" />
+            Refresh
           </button>
         </div>
       </div>
 
-      {/* Templates Grid */}
-      <div className="ag-theme-alpine templates-grid">
-        <AgGridReact
-          rowData={templates}
-          columnDefs={columnDefs}
-          domLayout="autoHeight"
-          pagination={true}
-          paginationPageSize={20}
-          loading={isLoading}
-          suppressHorizontalScroll={false}
-        />
+      {/* Templates Table */}
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden mt-6">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Name
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Days Before
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Action Type
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Priority
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Auto Assign
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Title
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {templates.map((template) => (
+                <tr key={template._id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">{template.name}</div>
+                    <div className="text-sm text-gray-500 truncate max-w-xs">
+                      {template.description}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {template.daysBeforeRetreat} days
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {getActionTypeLabel(template.actionType)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityColor(template.priority)}`}>
+                      {template.priority}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {template.autoAssignToAllClients ? (
+                      <span className="text-green-600 font-medium">All Clients</span>
+                    ) : (
+                      <span className="text-gray-500">Manual</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${template.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                      {template.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 max-w-xs truncate">
+                    {template.title}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleEdit(template)}
+                        className="text-indigo-600 hover:text-indigo-900"
+                        title="Edit"
+                      >
+                        <Icon icon={FiEdit2} className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleToggleActive(template)}
+                        className={`${template.isActive ? 'text-yellow-600 hover:text-yellow-900' : 'text-green-600 hover:text-green-900'}`}
+                        title={template.isActive ? 'Pause' : 'Activate'}
+                      >
+                        <Icon icon={template.isActive ? FiPause : FiPlay} className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteTemplate(template._id!)}
+                        className="text-red-600 hover:text-red-900"
+                        title="Delete"
+                      >
+                        <Icon icon={FiTrash2} className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {templates.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              No templates found
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Add/Edit Form Modal */}

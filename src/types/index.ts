@@ -61,7 +61,15 @@ export interface Client {
   medicalConditions?: string;
   dietaryRestrictions?: string;
   status?: 'active' | 'inactive' | 'suspended';
+  workflowStatus?: 'potential' | 'screening' | 'approved' | 'rejected' | 'booked' | 'cancelled' | 'completed' | 'blacklisted';
+  blacklistReason?: string;
+  blacklistDate?: Date | string;
+  initialContactDate?: Date | string;
+  conversionDate?: Date | string;
+  firstContactDate?: Date | string;
+  rejectionReason?: string;
   source?: string;
+  tags?: string[];
   notes?: string;
   preferredName?: string;
   occupation?: string;
@@ -69,6 +77,35 @@ export interface Client {
   height?: string;
   weight?: number;
   depositFormHash?: string;
+  accessCode?: string;
+  // Screening fields
+  whySeekingIboga?: string;
+  whatToChange?: string;
+  previousPlantMedicines?: string;
+  spiritualBackground?: string;
+  childhood?: string;
+  traumaHistory?: string;
+  mentalHealthHistory?: string;
+  addictionHistory?: string;
+  heartConditions?: string;
+  liverConditions?: string;
+  asthmaConditions?: string;
+  otherMedicalComplications?: string;
+  bloodPressureIssues?: string;
+  seizureHistory?: string;
+  psychoticEpisodes?: string;
+  currentMedications?: string;
+  recreationalDrugs?: string;
+  vitaminsSupplements?: string;
+  alcoholConsumption?: string;
+  suicidalThoughts?: string;
+  hospitalizations?: string;
+  allergies?: string;
+  weightRange?: string;
+  pregnancyStatus?: string;
+  screeningCompletedDate?: Date | string;
+  followUpDate?: Date | string;
+  priority?: 'low' | 'medium' | 'high' | 'urgent';
   createdAt?: string;
   updatedAt?: string;
   // Legacy support
@@ -328,6 +365,7 @@ export interface PaymentSummary {
 
 export interface ScreeningClient {
   _id?: string;
+  screeningId?: string; // ISCZ-P-XXXX format ID
 
   // Basic Information
   firstName: string;
@@ -335,6 +373,7 @@ export interface ScreeningClient {
   phone: string;
   country: string;
   email?: string;
+  age?: number;
   firstContactDate: Date | string;
 
   // Screening Status
@@ -344,7 +383,13 @@ export interface ScreeningClient {
   // Motivation & Goals
   whySeekingIboga: string;
   whatToChange: string;
-  previousPlantMedicines?: string;
+  previousPlantMedicines?: {
+    ayahuasca?: boolean;
+    marijuana?: boolean;
+    psilocybin?: boolean;
+    other?: boolean;
+    otherDetails?: string;
+  };
   spiritualBackground?: string;
 
   // Personal History
@@ -354,8 +399,16 @@ export interface ScreeningClient {
   addictionHistory?: string;
 
   // Health Information
-  heartConditions?: string;
-  liverConditions?: string;
+  heartConditions?: {
+    ok?: boolean;
+    na?: boolean;
+    details?: string;
+  } | string; // Keep string for backward compatibility
+  liverConditions?: {
+    ok?: boolean;
+    na?: boolean;
+    details?: string;
+  } | string; // Keep string for backward compatibility
   asthmaConditions?: string;
   otherMedicalComplications?: string;
   bloodPressureIssues?: string;
@@ -363,20 +416,45 @@ export interface ScreeningClient {
   psychoticEpisodes?: string;
 
   // Current Medications & Substances
-  currentMedications?: string;
+  currentMedications?: {
+    ssri?: boolean;
+    antidepressants?: boolean;
+    other?: boolean;
+    otherDetails?: string;
+    medications?: Array<{
+      name: string;
+      since: string;
+      mgDaily: string;
+      reason: string;
+      frequency: string;
+    }>;
+  };
   recreationalDrugs?: string;
-  vitaminsSupplements?: string;
+  vitaminsSupplements?: {
+    vitaminD?: boolean;
+    vitaminB12?: boolean;
+    vitaminC?: boolean;
+    omega3?: boolean;
+    magnesium?: boolean;
+    probiotics?: boolean;
+    multivitamin?: boolean;
+    kratom?: boolean;
+    creatine?: boolean;
+    other?: boolean;
+    otherDetails?: string;
+  };
   alcoholConsumption?: string;
 
   // Safety Considerations
   suicidalThoughts?: string;
   hospitalizations?: string;
   allergies?: string;
-  weightRange?: string;
-  pregnancyStatus?: string;
+  medicalIssues?: string;
 
   // Administrative
   notes?: string;
+  observations?: string;
+  nzingoInsights?: string;
   followUpDate?: Date | string;
   screeningCompletedDate?: Date | string;
   rejectionReason?: string;
@@ -469,6 +547,19 @@ export interface CeremonyParticipant {
   postCeremonyStatus?: 'good' | 'needs_support' | 'monitoring' | 'medical_attention';
   postCeremonyNotes?: string;
 
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface MedicalItem {
+  _id?: string;
+  type: 'EKG' | 'Liver' | 'Question';
+  image?: string; // URL or base64 image data
+  client_id: string;
+  notes?: string;
+  medadvisor_review_date?: Date | string;
+  medadvisor_review_result?: 'OK' | 'caution' | 'NOT OK';
+  medadvisor_review_notes?: string;
   createdAt?: string;
   updatedAt?: string;
 }

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Retreat, House, Client, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, ScreeningClient, Ceremony, CeremonyParticipant } from '../types';
+import { Retreat, House, Client, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem } from '../types';
 import { authService } from './authService';
 import { cacheService } from './cacheService';
 
@@ -41,7 +41,7 @@ api.interceptors.response.use(
 );
 
 // Helper function to cache GET requests
-const cachedGet = async <T>(key: string, fetcher: () => Promise<any>, ttl: number = 30000): Promise<any> => {
+const cachedGet = async <T>(key: string, fetcher: () => Promise<any>, ttl: number = 60000): Promise<any> => {
   const cached = cacheService.get<T>(key);
   if (cached) {
     return { data: cached };
@@ -53,8 +53,8 @@ const cachedGet = async <T>(key: string, fetcher: () => Promise<any>, ttl: numbe
 };
 
 export const retreatsApi = {
-  getAll: () => api.get<Retreat[]>('/retreats'),
-  getOne: (id: string) => api.get<Retreat>(`/retreats/${id}`),
+  getAll: () => cachedGet<Retreat[]>('retreats:all', () => api.get<Retreat[]>('/retreats')),
+  getOne: (id: string) => cachedGet<Retreat>(`retreats:${id}`, () => api.get<Retreat>(`/retreats/${id}`)),
   create: (data: Omit<Retreat, '_id'>) => {
     cacheService.clearPattern('retreats:');
     return api.post<Retreat>('/retreats', data);
@@ -70,8 +70,8 @@ export const retreatsApi = {
 };
 
 export const housesApi = {
-  getAll: () => cachedGet<House[]>('houses:all', () => api.get<House[]>('/houses')),
-  getOne: (id: string) => cachedGet<House>(`houses:${id}`, () => api.get<House>(`/houses/${id}`)),
+  getAll: () => cachedGet<House[]>('houses:all', () => api.get<House[]>('/houses'), 300000), // 5 minutes - houses don't change often
+  getOne: (id: string) => cachedGet<House>(`houses:${id}`, () => api.get<House>(`/houses/${id}`), 300000),
   create: (data: Omit<House, '_id'>) => {
     cacheService.clearPattern('houses:');
     return api.post<House>('/houses', data);
@@ -110,6 +110,8 @@ export const clientsApi = {
   getByRetreat: (retreatId: string) => cachedGet<Client[]>(`clients:retreat:${retreatId}`, () => api.get<Client[]>(`/clients/by-retreat/${retreatId}`)),
   regenerateDepositHash: (id: string) => api.post<{ hash: string }>(`/clients/${id}/regenerate-deposit-hash`, {}),
   getPotential: () => api.get<Client[]>('/clients/potential'),
+  getActive: () => api.get<Client[]>('/clients/active'),
+  getByPriority: (priority: string) => api.get<Client[]>(`/clients/by-priority/${priority}`),
   getBlacklisted: () => api.get<Client[]>('/clients/blacklisted'),
   blacklist: (id: string, reason: string) => {
     cacheService.clearPattern('clients:');
@@ -119,12 +121,16 @@ export const clientsApi = {
     cacheService.clearPattern('clients:');
     return api.put(`/clients/${id}/workflow-status`, { status, reason });
   },
+  updateScreening: (id: string, screeningData: any) => {
+    cacheService.clearPattern('clients:');
+    return api.put(`/clients/${id}/screening`, screeningData);
+  },
 };
 
 export const clientMedicalApi = {
-  getAll: () => api.get<ClientMedical[]>('/client-medical'),
-  getOne: (id: string) => api.get<ClientMedical>(`/client-medical/${id}`),
-  getByClient: (clientId: string) => api.get<ClientMedical[]>(`/client-medical/client/${clientId}`),
+  getAll: () => cachedGet<ClientMedical[]>('medical:all', () => api.get<ClientMedical[]>('/client-medical')),
+  getOne: (id: string) => cachedGet<ClientMedical>(`medical:${id}`, () => api.get<ClientMedical>(`/client-medical/${id}`)),
+  getByClient: (clientId: string) => cachedGet<ClientMedical[]>(`medical:client:${clientId}`, () => api.get<ClientMedical[]>(`/client-medical/client/${clientId}`)),
   getByRetreat: (retreatId: string) => api.get<ClientMedical[]>(`/client-medical/retreat/${retreatId}`),
   getByClientAndRetreat: (clientId: string, retreatId: string) => api.get<ClientMedical>(`/client-medical/client/${clientId}/retreat/${retreatId}`),
   create: (data: Omit<ClientMedical, '_id'>) => api.post<ClientMedical>('/client-medical', data),
@@ -148,9 +154,9 @@ export const clientMedicalApi = {
 
 
 export const remindersApi = {
-  getAll: () => api.get<Reminder[]>('/reminders'),
-  getPending: () => api.get<Reminder[]>('/reminders?status=pending'),
-  getByClient: (clientId: string) => api.get<Reminder[]>(`/reminders/client/${clientId}`),
+  getAll: () => cachedGet<Reminder[]>('reminders:all', () => api.get<Reminder[]>('/reminders')),
+  getPending: () => cachedGet<Reminder[]>('reminders:pending', () => api.get<Reminder[]>('/reminders?status=pending')),
+  getByClient: (clientId: string) => cachedGet<Reminder[]>(`reminders:client:${clientId}`, () => api.get<Reminder[]>(`/reminders/client/${clientId}`)),
   getByRetreat: (retreatId: string) => api.get<Reminder[]>(`/reminders/retreat/${retreatId}`),
   create: (data: Omit<Reminder, '_id'>) => api.post<Reminder>('/reminders', data),
   update: (id: string, data: Partial<Reminder>) => api.patch<Reminder>(`/reminders/${id}`, data),
@@ -280,9 +286,9 @@ export const screeningClientsApi = {
 };
 
 export const requirementsApi = {
-  getAll: () => api.get<Requirement[]>('/requirements'),
-  getOne: (id: string) => api.get<Requirement>(`/requirements/${id}`),
-  getByCategory: (category: string) => api.get<Requirement[]>(`/requirements/category/${category}`),
+  getAll: () => cachedGet<Requirement[]>('requirements:all', () => api.get<Requirement[]>('/requirements')),
+  getOne: (id: string) => cachedGet<Requirement>(`requirements:${id}`, () => api.get<Requirement>(`/requirements/${id}`)),
+  getByCategory: (category: string) => cachedGet<Requirement[]>(`requirements:cat:${category}`, () => api.get<Requirement[]>(`/requirements/category/${category}`)),
   create: (data: Omit<Requirement, '_id'>) => api.post<Requirement>('/requirements', data),
   update: (id: string, data: Partial<Requirement>) => api.patch<Requirement>(`/requirements/${id}`, data),
   updateOrder: (requirements: { id: string; order: number }[]) => api.put('/requirements/reorder', requirements),
@@ -334,4 +340,39 @@ export const ceremoniesApi = {
   recordSpoonIntake: (id: string, spoonData: any) => api.patch<CeremonyParticipant>(`/ceremonies/participant/${id}/spoons`, spoonData),
   recordPurge: (id: string, purgeData: any) => api.patch<CeremonyParticipant>(`/ceremonies/participant/${id}/purge`, purgeData),
   getRetreatSummary: (retreatId: string) => api.get<any>(`/ceremonies/retreat/${retreatId}/summary`),
+};
+
+export const medicalTrackingApi = {
+  getAll: () => cachedGet<MedicalItem[]>('medical-tracking:all', () => api.get<MedicalItem[]>('/medical-tracking')),
+  getOne: (id: string) => cachedGet<MedicalItem>(`medical-tracking:${id}`, () => api.get<MedicalItem>(`/medical-tracking/${id}`)),
+  getByClient: (clientId: string) => cachedGet<MedicalItem[]>(`medical-tracking:client:${clientId}`, () => api.get<MedicalItem[]>(`/medical-tracking/client/${clientId}`)),
+  getByType: (type: 'EKG' | 'Liver' | 'Question') => cachedGet<MedicalItem[]>(`medical-tracking:type:${type}`, () => api.get<MedicalItem[]>(`/medical-tracking/type/${type}`)),
+  create: (data: Omit<MedicalItem, '_id'>) => {
+    cacheService.clearPattern('medical-tracking:');
+    return api.post<MedicalItem>('/medical-tracking', data);
+  },
+  update: (id: string, data: Partial<MedicalItem>) => {
+    cacheService.clearPattern('medical-tracking:');
+    return api.patch<MedicalItem>(`/medical-tracking/${id}`, data);
+  },
+  reviewItem: (id: string, reviewData: {
+    medadvisor_review_result: 'OK' | 'caution' | 'NOT OK';
+    medadvisor_review_notes: string;
+    medadvisor_review_date?: Date | string;
+  }) => {
+    cacheService.clearPattern('medical-tracking:');
+    return api.patch<MedicalItem>(`/medical-tracking/${id}/review`, reviewData);
+  },
+  uploadImage: (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    cacheService.clearPattern('medical-tracking:');
+    return api.post<MedicalItem>(`/medical-tracking/${id}/upload-image`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  delete: (id: string) => {
+    cacheService.clearPattern('medical-tracking:');
+    return api.delete(`/medical-tracking/${id}`);
+  },
 };

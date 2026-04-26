@@ -460,30 +460,7 @@
   background-clip: text;
 }
 
-/* AG Grid Custom Styling */
-.ag-theme-alpine {
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-}
-
-.ag-theme-alpine .ag-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  font-weight: 600;
-}
-
-.ag-theme-alpine .ag-header-cell-label {
-  color: white;
-}
-
-.ag-theme-alpine .ag-row:hover {
-  background-color: #f8f9ff;
-}
-
-.ag-theme-alpine .ag-row-even {
-  background-color: #fafbff;
-}
+/* Grid Custom Styling */
 
 /* Responsive Design */
 @media (max-width: 1024px) {

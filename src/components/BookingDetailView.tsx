@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { bookingsApi } from '../services/api';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import { bookingsApi, clientsApi } from '../services/api';
 import BookingPaymentManagement from './BookingPaymentManagement';
 import BookingMedicalUpload from './BookingMedicalUpload';
+import ClientEditModal from './ClientEditModal';
+import { generateBookingPDF } from './BookingConfirmationPDF';
 import { formatBookingHashForDisplay } from '../utils/hashGenerator';
 import './BookingDetailView.css';
 
@@ -16,6 +16,8 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [booking, setBooking] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [isEditingClient, setIsEditingClient] = useState(false);
+  const [pdfLanguage, setPdfLanguage] = useState<'pl' | 'cz' | 'en'>('pl');
   const pdfRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -47,80 +49,37 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
 
   const formatDate = (date: string | Date) => {
     if (!date) return 'N/A';
-    return new Date(date).toLocaleDateString('en-US', {
+
+    // Create date and use UTC methods to avoid timezone conversion
+    const dateObj = new Date(date);
+    return dateObj.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
-      day: 'numeric'
+      day: 'numeric',
+      timeZone: 'UTC' // Force UTC to prevent timezone shift
     });
   };
 
+  const handleClientUpdate = async (updatedClient: any) => {
+    // Update the booking with the new client info
+    fetchBookingDetails();
+  };
+
   const generatePDF = async () => {
-    if (!pdfRef.current || !booking) return;
+    if (!booking) return;
 
     try {
       setIsGeneratingPDF(true);
-
-      // Add class to show PDF header and hide regular header
-      const container = document.querySelector('.booking-detail-container');
-      if (container) {
-        container.classList.add('generating-pdf');
-      }
-
-      // Wait a brief moment for CSS to apply
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Create a clone of the content for PDF generation
-      const element = pdfRef.current;
-
-      // Configure html2canvas options
-      const canvas = await html2canvas(element, {
-        scale: 2, // Higher quality
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff'
+      await generateBookingPDF({
+        booking,
+        language: pdfLanguage,
+        onComplete: () => {
+          setIsGeneratingPDF(false);
+        }
       });
-
-      const imgData = canvas.toDataURL('image/png');
-
-      // Create PDF
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
-      });
-
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 295; // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-
-      let position = 0;
-
-      // Add first page
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      // Add additional pages if needed
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      // Save the PDF
-      const fileName = `Booking_Confirmation_${booking.bookingNumber || 'Unknown'}_${new Date().toISOString().split('T')[0]}.pdf`;
-      pdf.save(fileName);
-
     } catch (error) {
       console.error('Error generating PDF:', error);
       alert('Error generating PDF. Please try again.');
-    } finally {
-      // Remove the PDF generation class
-      const container = document.querySelector('.booking-detail-container');
-      if (container) {
-        container.classList.remove('generating-pdf');
-      }
       setIsGeneratingPDF(false);
     }
   };
@@ -154,45 +113,30 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         <button onClick={onBack} className="back-btn">← Back to Bookings</button>
         <h2>Booking Details - {booking.bookingNumber || 'N/A'}</h2>
         <div className="header-actions">
+          <select
+            value={pdfLanguage}
+            onChange={(e) => setPdfLanguage(e.target.value as 'pl' | 'cz' | 'en')}
+            className="language-selector"
+            disabled={isGeneratingPDF}
+          >
+            <option value="pl">Polski (PL)</option>
+            <option value="cz">Čeština (CZ)</option>
+            <option value="en">English (EN)</option>
+          </select>
           <button
             onClick={generatePDF}
             disabled={isGeneratingPDF}
             className="pdf-btn"
           >
-            {isGeneratingPDF ? '📄 Generating...' : '📄 Download PDF'}
+            {isGeneratingPDF ? 'Generating...' : 'Download PDF'}
           </button>
         </div>
       </div>
 
       <div className="detail-content" ref={pdfRef}>
-        {/* PDF Header - only visible in PDF */}
-        <div className="pdf-header" style={{ display: 'none' }}>
-          <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-            <h1 style={{
-              color: '#2196F3',
-              fontSize: '28px',
-              marginBottom: '10px',
-              fontWeight: 'bold'
-            }}>
-              RETREAT BOOKING CONFIRMATION
-            </h1>
-            <p style={{
-              color: '#666',
-              fontSize: '16px',
-              margin: '0 0 20px 0'
-            }}>
-              Booking Number: <strong>{booking.bookingNumber || 'N/A'}</strong>
-            </p>
-            <hr style={{
-              border: 'none',
-              borderTop: '3px solid #2196F3',
-              width: '50%',
-              margin: '20px auto'
-            }} />
-          </div>
-        </div>
-        <div className="detail-section">
-          <h3>📋 Booking Information</h3>
+
+        <div className="detail-section pdf-section">
+          <h3 className="pdf-section-title">Booking Information</h3>
           <div className="info-grid">
             <div className="info-item">
               <label>Booking Number:</label>
@@ -236,8 +180,17 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
           </div>
         </div>
 
-        <div className="detail-section">
-          <h3>👤 Client Information</h3>
+        <div className="detail-section pdf-section">
+          <div className="section-header">
+            <h3 className="pdf-section-title">Client Information</h3>
+            <button
+              className="edit-btn"
+              onClick={() => setIsEditingClient(true)}
+              title="Edit client information"
+            >
+              Edit Client
+            </button>
+          </div>
           <div className="info-grid">
             <div className="info-item">
               <label>Name:</label>
@@ -262,8 +215,8 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
           </div>
         </div>
 
-        <div className="detail-section">
-          <h3>🏔️ Retreat Information</h3>
+        <div className="detail-section pdf-section">
+          <h3 className="pdf-section-title">Retreat Information</h3>
           <div className="info-grid">
             <div className="info-item">
               <label>Retreat Name:</label>
@@ -300,25 +253,34 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
 
         <BookingMedicalUpload
           bookingId={bookingId}
+          bookingNumber={booking.bookingNumber}
           clientId={typeof client === 'object' ? client._id : client}
           retreatId={typeof retreat === 'object' ? retreat._id : retreat}
           onUploadComplete={fetchBookingDetails}
         />
 
         {booking.specialRequests && (
-          <div className="detail-section">
-            <h3>📝 Special Requests</h3>
+          <div className="detail-section pdf-section">
+            <h3 className="pdf-section-title">Special Requests</h3>
             <p className="special-requests">{booking.specialRequests}</p>
           </div>
         )}
 
         {booking.notes && (
-          <div className="detail-section">
-            <h3>📌 Notes</h3>
+          <div className="detail-section pdf-section">
+            <h3 className="pdf-section-title">Notes</h3>
             <p className="notes">{booking.notes}</p>
           </div>
         )}
       </div>
+
+      {isEditingClient && client && typeof client === 'object' && (
+        <ClientEditModal
+          client={client}
+          onClose={() => setIsEditingClient(false)}
+          onSave={handleClientUpdate}
+        />
+      )}
     </div>
   );
 };

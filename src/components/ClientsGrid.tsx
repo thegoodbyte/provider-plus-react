@@ -1,16 +1,12 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { AgGridReact } from 'ag-grid-react';
-import { ColDef, GridApi, GridReadyEvent, ICellRendererParams, ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { clientsApi, retreatsApi, bookingsApi, clientMedicalApi } from '../services/api';
 import { Client } from '../types';
 import ClientDetailView from './ClientDetailView';
 import QuickAddClient from './QuickAddClient';
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-alpine.css';
+import SimpleTable, { Column } from './SimpleTable';
+import { IconButton, Chip } from '@mui/material';
+import { Edit as EditIcon, Delete as DeleteIcon, Visibility as VisibilityIcon, Link as LinkIcon } from '@mui/icons-material';
 import './ClientsGrid.css';
-
-// Register AG Grid modules
-ModuleRegistry.registerModules([AllCommunityModule]);
 
 // Countries list with codes for storage and full names for display
 const COUNTRIES_WITH_CODES = [
@@ -138,20 +134,20 @@ interface ClientFormData extends Partial<Client> {
 }
 
 const ClientsGrid: React.FC = () => {
+  const [searchTerm, setSearchTerm] = useState('');
   const [clients, setClients] = useState<Client[]>([]);
   const [retreats, setRetreats] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [formData, setFormData] = useState<ClientFormData>({});
   const [selectedRetreatId, setSelectedRetreatId] = useState<string>('');
-  const [searchTerm, setSearchTerm] = useState('');
   const [viewingClientId, setViewingClientId] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [workflowFilter, setWorkflowFilter] = useState<string>('all');
-  const gridApiRef = useRef<GridApi | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Helper function to get country name from code
   const getCountryName = (code: string) => {
@@ -159,201 +155,18 @@ const ClientsGrid: React.FC = () => {
     return country ? country.name : code;
   };
 
-  const ActionCellRenderer = React.memo((params: ICellRendererParams) => {
-    return (
-      <div className="action-buttons">
-        <button onClick={() => handleView(params.data)} className="view-btn">👁️ View</button>
-        <button onClick={() => handleEdit(params.data)} className="edit-btn">✏️ Edit</button>
-        <button onClick={() => handleGenerateDepositLink(params.data)} className="link-btn">🔗 Deposit Link</button>
-        <button onClick={() => handleDelete(params.data._id)} className="delete-btn">🗑️ Delete</button>
-      </div>
-    );
-  });
-
-  const StatusCellRenderer = React.memo((params: ICellRendererParams) => {
-    const status = params.value;
-    const statusClass = status === 'active' ? 'status-active' :
-                      status === 'inactive' ? 'status-inactive' : 'status-suspended';
-    return <span className={`status-badge ${statusClass}`}>{status}</span>;
-  });
-
-  const WorkflowStatusCellRenderer = React.memo((params: ICellRendererParams) => {
-    const status = params.value || 'potential';
-    let statusClass = '';
-    switch(status) {
-      case 'potential':
-        statusClass = 'workflow-potential';
-        break;
-      case 'booked':
-        statusClass = 'workflow-booked';
-        break;
-      case 'cancelled':
-        statusClass = 'workflow-cancelled';
-        break;
-      case 'completed':
-        statusClass = 'workflow-completed';
-        break;
-      case 'blacklisted':
-        statusClass = 'workflow-blacklisted';
-        break;
-      default:
-        statusClass = 'workflow-potential';
-    }
-    return <span className={`workflow-badge ${statusClass}`}>{status?.toUpperCase()}</span>;
-  });
-
-  const columnDefs: ColDef[] = [
-    { field: '_id', headerName: 'ID', hide: true },
-    {
-      field: 'fullName',
-      headerName: 'Full Name',
-      sortable: true,
-      filter: true,
-      pinned: 'left',
-      width: 200,
-      valueGetter: (params) => {
-        const firstName = params.data.firstName || params.data.fname || '';
-        const lastName = params.data.lastName || params.data.lname || '';
-        return `${firstName} ${lastName}`.trim();
-      }
-    },
-    { field: 'email', headerName: 'Email', sortable: true, filter: true, width: 250 },
-    { field: 'phone', headerName: 'Phone', sortable: true, filter: true, width: 150 },
-    {
-      field: 'country',
-      headerName: 'Country',
-      sortable: true,
-      filter: true,
-      width: 120,
-      valueFormatter: (params) => {
-        if (params.value) {
-          return getCountryName(params.value);
-        }
-        return '';
-      }
-    },
-    {
-      field: 'status',
-      headerName: 'Status',
-      sortable: true,
-      filter: true,
-      width: 120,
-      cellRenderer: StatusCellRenderer
-    },
-    {
-      field: 'workflowStatus',
-      headerName: 'Workflow',
-      sortable: true,
-      filter: true,
-      width: 130,
-      cellRenderer: WorkflowStatusCellRenderer
-    },
-    { field: 'emergencyContact', headerName: 'Emergency Contact', sortable: true, filter: true },
-    {
-      field: 'dateOfBirth',
-      headerName: 'Year of Birth',
-      sortable: true,
-      filter: true,
-      valueFormatter: (params) => {
-        if (params.value) {
-          return new Date(params.value).getFullYear().toString();
-        }
-        return '';
-      }
-    },
-    {
-      headerName: 'Actions',
-      cellRenderer: ActionCellRenderer,
-      width: 280,
-      suppressSizeToFit: true,
-      pinned: 'right'
-    }
-  ];
-
-  const defaultColDef = {
-    resizable: true,
-    minWidth: 100,
-    flex: 1
+  const handleRefresh = () => {
+    fetchClients();
+    setRefreshKey(prev => prev + 1);
   };
 
-  const fetchClients = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setApiError(false);
-      let response;
-      if (workflowFilter === 'potential') {
-        response = await clientsApi.getPotential();
-      } else if (workflowFilter === 'blacklisted') {
-        response = await clientsApi.getBlacklisted();
-      } else if (workflowFilter === 'booked') {
-        response = await clientsApi.getAll();
-        // Filter for booked clients on frontend until backend endpoint is added
-        if (response.data) {
-          response.data = response.data.filter((client: any) => client.workflowStatus === 'booked');
-        }
-      } else if (searchTerm) {
-        response = await clientsApi.search(searchTerm);
-      } else {
-        response = await clientsApi.getAll();
-      }
-      setClients(response.data || []);
-    } catch (error: any) {
-      setClients([]);
-      setApiError(true);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [searchTerm, workflowFilter]);
-
-  const fetchRetreats = useCallback(async () => {
-    try {
-      const response = await retreatsApi.getAll();
-      setRetreats(response.data || []);
-    } catch (error: any) {
-      setRetreats([]);
-    }
+  const handleView = useCallback((client: Client) => {
+    setViewingClientId(client._id!);
   }, []);
 
-  useEffect(() => {
-    fetchClients();
-    // Only fetch retreats when needed (when adding new client)
-    // fetchRetreats();
-  }, [fetchClients]);
-
-  const handleGridReady = (params: GridReadyEvent) => {
-    gridApiRef.current = params.api;
-    params.api.sizeColumnsToFit();
-  };
-
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value);
-  };
-
-  const handleAdd = () => {
-    setEditingClient(null);
-    setFormData({
-      status: 'active',
-      country: 'US', // Default to United States (code)
-      countryCode: '+1', // Default to USA/Canada
-      phoneNumber: '',
-      yearOfBirth: new Date().getFullYear() - 30 // Default age around 30
-    });
-    setSelectedRetreatId('');
-    setValidationErrors([]); // Clear any previous errors
-    setIsModalOpen(true);
-    // Only fetch retreats when modal is opened
-    if (retreats.length === 0) {
-      fetchRetreats();
-    }
-  };
-
-  const handleView = (client: Client) => {
-    setViewingClientId(client._id!);
-  };
-
-  const handleEdit = (client: Client) => {
+  const handleEdit = useCallback((client: Client) => {
     setEditingClient(client);
-    setValidationErrors([]); // Clear any previous errors
+    setValidationErrors([]);
 
     // Parse phone number to extract country code
     let countryCode = '+420'; // Default to Czech Republic
@@ -367,9 +180,6 @@ const ClientsGrid: React.FC = () => {
         countryCode = matchedCode.code;
         phoneNumber = phoneNumber.substring(matchedCode.code.length).trim();
       }
-    } else if (phoneNumber.match(/^\d/)) {
-      // If it starts with a digit without +, keep as is
-      // User might have stored without country code
     }
 
     // Extract year from dateOfBirth if present
@@ -385,20 +195,20 @@ const ClientsGrid: React.FC = () => {
       yearOfBirth
     });
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     if (window.confirm('Are you sure you want to delete this client?')) {
       try {
         await clientsApi.delete(id);
         fetchClients();
       } catch (error: any) {
-        // Handle error silently
+        console.error('Error deleting client:', error);
       }
     }
-  };
+  }, []);
 
-  const handleGenerateDepositLink = async (client: Client) => {
+  const handleGenerateDepositLink = useCallback(async (client: Client) => {
     try {
       // Check if client already has a hash, if not generate one
       let hash = client.depositFormHash;
@@ -427,54 +237,230 @@ const ClientsGrid: React.FC = () => {
       console.error('Error generating deposit form link:', error);
       alert('Failed to generate deposit form link. Please try again.');
     }
+  }, []);
+
+  const columns: Column[] = useMemo(() => [
+    {
+      field: 'fullName',
+      headerName: 'Full Name',
+      width: 200,
+      valueGetter: (row) => {
+        const firstName = row.firstName || row.fname || '';
+        const lastName = row.lastName || row.lname || '';
+        return `${firstName} ${lastName}`.trim();
+      },
+      sortable: true
+    },
+    {
+      field: 'email',
+      headerName: 'Email',
+      width: 250,
+      sortable: true
+    },
+    {
+      field: 'phone',
+      headerName: 'Phone',
+      width: 150,
+      sortable: true
+    },
+    {
+      field: 'country',
+      headerName: 'Country',
+      width: 120,
+      renderCell: (value) => value ? getCountryName(value) : '',
+      sortable: true
+    },
+    {
+      field: 'status',
+      headerName: 'Status',
+      width: 120,
+      renderCell: (value) => {
+        let color: 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' = 'default';
+        switch(value) {
+          case 'active':
+            color = 'success';
+            break;
+          case 'inactive':
+            color = 'error';
+            break;
+          case 'potential':
+            color = 'info';
+            break;
+        }
+        return <Chip label={value?.toUpperCase() || 'N/A'} color={color} size="small" />;
+      },
+      sortable: true
+    },
+    {
+      field: 'workflowStatus',
+      headerName: 'Workflow',
+      width: 130,
+      valueGetter: (row) => row.workflowStatus || 'potential',
+      renderCell: (value) => {
+        let color: 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' = 'default';
+        switch(value) {
+          case 'booked':
+            color = 'primary';
+            break;
+          case 'blacklisted':
+            color = 'error';
+            break;
+          default:
+            color = 'warning';
+        }
+        return <Chip label={value?.toUpperCase() || 'POTENTIAL'} color={color} size="small" />;
+      },
+      sortable: true
+    },
+    {
+      field: 'emergencyContact',
+      headerName: 'Emergency Contact',
+      sortable: true
+    },
+    {
+      field: 'dateOfBirth',
+      headerName: 'Year of Birth',
+      renderCell: (value) => {
+        if (value) {
+          return new Date(value).getFullYear().toString();
+        }
+        return '';
+      },
+      sortable: true,
+      type: 'number'
+    },
+    {
+      field: 'actions',
+      headerName: 'Actions',
+      width: 280,
+      align: 'center',
+      sortable: false,
+      renderCell: (_, row) => (
+        <div style={{ display: 'flex', gap: '4px' }}>
+          <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleView(row); }} title="View">
+            <VisibilityIcon fontSize="small" />
+          </IconButton>
+          <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleEdit(row); }} title="Edit">
+            <EditIcon fontSize="small" />
+          </IconButton>
+          <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleGenerateDepositLink(row); }} title="Deposit Link">
+            <LinkIcon fontSize="small" />
+          </IconButton>
+          <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleDelete(row._id!); }} color="error" title="Delete">
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </div>
+      )
+    }
+  ], [handleView, handleEdit, handleGenerateDepositLink, handleDelete]);
+
+  const fetchClients = useCallback(async () => {
+    setIsLoading(true);
+    setApiError(false);
+    try {
+      const response = await clientsApi.getAll();
+      setClients(response.data || []);
+    } catch (error: any) {
+      console.error('Error fetching clients:', error);
+      setApiError(true);
+      setClients([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const fetchRetreats = useCallback(async () => {
+    try {
+      const response = await retreatsApi.getAll();
+      setRetreats(response.data || []);
+    } catch (error: any) {
+      setRetreats([]);
+    }
+  }, []);
+
+  // Initial data load
+  useEffect(() => {
+    fetchClients();
+  }, [fetchClients]);
+
+  // Apply filters to clients data
+  const filteredClients = useMemo(() => {
+    let result = [...clients];
+
+    // Apply workflow filter
+    if (workflowFilter === 'potential') {
+      result = result.filter(c => {
+        return !c.status || c.status === 'active';
+      });
+    } else if (workflowFilter === 'blacklisted') {
+      result = result.filter(c => {
+        return c.notes?.toLowerCase().includes('blacklist');
+      });
+    } else if (workflowFilter === 'booked') {
+      result = result.filter(c => {
+        return false; // For now, will need to join with bookings data
+      });
+    }
+
+    // Apply search filter
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      result = result.filter(c =>
+        c.firstName?.toLowerCase().includes(term) ||
+        c.lastName?.toLowerCase().includes(term) ||
+        c.email?.toLowerCase().includes(term) ||
+        c.phone?.toLowerCase().includes(term) ||
+        c.country?.toLowerCase().includes(term)
+      );
+    }
+
+    return result;
+  }, [clients, workflowFilter, searchTerm]);
+
+  const handleAdd = () => {
+    setEditingClient(null);
+    setFormData({
+      status: 'active',
+      country: 'US',
+      countryCode: '+1',
+      phoneNumber: '',
+      yearOfBirth: new Date().getFullYear() - 30
+    });
+    setSelectedRetreatId('');
+    setValidationErrors([]);
+    setIsModalOpen(true);
+    if (retreats.length === 0) {
+      fetchRetreats();
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: name === 'weight' ? parseFloat(value) : value
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setValidationErrors([]); // Clear previous errors
-
-    // Validate required fields
-    const errors: string[] = [];
-    if (!formData.firstName?.trim()) errors.push('First name is required');
-    if (!formData.lastName?.trim()) errors.push('Last name is required');
-    if (!formData.email?.trim()) errors.push('Email is required');
-    if (!formData.phoneNumber?.trim()) errors.push('Phone number is required');
-
-    // Check if state is required for US customers
-    if (formData.country === 'US' && !formData.state?.trim()) {
-      errors.push('State is required for US customers');
-    }
-
-    if (errors.length > 0) {
-      setValidationErrors(errors);
-      return;
-    }
+    setValidationErrors([]);
 
     try {
-      const cleanData: any = {};
-
-      // Required fields
-      if (formData.firstName?.trim()) cleanData.firstName = formData.firstName.trim();
-      if (formData.lastName?.trim()) cleanData.lastName = formData.lastName.trim();
-      if (formData.email?.trim()) cleanData.email = formData.email.trim();
-
       // Combine country code and phone number
-      if (formData.phoneNumber?.trim() || formData.phone?.trim()) {
-        const phoneNum = formData.phoneNumber?.trim() || formData.phone?.trim() || '';
-        const countryCode = formData.countryCode || '+1';
-        cleanData.phone = phoneNum.startsWith('+') ? phoneNum : `${countryCode} ${phoneNum}`;
-      }
+      const fullPhone = formData.phoneNumber ? `${formData.countryCode}${formData.phoneNumber}` : undefined;
 
-      // Address is now optional
-      if (formData.address?.trim()) cleanData.address = formData.address.trim();
+      const cleanData: any = {
+        firstName: formData.firstName?.trim(),
+        lastName: formData.lastName?.trim(),
+        email: formData.email?.trim(),
+        phone: fullPhone,
+        country: formData.country,
+        status: formData.status || 'active',
+        weight: formData.weight
+      };
 
-      // Optional fields
-      if (formData.city?.trim()) cleanData.city = formData.city.trim();
-      if (formData.state?.trim()) cleanData.state = formData.state.trim();
-      if (formData.zipCode?.trim()) cleanData.zipCode = formData.zipCode.trim();
-      if (formData.country?.trim()) cleanData.country = formData.country.trim();
-
-      // Convert year to date of birth
+      // Add year of birth as a date
       if (formData.yearOfBirth) {
         cleanData.dateOfBirth = new Date(`${formData.yearOfBirth}-01-01`);
       }
@@ -525,7 +511,6 @@ const ClientsGrid: React.FC = () => {
             console.log('Created booking and medical record for client');
           } catch (bookingError) {
             console.error('Error creating booking/medical record:', bookingError);
-            // Client was created successfully, but booking/medical failed
             alert('Client created, but there was an error creating the booking or medical record. You can create these manually.');
           }
         }
@@ -536,7 +521,6 @@ const ClientsGrid: React.FC = () => {
       setEditingClient(null);
       fetchClients();
     } catch (error: any) {
-      // Parse error message and display to user
       let errorMessage = 'An error occurred while saving the client';
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
@@ -546,7 +530,6 @@ const ClientsGrid: React.FC = () => {
         errorMessage = error.message;
       }
 
-      // Handle specific validation errors from backend
       if (error.response?.status === 400) {
         if (errorMessage.includes('duplicate') || errorMessage.includes('already exists')) {
           errorMessage = 'A client with this email already exists';
@@ -555,14 +538,6 @@ const ClientsGrid: React.FC = () => {
 
       setValidationErrors([errorMessage]);
     }
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'weight' ? parseFloat(value) : value
-    }));
   };
 
   const handleBackFromDetail = () => {
@@ -575,67 +550,121 @@ const ClientsGrid: React.FC = () => {
   }
 
   return (
-    <div className="clients-container">
-      <div className="clients-header">
-        <h2>👥 Clients Management</h2>
-        <div className="header-actions">
-          <div className="search-box">
+    <div className="clients-container" style={{ padding: '24px' }}>
+      {/* Page Header */}
+      <div style={{ marginBottom: '20px' }}>
+        <h1 style={{ fontSize: '24px', fontWeight: '600', color: '#1f2937', margin: 0 }}>👥 Clients Management</h1>
+        <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px', marginBottom: '16px' }}>Manage your client database and information</p>
+
+        {/* Toolbar - All Actions in One Line */}
+        <div style={{
+          display: 'flex',
+          gap: '12px',
+          alignItems: 'center',
+          padding: '12px 16px',
+          backgroundColor: '#f9fafb',
+          borderRadius: '8px',
+          border: '1px solid #e5e7eb'
+        }}>
+          {/* Search */}
+          <div style={{ flex: 1, maxWidth: '300px' }}>
             <input
               type="text"
               placeholder="🔍 Search clients..."
               value={searchTerm}
-              onChange={handleSearch}
-              className="search-input"
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                borderRadius: '6px',
+                border: '1px solid #e5e7eb',
+                fontSize: '14px'
+              }}
             />
           </div>
-          <div className="workflow-filter">
-            <select
-              value={workflowFilter}
-              onChange={(e) => setWorkflowFilter(e.target.value)}
-              className="workflow-select"
-            >
-              <option value="all">All Clients</option>
-              <option value="potential">Potential Only</option>
-              <option value="booked">Booked Only</option>
-              <option value="blacklisted">Blacklisted</option>
-            </select>
-          </div>
-          <button onClick={() => setIsQuickAddOpen(true)} className="quick-add-btn">⚡ Quick Add</button>
-          <button onClick={handleAdd} className="add-btn">➕ Add New Client</button>
-        </div>
-        <div className="status-info">
-          Status: {isLoading ? 'Loading...' : `${clients.length} clients loaded`}
+
+          {/* Filter */}
+          <select
+            value={workflowFilter}
+            onChange={(e) => setWorkflowFilter(e.target.value)}
+            style={{
+              padding: '8px 12px',
+              borderRadius: '6px',
+              border: '1px solid #e5e7eb',
+              backgroundColor: 'white',
+              fontSize: '14px',
+              cursor: 'pointer'
+            }}
+          >
+            <option value="all">All Clients</option>
+            <option value="potential">Potential Only</option>
+            <option value="booked">Booked Only</option>
+            <option value="blacklisted">Blacklisted</option>
+          </select>
+
+          {/* Spacer */}
+          <div style={{ flex: 1 }}></div>
+
+          {/* Action Buttons */}
+          <button
+            onClick={() => setIsQuickAddOpen(true)}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '6px',
+              backgroundColor: '#fef3c7',
+              border: '1px solid #fbbf24',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            ⚡ Quick Add
+          </button>
+
+          <button
+            onClick={handleAdd}
+            style={{
+              padding: '8px 16px',
+              borderRadius: '6px',
+              backgroundColor: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            ➕ Add New Client
+          </button>
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="loading-container">
-          <div className="loading-spinner">⏳</div>
-          <p>Loading clients...</p>
+      {apiError && (
+        <div style={{ padding: '10px', textAlign: 'center', color: '#d32f2f', backgroundColor: '#ffebee', borderRadius: '4px', margin: '10px 0' }}>
+          API Error: Unable to load clients data
         </div>
-      ) : (
-        <>
-          {apiError && (
-            <div style={{ padding: '10px', textAlign: 'center', color: '#d32f2f', backgroundColor: '#ffebee', borderRadius: '4px', margin: '10px 0' }}>
-              API Error: Unable to load clients data
-            </div>
-          )}
-          <div className="ag-theme-alpine" style={{ height: 600, width: '100%' }}>
-            <AgGridReact
-              rowData={clients}
-              columnDefs={columnDefs}
-              defaultColDef={defaultColDef}
-              onGridReady={handleGridReady}
-              animateRows={false}
-              pagination={true}
-              paginationPageSize={50}
-              suppressNoRowsOverlay={false}
-              suppressColumnVirtualisation={false}
-              suppressRowVirtualisation={false}
-            />
-          </div>
-        </>
       )}
+
+      <SimpleTable
+        key={refreshKey}
+        columns={columns}
+        rows={filteredClients}
+        onRowClick={handleView}
+        loading={isLoading}
+        onRefresh={handleRefresh}
+        searchable={false}
+        pageSize={50}
+        pageSizeOptions={[25, 50, 100]}
+        stickyHeader={true}
+        maxHeight="75vh"
+        showToolbar={false}
+      />
 
       {isModalOpen && (
         <div className="modal-overlay">
@@ -682,145 +711,29 @@ const ClientsGrid: React.FC = () => {
                   </div>
 
                   <div className="form-group">
-                    <label htmlFor="phone">Phone *:</label>
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                    <label htmlFor="phone">Phone:</label>
+                    <div style={{ display: 'flex', gap: '10px' }}>
                       <select
                         name="countryCode"
-                        value={formData.countryCode || '+1'}
+                        value={formData.countryCode || '+420'}
                         onChange={handleInputChange}
-                        style={{ width: '160px' }}
+                        style={{ width: '150px' }}
                       >
                         {COUNTRY_CODES.map(cc => (
                           <option key={cc.code} value={cc.code}>
-                            {cc.code} {cc.country}
+                            {cc.code} ({cc.country})
                           </option>
                         ))}
                       </select>
                       <input
                         type="tel"
-                        id="phoneNumber"
                         name="phoneNumber"
+                        placeholder="Phone number"
                         value={formData.phoneNumber || ''}
                         onChange={handleInputChange}
-                        placeholder="Phone number"
-                        required
                         style={{ flex: 1 }}
                       />
                     </div>
-                  </div>
-                </div>
-
-                {/* Retreat Selection Section - Only show for new clients */}
-                {!editingClient && (
-                  <div className="form-section">
-                    <h4>🏔️ Retreat Assignment</h4>
-                    <div className="form-group">
-                      <label htmlFor="retreatSelect">Select Retreat (Optional):</label>
-                      <select
-                        id="retreatSelect"
-                        value={selectedRetreatId}
-                        onChange={(e) => setSelectedRetreatId(e.target.value)}
-                        className="form-control"
-                      >
-                        <option value="">No retreat - client only</option>
-                        {retreats.map((retreat) => (
-                          <option key={retreat._id} value={retreat._id}>
-                            {retreat.name} - {retreat.location} ({new Date(retreat.startDate || retreat.dates?.startDate || '').toLocaleDateString()})
-                          </option>
-                        ))}
-                      </select>
-                      <small style={{ color: '#666', marginTop: '4px', display: 'block' }}>
-                        Selecting a retreat will automatically create a booking and medical tracking record for this client.
-                      </small>
-                    </div>
-
-                    {selectedRetreatId && (
-                      <>
-                        <div className="form-group">
-                          <label htmlFor="totalAmount">Custom Price (Optional):</label>
-                          <div style={{ display: 'flex', gap: '10px' }}>
-                            <input
-                              type="number"
-                              id="totalAmount"
-                              name="totalAmount"
-                              value={formData.totalAmount || ''}
-                              onChange={handleInputChange}
-                              placeholder="0.00"
-                              min="0"
-                              step="0.01"
-                              style={{ flex: 2 }}
-                            />
-                            <select
-                              id="currency"
-                              name="currency"
-                              value={formData.currency || 'EUR'}
-                              onChange={handleInputChange}
-                              style={{ flex: 1 }}
-                            >
-                              <option value="EUR">EUR</option>
-                              <option value="CZK">CZK</option>
-                              <option value="PLN">PLN</option>
-                            </select>
-                          </div>
-                          <small style={{ color: '#666', marginTop: '4px', display: 'block' }}>
-                            Leave empty to use standard retreat pricing. Enter custom amount for discounts.
-                          </small>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-
-                <div className="form-section">
-                  <h4>Address Information</h4>
-                  <div className="form-group">
-                    <label htmlFor="address">Address:</label>
-                    <input
-                      type="text"
-                      id="address"
-                      name="address"
-                      value={formData.address || ''}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="city">City:</label>
-                    <input
-                      type="text"
-                      id="city"
-                      name="city"
-                      value={formData.city || ''}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="state">
-                      State {formData.country === 'US' ? '*' : ''}
-                      <span style={{ fontSize: '0.85em', color: '#666', marginLeft: '4px' }}>
-                        {formData.country === 'US' ? '(required for US)' : '(optional)'}
-                      </span>:
-                    </label>
-                    <input
-                      type="text"
-                      id="state"
-                      name="state"
-                      value={formData.state || ''}
-                      onChange={handleInputChange}
-                      placeholder={formData.country === 'US' ? 'State (e.g., NY, CA)' : 'State/Province (if applicable)'}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="zipCode">Zip Code:</label>
-                    <input
-                      type="text"
-                      id="zipCode"
-                      name="zipCode"
-                      value={formData.zipCode || ''}
-                      onChange={handleInputChange}
-                    />
                   </div>
 
                   <div className="form-group">
@@ -831,27 +744,22 @@ const ClientsGrid: React.FC = () => {
                       value={formData.country || 'US'}
                       onChange={handleInputChange}
                     >
-                      <option value="">Select Country</option>
-                      {COUNTRIES_WITH_CODES.map(country => (
-                        <option key={country.code} value={country.code}>{country.name}</option>
+                      {COUNTRIES_WITH_CODES.map(c => (
+                        <option key={c.code} value={c.code}>{c.name}</option>
                       ))}
                     </select>
                   </div>
-                </div>
 
-                <div className="form-section">
-                  <h4>Personal Details</h4>
                   <div className="form-group">
                     <label htmlFor="yearOfBirth">Year of Birth:</label>
                     <input
                       type="number"
                       id="yearOfBirth"
                       name="yearOfBirth"
+                      min="1900"
+                      max={new Date().getFullYear()}
                       value={formData.yearOfBirth || ''}
                       onChange={handleInputChange}
-                      min="1920"
-                      max={new Date().getFullYear()}
-                      placeholder="YYYY"
                     />
                   </div>
 
@@ -863,41 +771,10 @@ const ClientsGrid: React.FC = () => {
                       value={formData.gender || ''}
                       onChange={handleInputChange}
                     >
-                      <option value="">Select Gender</option>
+                      <option value="">Select...</option>
                       <option value="male">Male</option>
                       <option value="female">Female</option>
                       <option value="other">Other</option>
-                      <option value="prefer-not-to-say">Prefer not to say</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="occupation">Occupation:</label>
-                    <input
-                      type="text"
-                      id="occupation"
-                      name="occupation"
-                      value={formData.occupation || ''}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="source">Source (How they found you):</label>
-                    <select
-                      id="source"
-                      name="source"
-                      value={formData.source || ''}
-                      onChange={handleInputChange}
-                    >
-                      <option value="">Select Source</option>
-                      <option value="Website">Website</option>
-                      <option value="Referral">Referral</option>
-                      <option value="Social Media">Social Media</option>
-                      <option value="Google Search">Google Search</option>
-                      <option value="Friend">Friend</option>
-                      <option value="Previous Client">Previous Client</option>
-                      <option value="Other">Other</option>
                     </select>
                   </div>
 
@@ -911,13 +788,47 @@ const ClientsGrid: React.FC = () => {
                     >
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>
-                      <option value="suspended">Suspended</option>
+                      <option value="potential">Potential</option>
                     </select>
                   </div>
                 </div>
 
                 <div className="form-section">
-                  <h4>Emergency Contact</h4>
+                  <h4>Additional Information</h4>
+                  <div className="form-group">
+                    <label htmlFor="occupation">Occupation:</label>
+                    <input
+                      type="text"
+                      id="occupation"
+                      name="occupation"
+                      value={formData.occupation || ''}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="source">How they heard about us:</label>
+                    <input
+                      type="text"
+                      id="source"
+                      name="source"
+                      value={formData.source || ''}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="weight">Weight (kg):</label>
+                    <input
+                      type="number"
+                      id="weight"
+                      name="weight"
+                      step="0.1"
+                      value={formData.weight || ''}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+
                   <div className="form-group">
                     <label htmlFor="emergencyContact">Emergency Contact:</label>
                     <input
@@ -945,48 +856,88 @@ const ClientsGrid: React.FC = () => {
                     <textarea
                       id="dietaryRestrictions"
                       name="dietaryRestrictions"
+                      rows={3}
                       value={formData.dietaryRestrictions || ''}
                       onChange={handleInputChange}
-                      rows={3}
-                      placeholder="Any dietary restrictions or allergies..."
                     />
                   </div>
 
                   <div className="form-group">
-                    <label htmlFor="notes">Additional Notes:</label>
+                    <label htmlFor="notes">Notes:</label>
                     <textarea
                       id="notes"
                       name="notes"
+                      rows={3}
                       value={formData.notes || ''}
                       onChange={handleInputChange}
-                      rows={4}
-                      placeholder="Any additional notes about the client..."
                     />
                   </div>
+
+                  {!editingClient && (
+                    <>
+                      <h4>Create Booking (Optional)</h4>
+                      <div className="form-group">
+                        <label htmlFor="retreatId">Select Retreat:</label>
+                        <select
+                          id="retreatId"
+                          value={selectedRetreatId}
+                          onChange={(e) => setSelectedRetreatId(e.target.value)}
+                        >
+                          <option value="">No Retreat Selected</option>
+                          {retreats.map(retreat => (
+                            <option key={retreat._id} value={retreat._id}>
+                              {retreat.name} - {new Date(retreat.startDate).toLocaleDateString()}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {selectedRetreatId && (
+                        <>
+                          <div className="form-group">
+                            <label htmlFor="totalAmount">Custom Price (leave empty for default):</label>
+                            <input
+                              type="number"
+                              id="totalAmount"
+                              name="totalAmount"
+                              step="0.01"
+                              value={formData.totalAmount || ''}
+                              onChange={handleInputChange}
+                              placeholder="Leave empty for retreat default price"
+                            />
+                          </div>
+
+                          <div className="form-group">
+                            <label htmlFor="currency">Currency:</label>
+                            <select
+                              id="currency"
+                              name="currency"
+                              value={formData.currency || 'EUR'}
+                              onChange={handleInputChange}
+                            >
+                              <option value="EUR">EUR</option>
+                              <option value="USD">USD</option>
+                              <option value="CZK">CZK</option>
+                            </select>
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
 
-              {/* Display validation errors */}
               {validationErrors.length > 0 && (
-                <div style={{
-                  backgroundColor: '#ffe6e6',
-                  border: '1px solid #ff4444',
-                  borderRadius: '4px',
-                  padding: '12px',
-                  marginBottom: '16px'
-                }}>
-                  <h4 style={{ color: '#cc0000', marginTop: 0, marginBottom: '8px' }}>⚠️ Please fix the following errors:</h4>
-                  <ul style={{ margin: 0, paddingLeft: '20px', color: '#cc0000' }}>
-                    {validationErrors.map((error, index) => (
-                      <li key={index}>{error}</li>
-                    ))}
-                  </ul>
+                <div className="error-messages">
+                  {validationErrors.map((error, index) => (
+                    <p key={index} className="error-message">{error}</p>
+                  ))}
                 </div>
               )}
 
-              <div className="form-buttons">
-                <button type="submit" className="save-btn">💾 Save Client</button>
-                <button type="button" onClick={() => { setIsModalOpen(false); setValidationErrors([]); }} className="cancel-btn">❌ Cancel</button>
+              <div className="form-actions">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="cancel-btn">Cancel</button>
+                <button type="submit" className="submit-btn">{editingClient ? 'Update' : 'Add'} Client</button>
               </div>
             </form>
           </div>

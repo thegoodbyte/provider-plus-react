@@ -4,6 +4,7 @@ import './BookingMedicalUpload.css';
 
 interface BookingMedicalUploadProps {
     bookingId: string;
+    bookingNumber?: string;
     clientId: string;
     retreatId: string;
     onUploadComplete?: () => void;
@@ -29,6 +30,7 @@ interface MedicalRecord {
 
 const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
     bookingId,
+    bookingNumber,
     clientId,
     retreatId,
     onUploadComplete
@@ -112,6 +114,9 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
             formData.append('clientId', clientId);
             formData.append('retreatId', retreatId);
             formData.append('bookingId', bookingId);
+            if (bookingNumber) {
+                formData.append('bookingNumber', bookingNumber);
+            }
 
             const token = authService.getToken();
             const endpoint = type === 'liver'

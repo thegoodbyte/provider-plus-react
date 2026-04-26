@@ -1,13 +1,13 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { AgGridReact } from 'ag-grid-react';
-import { ColDef, GridApi, GridReadyEvent, ICellRendererParams, ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
+import React, { useState, useEffect, useCallback } from 'react';
 import { clientRequirementsApi, retreatsApi, requirementsApi } from '../services/api';
 import { Retreat, ClientRequirement, Requirement } from '../types';
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-alpine.css';
+import { FiCheck, FiX, FiClock } from 'react-icons/fi';
 import './RetreatsGrid.css';
 
-ModuleRegistry.registerModules([AllCommunityModule]);
+// Simple wrapper to fix TypeScript icon issues
+const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
+  return <IconComponent className={className} />;
+};
 
 interface RetreatRequirementsOverview {
   client: {
@@ -25,7 +25,6 @@ const RetreatRequirementsGrid: React.FC = () => {
   const [clientRequirements, setClientRequirements] = useState<RetreatRequirementsOverview[]>([]);
   const [allRequirements, setAllRequirements] = useState<Requirement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const gridApiRef = useRef<GridApi | null>(null);
 
   const fetchRetreats = useCallback(async () => {
     try {
@@ -78,10 +77,6 @@ const RetreatRequirementsGrid: React.FC = () => {
     }
   }, [selectedRetreatId, fetchRetreatRequirementsOverview]);
 
-  const handleGridReady = (params: GridReadyEvent) => {
-    gridApiRef.current = params.api;
-    params.api.sizeColumnsToFit();
-  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -93,22 +88,10 @@ const RetreatRequirementsGrid: React.FC = () => {
     }
   };
 
-  const RequirementStatusCellRenderer = (params: ICellRendererParams) => {
-    const { data, colDef } = params;
-    const requirementName = colDef?.headerName;
-
-    // Find the requirement for this client
-    const requirement = data.requirements?.find((req: ClientRequirement) =>
-      (req.requirementId as any)?.name === requirementName
-    );
-
+  const getRequirementStatusDisplay = (requirement: ClientRequirement | null) => {
     if (!requirement) {
       return (
-        <span style={{
-          color: '#6c757d',
-          fontSize: '12px',
-          fontStyle: 'italic'
-        }}>
+        <span className="text-gray-500 text-xs italic">
           Not initialized
         </span>
       );
@@ -118,52 +101,30 @@ const RetreatRequirementsGrid: React.FC = () => {
     const color = getStatusColor(status);
 
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+      <div className="flex items-center gap-1">
         <span
-          style={{
-            display: 'inline-block',
-            width: '10px',
-            height: '10px',
-            borderRadius: '50%',
-            backgroundColor: color
-          }}
+          className="inline-block w-2.5 h-2.5 rounded-full"
+          style={{ backgroundColor: color }}
         />
-        <span style={{
-          fontSize: '12px',
-          color: color,
-          fontWeight: '500',
-          textTransform: 'capitalize'
-        }}>
+        <span
+          className="text-xs font-medium capitalize"
+          style={{ color }}
+        >
           {status}
         </span>
         {requirement.fileName && (
-          <span style={{ fontSize: '10px', color: '#666' }}>📄</span>
+          <span className="text-xs text-gray-600">📄</span>
         )}
         {requirement.amount && (
-          <span style={{ fontSize: '10px', color: '#666' }}>💰</span>
+          <span className="text-xs text-gray-600">💰</span>
         )}
       </div>
     );
   };
 
-  const ClientCellRenderer = (params: ICellRendererParams) => {
-    const { data } = params;
-    return (
-      <div>
-        <div style={{ fontWeight: '600', fontSize: '14px' }}>
-          {data.client.firstName} {data.client.lastName}
-        </div>
-        <div style={{ fontSize: '12px', color: '#666' }}>
-          {data.client.email}
-        </div>
-      </div>
-    );
-  };
-
-  const ProgressCellRenderer = (params: ICellRendererParams) => {
-    const { data } = params;
+  const getProgressDisplay = (clientData: RetreatRequirementsOverview) => {
     const totalRequirements = allRequirements.filter(req => req.isActive).length;
-    const completedRequirements = data.requirements?.filter((req: ClientRequirement) =>
+    const completedRequirements = clientData.requirements?.filter((req: ClientRequirement) =>
       req.status === 'approved'
     ).length || 0;
 
@@ -171,77 +132,26 @@ const RetreatRequirementsGrid: React.FC = () => {
     const color = percentage === 100 ? '#28a745' : percentage >= 50 ? '#ffc107' : '#dc3545';
 
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <div style={{
-          width: '80px',
-          height: '6px',
-          backgroundColor: '#e9ecef',
-          borderRadius: '3px',
-          overflow: 'hidden'
-        }}>
-          <div style={{
-            width: `${percentage}%`,
-            height: '100%',
-            backgroundColor: color,
-            transition: 'width 0.3s ease'
-          }} />
+      <div className="flex items-center gap-2">
+        <div className="w-20 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+          <div
+            className="h-full transition-all duration-300 ease-in-out"
+            style={{
+              width: `${percentage}%`,
+              backgroundColor: color
+            }}
+          />
         </div>
-        <span style={{
-          fontSize: '12px',
-          fontWeight: '600',
-          color: color
-        }}>
+        <span
+          className="text-xs font-semibold"
+          style={{ color }}
+        >
           {completedRequirements}/{totalRequirements}
         </span>
       </div>
     );
   };
 
-  // Create dynamic columns based on requirements
-  const createColumns = (): ColDef[] => {
-    const baseColumns: ColDef[] = [
-      {
-        field: 'client',
-        headerName: 'Client',
-        cellRenderer: ClientCellRenderer,
-        width: 200,
-        pinned: 'left',
-        sortable: true,
-        filter: true
-      },
-      {
-        field: 'progress',
-        headerName: 'Progress',
-        cellRenderer: ProgressCellRenderer,
-        width: 150,
-        pinned: 'left',
-        sortable: false
-      }
-    ];
-
-    // Add columns for each active requirement
-    const requirementColumns: ColDef[] = allRequirements
-      .filter(req => req.isActive)
-      .sort((a, b) => (a.order || 0) - (b.order || 0))
-      .map(req => ({
-        field: `requirement_${req._id}`,
-        headerName: req.name,
-        cellRenderer: RequirementStatusCellRenderer,
-        width: 120,
-        sortable: false,
-        tooltipField: req.description
-      }));
-
-    return [...baseColumns, ...requirementColumns];
-  };
-
-  const columnDefs = createColumns();
-
-  const defaultColDef = {
-    resizable: true,
-    minWidth: 100,
-    suppressMovable: true
-  };
 
   const selectedRetreat = retreats.find(r => r._id === selectedRetreatId);
 
@@ -341,17 +251,67 @@ const RetreatRequirementsGrid: React.FC = () => {
               Loading requirements overview...
             </div>
           ) : (
-            <div className="ag-theme-alpine" style={{ height: 600, width: '100%' }}>
-              <AgGridReact
-                rowData={clientRequirements}
-                columnDefs={columnDefs}
-                defaultColDef={defaultColDef}
-                onGridReady={handleGridReady}
-                animateRows={true}
-                suppressNoRowsOverlay={false}
-                tooltipShowDelay={300}
-                enableCellTextSelection={true}
-              />
+            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Client
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Progress
+                      </th>
+                      {allRequirements
+                        .filter(req => req.isActive)
+                        .sort((a, b) => (a.order || 0) - (b.order || 0))
+                        .map(requirement => (
+                          <th
+                            key={requirement._id}
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                            title={requirement.description}
+                          >
+                            {requirement.name}
+                          </th>
+                        ))
+                      }
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {clientRequirements.map((clientData: RetreatRequirementsOverview) => (
+                      <tr key={clientData.client._id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-semibold text-gray-900">
+                            {clientData.client.firstName} {clientData.client.lastName}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {clientData.client.email}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {getProgressDisplay(clientData)}
+                        </td>
+                        {allRequirements
+                          .filter(req => req.isActive)
+                          .sort((a, b) => (a.order || 0) - (b.order || 0))
+                          .map(requirement => {
+                            const clientRequirement = clientData.requirements?.find(
+                              (req: ClientRequirement) =>
+                                (req.requirementId as any)?._id === requirement._id ||
+                                (req.requirementId as any)?.name === requirement.name
+                            );
+                            return (
+                              <td key={requirement._id} className="px-6 py-4 whitespace-nowrap">
+                                {getRequirementStatusDisplay(clientRequirement || null)}
+                              </td>
+                            );
+                          })
+                        }
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 

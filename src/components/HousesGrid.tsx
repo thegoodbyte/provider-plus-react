@@ -1,14 +1,13 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { AgGridReact } from 'ag-grid-react';
-import { ColDef, GridApi, GridReadyEvent, ICellRendererParams, ModuleRegistry, AllCommunityModule } from 'ag-grid-community';
+import React, { useState, useEffect, useCallback } from 'react';
 import { housesApi } from '../services/api';
 import { House } from '../types';
-import 'ag-grid-community/styles/ag-grid.css';
-import 'ag-grid-community/styles/ag-theme-alpine.css';
-import './HousesGrid.css';
+import AppleButton from './AppleButton';
+import { FiPlus, FiEdit2, FiTrash2, FiHome, FiUsers, FiDollarSign } from 'react-icons/fi';
 
-// Register AG Grid modules
-ModuleRegistry.registerModules([AllCommunityModule]);
+// Simple wrapper to fix TypeScript icon issues
+const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
+  return <IconComponent className={className} />;
+};
 
 const HousesGrid: React.FC = () => {
   const [houses, setHouses] = useState<House[]>([]);
@@ -17,60 +16,6 @@ const HousesGrid: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingHouse, setEditingHouse] = useState<House | null>(null);
   const [formData, setFormData] = useState<Partial<House>>({});
-  const gridApiRef = useRef<GridApi | null>(null);
-
-  const ActionCellRenderer = (params: ICellRendererParams) => {
-    return (
-      <div className="action-buttons">
-        <button onClick={() => handleEdit(params.data)} className="edit-btn">Edit</button>
-        <button onClick={() => handleDelete(params.data._id)} className="delete-btn">Delete</button>
-      </div>
-    );
-  };
-
-  const columnDefs: ColDef[] = [
-    { field: '_id', headerName: 'ID', hide: true },
-    {
-      field: 'name',
-      headerName: 'House Name',
-      sortable: true,
-      filter: true,
-      valueGetter: (params) => params.data.name || params.data.city || 'Unnamed House'
-    },
-    { field: 'address', headerName: 'Address', sortable: true, filter: true },
-    { field: 'city', headerName: 'City', sortable: true, filter: true },
-    {
-      field: 'capacity',
-      headerName: 'Capacity',
-      sortable: true,
-      filter: true,
-      valueGetter: (params) => params.data.capacity || params.data.guestCapacity || 0
-    },
-    {
-      field: 'numberOfRooms',
-      headerName: 'Rooms',
-      sortable: true,
-      filter: true,
-      valueGetter: (params) => params.data.numberOfRooms || params.data.bedrooms || 0
-    },
-    { field: 'numberOfBathrooms', headerName: 'Bathrooms', sortable: true, filter: true },
-    { field: 'pricePerNight', headerName: 'Avg Price/Week', sortable: true, filter: true,
-      valueFormatter: (params) => params.value ? `$${params.value}` : 'N/A'
-    },
-    { field: 'bookingSource', headerName: 'Booking Source', sortable: true, filter: true },
-    {
-      headerName: 'Actions',
-      cellRenderer: ActionCellRenderer,
-      width: 150,
-      suppressSizeToFit: true
-    }
-  ];
-
-  const defaultColDef = {
-    resizable: true,
-    minWidth: 100,
-    flex: 1
-  };
 
   const fetchHouses = useCallback(async () => {
     try {
@@ -92,11 +37,6 @@ const HousesGrid: React.FC = () => {
   useEffect(() => {
     fetchHouses();
   }, [fetchHouses]);
-
-  const handleGridReady = (params: GridReadyEvent) => {
-    gridApiRef.current = params.api;
-    params.api.sizeColumnsToFit();
-  };
 
   const handleAdd = () => {
     setEditingHouse(null);
@@ -183,50 +123,141 @@ const HousesGrid: React.FC = () => {
     }
   };
 
-  console.log('Current houses state:', houses);
-  console.log('Is loading:', isLoading);
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-gray-500">Loading houses...</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="houses-container">
-      <div className="houses-header">
-        <h2>Houses Management</h2>
-        <button onClick={handleAdd} className="add-btn">Add New House</button>
-        <div style={{ marginLeft: '20px', fontSize: '14px', color: '#666' }}>
-          Status: {isLoading ? 'Loading...' : `${houses.length} houses loaded`}
+    <div className="p-6 h-full">
+      <div className="mb-6 flex justify-between items-center">
+        <h1 className="text-2xl font-semibold text-gray-900">Houses Management</h1>
+        <AppleButton onClick={handleAdd} className="apple-button-primary">
+          <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
+          Add New House
+        </AppleButton>
+      </div>
+
+      {apiError && (
+        <div className="mb-4 p-4 text-red-700 bg-red-100 rounded-md">
+          API Error: Unable to load houses data
+        </div>
+      )}
+
+      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  House Name
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Address
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Capacity
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Rooms
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Price/Week
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Source
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {houses.map((house) => (
+                <tr key={house._id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <Icon icon={FiHome} className="w-5 h-5 mr-3 text-gray-400" />
+                      <div>
+                        <div className="text-sm font-medium text-gray-900">
+                          {house.name || house.city || 'Unnamed House'}
+                        </div>
+                        <div className="text-sm text-gray-500">{house.city}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {house.address || 'No address'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center text-sm text-gray-900">
+                      <Icon icon={FiUsers} className="w-4 h-4 mr-1 text-gray-400" />
+                      {house.capacity || house.guestCapacity || 0} guests
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {house.numberOfRooms || house.bedrooms || 0} rooms
+                    {house.numberOfBathrooms && ` / ${house.numberOfBathrooms} baths`}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center text-sm text-gray-900">
+                      <Icon icon={FiDollarSign} className="w-4 h-4 mr-1 text-gray-400" />
+                      {house.pricePerNight ? `$${house.pricePerNight}` : 'N/A'}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                      {house.bookingSource || 'N/A'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleEdit(house)}
+                        className="text-indigo-600 hover:text-indigo-900"
+                        title="Edit"
+                      >
+                        <Icon icon={FiEdit2} className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(house._id!)}
+                        className="text-red-600 hover:text-red-900"
+                        title="Delete"
+                      >
+                        <Icon icon={FiTrash2} className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {houses.length === 0 && (
+            <div className="text-center py-8 text-gray-500">
+              No houses found
+            </div>
+          )}
         </div>
       </div>
 
-      {isLoading ? (
-        <div style={{ padding: '20px', textAlign: 'center' }}>Loading houses...</div>
-      ) : (
-        <>
-          {apiError && (
-            <div style={{ padding: '10px', textAlign: 'center', color: '#d32f2f', backgroundColor: '#ffebee', borderRadius: '4px', margin: '10px 0' }}>
-              API Error: Unable to load houses data
-            </div>
-          )}
-          <div className="ag-theme-alpine" style={{ height: 600, width: '100%' }}>
-            <AgGridReact
-              rowData={houses}
-              columnDefs={columnDefs}
-              defaultColDef={defaultColDef}
-              onGridReady={handleGridReady}
-              animateRows={true}
-              pagination={true}
-              paginationPageSize={10}
-              suppressNoRowsOverlay={false}
-            />
-          </div>
-        </>
-      )}
+      <div className="mt-4 text-sm text-gray-700">
+        Showing {houses.length} house{houses.length !== 1 ? 's' : ''}
+      </div>
 
       {isModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>{editingHouse ? 'Edit House' : 'Add New House'}</h3>
-            <form onSubmit={handleSubmit}>
-              <div className="form-group">
-                <label htmlFor="name">House Name:</label>
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              {editingHouse ? 'Edit House' : 'Add New House'}
+            </h3>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+                  House Name
+                </label>
                 <input
                   type="text"
                   id="name"
@@ -234,11 +265,14 @@ const HousesGrid: React.FC = () => {
                   value={formData.name || ''}
                   onChange={handleInputChange}
                   required
+                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                 />
               </div>
 
-              <div className="form-group">
-                <label htmlFor="address">Address:</label>
+              <div>
+                <label htmlFor="address" className="block text-sm font-medium text-gray-700">
+                  Address
+                </label>
                 <input
                   type="text"
                   id="address"
@@ -246,112 +280,146 @@ const HousesGrid: React.FC = () => {
                   value={formData.address || ''}
                   onChange={handleInputChange}
                   required
+                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                 />
               </div>
 
-              <div className="form-group">
-                <label htmlFor="capacity">Guest Capacity:</label>
-                <input
-                  type="number"
-                  id="capacity"
-                  name="capacity"
-                  value={formData.capacity || ''}
-                  onChange={handleInputChange}
-                  min="1"
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="numberOfRooms">Number of Rooms:</label>
-                <input
-                  type="number"
-                  id="numberOfRooms"
-                  name="numberOfRooms"
-                  value={formData.numberOfRooms || ''}
-                  onChange={handleInputChange}
-                  min="1"
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="numberOfBathrooms">Number of Bathrooms:</label>
-                <input
-                  type="number"
-                  id="numberOfBathrooms"
-                  name="numberOfBathrooms"
-                  value={formData.numberOfBathrooms || ''}
-                  onChange={handleInputChange}
-                  min="1"
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="pricePerNight">Average Price per Week ($):</label>
-                <input
-                  type="number"
-                  id="pricePerNight"
-                  name="pricePerNight"
-                  value={formData.pricePerNight || ''}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-
-              <div className="form-group">
-                <label>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="capacity" className="block text-sm font-medium text-gray-700">
+                    Guest Capacity
+                  </label>
                   <input
-                    type="checkbox"
-                    name="allInclusive"
-                    checked={formData.allInclusive || false}
-                    onChange={(e) => setFormData(prev => ({ ...prev, allInclusive: e.target.checked }))}
+                    type="number"
+                    id="capacity"
+                    name="capacity"
+                    value={formData.capacity || ''}
+                    onChange={handleInputChange}
+                    min="1"
+                    required
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                   />
-                  All Inclusive
-                </label>
-              </div>
+                </div>
 
-              <div className="form-group">
-                <label>
+                <div>
+                  <label htmlFor="numberOfRooms" className="block text-sm font-medium text-gray-700">
+                    Rooms
+                  </label>
                   <input
-                    type="checkbox"
-                    name="payingForElectricity"
-                    checked={formData.payingForElectricity || false}
-                    onChange={(e) => setFormData(prev => ({ ...prev, payingForElectricity: e.target.checked }))}
+                    type="number"
+                    id="numberOfRooms"
+                    name="numberOfRooms"
+                    value={formData.numberOfRooms || ''}
+                    onChange={handleInputChange}
+                    min="1"
+                    required
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                   />
-                  Paying for Electricity
-                </label>
+                </div>
               </div>
 
-              <div className="form-group">
-                <label htmlFor="bookingSource">Booking Source:</label>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="numberOfBathrooms" className="block text-sm font-medium text-gray-700">
+                    Bathrooms
+                  </label>
+                  <input
+                    type="number"
+                    id="numberOfBathrooms"
+                    name="numberOfBathrooms"
+                    value={formData.numberOfBathrooms || ''}
+                    onChange={handleInputChange}
+                    min="1"
+                    required
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="pricePerNight" className="block text-sm font-medium text-gray-700">
+                    Price/Week ($)
+                  </label>
+                  <input
+                    type="number"
+                    id="pricePerNight"
+                    name="pricePerNight"
+                    value={formData.pricePerNight || ''}
+                    onChange={handleInputChange}
+                    min="0"
+                    step="0.01"
+                    className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="bookingSource" className="block text-sm font-medium text-gray-700">
+                  Booking Source
+                </label>
                 <select
                   id="bookingSource"
                   name="bookingSource"
                   value={formData.bookingSource || 'Airbnb'}
                   onChange={handleInputChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                 >
                   <option value="Airbnb">Airbnb</option>
                   <option value="Owner">Owner</option>
                 </select>
               </div>
 
-              <div className="form-group">
-                <label htmlFor="description">Description:</label>
+              <div className="flex items-center space-x-6">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    name="allInclusive"
+                    checked={formData.allInclusive || false}
+                    onChange={(e) => setFormData(prev => ({ ...prev, allInclusive: e.target.checked }))}
+                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="ml-2 text-sm text-gray-900">All Inclusive</span>
+                </label>
+
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    name="payingForElectricity"
+                    checked={formData.payingForElectricity || false}
+                    onChange={(e) => setFormData(prev => ({ ...prev, payingForElectricity: e.target.checked }))}
+                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="ml-2 text-sm text-gray-900">Paying for Electricity</span>
+                </label>
+              </div>
+
+              <div>
+                <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                  Description
+                </label>
                 <textarea
                   id="description"
                   name="description"
                   value={formData.description || ''}
                   onChange={handleInputChange}
                   rows={3}
+                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                 />
               </div>
 
-              <div className="form-buttons">
-                <button type="submit" className="save-btn">Save</button>
-                <button type="button" onClick={() => setIsModalOpen(false)} className="cancel-btn">Cancel</button>
+              <div className="flex justify-end space-x-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md hover:bg-indigo-700"
+                >
+                  Save
+                </button>
               </div>
             </form>
           </div>
