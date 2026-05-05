@@ -200,7 +200,7 @@ const BookingsGrid: React.FC = () => {
 
     // Check for duplicates in current bookings
     const isDuplicate = bookings.some(booking =>
-      booking.bookingNumber === numericBookingNumber &&
+      booking.bookingNumber === String(numericBookingNumber) &&
       booking._id !== currentBookingId
     );
 
@@ -535,7 +535,8 @@ const BookingsGrid: React.FC = () => {
                     retreatId: '',
                     totalAmount: 0,
                     currency: 'EUR',
-                    status: 'pending'
+                    status: 'pending',
+                    bookingNumber: ''
                   });
                 } catch (error) {
                   console.error('Error creating booking:', error);
