@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, Search, Filter, MoreVertical } from 'lucide-react';
 
-interface Column<T> {
+export interface Column<T> {
   key: keyof T;
   label: string;
   width?: string;

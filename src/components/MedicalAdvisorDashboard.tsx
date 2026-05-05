@@ -1,29 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Heart, FileText, Clock, Calendar, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import { medicalAdvisorApi } from '../services/api';
+import { MedicalItem, Client } from '../types';
 import './MedicalAdvisorDashboard.css';
 
 interface MedicalReviewItem {
   id: string;
+  display_id: number;
   clientId: string;
-  clientNumber: string;
-  type: 'EKG' | 'Liver Panel';
+  clientName: string;
+  type: 'EKG' | 'Liver' | 'Question';
   status: 'pending' | 'approved' | 'declined' | 'needs_review';
   submittedDate: Date;
-  retreatId: string;
-  retreatName: string;
-  retreatDate: Date;
   urgency: 'high' | 'medium' | 'low';
   daysAgo: number;
-  daysUntilRetreat: number;
 }
 
 const MedicalAdvisorDashboard: React.FC = () => {
   const navigate = useNavigate();
   const [reviewItems, setReviewItems] = useState<MedicalReviewItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'ekg' | 'liver'>('all');
-  const [sortBy, setSortBy] = useState<'date' | 'retreat' | 'urgency'>('urgency');
+  const [filter, setFilter] = useState<'all' | 'ekg' | 'liver' | 'question'>('all');
+  const [sortBy, setSortBy] = useState<'date' | 'urgency'>('urgency');
 
   useEffect(() => {
     fetchPendingReviews();
@@ -32,60 +31,75 @@ const MedicalAdvisorDashboard: React.FC = () => {
   const fetchPendingReviews = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('token');
 
-      // Fetch medical records that need review
-      const response = await fetch('http://localhost:3005/client-medical/pending-reviews', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+      // Fetch medical tracking items via medical advisor API
+      const medicalResponse = await medicalAdvisorApi.getMedicalTracking();
+      const medicalItems: MedicalItem[] = medicalResponse.data || [];
+
+      // Fetch clients to get names (using medical advisor API for restricted access)
+      const clients: Client[] = [];
+      for (const item of medicalItems) {
+        try {
+          const clientResponse = await medicalAdvisorApi.getClientInfo(item.client_id);
+          if (clientResponse.data) {
+            clients.push(clientResponse.data);
+          }
+        } catch (error) {
+          console.warn(`Could not fetch client info for ${item.client_id}:`, error);
         }
+      }
+
+      // Create a client lookup map
+      const clientMap = clients.reduce((map, client) => {
+        if (client._id && typeof client._id === 'string') {
+          map[client._id] = client;
+        }
+        return map;
+      }, {} as Record<string, Client>);
+
+      // Transform medical tracking items into review items
+      const items: MedicalReviewItem[] = medicalItems.map((item: MedicalItem) => {
+        const submittedDate = new Date(item.date_received || item.createdAt || Date.now());
+        const now = new Date();
+        const daysAgo = Math.floor((now.getTime() - submittedDate.getTime()) / (1000 * 60 * 60 * 24));
+
+        // Determine status based on review result
+        let status: 'pending' | 'approved' | 'declined' | 'needs_review' = 'pending';
+        if (item.medadvisor_review_result === 'OK') status = 'approved';
+        else if (item.medadvisor_review_result === 'NOT OK') status = 'declined';
+        else if (item.medadvisor_review_result === 'caution') status = 'needs_review';
+
+        // Determine urgency based on days since submission
+        let urgency: 'high' | 'medium' | 'low' = 'low';
+        if (daysAgo >= 7) urgency = 'high';
+        else if (daysAgo >= 3) urgency = 'medium';
+
+        const client = clientMap[item.client_id];
+        const clientName = client ? `${client.firstName} ${client.lastName}` : 'Unknown Client';
+
+        return {
+          id: item._id!,
+          display_id: item.display_id!,
+          clientId: item.client_id,
+          clientName,
+          type: item.type as 'EKG' | 'Liver' | 'Question',
+          status,
+          submittedDate,
+          urgency,
+          daysAgo
+        };
       });
 
-      if (response.ok) {
-        const data = await response.json();
-
-        // Transform the data into review items
-        const items: MedicalReviewItem[] = data.map((record: any) => {
-          const submittedDate = new Date(record.createdAt);
-          const retreatDate = new Date(record.retreat?.startDate || Date.now());
-          const now = new Date();
-
-          const daysAgo = Math.floor((now.getTime() - submittedDate.getTime()) / (1000 * 60 * 60 * 24));
-          const daysUntilRetreat = Math.floor((retreatDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-
-          // Determine urgency based on days until retreat
-          let urgency: 'high' | 'medium' | 'low' = 'low';
-          if (daysUntilRetreat <= 7) urgency = 'high';
-          else if (daysUntilRetreat <= 14) urgency = 'medium';
-
-          return {
-            id: record._id,
-            clientId: record.clientId,
-            clientNumber: `#${record.client?.clientNumber || '0000'}`,
-            type: record.hasEkg ? 'EKG' : 'Liver Panel',
-            status: record.medicalClearance || 'pending',
-            submittedDate,
-            retreatId: record.retreatId,
-            retreatName: record.retreat?.name || 'Unknown',
-            retreatDate,
-            urgency,
-            daysAgo,
-            daysUntilRetreat
-          };
-        });
-
-        setReviewItems(items);
-      }
+      setReviewItems(items);
     } catch (error) {
-      console.error('Error fetching pending reviews:', error);
+      console.error('Error fetching medical tracking items:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const handleItemClick = (item: MedicalReviewItem) => {
-    navigate(`/medical-review/${item.clientId}/${item.retreatId}`);
+    navigate(`/medical/medical-review/${item.id}`);
   };
 
   const getFilteredItems = () => {
@@ -94,7 +108,9 @@ const MedicalAdvisorDashboard: React.FC = () => {
     if (filter === 'ekg') {
       filtered = reviewItems.filter(item => item.type === 'EKG');
     } else if (filter === 'liver') {
-      filtered = reviewItems.filter(item => item.type === 'Liver Panel');
+      filtered = reviewItems.filter(item => item.type === 'Liver');
+    } else if (filter === 'question') {
+      filtered = reviewItems.filter(item => item.type === 'Question');
     }
 
     // Sort items
@@ -102,8 +118,6 @@ const MedicalAdvisorDashboard: React.FC = () => {
       switch (sortBy) {
         case 'date':
           return b.submittedDate.getTime() - a.submittedDate.getTime();
-        case 'retreat':
-          return a.daysUntilRetreat - b.daysUntilRetreat;
         case 'urgency':
           const urgencyOrder = { high: 0, medium: 1, low: 2 };
           return urgencyOrder[a.urgency] - urgencyOrder[b.urgency];
@@ -189,7 +203,14 @@ const MedicalAdvisorDashboard: React.FC = () => {
             onClick={() => setFilter('liver')}
           >
             <FileText size={16} />
-            Liver Panel Only
+            Liver Only
+          </button>
+          <button
+            className={filter === 'question' ? 'active' : ''}
+            onClick={() => setFilter('question')}
+          >
+            <FileText size={16} />
+            Question Only
           </button>
         </div>
 
@@ -198,7 +219,6 @@ const MedicalAdvisorDashboard: React.FC = () => {
           <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}>
             <option value="urgency">Urgency</option>
             <option value="date">Submission Date</option>
-            <option value="retreat">Retreat Date</option>
           </select>
         </div>
       </div>
@@ -218,24 +238,25 @@ const MedicalAdvisorDashboard: React.FC = () => {
               <div className="item-icon">
                 {item.type === 'EKG' ? (
                   <Heart size={24} />
-                ) : (
+                ) : item.type === 'Liver' ? (
                   <FileText size={24} />
+                ) : (
+                  <AlertCircle size={24} />
                 )}
               </div>
 
               <div className="item-main">
                 <div className="item-title">
                   <span className="item-type">{item.type} Review</span>
-                  <span className="client-number">{item.clientNumber}</span>
+                  <span className="client-number">#{item.display_id}</span>
                 </div>
                 <div className="item-details">
+                  <span className="client-name">
+                    <span>{item.clientName}</span>
+                  </span>
                   <span className="submission-date">
                     <Clock size={14} />
                     Posted {formatDaysAgo(item.daysAgo)}
-                  </span>
-                  <span className="retreat-info">
-                    <Calendar size={14} />
-                    {item.retreatName} ({formatDaysUntil(item.daysUntilRetreat)})
                   </span>
                 </div>
               </div>

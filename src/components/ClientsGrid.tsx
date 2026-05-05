@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { clientsApi, retreatsApi, bookingsApi, clientMedicalApi } from '../services/api';
 import { Client } from '../types';
 import ClientDetailView from './ClientDetailView';
@@ -134,6 +135,8 @@ interface ClientFormData extends Partial<Client> {
 }
 
 const ClientsGrid: React.FC = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [clients, setClients] = useState<Client[]>([]);
   const [retreats, setRetreats] = useState<any[]>([]);
@@ -249,6 +252,17 @@ const ClientsGrid: React.FC = () => {
         const lastName = row.lastName || row.lname || '';
         return `${firstName} ${lastName}`.trim();
       },
+      renderCell: (value, row) => (
+        <button
+          className="client-name-button"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleView(row);
+          }}
+        >
+          {value}
+        </button>
+      ),
       sortable: true
     },
     {
@@ -268,6 +282,13 @@ const ClientsGrid: React.FC = () => {
       headerName: 'Country',
       width: 120,
       renderCell: (value) => value ? getCountryName(value) : '',
+      sortable: true
+    },
+    {
+      field: 'language',
+      headerName: 'Language',
+      width: 90,
+      renderCell: (value) => value || 'EN',
       sortable: true
     },
     {
@@ -382,6 +403,17 @@ const ClientsGrid: React.FC = () => {
   useEffect(() => {
     fetchClients();
   }, [fetchClients]);
+
+  // Handle URL parameters for direct navigation to client detail
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const clientId = searchParams.get('id');
+    if (clientId) {
+      setViewingClientId(clientId);
+    } else {
+      setViewingClientId(null);
+    }
+  }, [location.search]);
 
   // Apply filters to clients data
   const filteredClients = useMemo(() => {
@@ -542,6 +574,7 @@ const ClientsGrid: React.FC = () => {
 
   const handleBackFromDetail = () => {
     setViewingClientId(null);
+    navigate('/clients', { replace: true });
   };
 
   // If viewing a client's detail, show the detail view
@@ -775,6 +808,23 @@ const ClientsGrid: React.FC = () => {
                       <option value="male">Male</option>
                       <option value="female">Female</option>
                       <option value="other">Other</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group">
+                    <label htmlFor="language">Preferred Language:</label>
+                    <select
+                      id="language"
+                      name="language"
+                      value={formData.language || 'EN'}
+                      onChange={handleInputChange}
+                    >
+                      <option value="EN">English</option>
+                      <option value="PL">Polish</option>
+                      <option value="CZ">Czech</option>
+                      <option value="ES">Spanish</option>
+                      <option value="FR">French</option>
+                      <option value="DE">German</option>
                     </select>
                   </div>
 

@@ -9,14 +9,23 @@ import RetreatsGrid from './RetreatsGrid';
 import BookingsGrid from './BookingsGrid';
 import MedicalGrid from './MedicalGrid';
 import MedicalTrackingNew from './MedicalTrackingNew';
+import MedicalTrackingDetail from './MedicalTrackingDetail';
 import RemindersPage from './RemindersPage';
 import PaymentsPage from './PaymentsPage';
+import PaymentRequestsGrid from './PaymentRequestsGrid';
 import RequirementsGrid from './RequirementsGrid';
 import CurrencySettings from './CurrencySettings';
 import MedicalAdvisorDashboard from './MedicalAdvisorDashboard';
 import MedicalReviewDetail from './MedicalReviewDetail';
 import MedicalRetreats from './MedicalRetreats';
 import MedicalProfile from './MedicalProfile';
+import MedicalAdvisorReview from './MedicalAdvisorReview';
+import ProtectedRoute from './ProtectedRoute';
+import Unauthorized from './Unauthorized';
+import PermissionsMatrix from './PermissionsMatrix';
+import ClientMedicationsGrid from './ClientMedicationsGrid';
+import ClientMedicationForm from './ClientMedicationForm';
+import UserManagement from './UserManagement';
 import { useAuth } from '../context/AuthContext';
 
 const AppleLayout: React.FC = () => {
@@ -34,36 +43,77 @@ const AppleLayout: React.FC = () => {
 
   const getActiveItemFromPath = () => {
     const path = location.pathname;
-    if (path.startsWith('/potential-clients') || path.startsWith('/clients')) return 'potential-clients';
-    if (path.startsWith('/medical-dashboard')) return 'medical-dashboard';
-    if (path.startsWith('/medical-review')) return 'medical-dashboard';
-    if (path.startsWith('/medical-retreats')) return 'medical-retreats';
-    if (path.startsWith('/medical-tracking')) return 'medical-tracking';
-    if (path.startsWith('/retreats')) return 'retreats';
-    if (path.startsWith('/houses')) return 'houses';
-    if (path.startsWith('/bookings')) return 'bookings';
-    if (path.startsWith('/medical')) return 'medical';
-    if (path.startsWith('/reminders')) return 'reminders';
-    if (path.startsWith('/payments')) return 'payments';
-    if (path.startsWith('/requirements')) return 'requirements';
-    if (path.startsWith('/analytics')) return 'analytics';
-    return isMedicalAdvisor ? 'medical-dashboard' : 'potential-clients';
+
+    // Handle prefixed routes (admin/, medical/, staff/, user/)
+    const pathSegments = path.split('/').filter(Boolean);
+    const route = pathSegments.length > 1 ? pathSegments[1] : pathSegments[0];
+
+    // Map routes to sidebar items
+    if (route === 'clients' || route === 'potential-clients') return 'clients';
+    if (route === 'medical-dashboard') return 'medical-dashboard';
+    if (route === 'medical-review') return 'medical-dashboard';
+    if (route === 'medical-retreats') return 'medical-retreats';
+    if (route === 'medical-tracking') return 'medical-tracking';
+    if (route === 'medical') return 'medical';
+    if (route === 'retreats') return 'retreats';
+    if (route === 'houses') return 'houses';
+    if (route === 'bookings') return 'bookings';
+    if (route === 'reminders') return 'reminders';
+    if (route === 'payments') return 'payments';
+    if (route === 'payment-requests') return 'payment-requests';
+    if (route === 'requirements') return 'requirements';
+    if (route === 'analytics') return 'analytics';
+    if (route === 'permissions') return 'permissions';
+    if (route === 'users') return 'users';
+
+    return getDefaultRoute();
+  };
+
+  const getDefaultRoute = () => {
+    switch (user?.role) {
+      case 'admin':
+        return 'clients';
+      case 'medical_staff':
+        return 'medical-dashboard';
+      case 'medical_advisor':
+        return 'medical-dashboard';
+      case 'facilitator':
+        return 'bookings';
+      default:
+        return 'clients';
+    }
+  };
+
+  const getRoutePrefix = () => {
+    switch (user?.role) {
+      case 'admin':
+        return 'admin';
+      case 'medical_staff':
+        return 'medical';
+      case 'medical_advisor':
+        return 'medical';
+      case 'facilitator':
+        return 'staff';
+      case 'user':
+        return 'user';
+      default:
+        return 'user';
+    }
   };
 
   const activeItem = getActiveItemFromPath();
 
   useEffect(() => {
     if (location.pathname === '/') {
-      if (isMedicalAdvisor) {
-        navigate('/medical-dashboard', { replace: true });
-      } else {
-        navigate('/clients', { replace: true });
-      }
+      const prefix = getRoutePrefix();
+      const defaultRoute = getDefaultRoute();
+      navigate(`/${prefix}/${defaultRoute}`, { replace: true });
     }
-  }, [location.pathname, navigate, isMedicalAdvisor]);
+  }, [location.pathname, navigate, user?.role]);
 
   const handleItemClick = (item: string) => {
-    navigate(`/${item}`);
+    const prefix = getRoutePrefix();
+    navigate(`/${prefix}/${item}`);
     setSidebarOpen(false);
   };
 
@@ -162,29 +212,103 @@ const AppleLayout: React.FC = () => {
           <div className="max-w-7xl mx-auto">
             <div className="bg-white rounded-apple-lg shadow-apple-sm" style={{ minHeight: 'calc(100vh - 120px)' }}>
               <Routes>
-                {isMedicalAdvisor ? (
-                  <>
-                    <Route path="/medical-dashboard" element={<MedicalAdvisorDashboard />} />
-                    <Route path="/medical-review/:bookingId" element={<MedicalReviewDetail />} />
-                    <Route path="/medical-retreats" element={<MedicalRetreats />} />
-                    <Route path="/medical/:clientId" element={<MedicalProfile />} />
-                  </>
-                ) : (
-                  <>
-                    <Route path="/potential-clients" element={<UnifiedClientManager />} />
-                    <Route path="/clients" element={<UnifiedClientManager />} />
-                    <Route path="/retreats" element={<RetreatsGrid />} />
-                    <Route path="/houses" element={<HousesGrid />} />
-                    {/* <Route path="/screening" element={<ScreeningClientsGrid />} --> Legacy, removed */}
-                    <Route path="/bookings" element={<BookingsGrid />} />
-                    <Route path="/medical" element={<MedicalGrid />} />
-                    <Route path="/medical-tracking" element={<MedicalTrackingNew />} />
-                    <Route path="/medical/:clientId" element={<MedicalProfile />} />
-                    <Route path="/reminders" element={<RemindersPage />} />
-                    <Route path="/payments" element={<PaymentsPage />} />
-                    <Route path="/requirements" element={<RequirementsGrid />} />
-                  </>
-                )}
+                {/* Unauthorized route */}
+                <Route path="/unauthorized" element={<Unauthorized />} />
+
+                {/* Admin routes */}
+                <Route path="/admin/*" element={
+                  <ProtectedRoute requiredRole={['admin']}>
+                    <Routes>
+                      <Route path="clients" element={<UnifiedClientManager />} />
+                      <Route path="potential-clients" element={<UnifiedClientManager />} />
+                      <Route path="retreats" element={<RetreatsGrid />} />
+                      <Route path="houses" element={<HousesGrid />} />
+                      <Route path="bookings" element={<BookingsGrid />} />
+                      <Route path="medical-tracking" element={<MedicalTrackingNew />} />
+                      <Route path="medical-tracking/:id" element={<MedicalTrackingDetail />} />
+                      <Route path="medical-dashboard" element={<MedicalAdvisorDashboard />} />
+                      <Route path="medical-review/:bookingId" element={<MedicalReviewDetail />} />
+                      <Route path="medical-retreats" element={<MedicalRetreats />} />
+                      <Route path="medical/:clientId" element={<MedicalProfile />} />
+                      <Route path="medical" element={<MedicalGrid />} />
+                      <Route path="reminders" element={<RemindersPage />} />
+                      <Route path="payments" element={<PaymentsPage />} />
+                      <Route path="payment-requests" element={<PaymentRequestsGrid />} />
+                      <Route path="requirements" element={<RequirementsGrid />} />
+                      <Route path="permissions" element={<PermissionsMatrix />} />
+                      <Route path="client-medications" element={<ClientMedicationsGrid />} />
+                      <Route path="client-medications/create" element={<ClientMedicationForm mode="create" />} />
+                      <Route path="client-medications/edit/:id" element={<ClientMedicationForm mode="edit" />} />
+                      <Route path="client-medications/view/:id" element={<ClientMedicationForm mode="view" />} />
+                      <Route path="analytics" element={<div className="p-6">Analytics - Coming Soon</div>} />
+                      <Route path="users" element={<UserManagement />} />
+                    </Routes>
+                  </ProtectedRoute>
+                } />
+
+                {/* Medical staff routes */}
+                <Route path="/medical/*" element={
+                  <ProtectedRoute requiredRole={['medical_staff', 'medical_advisor', 'admin']}>
+                    <Routes>
+                      <Route index element={<MedicalAdvisorDashboard />} />
+                      <Route path="dashboard" element={<MedicalAdvisorDashboard />} />
+                      <Route path="medical-dashboard" element={<MedicalAdvisorDashboard />} />
+                      <Route path="tracking" element={<MedicalTrackingNew />} />
+                      <Route path="medical-tracking" element={<MedicalTrackingNew />} />
+                      <Route path="tracking/:id" element={<MedicalTrackingDetail />} />
+                      <Route path="medical-tracking/:id" element={<MedicalTrackingDetail />} />
+                      <Route path="review/:id" element={<MedicalAdvisorReview />} />
+                      <Route path="medical-review/:id" element={<MedicalAdvisorReview />} />
+                      <Route path="medical-review/:bookingId" element={<MedicalReviewDetail />} />
+                      <Route path="medical-retreats" element={<MedicalRetreats />} />
+                      <Route path="clients" element={<UnifiedClientManager />} />
+                      <Route path="potential-clients" element={<UnifiedClientManager />} />
+                      <Route path="client/:clientId" element={<MedicalProfile />} />
+                      <Route path="bookings" element={<BookingsGrid />} />
+                      <Route path="retreats" element={<RetreatsGrid />} />
+                      <Route path="reminders" element={<RemindersPage />} />
+                    </Routes>
+                  </ProtectedRoute>
+                } />
+
+                {/* Staff/Facilitator routes */}
+                <Route path="/staff/*" element={
+                  <ProtectedRoute requiredRole={['facilitator', 'medical_staff', 'admin']}>
+                    <Routes>
+                      <Route path="bookings" element={<BookingsGrid />} />
+                      <Route path="retreats" element={<RetreatsGrid />} />
+                      <Route path="houses" element={<HousesGrid />} />
+                      <Route path="clients" element={<UnifiedClientManager />} />
+                      <Route path="potential-clients" element={<UnifiedClientManager />} />
+                      <Route path="reminders" element={<RemindersPage />} />
+                    </Routes>
+                  </ProtectedRoute>
+                } />
+
+                {/* User routes */}
+                <Route path="/user/*" element={
+                  <ProtectedRoute requiredRole={['user', 'facilitator', 'medical_staff', 'admin']}>
+                    <Routes>
+                      <Route path="clients" element={<UnifiedClientManager />} />
+                      <Route path="reminders" element={<RemindersPage />} />
+                    </Routes>
+                  </ProtectedRoute>
+                } />
+
+                {/* Legacy routes for backwards compatibility - redirect to appropriate prefixed routes */}
+                <Route path="/medical-dashboard" element={<ProtectedRoute><MedicalAdvisorDashboard /></ProtectedRoute>} />
+                <Route path="/medical-review/:bookingId" element={<ProtectedRoute><MedicalReviewDetail /></ProtectedRoute>} />
+                <Route path="/medical-retreats" element={<ProtectedRoute><MedicalRetreats /></ProtectedRoute>} />
+                <Route path="/medical-tracking" element={<ProtectedRoute><MedicalTrackingNew /></ProtectedRoute>} />
+                <Route path="/medical-tracking/:id" element={<ProtectedRoute><MedicalTrackingDetail /></ProtectedRoute>} />
+                <Route path="/clients" element={<ProtectedRoute><UnifiedClientManager /></ProtectedRoute>} />
+                <Route path="/potential-clients" element={<ProtectedRoute><UnifiedClientManager /></ProtectedRoute>} />
+                <Route path="/retreats" element={<ProtectedRoute><RetreatsGrid /></ProtectedRoute>} />
+                <Route path="/houses" element={<ProtectedRoute><HousesGrid /></ProtectedRoute>} />
+                <Route path="/bookings" element={<ProtectedRoute><BookingsGrid /></ProtectedRoute>} />
+                <Route path="/reminders" element={<ProtectedRoute><RemindersPage /></ProtectedRoute>} />
+                <Route path="/payments" element={<ProtectedRoute><PaymentsPage /></ProtectedRoute>} />
+                <Route path="/requirements" element={<ProtectedRoute><RequirementsGrid /></ProtectedRoute>} />
               </Routes>
             </div>
           </div>

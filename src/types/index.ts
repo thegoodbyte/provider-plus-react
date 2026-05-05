@@ -11,6 +11,7 @@ export interface Retreat {
   helpers?: string;
   status?: 'active' | 'completed' | 'cancelled' | 'upcoming';
   type?: 'regular' | 'booster';
+  backgroundColor?: string; // Added for custom background color
   createdAt?: string;
   updatedAt?: string;
   // Legacy format support
@@ -64,6 +65,8 @@ export interface Client {
   workflowStatus?: 'potential' | 'screening' | 'approved' | 'rejected' | 'booked' | 'cancelled' | 'completed' | 'blacklisted';
   blacklistReason?: string;
   blacklistDate?: Date | string;
+  display_id?: number;
+  language?: 'EN' | 'PL' | 'CZ' | 'ES' | 'FR' | 'DE';
   initialContactDate?: Date | string;
   conversionDate?: Date | string;
   firstContactDate?: Date | string;
@@ -106,6 +109,7 @@ export interface Client {
   screeningCompletedDate?: Date | string;
   followUpDate?: Date | string;
   priority?: 'low' | 'medium' | 'high' | 'urgent';
+  signupDate?: Date | string;
   createdAt?: string;
   updatedAt?: string;
   // Legacy support
@@ -553,13 +557,43 @@ export interface CeremonyParticipant {
 
 export interface MedicalItem {
   _id?: string;
+  display_id?: number;
   type: 'EKG' | 'Liver' | 'Question';
   image?: string; // URL or base64 image data
+  files?: string[]; // Additional files (images, PDFs, documents)
   client_id: string;
   notes?: string;
+  date_received?: Date | string;
   medadvisor_review_date?: Date | string;
   medadvisor_review_result?: 'OK' | 'caution' | 'NOT OK';
   medadvisor_review_notes?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface PaymentRequest {
+  _id?: string;
+  clientId: string;
+  retreatId: string;
+  requestedAmount: number;
+  fullPrice: number;
+  currency: 'CZK' | 'EUR' | 'PLN' | 'USD';
+  status: 'pending' | 'paid' | 'overdue' | 'cancelled';
+  requestType: 'deposit' | 'balance' | 'full_payment' | 'additional';
+  requestDate: Date | string;
+  dueDate?: Date | string;
+  description?: string;
+  notes?: string;
+  paymentId?: string;
+  paidDate?: Date | string;
+  sentToClient?: boolean;
+  clientNotified?: Date | string;
+  remindersSent?: number;
+  lastReminderDate?: Date | string;
+  invoiceNumber?: string;
+  isUrgent?: boolean;
+  paymentInstructions?: string;
+  createdBy?: string;
   createdAt?: string;
   updatedAt?: string;
 }

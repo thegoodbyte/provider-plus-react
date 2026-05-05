@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Retreat, House, Client, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem } from '../types';
+import { Retreat, House, Client, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem } from '../types';
 import { authService } from './authService';
 import { cacheService } from './cacheService';
 
@@ -113,6 +113,7 @@ export const clientsApi = {
   getActive: () => api.get<Client[]>('/clients/active'),
   getByPriority: (priority: string) => api.get<Client[]>(`/clients/by-priority/${priority}`),
   getBlacklisted: () => api.get<Client[]>('/clients/blacklisted'),
+  getNextDisplayId: () => api.get<number>('/clients/next-display-id'),
   blacklist: (id: string, reason: string) => {
     cacheService.clearPattern('clients:');
     return api.put(`/clients/${id}/blacklist`, { reason });
@@ -261,6 +262,38 @@ export const paymentsApi = {
   },
 };
 
+export const paymentRequestsApi = {
+  getAll: () => cachedGet<PaymentRequest[]>('payment-requests:all', () => api.get<PaymentRequest[]>('/payments/requests')),
+  getOne: (id: string) => cachedGet<PaymentRequest>(`payment-requests:${id}`, () => api.get<PaymentRequest>(`/payments/requests/${id}`)),
+  getByRetreat: (retreatId: string) => cachedGet<PaymentRequest[]>(`payment-requests:retreat:${retreatId}`, () => api.get<PaymentRequest[]>(`/payments/requests/by-retreat/${retreatId}`)),
+  getByClient: (clientId: string) => cachedGet<PaymentRequest[]>(`payment-requests:client:${clientId}`, () => api.get<PaymentRequest[]>(`/payments/requests/by-client/${clientId}`)),
+  create: (data: Omit<PaymentRequest, '_id'>) => {
+    cacheService.clearPattern('payment-requests:');
+    return api.post<PaymentRequest>('/payments/requests', data);
+  },
+  update: (id: string, data: Partial<PaymentRequest>) => {
+    cacheService.clearPattern('payment-requests:');
+    return api.put<PaymentRequest>(`/payments/requests/${id}`, data);
+  },
+  delete: (id: string) => {
+    cacheService.clearPattern('payment-requests:');
+    return api.delete(`/payments/requests/${id}`);
+  },
+  markAsPaid: (id: string, paymentId: string) => {
+    cacheService.clearPattern('payment-requests:');
+    cacheService.clearPattern('payments:');
+    return api.put<PaymentRequest>(`/payments/requests/${id}/mark-paid`, { paymentId });
+  },
+  markAsOverdue: (id: string) => {
+    cacheService.clearPattern('payment-requests:');
+    return api.put<PaymentRequest>(`/payments/requests/${id}/mark-overdue`);
+  },
+  sendReminder: (id: string) => {
+    cacheService.clearPattern('payment-requests:');
+    return api.put<PaymentRequest>(`/payments/requests/${id}/send-reminder`);
+  },
+};
+
 export const screeningClientsApi = {
   getAll: () => cachedGet<ScreeningClient[]>('screening:all', () => api.get<ScreeningClient[]>('/screening-clients')),
   getOne: (id: string) => cachedGet<ScreeningClient>(`screening:${id}`, () => api.get<ScreeningClient>(`/screening-clients/${id}`)),
@@ -342,8 +375,13 @@ export const ceremoniesApi = {
   getRetreatSummary: (retreatId: string) => api.get<any>(`/ceremonies/retreat/${retreatId}/summary`),
 };
 
+// Export the base api instance and Client type for use in other services
+export { api };
+export type { Client };
+
 export const medicalTrackingApi = {
   getAll: () => cachedGet<MedicalItem[]>('medical-tracking:all', () => api.get<MedicalItem[]>('/medical-tracking')),
+  getNextDisplayId: () => api.get<number>('/medical-tracking/next-display-id'),
   getOne: (id: string) => cachedGet<MedicalItem>(`medical-tracking:${id}`, () => api.get<MedicalItem>(`/medical-tracking/${id}`)),
   getByClient: (clientId: string) => cachedGet<MedicalItem[]>(`medical-tracking:client:${clientId}`, () => api.get<MedicalItem[]>(`/medical-tracking/client/${clientId}`)),
   getByType: (type: 'EKG' | 'Liver' | 'Question') => cachedGet<MedicalItem[]>(`medical-tracking:type:${type}`, () => api.get<MedicalItem[]>(`/medical-tracking/type/${type}`)),
@@ -371,8 +409,45 @@ export const medicalTrackingApi = {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
+  uploadFiles: (id: string, files: File[]) => {
+    const formData = new FormData();
+    files.forEach(file => {
+      formData.append('files', file);
+    });
+    cacheService.clearPattern('medical-tracking:');
+    return api.post(`/medical-tracking/${id}/upload-files`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  getFileUrl: (id: string, s3Key: string) => {
+    return api.get(`/medical-tracking/${id}/file/${encodeURIComponent(s3Key)}`);
+  },
   delete: (id: string) => {
     cacheService.clearPattern('medical-tracking:');
     return api.delete(`/medical-tracking/${id}`);
   },
+};
+
+// Medical Advisor API - restricted access for medical advisors only
+export const medicalAdvisorApi = {
+  // Get medical tracking items for review (medical advisor only)
+  getMedicalTracking: () => cachedGet<MedicalItem[]>('medical-advisor:tracking', () => api.get<MedicalItem[]>('/medical-advisor/medical-tracking')),
+
+  // Get specific medical tracking item for review
+  getMedicalTrackingItem: (id: string) => cachedGet<MedicalItem>(`medical-advisor:tracking:${id}`, () => api.get<MedicalItem>(`/medical-advisor/medical-tracking/${id}`)),
+
+  // Review medical tracking item (approve/deny/caution)
+  reviewMedicalTracking: (id: string, reviewData: {
+    medadvisor_review_result: 'OK' | 'caution' | 'NOT OK';
+    medadvisor_review_notes: string;
+  }) => {
+    cacheService.clearPattern('medical-advisor:');
+    return api.patch<MedicalItem>(`/medical-advisor/medical-tracking/${id}/review`, reviewData);
+  },
+
+  // Get basic client info for medical review
+  getClientInfo: (clientId: string) => cachedGet<Client>(`medical-advisor:client:${clientId}`, () => api.get<Client>(`/medical-advisor/client/${clientId}`)),
+
+  // Get dashboard statistics
+  getDashboardStats: () => cachedGet<any>('medical-advisor:stats', () => api.get<any>('/medical-advisor/dashboard/stats'), 30000), // 30 second cache
 };

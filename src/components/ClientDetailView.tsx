@@ -4,6 +4,7 @@ import { clientsApi, clientMedicalApi, clientRequirementsApi, remindersApi, book
 import MedicalTrackingTab from './MedicalTrackingTab';
 import ComprehensiveMedicalTrackingTab from './ComprehensiveMedicalTrackingTab';
 import ClientCeremoniesTab from './ClientCeremoniesTab';
+import { generateBookingPDF } from './BookingConfirmationPDF';
 import './ClientsGrid.css';
 import './ComprehensiveMedicalTrackingTab.css';
 
@@ -34,6 +35,8 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
     notes: '',
     retreatId: ''
   });
+  const [pdfLanguage, setPdfLanguage] = useState<'pl' | 'cz' | 'en'>('en');
+  const [generatingPDF, setGeneratingPDF] = useState<string | null>(null);
 
   useEffect(() => {
     fetchClientData();
@@ -926,6 +929,25 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                   <span>Upcoming</span>
                 </div>
               </div>
+              <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <label style={{ fontSize: '13px', color: '#666' }}>PDF Language:</label>
+                <select
+                  value={pdfLanguage}
+                  onChange={(e) => setPdfLanguage(e.target.value as 'pl' | 'cz' | 'en')}
+                  style={{
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    border: '1px solid #ddd',
+                    fontSize: '13px',
+                    backgroundColor: 'white',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="en">English</option>
+                  <option value="pl">Polish</option>
+                  <option value="cz">Czech</option>
+                </select>
+              </div>
             </div>
 
             <div className="retreat-bookings">
@@ -995,6 +1017,43 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                         <div className="text-content">{booking.notes}</div>
                       </div>
                     )}
+                  </div>
+
+                  <div className="booking-actions" style={{ marginTop: '15px', padding: '10px 0', borderTop: '1px solid #e1e5e9' }}>
+                    <button
+                      onClick={async () => {
+                        setGeneratingPDF(booking._id);
+                        try {
+                          await generateBookingPDF({
+                            booking,
+                            language: pdfLanguage,
+                            onComplete: () => {
+                              setGeneratingPDF(null);
+                            }
+                          });
+                        } catch (error) {
+                          console.error('Error generating PDF:', error);
+                          alert('Error generating PDF');
+                          setGeneratingPDF(null);
+                        }
+                      }}
+                      disabled={generatingPDF === booking._id}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: generatingPDF === booking._id ? '#ccc' : '#007bff',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: generatingPDF === booking._id ? 'not-allowed' : 'pointer',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      📄 {generatingPDF === booking._id ? 'Generating PDF...' : 'Generate Confirmation PDF'}
+                    </button>
                   </div>
 
                   <div className="booking-timeline">

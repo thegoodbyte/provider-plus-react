@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import LoadingSpinner from './LoadingSpinner';
 import { housesApi } from '../services/api';
 import { House } from '../types';
 import AppleButton from './AppleButton';
@@ -124,11 +125,7 @@ const HousesGrid: React.FC = () => {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-gray-500">Loading houses...</div>
-      </div>
-    );
+    return <LoadingSpinner message="Loading houses..." />;
   }
 
   return (

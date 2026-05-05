@@ -47,7 +47,7 @@ const COUNTRY_CODES = [
 ];
 
 const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSave }) => {
-  const [formData, setFormData] = useState<Client & { countryCode?: string; phoneNumber?: string; yearOfBirth?: number; medications?: string; allergies?: string; specialRequests?: string }>({
+  const [formData, setFormData] = useState<Client & { countryCode?: string; phoneNumber?: string; yearOfBirth?: number; medications?: string; allergies?: string; specialRequests?: string; language?: 'EN' | 'PL' | 'CZ' | 'ES' | 'FR' | 'DE' }>({
     ...client
   });
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
@@ -134,7 +134,8 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
         medicalConditions: formData.medicalConditions,
         dietaryRestrictions: formData.dietaryRestrictions,
         notes: formData.notes,
-        status: formData.status as 'active' | 'inactive' | 'suspended' | undefined
+        status: formData.status as 'active' | 'inactive' | 'suspended' | undefined,
+        language: formData.language
       };
 
       // Convert yearOfBirth to dateOfBirth if provided
@@ -284,6 +285,23 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
                   <option value="male">Male</option>
                   <option value="female">Female</option>
                   <option value="other">Other</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="language">Preferred Language:</label>
+                <select
+                  id="language"
+                  name="language"
+                  value={formData.language || 'EN'}
+                  onChange={handleInputChange}
+                >
+                  <option value="EN">English</option>
+                  <option value="PL">Polish</option>
+                  <option value="CZ">Czech</option>
+                  <option value="ES">Spanish</option>
+                  <option value="FR">French</option>
+                  <option value="DE">German</option>
                 </select>
               </div>
             </div>

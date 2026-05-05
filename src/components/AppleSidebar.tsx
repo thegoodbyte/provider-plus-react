@@ -11,6 +11,71 @@ interface AppleSidebarProps {
   userRole?: string;
 }
 
+// Professional gradient using 3 colors: Blue, Purple, and Gray with subtle variations
+const getGradientColorForIndex = (index: number, total: number, isActive: boolean = false): string => {
+  // Create a professional gradient using blue → purple → slate shades
+  // Each color family has light, medium, and deeper variations for smooth transitions
+  const colorPalette = [
+    // Light Blue
+    { bg: isActive ? 'rgb(59, 130, 246)' : 'rgb(219, 234, 254)', text: isActive ? 'white' : 'rgb(30, 64, 175)' },
+    // Medium Blue
+    { bg: isActive ? 'rgb(37, 99, 235)' : 'rgb(191, 219, 254)', text: isActive ? 'white' : 'rgb(29, 78, 216)' },
+    // Deep Blue
+    { bg: isActive ? 'rgb(29, 78, 216)' : 'rgb(147, 197, 253)', text: isActive ? 'white' : 'rgb(30, 58, 138)' },
+    // Blue-Indigo transition
+    { bg: isActive ? 'rgb(67, 56, 202)' : 'rgb(165, 180, 252)', text: isActive ? 'white' : 'rgb(55, 48, 163)' },
+    // Light Indigo
+    { bg: isActive ? 'rgb(99, 102, 241)' : 'rgb(196, 181, 253)', text: isActive ? 'white' : 'rgb(79, 70, 229)' },
+    // Medium Purple
+    { bg: isActive ? 'rgb(124, 58, 237)' : 'rgb(221, 214, 254)', text: isActive ? 'white' : 'rgb(107, 33, 168)' },
+    // Deep Purple
+    { bg: isActive ? 'rgb(109, 40, 217)' : 'rgb(196, 181, 253)', text: isActive ? 'white' : 'rgb(88, 28, 135)' },
+    // Purple-Slate transition
+    { bg: isActive ? 'rgb(100, 116, 139)' : 'rgb(203, 213, 225)', text: isActive ? 'white' : 'rgb(71, 85, 105)' },
+    // Light Slate
+    { bg: isActive ? 'rgb(71, 85, 105)' : 'rgb(226, 232, 240)', text: isActive ? 'white' : 'rgb(51, 65, 85)' },
+    // Medium Slate
+    { bg: isActive ? 'rgb(51, 65, 85)' : 'rgb(203, 213, 225)', text: isActive ? 'white' : 'rgb(30, 41, 59)' },
+    // Blue-Gray
+    { bg: isActive ? 'rgb(30, 64, 175)' : 'rgb(191, 219, 254)', text: isActive ? 'white' : 'rgb(30, 58, 138)' },
+    // Light Blue return
+    { bg: isActive ? 'rgb(14, 165, 233)' : 'rgb(186, 230, 253)', text: isActive ? 'white' : 'rgb(2, 132, 199)' },
+    // Sky Blue
+    { bg: isActive ? 'rgb(2, 132, 199)' : 'rgb(125, 211, 252)', text: isActive ? 'white' : 'rgb(3, 105, 161)' },
+    // Indigo return
+    { bg: isActive ? 'rgb(79, 70, 229)' : 'rgb(165, 180, 252)', text: isActive ? 'white' : 'rgb(67, 56, 202)' },
+    // Purple return
+    { bg: isActive ? 'rgb(147, 51, 234)' : 'rgb(233, 213, 255)', text: isActive ? 'white' : 'rgb(126, 34, 206)' },
+  ];
+
+  // Use modulo to cycle through colors if there are more items than colors
+  const colorIndex = index % colorPalette.length;
+  return colorPalette[colorIndex].bg;
+};
+
+const getTextColorForIndex = (index: number, total: number, isActive: boolean = false): string => {
+  const colorPalette = [
+    { text: isActive ? 'white' : 'rgb(30, 64, 175)' }, // Light blue text
+    { text: isActive ? 'white' : 'rgb(29, 78, 216)' }, // Medium blue text
+    { text: isActive ? 'white' : 'rgb(30, 58, 138)' }, // Deep blue text
+    { text: isActive ? 'white' : 'rgb(55, 48, 163)' }, // Blue-indigo text
+    { text: isActive ? 'white' : 'rgb(79, 70, 229)' }, // Light indigo text
+    { text: isActive ? 'white' : 'rgb(107, 33, 168)' }, // Medium purple text
+    { text: isActive ? 'white' : 'rgb(88, 28, 135)' }, // Deep purple text
+    { text: isActive ? 'white' : 'rgb(71, 85, 105)' }, // Purple-slate text
+    { text: isActive ? 'white' : 'rgb(51, 65, 85)' }, // Light slate text
+    { text: isActive ? 'white' : 'rgb(30, 41, 59)' }, // Medium slate text
+    { text: isActive ? 'white' : 'rgb(30, 58, 138)' }, // Blue-gray text
+    { text: isActive ? 'white' : 'rgb(2, 132, 199)' }, // Light blue return text
+    { text: isActive ? 'white' : 'rgb(3, 105, 161)' }, // Sky blue text
+    { text: isActive ? 'white' : 'rgb(67, 56, 202)' }, // Indigo return text
+    { text: isActive ? 'white' : 'rgb(126, 34, 206)' }, // Purple return text
+  ];
+
+  const colorIndex = index % colorPalette.length;
+  return colorPalette[colorIndex].text;
+};
+
 const AppleSidebar: React.FC<AppleSidebarProps> = ({
   activeItem,
   onItemClick,
@@ -24,27 +89,72 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
     return saved === 'true';
   });
   const [isHovered, setIsHovered] = useState(false);
-  const isMedicalAdvisor = userRole === 'medical_advisor';
-
   useEffect(() => {
     localStorage.setItem('sidebarCollapsed', isCollapsed.toString());
     window.dispatchEvent(new Event('sidebarCollapsedChange'));
   }, [isCollapsed]);
 
-  const menuItems = isMedicalAdvisor ? [
-    { id: 'medical-dashboard', label: 'Dashboard', Icon: Fi.FiHome },
-    { id: 'medical-retreats', label: 'Retreats', Icon: Fi.FiCalendar },
-  ] : [
-    { id: 'potential-clients', label: 'Clients', Icon: Fi.FiUsers },
-    { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
-    { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
-    { id: 'medical', label: 'Medical', Icon: Fi.FiActivity },
-    { id: 'medical-tracking', label: 'Medical Tracking', Icon: Fi.FiHeart },
-    { id: 'houses', label: 'Houses', Icon: Fi.FiHome },
-    { id: 'reminders', label: 'Reminders', Icon: Fi.FiBell },
-    { id: 'payments', label: 'Payments', Icon: Fi.FiCreditCard },
-    { id: 'requirements', label: 'Requirements', Icon: Fi.FiCheckSquare },
-  ];
+  const getMenuItemsForRole = () => {
+    switch (userRole) {
+      case 'admin':
+        return [
+          { id: 'clients', label: 'Clients', Icon: Fi.FiUsers },
+          { id: 'potential-clients', label: 'Potential Clients', Icon: Fi.FiUserPlus },
+          { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
+          { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
+          { id: 'medical', label: 'Medical', Icon: Fi.FiActivity },
+          { id: 'medical-tracking', label: 'Medical Tracking', Icon: Fi.FiHeart },
+          { id: 'medical-dashboard', label: 'Medical Dashboard', Icon: Fi.FiMonitor },
+          { id: 'client-medications', label: 'Client Medications', Icon: Fi.FiPlusSquare },
+          { id: 'houses', label: 'Houses', Icon: Fi.FiHome },
+          { id: 'reminders', label: 'Reminders', Icon: Fi.FiBell },
+          { id: 'payments', label: 'Payments', Icon: Fi.FiCreditCard },
+          { id: 'payment-requests', label: 'Payment Requests', Icon: Fi.FiFileText },
+          { id: 'requirements', label: 'Requirements', Icon: Fi.FiCheckSquare },
+          { id: 'permissions', label: 'Permissions', Icon: Fi.FiShield },
+          { id: 'users', label: 'Users', Icon: Fi.FiUser },
+          { id: 'analytics', label: 'Analytics', Icon: Fi.FiBarChart },
+        ];
+      case 'medical_staff':
+        return [
+          { id: 'medical-dashboard', label: 'Dashboard', Icon: Fi.FiHome },
+          { id: 'medical-tracking', label: 'Medical Tracking', Icon: Fi.FiHeart },
+          { id: 'client-medications', label: 'Client Medications', Icon: Fi.FiPlusSquare },
+          { id: 'medical-retreats', label: 'Medical Retreats', Icon: Fi.FiCalendar },
+          { id: 'clients', label: 'Clients', Icon: Fi.FiUsers },
+          { id: 'potential-clients', label: 'Potential Clients', Icon: Fi.FiUserPlus },
+          { id: 'medical', label: 'Medical Profiles', Icon: Fi.FiActivity },
+          { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
+          { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
+          { id: 'reminders', label: 'Reminders', Icon: Fi.FiBell },
+        ];
+      case 'medical_advisor':
+        return [
+          { id: 'medical-dashboard', label: 'Medical Dashboard', Icon: Fi.FiMonitor },
+          { id: 'medical-tracking', label: 'Medical Tracking', Icon: Fi.FiHeart },
+        ];
+      case 'facilitator':
+        return [
+          { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
+          { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
+          { id: 'houses', label: 'Houses', Icon: Fi.FiHome },
+          { id: 'clients', label: 'Clients', Icon: Fi.FiUsers },
+          { id: 'potential-clients', label: 'Potential Clients', Icon: Fi.FiUserPlus },
+          { id: 'reminders', label: 'Reminders', Icon: Fi.FiBell },
+        ];
+      case 'user':
+        return [
+          { id: 'clients', label: 'Clients', Icon: Fi.FiUsers },
+          { id: 'reminders', label: 'Reminders', Icon: Fi.FiBell },
+        ];
+      default:
+        return [
+          { id: 'clients', label: 'Clients', Icon: Fi.FiUsers },
+        ];
+    }
+  };
+
+  const menuItems = getMenuItemsForRole();
 
   const isExpanded = !isCollapsed || isHovered;
 
@@ -122,19 +232,22 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
           {/* Navigation Items */}
           <div className="flex-1 overflow-y-auto py-2">
             <ul className={`px-3 space-y-1 ${!isExpanded && 'px-2'}`}>
-              {menuItems.map((item) => {
+              {menuItems.map((item, index) => {
                 const isActive = activeItem === item.id;
                 const IconComponent = item.Icon;
+                const bgColor = getGradientColorForIndex(index, menuItems.length, isActive);
+                const textColor = getTextColorForIndex(index, menuItems.length, isActive);
                 const button = (
                   <button
                     onClick={() => onItemClick(item.id)}
+                    style={{
+                      backgroundColor: bgColor,
+                      color: textColor
+                    }}
                     className={`
                       w-full flex items-center gap-3 px-3 py-2 rounded-apple
                       transition-all duration-200 text-left
-                      ${isActive
-                        ? 'bg-apple-blue text-white shadow-apple-sm'
-                        : 'text-apple-gray-700 hover:bg-apple-gray-100'
-                      }
+                      ${isActive ? 'shadow-lg transform scale-105' : 'hover:scale-102 hover:shadow-md'}
                       ${!isExpanded && 'justify-center px-2'}
                     `}
                   >
@@ -189,7 +302,10 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                 {isExpanded && (
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-apple-gray-500 truncate">
-                      {isMedicalAdvisor ? 'Medical Advisor' : 'Administrator'}
+                      {userRole === 'admin' ? 'Administrator' :
+                       userRole === 'medical_staff' ? 'Medical Staff' :
+                       userRole === 'facilitator' ? 'Facilitator' :
+                       userRole === 'user' ? 'User' : 'User'}
                     </p>
                   </div>
                 )}

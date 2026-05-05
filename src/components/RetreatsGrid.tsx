@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { retreatsApi } from '../services/api';
-import { Retreat } from '../types';
+import LoadingSpinner from './LoadingSpinner';
+import { retreatsApi, housesApi } from '../services/api';
+import { Retreat, House } from '../types';
 import AppleButton from './AppleButton';
 import RetreatDetailView from './RetreatDetailView';
 import { FiPlus, FiEdit2, FiTrash2, FiEye, FiCalendar, FiMapPin } from 'react-icons/fi';
@@ -12,6 +13,7 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
 
 const RetreatsGrid: React.FC = () => {
   const [retreats, setRetreats] = useState<Retreat[]>([]);
+  const [houses, setHouses] = useState<House[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewingRetreatId, setViewingRetreatId] = useState<string | null>(null);
   const [editingRetreat, setEditingRetreat] = useState<Retreat | null>(null);
@@ -21,6 +23,7 @@ const RetreatsGrid: React.FC = () => {
 
   useEffect(() => {
     fetchRetreats();
+    fetchHouses();
   }, []);
 
   const fetchRetreats = async () => {
@@ -36,6 +39,16 @@ const RetreatsGrid: React.FC = () => {
     }
   };
 
+  const fetchHouses = async () => {
+    try {
+      const response = await housesApi.getAll();
+      setHouses(response.data || []);
+    } catch (error) {
+      console.error('Error fetching houses:', error);
+      setHouses([]);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       upcoming: 'bg-blue-100 text-blue-800',
@@ -44,6 +57,27 @@ const RetreatsGrid: React.FC = () => {
       cancelled: 'bg-red-100 text-red-800'
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
+  };
+
+  // Function to generate unique background colors for each retreat row
+  const getRetreatRowColor = (retreatId: string, index: number) => {
+    const colors = [
+      'bg-blue-50 hover:bg-blue-100',
+      'bg-green-50 hover:bg-green-100',
+      'bg-purple-50 hover:bg-purple-100',
+      'bg-pink-50 hover:bg-pink-100',
+      'bg-indigo-50 hover:bg-indigo-100',
+      'bg-yellow-50 hover:bg-yellow-100',
+      'bg-red-50 hover:bg-red-100',
+      'bg-cyan-50 hover:bg-cyan-100',
+      'bg-orange-50 hover:bg-orange-100',
+      'bg-emerald-50 hover:bg-emerald-100',
+      'bg-violet-50 hover:bg-violet-100',
+      'bg-rose-50 hover:bg-rose-100'
+    ];
+
+    // Use index to assign colors consistently
+    return colors[index % colors.length];
   };
 
   const handleDelete = async (id: string) => {
@@ -73,18 +107,14 @@ const RetreatsGrid: React.FC = () => {
   }
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-gray-500">Loading retreats...</div>
-      </div>
-    );
+    return <LoadingSpinner message="Loading retreats..." />;
   }
 
   return (
     <div className="p-6 h-full">
       <div className="mb-6 flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-gray-900">Retreats</h1>
-        <AppleButton
+        <button
           onClick={() => {
             setFormData({
               name: '',
@@ -96,11 +126,11 @@ const RetreatsGrid: React.FC = () => {
             });
             setIsAddModalOpen(true);
           }}
-          className="apple-button-primary"
+          className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
         >
-          <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
-          Add Retreat
-        </AppleButton>
+          <Icon icon={FiPlus} className="w-4 h-4 mr-1" />
+          Add New Retreat
+        </button>
       </div>
 
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -132,12 +162,22 @@ const RetreatsGrid: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {retreats.map((retreat) => (
-                <tr key={retreat._id} className="hover:bg-gray-50">
+              {retreats.map((retreat, index) => (
+                <tr key={retreat._id} className={getRetreatRowColor(retreat._id!, index)}>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{retreat.name}</div>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="text-sm font-medium text-gray-900 px-2 py-1 rounded"
+                        style={{
+                          backgroundColor: retreat.backgroundColor || 'transparent',
+                          color: retreat.backgroundColor ? '#fff' : 'inherit'
+                        }}
+                      >
+                        {retreat.name}
+                      </span>
+                    </div>
                     {retreat.description && (
-                      <div className="text-sm text-gray-500 truncate max-w-xs">
+                      <div className="text-sm text-gray-500 truncate max-w-xs mt-1">
                         {retreat.description}
                       </div>
                     )}
@@ -251,13 +291,19 @@ const RetreatsGrid: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Location
                 </label>
-                <input
-                  type="text"
+                <select
                   value={formData.location || ''}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter location"
-                />
+                  required
+                >
+                  <option value="">Select a house</option>
+                  {houses.map((house) => (
+                    <option key={house._id} value={house.name}>
+                      {house.name} - {house.address}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -325,6 +371,39 @@ const RetreatsGrid: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Background Color
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={formData.backgroundColor || '#3B82F6'}
+                    onChange={(e) => setFormData({ ...formData, backgroundColor: e.target.value })}
+                    className="w-16 h-10 border border-gray-300 rounded cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={formData.backgroundColor || '#3B82F6'}
+                    onChange={(e) => setFormData({ ...formData, backgroundColor: e.target.value })}
+                    placeholder="#3B82F6"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {formData.backgroundColor && (
+                    <button
+                      onClick={() => setFormData({ ...formData, backgroundColor: undefined })}
+                      className="text-gray-500 hover:text-gray-700"
+                      title="Clear color"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  This color will be used as background for the retreat name throughout the app
+                </p>
+              </div>
             </div>
 
             <div className="flex justify-end space-x-3 mt-6">
@@ -354,7 +433,8 @@ const RetreatsGrid: React.FC = () => {
                       type: formData.type || 'regular' as 'regular' | 'booster',
                       description: formData.description || '',
                       startDate: formData.startDate,
-                      endDate: formData.endDate
+                      endDate: formData.endDate,
+                      backgroundColor: formData.backgroundColor
                     };
                     await retreatsApi.create(retreatData);
                     fetchRetreats();
@@ -377,7 +457,7 @@ const RetreatsGrid: React.FC = () => {
       {/* Edit Modal */}
       {isEditModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96 max-w-md">
+          <div className="bg-white rounded-lg p-6 w-96 max-w-md max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-semibold mb-4">Edit Retreat</h2>
 
             <div className="space-y-4">
@@ -390,6 +470,7 @@ const RetreatsGrid: React.FC = () => {
                   value={formData.name || ''}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter retreat name"
                 />
               </div>
 
@@ -397,10 +478,83 @@ const RetreatsGrid: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Location
                 </label>
-                <input
-                  type="text"
+                <select
                   value={formData.location || ''}
                   onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Select a house</option>
+                  {houses.map((house) => (
+                    <option key={house._id} value={house.name}>
+                      {house.name} - {house.address}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Capacity
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={formData.capacity || 20}
+                    onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) || 20 })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Type
+                  </label>
+                  <select
+                    value={formData.type || 'regular'}
+                    onChange={(e) => setFormData({ ...formData, type: e.target.value as 'regular' | 'booster' })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="regular">Regular</option>
+                    <option value="booster">Booster</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  value={formData.description || ''}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={3}
+                  placeholder="Enter description (optional)"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  value={formData.startDate ? new Date(formData.startDate).toISOString().split('T')[0] : ''}
+                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  End Date
+                </label>
+                <input
+                  type="date"
+                  value={formData.endDate ? new Date(formData.endDate).toISOString().split('T')[0] : ''}
+                  onChange={(e) => setFormData({ ...formData, endDate: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -419,6 +573,39 @@ const RetreatsGrid: React.FC = () => {
                   <option value="completed">Completed</option>
                   <option value="cancelled">Cancelled</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Background Color
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    value={formData.backgroundColor || '#3B82F6'}
+                    onChange={(e) => setFormData({ ...formData, backgroundColor: e.target.value })}
+                    className="w-16 h-10 border border-gray-300 rounded cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={formData.backgroundColor || '#3B82F6'}
+                    onChange={(e) => setFormData({ ...formData, backgroundColor: e.target.value })}
+                    placeholder="#3B82F6"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {formData.backgroundColor && (
+                    <button
+                      onClick={() => setFormData({ ...formData, backgroundColor: undefined })}
+                      className="text-gray-500 hover:text-gray-700"
+                      title="Clear color"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  This color will be used as background for the retreat name throughout the app
+                </p>
               </div>
             </div>
 

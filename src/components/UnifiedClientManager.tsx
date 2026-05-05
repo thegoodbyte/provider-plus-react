@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AppleButton from './AppleButton';
 import AppleInput from './AppleInput';
+import SearchableCountrySelector from './SearchableCountrySelector';
+import LoadingSpinner from './LoadingSpinner';
 import { clientsApi } from '../services/api';
 import { Client } from '../types';
 import {
@@ -22,6 +25,7 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
 };
 
 const UnifiedClientManager: React.FC = () => {
+  const navigate = useNavigate();
   const [clients, setClients] = useState<Client[]>([]);
   const [filteredClients, setFilteredClients] = useState<Client[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -30,6 +34,7 @@ const UnifiedClientManager: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [sortField, setSortField] = useState<keyof Client>('lastName');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState<Partial<Client>>({
     firstName: '',
     lastName: '',
@@ -37,19 +42,22 @@ const UnifiedClientManager: React.FC = () => {
     phone: '',
     phoneCountryCode: '+420',
     address: '',
-    country: '',
+    country: 'CZ',
     workflowStatus: 'potential',
-    priority: 'medium',
+    signupDate: new Date().toISOString().split('T')[0],
     status: 'active'
-  });
+  } as Partial<Client>);
 
   // Fetch clients
   const fetchClients = async () => {
+    setIsLoading(true);
     try {
       const response = await clientsApi.getAll();
       setClients(response.data || []);
     } catch (error) {
       console.error('Error fetching clients:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -89,24 +97,64 @@ const UnifiedClientManager: React.FC = () => {
   }, [clients, filterStatus, searchTerm, sortField, sortDirection]);
 
   const handleSave = async () => {
+    console.log('=== SAVE STARTED ===');
+    console.log('Original formData:', JSON.stringify(formData, null, 2));
+
     if (!formData.firstName?.trim() || !formData.lastName?.trim() || !formData.phone?.trim()) {
       alert('First name, last name, and phone are required');
       return;
     }
 
     try {
-      // Clean up empty strings for optional fields
-      const cleanData = {
-        ...formData,
-        email: formData.email?.trim() || undefined,
-        address: formData.address?.trim() || undefined,
-        country: formData.country?.trim() || undefined
-      };
+      // Define allowed fields for client creation/update
+      const allowedFields = [
+        'firstName', 'lastName', 'email', 'phoneCountryCode', 'phone', 'address',
+        'city', 'state', 'zipCode', 'country', 'dateOfBirth', 'emergencyContact',
+        'emergencyContactPhone', 'medicalConditions', 'dietaryRestrictions', 'status',
+        'notes', 'preferredName', 'occupation', 'gender', 'height', 'weight', 'source',
+        'display_id', 'signupDate', 'workflowStatus'
+      ];
+
+      // Clean up data - only include allowed fields and handle types properly
+      const cleanData = Object.entries(formData).reduce((acc, [key, value]) => {
+        // Skip if not an allowed field
+        if (!allowedFields.includes(key)) return acc;
+
+        // Skip empty strings, null, or undefined
+        if (value === '' || value === null || value === undefined) return acc;
+
+        // Handle type conversions
+        if (key === 'weight' && value) {
+          acc[key] = typeof value === 'string' ? parseFloat(value) : value;
+        } else if (key === 'display_id' && value) {
+          acc[key] = typeof value === 'string' ? parseInt(value) : value;
+        } else if ((key === 'dateOfBirth' || key === 'signupDate') && value) {
+          // Ensure date is properly formatted for backend
+          if (typeof value === 'string') {
+            acc[key] = value;
+          } else if (value instanceof Date) {
+            acc[key] = value.toISOString().split('T')[0];
+          } else {
+            acc[key] = new Date(value as string | number).toISOString().split('T')[0];
+          }
+        } else {
+          acc[key] = value;
+        }
+
+        return acc;
+      }, {} as any);
+
+      console.log('Cleaned data being sent:', JSON.stringify(cleanData, null, 2));
+      console.log('Is update?', !!selectedClient?._id, 'ID:', selectedClient?._id);
 
       if (selectedClient?._id) {
-        await clientsApi.update(selectedClient._id, cleanData);
+        console.log('Calling update API...');
+        const updateResult = await clientsApi.update(selectedClient._id, cleanData);
+        console.log('Update API response:', updateResult);
       } else {
-        await clientsApi.quickAdd(cleanData);
+        console.log('Calling create API...');
+        const createResult = await clientsApi.quickAdd(cleanData);
+        console.log('Create API response:', createResult);
       }
       fetchClients();
       setShowForm(false);
@@ -118,14 +166,20 @@ const UnifiedClientManager: React.FC = () => {
         phone: '',
         phoneCountryCode: '+420',
         address: '',
-        country: '',
+        country: 'CZ',
         workflowStatus: 'potential',
-        priority: 'medium',
+        signupDate: new Date().toISOString().split('T')[0],
         status: 'active'
-      });
-    } catch (error) {
-      console.error('Error saving client:', error);
-      alert('Error saving client. Please try again.');
+      } as Partial<Client>);
+    } catch (error: any) {
+      console.error('=== SAVE ERROR ===');
+      console.error('Error object:', error);
+      console.error('Error response data:', error?.response?.data);
+      console.error('Error response status:', error?.response?.status);
+      console.error('Error message:', error?.message);
+
+      const errorMessage = error?.response?.data?.message || error?.message || 'Unknown error';
+      alert(`Failed to save client: ${errorMessage}\n\nCheck console for details.`);
     }
   };
 
@@ -140,8 +194,36 @@ const UnifiedClientManager: React.FC = () => {
   };
 
   const handleEdit = (client: Client) => {
+    console.log('=== EDIT STARTED ===');
+    console.log('Original client:', JSON.stringify(client, null, 2));
+
     setSelectedClient(client);
-    setFormData(client);
+
+    // Extract only the fields we need for the form, excluding MongoDB-specific fields
+    const allowedFields = [
+      'firstName', 'lastName', 'email', 'phoneCountryCode', 'phone', 'address',
+      'city', 'state', 'zipCode', 'country', 'dateOfBirth', 'emergencyContact',
+      'emergencyContactPhone', 'medicalConditions', 'dietaryRestrictions', 'status',
+      'notes', 'preferredName', 'occupation', 'gender', 'height', 'weight', 'source',
+      'display_id', 'signupDate', 'workflowStatus'
+    ];
+
+    const cleanFormData = allowedFields.reduce((acc, field) => {
+      const clientValue = (client as any)[field];
+      if (clientValue !== undefined && clientValue !== null) {
+        // Convert dates to proper format for form inputs
+        if ((field === 'dateOfBirth' || field === 'signupDate') && clientValue) {
+          acc[field] = new Date(clientValue).toISOString().split('T')[0]; // YYYY-MM-DD format for date input
+        } else {
+          acc[field] = clientValue;
+        }
+      }
+      return acc;
+    }, {} as any);
+
+    console.log('Cleaned form data for editing:', JSON.stringify(cleanFormData, null, 2));
+
+    setFormData(cleanFormData);
     setShowForm(true);
   };
 
@@ -155,6 +237,11 @@ const UnifiedClientManager: React.FC = () => {
         alert('Error deleting client. Please try again.');
       }
     }
+  };
+
+  const handleClientClick = (client: Client) => {
+    // Open the edit form for this client
+    handleEdit(client);
   };
 
   const handleSort = (field: keyof Client) => {
@@ -184,22 +271,19 @@ const UnifiedClientManager: React.FC = () => {
     );
   };
 
-  const getPriorityBadge = (priority?: string) => {
-    if (!priority) return null;
-
-    const priorityColors: { [key: string]: string } = {
-      low: 'bg-gray-100 text-gray-600',
-      medium: 'bg-blue-100 text-blue-600',
-      high: 'bg-orange-100 text-orange-600',
-      urgent: 'bg-red-100 text-red-600'
-    };
+  const getSignupDateBadge = (signupDate?: string) => {
+    if (!signupDate) return null;
 
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${priorityColors[priority] || ''}`}>
-        {priority}
+      <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-600">
+        {new Date(signupDate).toLocaleDateString()}
       </span>
     );
   };
+
+  if (isLoading) {
+    return <LoadingSpinner message="Loading clients..." />;
+  }
 
   return (
     <div className="p-6 max-w-full">
@@ -217,11 +301,11 @@ const UnifiedClientManager: React.FC = () => {
               phone: '',
               phoneCountryCode: '+420',
               address: '',
-              country: '',
+              country: 'CZ',
               workflowStatus: 'potential',
-              priority: 'medium',
+              signupDate: new Date().toISOString().split('T')[0],
               status: 'active'
-            });
+            } as Partial<Client>);
             setShowForm(true);
           }}
         >
@@ -266,6 +350,17 @@ const UnifiedClientManager: React.FC = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th
+                  onClick={() => handleSort('display_id')}
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                >
+                  <div className="flex items-center">
+                    ID
+                    {sortField === 'display_id' &&
+                      <Icon icon={FiChevronDown} className={`ml-1 w-4 h-4 transform ${sortDirection === 'asc' ? '' : 'rotate-180'}`} />
+                    }
+                  </div>
+                </th>
+                <th
                   onClick={() => handleSort('lastName')}
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 >
@@ -291,7 +386,7 @@ const UnifiedClientManager: React.FC = () => {
                   </div>
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Priority
+                  Signup Date
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Country
@@ -305,10 +400,19 @@ const UnifiedClientManager: React.FC = () => {
               {filteredClients.map((client) => (
                 <tr key={client._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm font-semibold text-gray-900">
+                      {client.display_id || '-'}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <div>
-                      <div className="text-sm font-medium text-gray-900">
+                      <button
+                        onClick={() => handleClientClick(client)}
+                        style={{ color: '#1f2937', backgroundColor: 'white', border: '1px solid #d1d5db', padding: '4px 8px', borderRadius: '4px' }}
+                        className="text-sm font-medium hover:bg-gray-50"
+                      >
                         {client.firstName} {client.lastName}
-                      </div>
+                      </button>
                       {client.preferredName && (
                         <div className="text-xs text-gray-500">
                           Prefers: {client.preferredName}
@@ -334,7 +438,7 @@ const UnifiedClientManager: React.FC = () => {
                     {getStatusBadge(client.workflowStatus || 'potential')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    {getPriorityBadge(client.priority)}
+                    {getSignupDateBadge(typeof client.signupDate === 'string' ? client.signupDate : client.signupDate?.toISOString().split('T')[0])}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {client.country || '-'}
@@ -416,6 +520,14 @@ const UnifiedClientManager: React.FC = () => {
               </div>
 
               <div className="space-y-4">
+                <AppleInput
+                  label="Client ID"
+                  value={formData.display_id?.toString() || ''}
+                  onChange={(value) => setFormData({ ...formData, display_id: value ? parseInt(value) : undefined })}
+                  placeholder="Auto-generated if empty (min 1001)"
+                  type="number"
+                />
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <AppleInput
                     label="First Name *"
@@ -442,21 +554,25 @@ const UnifiedClientManager: React.FC = () => {
                 <div>
                   <label className="block text-sm font-medium text-apple-gray-700 mb-1">Phone *</label>
                   <div className="flex">
-                    <select
-                      className="px-3 py-2 border border-r-0 border-apple-gray-200 rounded-l-apple focus:outline-none focus:ring-2 focus:ring-apple-blue/20 bg-white text-sm"
-                      value={formData.phoneCountryCode || '+420'}
-                      onChange={(e) => setFormData({ ...formData, phoneCountryCode: e.target.value })}
-                    >
-                      <option value="+420">🇨🇿 +420</option>
-                      <option value="+48">🇵🇱 +48</option>
-                      <option value="+1">🇺🇸 +1</option>
-                      <option value="+44">🇬🇧 +44</option>
-                    </select>
+                    <div className="w-48">
+                      <SearchableCountrySelector
+                        value={formData.phoneCountryCode || '+420'}
+                        onChange={(phonePrefix, countryCode) => {
+                          setFormData({
+                            ...formData,
+                            phoneCountryCode: phonePrefix,
+                            country: countryCode
+                          });
+                        }}
+                        placeholder="Select country"
+                        className="rounded-r-none border-r-0"
+                      />
+                    </div>
                     <AppleInput
                       value={formData.phone || ''}
                       onChange={(value) => setFormData({ ...formData, phone: value })}
                       placeholder="Enter phone number"
-                      className="rounded-l-none border-l-0"
+                      className="rounded-l-none border-l-0 flex-1"
                     />
                   </div>
                 </div>
@@ -468,12 +584,19 @@ const UnifiedClientManager: React.FC = () => {
                   placeholder="Enter address"
                 />
 
-                <AppleInput
-                  label="Country"
-                  value={formData.country || ''}
-                  onChange={(value) => setFormData({ ...formData, country: value })}
-                  placeholder="Enter country"
-                />
+                <div>
+                  <label className="block text-sm font-medium text-apple-gray-700 mb-1">Country</label>
+                  <SearchableCountrySelector
+                    value={formData.phoneCountryCode || '+420'}
+                    onChange={(phonePrefix, countryCode) => {
+                      setFormData({
+                        ...formData,
+                        country: countryCode
+                      });
+                    }}
+                    placeholder="Select country"
+                  />
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
@@ -491,17 +614,13 @@ const UnifiedClientManager: React.FC = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-apple-gray-700 mb-1">Priority</label>
-                    <select
+                    <label className="block text-sm font-medium text-apple-gray-700 mb-1">Signup Date</label>
+                    <input
+                      type="date"
                       className="w-full px-3 py-2 border border-apple-gray-200 rounded-apple focus:outline-none focus:ring-2 focus:ring-apple-blue/20 bg-white text-sm"
-                      value={formData.priority || 'medium'}
-                      onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
-                    >
-                      <option value="low">Low</option>
-                      <option value="medium">Medium</option>
-                      <option value="high">High</option>
-                      <option value="urgent">Urgent</option>
-                    </select>
+                      value={typeof formData.signupDate === 'string' ? formData.signupDate : formData.signupDate?.toISOString().split('T')[0] || ''}
+                      onChange={(e) => setFormData({ ...formData, signupDate: e.target.value } as Partial<Client>)}
+                    />
                   </div>
                 </div>
               </div>

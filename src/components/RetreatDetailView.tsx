@@ -6,7 +6,9 @@ import PaymentsTab from './PaymentsTab';
 import ClientDetailView from './ClientDetailView';
 import CeremoniesGrid from './CeremoniesGrid';
 import CeremonyAnalytics from './CeremonyAnalytics';
+import SearchableClientSelector from './SearchableClientSelector';
 import { Modal, Form, Input, Select, Button, message, Collapse } from 'antd';
+import { Client } from '../types';
 import { FiPlus, FiEdit2, FiTrash2, FiEye, FiUser, FiRefreshCw } from 'react-icons/fi';
 import './ClientsGrid.css';
 
@@ -66,6 +68,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [editingBookingId, setEditingBookingId] = useState<string | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showQuickBookingModal, setShowQuickBookingModal] = useState(false);
+  const [showExistingClientModal, setShowExistingClientModal] = useState(false);
   const [metricsCollapsed, setMetricsCollapsed] = useState(true);
   const [showRetreatEditModal, setShowRetreatEditModal] = useState(false);
   const [houses, setHouses] = useState<House[]>([]);
@@ -83,6 +86,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   });
   const [quickBookingForm] = Form.useForm();
   const [quickBookingLoading, setQuickBookingLoading] = useState(false);
+  const [existingClientBookingLoading, setExistingClientBookingLoading] = useState(false);
 
   const formatDateUTC = (date: Date) => {
     const year = date.getUTCFullYear();
@@ -315,6 +319,37 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     }
   };
 
+  const handleExistingClientSelect = async (selectedClient: Client) => {
+    try {
+      setExistingClientBookingLoading(true);
+
+      // Create booking for existing client
+      const bookingData = {
+        clientId: selectedClient._id!,
+        retreatId: retreatId,
+        totalAmount: 3000, // Default amount, can be edited later
+        currency: 'EUR' as const,
+        status: 'confirmed' as const,
+        registrationDate: new Date().toISOString(),
+        amountPaid: 0,
+        checkInDate: retreat?.startDate || new Date().toISOString(),
+        checkOutDate: retreat?.endDate || new Date().toISOString()
+      };
+
+      await bookingsApi.create(bookingData);
+
+      const fullName = `${selectedClient.firstName || ''} ${selectedClient.lastName || ''}`.trim();
+      message.success(`${fullName} has been added to this retreat!`);
+      setShowExistingClientModal(false);
+      await fetchRetreatData(); // Refresh the data
+    } catch (error: any) {
+      console.error('Error adding existing client:', error);
+      message.error(error.response?.data?.message || 'Failed to add client to retreat');
+    } finally {
+      setExistingClientBookingLoading(false);
+    }
+  };
+
   const countryCodeOptions = [
     { label: 'United States (+1)', value: '+1' },
     { label: 'Canada (+1)', value: '+1' },
@@ -419,7 +454,19 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           fontWeight: '500'
         }}>✏️ Edit Retreat</button>
         <div className="retreat-info">
-          <h1>{retreat.name}</h1>
+          <h1>
+            <span
+              style={{
+                backgroundColor: retreat.backgroundColor || 'transparent',
+                color: retreat.backgroundColor ? '#fff' : 'inherit',
+                padding: retreat.backgroundColor ? '4px 12px' : '0',
+                borderRadius: retreat.backgroundColor ? '4px' : '0',
+                display: 'inline-block'
+              }}
+            >
+              {retreat.name}
+            </span>
+          </h1>
           <div className="retreat-meta">
             <div className="meta-item">
               <strong>Location:</strong> {retreat.location}
@@ -547,14 +594,30 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
               >
                 ➕ Quick Book Client
               </button>
+              <button
+                onClick={() => setShowExistingClientModal(true)}
+                className="add-existing-client-btn"
+                style={{
+                  background: 'linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  marginRight: '8px',
+                  fontWeight: '500'
+                }}
+              >
+                👥 Add Existing Client
+              </button>
               <button onClick={fetchRetreatData} className="refresh-btn">
                 🔄 Refresh
               </button>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden max-h-96">
+            <div className="overflow-x-auto overflow-y-auto max-h-96">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
@@ -979,6 +1042,14 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           </div>
         </Form>
       </Modal>
+
+      {/* Existing Client Selector Modal */}
+      <SearchableClientSelector
+        isVisible={showExistingClientModal}
+        onClose={() => setShowExistingClientModal(false)}
+        onSelectClient={handleExistingClientSelect}
+        title="Add Existing Client to Retreat"
+      />
 
       {/* Retreat Edit Modal */}
       {showRetreatEditModal && (

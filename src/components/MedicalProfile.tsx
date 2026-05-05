@@ -53,6 +53,9 @@ const MedicalProfile: React.FC = () => {
   const [reviewDecision, setReviewDecision] = useState<'approved' | 'declined' | 'needs_more_info' | ''>('');
   const [activeRetreatId, setActiveRetreatId] = useState<string | null>(null);
 
+  // Debug: Log when component mounts and what clientId is received
+  console.log('[MedicalProfile] Component mounted with clientId:', clientId);
+
   // Separate state for EKG and Liver Panel reviews
   const [ekgReviewNotes, setEkgReviewNotes] = useState('');
   const [ekgReviewDecision, setEkgReviewDecision] = useState<'approved' | 'declined' | 'needs_more_info' | ''>('');
@@ -60,16 +63,28 @@ const MedicalProfile: React.FC = () => {
   const [liverPanelReviewDecision, setLiverPanelReviewDecision] = useState<'approved' | 'declined' | 'needs_more_info' | ''>('');
 
   useEffect(() => {
-    fetchClientData();
+    // Skip if clientId looks like a route name instead of an ID
+    if (clientId && !clientId.includes('-') && clientId.length === 24) {
+      fetchClientData();
+    } else {
+      setLoading(false);
+    }
   }, [clientId]);
 
   const fetchClientData = async () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
+      const userStr = localStorage.getItem('user');
+      const user = userStr ? JSON.parse(userStr) : null;
+      const isMedicalAdvisor = user?.role === 'medical_advisor';
 
-      // Fetch client basic info
-      const clientResponse = await fetch(`http://localhost:3005/clients/${clientId}`, {
+      // Fetch client basic info - use medical advisor endpoint if applicable
+      const clientUrl = isMedicalAdvisor
+        ? `http://localhost:3005/medical-advisor/client/${clientId}`
+        : `http://localhost:3005/clients/${clientId}`;
+
+      const clientResponse = await fetch(clientUrl, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -80,7 +95,7 @@ const MedicalProfile: React.FC = () => {
         const clientData = await clientResponse.json();
         setClient({
           _id: clientData._id,
-          clientNumber: clientData.clientNumber || '#0000',
+          clientNumber: clientData.clientNumber || clientData.display_id || '#0000',
           firstName: clientData.firstName || clientData.fname || 'Unknown',
           lastName: clientData.lastName || clientData.lname || '',
           dateOfBirth: clientData.dateOfBirth
