@@ -1,0 +1,59 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ production ]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm install --legacy-peer-deps
+
+    - name: Build React app
+      run: npm run build
+      env:
+        CI: false
+        REACT_APP_API_URL: http://174.138.70.250:8080
+
+    - name: Deploy to server
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.FRONTEND_HOST }}
+        username: ${{ secrets.FRONTEND_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        source: "build/*"
+        target: "/var/www/ibogaspirit.net/"
+        strip_components: 1
+        rm: true
+
+    - name: Set permissions
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.FRONTEND_HOST }}
+        username: ${{ secrets.FRONTEND_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          sudo chown -R www-data:www-data /var/www/ibogaspirit.net
+          sudo chmod -R 755 /var/www/ibogaspirit.net
+
+    - name: Notify deployment status
+      if: always()
+      run: |
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "✅ Frontend deployed successfully!"
+        else
+          echo "❌ Frontend deployment failed!"
+        fi
