@@ -56,6 +56,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed,
       description: 'Manage all clients (potential, screening, active)'
     },
     {
+      id: 'screening',
+      label: 'Screening',
+      icon: FiClipboard,
+      description: 'Manage screening clients'
+    },
+    {
       id: 'retreats',
       label: 'Retreats',
       icon: FiCalendar,

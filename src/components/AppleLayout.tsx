@@ -26,6 +26,7 @@ import PermissionsMatrix from './PermissionsMatrix';
 import ClientMedicationsGrid from './ClientMedicationsGrid';
 import ClientMedicationForm from './ClientMedicationForm';
 import UserManagement from './UserManagement';
+import { Tasks } from '../pages/Tasks/Tasks';
 import { useAuth } from '../context/AuthContext';
 
 const AppleLayout: React.FC = () => {
@@ -65,6 +66,7 @@ const AppleLayout: React.FC = () => {
     if (route === 'analytics') return 'analytics';
     if (route === 'permissions') return 'permissions';
     if (route === 'users') return 'users';
+    if (route === 'tasks') return 'tasks';
 
     return getDefaultRoute();
   };
@@ -242,6 +244,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="client-medications/view/:id" element={<ClientMedicationForm mode="view" />} />
                       <Route path="analytics" element={<div className="p-6">Analytics - Coming Soon</div>} />
                       <Route path="users" element={<UserManagement />} />
+                      <Route path="tasks" element={<Tasks />} />
                     </Routes>
                   </ProtectedRoute>
                 } />

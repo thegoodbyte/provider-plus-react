@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Client, ClientMedical, ClientRequirement, Reminder } from '../types';
-import { clientsApi, clientMedicalApi, clientRequirementsApi, remindersApi, bookingsApi } from '../services/api';
+import { clientsApi, clientMedicalApi, clientRequirementsApi, remindersApi, bookingsApi, notesApi } from '../services/api';
 import MedicalTrackingTab from './MedicalTrackingTab';
 import ComprehensiveMedicalTrackingTab from './ComprehensiveMedicalTrackingTab';
 import ClientCeremoniesTab from './ClientCeremoniesTab';
+import { TasksWidget } from './Tasks/TasksWidget';
 import { generateBookingPDF } from './BookingConfirmationPDF';
 import './ClientsGrid.css';
 import './ComprehensiveMedicalTrackingTab.css';
@@ -37,6 +38,16 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
   });
   const [pdfLanguage, setPdfLanguage] = useState<'pl' | 'cz' | 'en'>('en');
   const [generatingPDF, setGeneratingPDF] = useState<string | null>(null);
+  const [notes, setNotes] = useState<any[]>([]);
+  const [showNotesModal, setShowNotesModal] = useState(false);
+  const [editingNote, setEditingNote] = useState<any | null>(null);
+  const [noteFormData, setNoteFormData] = useState({
+    title: '',
+    content: '',
+    type: 'client' as 'client' | 'retreat' | 'general',
+    priority: 'medium' as 'low' | 'medium' | 'high' | 'urgent',
+    tags: [] as string[]
+  });
 
   useEffect(() => {
     fetchClientData();
@@ -58,6 +69,15 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
       // Extract retreats from bookings
       const clientRetreats = bookingsResponse.data.map((booking: any) => booking.retreatDetails || booking.retreatId).filter(Boolean);
       setRetreats(clientRetreats);
+
+      // Fetch notes for this client
+      try {
+        const notesResponse = await notesApi.getByClient(clientId);
+        setNotes(notesResponse.data || []);
+      } catch (notesError) {
+        console.error('Error fetching notes:', notesError);
+        setNotes([]);
+      }
 
       // Set first retreat as selected by default
       if (clientRetreats.length > 0) {
@@ -310,6 +330,18 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
           onClick={() => setActiveTab('ceremonies')}
         >
           🔮 Ceremonies
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'tasks' ? 'active' : ''}`}
+          onClick={() => setActiveTab('tasks')}
+        >
+          ✅ Tasks
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'notes' ? 'active' : ''}`}
+          onClick={() => setActiveTab('notes')}
+        >
+          📝 Notes
         </button>
       </div>
 
@@ -1086,6 +1118,103 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
         {activeTab === 'ceremonies' && (
           <ClientCeremoniesTab clientId={clientId} />
         )}
+        {activeTab === 'tasks' && (
+          <TasksWidget clientId={clientId} title="Client Tasks" />
+        )}
+
+        {activeTab === 'notes' && (
+          <div className="notes-tab">
+            <div className="notes-header">
+              <h3>📝 Client Notes</h3>
+              <button onClick={() => {
+                setEditingNote(null);
+                setNoteFormData({
+                  title: '',
+                  content: '',
+                  type: 'client',
+                  priority: 'medium',
+                  tags: []
+                });
+                setShowNotesModal(true);
+              }} className="add-note-btn">
+                ➕ Add Note
+              </button>
+            </div>
+
+            <div className="notes-list">
+              {notes.length > 0 ? (
+                notes.map((note) => (
+                  <div key={note._id} className={`note-card priority-${note.priority || 'medium'}`}>
+                    <div className="note-header">
+                      <h4>📝 {note.title}</h4>
+                      <div className="note-meta">
+                        <span className={`priority-badge priority-${note.priority || 'medium'}`}>
+                          {(note.priority || 'medium').toUpperCase()}
+                        </span>
+                        <span className="note-type">{note.type}</span>
+                        <span className="note-date">
+                          {new Date(note.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="note-content">
+                      <p>{note.content}</p>
+                    </div>
+
+                    {note.tags && note.tags.length > 0 && (
+                      <div className="note-tags">
+                        {note.tags.map((tag: string, index: number) => (
+                          <span key={index} className="tag">{tag}</span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="note-actions">
+                      <button
+                        onClick={() => {
+                          setEditingNote(note);
+                          setNoteFormData({
+                            title: note.title,
+                            content: note.content,
+                            type: note.type,
+                            priority: note.priority || 'medium',
+                            tags: note.tags || []
+                          });
+                          setShowNotesModal(true);
+                        }}
+                        className="edit-btn"
+                      >
+                        ✏️ Edit
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (window.confirm('Are you sure you want to delete this note?')) {
+                            try {
+                              await notesApi.delete(note._id);
+                              fetchClientData();
+                            } catch (error) {
+                              console.error('Error deleting note:', error);
+                              alert('Error deleting note');
+                            }
+                          }
+                        }}
+                        className="delete-btn"
+                      >
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="no-notes">
+                  <h3>📝 No Notes</h3>
+                  <p>No notes found for this client. Click "Add Note" to create the first one.</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
       {/* Reminder Add/Edit Modal */}
       {showReminderModal && (
@@ -1190,15 +1319,134 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
               </div>
 
               <div className="form-buttons">
-                <button type="submit" className="save-btn">
-                  {editingReminder ? 'Update Reminder' : 'Create Reminder'}
-                </button>
                 <button
                   type="button"
                   onClick={() => setShowReminderModal(false)}
                   className="cancel-btn"
                 >
                   Cancel
+                </button>
+                <button type="submit" className="save-btn">
+                  {editingReminder ? 'Update Reminder' : 'Create Reminder'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Notes Add/Edit Modal */}
+      {showNotesModal && (
+        <div className="modal-overlay">
+          <div className="modal notes-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>{editingNote ? 'Edit Note' : 'Add New Note'}</h3>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                const submitData = {
+                  ...noteFormData,
+                  clientId,
+                  createdBy: 'Admin' // You might want to get this from auth context
+                };
+
+                if (editingNote) {
+                  await notesApi.update(editingNote._id, submitData);
+                } else {
+                  await notesApi.create(submitData);
+                }
+
+                setShowNotesModal(false);
+                setEditingNote(null);
+                setNoteFormData({
+                  title: '',
+                  content: '',
+                  type: 'client',
+                  priority: 'medium',
+                  tags: []
+                });
+                fetchClientData();
+              } catch (error) {
+                console.error('Error saving note:', error);
+                alert('Error saving note');
+              }
+            }}>
+              <div className="note-form-grid">
+                <div className="form-group">
+                  <label htmlFor="note-title">Title *</label>
+                  <input
+                    type="text"
+                    id="note-title"
+                    value={noteFormData.title}
+                    onChange={(e) => setNoteFormData({...noteFormData, title: e.target.value})}
+                    required
+                    placeholder="Note title..."
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="note-type">Type</label>
+                  <select
+                    id="note-type"
+                    value={noteFormData.type}
+                    onChange={(e) => setNoteFormData({...noteFormData, type: e.target.value as any})}
+                  >
+                    <option value="client">Client</option>
+                    <option value="retreat">Retreat</option>
+                    <option value="general">General</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="note-priority">Priority</label>
+                  <select
+                    id="note-priority"
+                    value={noteFormData.priority}
+                    onChange={(e) => setNoteFormData({...noteFormData, priority: e.target.value as any})}
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
+                </div>
+
+                <div className="form-group full-width">
+                  <label htmlFor="note-content">Content *</label>
+                  <textarea
+                    id="note-content"
+                    value={noteFormData.content}
+                    onChange={(e) => setNoteFormData({...noteFormData, content: e.target.value})}
+                    rows={6}
+                    required
+                    placeholder="Write your note here..."
+                  />
+                </div>
+
+                <div className="form-group full-width">
+                  <label htmlFor="note-tags">Tags (comma separated)</label>
+                  <input
+                    type="text"
+                    id="note-tags"
+                    value={noteFormData.tags.join(', ')}
+                    onChange={(e) => {
+                      const tags = e.target.value.split(',').map(tag => tag.trim()).filter(tag => tag);
+                      setNoteFormData({...noteFormData, tags});
+                    }}
+                    placeholder="tag1, tag2, tag3..."
+                  />
+                </div>
+              </div>
+
+              <div className="form-buttons">
+                <button
+                  type="button"
+                  onClick={() => setShowNotesModal(false)}
+                  className="cancel-btn"
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="save-btn">
+                  {editingNote ? 'Update Note' : 'Create Note'}
                 </button>
               </div>
             </form>

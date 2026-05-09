@@ -7,6 +7,8 @@ import ClientDetailView from './ClientDetailView';
 import CeremoniesGrid from './CeremoniesGrid';
 import CeremonyAnalytics from './CeremonyAnalytics';
 import SearchableClientSelector from './SearchableClientSelector';
+import RetreatTrackingGrid from './RetreatTrackingGrid';
+import { TasksWidget } from './Tasks/TasksWidget';
 import { Modal, Form, Input, Select, Button, message, Collapse } from 'antd';
 import { Client } from '../types';
 import { FiPlus, FiEdit2, FiTrash2, FiEye, FiUser, FiRefreshCw } from 'react-icons/fi';
@@ -63,7 +65,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [expensesSummary, setExpensesSummary] = useState<ExpenseSummary | null>(null);
   const [paymentsSummary, setPaymentsSummary] = useState<PaymentSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'clients' | 'expenses' | 'payments' | 'ceremonies' | 'analytics'>('clients');
+  const [activeTab, setActiveTab] = useState<'clients' | 'tracking' | 'expenses' | 'payments' | 'ceremonies' | 'analytics' | 'tasks'>('clients');
   const [viewingClientId, setViewingClientId] = useState<string | null>(null);
   const [editingBookingId, setEditingBookingId] = useState<string | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -547,6 +549,12 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           📋 Clients ({clients.length})
         </button>
         <button
+          className={`tab-btn ${activeTab === 'tracking' ? 'active' : ''}`}
+          onClick={() => setActiveTab('tracking')}
+        >
+          📊 Tracking Grid
+        </button>
+        <button
           className={`tab-btn ${activeTab === 'expenses' ? 'active' : ''}`}
           onClick={() => setActiveTab('expenses')}
         >
@@ -569,6 +577,12 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           onClick={() => setActiveTab('analytics')}
         >
           📊 Analytics
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'tasks' ? 'active' : ''}`}
+          onClick={() => setActiveTab('tasks')}
+        >
+          ✅ Tasks
         </button>
       </div>
 
@@ -723,6 +737,12 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         </div>
       )}
 
+      {activeTab === 'tracking' && (
+        <div className="tracking-section">
+          <RetreatTrackingGrid retreatId={retreatId} />
+        </div>
+      )}
+
       {activeTab === 'expenses' && (
         <div className="expenses-section">
           <ExpensesTab retreatId={retreatId} />
@@ -744,6 +764,12 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       {activeTab === 'analytics' && (
         <div className="analytics-section">
           <CeremonyAnalytics retreatId={retreatId} />
+        </div>
+      )}
+
+      {activeTab === 'tasks' && (
+        <div className="tasks-section">
+          <TasksWidget retreatId={retreatId} title="Retreat Tasks" />
         </div>
       )}
 
@@ -862,7 +888,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
               </div>
 
               <div className="form-buttons">
-                <button type="submit" className="save-btn">Update Booking</button>
                 <button
                   type="button"
                   onClick={() => setShowEditModal(false)}
@@ -870,6 +895,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                 >
                   Cancel
                 </button>
+                <button type="submit" className="save-btn">Update Booking</button>
               </div>
             </form>
           </div>
@@ -1174,8 +1200,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
               </div>
 
               <div className="form-buttons">
-                <button type="submit" className="save-btn">Update Retreat</button>
                 <button type="button" onClick={() => setShowRetreatEditModal(false)} className="cancel-btn">Cancel</button>
+                <button type="submit" className="save-btn">Update Retreat</button>
               </div>
             </form>
           </div>

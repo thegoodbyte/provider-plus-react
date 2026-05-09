@@ -1,0 +1,154 @@
+.tasks-page {
+  padding: 20px;
+  max-width: 100%;
+  margin: 0 auto;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.tasks-page .loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  font-size: 18px;
+  color: #666;
+}
+
+.tasks-header {
+  margin-bottom: 20px;
+}
+
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-content h1 {
+  margin: 0;
+  font-size: 28px;
+  color: #333;
+}
+
+.header-content .btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 500;
+  text-decoration: none;
+  display: inline-block;
+}
+
+.header-content .btn.btn-primary {
+  background-color: #007bff;
+  color: white;
+}
+
+.header-content .btn.btn-primary:hover {
+  background-color: #0056b3;
+}
+
+.tasks-main-content {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 20px;
+}
+
+.task-stats-footer {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  justify-content: center;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+  padding: 15px 20px;
+  margin-top: auto;
+}
+
+.task-stats-footer .stat-item {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 10px 15px;
+  text-align: center;
+  min-width: 100px;
+}
+
+.task-stats-footer .stat-item .stat-label {
+  display: block;
+  font-size: 11px;
+  color: #6c757d;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+  font-weight: 600;
+}
+
+.task-stats-footer .stat-item .stat-value {
+  display: block;
+  font-size: 20px;
+  font-weight: bold;
+  color: #333;
+}
+
+.task-stats-footer .stat-item .stat-value.pending {
+  color: #6c757d;
+}
+
+.task-stats-footer .stat-item .stat-value.in-progress {
+  color: #007bff;
+}
+
+.task-stats-footer .stat-item .stat-value.completed {
+  color: #28a745;
+}
+
+.task-stats-footer .stat-item .stat-value.overdue {
+  color: #dc3545;
+}
+
+.task-stats-footer .stat-item .stat-value.urgent {
+  color: #fd7e14;
+}
+
+.error-message {
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+  padding: 12px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+  position: relative;
+}
+
+.error-message .error-close {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: #721c24;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .tasks-page {
+    padding: 15px;
+  }
+
+  .task-stats-footer {
+    gap: 10px;
+    padding: 10px 15px;
+  }
+
+  .task-stats-footer .stat-item {
+    min-width: 80px;
+    padding: 8px 10px;
+  }
+}

@@ -113,6 +113,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
           { id: 'requirements', label: 'Requirements', Icon: Fi.FiCheckSquare },
           { id: 'permissions', label: 'Permissions', Icon: Fi.FiShield },
           { id: 'users', label: 'Users', Icon: Fi.FiUser },
+          { id: 'tasks', label: 'Tasks', Icon: Fi.FiList },
           { id: 'analytics', label: 'Analytics', Icon: Fi.FiBarChart },
         ];
       case 'medical_staff':

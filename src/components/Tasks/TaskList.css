@@ -1,0 +1,298 @@
+/* Task List Styles */
+.task-list {
+  flex: 1;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+
+.task-list-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: #6c757d;
+}
+
+.task-list-empty p {
+  font-size: 18px;
+  margin: 0;
+}
+
+.task-grid {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.task-grid-header {
+  display: grid;
+  grid-template-columns: 2fr 100px 100px 120px 150px 180px 180px 120px;
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.header-cell {
+  padding: 15px 12px;
+  font-weight: 600;
+  font-size: 14px;
+  color: #495057;
+  border-right: 1px solid #dee2e6;
+}
+
+.header-cell:last-child {
+  border-right: none;
+}
+
+.header-cell.sortable {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background-color 0.2s;
+}
+
+.header-cell.sortable:hover {
+  background-color: #e9ecef;
+}
+
+.task-row {
+  display: grid;
+  grid-template-columns: 2fr 100px 100px 120px 150px 180px 180px 120px;
+  border-bottom: 1px solid #dee2e6;
+  transition: background-color 0.2s;
+}
+
+.task-row:hover {
+  background-color: #f8f9fa;
+}
+
+.task-row.overdue {
+  background-color: #fff5f5;
+  border-left: 4px solid #dc3545;
+}
+
+.task-row.completed {
+  opacity: 0.7;
+  background-color: #f8fff8;
+}
+
+.task-cell {
+  padding: 15px 12px;
+  border-right: 1px solid #dee2e6;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  font-size: 13px;
+}
+
+.task-cell:last-child {
+  border-right: none;
+}
+
+.task-cell.task-name .task-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 4px;
+}
+
+.task-cell.task-name .task-description {
+  font-size: 12px;
+  color: #6c757d;
+  line-height: 1.4;
+  margin-bottom: 8px;
+}
+
+.task-cell.task-name .task-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.task-cell.task-name .task-tags .tag {
+  background: #e9ecef;
+  color: #495057;
+  padding: 2px 6px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.task-cell.due-date .due-date-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+}
+
+.task-cell.due-date .due-date-relative {
+  font-size: 11px;
+  color: #6c757d;
+  margin-top: 2px;
+}
+
+.task-cell.due-date .no-due-date {
+  color: #adb5bd;
+  font-style: italic;
+  font-size: 12px;
+}
+
+.type-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.type-badge.type-generic {
+  background: #6c757d;
+  color: white;
+}
+
+.type-badge.type-client {
+  background: #007bff;
+  color: white;
+}
+
+.type-badge.type-retreat {
+  background: #28a745;
+  color: white;
+}
+
+.urgency-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+  color: white;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+  color: white;
+}
+
+/* Status badge colors */
+.status-badge.status-pending {
+  background: #6c757d;
+}
+
+.status-badge.status-in-progress {
+  background: #007bff;
+}
+
+.status-badge.status-completed {
+  background: #28a745;
+}
+
+.client-info .client-name,
+.retreat-info .retreat-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #333;
+  margin-bottom: 2px;
+}
+
+.client-info .client-email,
+.retreat-info .retreat-code {
+  font-size: 11px;
+  color: #6c757d;
+}
+
+.no-client,
+.no-retreat {
+  color: #adb5bd;
+  font-style: italic;
+  font-size: 12px;
+  text-align: center;
+}
+
+.task-cell.actions .action-buttons {
+  display: flex;
+  gap: 5px;
+  justify-content: center;
+}
+
+.task-cell.actions .btn {
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 5px 8px;
+  transition: background-color 0.2s;
+}
+
+.task-cell.actions .btn.btn-sm {
+  font-size: 10px;
+  padding: 4px 6px;
+}
+
+.task-cell.actions .btn.btn-success {
+  background-color: #28a745;
+  color: white;
+}
+
+.task-cell.actions .btn.btn-success:hover {
+  background-color: #1e7e34;
+}
+
+.task-cell.actions .btn.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+.task-cell.actions .btn.btn-secondary:hover {
+  background-color: #545b62;
+}
+
+.task-cell.actions .btn.btn-danger {
+  background-color: #dc3545;
+  color: white;
+}
+
+.task-cell.actions .btn.btn-danger:hover {
+  background-color: #bd2130;
+}
+
+/* Mobile responsive */
+@media (max-width: 1024px) {
+  .task-grid {
+    overflow-x: auto;
+  }
+
+  .task-grid-header,
+  .task-row {
+    min-width: 900px;
+  }
+}
+
+@media (max-width: 768px) {
+  .task-grid-header {
+    grid-template-columns: 1fr;
+  }
+
+  .task-row {
+    grid-template-columns: 1fr;
+    border-left: none;
+  }
+
+  .header-cell,
+  .task-cell {
+    border-right: none;
+    border-bottom: 1px solid #dee2e6;
+    padding: 10px 12px;
+  }
+
+  .task-row.overdue {
+    border-left: none;
+    border-top: 4px solid #dc3545;
+  }
+}

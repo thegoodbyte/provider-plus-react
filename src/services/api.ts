@@ -451,3 +451,31 @@ export const medicalAdvisorApi = {
   // Get dashboard statistics
   getDashboardStats: () => cachedGet<any>('medical-advisor:stats', () => api.get<any>('/medical-advisor/dashboard/stats'), 30000), // 30 second cache
 };
+
+export const notesApi = {
+  getAll: (params?: any) => api.get('/notes', { params }),
+  getOne: (id: string) => api.get(`/notes/${id}`),
+  getByClient: (clientId: string) => api.get(`/notes/client/${clientId}`),
+  getByRetreat: (retreatId: string) => api.get(`/notes/retreat/${retreatId}`),
+  getStatistics: () => cachedGet<any>('notes:stats', () => api.get<any>('/notes/statistics'), 60000),
+  create: (data: any) => {
+    cacheService.clearPattern('notes:');
+    return api.post('/notes', data);
+  },
+  update: (id: string, data: any) => {
+    cacheService.clearPattern('notes:');
+    return api.patch(`/notes/${id}`, data);
+  },
+  archive: (id: string) => {
+    cacheService.clearPattern('notes:');
+    return api.patch(`/notes/${id}/archive`);
+  },
+  unarchive: (id: string) => {
+    cacheService.clearPattern('notes:');
+    return api.patch(`/notes/${id}/unarchive`);
+  },
+  delete: (id: string) => {
+    cacheService.clearPattern('notes:');
+    return api.delete(`/notes/${id}`);
+  },
+};

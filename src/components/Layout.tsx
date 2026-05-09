@@ -3,7 +3,7 @@ import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import RetreatsGrid from './RetreatsGrid';
 import HousesGrid from './HousesGrid';
-// import ScreeningClientsGrid from './ScreeningClientsGrid';
+import ScreeningClientsGrid from './ScreeningClientsGrid';
 import UnifiedClientManager from './UnifiedClientManager';
 import BookingsGrid from './BookingsGrid';
 import MedicalGrid from './MedicalGrid';
@@ -120,7 +120,7 @@ const Layout: React.FC = () => {
             {/* Regular Routes */}
             <Route path="/retreats" element={<RetreatsGrid />} />
             <Route path="/houses" element={<HousesGrid />} />
-            {/* <Route path="/screening" element={<ScreeningClientsGrid />} /> */}
+            <Route path="/screening" element={<ScreeningClientsGrid />} />
             <Route path="/clients" element={<UnifiedClientManager />} />
             <Route path="/bookings" element={<BookingsGrid />} />
             <Route path="/medical" element={<MedicalGrid />} />

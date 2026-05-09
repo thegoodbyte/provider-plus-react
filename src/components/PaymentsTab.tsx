@@ -343,9 +343,6 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
             </div>
 
             <div className="form-actions">
-              <button type="submit" className="save-btn">
-                {editingPayment ? 'Update Payment' : 'Record Payment'}
-              </button>
               <button
                 type="button"
                 onClick={() => {
@@ -355,6 +352,9 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
                 className="cancel-btn"
               >
                 Cancel
+              </button>
+              <button type="submit" className="save-btn">
+                {editingPayment ? 'Update Payment' : 'Record Payment'}
               </button>
             </div>
           </form>

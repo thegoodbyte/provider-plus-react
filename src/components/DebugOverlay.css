@@ -1,0 +1,192 @@
+/* Debug Overlay Toggle Button */
+.debug-overlay-toggle {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #2c3e50;
+  color: white;
+  border: 2px solid #34495e;
+  cursor: pointer;
+  font-size: 18px;
+  z-index: 9998;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+}
+
+.debug-overlay-toggle:hover {
+  background: #34495e;
+  transform: scale(1.1);
+}
+
+/* Debug Overlay Minimized */
+.debug-overlay-minimized {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+}
+
+.debug-overlay-minimized button {
+  padding: 8px 16px;
+  background: #2c3e50;
+  color: white;
+  border: 1px solid #34495e;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Main Debug Overlay */
+.debug-overlay {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 400px;
+  max-height: 600px;
+  background: rgba(44, 62, 80, 0.98);
+  border: 2px solid #34495e;
+  border-radius: 8px;
+  color: white;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  z-index: 9999;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.debug-overlay-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 15px;
+  background: #1a252f;
+  border-bottom: 1px solid #34495e;
+}
+
+.debug-overlay-header h4 {
+  margin: 0;
+  font-size: 14px;
+  color: #ecf0f1;
+}
+
+.debug-overlay-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.debug-overlay-actions button {
+  background: transparent;
+  color: #ecf0f1;
+  border: 1px solid #34495e;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-size: 14px;
+  border-radius: 3px;
+  transition: all 0.2s ease;
+}
+
+.debug-overlay-actions button:hover {
+  background: #34495e;
+}
+
+.debug-overlay-content {
+  padding: 15px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.debug-section {
+  margin-bottom: 20px;
+}
+
+.debug-section h5 {
+  margin: 0 0 10px 0;
+  color: #3498db;
+  font-size: 13px;
+  border-bottom: 1px solid #34495e;
+  padding-bottom: 5px;
+}
+
+.debug-section table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.debug-section td {
+  padding: 5px;
+  vertical-align: top;
+}
+
+.debug-section td:first-child {
+  color: #95a5a6;
+  width: 120px;
+}
+
+.debug-section td:last-child {
+  color: #ecf0f1;
+  word-break: break-all;
+}
+
+.status-connected {
+  color: #2ecc71;
+  font-weight: bold;
+}
+
+.status-disconnected {
+  color: #e74c3c;
+  font-weight: bold;
+}
+
+.debug-url {
+  color: #f39c12;
+  font-weight: bold;
+}
+
+.debug-port {
+  color: #e67e22;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+.debug-error {
+  color: #e74c3c;
+  font-style: italic;
+}
+
+.debug-actions {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #34495e;
+}
+
+.debug-refresh-btn {
+  width: 100%;
+  padding: 8px;
+  background: #3498db;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s ease;
+}
+
+.debug-refresh-btn:hover {
+  background: #2980b9;
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .debug-overlay {
+    width: calc(100% - 40px);
+    right: 20px;
+    left: 20px;
+  }
+}
