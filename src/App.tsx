@@ -8,6 +8,7 @@ import ApiErrorHandler from './components/ApiErrorHandler';
 import DebugOverlay from './components/DebugOverlay';
 import './App.css';
 import './styles/apple.css';
+import './styles/animations.css';
 
 function AppContent() {
   const { isAuthenticated, loading } = useAuth();

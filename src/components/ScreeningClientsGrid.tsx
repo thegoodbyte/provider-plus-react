@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { clientsApi } from '../services/api';
 import { Client } from '../types';
 import LoadingSpinner from './LoadingSpinner';
@@ -11,6 +12,7 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
 };
 
 const ScreeningClientsGrid: React.FC = () => {
+  const navigate = useNavigate();
   const [screeningClients, setScreeningClients] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [apiError, setApiError] = useState(false);
@@ -144,7 +146,12 @@ const ScreeningClientsGrid: React.FC = () => {
                       <Icon icon={FiUser} className="w-5 h-5 mr-3 text-gray-400" />
                       <div>
                         <div className="text-sm font-medium text-gray-900">
-                          {client.firstName} {client.lastName}
+                          <button
+                            onClick={() => navigate(`/clients/${client._id}`)}
+                            className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                          >
+                            {client.firstName} {client.lastName}
+                          </button>
                         </div>
                         <div className="text-sm text-gray-500">
                           {client.display_id ? `ID: ${client.display_id}` : 'No ID'}

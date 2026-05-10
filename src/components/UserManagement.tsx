@@ -24,6 +24,8 @@ const UserManagement: React.FC = () => {
   const [resettingPasswordUser, setResettingPasswordUser] = useState<User | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState<string>('all');
+  const [error, setError] = useState<string | null>(null);
+  const [showErrorModal, setShowErrorModal] = useState(false);
 
   const [formData, setFormData] = useState<Partial<CreateUserData & { confirmPassword: string; isActive: boolean }>>({
     username: '',
@@ -39,13 +41,18 @@ const UserManagement: React.FC = () => {
     fetchUsers();
   }, []);
 
+  const showError = (message: string) => {
+    setError(message);
+    setShowErrorModal(true);
+  };
+
   const fetchUsers = async () => {
     try {
       const response = await usersApi.getAll();
       setUsers(response.data);
     } catch (error) {
       console.error('Error fetching users:', error);
-      alert('Error loading users. Please try again.');
+      showError('Error loading users. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -54,18 +61,18 @@ const UserManagement: React.FC = () => {
   const handleCreateUser = async () => {
     try {
       if (!formData.username || !formData.email || !formData.password) {
-        alert('Please fill in all required fields');
+        showError('Please fill in all required fields');
         return;
       }
 
       const passwordError = validatePassword(formData.password);
       if (passwordError) {
-        alert(passwordError);
+        showError(passwordError);
         return;
       }
 
       if (formData.password !== formData.confirmPassword) {
-        alert('Passwords do not match');
+        showError('Passwords do not match');
         return;
       }
 
@@ -84,7 +91,7 @@ const UserManagement: React.FC = () => {
       resetForm();
     } catch (error: any) {
       console.error('Error creating user:', error);
-      alert(error.response?.data?.message || 'Error creating user. Please try again.');
+      showError(error.response?.data?.message || 'Error creating user. Please try again.');
     }
   };
 
@@ -107,13 +114,13 @@ const UserManagement: React.FC = () => {
       resetForm();
     } catch (error: any) {
       console.error('Error updating user:', error);
-      alert(error.response?.data?.message || 'Error updating user. Please try again.');
+      showError(error.response?.data?.message || 'Error updating user. Please try again.');
     }
   };
 
   const handleDeleteUser = async (user: User) => {
     if (user.role === 'admin') {
-      alert('Admin users cannot be deleted.');
+      showError('Admin users cannot be deleted.');
       return;
     }
 
@@ -126,7 +133,7 @@ const UserManagement: React.FC = () => {
       await fetchUsers();
     } catch (error: any) {
       console.error('Error deleting user:', error);
-      alert(error.response?.data?.message || 'Error deleting user. Please try again.');
+      showError(error.response?.data?.message || 'Error deleting user. Please try again.');
     }
   };
 
@@ -168,18 +175,18 @@ const UserManagement: React.FC = () => {
 
     try {
       if (!formData.password) {
-        alert('Please enter a new password');
+        showError('Please enter a new password');
         return;
       }
 
       const passwordError = validatePassword(formData.password);
       if (passwordError) {
-        alert(passwordError);
+        showError(passwordError);
         return;
       }
 
       if (formData.password !== formData.confirmPassword) {
-        alert('Passwords do not match');
+        showError('Passwords do not match');
         return;
       }
 
@@ -191,10 +198,10 @@ const UserManagement: React.FC = () => {
       await fetchUsers();
       setResettingPasswordUser(null);
       resetForm();
-      alert('Password reset successfully!');
+      showError('Password reset successfully!');
     } catch (error: any) {
       console.error('Error resetting password:', error);
-      alert(error.response?.data?.message || 'Error resetting password. Please try again.');
+      showError(error.response?.data?.message || 'Error resetting password. Please try again.');
     }
   };
 
@@ -631,6 +638,26 @@ const UserManagement: React.FC = () => {
               >
                 <Icon icon={FiCheck} className="w-4 h-4 mr-2" />
                 Update User
+              </AppleButton>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Error Modal */}
+      {showErrorModal && (
+        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-lg font-semibold mb-4">Notification</h2>
+            <p className="text-gray-700 mb-6">{error}</p>
+            <div className="flex justify-end">
+              <AppleButton
+                onClick={() => {
+                  setShowErrorModal(false);
+                  setError(null);
+                }}
+              >
+                OK
               </AppleButton>
             </div>
           </div>

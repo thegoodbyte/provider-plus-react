@@ -1,0 +1,1465 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { clientsApi, paymentsApi, clientMedicalApi, bookingsApi } from '../services/api';
+import LoadingSpinner from './LoadingSpinner';
+import AppleButton from './AppleButton';
+import { FiArrowLeft, FiEdit2, FiUser, FiPhone, FiMail, FiMapPin, FiCalendar, FiDollarSign, FiActivity, FiFileText, FiAlertCircle, FiPlus, FiMessageSquare, FiCheckSquare, FiHeart } from 'react-icons/fi';
+
+// Simple wrapper to fix TypeScript icon issues
+const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
+  return <IconComponent className={className} />;
+};
+
+interface TabProps {
+  label: string;
+  icon: any;
+  isActive: boolean;
+  onClick: () => void;
+}
+
+const Tab: React.FC<TabProps> = ({ label, icon, isActive, onClick }) => (
+  <button
+    onClick={onClick}
+    className={`flex items-center space-x-2 px-4 py-2 rounded-lg border-2 transition-colors ${
+      isActive
+        ? 'bg-white border-blue-500 text-blue-600'
+        : 'bg-white border-gray-300 text-gray-600 hover:border-blue-300 hover:text-blue-500'
+    }`}
+  >
+    <Icon icon={icon} className="w-4 h-4" />
+    <span>{label}</span>
+  </button>
+);
+
+const ClientDetailsPage: React.FC = () => {
+  const { clientId } = useParams<{ clientId: string }>();
+  const navigate = useNavigate();
+
+  const [client, setClient] = useState<any>(null);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [medicalInfo, setMedicalInfo] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [error, setError] = useState<string | null>(null);
+  const [showAddNoteModal, setShowAddNoteModal] = useState(false);
+  const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
+  const [showAddTaskModal, setShowAddTaskModal] = useState(false);
+  const [showAddMedicalModal, setShowAddMedicalModal] = useState(false);
+  const [notes, setNotes] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
+  const [newNote, setNewNote] = useState('');
+  const [newTask, setNewTask] = useState({
+    title: '',
+    description: '',
+    priority: 'medium',
+    dueDate: ''
+  });
+  const [newPayment, setNewPayment] = useState({
+    date: '',
+    type: '',
+    amount: '',
+    paymentRequestId: '',
+    note: ''
+  });
+  const [newMedical, setNewMedical] = useState({
+    type: '',
+    title: '',
+    notes: '',
+    date: ''
+  });
+  const [showEKGUploadModal, setShowEKGUploadModal] = useState(false);
+  const [showLiverPanelUploadModal, setShowLiverPanelUploadModal] = useState(false);
+  const [ekgFiles, setEkgFiles] = useState<any[]>([]);
+  const [liverPanelFiles, setLiverPanelFiles] = useState<any[]>([]);
+  const [uploadingEKG, setUploadingEKG] = useState(false);
+  const [uploadingLiverPanel, setUploadingLiverPanel] = useState(false);
+
+  useEffect(() => {
+    if (clientId) {
+      fetchClientData();
+    }
+  }, [clientId]);
+
+  const fetchClientData = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Fetch all data in parallel
+      const [clientResponse, paymentsResponse, bookingsResponse, medicalResponse] = await Promise.all([
+        clientsApi.getOne(clientId!),
+        paymentsApi.getByClient(clientId!).catch(() => ({ data: [] })),
+        bookingsApi.getByClient(clientId!).catch(() => ({ data: [] })),
+        clientMedicalApi.getByClient(clientId!).catch(() => ({ data: null }))
+      ]);
+
+      setClient(clientResponse.data);
+      setPayments(paymentsResponse.data || []);
+      setBookings(bookingsResponse.data || []);
+      setMedicalInfo(medicalResponse.data);
+    } catch (error: any) {
+      console.error('Error fetching client data:', error);
+      setError('Failed to load client data');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const formatDate = (date: Date | string | undefined) => {
+    if (!date) return 'N/A';
+    return new Date(date).toLocaleDateString();
+  };
+
+  const formatCurrency = (amount: number | undefined) => {
+    if (!amount) return '$0.00';
+    return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusColors: any = {
+      active: 'bg-green-100 text-green-800',
+      inactive: 'bg-gray-100 text-gray-800',
+      potential: 'bg-yellow-100 text-yellow-800',
+      screening: 'bg-blue-100 text-blue-800',
+      approved: 'bg-green-100 text-green-800',
+      rejected: 'bg-red-100 text-red-800',
+      completed: 'bg-purple-100 text-purple-800',
+      booked: 'bg-indigo-100 text-indigo-800',
+      blacklisted: 'bg-red-100 text-red-800'
+    };
+
+    return (
+      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+        statusColors[status] || 'bg-gray-100 text-gray-800'
+      }`}>
+        {status || 'unknown'}
+      </span>
+    );
+  };
+
+  const handleEKGFileUpload = async (files: File[]) => {
+    if (!clientId || files.length === 0) return;
+
+    setUploadingEKG(true);
+
+    // Get retreat ID from medicalInfo or bookings
+    const retreatId = (Array.isArray(medicalInfo) ? medicalInfo[0]?.retreatId : medicalInfo?.retreatId) ||
+                      bookings[0]?.retreatId || bookings[0]?.retreat?._id;
+
+    if (!retreatId) {
+      alert('Unable to determine retreat context for this client. Please ensure the client has a booking or medical record.');
+      setUploadingEKG(false);
+      return;
+    }
+
+    try {
+      // Upload files one by one (backend only accepts single file)
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);  // Changed from 'files' to 'file'
+        formData.append('clientId', clientId);
+        formData.append('retreatId', retreatId);
+
+        await clientMedicalApi.uploadFile(formData, 'ekg');
+      }
+
+      // Add files to state for UI display
+      setEkgFiles(prevFiles => [...prevFiles, ...files.map(file => ({
+        name: file.name,
+        size: file.size,
+        type: file.type
+      }))]);
+
+      setShowEKGUploadModal(false);
+      // Optionally refresh client data to get updated medical info
+      fetchClientData();
+    } catch (error) {
+      console.error('Error uploading EKG files:', error);
+      alert('Error uploading files. Please try again.');
+    } finally {
+      setUploadingEKG(false);
+    }
+  };
+
+  const handleLiverPanelFileUpload = async (files: File[]) => {
+    if (!clientId || files.length === 0) return;
+
+    setUploadingLiverPanel(true);
+
+    // Get retreat ID from medicalInfo or bookings
+    const retreatId = (Array.isArray(medicalInfo) ? medicalInfo[0]?.retreatId : medicalInfo?.retreatId) ||
+                      bookings[0]?.retreatId || bookings[0]?.retreat?._id;
+
+    if (!retreatId) {
+      alert('Unable to determine retreat context for this client. Please ensure the client has a booking or medical record.');
+      setUploadingLiverPanel(false);
+      return;
+    }
+
+    try {
+      // Upload files one by one (backend only accepts single file)
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);  // Changed from 'files' to 'file'
+        formData.append('clientId', clientId);
+        formData.append('retreatId', retreatId);
+
+        await clientMedicalApi.uploadFile(formData, 'liver-panel');
+      }
+
+      // Add files to state for UI display
+      setLiverPanelFiles(prevFiles => [...prevFiles, ...files.map(file => ({
+        name: file.name,
+        size: file.size,
+        type: file.type
+      }))]);
+
+      setShowLiverPanelUploadModal(false);
+      // Optionally refresh client data to get updated medical info
+      fetchClientData();
+    } catch (error) {
+      console.error('Error uploading Liver Panel files:', error);
+      alert('Error uploading files. Please try again.');
+    } finally {
+      setUploadingLiverPanel(false);
+    }
+  };
+
+  if (isLoading) {
+    return <LoadingSpinner message="Loading client details..." />;
+  }
+
+  if (error || !client) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          <Icon icon={FiAlertCircle} className="inline w-5 h-5 mr-2" />
+          {error || 'Client not found'}
+        </div>
+        <AppleButton onClick={() => navigate(-1)} className="mt-4">
+          <Icon icon={FiArrowLeft} className="w-4 h-4 mr-2" />
+          Go Back
+        </AppleButton>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 h-full overflow-auto">
+      {/* Header */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-4">
+            <AppleButton onClick={() => navigate(-1)} variant="ghost">
+              <Icon icon={FiArrowLeft} className="w-4 h-4 mr-2" />
+              Back
+            </AppleButton>
+            <h1 className="text-2xl font-semibold text-gray-900">
+              {client.firstName} {client.lastName}
+            </h1>
+            {getStatusBadge(client.workflowStatus || client.status)}
+          </div>
+          <AppleButton
+            onClick={() => {/* TODO: Edit client */}}
+            className="apple-button-primary px-4 py-2 w-auto whitespace-nowrap ml-auto"
+          >
+            <Icon icon={FiEdit2} className="w-4 h-4 mr-2" />
+            Edit Client
+          </AppleButton>
+        </div>
+
+        {/* Quick Info Bar */}
+        <div className="bg-white rounded-lg shadow-sm p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="flex items-center space-x-2">
+            <Icon icon={FiUser} className="w-5 h-5 text-gray-400" />
+            <div>
+              <p className="text-xs text-gray-500">Client ID</p>
+              <p className="text-sm font-medium">{client.display_id || client._id?.substring(0, 8)}</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Icon icon={FiPhone} className="w-5 h-5 text-gray-400" />
+            <div>
+              <p className="text-xs text-gray-500">Phone</p>
+              <p className="text-sm font-medium">{client.phone || 'N/A'}</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Icon icon={FiMail} className="w-5 h-5 text-gray-400" />
+            <div>
+              <p className="text-xs text-gray-500">Email</p>
+              <p className="text-sm font-medium">{client.email || 'N/A'}</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Icon icon={FiMapPin} className="w-5 h-5 text-gray-400" />
+            <div>
+              <p className="text-xs text-gray-500">Country</p>
+              <p className="text-sm font-medium">{client.country || 'N/A'}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="border-b border-gray-200 mb-6">
+        <div className="flex space-x-6">
+          <Tab
+            label="Overview"
+            icon={FiUser}
+            isActive={activeTab === 'overview'}
+            onClick={() => setActiveTab('overview')}
+          />
+          <Tab
+            label="Screening Info"
+            icon={FiFileText}
+            isActive={activeTab === 'screening'}
+            onClick={() => setActiveTab('screening')}
+          />
+          <Tab
+            label="Medical Info"
+            icon={FiActivity}
+            isActive={activeTab === 'medical'}
+            onClick={() => setActiveTab('medical')}
+          />
+          <Tab
+            label="Bookings"
+            icon={FiCalendar}
+            isActive={activeTab === 'bookings'}
+            onClick={() => setActiveTab('bookings')}
+          />
+          <Tab
+            label="Payments"
+            icon={FiDollarSign}
+            isActive={activeTab === 'payments'}
+            onClick={() => setActiveTab('payments')}
+          />
+          <Tab
+            label="Notes"
+            icon={FiMessageSquare}
+            isActive={activeTab === 'notes'}
+            onClick={() => setActiveTab('notes')}
+          />
+          <Tab
+            label="Tasks"
+            icon={FiCheckSquare}
+            isActive={activeTab === 'tasks'}
+            onClick={() => setActiveTab('tasks')}
+          />
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        {activeTab === 'overview' && (
+          <div>
+            <h2 className="text-lg font-semibold mb-4">Personal Information</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-3">Basic Details</h3>
+                <dl className="space-y-2">
+                  <div className="flex justify-between">
+                    <dt className="text-sm text-gray-600">Full Name:</dt>
+                    <dd className="text-sm font-medium">{client.firstName} {client.lastName}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-sm text-gray-600">Phone:</dt>
+                    <dd className="text-sm font-medium">{client.phone || 'N/A'}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-sm text-gray-600">Email:</dt>
+                    <dd className="text-sm font-medium">{client.email || 'N/A'}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-sm text-gray-600">Country:</dt>
+                    <dd className="text-sm font-medium">{client.country || 'N/A'}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-sm text-gray-600">City:</dt>
+                    <dd className="text-sm font-medium">{client.city || 'N/A'}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-sm text-gray-600">Address:</dt>
+                    <dd className="text-sm font-medium">{client.address || 'N/A'}</dd>
+                  </div>
+                </dl>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-3">Status & Dates</h3>
+                <dl className="space-y-2">
+                  <div className="flex justify-between">
+                    <dt className="text-sm text-gray-600">Status:</dt>
+                    <dd>{getStatusBadge(client.status)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-sm text-gray-600">Workflow Status:</dt>
+                    <dd>{getStatusBadge(client.workflowStatus)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-sm text-gray-600">Priority:</dt>
+                    <dd className="text-sm font-medium">{client.priority || 'medium'}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-sm text-gray-600">Initial Contact:</dt>
+                    <dd className="text-sm font-medium">{formatDate(client.initialContactDate)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-sm text-gray-600">Created:</dt>
+                    <dd className="text-sm font-medium">{formatDate(client.createdAt)}</dd>
+                  </div>
+                  <div className="flex justify-between">
+                    <dt className="text-sm text-gray-600">Last Updated:</dt>
+                    <dd className="text-sm font-medium">{formatDate(client.updatedAt)}</dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+
+            {client.notes && (
+              <div className="mt-6">
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Notes</h3>
+                <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{client.notes}</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'screening' && (
+          <div>
+            <h2 className="text-lg font-semibold mb-4">Screening Information</h2>
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-medium text-gray-500 mb-2">Screening Status</h3>
+                <div className="flex items-center space-x-4">
+                  {getStatusBadge(client.workflowStatus)}
+                  {client.rejectionReason && (
+                    <p className="text-sm text-red-600">Rejection Reason: {client.rejectionReason}</p>
+                  )}
+                </div>
+              </div>
+
+              {client.whySeekingIboga && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">Why Seeking Iboga</h3>
+                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{client.whySeekingIboga}</p>
+                </div>
+              )}
+
+              {client.whatToChange && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">What to Change</h3>
+                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{client.whatToChange}</p>
+                </div>
+              )}
+
+              {client.observations && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">Observations</h3>
+                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{client.observations}</p>
+                </div>
+              )}
+
+              {client.followUpDate && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">Follow-up Date</h3>
+                  <p className="text-sm text-gray-700">{formatDate(client.followUpDate)}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'medical' && (
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold">Medical Information</h2>
+              <AppleButton
+                onClick={() => setShowAddMedicalModal(true)}
+                className="apple-button-primary px-3 py-2"
+              >
+                <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
+                Add Medical Record
+              </AppleButton>
+            </div>
+
+            {/* Existing Medical Info */}
+            {medicalInfo ? (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 mb-3">Health Conditions</h3>
+                    <dl className="space-y-2">
+                      <div className="flex justify-between">
+                        <dt className="text-sm text-gray-600">Heart Conditions:</dt>
+                        <dd className="text-sm font-medium">{medicalInfo.heartConditions || 'N/A'}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-sm text-gray-600">Liver Conditions:</dt>
+                        <dd className="text-sm font-medium">{medicalInfo.liverConditions || 'N/A'}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-sm text-gray-600">Blood Pressure:</dt>
+                        <dd className="text-sm font-medium">{medicalInfo.bloodPressure || 'N/A'}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-sm text-gray-600">Allergies:</dt>
+                        <dd className="text-sm font-medium">{medicalInfo.allergies || 'None'}</dd>
+                      </div>
+                    </dl>
+                  </div>
+
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 mb-3">Medications</h3>
+                    <dl className="space-y-2">
+                      <div className="flex justify-between">
+                        <dt className="text-sm text-gray-600">Current Medications:</dt>
+                        <dd className="text-sm font-medium">{medicalInfo.currentMedications || 'None'}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-sm text-gray-600">Supplements:</dt>
+                        <dd className="text-sm font-medium">{medicalInfo.vitaminsSupplements || 'None'}</dd>
+                      </div>
+                    </dl>
+                  </div>
+                </div>
+
+                {medicalInfo.medicalIssues && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 mb-2">Medical Issues</h3>
+                    <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{medicalInfo.medicalIssues}</p>
+                  </div>
+                )}
+
+                {/* EKG and Liver Panel Test Sections */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                  {/* EKG Test Section */}
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
+                      <Icon icon={FiActivity} className="w-4 h-4 mr-2" />
+                      EKG Test
+                    </h3>
+                    <dl className="space-y-2">
+                      <div className="flex justify-between">
+                        <dt className="text-xs text-gray-600">Received:</dt>
+                        <dd className="text-xs font-medium">
+                          {medicalInfo.ekgReceivedDate
+                            ? new Date(medicalInfo.ekgReceivedDate).toLocaleDateString()
+                            : 'NA'}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-xs text-gray-600">Review Date:</dt>
+                        <dd className="text-xs font-medium">
+                          {medicalInfo.ekgReviewDate
+                            ? new Date(medicalInfo.ekgReviewDate).toLocaleDateString()
+                            : 'Pending'}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-xs text-gray-600">Reviewer:</dt>
+                        <dd className="text-xs font-medium">{medicalInfo.ekgReviewPerson || 'Not assigned'}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-xs text-gray-600">Result:</dt>
+                        <dd className="text-xs font-medium">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            medicalInfo.ekgResult === 'approved' ? 'bg-green-100 text-green-800' :
+                            medicalInfo.ekgResult === 'rejected' ? 'bg-red-100 text-red-800' :
+                            medicalInfo.ekgResult === 'needs_review' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {medicalInfo.ekgResult || 'Pending'}
+                          </span>
+                        </dd>
+                      </div>
+                      {medicalInfo.ekgNotes && (
+                        <div className="mt-2">
+                          <dt className="text-xs text-gray-600 mb-1">Notes:</dt>
+                          <dd className="text-xs text-gray-700 bg-white p-2 rounded border">
+                            {medicalInfo.ekgNotes}
+                          </dd>
+                        </div>
+                      )}
+                    </dl>
+                    <div className="mt-4 pt-3 border-t border-gray-200">
+                      <AppleButton
+                        onClick={() => setShowEKGUploadModal(true)}
+                        variant="secondary"
+                        className="w-full text-sm"
+                      >
+                        <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
+                        Upload EKG Files
+                      </AppleButton>
+                      {(medicalInfo?.ekgFiles?.length > 0 || ekgFiles.length > 0) && (
+                        <div className="mt-2">
+                          <p className="text-xs text-gray-600 mb-1">
+                            {medicalInfo?.ekgFiles?.length || 0} file(s) uploaded
+                            {ekgFiles.length > 0 && ` (${ekgFiles.length} pending upload)`}
+                          </p>
+                          {medicalInfo?.ekgFiles?.length > 0 && (
+                            <div className="text-xs text-gray-500">
+                              {medicalInfo.ekgFiles.map((file: any, index: number) => (
+                                <div key={index} className="truncate">{file.originalName || file.filename}</div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Liver Panel Test Section */}
+                  <div className="bg-gray-50 p-4 rounded-lg">
+                    <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
+                      <Icon icon={FiHeart} className="w-4 h-4 mr-2" />
+                      Liver Panel Test
+                    </h3>
+                    <dl className="space-y-2">
+                      <div className="flex justify-between">
+                        <dt className="text-xs text-gray-600">Received:</dt>
+                        <dd className="text-xs font-medium">
+                          {medicalInfo.liverPanelReceivedDate
+                            ? new Date(medicalInfo.liverPanelReceivedDate).toLocaleDateString()
+                            : 'NA'}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-xs text-gray-600">Review Date:</dt>
+                        <dd className="text-xs font-medium">
+                          {medicalInfo.liverPanelReviewDate
+                            ? new Date(medicalInfo.liverPanelReviewDate).toLocaleDateString()
+                            : 'Pending'}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-xs text-gray-600">Reviewer:</dt>
+                        <dd className="text-xs font-medium">{medicalInfo.liverPanelReviewPerson || 'Not assigned'}</dd>
+                      </div>
+                      <div className="flex justify-between">
+                        <dt className="text-xs text-gray-600">Result:</dt>
+                        <dd className="text-xs font-medium">
+                          <span className={`px-2 py-1 rounded text-xs ${
+                            medicalInfo.liverPanelResult === 'approved' ? 'bg-green-100 text-green-800' :
+                            medicalInfo.liverPanelResult === 'rejected' ? 'bg-red-100 text-red-800' :
+                            medicalInfo.liverPanelResult === 'needs_review' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {medicalInfo.liverPanelResult || 'Pending'}
+                          </span>
+                        </dd>
+                      </div>
+                      {medicalInfo.liverPanelNotes && (
+                        <div className="mt-2">
+                          <dt className="text-xs text-gray-600 mb-1">Notes:</dt>
+                          <dd className="text-xs text-gray-700 bg-white p-2 rounded border">
+                            {medicalInfo.liverPanelNotes}
+                          </dd>
+                        </div>
+                      )}
+                    </dl>
+                    <div className="mt-4 pt-3 border-t border-gray-200">
+                      <AppleButton
+                        onClick={() => setShowLiverPanelUploadModal(true)}
+                        variant="secondary"
+                        className="w-full text-sm"
+                      >
+                        <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
+                        Upload Liver Panel Files
+                      </AppleButton>
+                      {(medicalInfo?.liverPanelFiles?.length > 0 || liverPanelFiles.length > 0) && (
+                        <div className="mt-2">
+                          <p className="text-xs text-gray-600 mb-1">
+                            {medicalInfo?.liverPanelFiles?.length || 0} file(s) uploaded
+                            {liverPanelFiles.length > 0 && ` (${liverPanelFiles.length} pending upload)`}
+                          </p>
+                          {medicalInfo?.liverPanelFiles?.length > 0 && (
+                            <div className="text-xs text-gray-500">
+                              {medicalInfo.liverPanelFiles.map((file: any, index: number) => (
+                                <div key={index} className="truncate">{file.originalName || file.filename}</div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center py-6 bg-gray-50 rounded-lg">
+                <Icon icon={FiHeart} className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                <p className="text-sm text-gray-500">No medical information available</p>
+              </div>
+            )}
+
+            {/* Medical Records Section */}
+            <div className="mt-8">
+              <h3 className="text-lg font-semibold mb-4">Medical Records</h3>
+              {medicalRecords.length > 0 ? (
+                <div className="space-y-4">
+                  {medicalRecords.map((record: any, index: number) => (
+                    <div key={index} className="bg-gray-50 p-4 rounded-lg">
+                      <div className="flex justify-between items-start">
+                        <div className="flex-1">
+                          <h4 className="font-medium text-gray-900">{record.title}</h4>
+                          <p className="text-sm text-gray-600 mt-1">{record.notes}</p>
+                          <div className="flex items-center mt-2 text-xs text-gray-500">
+                            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded mr-2">{record.type}</span>
+                            <span>{new Date(record.date).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+                        <button className="text-blue-600 hover:text-blue-800 text-sm">
+                          View
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <Icon icon={FiHeart} className="mx-auto h-12 w-12 text-gray-400" />
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">No medical records yet</h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Add a medical record to keep track of important health information.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'bookings' && (
+          <div>
+            <h2 className="text-lg font-semibold mb-4">Client Bookings</h2>
+            {bookings.length > 0 ? (
+              <div className="space-y-4">
+                {bookings.map((booking: any) => (
+                  <div key={booking._id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <h3 className="font-semibold text-gray-900">{booking.retreat?.name || 'Retreat'}</h3>
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                            booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                            booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            booking.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {booking.status?.charAt(0).toUpperCase() + booking.status?.slice(1) || 'Unknown'}
+                          </span>
+                        </div>
+                        <div className="text-sm text-gray-600 space-y-1">
+                          {booking.retreat?.startDate && (
+                            <div className="flex items-center">
+                              <Icon icon={FiCalendar} className="w-4 h-4 mr-2" />
+                              <span>
+                                {new Date(booking.retreat.startDate).toLocaleDateString()} - {' '}
+                                {booking.retreat.endDate ? new Date(booking.retreat.endDate).toLocaleDateString() : 'TBD'}
+                              </span>
+                            </div>
+                          )}
+                          {booking.house?.name && (
+                            <div className="flex items-center">
+                              <Icon icon={FiMapPin} className="w-4 h-4 mr-2" />
+                              <span>{booking.house.name}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center">
+                            <Icon icon={FiUser} className="w-4 h-4 mr-2" />
+                            <span>Booking ID: {booking._id.slice(-8)}</span>
+                          </div>
+                          {booking.bookingDate && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              Booked: {new Date(booking.bookingDate).toLocaleDateString()}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <AppleButton
+                        onClick={() => {
+                          // Navigate to booking details - adjust the route as needed
+                          navigate(`/admin/bookings/${booking._id}`);
+                        }}
+                        variant="ghost"
+                        className="text-blue-600 hover:text-blue-800"
+                      >
+                        View Booking
+                      </AppleButton>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Icon icon={FiCalendar} className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No bookings found</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  This client has no bookings yet.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'payments' && (
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold">Payment History</h2>
+              <AppleButton
+                onClick={() => setShowAddPaymentModal(true)}
+                className="apple-button-primary px-3 py-2"
+              >
+                <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
+                Add Payment
+              </AppleButton>
+            </div>
+            {payments.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Date
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Amount
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Type
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Reference
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {payments.map((payment) => (
+                      <tr key={payment._id}>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {formatDate(payment.paymentDate)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                          {formatCurrency(payment.amount)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {payment.type || 'Payment'}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {getStatusBadge(payment.status || 'completed')}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {payment.reference || 'N/A'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500">No payment history available</p>
+            )}
+          </div>
+        )}
+
+        {/* Notes Tab */}
+        {activeTab === 'notes' && (
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold">Client Notes</h2>
+              <AppleButton
+                onClick={() => setShowAddNoteModal(true)}
+                className="apple-button-primary px-3 py-2"
+              >
+                <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
+                Add Note
+              </AppleButton>
+            </div>
+
+            {notes.length > 0 ? (
+              <div className="space-y-4">
+                {notes.map((note, index) => (
+                  <div key={index} className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-sm text-gray-500">
+                        {formatDate(note.createdAt)} by {note.createdBy || 'Admin'}
+                      </span>
+                    </div>
+                    <p className="text-gray-900">{note.content}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Icon icon={FiMessageSquare} className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No notes yet</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Add a note to keep track of important client information.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tasks Tab */}
+        {activeTab === 'tasks' && (
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold">Client Tasks</h2>
+              <AppleButton
+                onClick={() => setShowAddTaskModal(true)}
+                className="apple-button-primary px-3 py-2"
+              >
+                <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
+                Add Task
+              </AppleButton>
+            </div>
+
+            {tasks.length > 0 ? (
+              <div className="space-y-4">
+                {tasks.map((task, index) => (
+                  <div key={index} className="bg-white rounded-lg border p-4">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-medium text-gray-900">{task.title}</h3>
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        task.priority === 'urgent' ? 'bg-red-100 text-red-800' :
+                        task.priority === 'high' ? 'bg-orange-100 text-orange-800' :
+                        task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {task.priority}
+                      </span>
+                    </div>
+                    {task.description && (
+                      <p className="text-gray-600 text-sm mb-2">{task.description}</p>
+                    )}
+                    <div className="text-xs text-gray-500">
+                      Due: {task.dueDate ? formatDate(task.dueDate) : 'No due date'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <Icon icon={FiCheckSquare} className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No tasks yet</h3>
+                <p className="mt-1 text-sm text-gray-500">
+                  Add a task to keep track of client-related activities.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Add Note Modal */}
+      {showAddNoteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md">
+            <div className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Add Client Note</h3>
+              <textarea
+                value={newNote}
+                onChange={(e) => setNewNote(e.target.value)}
+                placeholder="Enter your note here..."
+                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                rows={4}
+              />
+              <div className="flex justify-end space-x-3 mt-4">
+                <AppleButton
+                  onClick={() => {
+                    setShowAddNoteModal(false);
+                    setNewNote('');
+                  }}
+                  variant="ghost"
+                >
+                  Cancel
+                </AppleButton>
+                <AppleButton
+                  onClick={() => {
+                    if (newNote.trim()) {
+                      setNotes([...notes, {
+                        content: newNote,
+                        createdAt: new Date().toISOString(),
+                        createdBy: 'Admin'
+                      }]);
+                      setNewNote('');
+                      setShowAddNoteModal(false);
+                    }
+                  }}
+                  className="apple-button-primary"
+                >
+                  Add Note
+                </AppleButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Task Modal */}
+      {showAddTaskModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md">
+            <div className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Add Task</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Title
+                  </label>
+                  <input
+                    type="text"
+                    value={newTask.title}
+                    onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+                    placeholder="Task title"
+                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    value={newTask.description}
+                    onChange={(e) => setNewTask({...newTask, description: e.target.value})}
+                    placeholder="Task description"
+                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows={3}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Priority
+                  </label>
+                  <select
+                    value={newTask.priority}
+                    onChange={(e) => setNewTask({...newTask, priority: e.target.value})}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Due Date
+                  </label>
+                  <input
+                    type="date"
+                    value={newTask.dueDate}
+                    onChange={(e) => setNewTask({...newTask, dueDate: e.target.value})}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end space-x-3 mt-6">
+                <AppleButton
+                  onClick={() => {
+                    setShowAddTaskModal(false);
+                    setNewTask({ title: '', description: '', priority: 'medium', dueDate: '' });
+                  }}
+                  variant="ghost"
+                >
+                  Cancel
+                </AppleButton>
+                <AppleButton
+                  onClick={() => {
+                    if (newTask.title.trim()) {
+                      setTasks([...tasks, {
+                        ...newTask,
+                        id: Date.now().toString(),
+                        createdAt: new Date().toISOString(),
+                        status: 'pending'
+                      }]);
+                      setNewTask({ title: '', description: '', priority: 'medium', dueDate: '' });
+                      setShowAddTaskModal(false);
+                    }
+                  }}
+                  className="apple-button-primary"
+                >
+                  Add Task
+                </AppleButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Payment Modal */}
+      {showAddPaymentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md">
+            <div className="p-6">
+              <h3 className="text-lg font-semibold mb-4">Add Payment</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    value={newPayment.date}
+                    onChange={(e) => setNewPayment({...newPayment, date: e.target.value})}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Type
+                  </label>
+                  <select
+                    value={newPayment.type}
+                    onChange={(e) => setNewPayment({...newPayment, type: e.target.value})}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select payment type</option>
+                    <option value="deposit">Deposit</option>
+                    <option value="full_payment">Full Payment</option>
+                    <option value="installment">Installment</option>
+                    <option value="refund">Refund</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Amount
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={newPayment.amount}
+                    onChange={(e) => setNewPayment({...newPayment, amount: e.target.value})}
+                    placeholder="0.00"
+                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Payment Request ID (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={newPayment.paymentRequestId}
+                    onChange={(e) => setNewPayment({...newPayment, paymentRequestId: e.target.value})}
+                    placeholder="Enter payment request ID"
+                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Note (Optional)
+                  </label>
+                  <textarea
+                    value={newPayment.note}
+                    onChange={(e) => setNewPayment({...newPayment, note: e.target.value})}
+                    placeholder="Add a note about this payment"
+                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows={3}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end space-x-3 mt-6">
+                <AppleButton
+                  onClick={() => {
+                    setShowAddPaymentModal(false);
+                    setNewPayment({ date: '', type: '', amount: '', paymentRequestId: '', note: '' });
+                  }}
+                  variant="ghost"
+                >
+                  Cancel
+                </AppleButton>
+                <AppleButton
+                  onClick={() => {
+                    if (newPayment.date && newPayment.type && newPayment.amount) {
+                      const payment = {
+                        _id: Date.now().toString(),
+                        paymentDate: newPayment.date,
+                        type: newPayment.type,
+                        amount: parseFloat(newPayment.amount),
+                        status: 'completed',
+                        reference: newPayment.paymentRequestId || 'Manual Entry',
+                        note: newPayment.note
+                      };
+                      setPayments([payment, ...payments]);
+                      setNewPayment({ date: '', type: '', amount: '', paymentRequestId: '', note: '' });
+                      setShowAddPaymentModal(false);
+                    }
+                  }}
+                  className="apple-button-primary"
+                >
+                  Add Payment
+                </AppleButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Medical Record Modal */}
+      {showAddMedicalModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Add Medical Record</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Type
+                  </label>
+                  <select
+                    value={newMedical.type}
+                    onChange={(e) => setNewMedical({...newMedical, type: e.target.value})}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select type</option>
+                    <option value="consultation">Consultation</option>
+                    <option value="test_result">Test Result</option>
+                    <option value="diagnosis">Diagnosis</option>
+                    <option value="treatment">Treatment</option>
+                    <option value="medication">Medication</option>
+                    <option value="allergy">Allergy</option>
+                    <option value="vaccination">Vaccination</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Title
+                  </label>
+                  <input
+                    type="text"
+                    value={newMedical.title}
+                    onChange={(e) => setNewMedical({...newMedical, title: e.target.value})}
+                    placeholder="Enter record title"
+                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    value={newMedical.date}
+                    onChange={(e) => setNewMedical({...newMedical, date: e.target.value})}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    value={newMedical.notes}
+                    onChange={(e) => setNewMedical({...newMedical, notes: e.target.value})}
+                    placeholder="Enter detailed notes"
+                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows={4}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end space-x-3 mt-6">
+                <AppleButton
+                  onClick={() => {
+                    setShowAddMedicalModal(false);
+                    setNewMedical({ type: '', title: '', date: '', notes: '' });
+                  }}
+                  variant="ghost"
+                >
+                  Cancel
+                </AppleButton>
+                <AppleButton
+                  onClick={() => {
+                    if (newMedical.type && newMedical.title && newMedical.date) {
+                      const record = {
+                        _id: Date.now().toString(),
+                        type: newMedical.type,
+                        title: newMedical.title,
+                        date: newMedical.date,
+                        notes: newMedical.notes,
+                        createdAt: new Date().toISOString()
+                      };
+                      setMedicalRecords([record, ...medicalRecords]);
+                      setNewMedical({ type: '', title: '', date: '', notes: '' });
+                      setShowAddMedicalModal(false);
+                    }
+                  }}
+                  className="apple-button-primary"
+                >
+                  Add Record
+                </AppleButton>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EKG Upload Modal */}
+      {showEKGUploadModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">Upload EKG Files</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Select Files (Images/PDFs)
+                </label>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*,.pdf"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (files.length > 0) {
+                      // Store selected files in temporary state for preview
+                      setEkgFiles(files.map(file => ({
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                        file: file // Store actual file for upload
+                      })));
+                    }
+                  }}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Accepted formats: JPG, PNG, PDF. Multiple files allowed.
+                </p>
+              </div>
+
+              {ekgFiles.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Uploaded Files:</h4>
+                  <div className="space-y-1">
+                    {ekgFiles.map((file, index) => (
+                      <div key={index} className="flex justify-between items-center text-sm bg-gray-50 p-2 rounded">
+                        <span>{file.name}</span>
+                        <button
+                          onClick={() => setEkgFiles(ekgFiles.filter((_, i) => i !== index))}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end space-x-3 mt-6">
+              <AppleButton
+                onClick={() => {
+                  setShowEKGUploadModal(false);
+                  setEkgFiles([]);
+                }}
+                variant="ghost"
+              >
+                Cancel
+              </AppleButton>
+              <AppleButton
+                onClick={() => {
+                  const files = ekgFiles.map(f => f.file).filter(Boolean) as File[];
+                  if (files.length > 0) {
+                    handleEKGFileUpload(files);
+                  }
+                }}
+                className="apple-button-primary"
+                disabled={uploadingEKG || ekgFiles.length === 0}
+              >
+                {uploadingEKG ? 'Uploading...' : 'Upload'}
+              </AppleButton>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Liver Panel Upload Modal */}
+      {showLiverPanelUploadModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+            <h3 className="text-lg font-semibold mb-4">Upload Liver Panel Files</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Select Files (Images/PDFs)
+                </label>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*,.pdf"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files || []);
+                    if (files.length > 0) {
+                      // Store selected files in temporary state for preview
+                      setLiverPanelFiles(files.map(file => ({
+                        name: file.name,
+                        size: file.size,
+                        type: file.type,
+                        file: file // Store actual file for upload
+                      })));
+                    }
+                  }}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Accepted formats: JPG, PNG, PDF. Multiple files allowed.
+                </p>
+              </div>
+
+              {liverPanelFiles.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Uploaded Files:</h4>
+                  <div className="space-y-1">
+                    {liverPanelFiles.map((file, index) => (
+                      <div key={index} className="flex justify-between items-center text-sm bg-gray-50 p-2 rounded">
+                        <span>{file.name}</span>
+                        <button
+                          onClick={() => setLiverPanelFiles(liverPanelFiles.filter((_, i) => i !== index))}
+                          className="text-red-500 hover:text-red-700"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end space-x-3 mt-6">
+              <AppleButton
+                onClick={() => {
+                  setShowLiverPanelUploadModal(false);
+                  setLiverPanelFiles([]);
+                }}
+                variant="ghost"
+              >
+                Cancel
+              </AppleButton>
+              <AppleButton
+                onClick={() => {
+                  const files = liverPanelFiles.map(f => f.file).filter(Boolean) as File[];
+                  if (files.length > 0) {
+                    handleLiverPanelFileUpload(files);
+                  }
+                }}
+                className="apple-button-primary"
+                disabled={uploadingLiverPanel || liverPanelFiles.length === 0}
+              >
+                {uploadingLiverPanel ? 'Uploading...' : 'Upload'}
+              </AppleButton>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default ClientDetailsPage;

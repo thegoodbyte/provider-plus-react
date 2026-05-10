@@ -23,6 +23,17 @@ const ZenModal: React.FC<ZenModalProps> = ({
   closeOnOverlayClick = true,
   showCloseButton = true
 }) => {
+  // Check if mobile device
+  const [isMobile, setIsMobile] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
   // Handle ESC key press
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -60,7 +71,7 @@ const ZenModal: React.FC<ZenModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      className={`fixed inset-0 z-50 flex ${isMobile ? 'items-end' : 'items-center'} justify-center ${isMobile ? '' : 'p-4'}`}
       role="dialog"
       aria-modal="true"
     >
@@ -74,11 +85,12 @@ const ZenModal: React.FC<ZenModalProps> = ({
       {/* Modal Content */}
       <div
         className={`
-          relative bg-white rounded-softer shadow-xl
-          animate-slide-in
-          w-full ${sizeClasses[size]}
-          max-h-[90vh] flex flex-col
+          relative bg-white ${isMobile ? 'rounded-t-2xl' : 'rounded-softer'} shadow-xl
+          ${isMobile ? 'animate-slide-up' : 'animate-slide-in'}
+          w-full ${isMobile ? 'max-w-full' : sizeClasses[size]}
+          ${isMobile ? 'h-[100vh]' : 'max-h-[90vh]'} flex flex-col
         `}
+        style={isMobile ? { maxHeight: '100vh', height: '100vh' } : {}}
       >
         {/* Header */}
         {(title || showCloseButton) && (

@@ -3,8 +3,11 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3005';
 interface LoginResponse {
   access_token: string;
   user: {
-    username: string;
+    username: string; // This is now the email for compatibility
+    email: string;
     role: string;
+    firstName?: string;
+    lastName?: string;
   };
 }
 

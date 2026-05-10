@@ -5,6 +5,7 @@ import RetreatsGrid from './RetreatsGrid';
 import HousesGrid from './HousesGrid';
 import ScreeningClientsGrid from './ScreeningClientsGrid';
 import UnifiedClientManager from './UnifiedClientManager';
+import ClientDetailsPage from './ClientDetailsPage';
 import BookingsGrid from './BookingsGrid';
 import MedicalGrid from './MedicalGrid';
 import RemindersPage from './RemindersPage';
@@ -122,6 +123,7 @@ const Layout: React.FC = () => {
             <Route path="/houses" element={<HousesGrid />} />
             <Route path="/screening" element={<ScreeningClientsGrid />} />
             <Route path="/clients" element={<UnifiedClientManager />} />
+            <Route path="/clients/:clientId" element={<ClientDetailsPage />} />
             <Route path="/bookings" element={<BookingsGrid />} />
             <Route path="/medical" element={<MedicalGrid />} />
             <Route path="/reminders" element={<RemindersPage />} />

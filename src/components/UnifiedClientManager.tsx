@@ -240,8 +240,8 @@ const UnifiedClientManager: React.FC = () => {
   };
 
   const handleClientClick = (client: Client) => {
-    // Open the edit form for this client
-    handleEdit(client);
+    // Navigate to the client details page
+    navigate(`/clients/${client._id}`);
   };
 
   const handleSort = (field: keyof Client) => {

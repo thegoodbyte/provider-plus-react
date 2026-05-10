@@ -4,7 +4,8 @@ import AppleSidebar from './AppleSidebar';
 import UnifiedClientManager from './UnifiedClientManager';
 import HousesGrid from './HousesGrid';
 import RetreatsGrid from './RetreatsGrid';
-// import ScreeningClientsGrid from './ScreeningClientsGrid'; // Legacy, removed
+import ScreeningClientsGrid from './ScreeningClientsGrid';
+import ClientDetailsPage from './ClientDetailsPage';
 // import ClientsGrid from './ClientsGrid'; // Now using UnifiedClientManager
 import BookingsGrid from './BookingsGrid';
 import MedicalGrid from './MedicalGrid';
@@ -222,6 +223,8 @@ const AppleLayout: React.FC = () => {
                   <ProtectedRoute requiredRole={['admin']}>
                     <Routes>
                       <Route path="clients" element={<UnifiedClientManager />} />
+                      <Route path="clients/:clientId" element={<ClientDetailsPage />} />
+                      <Route path="screening" element={<ScreeningClientsGrid />} />
                       <Route path="potential-clients" element={<UnifiedClientManager />} />
                       <Route path="retreats" element={<RetreatsGrid />} />
                       <Route path="houses" element={<HousesGrid />} />
@@ -305,6 +308,8 @@ const AppleLayout: React.FC = () => {
                 <Route path="/medical-tracking" element={<ProtectedRoute><MedicalTrackingNew /></ProtectedRoute>} />
                 <Route path="/medical-tracking/:id" element={<ProtectedRoute><MedicalTrackingDetail /></ProtectedRoute>} />
                 <Route path="/clients" element={<ProtectedRoute><UnifiedClientManager /></ProtectedRoute>} />
+                <Route path="/clients/:clientId" element={<ProtectedRoute><ClientDetailsPage /></ProtectedRoute>} />
+                <Route path="/screening" element={<ProtectedRoute><ScreeningClientsGrid /></ProtectedRoute>} />
                 <Route path="/potential-clients" element={<ProtectedRoute><UnifiedClientManager /></ProtectedRoute>} />
                 <Route path="/retreats" element={<ProtectedRoute><RetreatsGrid /></ProtectedRoute>} />
                 <Route path="/houses" element={<ProtectedRoute><HousesGrid /></ProtectedRoute>} />
