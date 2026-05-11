@@ -54,6 +54,7 @@ const cachedGet = async <T>(key: string, fetcher: () => Promise<any>, ttl: numbe
 
 export const retreatsApi = {
   getAll: () => cachedGet<Retreat[]>('retreats:all', () => api.get<Retreat[]>('/retreats')),
+  getUpcomingRetreats: () => cachedGet<any>('retreats:upcoming', () => api.get<any>('/retreats?status=upcoming'), 30000),
   getOne: (id: string) => cachedGet<Retreat>(`retreats:${id}`, () => api.get<Retreat>(`/retreats/${id}`)),
   create: (data: Omit<Retreat, '_id'>) => {
     cacheService.clearPattern('retreats:');
@@ -106,6 +107,7 @@ export const clientsApi = {
     return api.delete(`/clients/${id}`);
   },
   search: (searchTerm: string) => api.get<Client[]>(`/clients?search=${searchTerm}`),
+  searchClients: (searchTerm: string) => api.get<Client[]>(`/clients/search?query=${searchTerm}`),
   getByEmail: (email: string) => api.get<Client>(`/clients/by-email/${email}`),
   getByRetreat: (retreatId: string) => cachedGet<Client[]>(`clients:retreat:${retreatId}`, () => api.get<Client[]>(`/clients/by-retreat/${retreatId}`)),
   regenerateDepositHash: (id: string) => api.post<{ hash: string }>(`/clients/${id}/regenerate-deposit-hash`, {}),
@@ -477,5 +479,55 @@ export const notesApi = {
   delete: (id: string) => {
     cacheService.clearPattern('notes:');
     return api.delete(`/notes/${id}`);
+  },
+};
+
+// Waiting List API
+export const waitingListApi = {
+  // Get waiting list matrix (all retreats with their waiting lists)
+  getMatrix: () => cachedGet<any>('waiting-list:matrix', () => api.get<any>('/waiting-list/matrix'), 30000),
+
+  // Get waiting list by retreat
+  getByRetreat: (retreatId: string) =>
+    cachedGet<any>(`waiting-list:retreat:${retreatId}`, () => api.get<any>(`/waiting-list/retreat/${retreatId}`), 30000),
+
+  // Get client's waiting lists
+  getClientWaitingLists: (clientId: string) =>
+    cachedGet<any>(`waiting-list:client:${clientId}`, () => api.get<any>(`/waiting-list/client/${clientId}`), 30000),
+
+  // Add client to waiting list
+  addToWaitingList: (data: any) => {
+    cacheService.clearPattern('waiting-list:');
+    return api.post('/waiting-list', data);
+  },
+
+  // Update waiting list entry
+  updateEntry: (id: string, data: any) => {
+    cacheService.clearPattern('waiting-list:');
+    return api.put(`/waiting-list/${id}`, data);
+  },
+
+  // Update positions
+  updatePositions: (retreatId: string, data: any) => {
+    cacheService.clearPattern('waiting-list:');
+    return api.put(`/waiting-list/positions/${retreatId}`, data);
+  },
+
+  // Remove from waiting list
+  removeFromWaitingList: (id: string) => {
+    cacheService.clearPattern('waiting-list:');
+    return api.delete(`/waiting-list/${id}`);
+  },
+
+  // Convert to booking
+  convertToBooking: (id: string) => {
+    cacheService.clearPattern('waiting-list:');
+    return api.post(`/waiting-list/${id}/convert-to-booking`);
+  },
+
+  // Notify next in line
+  notifyNextInLine: (retreatId: string) => {
+    cacheService.clearPattern('waiting-list:');
+    return api.post(`/waiting-list/notify/${retreatId}`);
   },
 };

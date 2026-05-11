@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Heart, FileText, Clock, Calendar, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
 import { medicalAdvisorApi } from '../services/api';
 import { MedicalItem, Client } from '../types';
+import LoadingSpinner from './LoadingSpinner';
 import './MedicalAdvisorDashboard.css';
 
 interface MedicalReviewItem {
@@ -158,11 +159,7 @@ const MedicalAdvisorDashboard: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div className="medical-advisor-dashboard">
-        <div className="loading">Loading pending reviews...</div>
-      </div>
-    );
+    return <LoadingSpinner message="Loading medical tracking data..." />;
   }
 
   const filteredItems = getFilteredItems();
