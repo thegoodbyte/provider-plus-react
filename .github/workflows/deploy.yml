@@ -26,7 +26,7 @@ jobs:
       run: npm run build
       env:
         CI: false
-        REACT_APP_API_URL: http://174.138.70.250:8080
+        REACT_APP_API_URL: https://api.ibogaspirit.net
 
     - name: Deploy to server
       uses: appleboy/scp-action@v0.1.7
@@ -35,7 +35,7 @@ jobs:
         username: ${{ secrets.FRONTEND_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         source: "build/*"
-        target: "/var/www/ibogaspirit.net/"
+        target: "/var/www/provider-plus-front-end/"
         strip_components: 1
         rm: true
 
@@ -46,8 +46,8 @@ jobs:
         username: ${{ secrets.FRONTEND_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
-          sudo chown -R www-data:www-data /var/www/ibogaspirit.net
-          sudo chmod -R 755 /var/www/ibogaspirit.net
+          sudo chown -R www-data:www-data /var/www/provider-plus-front-end
+          sudo chmod -R 755 /var/www/provider-plus-front-end
 
     - name: Notify deployment status
       if: always()
