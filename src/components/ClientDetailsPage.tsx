@@ -261,13 +261,22 @@ const ClientDetailsPage: React.FC = () => {
             </h1>
             {getStatusBadge(client.workflowStatus || client.status)}
           </div>
-          <AppleButton
-            onClick={() => {/* TODO: Edit client */}}
-            className="apple-button-primary px-4 py-2 w-auto whitespace-nowrap ml-auto"
-          >
-            <Icon icon={FiEdit2} className="w-4 h-4 mr-2" />
-            Edit Client
-          </AppleButton>
+          <div className="flex gap-2">
+            <AppleButton
+              onClick={() => navigate(`/admin/clients/${clientId}/screening`)}
+              className="apple-button-secondary px-4 py-2 w-auto whitespace-nowrap"
+            >
+              <Icon icon={FiFileText} className="w-4 h-4 mr-2" />
+              Add Screening
+            </AppleButton>
+            <AppleButton
+              onClick={() => {/* TODO: Edit client */}}
+              className="apple-button-primary px-4 py-2 w-auto whitespace-nowrap"
+            >
+              <Icon icon={FiEdit2} className="w-4 h-4 mr-2" />
+              Edit Client
+            </AppleButton>
+          </div>
         </div>
 
         {/* Quick Info Bar */}

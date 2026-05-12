@@ -3,6 +3,7 @@ import { paymentsApi, clientsApi, retreatsApi } from '../services/api';
 import { Payment, Client, Retreat } from '../types';
 import CurrencyDisplay from './CurrencyDisplay';
 import AppleButton from './AppleButton';
+import LoadingSpinner from './LoadingSpinner';
 import { FiPlus, FiEdit2, FiTrash2, FiDollarSign, FiX } from 'react-icons/fi';
 
 // Simple wrapper to fix TypeScript icon issues
@@ -12,6 +13,7 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
 
 interface PaymentWithDetails extends Payment {
   clientName?: string;
+  clientDisplayId?: number;
   retreatName?: string;
 }
 
@@ -77,6 +79,7 @@ const PaymentsPage: React.FC = () => {
           clientId,
           retreatId,
           clientName: client ? `${client.firstName} ${client.lastName}` : 'Unknown Client',
+          clientDisplayId: client?.display_id,
           retreatName: retreat ? retreat.name : 'Unknown Retreat'
         };
       });
@@ -179,11 +182,7 @@ const PaymentsPage: React.FC = () => {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="text-gray-500">Loading payments...</div>
-      </div>
-    );
+    return <LoadingSpinner message="Loading payments..." />;
   }
 
   return (
@@ -237,6 +236,9 @@ const PaymentsPage: React.FC = () => {
                     {new Date(payment.paymentDate).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <span className="font-semibold text-blue-600 mr-2">
+                      {payment.clientDisplayId ? `#${payment.clientDisplayId}` : ''}
+                    </span>
                     {payment.clientName}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

@@ -265,7 +265,7 @@ const UnifiedClientManager: React.FC = () => {
     };
 
     return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[status] || 'bg-gray-100 text-gray-800'}`}>
+      <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${statusColors[status] || 'bg-gray-100 text-gray-800'}`}>
         {status}
       </span>
     );
@@ -275,7 +275,7 @@ const UnifiedClientManager: React.FC = () => {
     if (!signupDate) return null;
 
     return (
-      <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-600">
+      <span className="text-xs text-gray-600">
         {new Date(signupDate).toLocaleDateString()}
       </span>
     );
@@ -286,9 +286,9 @@ const UnifiedClientManager: React.FC = () => {
   }
 
   return (
-    <div className="p-6 max-w-full">
+    <div className="p-3 max-w-full">
       {/* Header */}
-      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="mb-3 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <h1 className="text-2xl font-bold text-apple-gray-900">Clients</h1>
         <AppleButton
           variant="primary"
@@ -300,7 +300,7 @@ const UnifiedClientManager: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4">
+      <div className="mb-3 flex flex-col sm:flex-row gap-2">
         <div className="flex-1">
           <div className="relative">
             <Icon icon={FiSearch} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -336,7 +336,7 @@ const UnifiedClientManager: React.FC = () => {
               <tr>
                 <th
                   onClick={() => handleSort('display_id')}
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 >
                   <div className="flex items-center">
                     ID
@@ -347,7 +347,7 @@ const UnifiedClientManager: React.FC = () => {
                 </th>
                 <th
                   onClick={() => handleSort('lastName')}
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 >
                   <div className="flex items-center">
                     Name
@@ -356,12 +356,12 @@ const UnifiedClientManager: React.FC = () => {
                     }
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Contact
                 </th>
                 <th
                   onClick={() => handleSort('workflowStatus')}
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                 >
                   <div className="flex items-center">
                     Status
@@ -370,13 +370,13 @@ const UnifiedClientManager: React.FC = () => {
                     }
                   </div>
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Signup Date
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Country
                 </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-1.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -384,58 +384,51 @@ const UnifiedClientManager: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredClients.map((client) => (
                 <tr key={client._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 py-1.5 whitespace-nowrap">
                     <div className="text-sm font-semibold text-gray-900">
                       {client.display_id || '-'}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 py-1.5 whitespace-nowrap">
                     <div>
                       <button
                         onClick={() => handleClientClick(client)}
-                        style={{ color: '#1f2937', backgroundColor: 'white', border: '1px solid #d1d5db', padding: '4px 8px', borderRadius: '4px' }}
-                        className="text-sm font-medium hover:bg-gray-50"
+                        className="text-sm font-medium text-gray-900 hover:text-blue-600"
                       >
                         {client.firstName} {client.lastName}
                       </button>
                       {client.preferredName && (
-                        <div className="text-xs text-gray-500">
-                          Prefers: {client.preferredName}
-                        </div>
+                        <span className="text-xs text-gray-400 ml-1">
+                          ({client.preferredName})
+                        </span>
                       )}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
+                  <td className="px-3 py-1.5 whitespace-nowrap">
+                    <div className="text-xs text-gray-700">
                       {client.email && (
-                        <div className="flex items-center">
-                          <Icon icon={FiMail} className="w-3 h-3 mr-1 text-gray-400" />
-                          {client.email}
-                        </div>
+                        <div>{client.email}</div>
                       )}
-                      <div className="flex items-center">
-                        <Icon icon={FiPhone} className="w-3 h-3 mr-1 text-gray-400" />
-                        {client.phone}
-                      </div>
+                      <div>{client.phoneCountryCode || ''} {client.phone}</div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 py-1.5 whitespace-nowrap">
                     {getStatusBadge(client.workflowStatus || 'potential')}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 py-1.5 whitespace-nowrap">
                     {getSignupDateBadge(typeof client.signupDate === 'string' ? client.signupDate : client.signupDate?.toISOString().split('T')[0])}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-500">
                     {client.country || '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <td className="px-3 py-1.5 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex justify-end space-x-2">
                       <button
                         onClick={() => handleEdit(client)}
                         className="text-blue-600 hover:text-blue-900"
                         title="Edit"
                       >
-                        <Icon icon={FiEdit2} className="w-4 h-4" />
+                        <Icon icon={FiEdit2} className="w-3.5 h-3.5" />
                       </button>
                       {client.workflowStatus === 'potential' && (
                         <button
@@ -443,7 +436,7 @@ const UnifiedClientManager: React.FC = () => {
                           className="text-yellow-600 hover:text-yellow-900"
                           title="Start Screening"
                         >
-                          <Icon icon={FiUserCheck} className="w-4 h-4" />
+                          <Icon icon={FiUserCheck} className="w-3.5 h-3.5" />
                         </button>
                       )}
                       {client.workflowStatus === 'screening' && (
@@ -453,14 +446,14 @@ const UnifiedClientManager: React.FC = () => {
                             className="text-green-600 hover:text-green-900"
                             title="Approve"
                           >
-                            <Icon icon={FiCheck} className="w-4 h-4" />
+                            <Icon icon={FiCheck} className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => handleWorkflowStatusUpdate(client._id!, 'rejected', 'Not suitable')}
                             className="text-red-600 hover:text-red-900"
                             title="Reject"
                           >
-                            <Icon icon={FiX} className="w-4 h-4" />
+                            <Icon icon={FiX} className="w-3.5 h-3.5" />
                           </button>
                         </>
                       )}
@@ -469,7 +462,7 @@ const UnifiedClientManager: React.FC = () => {
                         className="text-red-600 hover:text-red-900"
                         title="Delete"
                       >
-                        <Icon icon={FiTrash2} className="w-4 h-4" />
+                        <Icon icon={FiTrash2} className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </td>

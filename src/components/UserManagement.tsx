@@ -190,10 +190,8 @@ const UserManagement: React.FC = () => {
         return;
       }
 
-      // Update user with new password
-      await usersApi.update(resettingPasswordUser._id, {
-        password: formData.password
-      } as any);
+      // Reset user password using the dedicated endpoint
+      await usersApi.resetPassword(resettingPasswordUser._id, formData.password);
 
       await fetchUsers();
       setResettingPasswordUser(null);

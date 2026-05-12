@@ -79,4 +79,10 @@ export const usersApi = {
     const response = await api.put('/users/change-password', passwordData);
     return response.data;
   },
+
+  // Reset password (admin only)
+  async resetPassword(userId: string, password: string): Promise<{ data: any }> {
+    const response = await api.post(`/users/${userId}/reset-password`, { password });
+    return response;
+  },
 };

@@ -7,6 +7,8 @@ import RetreatsGrid from './RetreatsGrid';
 import ScreeningClientsGrid from './ScreeningClientsGrid';
 import ClientDetailsPage from './ClientDetailsPage';
 import AddClient from '../pages/AddClient';
+import ClientScreening from '../pages/ClientScreening';
+import RetreatDetailView from '../pages/RetreatDetailView';
 // import ClientsGrid from './ClientsGrid'; // Now using UnifiedClientManager
 import BookingsGrid from './BookingsGrid';
 import MedicalGrid from './MedicalGrid';
@@ -212,7 +214,7 @@ const AppleLayout: React.FC = () => {
         </header>
 
         {/* Page Content */}
-        <main className="px-4 sm:px-6 lg:px-8 py-6 overflow-y-auto" style={{ height: 'calc(100vh - 64px)' }}>
+        <main className="px-4 sm:px-6 lg:px-8 py-6 overflow-y-auto" style={{ height: 'calc(100vh - 64px - 32px)' }}>
           <div className="max-w-7xl mx-auto">
             <div className="bg-white rounded-apple-lg shadow-apple-sm">
               <Routes>
@@ -226,9 +228,11 @@ const AppleLayout: React.FC = () => {
                       <Route path="clients" element={<UnifiedClientManager />} />
                       <Route path="clients/add" element={<AddClient />} />
                       <Route path="clients/:clientId" element={<ClientDetailsPage />} />
+                      <Route path="clients/:clientId/screening" element={<ClientScreening />} />
                       <Route path="screening" element={<ScreeningClientsGrid />} />
                       <Route path="potential-clients" element={<UnifiedClientManager />} />
                       <Route path="retreats" element={<RetreatsGrid />} />
+                      <Route path="retreats/:retreatId" element={<RetreatDetailView />} />
                       <Route path="houses" element={<HousesGrid />} />
                       <Route path="bookings" element={<BookingsGrid />} />
                       <Route path="medical-tracking" element={<MedicalTrackingNew />} />
@@ -275,6 +279,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="client/:clientId" element={<MedicalProfile />} />
                       <Route path="bookings" element={<BookingsGrid />} />
                       <Route path="retreats" element={<RetreatsGrid />} />
+                      <Route path="retreats/:retreatId" element={<RetreatDetailView />} />
                       <Route path="reminders" element={<RemindersPage />} />
                     </Routes>
                   </ProtectedRoute>
@@ -286,6 +291,7 @@ const AppleLayout: React.FC = () => {
                     <Routes>
                       <Route path="bookings" element={<BookingsGrid />} />
                       <Route path="retreats" element={<RetreatsGrid />} />
+                      <Route path="retreats/:retreatId" element={<RetreatDetailView />} />
                       <Route path="houses" element={<HousesGrid />} />
                       <Route path="clients" element={<UnifiedClientManager />} />
                       <Route path="clients/add" element={<AddClient />} />
@@ -327,6 +333,15 @@ const AppleLayout: React.FC = () => {
             </div>
           </div>
         </main>
+
+        {/* Footer */}
+        <footer className="bg-white/70 backdrop-blur-apple border-t border-apple-gray-200 h-8">
+          <div className="h-full flex items-center justify-center px-4">
+            <span className="text-xs text-apple-gray-500">
+              Release: 2026-05-12 1745
+            </span>
+          </div>
+        </footer>
       </div>
 
       {/* Settings Modal */}

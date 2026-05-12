@@ -531,3 +531,32 @@ export const waitingListApi = {
     return api.post(`/waiting-list/notify/${retreatId}`);
   },
 };
+
+// Screening API
+export const screeningApi = {
+  // Create screening
+  create: (data: any) => api.post('/screening', data),
+
+  // Get all screenings
+  getAll: () => api.get('/screening'),
+
+  // Get screening by ID
+  getOne: (id: string) => api.get(`/screening/${id}`),
+
+  // Get screenings by client
+  getByClient: (clientId: string) => api.get(`/screening/client/${clientId}`),
+
+  // Update screening
+  update: (id: string, data: any) => api.put(`/screening/${id}`, data),
+
+  // Delete screening
+  delete: (id: string) => api.delete(`/screening/${id}`),
+
+  // Upload handwriting image
+  uploadHandwriting: (id: string, formData: FormData) =>
+    api.post(`/screening/${id}/upload-handwriting`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }),
+};
