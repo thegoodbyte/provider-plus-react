@@ -6,6 +6,7 @@ import HousesGrid from './HousesGrid';
 import RetreatsGrid from './RetreatsGrid';
 import ScreeningClientsGrid from './ScreeningClientsGrid';
 import ClientDetailsPage from './ClientDetailsPage';
+import AddClient from '../pages/AddClient';
 // import ClientsGrid from './ClientsGrid'; // Now using UnifiedClientManager
 import BookingsGrid from './BookingsGrid';
 import MedicalGrid from './MedicalGrid';
@@ -211,9 +212,9 @@ const AppleLayout: React.FC = () => {
         </header>
 
         {/* Page Content */}
-        <main className="px-4 sm:px-6 lg:px-8 py-6">
+        <main className="px-4 sm:px-6 lg:px-8 py-6 overflow-y-auto" style={{ height: 'calc(100vh - 64px)' }}>
           <div className="max-w-7xl mx-auto">
-            <div className="bg-white rounded-apple-lg shadow-apple-sm" style={{ minHeight: 'calc(100vh - 120px)' }}>
+            <div className="bg-white rounded-apple-lg shadow-apple-sm">
               <Routes>
                 {/* Unauthorized route */}
                 <Route path="/unauthorized" element={<Unauthorized />} />
@@ -223,6 +224,7 @@ const AppleLayout: React.FC = () => {
                   <ProtectedRoute requiredRole={['admin']}>
                     <Routes>
                       <Route path="clients" element={<UnifiedClientManager />} />
+                      <Route path="clients/add" element={<AddClient />} />
                       <Route path="clients/:clientId" element={<ClientDetailsPage />} />
                       <Route path="screening" element={<ScreeningClientsGrid />} />
                       <Route path="potential-clients" element={<UnifiedClientManager />} />
@@ -268,6 +270,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="medical-review/:bookingId" element={<MedicalReviewDetail />} />
                       <Route path="medical-retreats" element={<MedicalRetreats />} />
                       <Route path="clients" element={<UnifiedClientManager />} />
+                      <Route path="clients/add" element={<AddClient />} />
                       <Route path="potential-clients" element={<UnifiedClientManager />} />
                       <Route path="client/:clientId" element={<MedicalProfile />} />
                       <Route path="bookings" element={<BookingsGrid />} />
@@ -285,6 +288,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="retreats" element={<RetreatsGrid />} />
                       <Route path="houses" element={<HousesGrid />} />
                       <Route path="clients" element={<UnifiedClientManager />} />
+                      <Route path="clients/add" element={<AddClient />} />
                       <Route path="potential-clients" element={<UnifiedClientManager />} />
                       <Route path="reminders" element={<RemindersPage />} />
                     </Routes>
@@ -296,6 +300,7 @@ const AppleLayout: React.FC = () => {
                   <ProtectedRoute requiredRole={['user', 'facilitator', 'medical_staff', 'admin']}>
                     <Routes>
                       <Route path="clients" element={<UnifiedClientManager />} />
+                      <Route path="clients/add" element={<AddClient />} />
                       <Route path="reminders" element={<RemindersPage />} />
                     </Routes>
                   </ProtectedRoute>
@@ -308,6 +313,7 @@ const AppleLayout: React.FC = () => {
                 <Route path="/medical-tracking" element={<ProtectedRoute><MedicalTrackingNew /></ProtectedRoute>} />
                 <Route path="/medical-tracking/:id" element={<ProtectedRoute><MedicalTrackingDetail /></ProtectedRoute>} />
                 <Route path="/clients" element={<ProtectedRoute><UnifiedClientManager /></ProtectedRoute>} />
+                <Route path="/clients/add" element={<ProtectedRoute><AddClient /></ProtectedRoute>} />
                 <Route path="/clients/:clientId" element={<ProtectedRoute><ClientDetailsPage /></ProtectedRoute>} />
                 <Route path="/screening" element={<ProtectedRoute><ScreeningClientsGrid /></ProtectedRoute>} />
                 <Route path="/potential-clients" element={<ProtectedRoute><UnifiedClientManager /></ProtectedRoute>} />

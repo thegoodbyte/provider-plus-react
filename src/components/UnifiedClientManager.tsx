@@ -292,22 +292,7 @@ const UnifiedClientManager: React.FC = () => {
         <h1 className="text-2xl font-bold text-apple-gray-900">Clients</h1>
         <AppleButton
           variant="primary"
-          onClick={() => {
-            setSelectedClient(null);
-            setFormData({
-              firstName: '',
-              lastName: '',
-              email: '',
-              phone: '',
-              phoneCountryCode: '+420',
-              address: '',
-              country: 'CZ',
-              workflowStatus: 'potential',
-              signupDate: new Date().toISOString().split('T')[0],
-              status: 'active'
-            } as Partial<Client>);
-            setShowForm(true);
-          }}
+          onClick={() => navigate('/clients/add')}
         >
           <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
           Add New Client
@@ -625,12 +610,12 @@ const UnifiedClientManager: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex space-x-3 mt-6">
-                <AppleButton variant="primary" onClick={handleSave}>
-                  {selectedClient ? 'Update' : 'Create'} Client
-                </AppleButton>
+              <div className="flex space-x-3 mt-6 justify-end">
                 <AppleButton variant="secondary" onClick={() => setShowForm(false)}>
                   Cancel
+                </AppleButton>
+                <AppleButton variant="primary" onClick={handleSave}>
+                  {selectedClient ? 'Update' : 'Create'} Client
                 </AppleButton>
               </div>
             </div>
