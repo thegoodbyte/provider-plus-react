@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
+import { API_BASE_URL } from '../config/api.config';
 import './DebugOverlay.css';
 
 interface ConnectionStatus {
@@ -17,7 +18,6 @@ const DebugOverlay: React.FC = () => {
     lastChecked: new Date(),
   });
 
-  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3005';
 
   // Extract host and port from URL
   const getHostAndPort = (url: string) => {

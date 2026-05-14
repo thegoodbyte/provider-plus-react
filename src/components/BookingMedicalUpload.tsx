@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { authService } from '../services/authService';
+import { API_BASE_URL } from '../config/api.config';
 import './BookingMedicalUpload.css';
 
 interface BookingMedicalUploadProps {
@@ -41,7 +42,6 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
     const [uploadingEkg, setUploadingEkg] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3005';
 
     useEffect(() => {
         fetchBookingMedicalHistory();

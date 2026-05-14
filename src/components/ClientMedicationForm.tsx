@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { clientMedicationsApi, ClientMedication, CreateClientMedicationDto, UpdateClientMedicationDto } from '../services/clientMedicationsApi';
 import { clientsApi, Client } from '../services/api';
+import { API_BASE_URL } from '../config/api.config';
 import AppleButton from './AppleButton';
 import { FiArrowLeft, FiUpload, FiFileText, FiSave, FiX } from 'react-icons/fi';
 
@@ -259,7 +260,7 @@ const ClientMedicationForm: React.FC<ClientMedicationFormProps> = ({ mode }) => 
                     <span className="text-green-800 font-medium">PDF document uploaded</span>
                   </div>
                   <a
-                    href={`${process.env.REACT_APP_API_URL || 'http://localhost:3005'}${formData.pdf_file}`}
+                    href={`${API_BASE_URL}${formData.pdf_file}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-green-600 hover:text-green-800 font-medium"

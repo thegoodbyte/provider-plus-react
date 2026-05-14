@@ -2,8 +2,8 @@ import axios from 'axios';
 import { Retreat, House, Client, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem } from '../types';
 import { authService } from './authService';
 import { cacheService } from './cacheService';
+import { API_BASE_URL } from '../config/api.config';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3005';
 
 const api = axios.create({
   baseURL: API_BASE_URL,

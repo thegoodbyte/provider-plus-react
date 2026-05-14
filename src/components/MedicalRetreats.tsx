@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, Users, MapPin, AlertCircle, FileText, Heart } from 'lucide-react';
+import { API_BASE_URL } from '../config/api.config';
 import './MedicalRetreats.css';
 
 interface MedicalRecord {
@@ -44,7 +45,7 @@ const MedicalRetreats: React.FC = () => {
       const token = localStorage.getItem('token');
 
       // Use the optimized endpoint that gets retreats with bookings in a single call
-      const retreatsResponse = await fetch('http://localhost:3005/retreats/upcoming/with-bookings', {
+      const retreatsResponse = await fetch(`${API_BASE_URL}/retreats/upcoming/with-bookings`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3005';
+import { API_BASE_URL } from '../config/api.config';
 
 interface LoginResponse {
   access_token: string;

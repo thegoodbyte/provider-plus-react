@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { API_BASE_URL } from '../../config/api.config';
 import './Login.css';
 
 export const Login: React.FC = () => {
@@ -10,7 +11,6 @@ export const Login: React.FC = () => {
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'error'>('checking');
   const { login } = useAuth();
 
-  const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3005';
   const apiPort = API_BASE_URL.split(':').pop()?.split('/')[0] || '3005';
 
   // Check API connection on mount

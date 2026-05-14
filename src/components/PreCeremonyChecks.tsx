@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Heart, Activity, FileText, Save, Clock, AlertCircle } from 'lucide-react';
+import { API_BASE_URL } from '../config/api.config';
 import './PreCeremonyChecks.css';
 
 interface Client {
@@ -62,7 +63,7 @@ const PreCeremonyChecks: React.FC = () => {
   const fetchUpcomingRetreats = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3005/retreats/upcoming', {
+      const response = await fetch(`${API_BASE_URL}/retreats/upcoming`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -82,7 +83,7 @@ const PreCeremonyChecks: React.FC = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:3005/bookings?retreatId=${retreatId}`, {
+      const response = await fetch(`${API_BASE_URL}/bookings?retreatId=${retreatId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -104,7 +105,7 @@ const PreCeremonyChecks: React.FC = () => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:3005/client-medical/booking/${bookingId}`, {
+      const response = await fetch(`${API_BASE_URL}/client-medical/booking/${bookingId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -130,7 +131,7 @@ const PreCeremonyChecks: React.FC = () => {
       const token = localStorage.getItem('token');
 
       // Create pre-ceremony record
-      const response = await fetch('http://localhost:3005/client-medical/pre-ceremony', {
+      const response = await fetch(`${API_BASE_URL}/client-medical/pre-ceremony`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -176,7 +177,7 @@ const PreCeremonyChecks: React.FC = () => {
 
   const updateBloodPressure = async (recordId: string) => {
     const token = localStorage.getItem('token');
-    const response = await fetch(`http://localhost:3005/client-medical/${recordId}/blood-pressure`, {
+    const response = await fetch(`${API_BASE_URL}/client-medical/${recordId}/blood-pressure`, {
       method: 'PATCH',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -201,7 +202,7 @@ const PreCeremonyChecks: React.FC = () => {
     formData.append('retreatId', selectedBooking.retreatId._id || selectedBooking.retreatId);
 
     const token = localStorage.getItem('token');
-    const response = await fetch('http://localhost:3005/client-medical/upload/ekg', {
+    const response = await fetch(`${API_BASE_URL}/client-medical/upload/ekg`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`

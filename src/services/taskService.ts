@@ -1,4 +1,5 @@
 import { authFetch } from './authService';
+import { API_BASE_URL } from '../config/api.config';
 
 export interface Task {
   id: string;
@@ -63,7 +64,7 @@ export interface TaskStatistics {
 }
 
 class TaskService {
-  private baseUrl = `${process.env.REACT_APP_API_URL || 'http://localhost:3005'}/tasks`;
+  private baseUrl = `${API_BASE_URL}/tasks`;
 
   async createTask(taskData: CreateTaskDto): Promise<Task> {
     const response = await authFetch(this.baseUrl, {

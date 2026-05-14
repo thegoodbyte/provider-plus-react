@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { clientMedicationsApi, ClientMedication } from '../services/clientMedicationsApi';
 import { clientsApi, Client } from '../services/api';
+import { API_BASE_URL } from '../config/api.config';
 import AppleButton from './AppleButton';
 import { FiPlus, FiEdit2, FiEye, FiTrash2, FiFileText, FiCalendar } from 'react-icons/fi';
 
@@ -236,7 +237,7 @@ const ClientMedicationsGrid: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     {medication.pdf_file ? (
                       <a
-                        href={`${process.env.REACT_APP_API_URL || 'http://localhost:3005'}${medication.pdf_file}`}
+                        href={`${API_BASE_URL}${medication.pdf_file}`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center text-green-600 hover:text-green-800"

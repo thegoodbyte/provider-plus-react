@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, Calendar, Heart, FileText, AlertCircle, Download, CheckCircle, XCircle } from 'lucide-react';
+import { API_BASE_URL } from '../config/api.config';
 import './MedicalProfile.css';
 
 interface MedicalData {
@@ -81,8 +82,8 @@ const MedicalProfile: React.FC = () => {
 
       // Fetch client basic info - use medical advisor endpoint if applicable
       const clientUrl = isMedicalAdvisor
-        ? `http://localhost:3005/medical-advisor/client/${clientId}`
-        : `http://localhost:3005/clients/${clientId}`;
+        ? `${API_BASE_URL}/medical-advisor/client/${clientId}`
+        : `${API_BASE_URL}/clients/${clientId}`;
 
       const clientResponse = await fetch(clientUrl, {
         headers: {
@@ -103,7 +104,7 @@ const MedicalProfile: React.FC = () => {
       }
 
       // Fetch all medical records for this client
-      const medicalResponse = await fetch(`http://localhost:3005/client-medical/client/${clientId}`, {
+      const medicalResponse = await fetch(`${API_BASE_URL}/client-medical/client/${clientId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -164,7 +165,7 @@ const MedicalProfile: React.FC = () => {
       const token = localStorage.getItem('token');
 
       const response = await fetch(
-        `http://localhost:3005/client-medical/client/${clientId}/retreat/${activeRetreatId}/ekg-review`,
+        `${API_BASE_URL}/client-medical/client/${clientId}/retreat/${activeRetreatId}/ekg-review`,
         {
           method: 'PATCH',
           headers: {
@@ -201,7 +202,7 @@ const MedicalProfile: React.FC = () => {
       const token = localStorage.getItem('token');
 
       const response = await fetch(
-        `http://localhost:3005/client-medical/client/${clientId}/retreat/${activeRetreatId}/liver-panel-review`,
+        `${API_BASE_URL}/client-medical/client/${clientId}/retreat/${activeRetreatId}/liver-panel-review`,
         {
           method: 'PATCH',
           headers: {
@@ -239,7 +240,7 @@ const MedicalProfile: React.FC = () => {
 
       // This would submit the review for the active retreat
       const response = await fetch(
-        `http://localhost:3005/client-medical/client/${clientId}/retreat/${activeRetreatId}/review`,
+        `${API_BASE_URL}/client-medical/client/${clientId}/retreat/${activeRetreatId}/review`,
         {
           method: 'PATCH',
           headers: {
@@ -388,7 +389,7 @@ const MedicalProfile: React.FC = () => {
                   )}
                   {medicalData.liverPanelFilePath && (
                     <a
-                      href={`http://localhost:3005${medicalData.liverPanelFilePath}`}
+                      href={`${API_BASE_URL}${medicalData.liverPanelFilePath}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="view-document-btn"
@@ -430,7 +431,7 @@ const MedicalProfile: React.FC = () => {
                   )}
                   {medicalData.ekgFilePath && (
                     <a
-                      href={`http://localhost:3005${medicalData.ekgFilePath}`}
+                      href={`${API_BASE_URL}${medicalData.ekgFilePath}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="view-document-btn"
@@ -524,7 +525,7 @@ const MedicalProfile: React.FC = () => {
               <span>Review EKG Results</span>
               {medicalData.ekgFileName && (
                 <a
-                  href={`http://localhost:3005${medicalData.ekgFilePath}`}
+                  href={`${API_BASE_URL}${medicalData.ekgFilePath}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="view-document-btn"
@@ -605,7 +606,7 @@ const MedicalProfile: React.FC = () => {
               <span>Review Liver Panel Results</span>
               {medicalData.liverPanelFileName && (
                 <a
-                  href={`http://localhost:3005${medicalData.liverPanelFilePath}`}
+                  href={`${API_BASE_URL}${medicalData.liverPanelFilePath}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="view-document-btn"

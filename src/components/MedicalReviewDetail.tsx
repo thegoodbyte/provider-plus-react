@@ -5,6 +5,7 @@ import {
   CheckCircle, XCircle, AlertTriangle, Download,
   Clock, Activity, Phone, Mail
 } from 'lucide-react';
+import { API_BASE_URL } from '../config/api.config';
 import './MedicalReviewDetail.css';
 
 interface ClientMedicalData {
@@ -71,7 +72,7 @@ const MedicalReviewDetail: React.FC = () => {
       const token = localStorage.getItem('token');
 
       const response = await fetch(
-        `http://localhost:3005/client-medical/client/${clientId}/retreat/${retreatId}`,
+        `${API_BASE_URL}/client-medical/client/${clientId}/retreat/${retreatId}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -140,7 +141,7 @@ const MedicalReviewDetail: React.FC = () => {
       const token = localStorage.getItem('token');
 
       const response = await fetch(
-        `http://localhost:3005/client-medical/${clientData?.id}/medical-clearance`,
+        `${API_BASE_URL}/client-medical/${clientData?.id}/medical-clearance`,
         {
           method: 'PATCH',
           headers: {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { authService } from '../services/authService';
+import { API_BASE_URL } from '../config/api.config';
 import './ClientMedicalHistory.css';
 
 interface ClientMedicalHistoryProps {
@@ -43,7 +44,6 @@ const ClientMedicalHistory: React.FC<ClientMedicalHistoryProps> = ({
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [groupByRetreat, setGroupByRetreat] = useState(true);
-    const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3005';
 
     useEffect(() => {
         fetchClientMedicalHistory();
