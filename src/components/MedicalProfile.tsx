@@ -63,6 +63,12 @@ const MedicalProfile: React.FC = () => {
   const [liverPanelReviewNotes, setLiverPanelReviewNotes] = useState('');
   const [liverPanelReviewDecision, setLiverPanelReviewDecision] = useState<'approved' | 'declined' | 'needs_more_info' | ''>('');
 
+  const getDocumentUrl = (filePath?: string) => {
+    if (!filePath) return '';
+    if (/^https?:\/\//i.test(filePath)) return filePath;
+    return `${API_BASE_URL}${filePath}`;
+  };
+
   useEffect(() => {
     // Skip if clientId looks like a route name instead of an ID
     if (clientId && !clientId.includes('-') && clientId.length === 24) {
@@ -389,7 +395,7 @@ const MedicalProfile: React.FC = () => {
                   )}
                   {medicalData.liverPanelFilePath && (
                     <a
-                      href={`${API_BASE_URL}${medicalData.liverPanelFilePath}`}
+                      href={getDocumentUrl(medicalData.liverPanelFilePath)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="view-document-btn"
@@ -431,7 +437,7 @@ const MedicalProfile: React.FC = () => {
                   )}
                   {medicalData.ekgFilePath && (
                     <a
-                      href={`${API_BASE_URL}${medicalData.ekgFilePath}`}
+                      href={getDocumentUrl(medicalData.ekgFilePath)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="view-document-btn"
@@ -525,7 +531,7 @@ const MedicalProfile: React.FC = () => {
               <span>Review EKG Results</span>
               {medicalData.ekgFileName && (
                 <a
-                  href={`${API_BASE_URL}${medicalData.ekgFilePath}`}
+                  href={getDocumentUrl(medicalData.ekgFilePath)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="view-document-btn"
@@ -606,7 +612,7 @@ const MedicalProfile: React.FC = () => {
               <span>Review Liver Panel Results</span>
               {medicalData.liverPanelFileName && (
                 <a
-                  href={`${API_BASE_URL}${medicalData.liverPanelFilePath}`}
+                  href={getDocumentUrl(medicalData.liverPanelFilePath)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="view-document-btn"

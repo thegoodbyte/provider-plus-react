@@ -50,6 +50,7 @@ export interface Client {
   lastName: string;
   email: string;
   phoneCountryCode?: string;
+  loginPin?: string;
   phone: string;
   address: string;
   city?: string;

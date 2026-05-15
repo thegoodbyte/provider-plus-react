@@ -108,12 +108,17 @@ const UnifiedClientManager: React.FC = () => {
     try {
       // Define allowed fields for client creation/update
       const allowedFields = [
-        'firstName', 'lastName', 'email', 'phoneCountryCode', 'phone', 'address',
+        'firstName', 'lastName', 'email', 'loginPin', 'phoneCountryCode', 'phone', 'address',
         'city', 'state', 'zipCode', 'country', 'dateOfBirth', 'emergencyContact',
         'emergencyContactPhone', 'medicalConditions', 'dietaryRestrictions', 'status',
         'notes', 'preferredName', 'occupation', 'gender', 'height', 'weight', 'source',
         'display_id', 'signupDate', 'workflowStatus'
       ];
+
+      if (formData.loginPin && !/^\d{4,6}$/.test(formData.loginPin)) {
+        alert('Client portal PIN must be 4-6 digits');
+        return;
+      }
 
       // Clean up data - only include allowed fields and handle types properly
       const cleanData = Object.entries(formData).reduce((acc, [key, value]) => {
@@ -143,6 +148,10 @@ const UnifiedClientManager: React.FC = () => {
 
         return acc;
       }, {} as any);
+
+      if (selectedClient?._id && !formData.loginPin?.trim()) {
+        cleanData.loginPin = null;
+      }
 
       console.log('Cleaned data being sent:', JSON.stringify(cleanData, null, 2));
       console.log('Is update?', !!selectedClient?._id, 'ID:', selectedClient?._id);
@@ -193,38 +202,41 @@ const UnifiedClientManager: React.FC = () => {
     }
   };
 
-  const handleEdit = (client: Client) => {
-    console.log('=== EDIT STARTED ===');
-    console.log('Original client:', JSON.stringify(client, null, 2));
-
-    setSelectedClient(client);
-
-    // Extract only the fields we need for the form, excluding MongoDB-specific fields
+  const buildClientFormData = (client: Client): Partial<Client> => {
     const allowedFields = [
-      'firstName', 'lastName', 'email', 'phoneCountryCode', 'phone', 'address',
+      'firstName', 'lastName', 'email', 'loginPin', 'phoneCountryCode', 'phone', 'address',
       'city', 'state', 'zipCode', 'country', 'dateOfBirth', 'emergencyContact',
       'emergencyContactPhone', 'medicalConditions', 'dietaryRestrictions', 'status',
       'notes', 'preferredName', 'occupation', 'gender', 'height', 'weight', 'source',
       'display_id', 'signupDate', 'workflowStatus'
     ];
 
-    const cleanFormData = allowedFields.reduce((acc, field) => {
+    return allowedFields.reduce((acc, field) => {
       const clientValue = (client as any)[field];
       if (clientValue !== undefined && clientValue !== null) {
-        // Convert dates to proper format for form inputs
         if ((field === 'dateOfBirth' || field === 'signupDate') && clientValue) {
-          acc[field] = new Date(clientValue).toISOString().split('T')[0]; // YYYY-MM-DD format for date input
+          const date = new Date(clientValue);
+          if (!Number.isNaN(date.getTime())) {
+            (acc as any)[field] = date.toISOString().split('T')[0];
+          }
         } else {
-          acc[field] = clientValue;
+          (acc as any)[field] = clientValue;
         }
       }
       return acc;
-    }, {} as any);
+    }, {} as Partial<Client>);
+  };
 
-    console.log('Cleaned form data for editing:', JSON.stringify(cleanFormData, null, 2));
-
-    setFormData(cleanFormData);
-    setShowForm(true);
+  const handleEdit = (client: Client) => {
+    try {
+      const cleanFormData = buildClientFormData(client);
+      setSelectedClient(client);
+      setFormData(cleanFormData);
+      setShowForm(true);
+    } catch (error) {
+      console.error('Error opening client editor:', error);
+      alert('Could not open the client editor. Check the console for details.');
+    }
   };
 
   const handleDelete = async (clientId: string) => {
@@ -424,11 +436,18 @@ const UnifiedClientManager: React.FC = () => {
                   <td className="px-3 py-1.5 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex justify-end space-x-2">
                       <button
-                        onClick={() => handleEdit(client)}
-                        className="text-blue-600 hover:text-blue-900"
+                        type="button"
+                        onMouseDown={(event) => event.stopPropagation()}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          handleEdit(client);
+                        }}
+                        className="inline-flex items-center gap-1 rounded px-2 py-1 text-blue-700 hover:bg-blue-50 hover:text-blue-900"
                         title="Edit"
                       >
                         <Icon icon={FiEdit2} className="w-3.5 h-3.5" />
+                        <span className="text-xs">Edit</span>
                       </button>
                       {client.workflowStatus === 'potential' && (
                         <button
@@ -527,6 +546,17 @@ const UnifiedClientManager: React.FC = () => {
                   onChange={(value) => setFormData({ ...formData, email: value })}
                   placeholder="Enter email address"
                   type="email"
+                />
+
+                <AppleInput
+                  label="Client Portal PIN"
+                  value={formData.loginPin || ''}
+                  onChange={(value) => setFormData({
+                    ...formData,
+                    loginPin: value.replace(/\D/g, '').slice(0, 6)
+                  })}
+                  placeholder="4-6 digit login PIN"
+                  type="text"
                 />
 
                 <div>

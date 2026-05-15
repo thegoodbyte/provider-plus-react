@@ -27,6 +27,7 @@ const QuickAddClient: React.FC<QuickAddClientProps> = ({ visible, onClose, onSuc
                 phoneCountryCode: values.phoneCountryCode || '+1',
                 phone: values.phone,
                 email: values.email || '',
+                loginPin: values.loginPin || undefined,
                 country: values.country || 'USA',
                 source: values.source || '',
                 notes: values.notes || '',
@@ -169,6 +170,27 @@ const QuickAddClient: React.FC<QuickAddClientProps> = ({ visible, onClose, onSuc
                     label="Email (Optional)"
                 >
                     <Input type="email" placeholder="john.doe@example.com" />
+                </Form.Item>
+
+                <Form.Item
+                    name="loginPin"
+                    label="Client Portal PIN (Optional)"
+                    rules={[
+                        {
+                            pattern: /^\d{4,6}$/,
+                            message: 'PIN must be 4-6 digits'
+                        }
+                    ]}
+                >
+                    <Input
+                        placeholder="4-6 digit login PIN"
+                        maxLength={6}
+                        inputMode="numeric"
+                        onChange={(event) => {
+                            const value = event.target.value.replace(/\D/g, '').slice(0, 6);
+                            form.setFieldValue('loginPin', value);
+                        }}
+                    />
                 </Form.Item>
 
                 <Form.Item

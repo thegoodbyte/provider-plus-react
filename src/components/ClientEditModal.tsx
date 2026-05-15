@@ -100,6 +100,9 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
     if (!formData.lastName?.trim()) errors.push('Last name is required');
     if (!formData.email?.trim()) errors.push('Email is required');
     if (!formData.phoneNumber?.trim()) errors.push('Phone number is required');
+    if (formData.loginPin && !/^\d{4,6}$/.test(formData.loginPin)) {
+      errors.push('Client portal PIN must be 4-6 digits');
+    }
 
     // Check if state is required for US customers
     if (formData.country === 'US' && !formData.state?.trim()) {
@@ -122,6 +125,7 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
         firstName: formData.firstName?.trim(),
         lastName: formData.lastName?.trim(),
         email: formData.email?.trim(),
+        loginPin: formData.loginPin?.trim() || undefined,
         phone: fullPhone,
         address: formData.address,
         city: formData.city,
@@ -137,6 +141,10 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
         status: formData.status as 'active' | 'inactive' | 'suspended' | undefined,
         language: formData.language
       };
+
+      if (!formData.loginPin?.trim()) {
+        (clientData as any).loginPin = null;
+      }
 
       // Convert yearOfBirth to dateOfBirth if provided
       if (formData.yearOfBirth) {
@@ -228,6 +236,26 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
                   value={formData.email || ''}
                   onChange={handleInputChange}
                   required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="loginPin">Client Portal PIN:</label>
+                <input
+                  type="text"
+                  id="loginPin"
+                  name="loginPin"
+                  value={formData.loginPin || ''}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+                    setFormData(prev => ({
+                      ...prev,
+                      loginPin: value
+                    }));
+                  }}
+                  placeholder="4-6 digit login PIN"
+                  inputMode="numeric"
+                  maxLength={6}
                 />
               </div>
 

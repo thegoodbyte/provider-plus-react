@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { clientsApi, paymentsApi, clientMedicalApi, bookingsApi } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
 import AppleButton from './AppleButton';
-import { FiArrowLeft, FiEdit2, FiUser, FiPhone, FiMail, FiMapPin, FiCalendar, FiDollarSign, FiActivity, FiFileText, FiAlertCircle, FiPlus, FiMessageSquare, FiCheckSquare, FiHeart } from 'react-icons/fi';
+import { FiArrowLeft, FiEdit2, FiUser, FiPhone, FiMail, FiMapPin, FiCalendar, FiDollarSign, FiActivity, FiFileText, FiAlertCircle, FiPlus, FiMessageSquare, FiCheckSquare, FiHeart, FiEye, FiEyeOff } from 'react-icons/fi';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -46,6 +46,7 @@ const ClientDetailsPage: React.FC = () => {
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [showAddMedicalModal, setShowAddMedicalModal] = useState(false);
+  const [showLoginPin, setShowLoginPin] = useState(false);
   const [notes, setNotes] = useState<any[]>([]);
   const [tasks, setTasks] = useState<any[]>([]);
   const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
@@ -81,6 +82,10 @@ const ClientDetailsPage: React.FC = () => {
       fetchClientData();
     }
   }, [clientId]);
+
+  const handleClientUpdate = (updatedClient: any) => {
+    setClient(updatedClient);
+  };
 
   const fetchClientData = async () => {
     try {
@@ -270,7 +275,7 @@ const ClientDetailsPage: React.FC = () => {
               Add Screening
             </AppleButton>
             <AppleButton
-              onClick={() => {/* TODO: Edit client */}}
+              onClick={() => navigate(`/admin/clients/${clientId}/edit`)}
               className="apple-button-primary px-4 py-2 w-auto whitespace-nowrap"
             >
               <Icon icon={FiEdit2} className="w-4 h-4 mr-2" />
@@ -380,6 +385,25 @@ const ClientDetailsPage: React.FC = () => {
                   <div className="flex justify-between">
                     <dt className="text-sm text-gray-600">Email:</dt>
                     <dd className="text-sm font-medium">{client.email || 'N/A'}</dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <dt className="text-sm text-gray-600">Client Portal Login PIN:</dt>
+                    <dd className="flex items-center gap-2 text-sm font-medium">
+                      <span className="font-mono tracking-wider">
+                        {client.loginPin ? (showLoginPin ? client.loginPin : '••••••') : 'Not set'}
+                      </span>
+                      {client.loginPin && (
+                        <button
+                          type="button"
+                          onClick={() => setShowLoginPin((current) => !current)}
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 text-gray-500 hover:border-blue-300 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          aria-label={showLoginPin ? 'Hide client portal login PIN' : 'Reveal client portal login PIN'}
+                          title={showLoginPin ? 'Hide PIN' : 'Reveal PIN'}
+                        >
+                          <Icon icon={showLoginPin ? FiEyeOff : FiEye} className="w-4 h-4" />
+                        </button>
+                      )}
+                    </dd>
                   </div>
                   <div className="flex justify-between">
                     <dt className="text-sm text-gray-600">Country:</dt>
@@ -1467,6 +1491,7 @@ const ClientDetailsPage: React.FC = () => {
           </div>
         </div>
       )}
+
     </div>
   );
 };

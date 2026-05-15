@@ -70,12 +70,18 @@ const AddClient: React.FC = () => {
       return;
     }
 
+    if (formData.loginPin && !/^\d{4,6}$/.test(formData.loginPin)) {
+      setError('Client portal PIN must be 4-6 digits');
+      return;
+    }
+
     setSaving(true);
     setError('');
 
     try {
       const dataToSave = {
         ...formData,
+        loginPin: formData.loginPin || undefined,
         signupDate: formData.signupDate || new Date()
       };
 
@@ -192,6 +198,14 @@ const AddClient: React.FC = () => {
                   onChange={(value) => setFormData({ ...formData, email: value })}
                   placeholder="Enter email address"
                   type="email"
+                />
+
+                <AppleInput
+                  label="Client Portal PIN"
+                  value={formData.loginPin || ''}
+                  onChange={(value) => setFormData({ ...formData, loginPin: value.replace(/\D/g, '').slice(0, 6) })}
+                  placeholder="4-6 digit login PIN"
+                  type="text"
                 />
 
                 <div>

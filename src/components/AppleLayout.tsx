@@ -6,6 +6,7 @@ import HousesGrid from './HousesGrid';
 import RetreatsGrid from './RetreatsGrid';
 import ScreeningClientsGrid from './ScreeningClientsGrid';
 import ClientDetailsPage from './ClientDetailsPage';
+import ClientEditPage from './ClientEditPage';
 import AddClient from '../pages/AddClient';
 import ClientScreening from '../pages/ClientScreening';
 import RetreatDetailView from '../pages/RetreatDetailView';
@@ -228,6 +229,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="clients" element={<UnifiedClientManager />} />
                       <Route path="clients/add" element={<AddClient />} />
                       <Route path="clients/:clientId" element={<ClientDetailsPage />} />
+                      <Route path="clients/:clientId/edit" element={<ClientEditPage />} />
                       <Route path="clients/:clientId/screening" element={<ClientScreening />} />
                       <Route path="screening" element={<ScreeningClientsGrid />} />
                       <Route path="potential-clients" element={<UnifiedClientManager />} />
