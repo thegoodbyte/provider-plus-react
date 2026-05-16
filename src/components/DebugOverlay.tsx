@@ -33,7 +33,7 @@ const DebugOverlay: React.FC = () => {
       return {
         protocol: 'http:',
         hostname: 'localhost',
-        port: '3005',
+        port: '3001',
         fullUrl: url
       };
     }

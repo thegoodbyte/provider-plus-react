@@ -30,6 +30,11 @@ const getFilenameFromS3Key = (s3Key: string): string => {
   return underscoreIndex > 0 ? filename.substring(underscoreIndex + 1) : filename;
 };
 
+const getMedicalItemClientId = (item: Partial<MedicalItem> | undefined | null): string => {
+  if (!item) return '';
+  return item.client_id || (item as any).clientId || '';
+};
+
 const MedicalTrackingNew: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -58,7 +63,8 @@ const MedicalTrackingNew: React.FC = () => {
       const response = user?.role === 'medical_advisor'
         ? await medicalAdvisorApi.getMedicalTracking()
         : await medicalTrackingApi.getAll();
-      setMedicalItems(response.data || []);
+      const items = Array.isArray(response.data) ? response.data.filter(Boolean) : [];
+      setMedicalItems(items as MedicalItem[]);
     } catch (error) {
       console.error('Error fetching medical tracking items:', error);
       setMedicalItems([]);
@@ -113,7 +119,7 @@ const MedicalTrackingNew: React.FC = () => {
     }
 
     // console.log('Filtered items result:', filtered);
-    setFilteredItems(filtered);
+    setFilteredItems(filtered.filter(Boolean));
   }, [medicalItems, filterType, filterStatus]);
 
   const getClientName = useCallback((clientIdOrItem: string | MedicalItem) => {
@@ -126,7 +132,7 @@ const MedicalTrackingNew: React.FC = () => {
     }
 
     // For other roles, look up client from the clients list
-    const clientId = typeof clientIdOrItem === 'string' ? clientIdOrItem : clientIdOrItem.client_id;
+    const clientId = typeof clientIdOrItem === 'string' ? clientIdOrItem : getMedicalItemClientId(clientIdOrItem);
     const client = clients.find(c => c._id === clientId);
     return client ? `${client.firstName} ${client.lastName}` : 'Unknown Client';
   }, [clients, user?.role]);
@@ -214,10 +220,8 @@ const MedicalTrackingNew: React.FC = () => {
   };
 
   const handleEdit = (item: MedicalItem) => {
-    setEditingItem(item);
-    setFormData(item);
-    setSelectedFile(null);
-    setIsEditModalOpen(true);
+    if (!item._id) return;
+    navigate(`/medical-tracking/${item._id}/edit`);
   };
 
   const handleDelete = async (id: string) => {
@@ -499,10 +503,10 @@ const MedicalTrackingNew: React.FC = () => {
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap">
                     <button
-                      onClick={() => navigate(`/clients?id=${item.client_id}`)}
+                      onClick={() => navigate(`/clients?id=${getMedicalItemClientId(item)}`)}
                       className="text-sm font-medium text-gray-900 hover:text-blue-600 hover:underline"
                     >
-                      {getClientName(user?.role === 'medical_advisor' ? item : item.client_id)}
+                      {getClientName(user?.role === 'medical_advisor' ? item : getMedicalItemClientId(item))}
                     </button>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900">

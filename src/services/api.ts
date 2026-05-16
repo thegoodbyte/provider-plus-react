@@ -142,6 +142,10 @@ export const clientMedicalApi = {
   uploadFile: (formData: FormData, type: 'liver-panel' | 'ekg') => api.post(`/client-medical/upload/${type}`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
+  clearEkgFile: (id: string) => api.delete(`/client-medical/${id}/ekg-file`),
+  clearLiverFile: (id: string) => api.delete(`/client-medical/${id}/liver-file`),
+  getFileBlob: (id: string, type: 'liver-panel' | 'ekg') =>
+    api.get(`/client-medical/${id}/file/${type}`, { responseType: 'blob' }),
   reviewLiverPanel: (id: string, reviewData: { advisorNotes: string; status: string }) =>
     api.patch(`/client-medical/${id}/liver-panel/review`, reviewData),
   reviewEkg: (id: string, reviewData: { advisorNotes: string; status: string }) =>
@@ -381,19 +385,31 @@ export const ceremoniesApi = {
 export { api };
 export type { Client };
 
+const medicalTrackingBaseUrl = '/client-medical';
+
 export const medicalTrackingApi = {
-  getAll: () => cachedGet<MedicalItem[]>('medical-tracking:all', () => api.get<MedicalItem[]>('/medical-tracking')),
-  getNextDisplayId: () => api.get<number>('/medical-tracking/next-display-id'),
-  getOne: (id: string) => cachedGet<MedicalItem>(`medical-tracking:${id}`, () => api.get<MedicalItem>(`/medical-tracking/${id}`)),
-  getByClient: (clientId: string) => cachedGet<MedicalItem[]>(`medical-tracking:client:${clientId}`, () => api.get<MedicalItem[]>(`/medical-tracking/client/${clientId}`)),
-  getByType: (type: 'EKG' | 'Liver' | 'Question') => cachedGet<MedicalItem[]>(`medical-tracking:type:${type}`, () => api.get<MedicalItem[]>(`/medical-tracking/type/${type}`)),
+  getAll: () => cachedGet<MedicalItem[]>('medical-tracking:all', () => api.get<MedicalItem[]>(medicalTrackingBaseUrl)),
+  getNextDisplayId: async () => {
+    const response = await medicalTrackingApi.getAll();
+    const items = response.data || [];
+    const nextDisplayId = items.reduce((max: number, item: MedicalItem) => {
+      return Math.max(max, Number(item.display_id) || 0);
+    }, 1000) + 1;
+    return { data: nextDisplayId };
+  },
+  getOne: (id: string) => cachedGet<MedicalItem>(`medical-tracking:${id}`, () => api.get<MedicalItem>(`${medicalTrackingBaseUrl}/${id}`)),
+  getByClient: (clientId: string) => cachedGet<MedicalItem[]>(`medical-tracking:client:${clientId}`, () => api.get<MedicalItem[]>(`${medicalTrackingBaseUrl}/client/${clientId}`)),
+  getByType: async (type: 'EKG' | 'Liver' | 'Question') => {
+    const response = await medicalTrackingApi.getAll();
+    return { data: (response.data || []).filter((item: MedicalItem) => item.type === type) };
+  },
   create: (data: Omit<MedicalItem, '_id'>) => {
     cacheService.clearPattern('medical-tracking:');
-    return api.post<MedicalItem>('/medical-tracking', data);
+    return api.post<MedicalItem>(medicalTrackingBaseUrl, data);
   },
   update: (id: string, data: Partial<MedicalItem>) => {
     cacheService.clearPattern('medical-tracking:');
-    return api.patch<MedicalItem>(`/medical-tracking/${id}`, data);
+    return api.patch<MedicalItem>(`${medicalTrackingBaseUrl}/${id}`, data);
   },
   reviewItem: (id: string, reviewData: {
     medadvisor_review_result: 'OK' | 'caution' | 'NOT OK';
@@ -401,13 +417,13 @@ export const medicalTrackingApi = {
     medadvisor_review_date?: Date | string;
   }) => {
     cacheService.clearPattern('medical-tracking:');
-    return api.patch<MedicalItem>(`/medical-tracking/${id}/review`, reviewData);
+    return api.patch<MedicalItem>(`${medicalTrackingBaseUrl}/${id}`, reviewData);
   },
   uploadImage: (id: string, file: File) => {
     const formData = new FormData();
     formData.append('image', file);
     cacheService.clearPattern('medical-tracking:');
-    return api.post<MedicalItem>(`/medical-tracking/${id}/upload-image`, formData, {
+    return api.post<MedicalItem>(`${medicalTrackingBaseUrl}/${id}/upload-image`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
@@ -417,16 +433,16 @@ export const medicalTrackingApi = {
       formData.append('files', file);
     });
     cacheService.clearPattern('medical-tracking:');
-    return api.post(`/medical-tracking/${id}/upload-files`, formData, {
+    return api.post(`${medicalTrackingBaseUrl}/${id}/upload-files`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
   getFileUrl: (id: string, s3Key: string) => {
-    return api.get(`/medical-tracking/${id}/file/${encodeURIComponent(s3Key)}`);
+    return api.get(`${medicalTrackingBaseUrl}/${id}/file/${encodeURIComponent(s3Key)}`);
   },
   delete: (id: string) => {
     cacheService.clearPattern('medical-tracking:');
-    return api.delete(`/medical-tracking/${id}`);
+    return api.delete(`${medicalTrackingBaseUrl}/${id}`);
   },
 };
 

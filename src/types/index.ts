@@ -150,6 +150,7 @@ export interface ClientMedical {
   liverPanelFilePath?: string;
   liverPanelFileName?: string;
   liverPanelFileSize?: number;
+  liverPanelS3Key?: string;
   liverPanelSentToAdvisorDate?: Date | string;
   liverPanelAdvisorNotes?: string;
   liverPanelStatus?: 'pending' | 'received' | 'reviewed' | 'approved' | 'rejected';
@@ -160,6 +161,7 @@ export interface ClientMedical {
   ekgFilePath?: string;
   ekgFileName?: string;
   ekgFileSize?: number;
+  ekgS3Key?: string;
   ekgSentToAdvisorDate?: Date | string;
   ekgAdvisorNotes?: string;
   ekgStatus?: 'pending' | 'received' | 'reviewed' | 'approved' | 'rejected';

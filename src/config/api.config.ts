@@ -1,7 +1,9 @@
 // API Configuration
-// Uses environment variable or defaults to localhost for development
-
-export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3005';
+// Uses a single environment-driven base URL with a safe local fallback.
+export const API_BASE_URL =
+  process.env.REACT_APP_PROVIDER_PLUS_API_URL ||
+  process.env.REACT_APP_API_URL ||
+  'http://localhost:3001';
 
 export const API_ENDPOINTS = {
   // Auth endpoints

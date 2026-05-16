@@ -15,6 +15,8 @@ import BookingsGrid from './BookingsGrid';
 import MedicalGrid from './MedicalGrid';
 import MedicalTrackingNew from './MedicalTrackingNew';
 import MedicalTrackingDetail from './MedicalTrackingDetail';
+import MedicalTrackingEditPage from './MedicalTrackingEditPage';
+import MedicalTrackingFileViewPage from './MedicalTrackingFileViewPage';
 import RemindersPage from './RemindersPage';
 import PaymentsPage from './PaymentsPage';
 import PaymentRequestsGrid from './PaymentRequestsGrid';
@@ -239,6 +241,8 @@ const AppleLayout: React.FC = () => {
                       <Route path="bookings" element={<BookingsGrid />} />
                       <Route path="medical-tracking" element={<MedicalTrackingNew />} />
                       <Route path="medical-tracking/:id" element={<MedicalTrackingDetail />} />
+                      <Route path="medical-tracking/:id/edit" element={<MedicalTrackingEditPage />} />
+                      <Route path="medical-tracking/:id/view/:type" element={<MedicalTrackingFileViewPage />} />
                       <Route path="medical-dashboard" element={<MedicalAdvisorDashboard />} />
                       <Route path="medical-review/:bookingId" element={<MedicalReviewDetail />} />
                       <Route path="medical-retreats" element={<MedicalRetreats />} />
@@ -271,6 +275,8 @@ const AppleLayout: React.FC = () => {
                       <Route path="medical-tracking" element={<MedicalTrackingNew />} />
                       <Route path="tracking/:id" element={<MedicalTrackingDetail />} />
                       <Route path="medical-tracking/:id" element={<MedicalTrackingDetail />} />
+                      <Route path="medical-tracking/:id/edit" element={<MedicalTrackingEditPage />} />
+                      <Route path="medical-tracking/:id/view/:type" element={<MedicalTrackingFileViewPage />} />
                       <Route path="review/:id" element={<MedicalAdvisorReview />} />
                       <Route path="medical-review/:id" element={<MedicalAdvisorReview />} />
                       <Route path="medical-review/:bookingId" element={<MedicalReviewDetail />} />
@@ -320,6 +326,8 @@ const AppleLayout: React.FC = () => {
                 <Route path="/medical-retreats" element={<ProtectedRoute><MedicalRetreats /></ProtectedRoute>} />
                 <Route path="/medical-tracking" element={<ProtectedRoute><MedicalTrackingNew /></ProtectedRoute>} />
                 <Route path="/medical-tracking/:id" element={<ProtectedRoute><MedicalTrackingDetail /></ProtectedRoute>} />
+                <Route path="/medical-tracking/:id/edit" element={<ProtectedRoute><MedicalTrackingEditPage /></ProtectedRoute>} />
+                <Route path="/medical-tracking/:id/view/:type" element={<ProtectedRoute><MedicalTrackingFileViewPage /></ProtectedRoute>} />
                 <Route path="/clients" element={<ProtectedRoute><UnifiedClientManager /></ProtectedRoute>} />
                 <Route path="/clients/add" element={<ProtectedRoute><AddClient /></ProtectedRoute>} />
                 <Route path="/clients/:clientId" element={<ProtectedRoute><ClientDetailsPage /></ProtectedRoute>} />

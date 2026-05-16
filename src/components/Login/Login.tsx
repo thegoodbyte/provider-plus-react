@@ -11,7 +11,7 @@ export const Login: React.FC = () => {
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'error'>('checking');
   const { login } = useAuth();
 
-  const apiPort = API_BASE_URL.split(':').pop()?.split('/')[0] || '3005';
+  const apiPort = API_BASE_URL.split(':').pop()?.split('/')[0] || '3001';
 
   // Check API connection on mount
   useEffect(() => {

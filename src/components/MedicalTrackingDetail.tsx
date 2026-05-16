@@ -112,8 +112,8 @@ const MedicalTrackingDetail: React.FC = () => {
   };
 
   const handleEdit = () => {
-    // Navigate back to list with edit modal open
-    navigate('/medical-tracking', { state: { editItemId: id } });
+    if (!id) return;
+    navigate(`/medical-tracking/${id}/edit`);
   };
 
   const handleDelete = async () => {
