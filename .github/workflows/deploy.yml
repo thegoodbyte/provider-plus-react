@@ -35,8 +35,8 @@ jobs:
         username: ${{ secrets.FRONTEND_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
-          sudo mkdir -p /var/www/provider-plus-front-end
-          sudo find /var/www/provider-plus-front-end -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+          mkdir -p /var/www/provider-plus-front-end
+          find /var/www/provider-plus-front-end -mindepth 1 -maxdepth 1 -exec rm -rf {} +
 
     - name: Upload build to server
       uses: appleboy/scp-action@v0.1.7
@@ -56,8 +56,7 @@ jobs:
         username: ${{ secrets.FRONTEND_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
-          sudo chown -R www-data:www-data /var/www/provider-plus-front-end
-          sudo chmod -R 755 /var/www/provider-plus-front-end
+          chmod -R 755 /var/www/provider-plus-front-end
 
     - name: Notify deployment status
       if: always()
