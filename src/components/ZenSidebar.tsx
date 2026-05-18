@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  LayoutGrid,
   Home,
   Users,
   Calendar,
@@ -7,6 +8,7 @@ import {
   Bell,
   CreditCard,
   CheckSquare,
+  Mail,
   LogOut,
   UserCheck,
   Building
@@ -32,15 +34,18 @@ const ZenSidebar: React.FC<ZenSidebarProps> = ({
   const isMedicalAdvisor = userRole === 'medical_advisor';
 
   const menuItems = isMedicalAdvisor ? [
+    { id: 'launcher', label: 'Home', icon: LayoutGrid },
     { id: 'medical-dashboard', label: 'Dashboard', icon: Home },
     { id: 'medical-retreats', label: 'Retreats', icon: Calendar },
   ] : [
+    { id: 'launcher', label: 'Home', icon: LayoutGrid },
     { id: 'clients', label: 'Clients', icon: Users },
     { id: 'bookings', label: 'Bookings', icon: Calendar },
     { id: 'medical', label: 'Medical', icon: Heart },
     { id: 'houses', label: 'Houses', icon: Building },
     { id: 'reminders', label: 'Reminders', icon: Bell },
     { id: 'payments', label: 'Payments', icon: CreditCard },
+    { id: 'communications', label: 'Communications', icon: Mail },
     { id: 'requirements', label: 'Requirements', icon: CheckSquare },
   ];
 

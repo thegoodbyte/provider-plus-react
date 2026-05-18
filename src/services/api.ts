@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Retreat, House, Client, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem } from '../types';
+import { Retreat, House, Client, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalReviewRequest, BookingFlowItem, BookingFlowTemplate, MailSettings, EmailTemplate, SentEmail } from '../types';
 import { authService } from './authService';
 import { cacheService } from './cacheService';
 import { API_BASE_URL } from '../config/api.config';
@@ -179,6 +179,7 @@ export const bookingsApi = {
   getByRetreat: (retreatId: string) => cachedGet<RetreatClient[]>(`bookings:retreat:${retreatId}`, () => api.get<RetreatClient[]>(`/bookings/retreat/${retreatId}`)),
   getByClient: (clientId: string) => cachedGet<RetreatClient[]>(`bookings:client:${clientId}`, () => api.get<RetreatClient[]>(`/bookings/client/${clientId}`)),
   getByRetreatWithDetails: (retreatId: string) => cachedGet<RetreatClient[]>(`bookings:retreat-details:${retreatId}`, () => api.get<RetreatClient[]>(`/bookings/retreat/${retreatId}/with-details`)),
+  getNextBookingNumber: () => api.get<number>('/bookings/next-booking-number'),
   create: (data: Omit<RetreatClient, '_id'>) => {
     cacheService.clearPattern('bookings:');
     return api.post<RetreatClient>('/bookings', data);
@@ -269,34 +270,81 @@ export const paymentsApi = {
 };
 
 export const paymentRequestsApi = {
-  getAll: () => cachedGet<PaymentRequest[]>('payment-requests:all', () => api.get<PaymentRequest[]>('/payments/requests')),
-  getOne: (id: string) => cachedGet<PaymentRequest>(`payment-requests:${id}`, () => api.get<PaymentRequest>(`/payments/requests/${id}`)),
-  getByRetreat: (retreatId: string) => cachedGet<PaymentRequest[]>(`payment-requests:retreat:${retreatId}`, () => api.get<PaymentRequest[]>(`/payments/requests/by-retreat/${retreatId}`)),
-  getByClient: (clientId: string) => cachedGet<PaymentRequest[]>(`payment-requests:client:${clientId}`, () => api.get<PaymentRequest[]>(`/payments/requests/by-client/${clientId}`)),
+  getAll: () => cachedGet<PaymentRequest[]>('payment-requests:all', () => api.get<PaymentRequest[]>('/payment-requests')),
+  getOne: (id: string) => cachedGet<PaymentRequest>(`payment-requests:${id}`, () => api.get<PaymentRequest>(`/payment-requests/${id}`)),
+  getNextDisplayId: () => api.get<number>('/payment-requests/next-display-id'),
+  getByRetreat: (retreatId: string) => cachedGet<PaymentRequest[]>(`payment-requests:retreat:${retreatId}`, () => api.get<PaymentRequest[]>(`/payment-requests?retreatId=${retreatId}`)),
+  getByClient: (clientId: string) => cachedGet<PaymentRequest[]>(`payment-requests:client:${clientId}`, () => api.get<PaymentRequest[]>(`/payment-requests?clientId=${clientId}`)),
   create: (data: Omit<PaymentRequest, '_id'>) => {
     cacheService.clearPattern('payment-requests:');
-    return api.post<PaymentRequest>('/payments/requests', data);
+    return api.post<PaymentRequest>('/payment-requests', data);
   },
   update: (id: string, data: Partial<PaymentRequest>) => {
     cacheService.clearPattern('payment-requests:');
-    return api.put<PaymentRequest>(`/payments/requests/${id}`, data);
+    return api.put<PaymentRequest>(`/payment-requests/${id}`, data);
   },
   delete: (id: string) => {
     cacheService.clearPattern('payment-requests:');
-    return api.delete(`/payments/requests/${id}`);
+    return api.delete(`/payment-requests/${id}`);
   },
   markAsPaid: (id: string, paymentId: string) => {
     cacheService.clearPattern('payment-requests:');
     cacheService.clearPattern('payments:');
-    return api.put<PaymentRequest>(`/payments/requests/${id}/mark-paid`, { paymentId });
+    return api.put<PaymentRequest>(`/payment-requests/${id}/mark-paid`, { paymentId });
   },
   markAsOverdue: (id: string) => {
     cacheService.clearPattern('payment-requests:');
-    return api.put<PaymentRequest>(`/payments/requests/${id}/mark-overdue`);
+    return api.put<PaymentRequest>(`/payment-requests/${id}/mark-overdue`);
   },
   sendReminder: (id: string) => {
     cacheService.clearPattern('payment-requests:');
-    return api.put<PaymentRequest>(`/payments/requests/${id}/send-reminder`);
+    return api.put<PaymentRequest>(`/payment-requests/${id}/send-reminder`);
+  },
+};
+
+export const communicationsApi = {
+  getSettings: () => api.get<MailSettings>('/communications/settings'),
+  saveSettings: (data: Partial<MailSettings>) => api.patch<MailSettings>('/communications/settings', data),
+  getAuthUrl: () => api.get<{ authUrl: string; state: string; redirectUri: string }>('/communications/gmail/auth-url'),
+  disconnect: () => api.post<MailSettings>('/communications/gmail/disconnect', {}),
+  testConnection: () => api.post<{ settings: MailSettings; profile: Record<string, any> }>('/communications/gmail/test', {}),
+  getTemplates: () => cachedGet<EmailTemplate[]>('communications:templates', () => api.get<EmailTemplate[]>('/communications/templates')),
+  getTemplate: (id: string) => cachedGet<EmailTemplate>(`communications:templates:${id}`, () => api.get<EmailTemplate>(`/communications/templates/${id}`)),
+  getNextTemplateDisplayId: () => api.get<number>('/communications/templates/next-display-id'),
+  createTemplate: (data: Omit<EmailTemplate, '_id' | 'createdAt' | 'updatedAt'>) => {
+    cacheService.clearPattern('communications:templates');
+    return api.post<EmailTemplate>('/communications/templates', data);
+  },
+  updateTemplate: (id: string, data: Partial<EmailTemplate>) => {
+    cacheService.clearPattern('communications:templates');
+    return api.patch<EmailTemplate>(`/communications/templates/${id}`, data);
+  },
+  deleteTemplate: (id: string) => {
+    cacheService.clearPattern('communications:templates');
+    return api.delete(`/communications/templates/${id}`);
+  },
+  getSentEmails: () => cachedGet<SentEmail[]>('communications:sent-emails', () => api.get<SentEmail[]>('/communications/sent-emails')),
+  getSentEmail: (id: string) => cachedGet<SentEmail>(`communications:sent-emails:${id}`, () => api.get<SentEmail>(`/communications/sent-emails/${id}`)),
+  sendEmail: (data: {
+    to: string;
+    cc?: string;
+    bcc?: string;
+    subject?: string;
+    bodyText?: string;
+    bodyHtml?: string;
+    templateId?: string;
+    clientId?: string;
+    retreatId?: string;
+    relatedEntityType?: string;
+    relatedEntityId?: string;
+    fromName?: string;
+    fromEmail?: string;
+    replyTo?: string;
+    variables?: Record<string, any>;
+    createdBy?: string;
+  }) => {
+    cacheService.clearPattern('communications:sent-emails');
+    return api.post<SentEmail>('/communications/send', data);
   },
 };
 
@@ -437,8 +485,10 @@ export const medicalTrackingApi = {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
-  getFileUrl: (id: string, s3Key: string) => {
-    return api.get(`${medicalTrackingBaseUrl}/${id}/file/${encodeURIComponent(s3Key)}`);
+  getFileUrl: (id: string, filePathOrKey: string) => {
+    const normalized = (filePathOrKey || '').toLowerCase();
+    const type = normalized.includes('liver') ? 'liver-panel' : 'ekg';
+    return api.get(`${medicalTrackingBaseUrl}/${id}/file/${type}`, { responseType: 'blob' });
   },
   delete: (id: string) => {
     cacheService.clearPattern('medical-tracking:');
@@ -468,6 +518,120 @@ export const medicalAdvisorApi = {
 
   // Get dashboard statistics
   getDashboardStats: () => cachedGet<any>('medical-advisor:stats', () => api.get<any>('/medical-advisor/dashboard/stats'), 30000), // 30 second cache
+};
+
+export const medicalReviewRequestsApi = {
+  getAll: () => cachedGet<MedicalReviewRequest[]>('medical-review-requests:all', () => api.get<MedicalReviewRequest[]>('/medical-review-requests')),
+  getQueue: () => cachedGet<MedicalReviewRequest[]>('medical-review-requests:queue', () => api.get<MedicalReviewRequest[]>('/medical-review-requests/queue')),
+  getOne: (id: string) => cachedGet<MedicalReviewRequest>(`medical-review-requests:${id}`, () => api.get<MedicalReviewRequest>(`/medical-review-requests/${id}`)),
+  getByClientAndRetreat: (clientId: string, retreatId: string) => cachedGet<MedicalReviewRequest[]>(`medical-review-requests:${clientId}:${retreatId}`, () => api.get<MedicalReviewRequest[]>(`/medical-review-requests?clientId=${clientId}&retreatId=${retreatId}`)),
+  getByMedicalTracking: (medicalTrackingId: string) => cachedGet<MedicalReviewRequest[]>(`medical-review-requests:tracking:${medicalTrackingId}`, () => api.get<MedicalReviewRequest[]>(`/medical-review-requests?medicalTrackingId=${medicalTrackingId}`)),
+  getNextDisplayId: () => api.get<number>('/medical-review-requests/next-display-id'),
+  create: (data: Omit<MedicalReviewRequest, '_id'>) => {
+    cacheService.clearPattern('medical-review-requests:');
+    return api.post<MedicalReviewRequest>('/medical-review-requests', data);
+  },
+  createFromTracking: (medicalTrackingId: string, requestType?: 'ekg' | 'liver' | 'both') => {
+    cacheService.clearPattern('medical-review-requests:');
+    return api.post<MedicalReviewRequest>(`/medical-review-requests/from-tracking/${medicalTrackingId}`, { requestType });
+  },
+  update: (id: string, data: Partial<MedicalReviewRequest>) => {
+    cacheService.clearPattern('medical-review-requests:');
+    return api.patch<MedicalReviewRequest>(`/medical-review-requests/${id}`, data);
+  },
+  review: (id: string, reviewData: {
+    status?: string;
+    reviewDecision?: 'OK' | 'caution' | 'NOT OK';
+    reviewNotes?: string;
+    overallNotes?: string;
+    ekgReviewDecision?: 'OK' | 'caution' | 'NOT OK';
+    ekgReviewNotes?: string;
+    liverReviewDecision?: 'OK' | 'caution' | 'NOT OK';
+    liverReviewNotes?: string;
+    reviewedBy?: string;
+  }) => {
+    cacheService.clearPattern('medical-review-requests:');
+    return api.patch<MedicalReviewRequest>(`/medical-review-requests/${id}/review`, reviewData);
+  },
+  delete: (id: string) => {
+    cacheService.clearPattern('medical-review-requests:');
+    return api.delete(`/medical-review-requests/${id}`);
+  },
+};
+
+export const bookingFlowApi = {
+  getTemplates: (retreatId: string) => cachedGet<BookingFlowTemplate[]>(`booking-flow:templates:${retreatId}`, () => api.get<BookingFlowTemplate[]>(`/booking-flow/templates?retreatId=${retreatId}`)),
+  getLibraryTemplates: () => cachedGet<BookingFlowTemplate[]>('booking-flow:library:templates', () => api.get<BookingFlowTemplate[]>('/booking-flow/library/templates')),
+  createTemplate: (data: Omit<BookingFlowTemplate, '_id'>) => {
+    cacheService.clearPattern('booking-flow:');
+    return api.post<BookingFlowTemplate>('/booking-flow/templates', data);
+  },
+  createLibraryTemplate: (data: Omit<BookingFlowTemplate, '_id'>) => {
+    cacheService.clearPattern('booking-flow:');
+    return api.post<BookingFlowTemplate>('/booking-flow/library/templates', data);
+  },
+  updateTemplate: (id: string, data: Partial<BookingFlowTemplate>) => {
+    cacheService.clearPattern('booking-flow:');
+    return api.patch<BookingFlowTemplate>(`/booking-flow/templates/${id}`, data);
+  },
+  updateLibraryTemplate: (id: string, data: Partial<BookingFlowTemplate>) => {
+    cacheService.clearPattern('booking-flow:');
+    return api.patch<BookingFlowTemplate>(`/booking-flow/library/templates/${id}`, data);
+  },
+  deleteTemplate: (id: string) => {
+    cacheService.clearPattern('booking-flow:');
+    return api.delete(`/booking-flow/templates/${id}`);
+  },
+  deleteLibraryTemplate: (id: string) => {
+    cacheService.clearPattern('booking-flow:');
+    return api.delete(`/booking-flow/library/templates/${id}`);
+  },
+  seedTemplates: (retreatId: string) => {
+    cacheService.clearPattern('booking-flow:');
+    return api.post(`/booking-flow/templates/seed/${retreatId}`, {});
+  },
+  seedLibraryTemplates: () => {
+    cacheService.clearPattern('booking-flow:');
+    return api.post('/booking-flow/library/templates/seed', {});
+  },
+  applyLibraryToRetreat: (retreatId: string) => {
+    cacheService.clearPattern('booking-flow:');
+    return api.post(`/booking-flow/library/templates/apply/${retreatId}`, {});
+  },
+  applyLibraryTemplateToRetreat: (templateId: string, retreatId: string) => {
+    cacheService.clearPattern('booking-flow:');
+    return api.post(`/booking-flow/library/templates/${templateId}/apply/${retreatId}`, {});
+  },
+  generateForBooking: (bookingId: string) => {
+    cacheService.clearPattern('booking-flow:');
+    return api.post<BookingFlowItem[]>(`/booking-flow/generate/booking/${bookingId}`, {});
+  },
+  generateForRetreat: (retreatId: string) => {
+    cacheService.clearPattern('booking-flow:');
+    return api.post<BookingFlowItem[]>(`/booking-flow/generate/retreat/${retreatId}`, {});
+  },
+  getItems: (params: { bookingId?: string; retreatId?: string; clientId?: string }) => {
+    const query = new URLSearchParams();
+    if (params.bookingId) query.set('bookingId', params.bookingId);
+    if (params.retreatId) query.set('retreatId', params.retreatId);
+    if (params.clientId) query.set('clientId', params.clientId);
+    const key = `booking-flow:items:${query.toString()}`;
+    return cachedGet<BookingFlowItem[]>(key, () => api.get<BookingFlowItem[]>(`/booking-flow/items?${query.toString()}`));
+  },
+  getMatrix: (retreatId: string) => cachedGet<any>(`booking-flow:matrix:${retreatId}`, () => api.get<any>(`/booking-flow/matrix/${retreatId}`)),
+  getItem: (id: string) => cachedGet<BookingFlowItem>(`booking-flow:item:${id}`, () => api.get<BookingFlowItem>(`/booking-flow/items/${id}`)),
+  updateItem: (id: string, data: Partial<BookingFlowItem>) => {
+    cacheService.clearPattern('booking-flow:');
+    return api.patch<BookingFlowItem>(`/booking-flow/items/${id}`, data);
+  },
+  completeItem: (id: string, notes?: string) => {
+    cacheService.clearPattern('booking-flow:');
+    return api.patch<BookingFlowItem>(`/booking-flow/items/${id}/complete`, { notes });
+  },
+  deleteItem: (id: string) => {
+    cacheService.clearPattern('booking-flow:');
+    return api.delete(`/booking-flow/items/${id}`);
+  },
 };
 
 export const notesApi = {

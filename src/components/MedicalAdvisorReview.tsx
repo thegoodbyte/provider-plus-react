@@ -36,7 +36,30 @@ const MedicalAdvisorReview: React.FC = () => {
     try {
       setIsLoading(true);
       const itemResponse = await medicalTrackingApi.getOne(id);
-      const itemData = itemResponse.data;
+      const itemData = {
+        ...itemResponse.data,
+        display_id: itemResponse.data.display_id || itemResponse.data.clientDisplayId,
+        image: itemResponse.data.image
+          || itemResponse.data.ekgS3Key
+          || itemResponse.data.liverPanelS3Key
+          || itemResponse.data.ekgFilePath
+          || itemResponse.data.liverPanelFilePath
+          || '',
+        type: itemResponse.data.type
+          || (itemResponse.data.ekgFilePath || itemResponse.data.ekgS3Key ? 'EKG' : undefined)
+          || (itemResponse.data.liverPanelFilePath || itemResponse.data.liverPanelS3Key ? 'Liver' : 'Question'),
+        notes: itemResponse.data.notes
+          || itemResponse.data.generalNotes
+          || itemResponse.data.ekgAdvisorNotes
+          || itemResponse.data.liverPanelAdvisorNotes
+          || '',
+        date_received: itemResponse.data.date_received
+          || itemResponse.data.ekgUploadedAt
+          || itemResponse.data.liverPanelUploadedAt
+          || itemResponse.data.ekgReceivedDate
+          || itemResponse.data.liverPanelReceivedDate
+          || itemResponse.data.createdAt,
+      };
       setItem(itemData);
 
       // Set current review state if exists
@@ -57,7 +80,8 @@ const MedicalAdvisorReview: React.FC = () => {
       if (itemData.image) {
         try {
           const imageUrlResponse = await medicalTrackingApi.getFileUrl(id, itemData.image);
-          setImageUrl(imageUrlResponse.data.presignedUrl);
+          const blob = imageUrlResponse.data as Blob;
+          setImageUrl(URL.createObjectURL(blob));
         } catch (error) {
           console.error('Error loading image URL:', error);
           setImageError(true);
@@ -71,7 +95,7 @@ const MedicalAdvisorReview: React.FC = () => {
             const fileUrlResponse = await medicalTrackingApi.getFileUrl(id, fileKey);
             return {
               key: fileKey,
-              url: fileUrlResponse.data.presignedUrl
+              url: URL.createObjectURL(fileUrlResponse.data as Blob)
             };
           });
           const fileUrls = await Promise.all(fileUrlPromises);
@@ -90,6 +114,11 @@ const MedicalAdvisorReview: React.FC = () => {
   const formatDate = (date: string | Date | undefined) => {
     if (!date) return 'N/A';
     return new Date(date).toLocaleDateString();
+  };
+
+  const formatDateTime = (date: string | Date | undefined) => {
+    if (!date) return 'N/A';
+    return new Date(date).toLocaleString();
   };
 
   const getTypeColor = (type: string) => {
@@ -126,6 +155,15 @@ const MedicalAdvisorReview: React.FC = () => {
         return 'bg-gray-200 text-gray-700 hover:bg-gray-300';
     }
   };
+
+  const fileName = item?.ekgFileName
+    || item?.liverPanelFileName
+    || item?.image
+    || '';
+  const fileSize = item?.ekgFileSize || item?.liverPanelFileSize;
+  const source = item?.ekgSource || item?.liverPanelSource || item?.source || 'CW';
+  const uploadedAt = item?.ekgUploadedAt || item?.liverPanelUploadedAt || item?.uploadedAt || item?.date_received;
+  const testDate = item?.ekgTestDate || item?.liverPanelTestDate;
 
   const handleSaveReview = async () => {
     if (!item || !reviewStatus) {
@@ -258,6 +296,29 @@ const MedicalAdvisorReview: React.FC = () => {
                     Date Received:
                   </span>
                   <span className="font-medium text-gray-900">{formatDate(item.date_received)}</span>
+                </div>
+              </div>
+
+              <div className="col-span-2 grid grid-cols-2 gap-4">
+                <div className="p-3 bg-gray-50 rounded-lg flex items-center justify-between">
+                  <span className="text-gray-600 font-medium">Uploaded At:</span>
+                  <span className="font-medium text-gray-900">{formatDateTime(uploadedAt)}</span>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-lg flex items-center justify-between">
+                  <span className="text-gray-600 font-medium">Test Date:</span>
+                  <span className="font-medium text-gray-900">{formatDate(testDate)}</span>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-lg flex items-center justify-between">
+                  <span className="text-gray-600 font-medium">Source:</span>
+                  <span className="font-medium text-gray-900">{source}</span>
+                </div>
+                <div className="p-3 bg-gray-50 rounded-lg flex items-center justify-between">
+                  <span className="text-gray-600 font-medium">File Size:</span>
+                  <span className="font-medium text-gray-900">{fileSize ? `${Math.round(fileSize / 1024)} KB` : 'N/A'}</span>
+                </div>
+                <div className="col-span-2 p-3 bg-gray-50 rounded-lg flex items-center justify-between">
+                  <span className="text-gray-600 font-medium">File Name:</span>
+                  <span className="font-medium text-gray-900 truncate max-w-[70%]" title={fileName}>{fileName || 'N/A'}</span>
                 </div>
               </div>
 

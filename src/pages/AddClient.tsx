@@ -118,14 +118,14 @@ const AddClient: React.FC = () => {
       <div className="bg-white border-b border-apple-gray-200 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
-            <div className="flex items-center">
+            <div className="flex items-center min-w-0 flex-1">
               <button
                 onClick={handleCancel}
                 className="mr-4 p-2 hover:bg-apple-gray-100 rounded-apple transition-colors"
               >
                 ← Back
               </button>
-              <h1 className="text-xl font-semibold text-apple-gray-900">Add New Client</h1>
+              <h1 className="text-xl font-semibold text-apple-gray-900 whitespace-nowrap">Add New Client</h1>
             </div>
             <div className="flex items-center space-x-3">
               {/* Cancel button on the left side of actions */}
@@ -200,13 +200,18 @@ const AddClient: React.FC = () => {
                   type="email"
                 />
 
-                <AppleInput
-                  label="Client Portal PIN"
-                  value={formData.loginPin || ''}
-                  onChange={(value) => setFormData({ ...formData, loginPin: value.replace(/\D/g, '').slice(0, 6) })}
-                  placeholder="4-6 digit login PIN"
-                  type="text"
-                />
+                <div>
+                  <label className="block text-sm font-medium text-apple-gray-700 mb-1">Client Portal PIN</label>
+                  <input
+                    type="text"
+                    value="Generated automatically on save"
+                    readOnly
+                    className="w-full px-3 py-2 border border-apple-gray-200 rounded-apple bg-apple-gray-50 text-apple-gray-500 text-sm"
+                  />
+                  <p className="mt-1 text-xs text-apple-gray-500">
+                    A secure 6-digit PIN is assigned by the server when the client is created.
+                  </p>
+                </div>
 
                 <div>
                   <label className="block text-sm font-medium text-apple-gray-700 mb-1">Phone *</label>

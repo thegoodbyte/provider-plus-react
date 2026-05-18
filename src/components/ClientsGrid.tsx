@@ -168,37 +168,9 @@ const ClientsGrid: React.FC = () => {
   }, []);
 
   const handleEdit = useCallback((client: Client) => {
-    setEditingClient(client);
-    setValidationErrors([]);
-
-    // Parse phone number to extract country code
-    let countryCode = '+420'; // Default to Czech Republic
-    let phoneNumber = client.phone || '';
-
-    // Check if phone starts with a country code
-    if (phoneNumber.startsWith('+')) {
-      // Try to match against known country codes
-      const matchedCode = COUNTRY_CODES.find(cc => phoneNumber.startsWith(cc.code));
-      if (matchedCode) {
-        countryCode = matchedCode.code;
-        phoneNumber = phoneNumber.substring(matchedCode.code.length).trim();
-      }
-    }
-
-    // Extract year from dateOfBirth if present
-    let yearOfBirth;
-    if (client.dateOfBirth) {
-      yearOfBirth = new Date(client.dateOfBirth).getFullYear();
-    }
-
-    setFormData({
-      ...client,
-      countryCode,
-      phoneNumber,
-      yearOfBirth
-    });
-    setIsModalOpen(true);
-  }, []);
+    if (!client?._id) return;
+    navigate(`/admin/clients/${client._id}/edit`);
+  }, [navigate]);
 
   const handleDelete = useCallback(async (id: string) => {
     if (window.confirm('Are you sure you want to delete this client?')) {

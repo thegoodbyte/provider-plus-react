@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { PaymentRequest, Client, Retreat } from '../types';
 import SearchableClientSelect from './SearchableClientSelect';
-import { clientsApi, retreatsApi } from '../services/api';
-import { FiX, FiSave, FiDollarSign } from 'react-icons/fi';
+import SearchableRetreatSelect from './SearchableRetreatSelect';
+import { clientsApi, paymentRequestsApi, retreatsApi } from '../services/api';
+import { FiSave, FiArrowLeft } from 'react-icons/fi';
 
-// Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
 };
@@ -16,89 +16,96 @@ interface PaymentRequestFormProps {
   isEdit?: boolean;
 }
 
+const defaultDate = () => new Date().toISOString().split('T')[0];
+const resolveId = (value: any) => (typeof value === 'object' && value?._id ? value._id : value || '');
+
 const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
   paymentRequest,
   onSave,
   onCancel,
-  isEdit = false
+  isEdit = false,
 }) => {
   const [clients, setClients] = useState<Client[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState<{
-    clientId: string;
-    retreatId: string;
-    requestedAmount: string;
-    fullPrice: string;
-    currency: 'CZK' | 'EUR' | 'PLN' | 'USD';
-    requestType: 'deposit' | 'balance' | 'full_payment' | 'additional';
-    requestDate: string;
-    dueDate: string;
-    description: string;
-    notes: string;
-    isUrgent: boolean;
-    status: 'pending' | 'paid' | 'overdue' | 'cancelled';
-  }>({
-    clientId: paymentRequest?.clientId || '',
-    retreatId: paymentRequest?.retreatId || '',
-    requestedAmount: paymentRequest?.requestedAmount?.toString() || '',
-    fullPrice: paymentRequest?.fullPrice?.toString() || '',
+  const [nextDisplayId, setNextDisplayId] = useState<number | null>(paymentRequest?.display_id || null);
+  const [formData, setFormData] = useState({
+    display_id: paymentRequest?.display_id || '',
+    invoiceNumber: paymentRequest?.invoiceNumber || paymentRequest?.display_id?.toString() || '',
+    clientId: resolveId(paymentRequest?.clientId),
+    retreatId: resolveId(paymentRequest?.retreatId),
+    paymentDate: paymentRequest?.paymentDate ? new Date(paymentRequest.paymentDate).toISOString().split('T')[0] : defaultDate(),
+    paymentType: paymentRequest?.paymentType || 'Other',
+    fullPriceQuote: paymentRequest?.fullPriceQuote?.toString() || '',
+    amountPaid: paymentRequest?.amountPaid?.toString() || '',
     currency: paymentRequest?.currency || 'EUR',
-    requestType: paymentRequest?.requestType || 'deposit',
-    requestDate: paymentRequest?.requestDate ?
-      new Date(paymentRequest.requestDate).toISOString().split('T')[0] :
-      new Date().toISOString().split('T')[0],
-    dueDate: paymentRequest?.dueDate ?
-      new Date(paymentRequest.dueDate).toISOString().split('T')[0] : '',
-    description: paymentRequest?.description || '',
-    notes: paymentRequest?.notes || '',
+    note: paymentRequest?.note || paymentRequest?.notes || '',
+    status: paymentRequest?.status || 'pending',
+    dueDate: paymentRequest?.dueDate ? new Date(paymentRequest.dueDate).toISOString().split('T')[0] : '',
+    paidDate: paymentRequest?.paidDate ? new Date(paymentRequest.paidDate).toISOString().split('T')[0] : '',
     isUrgent: paymentRequest?.isUrgent || false,
-    status: paymentRequest?.status || 'pending'
+    paymentInstructions: paymentRequest?.paymentInstructions || '',
+    createdBy: paymentRequest?.createdBy || '',
   });
 
   useEffect(() => {
-    fetchClientsAndRetreats();
+    const loadOptions = async () => {
+      try {
+        const [clientsResponse, retreatsResponse, nextIdResponse] = await Promise.all([
+          clientsApi.getAll(),
+          retreatsApi.getAll(),
+          isEdit ? Promise.resolve(null) : paymentRequestsApi.getNextDisplayId().catch((error) => {
+            console.error('Error fetching next payment request display ID:', error);
+            return null;
+          }),
+        ]);
+        setClients(clientsResponse.data || []);
+        setRetreats(retreatsResponse.data || []);
+        if (!isEdit && nextIdResponse?.data) {
+          setNextDisplayId(nextIdResponse.data);
+          handleChange('display_id', nextIdResponse.data);
+          handleChange('invoiceNumber', nextIdResponse.data.toString());
+        }
+      } catch (error) {
+        console.error('Error fetching payment request options:', error);
+      }
+    };
+
+    loadOptions();
   }, []);
 
-  const fetchClientsAndRetreats = async () => {
-    try {
-      const [clientsResponse, retreatsResponse] = await Promise.all([
-        clientsApi.getAll(),
-        retreatsApi.getAll()
-      ]);
-      setClients(clientsResponse.data || []);
-      setRetreats(retreatsResponse.data || []);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    }
+  const handleChange = (field: string, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.clientId || !formData.retreatId || !formData.requestedAmount || !formData.fullPrice) {
+    if (!formData.clientId || !formData.retreatId || !formData.paymentDate || !formData.fullPriceQuote || !formData.amountPaid) {
       alert('Please fill in all required fields');
       return;
     }
 
     setLoading(true);
     try {
-      const paymentRequestData: Omit<PaymentRequest, '_id'> = {
+      await onSave({
+        display_id: Number.isFinite(Number(formData.display_id)) ? Number(formData.display_id) : undefined,
+        invoiceNumber: formData.invoiceNumber || undefined,
         clientId: formData.clientId,
         retreatId: formData.retreatId,
-        requestedAmount: parseFloat(formData.requestedAmount),
-        fullPrice: parseFloat(formData.fullPrice),
-        currency: formData.currency,
-        requestType: formData.requestType,
-        requestDate: formData.requestDate,
+        paymentDate: formData.paymentDate,
+        paymentType: formData.paymentType as PaymentRequest['paymentType'],
+        fullPriceQuote: parseFloat(formData.fullPriceQuote),
+        amountPaid: parseFloat(formData.amountPaid),
+        currency: formData.currency as PaymentRequest['currency'],
+        note: formData.note || '',
+        status: formData.status as PaymentRequest['status'],
         dueDate: formData.dueDate || undefined,
-        description: formData.description,
-        notes: formData.notes,
+        paidDate: formData.paidDate || undefined,
         isUrgent: formData.isUrgent,
-        status: formData.status
-      };
-
-      await onSave(paymentRequestData);
+        paymentInstructions: formData.paymentInstructions || undefined,
+        createdBy: formData.createdBy || undefined,
+      });
     } catch (error) {
       console.error('Error saving payment request:', error);
       alert('Error saving payment request');
@@ -107,261 +114,224 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     }
   };
 
-  const handleInputChange = (field: string, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  // Auto-fill retreat when client changes (get their latest booking)
-  useEffect(() => {
-    if (formData.clientId && !formData.retreatId) {
-      // Could implement logic to auto-select the client's latest retreat
-    }
-  }, [formData.clientId]);
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Icon icon={FiDollarSign} className="w-6 h-6 text-blue-600" />
-            <h2 className="text-xl font-semibold text-gray-900">
-              {isEdit ? 'Edit Payment Request' : 'New Payment Request'}
-            </h2>
-          </div>
+    <div className="p-6 max-w-6xl mx-auto">
+      <div className="mb-6 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4 min-w-0">
           <button
+            type="button"
             onClick={onCancel}
-            className="p-2 hover:bg-gray-100 rounded-full"
-            aria-label="Close"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
           >
-            <Icon icon={FiX} className="w-5 h-5 text-gray-500" />
+            <Icon icon={FiArrowLeft} className="w-4 h-4" />
+            Back
           </button>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold text-gray-900 whitespace-nowrap">
+              {isEdit ? 'Edit Payment Request' : 'Add Payment Request'}
+            </h1>
+            <p className="text-sm text-gray-600">
+              {isEdit ? 'Update invoice and payment request details' : 'Create a new invoice or payment request'}
+            </p>
+          </div>
         </div>
+      </div>
 
-        <form onSubmit={handleSubmit} className="p-6">
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Client Selection */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Invoice Number</label>
+              <input
+                type="text"
+                value={formData.invoiceNumber}
+                readOnly
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700"
+                placeholder={nextDisplayId ? nextDisplayId.toString() : '1001'}
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                {isEdit ? 'This is the saved invoice number.' : 'This number is assigned before save.'}
+              </p>
+            </div>
+
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Client *
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Client *</label>
               <SearchableClientSelect
                 clients={clients}
                 selectedClientId={formData.clientId}
-                onClientSelect={(clientId) => handleInputChange('clientId', clientId)}
-                placeholder="Search clients by name or number..."
+                onClientSelect={(clientId) => handleChange('clientId', clientId)}
+                placeholder="Search client by name, email, or display ID"
                 className="w-full"
               />
             </div>
 
-            {/* Retreat Selection */}
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Retreat *
-              </label>
-              <select
-                value={formData.retreatId}
-                onChange={(e) => handleInputChange('retreatId', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              >
-                <option value="">Select a retreat...</option>
-                {retreats.map((retreat) => (
-                  <option key={retreat._id} value={retreat._id}>
-                    {retreat.name} - {retreat.location}
-                    {retreat.startDate && ` (${new Date(retreat.startDate).toLocaleDateString()})`}
-                  </option>
-                ))}
-              </select>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Retreat *</label>
+              <SearchableRetreatSelect
+                retreats={retreats}
+                selectedRetreatId={formData.retreatId}
+                onRetreatSelect={(retreatId) => handleChange('retreatId', retreatId)}
+                placeholder="Search retreat by name or location"
+                className="w-full"
+              />
             </div>
 
-            {/* Payment Type */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Payment Type *
-              </label>
-              <select
-                value={formData.requestType}
-                onChange={(e) => handleInputChange('requestType', e.target.value as any)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              >
-                <option value="deposit">Deposit</option>
-                <option value="balance">Balance</option>
-                <option value="full_payment">Full Payment</option>
-                <option value="additional">Additional Fee</option>
-              </select>
-            </div>
-
-            {/* Currency */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Currency *
-              </label>
-              <select
-                value={formData.currency}
-                onChange={(e) => handleInputChange('currency', e.target.value as any)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              >
-                <option value="EUR">EUR (€)</option>
-                <option value="USD">USD ($)</option>
-                <option value="CZK">CZK (Kč)</option>
-                <option value="PLN">PLN (zł)</option>
-              </select>
-            </div>
-
-            {/* Requested Amount */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Requested Amount *
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  value={formData.requestedAmount}
-                  onChange={(e) => handleInputChange('requestedAmount', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="0.00"
-                  min="0"
-                  step="0.01"
-                  required
-                />
-                <span className="absolute right-3 top-2 text-gray-500">
-                  {formData.currency}
-                </span>
-              </div>
-            </div>
-
-            {/* Full Price */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Full Price *
-              </label>
-              <div className="relative">
-                <input
-                  type="number"
-                  value={formData.fullPrice}
-                  onChange={(e) => handleInputChange('fullPrice', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="0.00"
-                  min="0"
-                  step="0.01"
-                  required
-                />
-                <span className="absolute right-3 top-2 text-gray-500">
-                  {formData.currency}
-                </span>
-              </div>
-            </div>
-
-            {/* Request Date */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Request Date *
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Date of Payment *</label>
               <input
                 type="date"
-                value={formData.requestDate}
-                onChange={(e) => handleInputChange('requestDate', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={formData.paymentDate}
+                onChange={(e) => handleChange('paymentDate', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               />
             </div>
 
-            {/* Due Date */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Due Date
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Type *</label>
+              <select
+                value={formData.paymentType}
+                onChange={(e) => handleChange('paymentType', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              >
+                <option value="CSOB">CSOB</option>
+                <option value="Paypal">Paypal</option>
+                <option value="Revolut">Revolut</option>
+                <option value="Wise">Wise</option>
+                <option value="Cash">Cash</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Full Price Quote *</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.fullPriceQuote}
+                onChange={(e) => handleChange('fullPriceQuote', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="0.00"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Amount Paid *</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.amountPaid}
+                onChange={(e) => handleChange('amountPaid', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="0.00"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Currency *</label>
+              <select
+                value={formData.currency}
+                onChange={(e) => handleChange('currency', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              >
+                <option value="CZK">CZK</option>
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="PLN">PLN</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Due Date</label>
               <input
                 type="date"
                 value={formData.dueDate}
-                onChange={(e) => handleInputChange('dueDate', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onChange={(e) => handleChange('dueDate', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
-            {/* Status (only show in edit mode) */}
-            {isEdit && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Status
-                </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => handleInputChange('status', e.target.value as any)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="pending">Pending</option>
-                  <option value="paid">Paid</option>
-                  <option value="overdue">Overdue</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </div>
-            )}
-
-            {/* Urgent Flag */}
-            <div className="flex items-center">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Paid Date</label>
               <input
-                type="checkbox"
-                id="isUrgent"
-                checked={formData.isUrgent}
-                onChange={(e) => handleInputChange('isUrgent', e.target.checked)}
-                className="mr-2 h-4 w-4 text-red-600 focus:ring-red-500 border-gray-300 rounded"
-              />
-              <label htmlFor="isUrgent" className="text-sm font-medium text-gray-700">
-                Mark as Urgent
-              </label>
-            </div>
-
-            {/* Description */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Description
-              </label>
-              <input
-                type="text"
-                value={formData.description}
-                onChange={(e) => handleInputChange('description', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Brief description of the payment request..."
+                type="date"
+                value={formData.paidDate}
+                onChange={(e) => handleChange('paidDate', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
-            {/* Notes */}
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Notes
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+              <select
+                value={formData.status}
+                onChange={(e) => handleChange('status', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="pending">Pending</option>
+                <option value="sent">Sent</option>
+                <option value="paid">Paid</option>
+                <option value="overdue">Overdue</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+
+            <div className="flex items-center pt-7">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={formData.isUrgent}
+                  onChange={(e) => handleChange('isUrgent', e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                Mark as urgent
               </label>
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Payment Note</label>
               <textarea
-                value={formData.notes}
-                onChange={(e) => handleInputChange('notes', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={formData.note}
+                onChange={(e) => handleChange('note', e.target.value)}
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Additional notes or context"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Payment Instructions</label>
+              <textarea
+                value={formData.paymentInstructions}
+                onChange={(e) => handleChange('paymentInstructions', e.target.value)}
                 rows={3}
-                placeholder="Additional notes or instructions..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Bank details, reference text, or other instructions"
               />
             </div>
           </div>
 
-          {/* Form Actions */}
-          <div className="flex items-center justify-end gap-3 mt-8 pt-6 border-t border-gray-200">
+          <div className="flex items-center justify-end gap-3 pt-6 border-t border-gray-200">
             <button
               type="button"
               onClick={onCancel}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Icon icon={FiSave} className="w-4 h-4" />
-              {loading ? 'Saving...' : (isEdit ? 'Update Request' : 'Create Request')}
+              {loading ? 'Saving...' : isEdit ? 'Update Request' : 'Create Request'}
             </button>
           </div>
         </form>

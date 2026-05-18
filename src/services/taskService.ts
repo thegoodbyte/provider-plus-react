@@ -25,6 +25,24 @@ export interface Task {
   completedBy?: string;
   tags: string[];
   notes?: string;
+  sourceType?: string;
+  sourceId?: string;
+  bookingFlowItemId?: string | {
+    _id: string;
+    bookingId?: string | {
+      _id: string;
+      clientId?: any;
+      retreatId?: any;
+    };
+    clientId?: any;
+    retreatId?: any;
+    templateId?: any;
+    key?: string;
+    title?: string;
+    dueDate?: string;
+    status?: string;
+  };
+  reminderKind?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -40,6 +58,10 @@ export interface CreateTaskDto {
   assignedTo?: string;
   tags?: string[];
   notes?: string;
+  sourceType?: string;
+  sourceId?: string;
+  bookingFlowItemId?: string;
+  reminderKind?: string;
 }
 
 export interface TaskFilters {
@@ -48,6 +70,9 @@ export interface TaskFilters {
   urgency?: string;
   clientId?: string;
   retreatId?: string;
+  sourceType?: string;
+  sourceId?: string;
+  bookingFlowItemId?: string;
   dueDateFrom?: string;
   dueDateTo?: string;
   overdue?: boolean;

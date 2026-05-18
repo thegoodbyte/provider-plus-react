@@ -6,6 +6,7 @@ import SearchableClientSelect from './SearchableClientSelect';
 import LoadingSpinner from './LoadingSpinner';
 import { FiPlus, FiEdit2, FiTrash2, FiEye, FiUser, FiCalendar, FiFileText, FiSearch, FiChevronUp, FiChevronDown } from 'react-icons/fi';
 import { generateBookingPDF } from './BookingConfirmationPDF';
+import BookingEditorForm from './BookingEditorForm';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -18,6 +19,15 @@ interface BookingWithDetails extends RetreatClient {
   retreatBackgroundColor?: string;
 }
 
+type BookingFormData = {
+  clientId: string;
+  retreatId: string;
+  totalAmount: number;
+  currency: 'EUR' | 'USD' | 'CZK' | 'PLN';
+  status: 'pending' | 'conditional' | 'confirmed' | 'approved' | 'declined' | 'moved' | 'checked-in' | 'checked-out' | 'cancelled';
+  bookingNumber: string;
+};
+
 type SortField = 'bookingNumber' | 'clientName' | 'retreatName' | 'bookingDate' | 'status';
 type SortDirection = 'asc' | 'desc';
 
@@ -29,12 +39,12 @@ const BookingsGrid: React.FC = () => {
   const [editingBooking, setEditingBooking] = useState<BookingWithDetails | null>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<BookingFormData>({
     clientId: '',
     retreatId: '',
     totalAmount: 0,
     currency: 'EUR' as 'EUR' | 'USD' | 'CZK' | 'PLN',
-    status: 'pending' as 'pending' | 'confirmed' | 'checked-in' | 'checked-out' | 'cancelled',
+    status: 'pending',
     bookingNumber: ''
   });
   const [bookingNumberError, setBookingNumberError] = useState('');
@@ -43,6 +53,7 @@ const BookingsGrid: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField, setSortField] = useState<SortField>('bookingNumber');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const isMobileViewport = () => window.matchMedia('(max-width: 767px)').matches;
 
   useEffect(() => {
     fetchBookings();
@@ -142,7 +153,11 @@ const BookingsGrid: React.FC = () => {
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       confirmed: 'bg-green-100 text-green-800',
+      approved: 'bg-emerald-100 text-emerald-800',
+      conditional: 'bg-amber-100 text-amber-800',
       pending: 'bg-yellow-100 text-yellow-800',
+      declined: 'bg-orange-100 text-orange-800',
+      moved: 'bg-purple-100 text-purple-800',
       cancelled: 'bg-red-100 text-red-800',
       completed: 'bg-blue-100 text-blue-800'
     };
@@ -200,7 +215,7 @@ const BookingsGrid: React.FC = () => {
 
     // Check for duplicates in current bookings
     const isDuplicate = bookings.some(booking =>
-      booking.bookingNumber === String(numericBookingNumber) &&
+      Number(booking.bookingNumber) === numericBookingNumber &&
       booking._id !== currentBookingId
     );
 
@@ -347,7 +362,13 @@ const BookingsGrid: React.FC = () => {
             </select>
           </div>
           <AppleButton
-            onClick={() => setShowAddModal(true)}
+            onClick={() => {
+              if (isMobileViewport()) {
+                window.location.href = '/admin/bookings/new';
+                return;
+              }
+              setShowAddModal(true);
+            }}
             className="apple-button-primary"
           >
             <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
@@ -464,13 +485,17 @@ const BookingsGrid: React.FC = () => {
                       </button>
                       <button
                         onClick={() => {
+                          if (isMobileViewport()) {
+                            window.location.href = `/admin/bookings/${booking._id}/edit`;
+                            return;
+                          }
                           setEditingBooking(booking);
                           setFormData({
                             clientId: typeof booking.clientId === 'string' ? booking.clientId : (booking.clientId as any)?._id || '',
                             retreatId: typeof booking.retreatId === 'string' ? booking.retreatId : (booking.retreatId as any)?._id || '',
                             totalAmount: booking.totalAmount || 0,
                             currency: booking.currency || 'EUR',
-                            status: booking.status || 'pending',
+                            status: (booking.status || 'pending') as typeof formData.status,
                             bookingNumber: booking.bookingNumber?.toString() || ''
                           });
                           setBookingNumberError('');
@@ -516,130 +541,16 @@ const BookingsGrid: React.FC = () => {
       {/* Add Booking Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-medium mb-4">Add New Booking</h2>
-            <form
-              onSubmit={async (e) => {
-                e.preventDefault();
-                try {
-                  await bookingsApi.create({
-                    ...formData,
-                    registrationDate: new Date().toISOString(),
-                    checkInDate: new Date().toISOString(),
-                    checkOutDate: new Date().toISOString()
-                  });
-                  fetchBookings();
-                  setShowAddModal(false);
-                  setFormData({
-                    clientId: '',
-                    retreatId: '',
-                    totalAmount: 0,
-                    currency: 'EUR',
-                    status: 'pending',
-                    bookingNumber: ''
-                  });
-                } catch (error) {
-                  console.error('Error creating booking:', error);
-                  alert('Error creating booking');
-                }
+            <BookingEditorForm
+              mode="create"
+              onCancel={() => setShowAddModal(false)}
+              onSaved={() => {
+                fetchBookings();
+                setShowAddModal(false);
               }}
-              className="space-y-4"
-            >
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Client
-                </label>
-                <SearchableClientSelect
-                  clients={clients}
-                  selectedClientId={formData.clientId}
-                  onClientSelect={(clientId) => setFormData({ ...formData, clientId })}
-                  placeholder="Search and select a client..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Retreat
-                </label>
-                <select
-                  value={formData.retreatId}
-                  onChange={(e) => setFormData({ ...formData, retreatId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                >
-                  <option value="">Select a retreat...</option>
-                  {retreats.map((retreat) => (
-                    <option key={retreat._id} value={retreat._id}>
-                      {retreat.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Total Amount
-                </label>
-                <input
-                  type="number"
-                  value={formData.totalAmount}
-                  onChange={(e) => setFormData({ ...formData, totalAmount: Number(e.target.value) })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Currency
-                </label>
-                <select
-                  value={formData.currency}
-                  onChange={(e) => setFormData({ ...formData, currency: e.target.value as any })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="EUR">EUR</option>
-                  <option value="USD">USD</option>
-                  <option value="CZK">CZK</option>
-                  <option value="PLN">PLN</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Status
-                </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="pending">Pending</option>
-                  <option value="confirmed">Confirmed</option>
-                  <option value="checked-in">Checked In</option>
-                  <option value="checked-out">Checked Out</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-4">
-                <AppleButton
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="apple-button-secondary"
-                >
-                  Cancel
-                </AppleButton>
-                <AppleButton
-                  type="submit"
-                  className="apple-button-primary"
-                >
-                  Add Booking
-                </AppleButton>
-              </div>
-            </form>
+            />
           </div>
         </div>
       )}
@@ -647,152 +558,22 @@ const BookingsGrid: React.FC = () => {
       {/* Edit Booking Modal */}
       {showEditModal && editingBooking && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-medium mb-4">Edit Booking</h2>
-            <form
-              onSubmit={async (e) => {
-                e.preventDefault();
-
-                if (bookingNumberError) {
-                  alert('Please fix the booking number error before submitting');
-                  return;
-                }
-
-                try {
-                  await bookingsApi.update(editingBooking._id!, formData);
-                  fetchBookings();
-                  setShowEditModal(false);
-                  setEditingBooking(null);
-                } catch (error) {
-                  console.error('Error updating booking:', error);
-                  alert('Error updating booking');
-                }
+            <BookingEditorForm
+              mode="edit"
+              initialBooking={editingBooking}
+              bookingId={editingBooking._id}
+              onCancel={() => {
+                setShowEditModal(false);
+                setEditingBooking(null);
               }}
-              className="space-y-4"
-            >
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Client
-                </label>
-                <SearchableClientSelect
-                  clients={clients}
-                  selectedClientId={formData.clientId}
-                  onClientSelect={(clientId) => setFormData({ ...formData, clientId })}
-                  placeholder="Search and select a client..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Retreat
-                </label>
-                <select
-                  value={formData.retreatId}
-                  onChange={(e) => setFormData({ ...formData, retreatId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                >
-                  <option value="">Select a retreat...</option>
-                  {retreats.map((retreat) => (
-                    <option key={retreat._id} value={retreat._id}>
-                      {retreat.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Total Amount
-                </label>
-                <input
-                  type="number"
-                  value={formData.totalAmount}
-                  onChange={(e) => setFormData({ ...formData, totalAmount: Number(e.target.value) })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Currency
-                </label>
-                <select
-                  value={formData.currency}
-                  onChange={(e) => setFormData({ ...formData, currency: e.target.value as any })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="EUR">EUR</option>
-                  <option value="USD">USD</option>
-                  <option value="CZK">CZK</option>
-                  <option value="PLN">PLN</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Status
-                </label>
-                <select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="pending">Pending</option>
-                  <option value="confirmed">Confirmed</option>
-                  <option value="checked-in">Checked In</option>
-                  <option value="checked-out">Checked Out</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Booking Number
-                </label>
-                <input
-                  type="text"
-                  value={formData.bookingNumber}
-                  onChange={async (e) => {
-                    const newBookingNumber = e.target.value;
-                    setFormData({ ...formData, bookingNumber: newBookingNumber });
-
-                    if (newBookingNumber.trim() !== '') {
-                      await checkBookingNumberUniqueness(newBookingNumber, editingBooking?._id);
-                    } else {
-                      setBookingNumberError('');
-                    }
-                  }}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${bookingNumberError ? 'border-red-500' : 'border-gray-300'}`}
-                  placeholder="Enter booking number (optional)"
-                />
-                {bookingNumberError && (
-                  <p className="mt-1 text-sm text-red-600">{bookingNumberError}</p>
-                )}
-              </div>
-
-              <div className="flex justify-end space-x-3 pt-4">
-                <AppleButton
-                  type="button"
-                  onClick={() => {
-                    setShowEditModal(false);
-                    setEditingBooking(null);
-                  }}
-                  className="apple-button-secondary"
-                >
-                  Cancel
-                </AppleButton>
-                <AppleButton
-                  type="submit"
-                  className="apple-button-primary"
-                >
-                  Update Booking
-                </AppleButton>
-              </div>
-            </form>
+              onSaved={() => {
+                fetchBookings();
+                setShowEditModal(false);
+                setEditingBooking(null);
+              }}
+            />
           </div>
         </div>
       )}

@@ -131,6 +131,10 @@ const ClientEditPage: React.FC = () => {
     if (!formData.lastName?.trim()) errors.push('Last name is required');
     if (!formData.email?.trim()) errors.push('Email is required');
     if (!formData.phoneNumber?.trim()) errors.push('Phone number is required');
+    const displayIdValue = formData.display_id as unknown;
+    if (displayIdValue !== undefined && displayIdValue !== null && Number.isNaN(Number(displayIdValue))) {
+      errors.push('Client ID must be a number');
+    }
     if (formData.loginPin && !/^\d{4,6}$/.test(formData.loginPin)) {
       errors.push('Client portal PIN must be 4-6 digits');
     }
@@ -152,7 +156,9 @@ const ClientEditPage: React.FC = () => {
       const fullPhone = `${formData.countryCode}${formData.phoneNumber}`;
 
       // Prepare client data with proper typing
+      const displayIdValue = formData.display_id as unknown;
       const clientData: Partial<Client> = {
+        display_id: displayIdValue !== undefined && displayIdValue !== null && displayIdValue !== '' ? Number(displayIdValue) : undefined,
         firstName: formData.firstName?.trim(),
         lastName: formData.lastName?.trim(),
         email: formData.email?.trim(),
@@ -236,18 +242,24 @@ const ClientEditPage: React.FC = () => {
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-6">
-        <div className="flex items-center space-x-4 mb-4">
+        <div className="flex items-center justify-start mb-4">
           <AppleButton onClick={() => navigate(`/admin/clients/${clientId}`)} variant="ghost">
             <Icon icon={FiArrowLeft} className="w-4 h-4 mr-2" />
             Back to Client
           </AppleButton>
-          <h1 className="text-2xl font-semibold text-gray-900">
+        </div>
+
+        <div className="w-full flex flex-col items-center">
+          <h1 className="w-full max-w-4xl text-center text-2xl font-semibold text-gray-900 whitespace-nowrap truncate">
             Edit Client: {formData.firstName} {formData.lastName}
           </h1>
+          <div className="mt-2 w-full max-w-2xl text-center text-sm text-gray-500">
+            Client ID is editable below and must remain unique.
+          </div>
         </div>
 
         {validationErrors.length > 0 && (
-          <div className="validation-errors bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+          <div className="validation-errors mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
             {validationErrors.map((error, index) => (
               <p key={index} className="error-message">{error}</p>
             ))}
@@ -259,6 +271,21 @@ const ClientEditPage: React.FC = () => {
         <div className="form-grid">
           <div className="form-section">
             <h4 className="text-lg font-medium mb-4">Basic Information</h4>
+            <div className="form-group mb-5">
+              <label htmlFor="display_id">Client ID:</label>
+              <input
+                type="number"
+                id="display_id"
+                name="display_id"
+                value={formData.display_id ?? ''}
+                onChange={handleInputChange}
+                placeholder="Override client ID if needed"
+                min="1001"
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="mt-1 text-xs text-gray-500">This is the visible client number used across the CRM.</p>
+            </div>
+
             <div className="form-group">
               <label htmlFor="firstName">First Name *:</label>
               <input

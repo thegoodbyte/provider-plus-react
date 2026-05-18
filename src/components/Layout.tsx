@@ -9,7 +9,7 @@ import ClientDetailsPage from './ClientDetailsPage';
 import BookingsGrid from './BookingsGrid';
 import MedicalGrid from './MedicalGrid';
 import RemindersPage from './RemindersPage';
-import PaymentsPage from './PaymentsPage';
+import PaymentsPage from './PaymentsPageSimple';
 import RequirementsGrid from './RequirementsGrid';
 import CurrencySettings from './CurrencySettings';
 import MedicalAdvisorDashboard from './MedicalAdvisorDashboard';

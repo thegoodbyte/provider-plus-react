@@ -120,10 +120,11 @@ export interface Client {
 
 export interface RetreatClient {
   _id?: string;
-  bookingNumber?: string;
+  bookingNumber?: number;
   bookingHash?: string; // 20-character alphanumeric hash for linking payments
   retreatId: string;
   clientId: string;
+  paymentRequestId?: string | PaymentRequest;
   bookingType?: 'full_retreat' | 'booster'; // Type of booking
   registrationDate: Date | string;
   checkInDate: Date | string;
@@ -131,7 +132,7 @@ export interface RetreatClient {
   totalAmount: number;
   currency?: 'EUR' | 'USD' | 'CZK' | 'PLN';
   amountPaid?: number;
-  status?: 'pending' | 'confirmed' | 'checked-in' | 'checked-out' | 'cancelled';
+  status?: 'pending' | 'conditional' | 'confirmed' | 'approved' | 'declined' | 'moved' | 'checked-in' | 'checked-out' | 'cancelled';
   roomAssignment?: string;
   specialRequests?: string;
   notes?: string;
@@ -328,6 +329,7 @@ export interface Payment {
   _id?: string;
   clientId: string | Client;
   retreatId: string | Retreat;
+  paymentRequestId?: string | PaymentRequest;
   bookingId?: string | RetreatClient; // Legacy - for backward compatibility
   bookingHash?: string; // New field - 20-character hash for linking to specific booking
   amount: number;
@@ -561,42 +563,247 @@ export interface CeremonyParticipant {
 export interface MedicalItem {
   _id?: string;
   display_id?: number;
+  clientDisplayId?: number;
+  clientName?: string;
+  firstName?: string;
+  lastName?: string;
   type: 'EKG' | 'Liver' | 'Question';
   image?: string; // URL or base64 image data
   files?: string[]; // Additional files (images, PDFs, documents)
   client_id: string;
+  retreatId?: string;
   notes?: string;
   date_received?: Date | string;
   medadvisor_review_date?: Date | string;
   medadvisor_review_result?: 'OK' | 'caution' | 'NOT OK';
   medadvisor_review_notes?: string;
+  source?: string;
+  uploadedAt?: Date | string;
+  generalNotes?: string;
+  ekgStatus?: string;
+  liverPanelStatus?: string;
+  ekgAdvisorNotes?: string;
+  liverPanelAdvisorNotes?: string;
+  ekgReceivedDate?: Date | string;
+  liverPanelReceivedDate?: Date | string;
+  ekgSentToAdvisorDate?: Date | string;
+  liverPanelSentToAdvisorDate?: Date | string;
+  ekgFilePath?: string;
+  ekgFileName?: string;
+  ekgFileSize?: number;
+  ekgS3Key?: string;
+  ekgUploadedAt?: Date | string;
+  ekgTestDate?: Date | string;
+  ekgSource?: string;
+  liverPanelFilePath?: string;
+  liverPanelFileName?: string;
+  liverPanelFileSize?: number;
+  liverPanelS3Key?: string;
+  liverPanelUploadedAt?: Date | string;
+  liverPanelTestDate?: Date | string;
+  liverPanelSource?: string;
   createdAt?: string;
   updatedAt?: string;
 }
 
+export interface MedicalReviewRequest {
+  _id?: string;
+  display_id?: number;
+  clientId: string | Client;
+  clientDisplayId?: number;
+  retreatId: string | Retreat;
+  medicalTrackingId?: string | MedicalItem | ClientMedical;
+  attemptNumber?: number;
+  requestType: 'ekg' | 'liver' | 'both';
+  status: 'pending' | 'in_review' | 'approved' | 'rejected' | 'caution' | 'needs_resubmission' | 'completed';
+  requestedAt?: Date | string;
+  requestedBy?: string;
+  assignedTo?: string;
+  reviewedAt?: Date | string;
+  reviewedBy?: string;
+  reviewDecision?: 'OK' | 'caution' | 'NOT OK';
+  reviewNotes?: string;
+  overallNotes?: string;
+  ekgReviewDecision?: 'OK' | 'caution' | 'NOT OK';
+  ekgReviewNotes?: string;
+  liverReviewDecision?: 'OK' | 'caution' | 'NOT OK';
+  liverReviewNotes?: string;
+  previousReviewRequestId?: string | MedicalReviewRequest;
+  source?: string;
+  sourceSnapshot?: Record<string, any>;
+  sourceType?: string;
+  sourceFileName?: string;
+  sourceFileSize?: number;
+  sourceFilePath?: string;
+  sourceS3Key?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface BookingFlowTemplate {
+  _id?: string;
+  display_id?: number;
+  retreatId?: string | Retreat | null;
+  templateScope?: 'retreat' | 'global';
+  workflowStage?: 'potential' | 'screening' | 'payment' | 'conditional_booking' | 'contract' | 'questionnaire' | 'medical' | 'prep' | 'approved' | 'cancelled';
+  key: string;
+  title: string;
+  description?: string;
+  category: 'screening' | 'booking' | 'payment' | 'contract' | 'questionnaire' | 'medical' | 'dietary' | 'message' | 'access' | 'approval' | 'reminder' | 'other';
+  offsetDays: number;
+  active?: boolean;
+  isBlocking?: boolean;
+  order?: number;
+  createsTask?: boolean;
+  taskTitle?: string;
+  taskPriority?: 'low' | 'medium' | 'high' | 'urgent';
+  triggerType?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface BookingFlowItem {
+  _id?: string;
+  display_id?: number;
+  bookingId: string | RetreatClient;
+  clientId: string | Client;
+  retreatId: string | Retreat;
+  templateId?: string | BookingFlowTemplate;
+  key: string;
+  title: string;
+  description?: string;
+  category: 'screening' | 'booking' | 'payment' | 'contract' | 'questionnaire' | 'medical' | 'dietary' | 'message' | 'access' | 'approval' | 'reminder' | 'other';
+  offsetDays: number;
+  dueDate?: Date | string | null;
+  status: 'pending' | 'sent' | 'received' | 'reviewed' | 'approved' | 'rejected' | 'completed' | 'blocked' | 'waived' | 'scheduled';
+  isBlocking?: boolean;
+  order?: number;
+  source?: string;
+  notes?: string;
+  completedAt?: Date | string;
+  sentAt?: Date | string;
+  receivedAt?: Date | string;
+  reviewedAt?: Date | string;
+  approvedAt?: Date | string;
+  assignedTo?: string;
+  metadata?: Record<string, any>;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface BookingFlowGate {
+  key: string;
+  label: string;
+  satisfied: boolean;
+  required: boolean;
+  itemStatus?: string;
+  note?: string;
+}
+
+export interface BookingFlowProgress {
+  bookingId: string;
+  bookingStatus: string;
+  recommendedStatus: string;
+  canApprove: boolean;
+  blockedBy?: string[];
+  gates: BookingFlowGate[];
+}
+
 export interface PaymentRequest {
   _id?: string;
+  display_id?: number;
   clientId: string;
   retreatId: string;
-  requestedAmount: number;
-  fullPrice: number;
+  paymentDate: Date | string;
+  paymentType: 'CSOB' | 'Paypal' | 'Revolut' | 'Wise' | 'Cash' | 'Other';
+  fullPriceQuote: number;
+  amountPaid: number;
   currency: 'CZK' | 'EUR' | 'PLN' | 'USD';
-  status: 'pending' | 'paid' | 'overdue' | 'cancelled';
-  requestType: 'deposit' | 'balance' | 'full_payment' | 'additional';
-  requestDate: Date | string;
-  dueDate?: Date | string;
-  description?: string;
-  notes?: string;
-  paymentId?: string;
-  paidDate?: Date | string;
-  sentToClient?: boolean;
-  clientNotified?: Date | string;
-  remindersSent?: number;
-  lastReminderDate?: Date | string;
+  note?: string;
+  status: 'pending' | 'sent' | 'paid' | 'overdue' | 'cancelled';
   invoiceNumber?: string;
+  dueDate?: Date | string;
+  paidDate?: Date | string;
+  sentAt?: Date | string;
+  lastReminderAt?: Date | string;
+  remindersSent?: number;
   isUrgent?: boolean;
   paymentInstructions?: string;
   createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  requestDate?: Date | string;
+  requestType?: 'deposit' | 'balance' | 'full_payment' | 'additional';
+  requestedAmount?: number;
+  fullPrice?: number;
+  notes?: string;
+  paymentId?: string;
+  sentToClient?: boolean;
+  clientNotified?: Date | string;
+  lastReminderDate?: Date | string;
+}
+
+export interface MailSettings {
+  provider?: 'gmail';
+  connected?: boolean;
+  senderName?: string;
+  senderEmail?: string;
+  replyTo?: string;
+  gmailUserEmail?: string;
+  gmailAccountName?: string;
+  scopes?: string[];
+  tokenExpiry?: string | Date;
+  lastConnectedAt?: string | Date;
+  lastTestAt?: string | Date;
+  lastError?: string;
+  oauthConfigured?: boolean;
+  authUrl?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface EmailTemplate {
+  _id?: string;
+  display_id?: number;
+  name: string;
+  description?: string;
+  subject: string;
+  bodyText: string;
+  bodyHtml?: string;
+  category?: string;
+  active?: boolean;
+  notes?: string;
+  tags?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface SentEmail {
+  _id?: string;
+  display_id?: number;
+  templateId?: string | EmailTemplate;
+  templateName?: string;
+  subject: string;
+  bodyText: string;
+  bodyHtml?: string;
+  to: string[];
+  cc?: string[];
+  bcc?: string[];
+  fromName?: string;
+  fromEmail?: string;
+  replyTo?: string;
+  provider?: string;
+  status?: 'queued' | 'sent' | 'failed' | 'draft';
+  gmailMessageId?: string;
+  clientId?: string | Client;
+  retreatId?: string | Retreat;
+  clientDisplayId?: number;
+  relatedEntityType?: string;
+  relatedEntityId?: string;
+  errorMessage?: string;
+  sentAt?: string | Date;
+  createdBy?: string;
+  variablesSnapshot?: Record<string, any>;
   createdAt?: string;
   updatedAt?: string;
 }

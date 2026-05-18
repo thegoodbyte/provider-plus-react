@@ -81,7 +81,8 @@ const UnifiedClientManager: React.FC = () => {
         client.firstName?.toLowerCase().includes(term) ||
         client.lastName?.toLowerCase().includes(term) ||
         client.email?.toLowerCase().includes(term) ||
-        client.phone?.toLowerCase().includes(term)
+        client.phone?.toLowerCase().includes(term) ||
+        client.display_id?.toString().includes(term)
       );
     }
 
@@ -305,9 +306,10 @@ const UnifiedClientManager: React.FC = () => {
         <AppleButton
           variant="primary"
           onClick={() => navigate('/clients/add')}
+          className="w-auto shrink-0 whitespace-nowrap"
         >
           <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
-          Add New Client
+          Add Client
         </AppleButton>
       </div>
 
@@ -318,7 +320,7 @@ const UnifiedClientManager: React.FC = () => {
             <Icon icon={FiSearch} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
-              placeholder="Search clients..."
+              placeholder="Search clients, email, phone, or ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-3 py-2 border border-gray-200 rounded-apple focus:outline-none focus:ring-2 focus:ring-apple-blue/20 focus:border-apple-blue"

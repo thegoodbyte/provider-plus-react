@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { medicalTrackingApi, clientsApi, medicalAdvisorApi } from '../services/api';
+import { api, clientsApi, medicalTrackingApi } from '../services/api';
 import { MedicalItem, Client } from '../types';
 import AppleButton from './AppleButton';
 import SearchableClientDropdown from './SearchableClientDropdown';
@@ -35,6 +35,84 @@ const getMedicalItemClientId = (item: Partial<MedicalItem> | undefined | null): 
   return item.client_id || (item as any).clientId || '';
 };
 
+const getMedicalItemFileInfo = (item: Partial<MedicalItem> | undefined | null) => {
+  if (!item) {
+    return {
+      filePath: '',
+      fileName: '',
+      fileSize: undefined as number | undefined,
+      source: '',
+      uploadedAt: undefined as string | Date | undefined,
+      type: 'Question' as MedicalItem['type'],
+    };
+  }
+
+  const filePath = item.image
+    || item.ekgS3Key
+    || item.liverPanelS3Key
+    || item.ekgFilePath
+    || item.liverPanelFilePath
+    || '';
+
+  const fileName = item.ekgFileName
+    || item.liverPanelFileName
+    || (filePath ? getFilenameFromS3Key(filePath) : '');
+
+  const fileSize = item.ekgFileSize || item.liverPanelFileSize;
+  const source = item.ekgSource || item.liverPanelSource || item.source || 'CW';
+  const uploadedAt = item.ekgUploadedAt || item.liverPanelUploadedAt || item.uploadedAt || item.date_received;
+
+  const type = item.type
+    || (item.ekgFilePath || item.ekgS3Key ? 'EKG' : undefined)
+    || (item.liverPanelFilePath || item.liverPanelS3Key ? 'Liver' : undefined)
+    || 'Question';
+
+  return { filePath, fileName, fileSize, source, uploadedAt, type };
+};
+
+const normalizeMedicalItem = (item: any): MedicalItem => {
+  const fileInfo = getMedicalItemFileInfo(item);
+  const baseStatus = item.ekgStatus || item.liverPanelStatus;
+  const reviewStatus = item.medadvisor_review_result || (
+    baseStatus
+      ? (baseStatus === 'approved'
+        ? 'OK'
+        : baseStatus === 'rejected'
+          ? 'NOT OK'
+          : 'caution')
+      : undefined
+  );
+
+  return {
+    ...item,
+    type: fileInfo.type,
+    image: fileInfo.filePath,
+    display_id: item.display_id || item.clientDisplayId,
+    client_id: item.client_id || item.clientId || '',
+    notes: item.notes || item.generalNotes || item.ekgAdvisorNotes || item.liverPanelAdvisorNotes || '',
+    date_received: item.date_received || item.ekgUploadedAt || item.liverPanelUploadedAt || item.ekgReceivedDate || item.liverPanelReceivedDate || item.createdAt,
+    medadvisor_review_date: item.medadvisor_review_date || item.ekgSentToAdvisorDate || item.liverPanelSentToAdvisorDate || item.updatedAt,
+    medadvisor_review_result: reviewStatus as MedicalItem['medadvisor_review_result'],
+    medadvisor_review_notes: item.medadvisor_review_notes || item.ekgAdvisorNotes || item.liverPanelAdvisorNotes || '',
+    source: fileInfo.source,
+    uploadedAt: fileInfo.uploadedAt,
+    ekgFilePath: item.ekgFilePath,
+    ekgFileName: item.ekgFileName,
+    ekgFileSize: item.ekgFileSize,
+    ekgS3Key: item.ekgS3Key,
+    ekgUploadedAt: item.ekgUploadedAt,
+    ekgTestDate: item.ekgTestDate,
+    ekgSource: item.ekgSource,
+    liverPanelFilePath: item.liverPanelFilePath,
+    liverPanelFileName: item.liverPanelFileName,
+    liverPanelFileSize: item.liverPanelFileSize,
+    liverPanelS3Key: item.liverPanelS3Key,
+    liverPanelUploadedAt: item.liverPanelUploadedAt,
+    liverPanelTestDate: item.liverPanelTestDate,
+    liverPanelSource: item.liverPanelSource,
+  };
+};
+
 const MedicalTrackingNew: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -59,11 +137,10 @@ const MedicalTrackingNew: React.FC = () => {
   const fetchMedicalItems = useCallback(async () => {
     try {
       setIsLoading(true);
-      // Use medical advisor API if user is a medical advisor
       const response = user?.role === 'medical_advisor'
-        ? await medicalAdvisorApi.getMedicalTracking()
-        : await medicalTrackingApi.getAll();
-      const items = Array.isArray(response.data) ? response.data.filter(Boolean) : [];
+        ? await api.get<MedicalItem[]>('/medical-advisor/medical-tracking')
+        : await api.get<MedicalItem[]>('/client-medical');
+      const items = Array.isArray(response.data) ? response.data.filter(Boolean).map(normalizeMedicalItem) : [];
       setMedicalItems(items as MedicalItem[]);
     } catch (error) {
       console.error('Error fetching medical tracking items:', error);
@@ -136,23 +213,6 @@ const MedicalTrackingNew: React.FC = () => {
     const client = clients.find(c => c._id === clientId);
     return client ? `${client.firstName} ${client.lastName}` : 'Unknown Client';
   }, [clients, user?.role]);
-
-  const getRoutePrefix = useCallback(() => {
-    switch (user?.role) {
-      case 'admin':
-        return 'admin';
-      case 'medical_staff':
-        return 'medical';
-      case 'medical_advisor':
-        return 'medical';
-      case 'facilitator':
-        return 'staff';
-      case 'user':
-        return 'user';
-      default:
-        return 'user';
-    }
-  }, [user?.role]);
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -236,12 +296,13 @@ const MedicalTrackingNew: React.FC = () => {
   };
 
   const handleViewImage = async (item: MedicalItem) => {
-    if (!item.image || !item._id) return;
+    const fileInfo = getMedicalItemFileInfo(item);
+    if (!fileInfo.filePath || !item._id) return;
 
     try {
-      // Get presigned URL for S3 image
-      const response = await medicalTrackingApi.getFileUrl(item._id, item.image);
-      const imageUrl = response.data.presignedUrl;
+      const response = await medicalTrackingApi.getFileUrl(item._id, fileInfo.filePath);
+      const blob = response.data as Blob;
+      const imageUrl = URL.createObjectURL(blob);
       setViewingImage(imageUrl);
       setIsImageModalOpen(true);
     } catch (error) {
@@ -251,18 +312,20 @@ const MedicalTrackingNew: React.FC = () => {
   };
 
   const handleViewDocument = async (item: MedicalItem) => {
-    if (!item.image || !item._id) return;
+    const fileInfo = getMedicalItemFileInfo(item);
+    if (!fileInfo.filePath || !item._id) return;
 
     try {
-      const filename = getFilenameFromS3Key(item.image);
+      const filename = fileInfo.fileName || getFilenameFromS3Key(fileInfo.filePath);
 
       if (isImageFile(filename)) {
         // Handle as image - use existing modal
         handleViewImage(item);
       } else {
         // Handle as document - open in new tab
-        const response = await medicalTrackingApi.getFileUrl(item._id, item.image);
-        const documentUrl = response.data.presignedUrl;
+        const response = await medicalTrackingApi.getFileUrl(item._id, fileInfo.filePath);
+        const blob = response.data as Blob;
+        const documentUrl = URL.createObjectURL(blob);
         window.open(documentUrl, '_blank');
       }
     } catch (error) {
@@ -363,7 +426,7 @@ const MedicalTrackingNew: React.FC = () => {
       <div className="mb-6 flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 flex items-center">
-            🏥 {user?.role === 'medical_advisor' ? 'Medical Tracking Records' : 'Medical Tracking Reviews'}
+            🏥 {user?.role === 'medical_advisor' ? 'Medical Tracking Review Queue' : 'Medical Tracking Records'}
           </h1>
           <p className="text-gray-600">
             {user?.role === 'medical_advisor'
@@ -518,9 +581,10 @@ const MedicalTrackingNew: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap">
-                    {item.image ? (
+                    {getMedicalItemFileInfo(item).filePath ? (
                       (() => {
-                        const filename = getFilenameFromS3Key(item.image);
+                        const fileInfo = getMedicalItemFileInfo(item);
+                        const filename = fileInfo.fileName || getFilenameFromS3Key(fileInfo.filePath);
                         const isImage = isImageFile(filename);
 
                         return (

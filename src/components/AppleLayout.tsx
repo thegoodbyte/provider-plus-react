@@ -12,14 +12,26 @@ import ClientScreening from '../pages/ClientScreening';
 import RetreatDetailView from '../pages/RetreatDetailView';
 // import ClientsGrid from './ClientsGrid'; // Now using UnifiedClientManager
 import BookingsGrid from './BookingsGrid';
+import BookingEditorPage from './BookingEditorPage';
 import MedicalGrid from './MedicalGrid';
 import MedicalTrackingNew from './MedicalTrackingNew';
 import MedicalTrackingDetail from './MedicalTrackingDetail';
 import MedicalTrackingEditPage from './MedicalTrackingEditPage';
 import MedicalTrackingFileViewPage from './MedicalTrackingFileViewPage';
+import WorkflowDashboard from './WorkflowDashboard';
+import RetreatFlowPage from './RetreatFlowPage';
+import RetreatFlowLibraryPage from './RetreatFlowLibraryPage';
+import BookingFlowPage from './BookingFlowPage';
+import FlowTaskInboxPage from './FlowTaskInboxPage';
+import MedicalReviewRequestsGrid from './MedicalReviewRequestsGrid';
+import MedicalReviewRequestEditorPage from './MedicalReviewRequestEditorPage';
+import MedicalReviewRequestsPage from './MedicalReviewRequestsPage';
 import RemindersPage from './RemindersPage';
-import PaymentsPage from './PaymentsPage';
+import PaymentsPage from './PaymentsPageSimple';
+import PaymentEditorPage from './PaymentEditorPage';
 import PaymentRequestsGrid from './PaymentRequestsGrid';
+import PaymentRequestEditorPage from './PaymentRequestEditorPage';
+import CommunicationsPage from './CommunicationsPage';
 import RequirementsGrid from './RequirementsGrid';
 import CurrencySettings from './CurrencySettings';
 import MedicalAdvisorDashboard from './MedicalAdvisorDashboard';
@@ -27,6 +39,7 @@ import MedicalReviewDetail from './MedicalReviewDetail';
 import MedicalRetreats from './MedicalRetreats';
 import MedicalProfile from './MedicalProfile';
 import MedicalAdvisorReview from './MedicalAdvisorReview';
+import ModuleLauncherPage from './ModuleLauncherPage';
 import ProtectedRoute from './ProtectedRoute';
 import Unauthorized from './Unauthorized';
 import PermissionsMatrix from './PermissionsMatrix';
@@ -58,17 +71,26 @@ const AppleLayout: React.FC = () => {
 
     // Map routes to sidebar items
     if (route === 'clients' || route === 'potential-clients') return 'clients';
+    if (route === 'launcher') return 'launcher';
     if (route === 'medical-dashboard') return 'medical-dashboard';
     if (route === 'medical-review') return 'medical-dashboard';
     if (route === 'medical-retreats') return 'medical-retreats';
     if (route === 'medical-tracking') return 'medical-tracking';
+    if (route === 'medical-review-requests') return 'medical-review-requests';
+    if (route === 'review-requests') return 'review-requests';
     if (route === 'medical') return 'medical';
+    if (route === 'workflow') return 'workflow';
+    if (route === 'retreat-flow') return 'retreat-flow';
+    if (route === 'retreat-flow-library') return 'retreat-flow-library';
+    if (route === 'booking-flow') return 'booking-flow';
+    if (route === 'flow-tasks') return 'flow-tasks';
     if (route === 'retreats') return 'retreats';
     if (route === 'houses') return 'houses';
     if (route === 'bookings') return 'bookings';
     if (route === 'reminders') return 'reminders';
     if (route === 'payments') return 'payments';
     if (route === 'payment-requests') return 'payment-requests';
+    if (route === 'communications') return 'communications';
     if (route === 'requirements') return 'requirements';
     if (route === 'analytics') return 'analytics';
     if (route === 'permissions') return 'permissions';
@@ -81,15 +103,15 @@ const AppleLayout: React.FC = () => {
   const getDefaultRoute = () => {
     switch (user?.role) {
       case 'admin':
-        return 'clients';
+        return 'launcher';
       case 'medical_staff':
-        return 'medical-dashboard';
+        return 'launcher';
       case 'medical_advisor':
-        return 'medical-dashboard';
+        return 'launcher';
       case 'facilitator':
-        return 'bookings';
+        return 'launcher';
       default:
-        return 'clients';
+        return 'launcher';
     }
   };
 
@@ -228,6 +250,8 @@ const AppleLayout: React.FC = () => {
                 <Route path="/admin/*" element={
                   <ProtectedRoute requiredRole={['admin']}>
                     <Routes>
+                      <Route index element={<ModuleLauncherPage />} />
+                      <Route path="launcher" element={<ModuleLauncherPage />} />
                       <Route path="clients" element={<UnifiedClientManager />} />
                       <Route path="clients/add" element={<AddClient />} />
                       <Route path="clients/:clientId" element={<ClientDetailsPage />} />
@@ -239,10 +263,24 @@ const AppleLayout: React.FC = () => {
                       <Route path="retreats/:retreatId" element={<RetreatDetailView />} />
                       <Route path="houses" element={<HousesGrid />} />
                       <Route path="bookings" element={<BookingsGrid />} />
+                      <Route path="bookings/new" element={<BookingEditorPage mode="create" />} />
+                      <Route path="bookings/:bookingId/edit" element={<BookingEditorPage mode="edit" />} />
                       <Route path="medical-tracking" element={<MedicalTrackingNew />} />
                       <Route path="medical-tracking/:id" element={<MedicalTrackingDetail />} />
                       <Route path="medical-tracking/:id/edit" element={<MedicalTrackingEditPage />} />
                       <Route path="medical-tracking/:id/view/:type" element={<MedicalTrackingFileViewPage />} />
+                      <Route path="medical-review-requests" element={<MedicalReviewRequestsGrid />} />
+                      <Route path="medical-review-requests/new" element={<MedicalReviewRequestEditorPage />} />
+                      <Route path="medical-review-requests/:id" element={<MedicalReviewRequestsPage />} />
+                      <Route path="medical-review-requests/:id/edit" element={<MedicalReviewRequestEditorPage />} />
+                      <Route path="medical-review-requests/*" element={<MedicalReviewRequestsPage />} />
+                      <Route path="workflow" element={<WorkflowDashboard />} />
+                      <Route path="workflow/bookings/:bookingId" element={<WorkflowDashboard />} />
+                      <Route path="retreat-flow" element={<RetreatFlowPage />} />
+                      <Route path="retreat-flow/:retreatId" element={<RetreatFlowPage />} />
+                      <Route path="retreat-flow-library" element={<RetreatFlowLibraryPage />} />
+                      <Route path="booking-flow/:bookingId" element={<BookingFlowPage />} />
+                      <Route path="flow-tasks" element={<FlowTaskInboxPage />} />
                       <Route path="medical-dashboard" element={<MedicalAdvisorDashboard />} />
                       <Route path="medical-review/:bookingId" element={<MedicalReviewDetail />} />
                       <Route path="medical-retreats" element={<MedicalRetreats />} />
@@ -250,7 +288,12 @@ const AppleLayout: React.FC = () => {
                       <Route path="medical" element={<MedicalGrid />} />
                       <Route path="reminders" element={<RemindersPage />} />
                       <Route path="payments" element={<PaymentsPage />} />
+                      <Route path="payments/new" element={<PaymentEditorPage />} />
+                      <Route path="payments/:id/edit" element={<PaymentEditorPage />} />
                       <Route path="payment-requests" element={<PaymentRequestsGrid />} />
+                      <Route path="payment-requests/new" element={<PaymentRequestEditorPage />} />
+                      <Route path="payment-requests/:id/edit" element={<PaymentRequestEditorPage />} />
+                      <Route path="communications" element={<CommunicationsPage />} />
                       <Route path="requirements" element={<RequirementsGrid />} />
                       <Route path="permissions" element={<PermissionsMatrix />} />
                       <Route path="client-medications" element={<ClientMedicationsGrid />} />
@@ -268,7 +311,8 @@ const AppleLayout: React.FC = () => {
                 <Route path="/medical/*" element={
                   <ProtectedRoute requiredRole={['medical_staff', 'medical_advisor', 'admin']}>
                     <Routes>
-                      <Route index element={<MedicalAdvisorDashboard />} />
+                      <Route index element={<ModuleLauncherPage />} />
+                      <Route path="launcher" element={<ModuleLauncherPage />} />
                       <Route path="dashboard" element={<MedicalAdvisorDashboard />} />
                       <Route path="medical-dashboard" element={<MedicalAdvisorDashboard />} />
                       <Route path="tracking" element={<MedicalTrackingNew />} />
@@ -277,6 +321,15 @@ const AppleLayout: React.FC = () => {
                       <Route path="medical-tracking/:id" element={<MedicalTrackingDetail />} />
                       <Route path="medical-tracking/:id/edit" element={<MedicalTrackingEditPage />} />
                       <Route path="medical-tracking/:id/view/:type" element={<MedicalTrackingFileViewPage />} />
+                      <Route path="review-requests" element={<MedicalReviewRequestsPage />} />
+                      <Route path="review-requests/:id" element={<MedicalReviewRequestsPage />} />
+                      <Route path="workflow" element={<WorkflowDashboard />} />
+                      <Route path="workflow/bookings/:bookingId" element={<WorkflowDashboard />} />
+                      <Route path="retreat-flow" element={<RetreatFlowPage />} />
+                      <Route path="retreat-flow/:retreatId" element={<RetreatFlowPage />} />
+                      <Route path="retreat-flow-library" element={<RetreatFlowLibraryPage />} />
+                      <Route path="booking-flow/:bookingId" element={<BookingFlowPage />} />
+                      <Route path="flow-tasks" element={<FlowTaskInboxPage />} />
                       <Route path="review/:id" element={<MedicalAdvisorReview />} />
                       <Route path="medical-review/:id" element={<MedicalAdvisorReview />} />
                       <Route path="medical-review/:bookingId" element={<MedicalReviewDetail />} />
@@ -286,9 +339,12 @@ const AppleLayout: React.FC = () => {
                       <Route path="potential-clients" element={<UnifiedClientManager />} />
                       <Route path="client/:clientId" element={<MedicalProfile />} />
                       <Route path="bookings" element={<BookingsGrid />} />
+                      <Route path="bookings/new" element={<BookingEditorPage mode="create" />} />
+                      <Route path="bookings/:bookingId/edit" element={<BookingEditorPage mode="edit" />} />
                       <Route path="retreats" element={<RetreatsGrid />} />
                       <Route path="retreats/:retreatId" element={<RetreatDetailView />} />
                       <Route path="reminders" element={<RemindersPage />} />
+                      <Route path="communications" element={<CommunicationsPage />} />
                     </Routes>
                   </ProtectedRoute>
                 } />
@@ -297,6 +353,8 @@ const AppleLayout: React.FC = () => {
                 <Route path="/staff/*" element={
                   <ProtectedRoute requiredRole={['facilitator', 'medical_staff', 'admin']}>
                     <Routes>
+                      <Route index element={<ModuleLauncherPage />} />
+                      <Route path="launcher" element={<ModuleLauncherPage />} />
                       <Route path="bookings" element={<BookingsGrid />} />
                       <Route path="retreats" element={<RetreatsGrid />} />
                       <Route path="retreats/:retreatId" element={<RetreatDetailView />} />
@@ -305,6 +363,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="clients/add" element={<AddClient />} />
                       <Route path="potential-clients" element={<UnifiedClientManager />} />
                       <Route path="reminders" element={<RemindersPage />} />
+                      <Route path="communications" element={<CommunicationsPage />} />
                     </Routes>
                   </ProtectedRoute>
                 } />
@@ -313,21 +372,50 @@ const AppleLayout: React.FC = () => {
                 <Route path="/user/*" element={
                   <ProtectedRoute requiredRole={['user', 'facilitator', 'medical_staff', 'admin']}>
                     <Routes>
+                      <Route index element={<ModuleLauncherPage />} />
+                      <Route path="launcher" element={<ModuleLauncherPage />} />
                       <Route path="clients" element={<UnifiedClientManager />} />
                       <Route path="clients/add" element={<AddClient />} />
                       <Route path="reminders" element={<RemindersPage />} />
+                      <Route path="communications" element={<CommunicationsPage />} />
                     </Routes>
                   </ProtectedRoute>
                 } />
 
                 {/* Legacy routes for backwards compatibility - redirect to appropriate prefixed routes */}
                 <Route path="/medical-dashboard" element={<ProtectedRoute><MedicalAdvisorDashboard /></ProtectedRoute>} />
+                <Route path="/launcher" element={<ProtectedRoute><ModuleLauncherPage /></ProtectedRoute>} />
                 <Route path="/medical-review/:bookingId" element={<ProtectedRoute><MedicalReviewDetail /></ProtectedRoute>} />
                 <Route path="/medical-retreats" element={<ProtectedRoute><MedicalRetreats /></ProtectedRoute>} />
                 <Route path="/medical-tracking" element={<ProtectedRoute><MedicalTrackingNew /></ProtectedRoute>} />
                 <Route path="/medical-tracking/:id" element={<ProtectedRoute><MedicalTrackingDetail /></ProtectedRoute>} />
                 <Route path="/medical-tracking/:id/edit" element={<ProtectedRoute><MedicalTrackingEditPage /></ProtectedRoute>} />
                 <Route path="/medical-tracking/:id/view/:type" element={<ProtectedRoute><MedicalTrackingFileViewPage /></ProtectedRoute>} />
+                <Route path="/medical-review-requests" element={<ProtectedRoute><MedicalReviewRequestsGrid /></ProtectedRoute>} />
+                <Route path="/medical-review-requests/new" element={<ProtectedRoute><MedicalReviewRequestEditorPage /></ProtectedRoute>} />
+                <Route path="/medical-review-requests/:id" element={<ProtectedRoute><MedicalReviewRequestsPage /></ProtectedRoute>} />
+                <Route path="/medical-review-requests/:id/edit" element={<ProtectedRoute><MedicalReviewRequestEditorPage /></ProtectedRoute>} />
+                <Route path="/medical-review-requests/*" element={<ProtectedRoute><MedicalReviewRequestsGrid /></ProtectedRoute>} />
+                <Route path="/admin/medical-review-requests" element={<ProtectedRoute><MedicalReviewRequestsGrid /></ProtectedRoute>} />
+                <Route path="/admin/medical-review-requests/new" element={<ProtectedRoute><MedicalReviewRequestEditorPage /></ProtectedRoute>} />
+                <Route path="/admin/medical-review-requests/:id" element={<ProtectedRoute><MedicalReviewRequestsPage /></ProtectedRoute>} />
+                <Route path="/admin/medical-review-requests/:id/edit" element={<ProtectedRoute><MedicalReviewRequestEditorPage /></ProtectedRoute>} />
+                <Route path="/medical/review-requests" element={<ProtectedRoute><MedicalReviewRequestsPage /></ProtectedRoute>} />
+                <Route path="/medical/review-requests/:id" element={<ProtectedRoute><MedicalReviewRequestsPage /></ProtectedRoute>} />
+                <Route path="/communications" element={<ProtectedRoute><CommunicationsPage /></ProtectedRoute>} />
+                <Route path="/admin/communications" element={<ProtectedRoute><CommunicationsPage /></ProtectedRoute>} />
+                <Route path="/medical/communications" element={<ProtectedRoute><CommunicationsPage /></ProtectedRoute>} />
+                <Route path="/admin/launcher" element={<ProtectedRoute><ModuleLauncherPage /></ProtectedRoute>} />
+                <Route path="/medical/launcher" element={<ProtectedRoute><ModuleLauncherPage /></ProtectedRoute>} />
+                <Route path="/staff/launcher" element={<ProtectedRoute><ModuleLauncherPage /></ProtectedRoute>} />
+                <Route path="/user/launcher" element={<ProtectedRoute><ModuleLauncherPage /></ProtectedRoute>} />
+                <Route path="/workflow" element={<ProtectedRoute><WorkflowDashboard /></ProtectedRoute>} />
+                <Route path="/workflow/bookings/:bookingId" element={<ProtectedRoute><WorkflowDashboard /></ProtectedRoute>} />
+                <Route path="/retreat-flow" element={<ProtectedRoute><RetreatFlowPage /></ProtectedRoute>} />
+                <Route path="/retreat-flow/:retreatId" element={<ProtectedRoute><RetreatFlowPage /></ProtectedRoute>} />
+                <Route path="/retreat-flow-library" element={<ProtectedRoute><RetreatFlowLibraryPage /></ProtectedRoute>} />
+                <Route path="/booking-flow/:bookingId" element={<ProtectedRoute><BookingFlowPage /></ProtectedRoute>} />
+                <Route path="/flow-tasks" element={<ProtectedRoute><FlowTaskInboxPage /></ProtectedRoute>} />
                 <Route path="/clients" element={<ProtectedRoute><UnifiedClientManager /></ProtectedRoute>} />
                 <Route path="/clients/add" element={<ProtectedRoute><AddClient /></ProtectedRoute>} />
                 <Route path="/clients/:clientId" element={<ProtectedRoute><ClientDetailsPage /></ProtectedRoute>} />
@@ -336,6 +424,8 @@ const AppleLayout: React.FC = () => {
                 <Route path="/retreats" element={<ProtectedRoute><RetreatsGrid /></ProtectedRoute>} />
                 <Route path="/houses" element={<ProtectedRoute><HousesGrid /></ProtectedRoute>} />
                 <Route path="/bookings" element={<ProtectedRoute><BookingsGrid /></ProtectedRoute>} />
+                <Route path="/bookings/new" element={<ProtectedRoute><BookingEditorPage mode="create" /></ProtectedRoute>} />
+                <Route path="/bookings/:bookingId/edit" element={<ProtectedRoute><BookingEditorPage mode="edit" /></ProtectedRoute>} />
                 <Route path="/reminders" element={<ProtectedRoute><RemindersPage /></ProtectedRoute>} />
                 <Route path="/payments" element={<ProtectedRoute><PaymentsPage /></ProtectedRoute>} />
                 <Route path="/requirements" element={<ProtectedRoute><RequirementsGrid /></ProtectedRoute>} />
@@ -348,7 +438,7 @@ const AppleLayout: React.FC = () => {
         <footer className="bg-white/70 backdrop-blur-apple border-t border-apple-gray-200 h-8">
           <div className="h-full flex items-center justify-center px-4">
             <span className="text-xs text-apple-gray-500">
-              Release: 2026-05-12 1745
+              Release: 20260516-1423
             </span>
           </div>
         </footer>

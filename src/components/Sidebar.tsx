@@ -1,6 +1,7 @@
 import React from 'react';
 import './Sidebar.css';
 import {
+  FiGrid,
   FiUsers,
   FiCalendar,
   FiActivity,
@@ -9,6 +10,7 @@ import {
   FiCreditCard,
   FiClipboard,
   FiBarChart2,
+  FiMail,
   FiLogOut,
   FiMenu,
   FiX
@@ -34,6 +36,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed,
   // Medical advisor specific menu
   const medicalAdvisorMenuItems: MenuItem[] = [
     {
+      id: 'launcher',
+      label: 'Home',
+      icon: FiGrid,
+      description: 'Pick a module'
+    },
+    {
       id: 'medical-dashboard',
       label: 'Reviews',
       icon: FiActivity,
@@ -49,6 +57,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed,
 
   // Regular menu items for admins and other users
   const regularMenuItems: MenuItem[] = [
+    {
+      id: 'launcher',
+      label: 'Home',
+      icon: FiGrid,
+      description: 'Pick a module'
+    },
     {
       id: 'clients',
       label: 'Clients',
@@ -74,6 +88,30 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed,
       description: 'Retreat-client bookings'
     },
     {
+      id: 'workflow',
+      label: 'Workflow',
+      icon: FiClipboard,
+      description: 'Readiness, tasks, and message queue'
+    },
+    {
+      id: 'retreat-flow',
+      label: 'Retreat Flow',
+      icon: FiCalendar,
+      description: 'Per-retreat checklist and timing'
+    },
+    {
+      id: 'booking-flow',
+      label: 'Booking Flow',
+      icon: FiClipboard,
+      description: 'Client-specific flow timeline'
+    },
+    {
+      id: 'flow-tasks',
+      label: 'Flow Tasks',
+      icon: FiClipboard,
+      description: 'Generated tasks from flow steps'
+    },
+    {
       id: 'houses',
       label: 'Houses',
       icon: FiHome,
@@ -92,10 +130,22 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed,
       description: 'Manage retreat payments'
     },
     {
+      id: 'communications',
+      label: 'Communications',
+      icon: FiMail,
+      description: 'Gmail settings, templates, and sent email logs'
+    },
+    {
       id: 'medical',
       label: 'Medical',
       icon: FiActivity,
       description: 'EKG and liver panel tracking'
+    },
+    {
+      id: 'medical-review-requests',
+      label: 'Review Requests',
+      icon: FiActivity,
+      description: 'Medical review queue and history'
     },
     {
       id: 'requirements',
@@ -119,7 +169,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed,
       <div className="sidebar-header">
         <div className="logo-section">
           <div className="logo-icon">
-            🏔️
+            <img
+              src={`${process.env.PUBLIC_URL}/images/icon/retreategnine.png`}
+              alt="Provider Plus"
+              style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+            />
           </div>
           {!isCollapsed && (
             <div className="logo-text">

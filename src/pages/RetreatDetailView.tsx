@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { retreatsApi, bookingsApi, clientsApi } from '../services/api';
 import AppleButton from '../components/AppleButton';
 import LoadingSpinner from '../components/LoadingSpinner';
@@ -13,9 +13,8 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
 interface ClientTracking {
   clientId: string;
   clientName: string;
-  displayId: number;
-  email: string;
-  pNumber: string;
+  clientDisplayId: number;
+  bookingNumber: number | string;
   paymentStatus: string;
   paymentAmount: string;
   paymentDate: string;
@@ -132,6 +131,8 @@ const EditModal: React.FC<EditModalProps> = ({
 const RetreatDetailView: React.FC = () => {
   const { retreatId } = useParams<{ retreatId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const routePrefix = location.pathname.startsWith('/medical/') ? '/medical' : '/admin';
   const [retreat, setRetreat] = useState<any>(null);
   const [clientTrackings, setClientTrackings] = useState<ClientTracking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -164,15 +165,15 @@ const RetreatDetailView: React.FC = () => {
 
       // Fetch client details for each booking
       const clientPromises = bookings.map(async (booking: any) => {
-        const clientResponse = await clientsApi.getOne(booking.clientId);
+        const bookingClientId = typeof booking.clientId === 'string' ? booking.clientId : booking.clientId?._id;
+        const clientResponse = await clientsApi.getOne(bookingClientId);
         const client = clientResponse.data;
 
         return {
           clientId: client._id,
           clientName: `${client.firstName} ${client.lastName}`,
-          displayId: client.display_id || 0,
-          email: client.email || '',
-          pNumber: booking.pNumber || '',
+          clientDisplayId: client.display_id || 0,
+          bookingNumber: booking.bookingNumber || booking.pNumber || 0,
           paymentStatus: booking.paymentStatus || '',
           paymentAmount: booking.paymentAmount || '',
           paymentDate: booking.paymentDate || '',
@@ -306,9 +307,10 @@ const RetreatDetailView: React.FC = () => {
         <table className="min-w-full text-xs">
           <thead className="bg-gray-50">
             <tr>
+              <th className="px-2 py-1 text-left font-medium text-gray-700">#</th>
               <th className="sticky left-0 z-10 bg-gray-50 px-2 py-1 text-left font-medium text-gray-700 border-r">Client</th>
-              <th className="px-2 py-1 text-left font-medium text-gray-700">ID</th>
-              <th className="px-2 py-1 text-left font-medium text-gray-700">P-Number</th>
+              <th className="px-2 py-1 text-left font-medium text-gray-700">Client ID</th>
+              <th className="px-2 py-1 text-left font-medium text-gray-700">Booking #</th>
               <th className="px-2 py-1 text-left font-medium text-gray-700">Payment</th>
               <th className="px-2 py-1 text-left font-medium text-gray-700">SDF Sent</th>
               <th className="px-2 py-1 text-left font-medium text-gray-700">SDF Rcvd</th>
@@ -337,11 +339,18 @@ const RetreatDetailView: React.FC = () => {
           <tbody className="divide-y divide-gray-200">
             {clientTrackings.map((tracking, index) => (
               <tr key={tracking.clientId} className="hover:bg-gray-50">
+                <td className="px-2 py-1 font-medium text-gray-600">{index + 1}</td>
                 <td className="sticky left-0 z-10 bg-white px-2 py-1 font-medium border-r">
-                  {tracking.clientName}
+                  <button
+                    type="button"
+                    onClick={() => navigate(`${routePrefix}/clients/${tracking.clientId}`)}
+                    className="text-left font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                  >
+                    {tracking.clientName}
+                  </button>
                 </td>
-                <td className="px-2 py-1 font-semibold text-blue-600">{tracking.displayId}</td>
-                <td className="px-2 py-1">{tracking.pNumber}</td>
+                <td className="px-2 py-1 font-semibold text-blue-600">{tracking.clientDisplayId}</td>
+                <td className="px-2 py-1">{tracking.bookingNumber}</td>
                 <td
                   className="px-2 py-1 cursor-pointer hover:bg-gray-100"
                   onClick={() => handleCellClick(tracking.clientId, 'paymentAmount', tracking.paymentAmount, 'Payment Amount')}

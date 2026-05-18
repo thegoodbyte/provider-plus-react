@@ -34,7 +34,7 @@ const BookingsGrid: React.FC = () => {
     retreatId: '',
     totalAmount: 0,
     currency: 'EUR' as 'EUR' | 'USD' | 'CZK' | 'PLN',
-    status: 'pending' as 'pending' | 'confirmed' | 'checked-in' | 'checked-out' | 'cancelled'
+    status: 'pending' as 'pending' | 'conditional' | 'confirmed' | 'approved' | 'declined' | 'moved' | 'checked-in' | 'checked-out' | 'cancelled'
   });
   const [pdfLanguage, setPdfLanguage] = useState<'pl' | 'cz' | 'en'>('en');
   const [generatingPDF, setGeneratingPDF] = useState<string | null>(null);
@@ -357,7 +357,7 @@ const BookingsGrid: React.FC = () => {
                             retreatId: typeof booking.retreatId === 'string' ? booking.retreatId : (booking.retreatId as any)?._id || '',
                             totalAmount: booking.totalAmount || 0,
                             currency: booking.currency || 'EUR',
-                            status: booking.status || 'pending'
+                            status: (booking.status || 'pending') as typeof formData.status
                           });
                           setShowEditModal(true);
                         }}
@@ -504,7 +504,7 @@ const BookingsGrid: React.FC = () => {
                 </label>
                 <select
                   value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'pending' | 'confirmed' | 'checked-in' | 'checked-out' | 'cancelled' })}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value as 'pending' | 'conditional' | 'confirmed' | 'approved' | 'declined' | 'moved' | 'checked-in' | 'checked-out' | 'cancelled' })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="pending">Pending</option>

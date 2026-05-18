@@ -173,24 +173,16 @@ const QuickAddClient: React.FC<QuickAddClientProps> = ({ visible, onClose, onSuc
                 </Form.Item>
 
                 <Form.Item
-                    name="loginPin"
-                    label="Client Portal PIN (Optional)"
-                    rules={[
-                        {
-                            pattern: /^\d{4,6}$/,
-                            message: 'PIN must be 4-6 digits'
-                        }
-                    ]}
+                    label="Client Portal PIN"
                 >
                     <Input
-                        placeholder="4-6 digit login PIN"
-                        maxLength={6}
-                        inputMode="numeric"
-                        onChange={(event) => {
-                            const value = event.target.value.replace(/\D/g, '').slice(0, 6);
-                            form.setFieldValue('loginPin', value);
-                        }}
+                        value="Generated automatically on save"
+                        readOnly
+                        disabled
                     />
+                    <div style={{ marginTop: 6, fontSize: 12, color: '#6b7280' }}>
+                        A secure 6-digit PIN is assigned by the server when the client is created.
+                    </div>
                 </Form.Item>
 
                 <Form.Item

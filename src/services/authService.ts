@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '../config/api.config';
+import { cacheService } from './cacheService';
 
 interface LoginResponse {
   access_token: string;
@@ -35,6 +36,7 @@ export const authService = {
 
       const data = await response.json();
 
+      cacheService.clear();
       // Store token in localStorage
       localStorage.setItem('token', data.access_token);
       localStorage.setItem('user', JSON.stringify(data.user));
@@ -58,6 +60,7 @@ export const authService = {
   },
 
   logout() {
+    cacheService.clear();
     localStorage.removeItem('token');
     localStorage.removeItem('user');
   },

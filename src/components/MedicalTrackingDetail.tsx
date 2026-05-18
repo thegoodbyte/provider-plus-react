@@ -28,6 +28,31 @@ const getFilenameFromS3Key = (s3Key: string): string => {
   return underscoreIndex > 0 ? filename.substring(underscoreIndex + 1) : filename;
 };
 
+const getMedicalItemFileInfo = (item: MedicalItem | null | undefined) => {
+  if (!item) {
+    return { filePath: '', fileName: '', fileSize: undefined as number | undefined, source: '', uploadedAt: undefined as string | Date | undefined, testDate: undefined as string | Date | undefined, isImage: false };
+  }
+
+  const filePath = item.image
+    || item.ekgS3Key
+    || item.liverPanelS3Key
+    || item.ekgFilePath
+    || item.liverPanelFilePath
+    || '';
+
+  const fileName = item.ekgFileName
+    || item.liverPanelFileName
+    || (filePath ? getFilenameFromS3Key(filePath) : '');
+
+  const fileSize = item.ekgFileSize || item.liverPanelFileSize;
+  const source = item.ekgSource || item.liverPanelSource || item.source || 'CW';
+  const uploadedAt = item.ekgUploadedAt || item.liverPanelUploadedAt || item.uploadedAt || item.date_received;
+  const testDate = item.ekgTestDate || item.liverPanelTestDate;
+  const isImage = fileName ? isImageFile(fileName) : false;
+
+  return { filePath, fileName, fileSize, source, uploadedAt, testDate, isImage };
+};
+
 const MedicalTrackingDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -48,7 +73,30 @@ const MedicalTrackingDetail: React.FC = () => {
     try {
       setIsLoading(true);
       const itemResponse = await medicalTrackingApi.getOne(id);
-      const itemData = itemResponse.data;
+      const itemData = {
+        ...itemResponse.data,
+        display_id: itemResponse.data.display_id || itemResponse.data.clientDisplayId,
+        image: itemResponse.data.image
+          || itemResponse.data.ekgS3Key
+          || itemResponse.data.liverPanelS3Key
+          || itemResponse.data.ekgFilePath
+          || itemResponse.data.liverPanelFilePath
+          || '',
+        type: itemResponse.data.type
+          || (itemResponse.data.ekgFilePath || itemResponse.data.ekgS3Key ? 'EKG' : undefined)
+          || (itemResponse.data.liverPanelFilePath || itemResponse.data.liverPanelS3Key ? 'Liver' : 'Question'),
+        notes: itemResponse.data.notes
+          || itemResponse.data.generalNotes
+          || itemResponse.data.ekgAdvisorNotes
+          || itemResponse.data.liverPanelAdvisorNotes
+          || '',
+        date_received: itemResponse.data.date_received
+          || itemResponse.data.ekgUploadedAt
+          || itemResponse.data.liverPanelUploadedAt
+          || itemResponse.data.ekgReceivedDate
+          || itemResponse.data.liverPanelReceivedDate
+          || itemResponse.data.createdAt,
+      };
       setItem(itemData);
 
       // Fetch client details
@@ -74,7 +122,8 @@ const MedicalTrackingDetail: React.FC = () => {
     try {
       setLoadingDocument(true);
       const response = await medicalTrackingApi.getFileUrl(itemData._id, itemData.image);
-      setDocumentUrl(response.data.presignedUrl);
+      const blob = response.data as Blob;
+      setDocumentUrl(URL.createObjectURL(blob));
       setImageError(false);
     } catch (error) {
       console.error('Error loading document URL:', error);
@@ -87,6 +136,11 @@ const MedicalTrackingDetail: React.FC = () => {
   const formatDate = (date: string | Date | undefined) => {
     if (!date) return 'N/A';
     return new Date(date).toLocaleDateString();
+  };
+
+  const formatDateTime = (date: string | Date | undefined) => {
+    if (!date) return 'N/A';
+    return new Date(date).toLocaleString();
   };
 
   const getStatusColor = (status: string) => {
@@ -150,8 +204,9 @@ const MedicalTrackingDetail: React.FC = () => {
   }
 
   // Get filename and determine file type
-  const filename = item.image ? getFilenameFromS3Key(item.image) : '';
-  const isImage = filename ? isImageFile(filename) : false;
+  const fileInfo = getMedicalItemFileInfo(item);
+  const filename = fileInfo.fileName || (fileInfo.filePath ? getFilenameFromS3Key(fileInfo.filePath) : '');
+  const isImage = fileInfo.isImage;
 
   return (
     <div className="p-6">
@@ -213,6 +268,26 @@ const MedicalTrackingDetail: React.FC = () => {
               <span className="text-gray-600">Date Received:</span>
               <span className="font-medium">{formatDate(item.date_received)}</span>
             </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Uploaded At:</span>
+              <span className="font-medium">{formatDateTime(fileInfo.uploadedAt)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Test Date:</span>
+              <span className="font-medium">{formatDate(fileInfo.testDate)}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">Source:</span>
+              <span className="font-medium">{fileInfo.source || 'CW'}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">File Name:</span>
+              <span className="font-medium truncate max-w-[60%]" title={filename}>{filename || 'N/A'}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-600">File Size:</span>
+              <span className="font-medium">{fileInfo.fileSize ? `${Math.round(fileInfo.fileSize / 1024)} KB` : 'N/A'}</span>
+            </div>
             <div>
               <span className="text-gray-600">Notes:</span>
               <p className="mt-1 text-gray-900">{item.notes || 'No notes provided'}</p>
@@ -249,7 +324,7 @@ const MedicalTrackingDetail: React.FC = () => {
       </div>
 
       {/* Document/Image Section */}
-      {item.image && (
+      {fileInfo.filePath && (
         <div className="mt-6 bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-lg font-semibold mb-4">Document/Image</h2>
           <div className="border rounded-lg p-4 bg-gray-50">

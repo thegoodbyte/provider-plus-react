@@ -98,18 +98,26 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
     switch (userRole) {
       case 'admin':
         return [
+          { id: 'launcher', label: 'Home', Icon: Fi.FiGrid },
           { id: 'clients', label: 'Clients', Icon: Fi.FiUsers },
           { id: 'potential-clients', label: 'Potential Clients', Icon: Fi.FiUserPlus },
           { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
           { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
+          { id: 'workflow', label: 'Workflow', Icon: Fi.FiLayers },
+          { id: 'retreat-flow', label: 'Retreat Flow', Icon: Fi.FiCalendar },
+          { id: 'retreat-flow-library', label: 'Flow Library', Icon: Fi.FiBook },
+          { id: 'booking-flow', label: 'Booking Flow', Icon: Fi.FiLayers },
+          { id: 'flow-tasks', label: 'Flow Tasks', Icon: Fi.FiList },
           { id: 'medical', label: 'Medical', Icon: Fi.FiActivity },
           { id: 'medical-tracking', label: 'Medical Tracking', Icon: Fi.FiHeart },
+          { id: 'medical-review-requests', label: 'Review Requests', Icon: Fi.FiInbox },
           { id: 'medical-dashboard', label: 'Medical Dashboard', Icon: Fi.FiMonitor },
           { id: 'client-medications', label: 'Client Medications', Icon: Fi.FiPlusSquare },
           { id: 'houses', label: 'Houses', Icon: Fi.FiHome },
           { id: 'reminders', label: 'Reminders', Icon: Fi.FiBell },
           { id: 'payments', label: 'Payments', Icon: Fi.FiCreditCard },
           { id: 'payment-requests', label: 'Payment Requests', Icon: Fi.FiFileText },
+          { id: 'communications', label: 'Communications', Icon: Fi.FiMail },
           { id: 'requirements', label: 'Requirements', Icon: Fi.FiCheckSquare },
           { id: 'permissions', label: 'Permissions', Icon: Fi.FiShield },
           { id: 'users', label: 'Users', Icon: Fi.FiUser },
@@ -118,8 +126,15 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
         ];
       case 'medical_staff':
         return [
+          { id: 'launcher', label: 'Home', Icon: Fi.FiGrid },
           { id: 'medical-dashboard', label: 'Dashboard', Icon: Fi.FiHome },
           { id: 'medical-tracking', label: 'Medical Tracking', Icon: Fi.FiHeart },
+          { id: 'review-requests', label: 'Review Requests', Icon: Fi.FiInbox },
+          { id: 'workflow', label: 'Workflow', Icon: Fi.FiLayers },
+          { id: 'retreat-flow', label: 'Retreat Flow', Icon: Fi.FiCalendar },
+          { id: 'retreat-flow-library', label: 'Flow Library', Icon: Fi.FiBook },
+          { id: 'flow-tasks', label: 'Flow Tasks', Icon: Fi.FiList },
+          { id: 'communications', label: 'Communications', Icon: Fi.FiMail },
           { id: 'client-medications', label: 'Client Medications', Icon: Fi.FiPlusSquare },
           { id: 'medical-retreats', label: 'Medical Retreats', Icon: Fi.FiCalendar },
           { id: 'clients', label: 'Clients', Icon: Fi.FiUsers },
@@ -131,11 +146,19 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
         ];
       case 'medical_advisor':
         return [
+          { id: 'launcher', label: 'Home', Icon: Fi.FiGrid },
           { id: 'medical-dashboard', label: 'Medical Dashboard', Icon: Fi.FiMonitor },
           { id: 'medical-tracking', label: 'Medical Tracking', Icon: Fi.FiHeart },
+          { id: 'review-requests', label: 'Review Requests', Icon: Fi.FiInbox },
+          { id: 'workflow', label: 'Workflow', Icon: Fi.FiLayers },
+          { id: 'retreat-flow', label: 'Retreat Flow', Icon: Fi.FiCalendar },
+          { id: 'retreat-flow-library', label: 'Flow Library', Icon: Fi.FiBook },
+          { id: 'flow-tasks', label: 'Flow Tasks', Icon: Fi.FiList },
+          { id: 'communications', label: 'Communications', Icon: Fi.FiMail },
         ];
       case 'facilitator':
         return [
+          { id: 'launcher', label: 'Home', Icon: Fi.FiGrid },
           { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
           { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
           { id: 'houses', label: 'Houses', Icon: Fi.FiHome },
@@ -145,11 +168,13 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
         ];
       case 'user':
         return [
+          { id: 'launcher', label: 'Home', Icon: Fi.FiGrid },
           { id: 'clients', label: 'Clients', Icon: Fi.FiUsers },
           { id: 'reminders', label: 'Reminders', Icon: Fi.FiBell },
         ];
       default:
         return [
+          { id: 'launcher', label: 'Home', Icon: Fi.FiGrid },
           { id: 'clients', label: 'Clients', Icon: Fi.FiUsers },
         ];
     }
@@ -201,8 +226,12 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
             </div>
 
             <div className={`flex items-center gap-3 ${!isExpanded && 'justify-center'}`}>
-              <div className="w-10 h-10 bg-gradient-to-br from-apple-blue to-blue-600 rounded-apple flex items-center justify-center flex-shrink-0">
-                <span className="text-white text-xl font-bold">P</span>
+              <div className="w-10 h-10 rounded-apple overflow-hidden bg-white flex items-center justify-center flex-shrink-0 border border-apple-gray-100">
+                <img
+                  src={`${process.env.PUBLIC_URL}/images/icon/retreategnine.png`}
+                  alt="Provider Plus"
+                  className="w-full h-full object-contain p-1"
+                />
               </div>
               {isExpanded && (
                 <span className="text-lg font-semibold text-apple-gray-900 whitespace-nowrap">

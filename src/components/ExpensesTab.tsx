@@ -56,13 +56,12 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
 
   const getCategoryIcon = (category: string) => {
     const categoryIcons: Record<string, string> = {
-      accommodation: '🏠',
-      transport: '🚗',
+      house: '🏠',
       food: '🍽️',
-      activities: '🎯',
-      staff: '👥',
-      utilities: '⚡',
-      general: '📦'
+      transportation: '🚗',
+      misc: '🧾',
+      supplies: '📦',
+      other: '📦'
     };
     return categoryIcons[category] || '📦';
   };
