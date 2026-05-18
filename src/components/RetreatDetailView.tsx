@@ -248,7 +248,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       cleanData.location = 'Default Location'; // Backend requires location
       if (retreatFormData.startDate) cleanData.startDate = retreatFormData.startDate;
       if (retreatFormData.endDate) cleanData.endDate = retreatFormData.endDate;
-      if (retreatFormData.capacity && retreatFormData.capacity > 0) cleanData.capacity = Number(retreatFormData.capacity);
+      if (retreatFormData.capacity !== undefined && retreatFormData.capacity !== null && !Number.isNaN(Number(retreatFormData.capacity))) {
+        cleanData.capacity = Number(retreatFormData.capacity);
+      }
       if (retreatFormData.helpers?.trim()) cleanData.helpers = retreatFormData.helpers.trim();
       if (retreatFormData.description?.trim()) cleanData.description = retreatFormData.description.trim();
       if (retreatFormData.houseId?.trim()) cleanData.houseId = retreatFormData.houseId.trim();
@@ -452,12 +454,11 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           padding: '8px 16px',
           borderRadius: '6px',
           cursor: 'pointer',
-          marginLeft: '12px',
           fontWeight: '500'
         }}>✏️ Edit Retreat</button>
-        <div className="retreat-info">
-          <h1>
-            <span
+          <div className="retreat-info">
+            <h1>
+              <span
               style={{
                 backgroundColor: retreat.backgroundColor || 'transparent',
                 color: retreat.backgroundColor ? '#fff' : 'inherit',

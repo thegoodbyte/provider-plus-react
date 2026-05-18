@@ -197,7 +197,7 @@ const AppleLayout: React.FC = () => {
               {/* Mobile menu button */}
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="lg:hidden p-2 rounded-apple hover:bg-apple-gray-100 transition-colors"
+                className="lg:hidden inline-flex items-center justify-center w-10 h-10 rounded-apple hover:bg-apple-gray-100 transition-colors flex-shrink-0"
                 aria-label="Toggle menu"
               >
                 <svg className="w-5 h-5 text-apple-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

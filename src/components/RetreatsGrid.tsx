@@ -439,7 +439,7 @@ const RetreatsGrid: React.FC = () => {
                       name: formData.name!,
                       location: formData.location!,
                       status: formData.status || 'upcoming' as 'upcoming' | 'active' | 'completed' | 'cancelled',
-                      capacity: formData.capacity || 20,
+                      capacity: formData.capacity ?? 20,
                       currentOccupancy: formData.currentOccupancy || 0,
                       type: formData.type || 'regular' as 'regular' | 'booster',
                       description: formData.description || '',

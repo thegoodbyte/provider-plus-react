@@ -28,7 +28,17 @@ jobs:
         CI: false
         REACT_APP_API_URL: https://api.ibogaspirit.net
 
-    - name: Deploy to server
+    - name: Clear target directory
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.FRONTEND_HOST }}
+        username: ${{ secrets.FRONTEND_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          sudo mkdir -p /var/www/provider-plus-front-end
+          sudo find /var/www/provider-plus-front-end -mindepth 1 -maxdepth 1 -exec rm -rf {} +
+
+    - name: Upload build to server
       uses: appleboy/scp-action@v0.1.7
       with:
         host: ${{ secrets.FRONTEND_HOST }}
@@ -37,7 +47,7 @@ jobs:
         source: "build/*"
         target: "/var/www/provider-plus-front-end/"
         strip_components: 1
-        rm: true
+        rm: false
 
     - name: Set permissions
       uses: appleboy/ssh-action@v1.0.3
