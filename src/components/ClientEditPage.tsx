@@ -121,6 +121,11 @@ const ClientEditPage: React.FC = () => {
     }));
   };
 
+  const normalizeOptionalValue = (value?: string) => {
+    const trimmed = typeof value === 'string' ? value.trim() : value;
+    return trimmed ? trimmed : undefined;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setValidationErrors([]);
@@ -162,26 +167,22 @@ const ClientEditPage: React.FC = () => {
         firstName: formData.firstName?.trim(),
         lastName: formData.lastName?.trim(),
         email: formData.email?.trim(),
-        loginPin: formData.loginPin?.trim() || undefined,
+        loginPin: normalizeOptionalValue(formData.loginPin),
         phone: fullPhone,
         address: formData.address,
         city: formData.city,
         state: formData.state,
         zipCode: formData.zipCode,
         country: formData.country,
-        gender: formData.gender,
+        gender: normalizeOptionalValue(formData.gender) as Client['gender'],
         emergencyContact: formData.emergencyContact,
         emergencyContactPhone: formData.emergencyContactPhone,
         medicalConditions: formData.medicalConditions,
         dietaryRestrictions: formData.dietaryRestrictions,
         notes: formData.notes,
-        status: formData.status as 'active' | 'inactive' | 'suspended' | undefined,
-        language: formData.language
+        status: normalizeOptionalValue(formData.status) as 'active' | 'inactive' | 'suspended' | undefined,
+        language: normalizeOptionalValue(formData.language) as Client['language']
       };
-
-      if (!formData.loginPin?.trim()) {
-        (clientData as any).loginPin = null;
-      }
 
       // Convert yearOfBirth to dateOfBirth if provided
       if (formData.yearOfBirth) {
@@ -240,9 +241,9 @@ const ClientEditPage: React.FC = () => {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
       <div className="mb-6">
-        <div className="flex items-center justify-start mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-start gap-3 mb-4">
           <AppleButton onClick={() => navigate(`/admin/clients/${clientId}`)} variant="ghost">
             <Icon icon={FiArrowLeft} className="w-4 h-4 mr-2" />
             Back to Client
@@ -250,10 +251,13 @@ const ClientEditPage: React.FC = () => {
         </div>
 
         <div className="w-full flex flex-col items-center">
-          <h1 className="w-full max-w-4xl text-center text-2xl font-semibold text-gray-900 whitespace-nowrap truncate">
+          <h1 className="w-full max-w-4xl text-center text-2xl font-semibold text-gray-900 whitespace-normal sm:whitespace-nowrap break-words">
             Edit Client: {formData.firstName} {formData.lastName}
           </h1>
-          <div className="mt-2 w-full max-w-2xl text-center text-sm text-gray-500">
+          <div className="mt-2 flex flex-wrap items-center justify-center gap-2 w-full max-w-2xl text-center text-sm text-gray-500">
+            <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1 font-medium text-gray-700">
+              Client ID: {formData.display_id || client.display_id || 'N/A'}
+            </span>
             Client ID is editable below and must remain unique.
           </div>
         </div>

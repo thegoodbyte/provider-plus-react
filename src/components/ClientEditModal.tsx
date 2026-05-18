@@ -90,6 +90,11 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
     }));
   };
 
+  const normalizeOptionalValue = (value?: string) => {
+    const trimmed = typeof value === 'string' ? value.trim() : value;
+    return trimmed ? trimmed : undefined;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setValidationErrors([]);
@@ -125,26 +130,22 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
         firstName: formData.firstName?.trim(),
         lastName: formData.lastName?.trim(),
         email: formData.email?.trim(),
-        loginPin: formData.loginPin?.trim() || undefined,
+        loginPin: normalizeOptionalValue(formData.loginPin),
         phone: fullPhone,
         address: formData.address,
         city: formData.city,
         state: formData.state,
         zipCode: formData.zipCode,
         country: formData.country,
-        gender: formData.gender,
+        gender: normalizeOptionalValue(formData.gender) as Client['gender'],
         emergencyContact: formData.emergencyContact,
         emergencyContactPhone: formData.emergencyContactPhone,
         medicalConditions: formData.medicalConditions,
         dietaryRestrictions: formData.dietaryRestrictions,
         notes: formData.notes,
-        status: formData.status as 'active' | 'inactive' | 'suspended' | undefined,
-        language: formData.language
+        status: normalizeOptionalValue(formData.status) as 'active' | 'inactive' | 'suspended' | undefined,
+        language: normalizeOptionalValue(formData.language) as Client['language']
       };
-
-      if (!formData.loginPin?.trim()) {
-        (clientData as any).loginPin = null;
-      }
 
       // Convert yearOfBirth to dateOfBirth if provided
       if (formData.yearOfBirth) {

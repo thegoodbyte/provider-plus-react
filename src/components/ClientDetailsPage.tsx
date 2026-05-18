@@ -252,31 +252,34 @@ const ClientDetailsPage: React.FC = () => {
   }
 
   return (
-    <div className="p-6 h-full overflow-auto">
+    <div className="p-4 sm:p-6 h-full overflow-auto">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-4">
+          <div className="flex flex-wrap items-center gap-3">
             <AppleButton onClick={() => navigate(-1)} variant="ghost">
               <Icon icon={FiArrowLeft} className="w-4 h-4 mr-2" />
               Back
             </AppleButton>
-            <h1 className="text-2xl font-semibold text-gray-900">
+            <h1 className="text-2xl font-semibold text-gray-900 break-words">
               {client.firstName} {client.lastName}
             </h1>
             {getStatusBadge(client.workflowStatus || client.status)}
+            <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-sm font-medium text-gray-700">
+              Client ID: {client.display_id || client._id?.substring(0, 8)}
+            </span>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
             <AppleButton
               onClick={() => navigate(`/admin/clients/${clientId}/screening`)}
-              className="apple-button-secondary px-4 py-2 w-auto whitespace-nowrap"
+              className="apple-button-secondary px-4 py-2 w-full sm:w-auto whitespace-nowrap"
             >
               <Icon icon={FiFileText} className="w-4 h-4 mr-2" />
               Add Screening
             </AppleButton>
             <AppleButton
               onClick={() => navigate(`/admin/clients/${clientId}/edit`)}
-              className="apple-button-primary px-4 py-2 w-auto whitespace-nowrap"
+              className="apple-button-primary px-4 py-2 w-full sm:w-auto whitespace-nowrap"
             >
               <Icon icon={FiEdit2} className="w-4 h-4 mr-2" />
               Edit Client
@@ -285,29 +288,29 @@ const ClientDetailsPage: React.FC = () => {
         </div>
 
         {/* Quick Info Bar */}
-        <div className="bg-white rounded-lg shadow-sm p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="flex items-center space-x-2">
+        <div className="bg-white rounded-lg shadow-sm p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="flex items-start sm:items-center space-x-2">
             <Icon icon={FiUser} className="w-5 h-5 text-gray-400" />
             <div>
               <p className="text-xs text-gray-500">Client ID</p>
               <p className="text-sm font-medium">{client.display_id || client._id?.substring(0, 8)}</p>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-start sm:items-center space-x-2">
             <Icon icon={FiPhone} className="w-5 h-5 text-gray-400" />
             <div>
               <p className="text-xs text-gray-500">Phone</p>
               <p className="text-sm font-medium">{client.phone || 'N/A'}</p>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-start sm:items-center space-x-2">
             <Icon icon={FiMail} className="w-5 h-5 text-gray-400" />
             <div>
               <p className="text-xs text-gray-500">Email</p>
               <p className="text-sm font-medium">{client.email || 'N/A'}</p>
             </div>
           </div>
-          <div className="flex items-center space-x-2">
+          <div className="flex items-start sm:items-center space-x-2">
             <Icon icon={FiMapPin} className="w-5 h-5 text-gray-400" />
             <div>
               <p className="text-xs text-gray-500">Country</p>
@@ -318,8 +321,8 @@ const ClientDetailsPage: React.FC = () => {
       </div>
 
       {/* Tabs */}
-      <div className="border-b border-gray-200 mb-6">
-        <div className="flex space-x-6">
+      <div className="border-b border-gray-200 mb-6 overflow-x-auto">
+        <div className="flex min-w-max space-x-3 sm:space-x-6 pb-2">
           <Tab
             label="Overview"
             icon={FiUser}
@@ -366,27 +369,27 @@ const ClientDetailsPage: React.FC = () => {
       </div>
 
       {/* Tab Content */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
+      <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
         {activeTab === 'overview' && (
           <div>
             <h2 className="text-lg font-semibold mb-4">Personal Information</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div>
                 <h3 className="text-sm font-medium text-gray-500 mb-3">Basic Details</h3>
                 <dl className="space-y-2">
-                  <div className="flex justify-between">
+                  <div className="flex flex-wrap justify-between gap-2">
                     <dt className="text-sm text-gray-600">Full Name:</dt>
                     <dd className="text-sm font-medium">{client.firstName} {client.lastName}</dd>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex flex-wrap justify-between gap-2">
                     <dt className="text-sm text-gray-600">Phone:</dt>
                     <dd className="text-sm font-medium">{client.phone || 'N/A'}</dd>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex flex-wrap justify-between gap-2">
                     <dt className="text-sm text-gray-600">Email:</dt>
                     <dd className="text-sm font-medium">{client.email || 'N/A'}</dd>
                   </div>
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="flex flex-wrap items-center justify-between gap-4">
                     <dt className="text-sm text-gray-600">Client Portal Login PIN:</dt>
                     <dd className="flex items-center gap-2 text-sm font-medium">
                       <span className="font-mono tracking-wider">
@@ -405,15 +408,15 @@ const ClientDetailsPage: React.FC = () => {
                       )}
                     </dd>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex flex-wrap justify-between gap-2">
                     <dt className="text-sm text-gray-600">Country:</dt>
                     <dd className="text-sm font-medium">{client.country || 'N/A'}</dd>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex flex-wrap justify-between gap-2">
                     <dt className="text-sm text-gray-600">City:</dt>
                     <dd className="text-sm font-medium">{client.city || 'N/A'}</dd>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex flex-wrap justify-between gap-2">
                     <dt className="text-sm text-gray-600">Address:</dt>
                     <dd className="text-sm font-medium">{client.address || 'N/A'}</dd>
                   </div>

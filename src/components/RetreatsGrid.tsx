@@ -96,6 +96,17 @@ const RetreatsGrid: React.FC = () => {
     return new Date(date).toLocaleDateString();
   };
 
+  const handleHouseSelection = (value: string) => {
+    const selectedHouse = houses.find((house) => house.name === value || house._id === value);
+    const houseCapacity = selectedHouse?.capacity || selectedHouse?.guestCapacity;
+
+    setFormData((prev) => ({
+      ...prev,
+      location: value,
+      capacity: houseCapacity ? Number(houseCapacity) : prev.capacity,
+    }));
+  };
+
   // If viewing a specific retreat, show the detail view
   if (viewingRetreatId) {
     return (
@@ -268,11 +279,11 @@ const RetreatsGrid: React.FC = () => {
 
       {/* Add Retreat Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96 max-w-md">
-            <h2 className="text-lg font-semibold mb-4">Add New Retreat</h2>
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-white md:bg-black/50 md:items-center">
+          <div className="w-full h-full overflow-y-auto bg-white p-4 md:h-auto md:max-h-[90vh] md:w-[42rem] md:rounded-lg md:p-6">
+            <h2 className="mb-4 text-lg font-semibold">Add New Retreat</h2>
 
-            <div className="space-y-4">
+            <div className="space-y-3 md:space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Name
@@ -293,7 +304,7 @@ const RetreatsGrid: React.FC = () => {
                 </label>
                 <select
                   value={formData.location || ''}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  onChange={(e) => handleHouseSelection(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 >
@@ -314,8 +325,8 @@ const RetreatsGrid: React.FC = () => {
                   <input
                     type="number"
                     min="1"
-                    value={formData.capacity || 20}
-                    onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) || 20 })}
+                    value={formData.capacity ?? ''}
+                    onChange={(e) => setFormData({ ...formData, capacity: e.target.value === '' ? undefined : parseInt(e.target.value, 10) })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -406,13 +417,13 @@ const RetreatsGrid: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex justify-end space-x-3 mt-6">
+            <div className="flex flex-col-reverse gap-3 pt-6 md:flex-row md:justify-end">
               <button
                 onClick={() => {
                   setIsAddModalOpen(false);
                   setFormData({});
                 }}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                className="w-full px-4 py-2 text-gray-600 hover:text-gray-800 md:w-auto"
               >
                 Cancel
               </button>
@@ -445,7 +456,7 @@ const RetreatsGrid: React.FC = () => {
                     alert('Error creating retreat. Please try again.');
                   }
                 }}
-                className="apple-button-primary"
+                className="w-full md:w-auto apple-button-primary"
               >
                 Create Retreat
               </AppleButton>
@@ -456,11 +467,11 @@ const RetreatsGrid: React.FC = () => {
 
       {/* Edit Modal */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96 max-w-md max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-semibold mb-4">Edit Retreat</h2>
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-white md:bg-black/50 md:items-center">
+          <div className="w-full h-full overflow-y-auto bg-white p-4 md:h-auto md:max-h-[90vh] md:w-[42rem] md:rounded-lg md:p-6">
+            <h2 className="mb-4 text-lg font-semibold">Edit Retreat</h2>
 
-            <div className="space-y-4">
+            <div className="space-y-3 md:space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Name
@@ -480,7 +491,7 @@ const RetreatsGrid: React.FC = () => {
                 </label>
                 <select
                   value={formData.location || ''}
-                  onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                  onChange={(e) => handleHouseSelection(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 >
@@ -501,8 +512,8 @@ const RetreatsGrid: React.FC = () => {
                   <input
                     type="number"
                     min="1"
-                    value={formData.capacity || 20}
-                    onChange={(e) => setFormData({ ...formData, capacity: parseInt(e.target.value) || 20 })}
+                    value={formData.capacity ?? ''}
+                    onChange={(e) => setFormData({ ...formData, capacity: e.target.value === '' ? undefined : parseInt(e.target.value, 10) })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -609,14 +620,14 @@ const RetreatsGrid: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex justify-end space-x-3 mt-6">
+            <div className="flex flex-col-reverse gap-3 pt-6 md:flex-row md:justify-end">
               <button
                 onClick={() => {
                   setIsEditModalOpen(false);
                   setEditingRetreat(null);
                   setFormData({});
                 }}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                className="w-full px-4 py-2 text-gray-600 hover:text-gray-800 md:w-auto"
               >
                 Cancel
               </button>
@@ -634,7 +645,7 @@ const RetreatsGrid: React.FC = () => {
                     console.error('Error updating retreat:', error);
                   }
                 }}
-                className="apple-button-primary"
+                className="w-full md:w-auto apple-button-primary"
               >
                 Save Changes
               </AppleButton>
