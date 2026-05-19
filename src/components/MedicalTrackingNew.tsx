@@ -422,8 +422,8 @@ const MedicalTrackingNew: React.FC = () => {
   }
 
   return (
-    <div className="p-6 h-full">
-      <div className="mb-6 flex justify-between items-center">
+    <div className="p-3 sm:p-6 h-full">
+      <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:justify-between lg:items-center">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 flex items-center">
             🏥 {user?.role === 'medical_advisor' ? 'Medical Tracking Review Queue' : 'Medical Tracking Records'}
@@ -434,8 +434,8 @@ const MedicalTrackingNew: React.FC = () => {
               : 'All medical tracking items and their review status'}
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
+          <div className="flex flex-wrap items-center gap-2">
             <label htmlFor="type-filter" className="text-sm font-medium text-gray-700">
               Type:
             </label>
@@ -443,7 +443,7 @@ const MedicalTrackingNew: React.FC = () => {
               id="type-filter"
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+              className="w-full min-w-[9rem] border border-gray-300 rounded-md px-3 py-2 text-sm sm:w-auto"
             >
               <option value="all">All Types</option>
               <option value="EKG">EKG</option>
@@ -451,7 +451,7 @@ const MedicalTrackingNew: React.FC = () => {
               <option value="Question">Question</option>
             </select>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <label htmlFor="status-filter" className="text-sm font-medium text-gray-700">
               Status:
             </label>
@@ -459,7 +459,7 @@ const MedicalTrackingNew: React.FC = () => {
               id="status-filter"
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="border border-gray-300 rounded-md px-3 py-2 text-sm"
+              className="w-full min-w-[10rem] border border-gray-300 rounded-md px-3 py-2 text-sm sm:w-auto"
             >
               <option value="all">All Status</option>
               <option value="pending">Pending Review</option>
@@ -470,7 +470,7 @@ const MedicalTrackingNew: React.FC = () => {
             </select>
           </div>
           {user?.role !== 'medical_advisor' && (
-            <AppleButton onClick={handleAdd} className="apple-button-primary">
+            <AppleButton onClick={handleAdd} className="apple-button-primary w-full justify-center sm:w-auto">
               <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
               Add Medical Tracking
             </AppleButton>
@@ -478,7 +478,7 @@ const MedicalTrackingNew: React.FC = () => {
         </div>
       </div>
 
-      <div className="mb-6 grid grid-cols-5 gap-4">
+      <div className="mb-6 grid grid-cols-2 gap-3 lg:grid-cols-5 lg:gap-4">
         <div className="bg-white p-4 rounded-lg shadow-sm border">
           <div className="text-2xl font-bold text-gray-900">{(filteredItems || []).length}</div>
           <div className="text-sm text-gray-600">Total Items</div>
@@ -672,8 +672,8 @@ const MedicalTrackingNew: React.FC = () => {
 
       {/* Add Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96 max-w-md">
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-white md:bg-black/50 md:items-center">
+          <div className="h-full w-full overflow-y-auto bg-white p-4 md:h-auto md:max-h-[90vh] md:w-[42rem] md:rounded-lg md:p-6">
             <h2 className="text-lg font-semibold mb-4">Add New Medical Tracking Item</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -816,7 +816,7 @@ const MedicalTrackingNew: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-3 mt-6">
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   onClick={() => {
@@ -825,11 +825,11 @@ const MedicalTrackingNew: React.FC = () => {
                     setSelectedFile(null);
       setSelectedFiles([]);
                   }}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                  className="rounded-md border border-gray-300 px-4 py-2 text-gray-600 hover:text-gray-800 sm:w-auto"
                 >
                   Cancel
                 </button>
-                <AppleButton type="submit" className="apple-button-primary">
+                <AppleButton type="submit" className="apple-button-primary w-full justify-center sm:w-auto">
                   Create Medical Tracking
                 </AppleButton>
               </div>
@@ -840,8 +840,8 @@ const MedicalTrackingNew: React.FC = () => {
 
       {/* Edit Modal */}
       {isEditModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96 max-w-md">
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-white md:bg-black/50 md:items-center">
+          <div className="h-full w-full overflow-y-auto bg-white p-4 md:h-auto md:max-h-[90vh] md:w-[42rem] md:rounded-lg md:p-6">
             <h2 className="text-lg font-semibold mb-4">Edit Medical Item</h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -984,7 +984,7 @@ const MedicalTrackingNew: React.FC = () => {
                 </div>
               )}
 
-              <div className="flex justify-end space-x-3 mt-6">
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
                 <button
                   type="button"
                   onClick={() => {
@@ -994,11 +994,11 @@ const MedicalTrackingNew: React.FC = () => {
                     setSelectedFile(null);
       setSelectedFiles([]);
                   }}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                  className="rounded-md border border-gray-300 px-4 py-2 text-gray-600 hover:text-gray-800 sm:w-auto"
                 >
                   Cancel
                 </button>
-                <AppleButton type="submit" className="apple-button-primary">
+                <AppleButton type="submit" className="apple-button-primary w-full justify-center sm:w-auto">
                   Save Changes
                 </AppleButton>
               </div>

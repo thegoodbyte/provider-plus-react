@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { clientMedicalApi } from '../services/api';
 import AppleButton from './AppleButton';
 import { FiRefreshCw, FiDownload, FiMail, FiFileText, FiCheck, FiX } from 'react-icons/fi';
@@ -10,6 +11,7 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
 
 interface MedicalGridData {
   _id: string;
+  clientId: string;
   clientName: string;
   retreatName: string;
   retreatLocation: string;
@@ -38,6 +40,7 @@ interface MedicalGridData {
 }
 
 const MedicalGrid: React.FC = () => {
+  const navigate = useNavigate();
   const [medicalData, setMedicalData] = useState<MedicalGridData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filteredData, setFilteredData] = useState<MedicalGridData[]>([]);
@@ -49,6 +52,7 @@ const MedicalGrid: React.FC = () => {
       const response = await clientMedicalApi.getAll();
       const transformedData: MedicalGridData[] = response.data.map((record: any) => ({
         _id: record._id,
+        clientId: typeof record.clientId === 'string' ? record.clientId : record.clientId?._id || '',
         clientName: record.clientId
           ? `${record.clientId.firstName || record.clientId.fname || ''} ${record.clientId.lastName || record.clientId.lname || ''}`.trim()
           : 'Unknown Client',
@@ -289,7 +293,13 @@ const MedicalGrid: React.FC = () => {
               {filteredData.map((record) => (
                 <tr key={record._id} className="hover:bg-gray-50">
                   <td className="px-4 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{record.clientName}</div>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/medical/client/${record.clientId}`)}
+                      className="text-sm font-medium text-indigo-700 hover:text-indigo-900 hover:underline"
+                    >
+                      {record.clientName}
+                    </button>
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">{record.retreatName}</div>

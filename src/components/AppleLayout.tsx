@@ -27,7 +27,7 @@ import MedicalReviewRequestsGrid from './MedicalReviewRequestsGrid';
 import MedicalReviewRequestEditorPage from './MedicalReviewRequestEditorPage';
 import MedicalReviewRequestsPage from './MedicalReviewRequestsPage';
 import RemindersPage from './RemindersPage';
-import PaymentsPage from './PaymentsPageSimple';
+import PaymentsPage from './PaymentsPage';
 import PaymentEditorPage from './PaymentEditorPage';
 import PaymentRequestsGrid from './PaymentRequestsGrid';
 import PaymentRequestEditorPage from './PaymentRequestEditorPage';
@@ -38,6 +38,7 @@ import MedicalAdvisorDashboard from './MedicalAdvisorDashboard';
 import MedicalReviewDetail from './MedicalReviewDetail';
 import MedicalRetreats from './MedicalRetreats';
 import MedicalProfile from './MedicalProfile';
+import MedicalClientView from './MedicalClientView';
 import MedicalAdvisorReview from './MedicalAdvisorReview';
 import ModuleLauncherPage from './ModuleLauncherPage';
 import ProtectedRoute from './ProtectedRoute';
@@ -79,6 +80,7 @@ const AppleLayout: React.FC = () => {
     if (route === 'medical-review-requests') return 'medical-review-requests';
     if (route === 'review-requests') return 'review-requests';
     if (route === 'medical') return 'medical';
+    if (route === 'client') return 'medical';
     if (route === 'workflow') return 'workflow';
     if (route === 'retreat-flow') return 'retreat-flow';
     if (route === 'retreat-flow-library') return 'retreat-flow-library';
@@ -210,7 +212,7 @@ const AppleLayout: React.FC = () => {
                 Provider Plus
               </h1>
 
-              {/* Actions */}
+                {/* Actions */}
               <div className="flex items-center gap-2">
                 {/* Settings button */}
                 <button
@@ -228,7 +230,7 @@ const AppleLayout: React.FC = () => {
                 {/* User menu */}
                 <button
                   onClick={logout}
-                  className="px-3 py-1.5 text-sm font-medium text-apple-gray-600 hover:text-apple-gray-900
+                  className="hidden sm:inline-flex px-3 py-1.5 text-sm font-medium text-apple-gray-600 hover:text-apple-gray-900
                            bg-apple-gray-100 hover:bg-apple-gray-200 rounded-apple transition-all"
                 >
                   Sign Out
@@ -285,6 +287,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="medical-review/:bookingId" element={<MedicalReviewDetail />} />
                       <Route path="medical-retreats" element={<MedicalRetreats />} />
                       <Route path="medical/:clientId" element={<MedicalProfile />} />
+                      <Route path="client/:clientId" element={<MedicalClientView />} />
                       <Route path="medical" element={<MedicalGrid />} />
                       <Route path="reminders" element={<RemindersPage />} />
                       <Route path="payments" element={<PaymentsPage />} />
@@ -396,6 +399,7 @@ const AppleLayout: React.FC = () => {
                 <Route path="/medical-review-requests/:id" element={<ProtectedRoute><MedicalReviewRequestsPage /></ProtectedRoute>} />
                 <Route path="/medical-review-requests/:id/edit" element={<ProtectedRoute><MedicalReviewRequestEditorPage /></ProtectedRoute>} />
                 <Route path="/medical-review-requests/*" element={<ProtectedRoute><MedicalReviewRequestsGrid /></ProtectedRoute>} />
+                <Route path="/medical/client/:clientId" element={<ProtectedRoute><MedicalClientView /></ProtectedRoute>} />
                 <Route path="/admin/medical-review-requests" element={<ProtectedRoute><MedicalReviewRequestsGrid /></ProtectedRoute>} />
                 <Route path="/admin/medical-review-requests/new" element={<ProtectedRoute><MedicalReviewRequestEditorPage /></ProtectedRoute>} />
                 <Route path="/admin/medical-review-requests/:id" element={<ProtectedRoute><MedicalReviewRequestsPage /></ProtectedRoute>} />

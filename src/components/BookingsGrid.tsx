@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { bookingsApi, clientsApi, retreatsApi } from '../services/api';
 import { RetreatClient, Client, Retreat } from '../types';
 import AppleButton from './AppleButton';
@@ -32,6 +33,8 @@ type SortField = 'bookingNumber' | 'clientName' | 'retreatName' | 'bookingDate' 
 type SortDirection = 'asc' | 'desc';
 
 const BookingsGrid: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [bookings, setBookings] = useState<BookingWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -54,6 +57,10 @@ const BookingsGrid: React.FC = () => {
   const [sortField, setSortField] = useState<SortField>('bookingNumber');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const isMobileViewport = () => window.matchMedia('(max-width: 767px)').matches;
+  const routePrefix = useMemo(() => {
+    const firstSegment = location.pathname.split('/').filter(Boolean)[0];
+    return ['admin', 'medical', 'staff', 'user'].includes(firstSegment) ? `/${firstSegment}` : '';
+  }, [location.pathname]);
 
   useEffect(() => {
     fetchBookings();
@@ -364,7 +371,7 @@ const BookingsGrid: React.FC = () => {
           <AppleButton
             onClick={() => {
               if (isMobileViewport()) {
-                window.location.href = '/admin/bookings/new';
+                navigate(`${routePrefix}/bookings/new`);
                 return;
               }
               setShowAddModal(true);
@@ -486,7 +493,7 @@ const BookingsGrid: React.FC = () => {
                       <button
                         onClick={() => {
                           if (isMobileViewport()) {
-                            window.location.href = `/admin/bookings/${booking._id}/edit`;
+                            navigate(`${routePrefix}/bookings/${booking._id}/edit`);
                             return;
                           }
                           setEditingBooking(booking);

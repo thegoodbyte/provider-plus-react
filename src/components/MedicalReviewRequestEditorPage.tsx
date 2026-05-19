@@ -162,13 +162,13 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex items-start justify-between gap-4">
+    <div className="min-h-[calc(100vh-96px)] bg-white px-3 py-4 sm:px-6">
+      <div className="mb-6 flex flex-col items-start justify-between gap-3 sm:flex-row sm:gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">{isEdit ? 'Edit Medical Review Request' : 'Add Medical Review Request'}</h1>
           <p className="text-sm text-gray-600">Create a review round from an existing medical tracking record.</p>
         </div>
-        <div className="text-right text-sm text-gray-500">
+        <div className="text-left text-sm text-gray-500 sm:text-right">
           <div>Request # {requestNumber ? requestNumber : '—'}</div>
           {selectedClient && <div>{selectedClient.firstName} {selectedClient.lastName}</div>}
           {selectedRetreat && <div>{selectedRetreat.name}</div>}
@@ -265,7 +265,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
           <button type="button" onClick={() => navigate('/admin/medical-review-requests')} className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
             Cancel
           </button>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import BookingEditorForm from './BookingEditorForm';
 
@@ -11,7 +11,12 @@ interface Props {
 
 const BookingEditorPage: React.FC<Props> = ({ mode }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { bookingId } = useParams();
+  const routePrefix = React.useMemo(() => {
+    const firstSegment = location.pathname.split('/').filter(Boolean)[0];
+    return ['admin', 'medical', 'staff', 'user'].includes(firstSegment) ? `/${firstSegment}` : '';
+  }, [location.pathname]);
 
   return (
     <div className="p-6">
@@ -36,7 +41,7 @@ const BookingEditorPage: React.FC<Props> = ({ mode }) => {
           mode={mode}
           bookingId={bookingId}
           onCancel={() => navigate(-1)}
-          onSaved={() => navigate('/admin/bookings')}
+          onSaved={() => navigate(routePrefix ? `${routePrefix}/bookings` : '/bookings')}
         />
       </div>
     </div>

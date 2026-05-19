@@ -269,6 +269,23 @@ export interface ClientRequirement {
   requirement?: Requirement;
 }
 
+export interface Note {
+  _id?: string;
+  title: string;
+  content: string;
+  type: 'client' | 'retreat' | 'general';
+  clientId?: string | Client;
+  retreatId?: string | Retreat;
+  priority?: 'low' | 'medium' | 'high' | 'urgent';
+  tags?: string[];
+  createdBy?: string;
+  creator?: string;
+  isArchived?: boolean;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Reminder {
   _id?: string;
   clientId: string;

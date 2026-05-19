@@ -239,7 +239,7 @@ const MedicalRetreats: React.FC = () => {
                               <td>
                                 <span
                                   className="client-name-link"
-                                  onClick={() => navigate(`/medical-profile/${client._id}`)}
+                                  onClick={() => navigate(`/medical/client/${client._id}`)}
                                   style={{ cursor: 'pointer', color: '#667eea', textDecoration: 'underline' }}
                                 >
                                   {client.firstName} {client.lastName}
