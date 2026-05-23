@@ -68,7 +68,7 @@ const RetreatFlowPage: React.FC = () => {
   useEffect(() => {
     if (selectedRetreatId) {
       loadFlow(selectedRetreatId);
-      navigate(`/admin/retreat-flow/${selectedRetreatId}`, { replace: true });
+      navigate(`${routePrefix}/retreat-flow/${selectedRetreatId}`, { replace: true });
     }
   }, [selectedRetreatId]);
 

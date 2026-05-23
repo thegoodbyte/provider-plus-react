@@ -561,7 +561,19 @@ export const medicalReviewRequestsApi = {
 
 export const bookingFlowApi = {
   getTemplates: (retreatId: string) => cachedGet<BookingFlowTemplate[]>(`booking-flow:templates:${retreatId}`, () => api.get<BookingFlowTemplate[]>(`/booking-flow/templates?retreatId=${retreatId}`)),
-  getLibraryTemplates: () => cachedGet<BookingFlowTemplate[]>('booking-flow:library:templates', () => api.get<BookingFlowTemplate[]>('/booking-flow/library/templates')),
+  getLibraryTemplates: () => cachedGet<BookingFlowTemplate[]>(
+    'booking-flow:library:templates',
+    async () => {
+      try {
+        return await api.get<BookingFlowTemplate[]>('/booking-flow/library/templates');
+      } catch (error: any) {
+        if (error?.response?.status === 404) {
+          return api.get<BookingFlowTemplate[]>('/booking-flow/templates?templateScope=global');
+        }
+        throw error;
+      }
+    }
+  ),
   createTemplate: (data: Omit<BookingFlowTemplate, '_id'>) => {
     cacheService.clearPattern('booking-flow:');
     return api.post<BookingFlowTemplate>('/booking-flow/templates', data);

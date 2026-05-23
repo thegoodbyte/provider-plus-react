@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { api, clientsApi, medicalTrackingApi } from '../services/api';
 import { MedicalItem, Client } from '../types';
 import AppleButton from './AppleButton';
@@ -115,6 +115,7 @@ const normalizeMedicalItem = (item: any): MedicalItem => {
 
 const MedicalTrackingNew: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [medicalItems, setMedicalItems] = useState<MedicalItem[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -252,31 +253,8 @@ const MedicalTrackingNew: React.FC = () => {
   };
 
   const handleAdd = async () => {
-    try {
-      const response = await medicalTrackingApi.getNextDisplayId();
-      setEditingItem(null);
-      setFormData({
-        display_id: response.data,
-        type: 'EKG',
-        client_id: '',
-        notes: ''
-      });
-      setSelectedFile(null);
-      setSelectedFiles([]);
-      setIsAddModalOpen(true);
-    } catch (error) {
-      console.error('Error fetching next display ID:', error);
-      setEditingItem(null);
-      setFormData({
-        display_id: 1001, // Fallback to 1001
-        type: 'EKG',
-        client_id: '',
-        notes: ''
-      });
-      setSelectedFile(null);
-      setSelectedFiles([]);
-      setIsAddModalOpen(true);
-    }
+    const routePrefix = location.pathname.startsWith('/medical/') ? '/medical' : location.pathname.startsWith('/admin/') ? '/admin' : '';
+    navigate(`${routePrefix}/medical-tracking/new`);
   };
 
   const handleEdit = (item: MedicalItem) => {

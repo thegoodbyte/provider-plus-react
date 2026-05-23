@@ -15,6 +15,7 @@ import BookingsGrid from './BookingsGrid';
 import BookingEditorPage from './BookingEditorPage';
 import MedicalGrid from './MedicalGrid';
 import MedicalTrackingNew from './MedicalTrackingNew';
+import MedicalTrackingCreatePage from './MedicalTrackingCreatePage';
 import MedicalTrackingDetail from './MedicalTrackingDetail';
 import MedicalTrackingEditPage from './MedicalTrackingEditPage';
 import MedicalTrackingFileViewPage from './MedicalTrackingFileViewPage';
@@ -268,6 +269,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="bookings/new" element={<BookingEditorPage mode="create" />} />
                       <Route path="bookings/:bookingId/edit" element={<BookingEditorPage mode="edit" />} />
                       <Route path="medical-tracking" element={<MedicalTrackingNew />} />
+                      <Route path="medical-tracking/new" element={<MedicalTrackingCreatePage />} />
                       <Route path="medical-tracking/:id" element={<MedicalTrackingDetail />} />
                       <Route path="medical-tracking/:id/edit" element={<MedicalTrackingEditPage />} />
                       <Route path="medical-tracking/:id/view/:type" element={<MedicalTrackingFileViewPage />} />
@@ -281,6 +283,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="retreat-flow" element={<RetreatFlowPage />} />
                       <Route path="retreat-flow/:retreatId" element={<RetreatFlowPage />} />
                       <Route path="retreat-flow-library" element={<RetreatFlowLibraryPage />} />
+                      <Route path="booking-flow" element={<WorkflowDashboard />} />
                       <Route path="booking-flow/:bookingId" element={<BookingFlowPage />} />
                       <Route path="flow-tasks" element={<FlowTaskInboxPage />} />
                       <Route path="medical-dashboard" element={<MedicalAdvisorDashboard />} />
@@ -320,6 +323,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="medical-dashboard" element={<MedicalAdvisorDashboard />} />
                       <Route path="tracking" element={<MedicalTrackingNew />} />
                       <Route path="medical-tracking" element={<MedicalTrackingNew />} />
+                      <Route path="medical-tracking/new" element={<MedicalTrackingCreatePage />} />
                       <Route path="tracking/:id" element={<MedicalTrackingDetail />} />
                       <Route path="medical-tracking/:id" element={<MedicalTrackingDetail />} />
                       <Route path="medical-tracking/:id/edit" element={<MedicalTrackingEditPage />} />
@@ -331,6 +335,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="retreat-flow" element={<RetreatFlowPage />} />
                       <Route path="retreat-flow/:retreatId" element={<RetreatFlowPage />} />
                       <Route path="retreat-flow-library" element={<RetreatFlowLibraryPage />} />
+                      <Route path="booking-flow" element={<WorkflowDashboard />} />
                       <Route path="booking-flow/:bookingId" element={<BookingFlowPage />} />
                       <Route path="flow-tasks" element={<FlowTaskInboxPage />} />
                       <Route path="review/:id" element={<MedicalAdvisorReview />} />
@@ -391,6 +396,7 @@ const AppleLayout: React.FC = () => {
                 <Route path="/medical-review/:bookingId" element={<ProtectedRoute><MedicalReviewDetail /></ProtectedRoute>} />
                 <Route path="/medical-retreats" element={<ProtectedRoute><MedicalRetreats /></ProtectedRoute>} />
                 <Route path="/medical-tracking" element={<ProtectedRoute><MedicalTrackingNew /></ProtectedRoute>} />
+                <Route path="/medical-tracking/new" element={<ProtectedRoute><MedicalTrackingCreatePage /></ProtectedRoute>} />
                 <Route path="/medical-tracking/:id" element={<ProtectedRoute><MedicalTrackingDetail /></ProtectedRoute>} />
                 <Route path="/medical-tracking/:id/edit" element={<ProtectedRoute><MedicalTrackingEditPage /></ProtectedRoute>} />
                 <Route path="/medical-tracking/:id/view/:type" element={<ProtectedRoute><MedicalTrackingFileViewPage /></ProtectedRoute>} />
@@ -418,6 +424,7 @@ const AppleLayout: React.FC = () => {
                 <Route path="/retreat-flow" element={<ProtectedRoute><RetreatFlowPage /></ProtectedRoute>} />
                 <Route path="/retreat-flow/:retreatId" element={<ProtectedRoute><RetreatFlowPage /></ProtectedRoute>} />
                 <Route path="/retreat-flow-library" element={<ProtectedRoute><RetreatFlowLibraryPage /></ProtectedRoute>} />
+                <Route path="/booking-flow" element={<ProtectedRoute><WorkflowDashboard /></ProtectedRoute>} />
                 <Route path="/booking-flow/:bookingId" element={<ProtectedRoute><BookingFlowPage /></ProtectedRoute>} />
                 <Route path="/flow-tasks" element={<ProtectedRoute><FlowTaskInboxPage /></ProtectedRoute>} />
                 <Route path="/clients" element={<ProtectedRoute><UnifiedClientManager /></ProtectedRoute>} />

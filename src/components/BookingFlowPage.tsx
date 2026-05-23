@@ -24,16 +24,21 @@ const BookingFlowPage: React.FC = () => {
   const [items, setItems] = useState<BookingFlowItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string>('');
+  const [error, setError] = useState<string>('');
 
   useEffect(() => {
     if (bookingId) {
       loadData();
+    } else {
+      setLoading(false);
+      setError('Open a booking from the bookings grid or workflow dashboard.');
     }
   }, [bookingId]);
 
   const loadData = async () => {
     if (!bookingId) return;
     try {
+      setError('');
       setLoading(true);
       const bookingResponse = await bookingsApi.getOne(bookingId);
       const currentBooking = bookingResponse.data;
@@ -58,6 +63,7 @@ const BookingFlowPage: React.FC = () => {
       console.error('Error loading booking flow:', error);
       setBooking(null);
       setItems([]);
+      setError('Unable to load booking flow. The booking record or flow templates may be missing.');
     } finally {
       setLoading(false);
     }
@@ -115,6 +121,22 @@ const BookingFlowPage: React.FC = () => {
 
   if (loading) {
     return <LoadingSpinner message="Loading booking flow..." />;
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          {error}
+        </div>
+        <button
+          onClick={() => navigate(-1)}
+          className="mt-4 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+        >
+          Back
+        </button>
+      </div>
+    );
   }
 
   return (
