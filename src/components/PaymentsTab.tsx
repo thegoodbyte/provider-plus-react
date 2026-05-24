@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { paymentsApi } from '../services/api';
 import { Payment, PaymentSummary } from '../types';
-import { FiPlus, FiEdit2, FiTrash2, FiRefreshCw } from 'react-icons/fi';
+import { FiEdit2, FiTrash2, FiRefreshCw } from 'react-icons/fi';
 import './ClientsGrid.css';
 
 // Simple wrapper to fix TypeScript icon issues
@@ -180,19 +180,19 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
         <div className="payments-summary">
           <div className="summary-cards">
             <div className="summary-card">
-              <div className="summary-number">€{summary.completedPaymentsEUR.toLocaleString()}</div>
+              <div className="summary-number">{formatCurrency(summary.completedPaymentsUSD || 0, 'USD')}</div>
               <div className="summary-label">Completed Payments</div>
             </div>
             <div className="summary-card">
-              <div className="summary-number">€{summary.pendingPaymentsEUR.toLocaleString()}</div>
+              <div className="summary-number">{formatCurrency(summary.pendingPaymentsUSD || 0, 'USD')}</div>
               <div className="summary-label">Pending Payments</div>
             </div>
             <div className="summary-card">
-              <div className="summary-number">€{summary.depositsEUR.toLocaleString()}</div>
+              <div className="summary-number">{formatCurrency(summary.depositsUSD || 0, 'USD')}</div>
               <div className="summary-label">Deposits</div>
             </div>
             <div className="summary-card">
-              <div className="summary-number">€{summary.finalPaymentsEUR.toLocaleString()}</div>
+              <div className="summary-number">{formatCurrency(summary.finalPaymentsUSD || 0, 'USD')}</div>
               <div className="summary-label">Final Payments</div>
             </div>
           </div>
@@ -204,7 +204,7 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
               {Object.entries(summary.paymentsByMethod).map(([method, amount]) => (
                 <div key={method} className="method-item">
                   <span className="method-name">{method.replace('_', ' ')}</span>
-                  <span className="method-amount">€{amount.toLocaleString()}</span>
+                  <span className="method-amount">{formatCurrency(amount, 'USD')}</span>
                 </div>
               ))}
             </div>
@@ -247,9 +247,10 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
                 <label>Currency</label>
                 <select
                   value={formData.currency}
-                  onChange={(e) => setFormData({...formData, currency: e.target.value as 'CZK' | 'EUR' | 'PLN'})}
+                  onChange={(e) => setFormData({...formData, currency: e.target.value as 'CZK' | 'EUR' | 'PLN' | 'USD'})}
                 >
                   <option value="EUR">EUR</option>
+                  <option value="USD">USD</option>
                   <option value="CZK">CZK</option>
                   <option value="PLN">PLN</option>
                 </select>
@@ -374,6 +375,9 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
                   Amount
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  USD Amount
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Type
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -444,6 +448,9 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
                         ? `€${payment.amount.toLocaleString()}`
                         : `${payment.amount.toLocaleString()} ${payment.currency}${payment.amountInEUR ? ` (€${payment.amountInEUR.toLocaleString()})` : ''}`
                       }
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {formatCurrency(payment.usd_amount || 0, 'USD')}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                       {getPaymentType()}

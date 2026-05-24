@@ -327,6 +327,7 @@ export interface RetreatExpense {
   retreatId: string;
   expenseTypeId: string | ExpenseType;
   amount: number;
+  usd_amount?: number;
   currency: 'EUR' | 'USD' | 'CZK' | 'PLN';
   description?: string;
   vendor?: string;
@@ -339,8 +340,11 @@ export interface RetreatExpense {
 
 export interface ExpenseSummary {
   totalExpenses: number;
+  totalExpensesUSD?: number;
   expensesByCategory: Record<string, number>;
+  expensesByCategoryUSD?: Record<string, number>;
   expensesByStatus: Record<string, number>;
+  expensesByStatusUSD?: Record<string, number>;
   expensesByCurrency: Record<string, number>;
   count: number;
 }
@@ -353,6 +357,7 @@ export interface Payment {
   bookingId?: string | RetreatClient; // Legacy - for backward compatibility
   bookingHash?: string; // New field - 20-character hash for linking to specific booking
   amount: number;
+  usd_amount?: number;
   currency: 'EUR' | 'USD' | 'CZK' | 'PLN';
   status: 'pending' | 'completed' | 'failed' | 'refunded';
   paymentMethod: 'bank_transfer' | 'card' | 'cash' | 'paypal' | 'crypto' | 'stripe' | 'wise' | 'revolut' | 'other';
@@ -378,18 +383,24 @@ export interface Payment {
 export interface PaymentSummary {
   totalPayments: number;
   totalPaymentsEUR: number;
+  totalPaymentsUSD?: number;
   completedPayments: number;
   completedPaymentsEUR: number;
+  completedPaymentsUSD?: number;
   pendingPayments: number;
   pendingPaymentsEUR: number;
+  pendingPaymentsUSD?: number;
   refundedPayments: number;
   refundedPaymentsEUR: number;
+  refundedPaymentsUSD?: number;
   paymentsByMethod: Record<string, number>;
   paymentsByStatus: Record<string, number>;
   depositsPaid: number;
   depositsEUR: number;
+  depositsUSD?: number;
   finalPaymentsPaid: number;
   finalPaymentsEUR: number;
+  finalPaymentsUSD?: number;
 }
 
 export interface ScreeningClient {
@@ -738,6 +749,8 @@ export interface PaymentRequest {
   paymentType: 'CSOB' | 'Paypal' | 'Revolut' | 'Wise' | 'Cash' | 'Other';
   fullPriceQuote: number;
   amountPaid: number;
+  usd_amount?: number;
+  fullPriceUsdAmount?: number;
   currency: 'CZK' | 'EUR' | 'PLN' | 'USD';
   note?: string;
   status: 'pending' | 'sent' | 'paid' | 'overdue' | 'cancelled';

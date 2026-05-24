@@ -135,6 +135,7 @@ const PaymentRequestsGrid: React.FC = () => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quote</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paid</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">USD</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Currency</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -163,6 +164,9 @@ const PaymentRequestsGrid: React.FC = () => {
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                       {request.amountPaid?.toLocaleString?.() ?? request.amountPaid}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
+                      {(request.usd_amount ?? 0).toLocaleString()} USD
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{request.currency}</td>
                     <td className="px-4 py-4 whitespace-nowrap">
@@ -196,7 +200,7 @@ const PaymentRequestsGrid: React.FC = () => {
               })}
               {filteredRequests.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-4 py-10 text-center text-gray-500">
+                  <td colSpan={11} className="px-4 py-10 text-center text-gray-500">
                     {searchTerm ? 'No payment requests found matching your search' : 'No payment requests found'}
                   </td>
                 </tr>

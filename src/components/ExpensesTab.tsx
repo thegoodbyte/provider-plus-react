@@ -205,6 +205,10 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
               <div className="summary-label">Total Expenses</div>
             </div>
             <div className="summary-card">
+              <div className="summary-number">{formatCurrency(summary.totalExpensesUSD || 0, 'USD')}</div>
+              <div className="summary-label">Total USD</div>
+            </div>
+            <div className="summary-card">
               <div className="summary-number">{summary.count}</div>
               <div className="summary-label">Total Items</div>
             </div>
@@ -225,7 +229,14 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
               {Object.entries(summary.expensesByCategory).map(([category, amount]) => (
                 <div key={category} className="category-item">
                   <span className="category-name">{category}</span>
-                  <span className="category-amount">{formatCurrency(amount, 'CZK')}</span>
+                  <span className="category-amount">
+                    {formatCurrency(amount, 'CZK')}
+                    {summary.expensesByCategoryUSD?.[category] !== undefined && (
+                      <span className="ml-2 text-gray-500">
+                        {formatCurrency(summary.expensesByCategoryUSD[category], 'USD')}
+                      </span>
+                    )}
+                  </span>
                 </div>
               ))}
             </div>
@@ -381,6 +392,9 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
                   Amount
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  USD Amount
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Description
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -416,6 +430,9 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {formatAmount(expense.amount, expense.currency)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {formatCurrency(expense.usd_amount || 0, 'USD')}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 max-w-xs truncate">
                     {expense.description}
