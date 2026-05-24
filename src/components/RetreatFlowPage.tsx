@@ -15,13 +15,16 @@ type TemplateForm = {
   description: string;
   category: BookingFlowTemplate['category'];
   offsetDays: number;
+  deadlineBasis: NonNullable<BookingFlowTemplate['deadlineBasis']>;
   active: boolean;
   isBlocking: boolean;
   order: number;
   createsTask: boolean;
+  reviewRequired: boolean;
   taskTitle: string;
   taskPriority: 'low' | 'medium' | 'high' | 'urgent';
-  triggerType: string;
+  readinessGroup: string;
+  expectedArtifact: string;
 };
 
 const emptyForm = (): TemplateForm => ({
@@ -31,19 +34,30 @@ const emptyForm = (): TemplateForm => ({
   description: '',
   category: 'other',
   offsetDays: 0,
+  deadlineBasis: 'before_retreat_start',
   active: true,
   isBlocking: false,
   order: 0,
   createsTask: false,
+  reviewRequired: false,
   taskTitle: '',
   taskPriority: 'medium',
-  triggerType: 'before_retreat_start',
+  readinessGroup: '',
+  expectedArtifact: '',
 });
 
 const formatDate = (value?: string | Date | null) => {
   if (!value) return '—';
   const d = new Date(value);
   return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString();
+};
+
+const formatDeadlineLabel = (template: BookingFlowTemplate) => {
+  const basis = template.deadlineBasis || template.triggerType || 'before_retreat_start';
+  if (basis === 'after_signup') return `${template.offsetDays} days after signup`;
+  if (basis === 'after_booking') return `${template.offsetDays} days after booking`;
+  if (basis === 'manual') return 'Manual due date';
+  return `${template.offsetDays} days before retreat`;
 };
 
 const RetreatFlowPage: React.FC = () => {
@@ -111,13 +125,16 @@ const RetreatFlowPage: React.FC = () => {
           description: firstTemplate.description || '',
           category: firstTemplate.category,
           offsetDays: firstTemplate.offsetDays,
+          deadlineBasis: firstTemplate.deadlineBasis || (firstTemplate.triggerType as TemplateForm['deadlineBasis']) || 'before_retreat_start',
           active: firstTemplate.active !== false,
           isBlocking: !!firstTemplate.isBlocking,
           order: firstTemplate.order || 0,
           createsTask: !!firstTemplate.createsTask,
+          reviewRequired: !!firstTemplate.reviewRequired,
           taskTitle: firstTemplate.taskTitle || '',
           taskPriority: firstTemplate.taskPriority || 'medium',
-          triggerType: firstTemplate.triggerType || 'before_retreat_start',
+          readinessGroup: firstTemplate.readinessGroup || '',
+          expectedArtifact: firstTemplate.expectedArtifact || '',
         });
       } else {
         setSelectedTemplateId('');
@@ -155,13 +172,16 @@ const RetreatFlowPage: React.FC = () => {
       description: template.description || '',
       category: template.category,
       offsetDays: template.offsetDays,
+      deadlineBasis: template.deadlineBasis || (template.triggerType as TemplateForm['deadlineBasis']) || 'before_retreat_start',
       active: template.active !== false,
       isBlocking: !!template.isBlocking,
       order: template.order || 0,
       createsTask: !!template.createsTask,
+      reviewRequired: !!template.reviewRequired,
       taskTitle: template.taskTitle || '',
       taskPriority: template.taskPriority || 'medium',
-      triggerType: template.triggerType || 'before_retreat_start',
+      readinessGroup: template.readinessGroup || '',
+      expectedArtifact: template.expectedArtifact || '',
     });
   };
 
@@ -266,7 +286,7 @@ const RetreatFlowPage: React.FC = () => {
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="truncate text-sm font-semibold text-gray-900">{template.title}</div>
-                    <div className="truncate text-xs text-gray-500">{template.category} • {template.offsetDays} days before retreat</div>
+                    <div className="truncate text-xs text-gray-500">{template.category} • {formatDeadlineLabel(template)}</div>
                   </div>
             <div className="text-right text-xs text-gray-500">
                     <div>{template.workflowStage || 'potential'}</div>
@@ -311,6 +331,12 @@ const RetreatFlowPage: React.FC = () => {
               className="rounded-md border border-gray-300 px-3 py-2 text-sm"
               placeholder="Offset days"
             />
+            <select value={form.deadlineBasis} onChange={(e) => setForm({ ...form, deadlineBasis: e.target.value as TemplateForm['deadlineBasis'] })} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+              <option value="before_retreat_start">Before retreat start</option>
+              <option value="after_signup">After signup</option>
+              <option value="after_booking">After booking</option>
+              <option value="manual">Manual due date</option>
+            </select>
             <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value as TemplateForm['category'] })} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
               <option value="screening">Screening</option>
               <option value="booking">Booking</option>
@@ -356,10 +382,16 @@ const RetreatFlowPage: React.FC = () => {
               placeholder="Order"
             />
             <input
-              value={form.triggerType}
-              onChange={(e) => setForm({ ...form, triggerType: e.target.value })}
+              value={form.readinessGroup}
+              onChange={(e) => setForm({ ...form, readinessGroup: e.target.value })}
               className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-              placeholder="Trigger type"
+              placeholder="Readiness group (ekg, liver...)"
+            />
+            <input
+              value={form.expectedArtifact}
+              onChange={(e) => setForm({ ...form, expectedArtifact: e.target.value })}
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+              placeholder="Expected artifact"
             />
           </div>
 
@@ -367,6 +399,7 @@ const RetreatFlowPage: React.FC = () => {
             <label className="flex items-center gap-2"><input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} /> Active</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={form.isBlocking} onChange={(e) => setForm({ ...form, isBlocking: e.target.checked })} /> Blocking</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={form.createsTask} onChange={(e) => setForm({ ...form, createsTask: e.target.checked })} /> Creates task</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={form.reviewRequired} onChange={(e) => setForm({ ...form, reviewRequired: e.target.checked })} /> Review required</label>
           </div>
 
           <div className="mt-4 flex items-center justify-between">
@@ -413,7 +446,7 @@ const RetreatFlowPage: React.FC = () => {
                   <tr key={template._id}>
                     <td className="sticky left-0 z-10 border-b border-gray-100 bg-white px-3 py-2 align-top">
                       <div className="font-medium text-gray-900">{template.title}</div>
-                      <div className="text-xs text-gray-500">{template.offsetDays} days before</div>
+                      <div className="text-xs text-gray-500">{formatDeadlineLabel(template)}</div>
                     </td>
                     {bookings.map((booking) => {
                       const bookingItems = templateItems.get(template._id || template.key) || [];

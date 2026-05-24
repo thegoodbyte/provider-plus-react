@@ -7,7 +7,15 @@ import { BookingFlowItem, BookingFlowTemplate, RetreatClient, Retreat } from '..
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
-const statusOptions: BookingFlowItem['status'][] = ['pending', 'sent', 'received', 'reviewed', 'approved', 'rejected', 'completed', 'blocked', 'waived', 'scheduled'];
+const statusOptions: BookingFlowItem['status'][] = ['pending', 'sent', 'received', 'sent_for_review', 'in_review', 'reviewed', 'approved', 'caution', 'rejected', 'needs_resubmission', 'completed', 'blocked', 'waived', 'scheduled'];
+
+const formatDeadlineLabel = (template: BookingFlowTemplate) => {
+  const basis = template.deadlineBasis || template.triggerType || 'before_retreat_start';
+  if (basis === 'after_signup') return `${template.offsetDays} days after signup`;
+  if (basis === 'after_booking') return `${template.offsetDays} days after booking`;
+  if (basis === 'manual') return 'Manual due date';
+  return `${template.offsetDays} days before retreat`;
+};
 
 const formatDate = (value?: string | Date | null) => {
   if (!value) return '—';
@@ -193,7 +201,7 @@ const BookingFlowPage: React.FC = () => {
                     <div>
                       <div className="text-sm font-semibold text-gray-900">{template.title}</div>
                       <div className="text-xs text-gray-500">
-                        {template.workflowStage || 'potential'} • {template.category} • {template.offsetDays} days before retreat
+                        {template.workflowStage || 'potential'} • {template.category} • {formatDeadlineLabel(template)}
                       </div>
                       {template.description && <div className="mt-1 text-sm text-gray-600">{template.description}</div>}
                     </div>
@@ -226,12 +234,33 @@ const BookingFlowPage: React.FC = () => {
                       className="md:col-span-2 rounded-md border border-gray-300 px-3 py-2 text-sm"
                       placeholder="Notes"
                     />
+                    {(template.reviewRequired || item?.metadata?.reviewRequired) && (
+                      <>
+                        <select
+                          value={item?.reviewDecision || ''}
+                          onChange={(e) => item?._id && updateItem(item._id, { reviewDecision: e.target.value as BookingFlowItem['reviewDecision'] })}
+                          className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+                        >
+                          <option value="">Review result</option>
+                          <option value="OK">OK</option>
+                          <option value="caution">Caution</option>
+                          <option value="NOT OK">NOT OK</option>
+                        </select>
+                        <textarea
+                          value={item?.reviewNotes || ''}
+                          onChange={(e) => item?._id && setItems((prev) => prev.map((entry) => entry._id === item._id ? { ...entry, reviewNotes: e.target.value } : entry))}
+                          rows={2}
+                          className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+                          placeholder="Review notes"
+                        />
+                      </>
+                    )}
                   </div>
 
                     <div className="mt-3 flex items-center gap-2">
                       <button
                         disabled={!item?._id || savingId === item._id}
-                        onClick={() => item?._id && updateItem(item._id, { notes: item.notes, assignedTo: item.assignedTo })}
+                        onClick={() => item?._id && updateItem(item._id, { notes: item.notes, assignedTo: item.assignedTo, reviewNotes: item.reviewNotes, reviewDecision: item.reviewDecision })}
                         className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
                       >
                         <Icon icon={Save} className="h-4 w-4" />

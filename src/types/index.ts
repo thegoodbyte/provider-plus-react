@@ -682,6 +682,7 @@ export interface BookingFlowTemplate {
   description?: string;
   category: 'screening' | 'booking' | 'payment' | 'contract' | 'questionnaire' | 'medical' | 'dietary' | 'message' | 'access' | 'approval' | 'reminder' | 'other';
   offsetDays: number;
+  deadlineBasis?: 'after_signup' | 'after_booking' | 'before_retreat_start' | 'manual';
   active?: boolean;
   isBlocking?: boolean;
   order?: number;
@@ -689,6 +690,9 @@ export interface BookingFlowTemplate {
   taskTitle?: string;
   taskPriority?: 'low' | 'medium' | 'high' | 'urgent';
   triggerType?: string;
+  reviewRequired?: boolean;
+  readinessGroup?: string;
+  expectedArtifact?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -706,7 +710,7 @@ export interface BookingFlowItem {
   category: 'screening' | 'booking' | 'payment' | 'contract' | 'questionnaire' | 'medical' | 'dietary' | 'message' | 'access' | 'approval' | 'reminder' | 'other';
   offsetDays: number;
   dueDate?: Date | string | null;
-  status: 'pending' | 'sent' | 'received' | 'reviewed' | 'approved' | 'rejected' | 'completed' | 'blocked' | 'waived' | 'scheduled';
+  status: 'pending' | 'sent' | 'received' | 'sent_for_review' | 'in_review' | 'reviewed' | 'approved' | 'caution' | 'rejected' | 'needs_resubmission' | 'completed' | 'blocked' | 'waived' | 'scheduled';
   isBlocking?: boolean;
   order?: number;
   source?: string;
@@ -715,6 +719,9 @@ export interface BookingFlowItem {
   sentAt?: Date | string;
   receivedAt?: Date | string;
   reviewedAt?: Date | string;
+  reviewDecision?: 'OK' | 'caution' | 'NOT OK';
+  reviewNotes?: string;
+  reviewedBy?: string;
   approvedAt?: Date | string;
   assignedTo?: string;
   metadata?: Record<string, any>;
