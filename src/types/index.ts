@@ -309,12 +309,15 @@ export interface Reminder {
 
 export interface ExpenseType {
   _id?: string;
+  key?: string;
   name: string;
   description?: string;
   category: 'accommodation' | 'transport' | 'food' | 'activities' | 'staff' | 'utilities' | 'general';
   defaultCurrency?: string;
   defaultAmount?: number;
   isActive?: boolean;
+  seedManaged?: boolean;
+  seedSource?: string;
   createdAt?: string;
   updatedAt?: string;
 }

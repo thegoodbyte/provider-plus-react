@@ -217,7 +217,7 @@ export const expenseTypesApi = {
   delete: (id: string) => api.delete(`/expense-types/${id}`),
   activate: (id: string) => api.patch(`/expense-types/${id}/activate`, {}),
   deactivate: (id: string) => api.patch(`/expense-types/${id}/deactivate`, {}),
-  seed: () => api.post('/expense-types/seed', {}),
+  seed: (dryRun: boolean = false) => api.post(`/expense-types/seed${dryRun ? '?dryRun=true' : ''}`, {}),
 };
 
 export const retreatExpensesApi = {
