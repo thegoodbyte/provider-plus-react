@@ -33,7 +33,7 @@ const DebugOverlay: React.FC = () => {
       return {
         protocol: 'http:',
         hostname: 'localhost',
-        port: '3001',
+        port: '3005',
         fullUrl: url
       };
     }
@@ -45,7 +45,7 @@ const DebugOverlay: React.FC = () => {
   const checkConnection = async () => {
     const startTime = Date.now();
     try {
-      const response = await api.get('/');
+      await api.get('/');
       const responseTime = Date.now() - startTime;
       setConnectionStatus({
         isConnected: true,

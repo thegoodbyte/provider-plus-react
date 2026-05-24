@@ -11,8 +11,6 @@ export const Login: React.FC = () => {
   const [connectionStatus, setConnectionStatus] = useState<'checking' | 'connected' | 'error'>('checking');
   const { login } = useAuth();
 
-  const apiPort = API_BASE_URL.split(':').pop()?.split('/')[0] || '3001';
-
   // Check API connection on mount
   useEffect(() => {
     const checkConnection = async () => {
@@ -65,9 +63,9 @@ export const Login: React.FC = () => {
         {/* Connection Status Indicator */}
         {connectionStatus === 'error' && (
           <div className="connection-warning">
-            ⚠️ Cannot connect to server on port {apiPort}
+            Cannot connect to the configured API
             <br />
-            <small>Please ensure the backend is running</small>
+            <small>{API_BASE_URL}</small>
           </div>
         )}
 

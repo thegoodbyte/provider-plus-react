@@ -156,7 +156,7 @@ const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
             <p>If this problem persists, please:</p>
             <ul>
               <li>Check your internet connection</li>
-              <li>Verify the backend server is running on port <strong>{process.env.REACT_APP_PROVIDER_PLUS_API_URL?.split(':').pop()?.split('/')[0] || process.env.REACT_APP_API_URL?.split(':').pop()?.split('/')[0] || '3001'}</strong></li>
+              <li>Verify the backend API is reachable at the configured URL</li>
               <li>Contact support if the issue continues</li>
             </ul>
           </div>

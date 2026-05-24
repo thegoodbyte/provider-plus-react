@@ -3,7 +3,7 @@
 export const API_BASE_URL =
   process.env.REACT_APP_PROVIDER_PLUS_API_URL ||
   process.env.REACT_APP_API_URL ||
-  'http://localhost:3001';
+  'http://localhost:3005';
 
 export const API_ENDPOINTS = {
   // Auth endpoints
