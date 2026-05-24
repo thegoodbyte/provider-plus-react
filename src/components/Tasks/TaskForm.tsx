@@ -132,18 +132,39 @@ export const TaskForm: React.FC<TaskFormProps> = ({
     }));
   };
 
-  // Create options for searchable selects
-  const clientOptions = clients.map(client => ({
-    id: client._id,
-    label: `${client.firstName} ${client.lastName}`,
-    sublabel: client.email,
-  }));
+  const formatDate = (value?: string | Date) => {
+    if (!value) return '';
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString();
+  };
 
-  const retreatOptions = retreats.map(retreat => ({
-    id: retreat._id,
-    label: retreat.name,
-    sublabel: `${new Date(retreat.startDate).toLocaleDateString()} - ${new Date(retreat.endDate).toLocaleDateString()}`,
-  }));
+  // Create options for searchable selects
+  const clientOptions = clients
+    .map(client => {
+      const id = client._id || client.id;
+      const displayId = client.display_id ? `#${client.display_id}` : '';
+      const name = `${client.firstName || client.fname || ''} ${client.lastName || client.lname || ''}`.trim();
+      return {
+        id,
+        label: [displayId, name || client.email || 'Unnamed client'].filter(Boolean).join(' - '),
+        sublabel: [client.email, client.phone].filter(Boolean).join(' • '),
+      };
+    })
+    .filter(option => option.id);
+
+  const retreatOptions = retreats
+    .map(retreat => {
+      const id = retreat._id || retreat.id;
+      const startDate = formatDate(retreat.startDate || retreat.dates?.startDate);
+      const endDate = formatDate(retreat.endDate);
+      const dateRange = [startDate, endDate].filter(Boolean).join(' - ');
+      return {
+        id,
+        label: retreat.name || retreat.title || retreat.retreatName || 'Unnamed retreat',
+        sublabel: [dateRange, retreat.location, retreat.status].filter(Boolean).join(' • '),
+      };
+    })
+    .filter(option => option.id);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
