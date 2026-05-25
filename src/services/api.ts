@@ -553,6 +553,8 @@ export const medicalArtifactsApi = {
     cacheService.clearPattern('medical-artifacts:');
     return api.delete<MedicalArtifact>(`/medical-artifacts/${id}/files?storedPath=${encodeURIComponent(storedPath)}`);
   },
+  getFileBlob: (id: string, storedPath: string) =>
+    api.get(`/medical-artifacts/${id}/files/view?storedPath=${encodeURIComponent(storedPath)}`, { responseType: 'blob' }),
   update: (id: string, data: Partial<MedicalArtifact>) => {
     cacheService.clearPattern('medical-artifacts:');
     return api.patch<MedicalArtifact>(`/medical-artifacts/${id}`, data);

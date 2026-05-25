@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, Inbox, Save, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, Download, ExternalLink, Inbox, Save, Trash2, Upload } from 'lucide-react';
 import { medicalArtifactsApi } from '../services/api';
 import { Client, MedicalArtifact } from '../types';
 import LoadingSpinner from './LoadingSpinner';
@@ -34,9 +34,81 @@ const formatBytes = (size?: number) => {
 };
 
 const getFileStoredPath = (file: NonNullable<MedicalArtifact['files']>[number]) => file.s3Key || file.filePath || '';
-const getFileUrl = (file: NonNullable<MedicalArtifact['files']>[number]) => file.url || (/^https?:\/\//i.test(getFileStoredPath(file)) ? getFileStoredPath(file) : '');
 const isImageFile = (file: NonNullable<MedicalArtifact['files']>[number]) => Boolean(file.mimeType?.startsWith('image/'));
 const isPdfFile = (file: NonNullable<MedicalArtifact['files']>[number]) => file.mimeType === 'application/pdf' || /\.pdf($|\?)/i.test(file.fileName || '');
+
+type ArtifactFile = NonNullable<MedicalArtifact['files']>[number];
+
+const ArtifactFilePreview: React.FC<{ artifactId: string; file: ArtifactFile; index: number }> = ({ artifactId, file, index }) => {
+  const storedPath = getFileStoredPath(file);
+  const [objectUrl, setObjectUrl] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    let createdUrl = '';
+
+    const load = async () => {
+      if (!storedPath) return;
+      try {
+        setError('');
+        const response = await medicalArtifactsApi.getFileBlob(artifactId, storedPath);
+        createdUrl = URL.createObjectURL(response.data as Blob);
+        if (active) setObjectUrl(createdUrl);
+      } catch (loadError) {
+        console.error('Error loading artifact file preview:', loadError);
+        if (active) setError('Preview unavailable. Open the file in a new tab.');
+      }
+    };
+
+    load();
+
+    return () => {
+      active = false;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
+  }, [artifactId, storedPath]);
+
+  if (!storedPath) {
+    return <div className="mt-3 rounded-md border border-dashed border-gray-300 bg-gray-50 p-3 text-xs text-gray-500">No storage path recorded for preview.</div>;
+  }
+
+  return (
+    <div className="mt-3">
+      {objectUrl && (
+        <div className="overflow-hidden rounded-md border border-gray-200 bg-gray-50">
+          {isImageFile(file) && <img src={objectUrl} alt={file.fileName || `File ${index + 1}`} className="max-h-80 w-full object-contain" />}
+          {isPdfFile(file) && <iframe src={objectUrl} title={file.fileName || `PDF ${index + 1}`} className="h-80 w-full bg-white" />}
+          {!isImageFile(file) && !isPdfFile(file) && (
+            <div className="p-4 text-xs text-gray-600">Preview unavailable for this file type.</div>
+          )}
+        </div>
+      )}
+      {!objectUrl && !error && <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-gray-500">Loading preview...</div>}
+      {error && <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-xs text-yellow-800">{error}</div>}
+      <div className="mt-2 flex flex-wrap gap-2">
+        {objectUrl && (
+          <>
+            <button type="button" onClick={() => window.open(objectUrl, '_blank', 'noopener,noreferrer')} className="inline-flex items-center gap-1 rounded-md border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50">
+              <ExternalLink className="h-3 w-3" />
+              Open viewer
+            </button>
+            <a href={objectUrl} download={file.fileName || `medical-artifact-file-${index + 1}`} className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
+              <Download className="h-3 w-3" />
+              Download
+            </a>
+          </>
+        )}
+        {file.url && (
+          <a href={file.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
+            <ExternalLink className="h-3 w-3" />
+            S3 link
+          </a>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const MedicalArtifactDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -244,7 +316,6 @@ const MedicalArtifactDetailPage: React.FC = () => {
               <div className="space-y-3">
                 {artifact.files.map((file, index) => {
                   const storedPath = getFileStoredPath(file);
-                  const fileUrl = getFileUrl(file);
                   return (
                     <div key={`${file.fileName || storedPath || index}`} className="rounded-md border border-gray-200 p-3">
                       <div className="font-medium text-gray-900">{file.fileName || `File ${index + 1}`}</div>
@@ -253,21 +324,8 @@ const MedicalArtifactDetailPage: React.FC = () => {
                         <div className="font-semibold text-gray-500">S3 path</div>
                         {storedPath || 'No storage path recorded'}
                       </div>
-                      {fileUrl && (
-                        <div className="mt-3 overflow-hidden rounded-md border border-gray-200 bg-gray-50">
-                          {isImageFile(file) && <img src={fileUrl} alt={file.fileName || `File ${index + 1}`} className="max-h-80 w-full object-contain" />}
-                          {isPdfFile(file) && <iframe src={fileUrl} title={file.fileName || `PDF ${index + 1}`} className="h-80 w-full bg-white" />}
-                        </div>
-                      )}
+                      {artifact._id && <ArtifactFilePreview artifactId={artifact._id} file={file} index={index} />}
                       <div className="mt-3 flex flex-wrap gap-2">
-                        {fileUrl ? (
-                          <a href={fileUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-md border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50">
-                            <ExternalLink className="h-3 w-3" />
-                            Open file
-                          </a>
-                        ) : (
-                          <span className="text-xs text-gray-500">No openable URL returned by the API.</span>
-                        )}
                         <button
                           type="button"
                           onClick={() => handleDeleteFile(file)}
