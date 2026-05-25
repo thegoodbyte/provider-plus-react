@@ -575,10 +575,11 @@ export const medicalReviewRequestsApi = {
     cacheService.clearPattern('medical-review-requests:');
     return api.post<MedicalReviewRequest>(`/medical-review-requests/from-tracking/${medicalTrackingId}`, { requestType });
   },
-  createFromArtifact: (artifactId: string, requestType?: MedicalReviewRequest['requestType']) => {
+  createFromArtifact: (artifactId: string, requestType?: MedicalReviewRequest['requestType'], data: Partial<MedicalReviewRequest> = {}) => {
     cacheService.clearPattern('medical-review-requests:');
-    return api.post<MedicalReviewRequest>(`/medical-review-requests/from-artifact/${artifactId}`, { requestType });
+    return api.post<MedicalReviewRequest>(`/medical-review-requests/from-artifact/${artifactId}`, { ...data, requestType });
   },
+  getPublic: (token: string) => api.get<{ request: MedicalReviewRequest; artifacts: MedicalArtifact[] }>(`/medical-review-public/${encodeURIComponent(token)}`),
   update: (id: string, data: Partial<MedicalReviewRequest>) => {
     cacheService.clearPattern('medical-review-requests:');
     return api.patch<MedicalReviewRequest>(`/medical-review-requests/${id}`, data);

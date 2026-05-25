@@ -28,6 +28,7 @@ import FlowTaskInboxPage from './FlowTaskInboxPage';
 import MedicalReviewRequestsGrid from './MedicalReviewRequestsGrid';
 import MedicalReviewRequestEditorPage from './MedicalReviewRequestEditorPage';
 import MedicalReviewRequestsPage from './MedicalReviewRequestsPage';
+import MedicalReviewPublicPage from './MedicalReviewPublicPage';
 import RemindersPage from './RemindersPage';
 import PaymentsPage from './PaymentsPage';
 import PaymentEditorPage from './PaymentEditorPage';
@@ -250,6 +251,7 @@ const AppleLayout: React.FC = () => {
               <Routes>
                 {/* Unauthorized route */}
                 <Route path="/unauthorized" element={<Unauthorized />} />
+                <Route path="/medical/review-link/:token" element={<MedicalReviewPublicPage />} />
 
                 {/* Admin routes */}
                 <Route path="/admin/*" element={

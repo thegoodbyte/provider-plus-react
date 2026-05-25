@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner';
 import SearchableMedicalTrackingSelect from './SearchableMedicalTrackingSelect';
-import { clientsApi, medicalReviewRequestsApi, medicalTrackingApi, retreatsApi } from '../services/api';
-import { Client, MedicalItem, MedicalReviewRequest, Retreat } from '../types';
+import { clientsApi, medicalArtifactsApi, medicalReviewRequestsApi, medicalTrackingApi, retreatsApi } from '../services/api';
+import { usersApi, User } from '../services/usersApi';
+import { useAuth } from '../context/AuthContext';
+import { Client, MedicalArtifact, MedicalItem, MedicalReviewRequest, Retreat } from '../types';
 
 type FormState = {
   medicalTrackingId: string;
@@ -13,6 +15,7 @@ type FormState = {
   status: MedicalReviewRequest['status'];
   requestedBy: string;
   assignedTo: string;
+  assignedToUserId: string;
   reviewDecision: 'OK' | 'caution' | 'NOT OK' | '';
   reviewNotes: string;
   overallNotes: string;
@@ -22,15 +25,32 @@ type FormState = {
   liverReviewNotes: string;
 };
 
+const reviewTypeByArtifact = (artifactType: MedicalArtifact['artifactType']): MedicalReviewRequest['requestType'] => {
+  if (artifactType === 'ekg') return 'ekg_review';
+  if (artifactType === 'ceremony_ekg') return 'ceremony_ekg_review';
+  if (artifactType === 'blood_pressure') return 'blood_pressure_review';
+  if (artifactType === 'liver_panel') return 'liver_panel_review';
+  if (artifactType === 'medications_form' || artifactType === 'medication_list') return 'medications_review';
+  if (artifactType === 'questionnaire') return 'questionnaire_review';
+  if (artifactType === 'food_intake') return 'food_review';
+  if (artifactType === 'question') return 'medical_question';
+  return 'general_clearance';
+};
+
 const MedicalReviewRequestEditorPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
   const { id } = useParams();
   const isEdit = Boolean(id);
+  const artifactId = new URLSearchParams(location.search).get('artifactId') || '';
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [trackingItems, setTrackingItems] = useState<MedicalItem[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
+  const [medicalUsers, setMedicalUsers] = useState<User[]>([]);
+  const [selectedArtifact, setSelectedArtifact] = useState<MedicalArtifact | null>(null);
   const [form, setForm] = useState<FormState>({
     medicalTrackingId: '',
     clientId: '',
@@ -39,6 +59,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
     status: 'pending',
     requestedBy: 'Provider Plus CRM',
     assignedTo: '',
+    assignedToUserId: '',
     reviewDecision: '',
     reviewNotes: '',
     overallNotes: '',
@@ -52,22 +73,35 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
 
   useEffect(() => {
     loadData();
-  }, [id]);
+  }, [id, artifactId]);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const [trackingResponse, clientsResponse, retreatsResponse, nextDisplayResponse] = await Promise.all([
+      const [trackingResponse, clientsResponse, retreatsResponse, nextDisplayResponse, usersResponse, artifactResponse] = await Promise.all([
         medicalTrackingApi.getAll(),
         clientsApi.getAll(),
         retreatsApi.getAll(),
         medicalReviewRequestsApi.getNextDisplayId(),
+        usersApi.getAll().catch(() => ({ data: [] as User[] })),
+        artifactId ? medicalArtifactsApi.getOne(artifactId).catch(() => null) : Promise.resolve(null),
       ]);
 
       setTrackingItems(trackingResponse.data || []);
       setClients(clientsResponse.data || []);
       setRetreats(retreatsResponse.data || []);
+      setMedicalUsers((usersResponse.data || []).filter((item) => item.role === 'medical_advisor' && item.isActive !== false));
       setRequestNumber(nextDisplayResponse.data || null);
+      if (artifactResponse?.data) {
+        const artifact = artifactResponse.data;
+        setSelectedArtifact(artifact);
+        setForm((prev) => ({
+          ...prev,
+          clientId: typeof artifact.clientId === 'string' ? artifact.clientId : artifact.clientId?._id || prev.clientId,
+          retreatId: typeof artifact.retreatId === 'string' ? artifact.retreatId : artifact.retreatId?._id || prev.retreatId,
+          requestType: reviewTypeByArtifact(artifact.artifactType),
+        }));
+      }
 
       if (isEdit && id) {
         const existing = await medicalReviewRequestsApi.getOne(id);
@@ -80,6 +114,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           status: record.status,
           requestedBy: record.requestedBy || '',
           assignedTo: record.assignedTo || '',
+          assignedToUserId: typeof record.assignedToUserId === 'string' ? record.assignedToUserId : record.assignedToUserId?._id || '',
           reviewDecision: record.reviewDecision || '',
           reviewNotes: record.reviewNotes || '',
           overallNotes: record.overallNotes || '',
@@ -124,8 +159,8 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
     e.preventDefault();
     try {
       setSaving(true);
-      if (!form.medicalTrackingId) {
-        throw new Error('Select a medical tracking record first');
+      if (!form.medicalTrackingId && !selectedArtifact?._id) {
+        throw new Error('Select a medical tracking record or medical artifact first');
       }
 
       if (isEdit && id) {
@@ -137,6 +172,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           status: form.status,
           requestedBy: form.requestedBy,
           assignedTo: form.assignedTo,
+          assignedToUserId: form.assignedToUserId,
           reviewDecision: form.reviewDecision || undefined,
           reviewNotes: form.reviewNotes,
           overallNotes: form.overallNotes,
@@ -146,8 +182,26 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           liverReviewNotes: form.liverReviewNotes,
         });
       } else {
-        const legacyRequestType = ['ekg', 'liver', 'both'].includes(form.requestType) ? form.requestType as 'ekg' | 'liver' | 'both' : 'both';
-        await medicalReviewRequestsApi.createFromTracking(form.medicalTrackingId, legacyRequestType);
+        const payload = {
+          clientId: form.clientId,
+          retreatId: form.retreatId || undefined,
+          requestType: form.requestType,
+          status: form.status,
+          assignedTo: form.assignedTo,
+          assignedToUserId: form.assignedToUserId,
+          reviewDecision: form.reviewDecision || undefined,
+          reviewNotes: form.reviewNotes,
+          overallNotes: form.overallNotes,
+          ekgReviewDecision: form.ekgReviewDecision || undefined,
+          ekgReviewNotes: form.ekgReviewNotes,
+          liverReviewDecision: form.liverReviewDecision || undefined,
+          liverReviewNotes: form.liverReviewNotes,
+        };
+        if (selectedArtifact?._id) {
+          await medicalReviewRequestsApi.createFromArtifact(selectedArtifact._id, form.requestType, payload);
+        } else {
+          await medicalReviewRequestsApi.create({ ...payload, medicalTrackingId: form.medicalTrackingId } as any);
+        }
       }
       navigate('/admin/medical-review-requests');
     } catch (error) {
@@ -167,7 +221,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
       <div className="mb-6 flex flex-col items-start justify-between gap-3 sm:flex-row sm:gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">{isEdit ? 'Edit Medical Review Request' : 'Add Medical Review Request'}</h1>
-          <p className="text-sm text-gray-600">Create a review round from an existing medical tracking record.</p>
+          <p className="text-sm text-gray-600">Create a review round from a stored medical record or existing tracking item.</p>
         </div>
         <div className="text-left text-sm text-gray-500 sm:text-right">
           <div>Request # {requestNumber ? requestNumber : '—'}</div>
@@ -179,21 +233,28 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <label className="mb-2 block text-sm font-medium text-gray-700">Medical Tracking Record</label>
-            <SearchableMedicalTrackingSelect
-              items={trackingItems}
-              value={form.medicalTrackingId}
-              onChange={(medicalTrackingId) => {
-                const tracking = trackingItems.find((item) => item._id === medicalTrackingId);
-                setForm((prev) => ({
-                  ...prev,
-                  medicalTrackingId,
-                  clientId: tracking?.client_id || prev.clientId,
-                  retreatId: tracking?.retreatId || prev.retreatId,
-                  requestType: tracking?.ekgFileName && tracking?.liverPanelFileName ? 'both' : tracking?.ekgFileName ? 'ekg' : tracking?.liverPanelFileName ? 'liver' : prev.requestType,
-                }));
-              }}
-            />
+            <label className="mb-2 block text-sm font-medium text-gray-700">Medical Record</label>
+            {selectedArtifact ? (
+              <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm">
+                <div className="font-semibold text-blue-950">#{selectedArtifact.display_id || '—'} {selectedArtifact.title}</div>
+                <div className="mt-1 capitalize text-blue-800">{selectedArtifact.artifactType.replace(/_/g, ' ')}</div>
+              </div>
+            ) : (
+              <SearchableMedicalTrackingSelect
+                items={trackingItems}
+                value={form.medicalTrackingId}
+                onChange={(medicalTrackingId) => {
+                  const tracking = trackingItems.find((item) => item._id === medicalTrackingId);
+                  setForm((prev) => ({
+                    ...prev,
+                    medicalTrackingId,
+                    clientId: tracking?.client_id || prev.clientId,
+                    retreatId: tracking?.retreatId || prev.retreatId,
+                    requestType: tracking?.ekgFileName && tracking?.liverPanelFileName ? 'both' : tracking?.ekgFileName ? 'ekg' : tracking?.liverPanelFileName ? 'liver' : prev.requestType,
+                  }));
+                }}
+              />
+            )}
             <div className="mt-3 grid gap-3 text-sm text-gray-600 sm:grid-cols-2">
               <div>Client ID: {form.clientId || '—'}</div>
               <div>Retreat ID: {form.retreatId || '—'}</div>
@@ -233,7 +294,25 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
               </div>
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-700">Assigned To</label>
-                <input value={form.assignedTo} onChange={(e) => setForm({ ...form, assignedTo: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2" />
+                <select
+                  value={form.assignedToUserId}
+                  onChange={(e) => {
+                    const assigned = medicalUsers.find((item) => item._id === e.target.value);
+                    setForm({
+                      ...form,
+                      assignedToUserId: e.target.value,
+                      assignedTo: assigned ? [assigned.firstName, assigned.lastName].filter(Boolean).join(' ') || assigned.email : '',
+                    });
+                  }}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2"
+                >
+                  <option value="">Select medical user</option>
+                  {medicalUsers.map((medicalUser) => (
+                    <option key={medicalUser._id} value={medicalUser._id}>
+                      {[medicalUser.firstName, medicalUser.lastName].filter(Boolean).join(' ') || medicalUser.email} ({medicalUser.email})
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
@@ -242,7 +321,9 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="rounded-lg border border-gray-200 bg-white p-4">
             <label className="mb-2 block text-sm font-medium text-gray-700">Requested By</label>
-            <input value={form.requestedBy} onChange={(e) => setForm({ ...form, requestedBy: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2" />
+            <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800">
+              {[user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || user?.username || form.requestedBy}
+            </div>
             <label className="mb-2 mt-4 block text-sm font-medium text-gray-700">Review Decision</label>
             <select value={form.reviewDecision} onChange={(e) => setForm({ ...form, reviewDecision: e.target.value as FormState['reviewDecision'] })} className="w-full rounded-md border border-gray-300 px-3 py-2">
               <option value="">Select</option>
