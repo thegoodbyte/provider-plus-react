@@ -64,7 +64,7 @@ const AppleLayout: React.FC = () => {
     return saved === 'true';
   });
   const [showSettings, setShowSettings] = useState(false);
-  const { logout, user } = useAuth();
+  const { logout, user, startMedicalStaffPreview, stopImpersonation } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -144,6 +144,7 @@ const AppleLayout: React.FC = () => {
   };
 
   const activeItem = getActiveItemFromPath();
+  const isImpersonating = Boolean(user?.impersonatedBy || user?.originalRole);
 
   useEffect(() => {
     if (location.pathname === '/') {
@@ -223,6 +224,28 @@ const AppleLayout: React.FC = () => {
 
                 {/* Actions */}
               <div className="flex items-center gap-2">
+                {user?.role === 'admin' && !isImpersonating && (
+                  <button
+                    onClick={async () => {
+                      await startMedicalStaffPreview();
+                      navigate('/medical/launcher');
+                    }}
+                    className="hidden md:inline-flex px-3 py-1.5 text-sm font-medium text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 rounded-apple transition-all"
+                  >
+                    Medical View
+                  </button>
+                )}
+                {isImpersonating && (
+                  <button
+                    onClick={() => {
+                      stopImpersonation();
+                      navigate('/admin/launcher');
+                    }}
+                    className="hidden md:inline-flex px-3 py-1.5 text-sm font-medium text-amber-800 hover:text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-apple transition-all"
+                  >
+                    Exit Medical View
+                  </button>
+                )}
                 {/* Settings button */}
                 <button
                   onClick={() => setShowSettings(true)}
@@ -248,6 +271,12 @@ const AppleLayout: React.FC = () => {
             </div>
           </div>
         </header>
+
+        {isImpersonating && (
+          <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+            Previewing the medical staff view as an admin. This session is audited and intended for read-only verification.
+          </div>
+        )}
 
         {/* Page Content */}
         <main className="px-4 sm:px-6 lg:px-8 py-6 overflow-y-auto" style={{ height: 'calc(100vh - 64px - 32px)' }}>
