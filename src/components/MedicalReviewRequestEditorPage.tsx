@@ -37,6 +37,11 @@ const reviewTypeByArtifact = (artifactType: MedicalArtifact['artifactType']): Me
   return 'general_clearance';
 };
 
+const getArtifactFileUrl = (file: NonNullable<MedicalArtifact['files']>[number]) => {
+  const storedPath = file.url || file.filePath || file.s3Key || '';
+  return /^https?:\/\//i.test(storedPath) ? storedPath : '';
+};
+
 const MedicalReviewRequestEditorPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -258,8 +263,38 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
             <div className="mt-3 grid gap-3 text-sm text-gray-600 sm:grid-cols-2">
               <div>Client ID: {form.clientId || '—'}</div>
               <div>Retreat ID: {form.retreatId || '—'}</div>
-              <div>EKG: {selectedTracking?.ekgFileName || 'No file'}</div>
-              <div>Liver: {selectedTracking?.liverPanelFileName || 'No file'}</div>
+              {selectedArtifact ? (
+                <div className="sm:col-span-2">
+                  <div className="mb-2 font-medium text-gray-700">Linked files</div>
+                  {selectedArtifact.files?.length ? (
+                    <div className="space-y-2">
+                      {selectedArtifact.files.map((file, index) => {
+                        const fileUrl = getArtifactFileUrl(file);
+                        return (
+                          <div key={`${file.fileName || file.s3Key || index}`} className="rounded-md border border-gray-200 bg-gray-50 p-3">
+                            <div className="font-medium text-gray-900">{file.fileName || `File ${index + 1}`}</div>
+                            <div className="mt-1 break-all text-xs text-gray-500">{file.s3Key || file.filePath || 'No storage path recorded'}</div>
+                            {fileUrl ? (
+                              <a href={fileUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex rounded-md border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50">
+                                Open file
+                              </a>
+                            ) : (
+                              <div className="mt-2 text-xs text-gray-500">File URL is not available from the API.</div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-3 text-gray-500">No files are attached to this medical artifact.</div>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <div>EKG: {selectedTracking?.ekgFileName || 'No file'}</div>
+                  <div>Liver: {selectedTracking?.liverPanelFileName || 'No file'}</div>
+                </>
+              )}
             </div>
           </div>
 

@@ -664,6 +664,7 @@ export interface MedicalArtifact {
     fileName?: string;
     filePath?: string;
     s3Key?: string;
+    url?: string;
     mimeType?: string;
     size?: number;
     uploadedAt?: Date | string;

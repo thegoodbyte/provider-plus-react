@@ -58,7 +58,7 @@ const MedicalReviewPublicPage: React.FC = () => {
                   {artifact.files.map((file: any, index) => (
                     <a
                       key={`${file.fileName || file.url}-${index}`}
-                      href={file.url}
+                      href={file.url || file.filePath || file.s3Key}
                       target="_blank"
                       rel="noreferrer"
                       className="block rounded-md border border-gray-200 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50"
