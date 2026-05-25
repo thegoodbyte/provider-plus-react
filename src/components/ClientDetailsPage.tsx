@@ -1019,11 +1019,11 @@ const ClientDetailsPage: React.FC = () => {
                 <AppleButton
                   onClick={() => {
                     if (newNote.trim()) {
-                      setNotes([...notes, {
+                      setNotes([{
                         content: newNote,
                         createdAt: new Date().toISOString(),
                         createdBy: 'Admin'
-                      }]);
+                      }, ...notes]);
                       setNewNote('');
                       setShowAddNoteModal(false);
                     }

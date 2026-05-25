@@ -50,6 +50,37 @@ const getId = (value: any): string | undefined => {
   return value._id;
 };
 
+type ArtifactFile = NonNullable<MedicalArtifact['files']>[number];
+
+const getArtifactFileUrl = (file: ArtifactFile) => file.url || file.filePath || file.s3Key || '';
+const isImageFile = (file: ArtifactFile) => Boolean(file.mimeType?.startsWith('image/'));
+const isPdfFile = (file: ArtifactFile) => file.mimeType === 'application/pdf' || /\.pdf($|\?)/i.test(file.fileName || '');
+
+const ArtifactInlinePreview: React.FC<{ file: ArtifactFile; index: number }> = ({ file, index }) => {
+  const url = getArtifactFileUrl(file);
+  if (!url) return null;
+
+  return (
+    <div className="mt-2 rounded-md border border-gray-200 bg-gray-50">
+      {isImageFile(file) && (
+        <img src={url} alt={file.fileName || `Medical file ${index + 1}`} className="max-h-64 w-full rounded-t-md bg-white object-contain" />
+      )}
+      {isPdfFile(file) && (
+        <iframe src={url} title={file.fileName || `Medical PDF ${index + 1}`} className="h-64 w-full rounded-t-md bg-white" />
+      )}
+      {!isImageFile(file) && !isPdfFile(file) && (
+        <div className="p-3 text-xs text-gray-600">Preview unavailable for this file type.</div>
+      )}
+      <div className="flex items-center justify-between gap-3 border-t border-gray-200 p-2 text-xs">
+        <span className="truncate text-gray-700">{file.fileName || `File ${index + 1}`}</span>
+        <a href={url} target="_blank" rel="noreferrer" className="shrink-0 font-semibold text-blue-700 hover:text-blue-900">
+          Open
+        </a>
+      </div>
+    </div>
+  );
+};
+
 const MedicalReviewRequestsPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -320,8 +351,10 @@ const MedicalReviewRequestsPage: React.FC = () => {
                             <pre className="mt-2 max-h-24 overflow-auto rounded bg-gray-50 p-2 text-xs text-gray-600">{JSON.stringify(artifact.data, null, 2)}</pre>
                           )}
                           {!!artifact.files?.length && (
-                            <div className="mt-2 text-xs text-gray-600">
-                              Files: {artifact.files.map((file) => file.fileName || file.s3Key || file.filePath).filter(Boolean).join(', ')}
+                            <div className="mt-2">
+                              {artifact.files.map((file, index) => (
+                                <ArtifactInlinePreview key={`${file.fileName || file.s3Key || index}`} file={file} index={index} />
+                              ))}
                             </div>
                           )}
                         </div>

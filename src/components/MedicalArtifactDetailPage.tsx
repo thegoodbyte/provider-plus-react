@@ -49,7 +49,7 @@ const ArtifactFilePreview: React.FC<{ artifactId: string; file: ArtifactFile; in
     let createdUrl = '';
 
     const load = async () => {
-      if (!storedPath) return;
+      if (!storedPath || file.url) return;
       try {
         setError('');
         const response = await medicalArtifactsApi.getFileBlob(artifactId, storedPath);
@@ -67,33 +67,35 @@ const ArtifactFilePreview: React.FC<{ artifactId: string; file: ArtifactFile; in
       active = false;
       if (createdUrl) URL.revokeObjectURL(createdUrl);
     };
-  }, [artifactId, storedPath]);
+  }, [artifactId, storedPath, file.url]);
 
   if (!storedPath) {
     return <div className="mt-3 rounded-md border border-dashed border-gray-300 bg-gray-50 p-3 text-xs text-gray-500">No storage path recorded for preview.</div>;
   }
 
+  const previewUrl = objectUrl || file.url || '';
+
   return (
     <div className="mt-3">
-      {objectUrl && (
+      {previewUrl && (
         <div className="overflow-hidden rounded-md border border-gray-200 bg-gray-50">
-          {isImageFile(file) && <img src={objectUrl} alt={file.fileName || `File ${index + 1}`} className="max-h-80 w-full object-contain" />}
-          {isPdfFile(file) && <iframe src={objectUrl} title={file.fileName || `PDF ${index + 1}`} className="h-80 w-full bg-white" />}
+          {isImageFile(file) && <img src={previewUrl} alt={file.fileName || `File ${index + 1}`} className="max-h-80 w-full object-contain" />}
+          {isPdfFile(file) && <iframe src={previewUrl} title={file.fileName || `PDF ${index + 1}`} className="h-80 w-full bg-white" />}
           {!isImageFile(file) && !isPdfFile(file) && (
             <div className="p-4 text-xs text-gray-600">Preview unavailable for this file type.</div>
           )}
         </div>
       )}
-      {!objectUrl && !error && <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-gray-500">Loading preview...</div>}
-      {error && <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-xs text-yellow-800">{error}</div>}
+      {!previewUrl && !error && <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-gray-500">Loading preview...</div>}
+      {error && !file.url && <div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-xs text-yellow-800">{error}</div>}
       <div className="mt-2 flex flex-wrap gap-2">
-        {objectUrl && (
+        {previewUrl && (
           <>
-            <button type="button" onClick={() => window.open(objectUrl, '_blank', 'noopener,noreferrer')} className="inline-flex items-center gap-1 rounded-md border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50">
+            <button type="button" onClick={() => window.open(previewUrl, '_blank', 'noopener,noreferrer')} className="inline-flex items-center gap-1 rounded-md border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50">
               <ExternalLink className="h-3 w-3" />
               Open viewer
             </button>
-            <a href={objectUrl} download={file.fileName || `medical-artifact-file-${index + 1}`} className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
+            <a href={previewUrl} download={file.fileName || `medical-artifact-file-${index + 1}`} className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
               <Download className="h-3 w-3" />
               Download
             </a>

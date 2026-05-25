@@ -73,7 +73,12 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
       // Fetch notes for this client
       try {
         const notesResponse = await notesApi.getByClient(clientId);
-        setNotes(notesResponse.data || []);
+        const sortedNotes = [...(notesResponse.data || [])].sort((a, b) => {
+          const bDate = new Date(b.createdAt || b.updatedAt || 0).getTime();
+          const aDate = new Date(a.createdAt || a.updatedAt || 0).getTime();
+          return bDate - aDate;
+        });
+        setNotes(sortedNotes);
       } catch (notesError) {
         console.error('Error fetching notes:', notesError);
         setNotes([]);
