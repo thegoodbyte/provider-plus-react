@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileText, Inbox, Plus, RefreshCw, Upload } from 'lucide-react';
-import { clientsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { clientsApi, medicalArtifactsApi } from '../services/api';
 import { Client, MedicalArtifact } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 
@@ -16,19 +16,6 @@ const artifactTypeLabels: Record<MedicalArtifact['artifactType'], string> = {
   food_intake: 'Food Intake',
   question: 'Question',
   other: 'Other',
-};
-
-const reviewTypeByArtifact: Partial<Record<MedicalArtifact['artifactType'], string>> = {
-  ekg: 'ekg_review',
-  ceremony_ekg: 'ceremony_ekg_review',
-  blood_pressure: 'blood_pressure_review',
-  liver_panel: 'liver_panel_review',
-  medications_form: 'medications_review',
-  medication_list: 'medications_review',
-  questionnaire: 'questionnaire_review',
-  food_intake: 'food_review',
-  question: 'medical_question',
-  other: 'general_clearance',
 };
 
 const getClientName = (client?: string | Client) => {
@@ -121,8 +108,7 @@ const MedicalArtifactsPage: React.FC = () => {
 
   const handleRequestReview = async (artifact: MedicalArtifact) => {
     if (!artifact._id) return;
-    await medicalReviewRequestsApi.createFromArtifact(artifact._id, reviewTypeByArtifact[artifact.artifactType] as any);
-    navigate('/admin/medical-review-requests');
+    navigate(`/admin/medical-review-requests/new?artifactId=${artifact._id}`);
   };
 
   if (loading) {

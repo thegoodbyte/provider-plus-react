@@ -704,7 +704,12 @@ export interface MedicalReviewRequest {
   status: 'pending' | 'in_review' | 'approved' | 'rejected' | 'caution' | 'needs_resubmission' | 'completed';
   requestedAt?: Date | string;
   requestedBy?: string;
+  requestedByUserId?: string | any;
   assignedTo?: string;
+  assignedToUserId?: string | any;
+  assignedToEmail?: string;
+  accessTokenExpiresAt?: Date | string;
+  lastNotificationSentAt?: Date | string;
   reviewedAt?: Date | string;
   reviewedBy?: string;
   reviewDecision?: 'OK' | 'caution' | 'NOT OK';
