@@ -15,6 +15,7 @@ import BookingsGrid from './BookingsGrid';
 import BookingEditorPage from './BookingEditorPage';
 import MedicalGrid from './MedicalGrid';
 import MedicalTrackingNew from './MedicalTrackingNew';
+import MedicalArtifactsPage from './MedicalArtifactsPage';
 import MedicalTrackingCreatePage from './MedicalTrackingCreatePage';
 import MedicalTrackingDetail from './MedicalTrackingDetail';
 import MedicalTrackingEditPage from './MedicalTrackingEditPage';
@@ -77,6 +78,7 @@ const AppleLayout: React.FC = () => {
     if (route === 'medical-dashboard') return 'medical-dashboard';
     if (route === 'medical-review') return 'medical-dashboard';
     if (route === 'medical-retreats') return 'medical-retreats';
+    if (route === 'medical-artifacts') return 'medical-artifacts';
     if (route === 'medical-tracking') return 'medical-tracking';
     if (route === 'medical-review-requests') return 'medical-review-requests';
     if (route === 'review-requests') return 'review-requests';
@@ -269,6 +271,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="bookings/new" element={<BookingEditorPage mode="create" />} />
                       <Route path="bookings/:bookingId/edit" element={<BookingEditorPage mode="edit" />} />
                       <Route path="medical-tracking" element={<MedicalTrackingNew />} />
+                      <Route path="medical-artifacts" element={<MedicalArtifactsPage />} />
                       <Route path="medical-tracking/new" element={<MedicalTrackingCreatePage />} />
                       <Route path="medical-tracking/:id" element={<MedicalTrackingDetail />} />
                       <Route path="medical-tracking/:id/edit" element={<MedicalTrackingEditPage />} />
@@ -323,6 +326,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="medical-dashboard" element={<MedicalAdvisorDashboard />} />
                       <Route path="tracking" element={<MedicalTrackingNew />} />
                       <Route path="medical-tracking" element={<MedicalTrackingNew />} />
+                      <Route path="medical-artifacts" element={<MedicalArtifactsPage />} />
                       <Route path="medical-tracking/new" element={<MedicalTrackingCreatePage />} />
                       <Route path="tracking/:id" element={<MedicalTrackingDetail />} />
                       <Route path="medical-tracking/:id" element={<MedicalTrackingDetail />} />

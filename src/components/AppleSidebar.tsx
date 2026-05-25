@@ -165,8 +165,8 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
             Icon: Fi.FiActivity,
             items: [
               { id: 'medical-dashboard', label: 'Medical Dashboard', Icon: Fi.FiMonitor },
-              { id: 'medical', label: 'Medical Records', Icon: Fi.FiActivity },
-              { id: 'medical-tracking', label: 'Medical Tracking', Icon: Fi.FiHeart },
+              { id: 'medical-artifacts', label: 'Medical Artifacts', Icon: Fi.FiFileText },
+              { id: 'medical-tracking', label: 'Medical Readiness', Icon: Fi.FiHeart },
               { id: 'medical-review-requests', label: 'Review Requests', Icon: Fi.FiInbox },
               { id: 'client-medications', label: 'Client Medications', Icon: Fi.FiPlusSquare },
             ],
@@ -210,7 +210,8 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
             Icon: Fi.FiActivity,
             items: [
               { id: 'medical-dashboard', label: 'Dashboard', Icon: Fi.FiHome },
-              { id: 'medical-tracking', label: 'Medical Tracking', Icon: Fi.FiHeart },
+              { id: 'medical-artifacts', label: 'Medical Artifacts', Icon: Fi.FiFileText },
+              { id: 'medical-tracking', label: 'Medical Readiness', Icon: Fi.FiHeart },
               { id: 'review-requests', label: 'Review Requests', Icon: Fi.FiInbox },
               { id: 'medical', label: 'Medical Profiles', Icon: Fi.FiActivity },
               { id: 'client-medications', label: 'Client Medications', Icon: Fi.FiPlusSquare },
@@ -257,7 +258,8 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
           { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: 'Home', Icon: Fi.FiGrid }] },
           { id: 'medical', label: 'Medical', Icon: Fi.FiActivity, items: [
             { id: 'medical-dashboard', label: 'Medical Dashboard', Icon: Fi.FiMonitor },
-            { id: 'medical-tracking', label: 'Medical Tracking', Icon: Fi.FiHeart },
+            { id: 'medical-artifacts', label: 'Medical Artifacts', Icon: Fi.FiFileText },
+            { id: 'medical-tracking', label: 'Medical Readiness', Icon: Fi.FiHeart },
             { id: 'review-requests', label: 'Review Requests', Icon: Fi.FiInbox },
           ] },
           { id: 'workflow', label: 'Workflow', Icon: Fi.FiLayers, items: [

@@ -151,7 +151,8 @@ const ModuleLauncherPage: React.FC = () => {
         tone: 'emerald',
         tiles: [
           { id: 'medical-dashboard', label: 'Dashboard', subtitle: 'Review queue', route: 'medical-dashboard', icon: HeartPulse, tone: 'emerald' },
-          { id: 'medical-tracking', label: 'Tracking', subtitle: 'EKG + liver', route: 'medical-tracking', icon: Stethoscope, tone: 'emerald' },
+          { id: 'medical-artifacts', label: 'Artifacts', subtitle: 'Stored records', route: 'medical-artifacts', icon: FileText, tone: 'emerald' },
+          { id: 'medical-tracking', label: 'Readiness', subtitle: 'Per client status', route: 'medical-tracking', icon: Stethoscope, tone: 'emerald' },
           { id: 'medical-review-requests', label: 'Review Requests', subtitle: 'Medical reviews', route: 'medical-review-requests', icon: Inbox, tone: 'emerald' },
           { id: 'medical-retreats', label: 'Medical Retreats', subtitle: 'Per retreat', route: 'medical-retreats', icon: Activity, tone: 'emerald' },
         ],
@@ -187,7 +188,8 @@ const ModuleLauncherPage: React.FC = () => {
         tone: 'emerald',
         tiles: [
           { id: 'medical-dashboard', label: 'Dashboard', subtitle: 'Queue', route: 'medical-dashboard', icon: HeartPulse, tone: 'emerald' },
-          { id: 'medical-tracking', label: 'Tracking', subtitle: 'Files', route: 'medical-tracking', icon: Stethoscope, tone: 'emerald' },
+          { id: 'medical-artifacts', label: 'Artifacts', subtitle: 'Stored records', route: 'medical-artifacts', icon: FileText, tone: 'emerald' },
+          { id: 'medical-tracking', label: 'Readiness', subtitle: 'Per client status', route: 'medical-tracking', icon: Stethoscope, tone: 'emerald' },
           { id: 'review-requests', label: 'Review Requests', subtitle: 'Approvals', route: 'review-requests', icon: Inbox, tone: 'emerald' },
           { id: 'medical-retreats', label: 'Retreats', subtitle: 'Context', route: 'medical-retreats', icon: CalendarDays, tone: 'emerald' },
         ],

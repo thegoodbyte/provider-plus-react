@@ -637,6 +637,44 @@ export interface MedicalItem {
   updatedAt?: string;
 }
 
+export interface MedicalArtifact {
+  _id?: string;
+  display_id?: number;
+  clientId: string | Client;
+  clientDisplayId?: number;
+  retreatId?: string | Retreat;
+  bookingId?: string;
+  artifactType:
+    | 'ekg'
+    | 'liver_panel'
+    | 'medications_form'
+    | 'medication_list'
+    | 'questionnaire'
+    | 'food_intake'
+    | 'question'
+    | 'other';
+  title: string;
+  description?: string;
+  textContent?: string;
+  files?: Array<{
+    fileName?: string;
+    filePath?: string;
+    s3Key?: string;
+    mimeType?: string;
+    size?: number;
+    uploadedAt?: Date | string;
+  }>;
+  receivedAt?: Date | string;
+  source?: 'client_upload' | 'admin_upload' | 'email' | 'manual' | 'legacy';
+  version?: number;
+  replacesArtifactId?: string | MedicalArtifact;
+  status?: 'stored' | 'superseded' | 'voided';
+  notes?: string;
+  legacyMedicalTrackingId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface MedicalReviewRequest {
   _id?: string;
   display_id?: number;
@@ -644,8 +682,19 @@ export interface MedicalReviewRequest {
   clientDisplayId?: number;
   retreatId: string | Retreat;
   medicalTrackingId?: string | MedicalItem | ClientMedical;
+  artifactIds?: Array<string | MedicalArtifact>;
   attemptNumber?: number;
-  requestType: 'ekg' | 'liver' | 'both';
+  requestType:
+    | 'ekg'
+    | 'liver'
+    | 'both'
+    | 'ekg_review'
+    | 'liver_panel_review'
+    | 'medications_review'
+    | 'questionnaire_review'
+    | 'food_review'
+    | 'medical_question'
+    | 'general_clearance';
   status: 'pending' | 'in_review' | 'approved' | 'rejected' | 'caution' | 'needs_resubmission' | 'completed';
   requestedAt?: Date | string;
   requestedBy?: string;

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Retreat, House, Client, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalReviewRequest, BookingFlowItem, BookingFlowTemplate, MailSettings, EmailTemplate, SentEmail } from '../types';
+import { Retreat, House, Client, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalReviewRequest, BookingFlowItem, BookingFlowTemplate, MailSettings, EmailTemplate, SentEmail } from '../types';
 import { authService } from './authService';
 import { cacheService } from './cacheService';
 import { API_BASE_URL } from '../config/api.config';
@@ -520,12 +520,38 @@ export const medicalAdvisorApi = {
   getDashboardStats: () => cachedGet<any>('medical-advisor:stats', () => api.get<any>('/medical-advisor/dashboard/stats'), 30000), // 30 second cache
 };
 
+export const medicalArtifactsApi = {
+  getAll: (filters: { clientId?: string; retreatId?: string; artifactType?: MedicalArtifact['artifactType']; status?: MedicalArtifact['status'] } = {}) => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) params.set(key, value);
+    });
+    const suffix = params.toString() ? `?${params.toString()}` : '';
+    return cachedGet<MedicalArtifact[]>(`medical-artifacts:${suffix || 'all'}`, () => api.get<MedicalArtifact[]>(`/medical-artifacts${suffix}`));
+  },
+  getOne: (id: string) => cachedGet<MedicalArtifact>(`medical-artifacts:${id}`, () => api.get<MedicalArtifact>(`/medical-artifacts/${id}`)),
+  getNextDisplayId: () => api.get<number>('/medical-artifacts/next-display-id'),
+  create: (data: Omit<MedicalArtifact, '_id'>) => {
+    cacheService.clearPattern('medical-artifacts:');
+    return api.post<MedicalArtifact>('/medical-artifacts', data);
+  },
+  update: (id: string, data: Partial<MedicalArtifact>) => {
+    cacheService.clearPattern('medical-artifacts:');
+    return api.patch<MedicalArtifact>(`/medical-artifacts/${id}`, data);
+  },
+  delete: (id: string) => {
+    cacheService.clearPattern('medical-artifacts:');
+    return api.delete(`/medical-artifacts/${id}`);
+  },
+};
+
 export const medicalReviewRequestsApi = {
   getAll: () => cachedGet<MedicalReviewRequest[]>('medical-review-requests:all', () => api.get<MedicalReviewRequest[]>('/medical-review-requests')),
   getQueue: () => cachedGet<MedicalReviewRequest[]>('medical-review-requests:queue', () => api.get<MedicalReviewRequest[]>('/medical-review-requests/queue')),
   getOne: (id: string) => cachedGet<MedicalReviewRequest>(`medical-review-requests:${id}`, () => api.get<MedicalReviewRequest>(`/medical-review-requests/${id}`)),
   getByClientAndRetreat: (clientId: string, retreatId: string) => cachedGet<MedicalReviewRequest[]>(`medical-review-requests:${clientId}:${retreatId}`, () => api.get<MedicalReviewRequest[]>(`/medical-review-requests?clientId=${clientId}&retreatId=${retreatId}`)),
   getByMedicalTracking: (medicalTrackingId: string) => cachedGet<MedicalReviewRequest[]>(`medical-review-requests:tracking:${medicalTrackingId}`, () => api.get<MedicalReviewRequest[]>(`/medical-review-requests?medicalTrackingId=${medicalTrackingId}`)),
+  getByArtifact: (artifactId: string) => cachedGet<MedicalReviewRequest[]>(`medical-review-requests:artifact:${artifactId}`, () => api.get<MedicalReviewRequest[]>(`/medical-review-requests?artifactId=${artifactId}`)),
   getNextDisplayId: () => api.get<number>('/medical-review-requests/next-display-id'),
   create: (data: Omit<MedicalReviewRequest, '_id'>) => {
     cacheService.clearPattern('medical-review-requests:');
@@ -534,6 +560,10 @@ export const medicalReviewRequestsApi = {
   createFromTracking: (medicalTrackingId: string, requestType?: 'ekg' | 'liver' | 'both') => {
     cacheService.clearPattern('medical-review-requests:');
     return api.post<MedicalReviewRequest>(`/medical-review-requests/from-tracking/${medicalTrackingId}`, { requestType });
+  },
+  createFromArtifact: (artifactId: string, requestType?: MedicalReviewRequest['requestType']) => {
+    cacheService.clearPattern('medical-review-requests:');
+    return api.post<MedicalReviewRequest>(`/medical-review-requests/from-artifact/${artifactId}`, { requestType });
   },
   update: (id: string, data: Partial<MedicalReviewRequest>) => {
     cacheService.clearPattern('medical-review-requests:');
