@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Inbox, Plus, RefreshCw } from 'lucide-react';
+import { Eye, FileText, Inbox, Plus, RefreshCw } from 'lucide-react';
 import { medicalArtifactsApi } from '../services/api';
 import { Client, MedicalArtifact } from '../types';
 import LoadingSpinner from './LoadingSpinner';
@@ -115,10 +115,16 @@ const MedicalArtifactsPage: React.FC = () => {
                 <td className="px-4 py-3">{artifact.files?.length || 0}</td>
                 <td className="px-4 py-3 capitalize">{artifact.status || 'stored'}</td>
                 <td className="px-4 py-3 text-right">
-                  <button onClick={() => handleRequestReview(artifact)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
-                    <Inbox className="h-3.5 w-3.5" />
-                    Request Review
-                  </button>
+                  <div className="flex justify-end gap-2">
+                    <button onClick={() => navigate(`${artifact._id}`)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
+                      <Eye className="h-3.5 w-3.5" />
+                      View/Edit
+                    </button>
+                    <button onClick={() => handleRequestReview(artifact)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
+                      <Inbox className="h-3.5 w-3.5" />
+                      Request Review
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

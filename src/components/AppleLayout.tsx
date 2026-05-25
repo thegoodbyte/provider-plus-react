@@ -17,6 +17,7 @@ import MedicalGrid from './MedicalGrid';
 import MedicalTrackingNew from './MedicalTrackingNew';
 import MedicalArtifactsPage from './MedicalArtifactsPage';
 import MedicalArtifactCreatePage from './MedicalArtifactCreatePage';
+import MedicalArtifactDetailPage from './MedicalArtifactDetailPage';
 import MedicalTrackingCreatePage from './MedicalTrackingCreatePage';
 import MedicalTrackingDetail from './MedicalTrackingDetail';
 import MedicalTrackingEditPage from './MedicalTrackingEditPage';
@@ -276,6 +277,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="medical-tracking" element={<MedicalTrackingNew />} />
                       <Route path="medical-artifacts" element={<MedicalArtifactsPage />} />
                       <Route path="medical-artifacts/new" element={<MedicalArtifactCreatePage />} />
+                      <Route path="medical-artifacts/:id" element={<MedicalArtifactDetailPage />} />
                       <Route path="medical-tracking/new" element={<MedicalTrackingCreatePage />} />
                       <Route path="medical-tracking/:id" element={<MedicalTrackingDetail />} />
                       <Route path="medical-tracking/:id/edit" element={<MedicalTrackingEditPage />} />
@@ -332,6 +334,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="medical-tracking" element={<MedicalTrackingNew />} />
                       <Route path="medical-artifacts" element={<MedicalArtifactsPage />} />
                       <Route path="medical-artifacts/new" element={<MedicalArtifactCreatePage />} />
+                      <Route path="medical-artifacts/:id" element={<MedicalArtifactDetailPage />} />
                       <Route path="medical-tracking/new" element={<MedicalTrackingCreatePage />} />
                       <Route path="tracking/:id" element={<MedicalTrackingDetail />} />
                       <Route path="medical-tracking/:id" element={<MedicalTrackingDetail />} />
