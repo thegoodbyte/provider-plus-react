@@ -13,6 +13,7 @@ import RetreatDetailView from '../pages/RetreatDetailView';
 // import ClientsGrid from './ClientsGrid'; // Now using UnifiedClientManager
 import BookingsGrid from './BookingsGrid';
 import BookingEditorPage from './BookingEditorPage';
+import CeremoniesPage from './CeremoniesPage';
 import MedicalGrid from './MedicalGrid';
 import MedicalTrackingNew from './MedicalTrackingNew';
 import MedicalArtifactsPage from './MedicalArtifactsPage';
@@ -93,6 +94,7 @@ const AppleLayout: React.FC = () => {
     if (route === 'booking-flow') return 'booking-flow';
     if (route === 'flow-tasks') return 'flow-tasks';
     if (route === 'retreats') return 'retreats';
+    if (route === 'ceremonies') return 'ceremonies';
     if (route === 'houses') return 'houses';
     if (route === 'bookings') return 'bookings';
     if (route === 'reminders') return 'reminders';
@@ -270,6 +272,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="potential-clients" element={<UnifiedClientManager />} />
                       <Route path="retreats" element={<RetreatsGrid />} />
                       <Route path="retreats/:retreatId" element={<RetreatDetailView />} />
+                      <Route path="ceremonies" element={<CeremoniesPage />} />
                       <Route path="houses" element={<HousesGrid />} />
                       <Route path="bookings" element={<BookingsGrid />} />
                       <Route path="bookings/new" element={<BookingEditorPage mode="create" />} />
@@ -363,6 +366,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="bookings/:bookingId/edit" element={<BookingEditorPage mode="edit" />} />
                       <Route path="retreats" element={<RetreatsGrid />} />
                       <Route path="retreats/:retreatId" element={<RetreatDetailView />} />
+                      <Route path="ceremonies" element={<CeremoniesPage />} />
                       <Route path="reminders" element={<RemindersPage />} />
                       <Route path="communications" element={<CommunicationsPage />} />
                     </Routes>
@@ -378,6 +382,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="bookings" element={<BookingsGrid />} />
                       <Route path="retreats" element={<RetreatsGrid />} />
                       <Route path="retreats/:retreatId" element={<RetreatDetailView />} />
+                      <Route path="ceremonies" element={<CeremoniesPage />} />
                       <Route path="houses" element={<HousesGrid />} />
                       <Route path="clients" element={<UnifiedClientManager />} />
                       <Route path="clients/add" element={<AddClient />} />
