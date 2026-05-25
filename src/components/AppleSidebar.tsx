@@ -24,69 +24,21 @@ type MenuSection = {
   items: MenuItem[];
 };
 
-// Professional gradient using 3 colors: Blue, Purple, and Gray with subtle variations
 const getGradientColorForIndex = (index: number, total: number, isActive: boolean = false): string => {
-  // Create a professional gradient using blue → purple → slate shades
-  // Each color family has light, medium, and deeper variations for smooth transitions
   const colorPalette = [
-    // Light Blue
-    { bg: isActive ? 'rgb(59, 130, 246)' : 'rgb(219, 234, 254)', text: isActive ? 'white' : 'rgb(30, 64, 175)' },
-    // Medium Blue
-    { bg: isActive ? 'rgb(37, 99, 235)' : 'rgb(191, 219, 254)', text: isActive ? 'white' : 'rgb(29, 78, 216)' },
-    // Deep Blue
-    { bg: isActive ? 'rgb(29, 78, 216)' : 'rgb(147, 197, 253)', text: isActive ? 'white' : 'rgb(30, 58, 138)' },
-    // Blue-Indigo transition
-    { bg: isActive ? 'rgb(67, 56, 202)' : 'rgb(165, 180, 252)', text: isActive ? 'white' : 'rgb(55, 48, 163)' },
-    // Light Indigo
-    { bg: isActive ? 'rgb(99, 102, 241)' : 'rgb(196, 181, 253)', text: isActive ? 'white' : 'rgb(79, 70, 229)' },
-    // Medium Purple
-    { bg: isActive ? 'rgb(124, 58, 237)' : 'rgb(221, 214, 254)', text: isActive ? 'white' : 'rgb(107, 33, 168)' },
-    // Deep Purple
-    { bg: isActive ? 'rgb(109, 40, 217)' : 'rgb(196, 181, 253)', text: isActive ? 'white' : 'rgb(88, 28, 135)' },
-    // Purple-Slate transition
-    { bg: isActive ? 'rgb(100, 116, 139)' : 'rgb(203, 213, 225)', text: isActive ? 'white' : 'rgb(71, 85, 105)' },
-    // Light Slate
-    { bg: isActive ? 'rgb(71, 85, 105)' : 'rgb(226, 232, 240)', text: isActive ? 'white' : 'rgb(51, 65, 85)' },
-    // Medium Slate
-    { bg: isActive ? 'rgb(51, 65, 85)' : 'rgb(203, 213, 225)', text: isActive ? 'white' : 'rgb(30, 41, 59)' },
-    // Blue-Gray
-    { bg: isActive ? 'rgb(30, 64, 175)' : 'rgb(191, 219, 254)', text: isActive ? 'white' : 'rgb(30, 58, 138)' },
-    // Light Blue return
-    { bg: isActive ? 'rgb(14, 165, 233)' : 'rgb(186, 230, 253)', text: isActive ? 'white' : 'rgb(2, 132, 199)' },
-    // Sky Blue
-    { bg: isActive ? 'rgb(2, 132, 199)' : 'rgb(125, 211, 252)', text: isActive ? 'white' : 'rgb(3, 105, 161)' },
-    // Indigo return
-    { bg: isActive ? 'rgb(79, 70, 229)' : 'rgb(165, 180, 252)', text: isActive ? 'white' : 'rgb(67, 56, 202)' },
-    // Purple return
-    { bg: isActive ? 'rgb(147, 51, 234)' : 'rgb(233, 213, 255)', text: isActive ? 'white' : 'rgb(126, 34, 206)' },
+    { bg: isActive ? 'rgb(219, 234, 254)' : 'rgb(248, 250, 252)' },
+    { bg: isActive ? 'rgb(224, 231, 255)' : 'rgb(249, 250, 251)' },
+    { bg: isActive ? 'rgb(237, 233, 254)' : 'rgb(248, 250, 252)' },
+    { bg: isActive ? 'rgb(240, 249, 255)' : 'rgb(249, 250, 251)' },
+    { bg: isActive ? 'rgb(241, 245, 249)' : 'rgb(248, 250, 252)' },
   ];
 
-  // Use modulo to cycle through colors if there are more items than colors
   const colorIndex = index % colorPalette.length;
   return colorPalette[colorIndex].bg;
 };
 
 const getTextColorForIndex = (index: number, total: number, isActive: boolean = false): string => {
-  const colorPalette = [
-    { text: isActive ? 'white' : 'rgb(30, 64, 175)' }, // Light blue text
-    { text: isActive ? 'white' : 'rgb(29, 78, 216)' }, // Medium blue text
-    { text: isActive ? 'white' : 'rgb(30, 58, 138)' }, // Deep blue text
-    { text: isActive ? 'white' : 'rgb(55, 48, 163)' }, // Blue-indigo text
-    { text: isActive ? 'white' : 'rgb(79, 70, 229)' }, // Light indigo text
-    { text: isActive ? 'white' : 'rgb(107, 33, 168)' }, // Medium purple text
-    { text: isActive ? 'white' : 'rgb(88, 28, 135)' }, // Deep purple text
-    { text: isActive ? 'white' : 'rgb(71, 85, 105)' }, // Purple-slate text
-    { text: isActive ? 'white' : 'rgb(51, 65, 85)' }, // Light slate text
-    { text: isActive ? 'white' : 'rgb(30, 41, 59)' }, // Medium slate text
-    { text: isActive ? 'white' : 'rgb(30, 58, 138)' }, // Blue-gray text
-    { text: isActive ? 'white' : 'rgb(2, 132, 199)' }, // Light blue return text
-    { text: isActive ? 'white' : 'rgb(3, 105, 161)' }, // Sky blue text
-    { text: isActive ? 'white' : 'rgb(67, 56, 202)' }, // Indigo return text
-    { text: isActive ? 'white' : 'rgb(126, 34, 206)' }, // Purple return text
-  ];
-
-  const colorIndex = index % colorPalette.length;
-  return colorPalette[colorIndex].text;
+  return isActive ? 'rgb(30, 64, 175)' : 'rgb(55, 65, 81)';
 };
 
 const AppleSidebar: React.FC<AppleSidebarProps> = ({
@@ -417,7 +369,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                     className={`
                       w-full flex items-center gap-3 px-3 py-2 rounded-apple
                       transition-all duration-200 text-left
-                      ${sectionIsActive ? 'shadow-lg transform scale-105' : 'hover:scale-102 hover:shadow-md'}
+                      ${sectionIsActive ? 'border border-blue-200 shadow-sm' : 'border border-transparent hover:bg-white hover:shadow-sm'}
                       ${!isExpanded && 'justify-center px-2'}
                     `}
                   >
@@ -465,7 +417,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                                 className={`
                                   w-full flex items-center gap-2 rounded-apple px-3 py-1.5 text-left
                                   transition-all duration-200
-                                  ${isActive ? 'bg-apple-gray-900 text-white shadow-sm' : 'text-apple-gray-600 hover:bg-apple-gray-100 hover:text-apple-gray-900'}
+                                  ${isActive ? 'bg-blue-50 text-blue-800 border border-blue-100 shadow-sm' : 'text-apple-gray-600 border border-transparent hover:bg-apple-gray-50 hover:text-apple-gray-900'}
                                 `}
                               >
                                 {React.createElement(IconComponent as any, { className: "w-4 h-4 flex-shrink-0" })}
