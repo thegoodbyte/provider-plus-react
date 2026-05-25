@@ -19,6 +19,7 @@ import MedicalTrackingNew from './MedicalTrackingNew';
 import MedicalArtifactsPage from './MedicalArtifactsPage';
 import MedicalArtifactCreatePage from './MedicalArtifactCreatePage';
 import MedicalArtifactDetailPage from './MedicalArtifactDetailPage';
+import MedicalArtifactFileViewPage from './MedicalArtifactFileViewPage';
 import MedicalTrackingCreatePage from './MedicalTrackingCreatePage';
 import MedicalTrackingDetail from './MedicalTrackingDetail';
 import MedicalTrackingEditPage from './MedicalTrackingEditPage';
@@ -281,6 +282,8 @@ const AppleLayout: React.FC = () => {
                       <Route path="medical-artifacts" element={<MedicalArtifactsPage />} />
                       <Route path="medical-artifacts/new" element={<MedicalArtifactCreatePage />} />
                       <Route path="medical-artifacts/:id" element={<MedicalArtifactDetailPage />} />
+                      <Route path="medical-artifacts/:id/edit" element={<MedicalArtifactDetailPage />} />
+                      <Route path="medical-artifacts/:id/files/:fileIndex" element={<MedicalArtifactFileViewPage />} />
                       <Route path="medical-tracking/new" element={<MedicalTrackingCreatePage />} />
                       <Route path="medical-tracking/:id" element={<MedicalTrackingDetail />} />
                       <Route path="medical-tracking/:id/edit" element={<MedicalTrackingEditPage />} />
@@ -338,6 +341,8 @@ const AppleLayout: React.FC = () => {
                       <Route path="medical-artifacts" element={<MedicalArtifactsPage />} />
                       <Route path="medical-artifacts/new" element={<MedicalArtifactCreatePage />} />
                       <Route path="medical-artifacts/:id" element={<MedicalArtifactDetailPage />} />
+                      <Route path="medical-artifacts/:id/edit" element={<MedicalArtifactDetailPage />} />
+                      <Route path="medical-artifacts/:id/files/:fileIndex" element={<MedicalArtifactFileViewPage />} />
                       <Route path="medical-tracking/new" element={<MedicalTrackingCreatePage />} />
                       <Route path="tracking/:id" element={<MedicalTrackingDetail />} />
                       <Route path="medical-tracking/:id" element={<MedicalTrackingDetail />} />
@@ -417,6 +422,9 @@ const AppleLayout: React.FC = () => {
                 <Route path="/medical-tracking/:id" element={<ProtectedRoute><MedicalTrackingDetail /></ProtectedRoute>} />
                 <Route path="/medical-tracking/:id/edit" element={<ProtectedRoute><MedicalTrackingEditPage /></ProtectedRoute>} />
                 <Route path="/medical-tracking/:id/view/:type" element={<ProtectedRoute><MedicalTrackingFileViewPage /></ProtectedRoute>} />
+                <Route path="/medical-artifacts/:id" element={<ProtectedRoute><MedicalArtifactDetailPage /></ProtectedRoute>} />
+                <Route path="/medical-artifacts/:id/edit" element={<ProtectedRoute><MedicalArtifactDetailPage /></ProtectedRoute>} />
+                <Route path="/medical-artifacts/:id/files/:fileIndex" element={<ProtectedRoute><MedicalArtifactFileViewPage /></ProtectedRoute>} />
                 <Route path="/medical-review-requests" element={<ProtectedRoute><MedicalReviewRequestsGrid /></ProtectedRoute>} />
                 <Route path="/medical-review-requests/new" element={<ProtectedRoute><MedicalReviewRequestEditorPage /></ProtectedRoute>} />
                 <Route path="/medical-review-requests/:id" element={<ProtectedRoute><MedicalReviewRequestsPage /></ProtectedRoute>} />
