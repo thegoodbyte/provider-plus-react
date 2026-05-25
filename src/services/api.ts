@@ -531,9 +531,23 @@ export const medicalArtifactsApi = {
   },
   getOne: (id: string) => cachedGet<MedicalArtifact>(`medical-artifacts:${id}`, () => api.get<MedicalArtifact>(`/medical-artifacts/${id}`)),
   getNextDisplayId: () => api.get<number>('/medical-artifacts/next-display-id'),
+  getUploadTargetPreview: (artifactType: MedicalArtifact['artifactType'], fileName?: string) => api.get<{
+    storage: string;
+    bucket: string | null;
+    keyPattern: string;
+    note: string;
+  }>(`/medical-artifacts/upload-target/preview?artifactType=${encodeURIComponent(artifactType)}&fileName=${encodeURIComponent(fileName || 'medical-record.pdf')}`),
   create: (data: Omit<MedicalArtifact, '_id'>) => {
     cacheService.clearPattern('medical-artifacts:');
     return api.post<MedicalArtifact>('/medical-artifacts', data);
+  },
+  uploadFiles: (id: string, files: File[]) => {
+    const formData = new FormData();
+    files.forEach((file) => formData.append('files', file));
+    cacheService.clearPattern('medical-artifacts:');
+    return api.post(`/medical-artifacts/${id}/upload-files`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
   },
   update: (id: string, data: Partial<MedicalArtifact>) => {
     cacheService.clearPattern('medical-artifacts:');
