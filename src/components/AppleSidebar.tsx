@@ -138,7 +138,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
           },
           {
             id: 'retreats',
-            label: 'Retreats',
+            label: 'Retreat Operations',
             Icon: Fi.FiCalendar,
             items: [
               { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
@@ -148,14 +148,13 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
           },
           {
             id: 'workflow',
-            label: 'Workflow',
+            label: 'Readiness',
             Icon: Fi.FiLayers,
             items: [
-              { id: 'workflow', label: 'Workflow Dashboard', Icon: Fi.FiLayers },
+              { id: 'workflow', label: 'Readiness Dashboard', Icon: Fi.FiLayers },
               { id: 'retreat-flow', label: 'Retreat Requirements', Icon: Fi.FiCalendar },
               { id: 'retreat-flow-library', label: 'Readiness Library', Icon: Fi.FiBook },
               { id: 'booking-flow', label: 'Client Readiness', Icon: Fi.FiLayers },
-              { id: 'flow-tasks', label: 'Flow Tasks', Icon: Fi.FiList },
               { id: 'requirements', label: 'Legacy Requirements', Icon: Fi.FiCheckSquare },
             ],
           },
@@ -181,13 +180,22 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
             ],
           },
           {
-            id: 'communications',
-            label: 'Communications',
-            Icon: Fi.FiMail,
+            id: 'operations',
+            label: 'Operations',
+            Icon: Fi.FiBriefcase,
             items: [
-              { id: 'communications', label: 'Communications', Icon: Fi.FiMail },
+              { id: 'flow-tasks', label: 'Flow Tasks', Icon: Fi.FiList },
+              { id: 'tasks', label: 'General Tasks', Icon: Fi.FiCheckSquare },
               { id: 'reminders', label: 'Reminders', Icon: Fi.FiBell },
-              { id: 'tasks', label: 'Tasks', Icon: Fi.FiList },
+              { id: 'communications', label: 'Communications', Icon: Fi.FiMail },
+            ],
+          },
+          {
+            id: 'misc',
+            label: 'Misc',
+            Icon: Fi.FiMoreHorizontal,
+            items: [
+              { id: 'analytics', label: 'Analytics', Icon: Fi.FiBarChart },
             ],
           },
           {
@@ -197,7 +205,6 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
             items: [
               { id: 'permissions', label: 'Permissions', Icon: Fi.FiShield },
               { id: 'users', label: 'Users', Icon: Fi.FiUser },
-              { id: 'analytics', label: 'Analytics', Icon: Fi.FiBarChart },
             ],
           },
         ];
@@ -218,14 +225,13 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
             ],
           },
           {
-            id: 'workflow',
-            label: 'Workflow',
-            Icon: Fi.FiLayers,
+            id: 'retreats',
+            label: 'Retreat Operations',
+            Icon: Fi.FiCalendar,
             items: [
-              { id: 'workflow', label: 'Workflow Dashboard', Icon: Fi.FiLayers },
-              { id: 'retreat-flow', label: 'Retreat Requirements', Icon: Fi.FiCalendar },
-              { id: 'retreat-flow-library', label: 'Readiness Library', Icon: Fi.FiBook },
-              { id: 'flow-tasks', label: 'Flow Tasks', Icon: Fi.FiList },
+              { id: 'medical-retreats', label: 'Medical Retreats', Icon: Fi.FiCalendar },
+              { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
+              { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
             ],
           },
           {
@@ -239,16 +245,17 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
             ],
           },
           {
-            id: 'retreats',
-            label: 'Retreats',
-            Icon: Fi.FiCalendar,
+            id: 'readiness',
+            label: 'Readiness',
+            Icon: Fi.FiLayers,
             items: [
-              { id: 'medical-retreats', label: 'Medical Retreats', Icon: Fi.FiCalendar },
-              { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
-              { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
+              { id: 'workflow', label: 'Readiness Dashboard', Icon: Fi.FiLayers },
+              { id: 'retreat-flow', label: 'Retreat Requirements', Icon: Fi.FiCalendar },
+              { id: 'retreat-flow-library', label: 'Readiness Library', Icon: Fi.FiBook },
             ],
           },
-          { id: 'communications', label: 'Communications', Icon: Fi.FiMail, items: [
+          { id: 'operations', label: 'Operations', Icon: Fi.FiBriefcase, items: [
+            { id: 'flow-tasks', label: 'Flow Tasks', Icon: Fi.FiList },
             { id: 'communications', label: 'Communications', Icon: Fi.FiMail },
             { id: 'reminders', label: 'Reminders', Icon: Fi.FiBell },
           ] },
@@ -262,20 +269,20 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
             { id: 'medical-tracking', label: 'Medical Readiness', Icon: Fi.FiHeart },
             { id: 'review-requests', label: 'Review Requests', Icon: Fi.FiInbox },
           ] },
-          { id: 'workflow', label: 'Workflow', Icon: Fi.FiLayers, items: [
-            { id: 'workflow', label: 'Workflow Dashboard', Icon: Fi.FiLayers },
+          { id: 'readiness', label: 'Readiness', Icon: Fi.FiLayers, items: [
+            { id: 'workflow', label: 'Readiness Dashboard', Icon: Fi.FiLayers },
             { id: 'retreat-flow', label: 'Retreat Requirements', Icon: Fi.FiCalendar },
             { id: 'retreat-flow-library', label: 'Readiness Library', Icon: Fi.FiBook },
             { id: 'flow-tasks', label: 'Flow Tasks', Icon: Fi.FiList },
           ] },
-          { id: 'communications', label: 'Communications', Icon: Fi.FiMail, items: [
+          { id: 'operations', label: 'Operations', Icon: Fi.FiBriefcase, items: [
             { id: 'communications', label: 'Communications', Icon: Fi.FiMail },
           ] },
         ];
       case 'facilitator':
         return [
           { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: 'Home', Icon: Fi.FiGrid }] },
-          { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar, items: [
+          { id: 'retreats', label: 'Retreat Operations', Icon: Fi.FiCalendar, items: [
             { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
             { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
             { id: 'houses', label: 'Houses', Icon: Fi.FiHome },
@@ -285,8 +292,9 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
             { id: 'potential-clients', label: 'Potential Clients', Icon: Fi.FiUserPlus },
             { id: 'screening', label: 'Screenings', Icon: Fi.FiClipboard },
           ] },
-          { id: 'communications', label: 'Communications', Icon: Fi.FiBell, items: [
+          { id: 'operations', label: 'Operations', Icon: Fi.FiBriefcase, items: [
             { id: 'reminders', label: 'Reminders', Icon: Fi.FiBell },
+            { id: 'communications', label: 'Communications', Icon: Fi.FiMail },
           ] },
         ];
       case 'user':

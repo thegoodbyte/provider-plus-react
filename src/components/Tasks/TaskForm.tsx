@@ -37,6 +37,15 @@ export const TaskForm: React.FC<TaskFormProps> = ({
   const [loadingClients, setLoadingClients] = useState(false);
   const [loadingRetreats, setLoadingRetreats] = useState(false);
 
+  const normalizeList = (response: any): any[] => {
+    const data = response?.data;
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.data)) return data.data;
+    if (Array.isArray(data?.items)) return data.items;
+    if (Array.isArray(data?.results)) return data.results;
+    return [];
+  };
+
   useEffect(() => {
     if (task) {
       setFormData({
@@ -77,8 +86,8 @@ export const TaskForm: React.FC<TaskFormProps> = ({
           retreatsApi.getAll(),
         ]);
 
-        setClients(clientsResponse.data || []);
-        setRetreats(retreatsResponse.data || []);
+        setClients(normalizeList(clientsResponse));
+        setRetreats(normalizeList(retreatsResponse));
       } catch (error) {
         console.error('Error loading clients and retreats:', error);
       } finally {
@@ -142,12 +151,13 @@ export const TaskForm: React.FC<TaskFormProps> = ({
   const clientOptions = clients
     .map(client => {
       const id = client._id || client.id;
-      const displayId = client.display_id ? `#${client.display_id}` : '';
+      const displayId = client.display_id || client.displayId || client.clientNumber;
+      const displayLabel = displayId ? `Client #${displayId}` : 'No client #';
       const name = `${client.firstName || client.fname || ''} ${client.lastName || client.lname || ''}`.trim();
       return {
         id,
-        label: [displayId, name || client.email || 'Unnamed client'].filter(Boolean).join(' - '),
-        sublabel: [client.email, client.phone].filter(Boolean).join(' • '),
+        label: [displayLabel, name || client.email || 'Unnamed client'].filter(Boolean).join(' - '),
+        sublabel: [client.email, client.phone, client.workflowStatus || client.status].filter(Boolean).join(' • '),
       };
     })
     .filter(option => option.id);
@@ -158,9 +168,10 @@ export const TaskForm: React.FC<TaskFormProps> = ({
       const startDate = formatDate(retreat.startDate || retreat.dates?.startDate);
       const endDate = formatDate(retreat.endDate);
       const dateRange = [startDate, endDate].filter(Boolean).join(' - ');
+      const displayId = retreat.display_id || retreat.displayId || retreat.retreatNumber || retreat.code;
       return {
         id,
-        label: retreat.name || retreat.title || retreat.retreatName || 'Unnamed retreat',
+        label: [displayId ? `Retreat #${displayId}` : '', retreat.name || retreat.title || retreat.retreatName || 'Unnamed retreat'].filter(Boolean).join(' - '),
         sublabel: [dateRange, retreat.location, retreat.status].filter(Boolean).join(' • '),
       };
     })
