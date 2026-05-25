@@ -46,6 +46,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [deletingPath, setDeletingPath] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [form, setForm] = useState({
     title: '',
@@ -83,9 +84,12 @@ const MedicalArtifactDetailPage: React.FC = () => {
     event.preventDefault();
     if (!id) return;
     setSaving(true);
+    setError(null);
     try {
       const response = await medicalArtifactsApi.update(id, form);
       setArtifact(response.data);
+    } catch (saveError: any) {
+      setError(saveError?.response?.data?.message || saveError?.message || 'Failed to save medical artifact.');
     } finally {
       setSaving(false);
     }
@@ -100,10 +104,13 @@ const MedicalArtifactDetailPage: React.FC = () => {
   const handleUploadFiles = async () => {
     if (!id || selectedFiles.length === 0) return;
     setUploading(true);
+    setError(null);
     try {
       await medicalArtifactsApi.uploadFiles(id, selectedFiles);
       setSelectedFiles([]);
       await reloadArtifact();
+    } catch (uploadError: any) {
+      setError(uploadError?.response?.data?.message || uploadError?.message || 'Failed to upload selected files.');
     } finally {
       setUploading(false);
     }
@@ -117,9 +124,12 @@ const MedicalArtifactDetailPage: React.FC = () => {
     if (!confirmed) return;
 
     setDeletingPath(storedPath);
+    setError(null);
     try {
       const response = await medicalArtifactsApi.deleteFile(id, storedPath);
       setArtifact(response.data);
+    } catch (deleteError: any) {
+      setError(deleteError?.response?.data?.message || deleteError?.message || 'Failed to delete this file.');
     } finally {
       setDeletingPath('');
     }
@@ -167,6 +177,11 @@ const MedicalArtifactDetailPage: React.FC = () => {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+        {error && (
+          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 lg:col-span-2">
+            {error}
+          </div>
+        )}
         {isEditMode ? (
           <form onSubmit={handleSave} className="space-y-4 rounded-md border border-gray-200 bg-white p-4">
             <div className="grid gap-4 md:grid-cols-2">

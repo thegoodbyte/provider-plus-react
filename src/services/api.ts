@@ -537,6 +537,7 @@ export const medicalArtifactsApi = {
     bucket: string | null;
     keyPattern: string;
     note: string;
+    requiredEnvironment?: string[];
   }>(`/medical-artifacts/upload-target/preview?artifactType=${encodeURIComponent(artifactType)}&fileName=${encodeURIComponent(fileName || 'medical-record.pdf')}`),
   create: (data: Omit<MedicalArtifact, '_id'>) => {
     cacheService.clearPattern('medical-artifacts:');

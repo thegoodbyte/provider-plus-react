@@ -25,8 +25,9 @@ const MedicalArtifactCreatePage: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
-  const [uploadTarget, setUploadTarget] = useState<{ storage: string; bucket: string | null; keyPattern: string; note: string } | null>(null);
+  const [uploadTarget, setUploadTarget] = useState<{ storage: string; bucket: string | null; keyPattern: string; note: string; requiredEnvironment?: string[] } | null>(null);
   const [form, setForm] = useState({
     clientId: '',
     artifactType: 'ekg' as MedicalArtifact['artifactType'],
@@ -64,6 +65,7 @@ const MedicalArtifactCreatePage: React.FC = () => {
     if (!form.clientId) return;
 
     setSaving(true);
+    setError(null);
     try {
       const title = form.title.trim() || selectedFiles[0]?.name || artifactTypeLabels[form.artifactType];
       const created = await medicalArtifactsApi.create({
@@ -79,6 +81,8 @@ const MedicalArtifactCreatePage: React.FC = () => {
       }
 
       navigate(`${routePrefix}/medical-artifacts`);
+    } catch (saveError: any) {
+      setError(saveError?.response?.data?.message || saveError?.message || 'Unable to save this medical record.');
     } finally {
       setSaving(false);
     }
@@ -102,6 +106,11 @@ const MedicalArtifactCreatePage: React.FC = () => {
       </div>
 
       <form onSubmit={handleCreate} className="max-w-4xl space-y-4 rounded-md border border-gray-200 bg-gray-50 p-4">
+        {error && (
+          <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {error}
+          </div>
+        )}
         <div className="grid gap-3 md:grid-cols-3">
           <select value={form.clientId} onChange={(event) => setForm({ ...form, clientId: event.target.value })} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
             <option value="">Select client</option>
@@ -142,6 +151,9 @@ const MedicalArtifactCreatePage: React.FC = () => {
             <div><span className="font-semibold">Storage:</span> {uploadTarget?.storage || 'checking...'}</div>
             <div><span className="font-semibold">Bucket:</span> {uploadTarget?.bucket || 'not configured / unavailable'}</div>
             <div className="break-all"><span className="font-semibold">Path pattern:</span> {uploadTarget?.keyPattern || 'medical-artifacts/:type/:artifactId/:timestamp_filename'}</div>
+            {uploadTarget?.requiredEnvironment?.length ? (
+              <div className="mt-1"><span className="font-semibold">Required API env:</span> {uploadTarget.requiredEnvironment.join(', ')}</div>
+            ) : null}
             {uploadTarget?.note && <div className="mt-1">{uploadTarget.note}</div>}
           </div>
         </div>
