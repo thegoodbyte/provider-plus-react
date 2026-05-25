@@ -549,6 +549,10 @@ export const medicalArtifactsApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+  deleteFile: (id: string, storedPath: string) => {
+    cacheService.clearPattern('medical-artifacts:');
+    return api.delete<MedicalArtifact>(`/medical-artifacts/${id}/files?storedPath=${encodeURIComponent(storedPath)}`);
+  },
   update: (id: string, data: Partial<MedicalArtifact>) => {
     cacheService.clearPattern('medical-artifacts:');
     return api.patch<MedicalArtifact>(`/medical-artifacts/${id}`, data);

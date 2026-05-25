@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, ExternalLink, Inbox, Save } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Inbox, Save, Trash2, Upload } from 'lucide-react';
 import { medicalArtifactsApi } from '../services/api';
 import { Client, MedicalArtifact } from '../types';
 import LoadingSpinner from './LoadingSpinner';
@@ -33,6 +33,11 @@ const formatBytes = (size?: number) => {
   return `${(size / 1024 / 1024).toFixed(1)} MB`;
 };
 
+const getFileStoredPath = (file: NonNullable<MedicalArtifact['files']>[number]) => file.s3Key || file.filePath || '';
+const getFileUrl = (file: NonNullable<MedicalArtifact['files']>[number]) => file.url || (/^https?:\/\//i.test(getFileStoredPath(file)) ? getFileStoredPath(file) : '');
+const isImageFile = (file: NonNullable<MedicalArtifact['files']>[number]) => Boolean(file.mimeType?.startsWith('image/'));
+const isPdfFile = (file: NonNullable<MedicalArtifact['files']>[number]) => file.mimeType === 'application/pdf' || /\.pdf($|\?)/i.test(file.fileName || '');
+
 const MedicalArtifactDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -41,6 +46,9 @@ const MedicalArtifactDetailPage: React.FC = () => {
   const [artifact, setArtifact] = useState<MedicalArtifact | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [deletingPath, setDeletingPath] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -82,6 +90,40 @@ const MedicalArtifactDetailPage: React.FC = () => {
       setArtifact(response.data);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const reloadArtifact = async () => {
+    if (!id) return;
+    const response = await medicalArtifactsApi.getOne(id);
+    setArtifact(response.data);
+  };
+
+  const handleUploadFiles = async () => {
+    if (!id || selectedFiles.length === 0) return;
+    setUploading(true);
+    try {
+      await medicalArtifactsApi.uploadFiles(id, selectedFiles);
+      setSelectedFiles([]);
+      await reloadArtifact();
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDeleteFile = async (file: NonNullable<MedicalArtifact['files']>[number]) => {
+    if (!id) return;
+    const storedPath = getFileStoredPath(file);
+    if (!storedPath) return;
+    const confirmed = window.confirm(`Delete ${file.fileName || 'this file'} from this medical artifact?`);
+    if (!confirmed) return;
+
+    setDeletingPath(storedPath);
+    try {
+      const response = await medicalArtifactsApi.deleteFile(id, storedPath);
+      setArtifact(response.data);
+    } finally {
+      setDeletingPath('');
     }
   };
 
@@ -169,21 +211,76 @@ const MedicalArtifactDetailPage: React.FC = () => {
 
           <div className="rounded-md border border-gray-200 bg-white p-4 text-sm">
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Files</h2>
+            <div className="mb-4 rounded-md border border-dashed border-gray-300 bg-gray-50 p-3">
+              <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+                <Upload className="h-4 w-4" />
+                Upload more files
+              </label>
+              <input
+                type="file"
+                multiple
+                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.heic,.heif"
+                onChange={(event) => setSelectedFiles(Array.from(event.target.files || []))}
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-xs"
+              />
+              {selectedFiles.length > 0 && (
+                <div className="mt-2 space-y-1 text-xs text-gray-600">
+                  {selectedFiles.map((file) => (
+                    <div key={`${file.name}-${file.size}`}>{file.name} ({formatBytes(file.size)})</div>
+                  ))}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={handleUploadFiles}
+                disabled={uploading || selectedFiles.length === 0}
+                className="mt-3 inline-flex items-center gap-2 rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-black disabled:opacity-50"
+              >
+                <Upload className="h-3.5 w-3.5" />
+                {uploading ? 'Uploading...' : 'Upload Selected'}
+              </button>
+            </div>
             {artifact.files?.length ? (
               <div className="space-y-3">
-                {artifact.files.map((file, index) => (
-                  <div key={`${file.fileName || file.s3Key || index}`} className="rounded-md border border-gray-200 p-3">
-                    <div className="font-medium text-gray-900">{file.fileName || `File ${index + 1}`}</div>
-                    <div className="mt-1 text-xs text-gray-500">{file.mimeType || 'Unknown type'} · {formatBytes(file.size)}</div>
-                    <div className="mt-2 break-all rounded bg-gray-50 p-2 text-xs text-gray-600">{file.s3Key || file.filePath || 'No storage path recorded'}</div>
-                    {(file.filePath || file.s3Key) && String(file.filePath || file.s3Key).startsWith('http') && (
-                      <a href={file.filePath || file.s3Key} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-blue-700 hover:text-blue-900">
-                        <ExternalLink className="h-3 w-3" />
-                        Open file
-                      </a>
-                    )}
-                  </div>
-                ))}
+                {artifact.files.map((file, index) => {
+                  const storedPath = getFileStoredPath(file);
+                  const fileUrl = getFileUrl(file);
+                  return (
+                    <div key={`${file.fileName || storedPath || index}`} className="rounded-md border border-gray-200 p-3">
+                      <div className="font-medium text-gray-900">{file.fileName || `File ${index + 1}`}</div>
+                      <div className="mt-1 text-xs text-gray-500">{file.mimeType || 'Unknown type'} · {formatBytes(file.size)}</div>
+                      <div className="mt-2 break-all rounded bg-gray-50 p-2 text-xs text-gray-600">
+                        <div className="font-semibold text-gray-500">S3 path</div>
+                        {storedPath || 'No storage path recorded'}
+                      </div>
+                      {fileUrl && (
+                        <div className="mt-3 overflow-hidden rounded-md border border-gray-200 bg-gray-50">
+                          {isImageFile(file) && <img src={fileUrl} alt={file.fileName || `File ${index + 1}`} className="max-h-80 w-full object-contain" />}
+                          {isPdfFile(file) && <iframe src={fileUrl} title={file.fileName || `PDF ${index + 1}`} className="h-80 w-full bg-white" />}
+                        </div>
+                      )}
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {fileUrl ? (
+                          <a href={fileUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-md border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50">
+                            <ExternalLink className="h-3 w-3" />
+                            Open file
+                          </a>
+                        ) : (
+                          <span className="text-xs text-gray-500">No openable URL returned by the API.</span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteFile(file)}
+                          disabled={!storedPath || deletingPath === storedPath}
+                          className="inline-flex items-center gap-1 rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          {deletingPath === storedPath ? 'Deleting...' : 'Delete'}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-4 text-center text-gray-500">No files attached.</div>
