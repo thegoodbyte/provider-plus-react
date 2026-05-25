@@ -644,8 +644,11 @@ export interface MedicalArtifact {
   clientDisplayId?: number;
   retreatId?: string | Retreat;
   bookingId?: string;
+  ceremonyId?: string;
   artifactType:
     | 'ekg'
+    | 'ceremony_ekg'
+    | 'blood_pressure'
     | 'liver_panel'
     | 'medications_form'
     | 'medication_list'
@@ -656,6 +659,7 @@ export interface MedicalArtifact {
   title: string;
   description?: string;
   textContent?: string;
+  data?: Record<string, any>;
   files?: Array<{
     fileName?: string;
     filePath?: string;
@@ -689,6 +693,8 @@ export interface MedicalReviewRequest {
     | 'liver'
     | 'both'
     | 'ekg_review'
+    | 'ceremony_ekg_review'
+    | 'blood_pressure_review'
     | 'liver_panel_review'
     | 'medications_review'
     | 'questionnaire_review'

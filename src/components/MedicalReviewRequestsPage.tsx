@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner';
-import { medicalReviewRequestsApi } from '../services/api';
-import { MedicalReviewRequest } from '../types';
+import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { Client, MedicalArtifact, MedicalReviewRequest } from '../types';
 
 const reviewStatusStyle: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
@@ -15,6 +15,34 @@ const reviewStatusStyle: Record<string, string> = {
 };
 
 const decisionOptions = ['OK', 'caution', 'NOT OK'] as const;
+
+const requestTypeLabels: Record<string, string> = {
+  ekg: 'EKG',
+  liver: 'Liver Panel',
+  both: 'EKG + Liver Panel',
+  ekg_review: 'Entry EKG Review',
+  ceremony_ekg_review: 'Ceremony EKG Review',
+  blood_pressure_review: 'Blood Pressure Review',
+  liver_panel_review: 'Liver Panel Review',
+  medications_review: 'Medications Review',
+  questionnaire_review: 'Questionnaire Review',
+  food_review: 'Food Intake Review',
+  medical_question: 'Medical Question',
+  general_clearance: 'General Clearance',
+};
+
+const artifactTypeLabels: Record<string, string> = {
+  ekg: 'Entry EKG',
+  ceremony_ekg: 'Ceremony EKG',
+  blood_pressure: 'Blood Pressure',
+  liver_panel: 'Liver Panel',
+  medications_form: 'Medications Form',
+  medication_list: 'Medication List',
+  questionnaire: 'Questionnaire',
+  food_intake: 'Food Intake',
+  question: 'Question',
+  other: 'Other',
+};
 
 const getId = (value: any): string | undefined => {
   if (!value) return undefined;
@@ -31,6 +59,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [requests, setRequests] = useState<MedicalReviewRequest[]>([]);
   const [selected, setSelected] = useState<MedicalReviewRequest | null>(null);
   const [history, setHistory] = useState<MedicalReviewRequest[]>([]);
+  const [relatedArtifacts, setRelatedArtifacts] = useState<MedicalArtifact[]>([]);
   const [reviewDecision, setReviewDecision] = useState<'OK' | 'caution' | 'NOT OK' | ''>('');
   const [reviewNotes, setReviewNotes] = useState('');
   const [overallNotes, setOverallNotes] = useState('');
@@ -65,10 +94,18 @@ const MedicalReviewRequestsPage: React.FC = () => {
         const clientId = getId(selectedItem.clientId);
         const retreatId = getId(selectedItem.retreatId);
         if (clientId && retreatId) {
-          const historyResponse = await medicalReviewRequestsApi.getByClientAndRetreat(clientId, retreatId);
+          const [historyResponse, artifactsResponse] = await Promise.all([
+            medicalReviewRequestsApi.getByClientAndRetreat(clientId, retreatId),
+            medicalArtifactsApi.getAll({ clientId }),
+          ]);
           setHistory(historyResponse.data || []);
+          setRelatedArtifacts(artifactsResponse.data || []);
+        } else if (clientId) {
+          const artifactsResponse = await medicalArtifactsApi.getAll({ clientId });
+          setRelatedArtifacts(artifactsResponse.data || []);
         } else {
           setHistory([]);
+          setRelatedArtifacts([]);
         }
         setReviewDecision(selectedItem.reviewDecision || '');
         setReviewNotes(selectedItem.reviewNotes || '');
@@ -79,12 +116,14 @@ const MedicalReviewRequestsPage: React.FC = () => {
         setLiverNotes(selectedItem.liverReviewNotes || '');
       } else {
         setHistory([]);
+        setRelatedArtifacts([]);
       }
     } catch (error) {
       console.error('Error loading review requests:', error);
       setRequests([]);
       setSelected(null);
       setHistory([]);
+      setRelatedArtifacts([]);
     } finally {
       setLoading(false);
     }
@@ -107,6 +146,16 @@ const MedicalReviewRequestsPage: React.FC = () => {
       .sort((a, b) => (b.attemptNumber || 0) - (a.attemptNumber || 0));
   }, [history, selected]);
 
+  const selectedArtifactIds = useMemo(() => {
+    return new Set((selected?.artifactIds || []).map((artifact) => getId(artifact)));
+  }, [selected]);
+
+  const profileHref = useMemo(() => {
+    const clientId = getId(selected?.clientId);
+    if (!clientId) return undefined;
+    return `${isMedicalRoute ? '/medical/client' : '/admin/medical'}/${clientId}`;
+  }, [isMedicalRoute, selected]);
+
   const handleSelect = (request: MedicalReviewRequest) => {
     setSelected(request);
     navigate(`${isMedicalRoute ? '/medical/review-requests' : '/admin/medical-review-requests'}/${request._id}`);
@@ -115,7 +164,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const handleSaveReview = async () => {
     if (!selected?._id) return;
     await medicalReviewRequestsApi.review(selected._id, {
-      status: reviewDecision === 'OK' ? 'approved' : reviewDecision === 'NOT OK' ? 'rejected' : 'caution',
+      status: reviewDecision === 'OK' ? 'approved' : reviewDecision === 'NOT OK' ? 'rejected' : reviewDecision === 'caution' ? 'caution' : 'in_review',
       reviewDecision: reviewDecision || undefined,
       reviewNotes,
       overallNotes,
@@ -140,7 +189,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
             {isMedicalRoute ? 'Medical Review Requests' : 'Medical Review Requests'}
           </h1>
           <p className="text-sm text-gray-600">
-            {isMedicalRoute ? 'Queue for review and commentary on EKG and liver records.' : 'Administrative review request queue and history.'}
+            {isMedicalRoute ? 'Queue for review and commentary on medical records, ceremony EKG, and blood pressure.' : 'Administrative review request queue and history.'}
           </p>
         </div>
         {!isMedicalRoute && (
@@ -184,7 +233,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                         #{request.display_id || '—'} {typeof request.clientId === 'string' ? request.clientId : request.clientId?.display_id ? `#${request.clientId.display_id}` : 'Client'}
                       </div>
                       <div className="text-xs text-gray-500">
-                        {request.requestType} • Attempt {request.attemptNumber || 1} • {request.source || 'Provider Plus CRM'}
+                        {requestTypeLabels[request.requestType] || request.requestType} • Attempt {request.attemptNumber || 1} • {request.source || 'Provider Plus CRM'}
                       </div>
                     </div>
                     <span className={`rounded-full px-2 py-1 text-xs font-semibold ${reviewStatusStyle[request.status] || 'bg-gray-100 text-gray-700'}`}>
@@ -209,6 +258,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                     {typeof selected.clientId === 'string' ? selected.clientId : selected.clientId?.firstName ? `${selected.clientId.firstName} ${selected.clientId.lastName}` : 'Unknown client'}
                     {' '}• {typeof selected.retreatId === 'string' ? selected.retreatId : selected.retreatId?.name || 'Unknown retreat'}
                   </div>
+                  <div className="mt-1 text-sm font-medium text-gray-900">{requestTypeLabels[selected.requestType] || selected.requestType}</div>
                 </div>
                 <span className={`rounded-full px-2 py-1 text-xs font-semibold ${reviewStatusStyle[selected.status] || 'bg-gray-100 text-gray-700'}`}>
                   {selected.status}
@@ -217,12 +267,67 @@ const MedicalReviewRequestsPage: React.FC = () => {
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-md border border-gray-200 p-3">
-                  <div className="text-xs uppercase tracking-wide text-gray-500">Tracking</div>
-                  <div className="mt-1 text-sm text-gray-900">{typeof selected.medicalTrackingId === 'string' ? selected.medicalTrackingId : selected.medicalTrackingId?._id || '—'}</div>
+                  <div className="text-xs uppercase tracking-wide text-gray-500">Client Context</div>
+                  {profileHref ? (
+                    <button type="button" onClick={() => navigate(profileHref)} className="mt-1 text-sm font-semibold text-blue-700 hover:text-blue-900">
+                      Open full medical profile
+                    </button>
+                  ) : (
+                    <div className="mt-1 text-sm text-gray-900">No client profile link</div>
+                  )}
                 </div>
                 <div className="rounded-md border border-gray-200 p-3">
                   <div className="text-xs uppercase tracking-wide text-gray-500">Attempt</div>
                   <div className="mt-1 text-sm text-gray-900">{selected.attemptNumber || 1}</div>
+                </div>
+              </div>
+
+              <div className="rounded-md border border-gray-200 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-gray-900">Related Medical Artifacts</div>
+                    <div className="text-xs text-gray-500">Entry EKG, liver panel, medications, questionnaires, medical notes, ceremony EKG, and blood pressure for this client.</div>
+                  </div>
+                  {profileHref && (
+                    <button type="button" onClick={() => navigate(profileHref)} className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
+                      Full Profile
+                    </button>
+                  )}
+                </div>
+                <div className="mt-3 max-h-72 space-y-2 overflow-auto">
+                  {relatedArtifacts.length === 0 ? (
+                    <div className="text-sm text-gray-500">No stored artifacts found for this client yet.</div>
+                  ) : (
+                    relatedArtifacts.map((artifact) => {
+                      const isSource = artifact._id ? selectedArtifactIds.has(artifact._id) : false;
+                      const client = typeof artifact.clientId === 'string' ? undefined : artifact.clientId as Client;
+                      return (
+                        <div key={artifact._id} className={`rounded-md border p-3 text-sm ${isSource ? 'border-blue-300 bg-blue-50' : 'border-gray-200'}`}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <div className="font-semibold text-gray-900">
+                                #{artifact.display_id || '—'} {artifactTypeLabels[artifact.artifactType] || artifact.artifactType}: {artifact.title}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                {client ? `${client.firstName} ${client.lastName}` : 'Client record'} • {artifact.receivedAt ? new Date(artifact.receivedAt).toLocaleString() : 'No received date'}
+                              </div>
+                            </div>
+                            {isSource && <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">This request</span>}
+                          </div>
+                          {artifact.textContent && <div className="mt-2 whitespace-pre-wrap text-gray-700">{artifact.textContent}</div>}
+                          {artifact.notes && <div className="mt-2 text-xs text-gray-600">Notes: {artifact.notes}</div>}
+                          {artifact.data && Object.keys(artifact.data).length > 0 && (
+                            <pre className="mt-2 max-h-24 overflow-auto rounded bg-gray-50 p-2 text-xs text-gray-600">{JSON.stringify(artifact.data, null, 2)}</pre>
+                          )}
+                          {!!artifact.files?.length && (
+                            <div className="mt-2 text-xs text-gray-600">
+                              Files: {artifact.files.map((file) => file.fileName || file.s3Key || file.filePath).filter(Boolean).join(', ')}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
 
@@ -257,9 +362,9 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 </div>
               </div>
 
-              {(selected.requestType === 'ekg' || selected.requestType === 'both') && (
+              {(['ekg', 'both', 'ekg_review', 'ceremony_ekg_review'] as string[]).includes(selected.requestType) && (
                 <div className="rounded-md border border-gray-200 p-3">
-                  <div className="mb-2 text-sm font-semibold text-gray-900">EKG review</div>
+                  <div className="mb-2 text-sm font-semibold text-gray-900">{selected.requestType === 'ceremony_ekg_review' ? 'Ceremony EKG review' : 'EKG review'}</div>
                   <div className="flex flex-wrap gap-2">
                     {decisionOptions.map((option) => (
                       <button
@@ -276,7 +381,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 </div>
               )}
 
-              {(selected.requestType === 'liver' || selected.requestType === 'both') && (
+              {(['liver', 'both', 'liver_panel_review'] as string[]).includes(selected.requestType) && (
                 <div className="rounded-md border border-gray-200 p-3">
                   <div className="mb-2 text-sm font-semibold text-gray-900">Liver review</div>
                   <div className="flex flex-wrap gap-2">

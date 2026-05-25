@@ -7,6 +7,8 @@ import LoadingSpinner from './LoadingSpinner';
 
 const artifactTypeLabels: Record<MedicalArtifact['artifactType'], string> = {
   ekg: 'EKG',
+  ceremony_ekg: 'Ceremony EKG',
+  blood_pressure: 'Blood Pressure',
   liver_panel: 'Liver Panel',
   medications_form: 'Medications Form',
   medication_list: 'Medication List',
@@ -18,6 +20,8 @@ const artifactTypeLabels: Record<MedicalArtifact['artifactType'], string> = {
 
 const reviewTypeByArtifact: Partial<Record<MedicalArtifact['artifactType'], string>> = {
   ekg: 'ekg_review',
+  ceremony_ekg: 'ceremony_ekg_review',
+  blood_pressure: 'blood_pressure_review',
   liver_panel: 'liver_panel_review',
   medications_form: 'medications_review',
   medication_list: 'medications_review',

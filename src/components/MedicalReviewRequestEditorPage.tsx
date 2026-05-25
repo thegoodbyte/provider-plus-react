@@ -9,7 +9,7 @@ type FormState = {
   medicalTrackingId: string;
   clientId: string;
   retreatId: string;
-  requestType: 'ekg' | 'liver' | 'both';
+  requestType: MedicalReviewRequest['requestType'];
   status: MedicalReviewRequest['status'];
   requestedBy: string;
   assignedTo: string;
@@ -146,7 +146,8 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           liverReviewNotes: form.liverReviewNotes,
         });
       } else {
-        await medicalReviewRequestsApi.createFromTracking(form.medicalTrackingId, form.requestType);
+        const legacyRequestType = ['ekg', 'liver', 'both'].includes(form.requestType) ? form.requestType as 'ekg' | 'liver' | 'both' : 'both';
+        await medicalReviewRequestsApi.createFromTracking(form.medicalTrackingId, legacyRequestType);
       }
       navigate('/admin/medical-review-requests');
     } catch (error) {
@@ -211,6 +212,15 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
               <option value="ekg">EKG</option>
               <option value="liver">Liver</option>
               <option value="both">Both</option>
+              <option value="ekg_review">Entry EKG Review</option>
+              <option value="ceremony_ekg_review">Ceremony EKG Review</option>
+              <option value="blood_pressure_review">Blood Pressure Review</option>
+              <option value="liver_panel_review">Liver Panel Review</option>
+              <option value="medications_review">Medications Review</option>
+              <option value="questionnaire_review">Questionnaire Review</option>
+              <option value="food_review">Food Intake Review</option>
+              <option value="medical_question">Medical Question</option>
+              <option value="general_clearance">General Clearance</option>
             </select>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <div>
