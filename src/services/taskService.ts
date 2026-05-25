@@ -91,6 +91,16 @@ export interface TaskStatistics {
 class TaskService {
   private baseUrl = `${API_BASE_URL}/tasks`;
 
+  private async getErrorMessage(response: Response, fallback: string): Promise<string> {
+    try {
+      const data = await response.json();
+      const message = Array.isArray(data?.message) ? data.message.join(', ') : data?.message;
+      return message ? `${fallback}: ${message}` : `${fallback}: ${response.status} ${response.statusText}`;
+    } catch {
+      return `${fallback}: ${response.status} ${response.statusText}`;
+    }
+  }
+
   async createTask(taskData: CreateTaskDto): Promise<Task> {
     const response = await authFetch(this.baseUrl, {
       method: 'POST',
@@ -101,7 +111,7 @@ class TaskService {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to create task: ${response.statusText}`);
+      throw new Error(await this.getErrorMessage(response, 'Failed to create task'));
     }
 
     return response.json();
@@ -125,7 +135,7 @@ class TaskService {
     const response = await authFetch(url);
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch tasks: ${response.statusText}`);
+      throw new Error(await this.getErrorMessage(response, 'Failed to fetch tasks'));
     }
 
     return response.json();
@@ -135,7 +145,7 @@ class TaskService {
     const response = await authFetch(`${this.baseUrl}/${id}`);
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch task: ${response.statusText}`);
+      throw new Error(await this.getErrorMessage(response, 'Failed to fetch task'));
     }
 
     return response.json();
@@ -145,7 +155,7 @@ class TaskService {
     const response = await authFetch(`${this.baseUrl}/client/${clientId}`);
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch client tasks: ${response.statusText}`);
+      throw new Error(await this.getErrorMessage(response, 'Failed to fetch client tasks'));
     }
 
     return response.json();
@@ -155,7 +165,7 @@ class TaskService {
     const response = await authFetch(`${this.baseUrl}/retreat/${retreatId}`);
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch retreat tasks: ${response.statusText}`);
+      throw new Error(await this.getErrorMessage(response, 'Failed to fetch retreat tasks'));
     }
 
     return response.json();
@@ -171,7 +181,7 @@ class TaskService {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to update task: ${response.statusText}`);
+      throw new Error(await this.getErrorMessage(response, 'Failed to update task'));
     }
 
     return response.json();
@@ -183,7 +193,7 @@ class TaskService {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to complete task: ${response.statusText}`);
+      throw new Error(await this.getErrorMessage(response, 'Failed to complete task'));
     }
 
     return response.json();
@@ -195,7 +205,7 @@ class TaskService {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to delete task: ${response.statusText}`);
+      throw new Error(await this.getErrorMessage(response, 'Failed to delete task'));
     }
   }
 
@@ -203,7 +213,7 @@ class TaskService {
     const response = await authFetch(`${this.baseUrl}/statistics`);
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch task statistics: ${response.statusText}`);
+      throw new Error(await this.getErrorMessage(response, 'Failed to fetch task statistics'));
     }
 
     return response.json();

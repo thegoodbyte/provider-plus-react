@@ -23,6 +23,7 @@ export const TasksWidget: React.FC<TasksWidgetProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const loadTasks = async () => {
     try {
@@ -53,11 +54,13 @@ export const TasksWidget: React.FC<TasksWidgetProps> = ({
 
   const handleCreateTask = () => {
     setEditingTask(null);
+    setFormError(null);
     setShowForm(true);
   };
 
   const handleEditTask = (task: Task) => {
     setEditingTask(task);
+    setFormError(null);
     setShowForm(true);
   };
 
@@ -70,15 +73,19 @@ export const TasksWidget: React.FC<TasksWidgetProps> = ({
       }
       setShowForm(false);
       setEditingTask(null);
+      setFormError(null);
       await loadTasks();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save task');
+      const message = err instanceof Error ? err.message : 'Failed to save task';
+      setFormError(message);
+      setError(message);
     }
   };
 
   const handleFormCancel = () => {
     setShowForm(false);
     setEditingTask(null);
+    setFormError(null);
   };
 
   const handleDeleteTask = async (taskId: string) => {
@@ -176,6 +183,7 @@ export const TasksWidget: React.FC<TasksWidgetProps> = ({
           onCancel={handleFormCancel}
           clientId={clientId}
           retreatId={retreatId}
+          error={formError}
         />
       )}
     </div>
