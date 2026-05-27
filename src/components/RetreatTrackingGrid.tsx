@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Check, RefreshCw, X } from 'lucide-react';
 import { bookingsApi, paymentsApi, clientMedicalApi } from '../services/api';
 import './RetreatTrackingGrid.css';
 
@@ -65,7 +66,6 @@ interface ClientTrackingData {
 const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) => {
   const [trackingData, setTrackingData] = useState<ClientTrackingData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedCell, setSelectedCell] = useState<{row: string, col: number} | null>(null);
 
   useEffect(() => {
     fetchTrackingData();
@@ -111,7 +111,7 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
             ? `${booking.clientId.firstName || ''} ${booking.clientId.lastName || ''}`.trim()
             : 'Unknown Client',
           email: booking.clientId?.email || '',
-          displayNumber: booking.clientId?.displayNumber || `ISCZ-P-${booking._id?.slice(-4) || '0000'}`,
+          displayNumber: booking.clientId?.display_id || booking.clientId?.displayNumber || `ISCZ-P-${booking._id?.slice(-4) || '0000'}`,
           payments: payments.map(p => ({
             date: p.paymentDate,
             amount: p.amount,
@@ -167,8 +167,7 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
 
       const allTrackingData = await Promise.all(trackingPromises);
 
-      // Limit to 6 clients as per requirement
-      setTrackingData(allTrackingData.slice(0, 6));
+      setTrackingData(allTrackingData);
     } catch (error) {
       console.error('Error fetching tracking data:', error);
       setTrackingData([]);
@@ -196,10 +195,10 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
   };
 
   const formatStatus = (status?: boolean, date?: string) => {
-    if (!status) return <span className="status-pending">❌</span>;
+    if (!status) return <span className="status-pending"><X size={16} /></span>;
     return (
       <span className="status-complete">
-        ✅ {formatDate(date)}
+        <Check size={16} /> {formatDate(date)}
       </span>
     );
   };
@@ -215,10 +214,12 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
     );
   };
 
+  const sectionColSpan = Math.max(1, trackingData.length) + 1;
+
   if (isLoading) {
     return (
       <div className="tracking-grid-loading">
-        <div className="loading-spinner">⏳</div>
+        <div className="loading-spinner" />
         <p>Loading tracking data...</p>
       </div>
     );
@@ -227,26 +228,27 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
   return (
     <div className="retreat-tracking-grid">
       <div className="grid-header">
-        <h3>📊 Client Tracking Grid</h3>
+        <h3>Client Tracking Grid</h3>
         <button onClick={fetchTrackingData} className="refresh-btn">
-          🔄 Refresh
+          <RefreshCw size={16} /> Refresh
         </button>
       </div>
+
+      {trackingData.length === 0 ? (
+        <div className="tracking-empty-state">
+          No clients are booked for this retreat yet.
+        </div>
+      ) : (
 
       <div className="grid-container">
         <table className="tracking-table">
           <thead>
             <tr>
               <th className="row-header">Field</th>
-              {trackingData.map((client, index) => (
+              {trackingData.map((client) => (
                 <th key={client.bookingId} className="client-header">
-                  Client {index + 1}
-                </th>
-              ))}
-              {/* Fill empty columns if less than 6 clients */}
-              {Array.from({ length: Math.max(0, 6 - trackingData.length) }).map((_, index) => (
-                <th key={`empty-${index}`} className="client-header empty">
-                  Client {trackingData.length + index + 1}
+                  <div className="client-header-name">{client.clientName || 'Unknown Client'}</div>
+                  <div className="client-header-meta">{client.displayNumber}</div>
                 </th>
               ))}
             </tr>
@@ -260,9 +262,6 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
                   <strong>{client.clientName}</strong>
                 </td>
               ))}
-              {Array.from({ length: Math.max(0, 6 - trackingData.length) }).map((_, index) => (
-                <td key={`name-empty-${index}`} className="data-cell empty">-</td>
-              ))}
             </tr>
 
             <tr>
@@ -271,9 +270,6 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
                 <td key={`id-${client.bookingId}`} className="data-cell">
                   {client.clientId.slice(-6)}
                 </td>
-              ))}
-              {Array.from({ length: Math.max(0, 6 - trackingData.length) }).map((_, index) => (
-                <td key={`id-empty-${index}`} className="data-cell empty">-</td>
               ))}
             </tr>
 
@@ -284,9 +280,6 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
                   <span className="display-number">{client.displayNumber}</span>
                 </td>
               ))}
-              {Array.from({ length: Math.max(0, 6 - trackingData.length) }).map((_, index) => (
-                <td key={`display-empty-${index}`} className="data-cell empty">-</td>
-              ))}
             </tr>
 
             <tr>
@@ -296,14 +289,11 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
                   {client.email}
                 </td>
               ))}
-              {Array.from({ length: Math.max(0, 6 - trackingData.length) }).map((_, index) => (
-                <td key={`email-empty-${index}`} className="data-cell empty">-</td>
-              ))}
             </tr>
 
             {/* Payment Section */}
             <tr className="section-divider">
-              <td colSpan={7} className="section-title">💰 Payments</td>
+              <td colSpan={sectionColSpan} className="section-title">Payments</td>
             </tr>
 
             <tr>
@@ -313,14 +303,11 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
                   {formatPayment(client.payments)}
                 </td>
               ))}
-              {Array.from({ length: Math.max(0, 6 - trackingData.length) }).map((_, index) => (
-                <td key={`payment-empty-${index}`} className="data-cell empty">-</td>
-              ))}
             </tr>
 
             {/* EKG Section */}
             <tr className="section-divider">
-              <td colSpan={7} className="section-title">🫀 EKG</td>
+              <td colSpan={sectionColSpan} className="section-title">EKG</td>
             </tr>
 
             <tr>
@@ -329,9 +316,6 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
                 <td key={`ekg-received-${client.bookingId}`} className="data-cell">
                   {formatStatus(client.ekg.received, client.ekg.receivedDate)}
                 </td>
-              ))}
-              {Array.from({ length: Math.max(0, 6 - trackingData.length) }).map((_, index) => (
-                <td key={`ekg-received-empty-${index}`} className="data-cell empty">-</td>
               ))}
             </tr>
 
@@ -342,9 +326,6 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
                   {formatStatus(client.ekg.sentToReview, client.ekg.sentToReviewDate)}
                 </td>
               ))}
-              {Array.from({ length: Math.max(0, 6 - trackingData.length) }).map((_, index) => (
-                <td key={`ekg-sent-empty-${index}`} className="data-cell empty">-</td>
-              ))}
             </tr>
 
             <tr>
@@ -354,14 +335,11 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
                   {formatReviewResult(client.ekg.reviewResult, client.ekg.reviewNotes)}
                 </td>
               ))}
-              {Array.from({ length: Math.max(0, 6 - trackingData.length) }).map((_, index) => (
-                <td key={`ekg-result-empty-${index}`} className="data-cell empty">-</td>
-              ))}
             </tr>
 
             {/* Liver Panel Section */}
             <tr className="section-divider">
-              <td colSpan={7} className="section-title">🧬 Liver Panel</td>
+              <td colSpan={sectionColSpan} className="section-title">Liver Panel</td>
             </tr>
 
             <tr>
@@ -370,9 +348,6 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
                 <td key={`liver-received-${client.bookingId}`} className="data-cell">
                   {formatStatus(client.liver.received, client.liver.receivedDate)}
                 </td>
-              ))}
-              {Array.from({ length: Math.max(0, 6 - trackingData.length) }).map((_, index) => (
-                <td key={`liver-received-empty-${index}`} className="data-cell empty">-</td>
               ))}
             </tr>
 
@@ -383,9 +358,6 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
                   {formatStatus(client.liver.sentToReview, client.liver.sentToReviewDate)}
                 </td>
               ))}
-              {Array.from({ length: Math.max(0, 6 - trackingData.length) }).map((_, index) => (
-                <td key={`liver-sent-empty-${index}`} className="data-cell empty">-</td>
-              ))}
             </tr>
 
             <tr>
@@ -395,14 +367,11 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
                   {formatReviewResult(client.liver.reviewResult, client.liver.reviewNotes)}
                 </td>
               ))}
-              {Array.from({ length: Math.max(0, 6 - trackingData.length) }).map((_, index) => (
-                <td key={`liver-result-empty-${index}`} className="data-cell empty">-</td>
-              ))}
             </tr>
 
             {/* Forms Section */}
             <tr className="section-divider">
-              <td colSpan={7} className="section-title">📋 Forms</td>
+              <td colSpan={sectionColSpan} className="section-title">Forms</td>
             </tr>
 
             {/* Questionnaire */}
@@ -413,9 +382,6 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
                   {formatStatus(client.questionnaire.sent, client.questionnaire.sentDate)}
                 </td>
               ))}
-              {Array.from({ length: Math.max(0, 6 - trackingData.length) }).map((_, index) => (
-                <td key={`quest-sent-empty-${index}`} className="data-cell empty">-</td>
-              ))}
             </tr>
 
             <tr>
@@ -424,9 +390,6 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
                 <td key={`quest-received-${client.bookingId}`} className="data-cell">
                   {formatStatus(client.questionnaire.received, client.questionnaire.receivedDate)}
                 </td>
-              ))}
-              {Array.from({ length: Math.max(0, 6 - trackingData.length) }).map((_, index) => (
-                <td key={`quest-received-empty-${index}`} className="data-cell empty">-</td>
               ))}
             </tr>
 
@@ -438,9 +401,6 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
                   {formatStatus(client.medForm.sent, client.medForm.sentDate)}
                 </td>
               ))}
-              {Array.from({ length: Math.max(0, 6 - trackingData.length) }).map((_, index) => (
-                <td key={`med-sent-empty-${index}`} className="data-cell empty">-</td>
-              ))}
             </tr>
 
             <tr>
@@ -450,9 +410,6 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
                   {formatStatus(client.medForm.received, client.medForm.receivedDate)}
                 </td>
               ))}
-              {Array.from({ length: Math.max(0, 6 - trackingData.length) }).map((_, index) => (
-                <td key={`med-received-empty-${index}`} className="data-cell empty">-</td>
-              ))}
             </tr>
 
             <tr>
@@ -461,9 +418,6 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
                 <td key={`med-reviewed-${client.bookingId}`} className="data-cell">
                   {formatStatus(client.medForm.reviewed, client.medForm.reviewedDate)}
                 </td>
-              ))}
-              {Array.from({ length: Math.max(0, 6 - trackingData.length) }).map((_, index) => (
-                <td key={`med-reviewed-empty-${index}`} className="data-cell empty">-</td>
               ))}
             </tr>
 
@@ -478,9 +432,6 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
                   ) : '-'}
                 </td>
               ))}
-              {Array.from({ length: Math.max(0, 6 - trackingData.length) }).map((_, index) => (
-                <td key={`med-result-empty-${index}`} className="data-cell empty">-</td>
-              ))}
             </tr>
 
             {/* Food Form */}
@@ -491,9 +442,6 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
                   {formatStatus(client.foodForm.sent, client.foodForm.sentDate)}
                 </td>
               ))}
-              {Array.from({ length: Math.max(0, 6 - trackingData.length) }).map((_, index) => (
-                <td key={`food-sent-empty-${index}`} className="data-cell empty">-</td>
-              ))}
             </tr>
 
             <tr>
@@ -502,9 +450,6 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
                 <td key={`food-received-${client.bookingId}`} className="data-cell">
                   {formatStatus(client.foodForm.received, client.foodForm.receivedDate)}
                 </td>
-              ))}
-              {Array.from({ length: Math.max(0, 6 - trackingData.length) }).map((_, index) => (
-                <td key={`food-received-empty-${index}`} className="data-cell empty">-</td>
               ))}
             </tr>
 
@@ -515,20 +460,18 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
                   {formatStatus(client.foodForm.reviewed, client.foodForm.reviewedDate)}
                 </td>
               ))}
-              {Array.from({ length: Math.max(0, 6 - trackingData.length) }).map((_, index) => (
-                <td key={`food-reviewed-empty-${index}`} className="data-cell empty">-</td>
-              ))}
             </tr>
           </tbody>
         </table>
       </div>
+      )}
 
       <div className="grid-legend">
         <div className="legend-item">
-          <span className="status-complete">✅</span> Complete
+          <span className="status-complete"><Check size={16} /></span> Complete
         </div>
         <div className="legend-item">
-          <span className="status-pending">❌</span> Pending
+          <span className="status-pending"><X size={16} /></span> Pending
         </div>
         <div className="legend-item">
           <span className="review-ok">OK</span> Review Passed
