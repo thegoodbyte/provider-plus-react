@@ -215,7 +215,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
 
                 return (
                   <div key={id} className="p-4">
-                    <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(260px,1fr)_170px_220px_minmax(260px,1.2fr)]">
+                    <div className="space-y-4">
                       <label className="flex items-start gap-3">
                         <input
                           type="checkbox"
@@ -233,64 +233,68 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                         </span>
                       </label>
 
-                      <div>
-                        <label className="block text-xs font-medium uppercase text-gray-500">Checked date</label>
-                        <input
-                          type="date"
-                          value={formatDateInput(item.completedAt)}
-                          disabled={!isDone || savingId === item._id}
-                          onChange={(event) => updateItem(item, { completedAt: event.target.value || null } as Partial<BookingFlowItem>)}
-                          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-100"
-                        />
-                        <p className="mt-1 text-xs text-gray-500">Due {formatDisplayDate(item.dueDate)}</p>
-                      </div>
+                      {isDone && (
+                        <div className="grid grid-cols-1 gap-4 rounded-lg border border-gray-200 bg-gray-50 p-4 xl:grid-cols-[170px_220px_minmax(260px,1fr)]">
+                          <div>
+                            <label className="block text-xs font-medium uppercase text-gray-500">Checked date</label>
+                            <input
+                              type="date"
+                              value={formatDateInput(item.completedAt)}
+                              disabled={savingId === item._id}
+                              onChange={(event) => updateItem(item, { completedAt: event.target.value || null } as Partial<BookingFlowItem>)}
+                              className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                            <p className="mt-1 text-xs text-gray-500">Due {formatDisplayDate(item.dueDate)}</p>
+                          </div>
 
-                      {showReview ? (
-                        <div>
-                          <label className="block text-xs font-medium uppercase text-gray-500">Result</label>
-                          <select
-                            value={item.reviewDecision || ''}
-                            disabled={savingId === item._id}
-                            onChange={(event) => updateItem(item, { reviewDecision: event.target.value as any })}
-                            className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          >
-                            <option value="">Select result</option>
-                            {Object.entries(REVIEW_LABELS).map(([value, label]) => (
-                              <option key={value} value={value}>{label}</option>
-                            ))}
-                          </select>
-                          {item.reviewDecision && (
-                            <p className="mt-1 text-xs text-gray-500">{REVIEW_LABELS[item.reviewDecision]}</p>
+                          {showReview ? (
+                            <div>
+                              <label className="block text-xs font-medium uppercase text-gray-500">Result</label>
+                              <select
+                                value={item.reviewDecision || ''}
+                                disabled={savingId === item._id}
+                                onChange={(event) => updateItem(item, { reviewDecision: event.target.value as any })}
+                                className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              >
+                                <option value="">Select result</option>
+                                {Object.entries(REVIEW_LABELS).map(([value, label]) => (
+                                  <option key={value} value={value}>{label}</option>
+                                ))}
+                              </select>
+                              {item.reviewDecision && (
+                                <p className="mt-1 text-xs text-gray-500">{REVIEW_LABELS[item.reviewDecision]}</p>
+                              )}
+                            </div>
+                          ) : (
+                            <div>
+                              <label className="block text-xs font-medium uppercase text-gray-500">Status</label>
+                              <p className="mt-2 text-sm capitalize text-gray-700">{item.status.replace(/_/g, ' ')}</p>
+                            </div>
                           )}
-                        </div>
-                      ) : (
-                        <div>
-                          <label className="block text-xs font-medium uppercase text-gray-500">Status</label>
-                          <p className="mt-2 text-sm capitalize text-gray-700">{item.status.replace(/_/g, ' ')}</p>
+
+                          <div className="space-y-2">
+                            <label className="block text-xs font-medium uppercase text-gray-500">Notes</label>
+                            <textarea
+                              value={noteDrafts[id] || ''}
+                              onChange={(event) => setNoteDrafts((current) => ({ ...current, [id]: event.target.value }))}
+                              onBlur={() => saveNotes(item)}
+                              rows={showReview ? 2 : 3}
+                              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Date, MRR number, quote, or internal note"
+                            />
+                            {showReview && (
+                              <textarea
+                                value={reviewNoteDrafts[id] || ''}
+                                onChange={(event) => setReviewNoteDrafts((current) => ({ ...current, [id]: event.target.value }))}
+                                onBlur={() => saveNotes(item)}
+                                rows={2}
+                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="Review notes"
+                              />
+                            )}
+                          </div>
                         </div>
                       )}
-
-                      <div className="space-y-2">
-                        <label className="block text-xs font-medium uppercase text-gray-500">Notes</label>
-                        <textarea
-                          value={noteDrafts[id] || ''}
-                          onChange={(event) => setNoteDrafts((current) => ({ ...current, [id]: event.target.value }))}
-                          onBlur={() => saveNotes(item)}
-                          rows={showReview ? 2 : 3}
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="Date, MRR number, quote, or internal note"
-                        />
-                        {showReview && (
-                          <textarea
-                            value={reviewNoteDrafts[id] || ''}
-                            onChange={(event) => setReviewNoteDrafts((current) => ({ ...current, [id]: event.target.value }))}
-                            onBlur={() => saveNotes(item)}
-                            rows={2}
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Review notes"
-                          />
-                        )}
-                      </div>
                     </div>
                   </div>
                 );
