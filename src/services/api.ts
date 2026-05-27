@@ -685,6 +685,10 @@ export const bookingFlowApi = {
   },
   getMatrix: (retreatId: string) => cachedGet<any>(`booking-flow:matrix:${retreatId}`, () => api.get<any>(`/booking-flow/matrix/${retreatId}`)),
   getItem: (id: string) => cachedGet<BookingFlowItem>(`booking-flow:item:${id}`, () => api.get<BookingFlowItem>(`/booking-flow/items/${id}`)),
+  createItem: (data: Partial<BookingFlowItem> & { bookingId: string; title: string }) => {
+    cacheService.clearPattern('booking-flow:');
+    return api.post<BookingFlowItem>('/booking-flow/items', data);
+  },
   updateItem: (id: string, data: Partial<BookingFlowItem>) => {
     cacheService.clearPattern('booking-flow:');
     return api.patch<BookingFlowItem>(`/booking-flow/items/${id}`, data);

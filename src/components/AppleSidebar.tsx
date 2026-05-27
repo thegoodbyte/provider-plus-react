@@ -107,7 +107,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
               { id: 'workflow', label: 'Readiness Dashboard', Icon: Fi.FiLayers },
               { id: 'retreat-flow', label: 'Retreat Requirements', Icon: Fi.FiCalendar },
               { id: 'retreat-flow-library', label: 'Readiness Library', Icon: Fi.FiBook },
-              { id: 'booking-flow', label: 'Client Readiness', Icon: Fi.FiLayers },
+              { id: 'booking-flow', label: 'Client Flow', Icon: Fi.FiLayers },
               { id: 'requirements', label: 'Legacy Requirements', Icon: Fi.FiCheckSquare },
             ],
           },
