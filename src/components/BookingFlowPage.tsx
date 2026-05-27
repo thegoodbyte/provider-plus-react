@@ -340,36 +340,48 @@ const BookingFlowPage: React.FC = () => {
       <div className="mb-5 rounded-lg border border-gray-200 bg-white p-4">
         <div className="mb-3 text-sm font-semibold text-gray-900">Add Step</div>
         <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_100px_130px_minmax(220px,1fr)_auto]">
-          <input
-            value={newStep.title}
-            onChange={(event) => setNewStep((current) => ({ ...current, title: event.target.value }))}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-            placeholder="Name"
-          />
-          <input
-            type="number"
-            value={newStep.order}
-            onChange={(event) => setNewStep((current) => ({ ...current, order: event.target.value }))}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-            placeholder="Order"
-          />
-          <input
-            type="number"
-            value={newStep.offsetDays}
-            onChange={(event) => setNewStep((current) => ({ ...current, offsetDays: event.target.value }))}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-            placeholder="Days prior"
-          />
-          <input
-            value={newStep.notes}
-            onChange={(event) => setNewStep((current) => ({ ...current, notes: event.target.value }))}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-            placeholder="Note"
-          />
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Step name</span>
+            <input
+              value={newStep.title}
+              onChange={(event) => setNewStep((current) => ({ ...current, title: event.target.value }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              placeholder="Example: EKG received"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Order</span>
+            <input
+              type="number"
+              value={newStep.order}
+              onChange={(event) => setNewStep((current) => ({ ...current, order: event.target.value }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              placeholder="10"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Days before retreat</span>
+            <input
+              type="number"
+              value={newStep.offsetDays}
+              onChange={(event) => setNewStep((current) => ({ ...current, offsetDays: event.target.value }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              placeholder="21"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Note</span>
+            <input
+              value={newStep.notes}
+              onChange={(event) => setNewStep((current) => ({ ...current, notes: event.target.value }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              placeholder="Optional note"
+            />
+          </label>
           <button
             onClick={addItem}
             disabled={!newStep.title.trim() || savingId === 'new'}
-            className="inline-flex items-center justify-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-2 self-end rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
           >
             <Icon icon={Plus} className="h-4 w-4" />
             Add
