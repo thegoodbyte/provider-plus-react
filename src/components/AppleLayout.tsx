@@ -327,7 +327,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="retreat-flow" element={<RetreatFlowPage />} />
                       <Route path="retreat-flow/:retreatId" element={<RetreatFlowPage />} />
                       <Route path="retreat-flow-library" element={<RetreatFlowLibraryPage />} />
-                      <Route path="booking-flow" element={<WorkflowDashboard />} />
+                      <Route path="booking-flow" element={<BookingFlowPage />} />
                       <Route path="booking-flow/:bookingId" element={<BookingFlowPage />} />
                       <Route path="flow-tasks" element={<FlowTaskInboxPage />} />
                       <Route path="medical-dashboard" element={<MedicalAdvisorDashboard />} />
@@ -384,7 +384,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="retreat-flow" element={<RetreatFlowPage />} />
                       <Route path="retreat-flow/:retreatId" element={<RetreatFlowPage />} />
                       <Route path="retreat-flow-library" element={<RetreatFlowLibraryPage />} />
-                      <Route path="booking-flow" element={<WorkflowDashboard />} />
+                      <Route path="booking-flow" element={<BookingFlowPage />} />
                       <Route path="booking-flow/:bookingId" element={<BookingFlowPage />} />
                       <Route path="flow-tasks" element={<FlowTaskInboxPage />} />
                       <Route path="review/:id" element={<MedicalAdvisorReview />} />
@@ -478,7 +478,7 @@ const AppleLayout: React.FC = () => {
                 <Route path="/retreat-flow" element={<ProtectedRoute><RetreatFlowPage /></ProtectedRoute>} />
                 <Route path="/retreat-flow/:retreatId" element={<ProtectedRoute><RetreatFlowPage /></ProtectedRoute>} />
                 <Route path="/retreat-flow-library" element={<ProtectedRoute><RetreatFlowLibraryPage /></ProtectedRoute>} />
-                <Route path="/booking-flow" element={<ProtectedRoute><WorkflowDashboard /></ProtectedRoute>} />
+                <Route path="/booking-flow" element={<ProtectedRoute><BookingFlowPage /></ProtectedRoute>} />
                 <Route path="/booking-flow/:bookingId" element={<ProtectedRoute><BookingFlowPage /></ProtectedRoute>} />
                 <Route path="/flow-tasks" element={<ProtectedRoute><FlowTaskInboxPage /></ProtectedRoute>} />
                 <Route path="/clients" element={<ProtectedRoute><UnifiedClientManager /></ProtectedRoute>} />

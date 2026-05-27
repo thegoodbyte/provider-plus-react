@@ -88,14 +88,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed,
       description: 'Retreat-client bookings'
     },
     {
-      id: 'workflow',
-      label: 'Workflow',
-      icon: FiClipboard,
-      description: 'Readiness, tasks, and message queue'
-    },
-    {
       id: 'retreat-flow',
-      label: 'Retreat Flow',
+      label: 'Retreat Readiness',
       icon: FiCalendar,
       description: 'Per-retreat checklist and timing'
     },
@@ -104,12 +98,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed,
       label: 'Client Flow',
       icon: FiClipboard,
       description: 'Client-specific flow timeline'
-    },
-    {
-      id: 'flow-tasks',
-      label: 'Flow Tasks',
-      icon: FiClipboard,
-      description: 'Generated tasks from flow steps'
     },
     {
       id: 'houses',
