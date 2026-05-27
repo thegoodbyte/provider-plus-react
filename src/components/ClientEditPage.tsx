@@ -317,6 +317,48 @@ const ClientEditPage: React.FC = () => {
             </div>
 
             <div className="form-group">
+              <label htmlFor="phone">Phone *:</label>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <select
+                  name="countryCode"
+                  value={formData.countryCode || '+1'}
+                  onChange={handleInputChange}
+                  style={{ width: '160px' }}
+                  className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {COUNTRY_CODES.map(cc => (
+                    <option key={cc.code} value={cc.code}>
+                      {cc.code} {cc.country}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="tel"
+                  id="phoneNumber"
+                  name="phoneNumber"
+                  value={formData.phoneNumber || ''}
+                  onChange={handleInputChange}
+                  placeholder="Phone number"
+                  required
+                  style={{ flex: 1 }}
+                  className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="country">Country:</label>
+              <input
+                type="text"
+                id="country"
+                name="country"
+                value={formData.country || ''}
+                onChange={handleInputChange}
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="form-group">
               <label htmlFor="email">Email *:</label>
               <input
                 type="email"
@@ -351,36 +393,6 @@ const ClientEditPage: React.FC = () => {
             </div>
 
             <div className="form-group">
-              <label htmlFor="phone">Phone *:</label>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <select
-                  name="countryCode"
-                  value={formData.countryCode || '+1'}
-                  onChange={handleInputChange}
-                  style={{ width: '160px' }}
-                  className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {COUNTRY_CODES.map(cc => (
-                    <option key={cc.code} value={cc.code}>
-                      {cc.code} {cc.country}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="tel"
-                  id="phoneNumber"
-                  name="phoneNumber"
-                  value={formData.phoneNumber || ''}
-                  onChange={handleInputChange}
-                  placeholder="Phone number"
-                  required
-                  style={{ flex: 1 }}
-                  className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
               <label htmlFor="yearOfBirth">Year of Birth:</label>
               <input
                 type="number"
@@ -408,6 +420,7 @@ const ClientEditPage: React.FC = () => {
                 <option value="male">Male</option>
                 <option value="female">Female</option>
                 <option value="other">Other</option>
+                <option value="prefer-not-to-say">Prefer not to say</option>
               </select>
             </div>
 
@@ -481,17 +494,6 @@ const ClientEditPage: React.FC = () => {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="country">Country:</label>
-              <input
-                type="text"
-                id="country"
-                name="country"
-                value={formData.country || ''}
-                onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
           </div>
 
           <div className="form-section">

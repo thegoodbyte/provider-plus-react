@@ -704,18 +704,6 @@ const ClientsGrid: React.FC = () => {
                   </div>
 
                   <div className="form-group">
-                    <label htmlFor="email">Email *:</label>
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      value={formData.email || ''}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-
-                  <div className="form-group">
                     <label htmlFor="phone">Phone:</label>
                     <div style={{ display: 'flex', gap: '10px' }}>
                       <select
@@ -756,6 +744,18 @@ const ClientsGrid: React.FC = () => {
                   </div>
 
                   <div className="form-group">
+                    <label htmlFor="email">Email *:</label>
+                    <input
+                      type="email"
+                      id="email"
+                      name="email"
+                      value={formData.email || ''}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group">
                     <label htmlFor="yearOfBirth">Year of Birth:</label>
                     <input
                       type="number"
@@ -780,6 +780,7 @@ const ClientsGrid: React.FC = () => {
                       <option value="male">Male</option>
                       <option value="female">Female</option>
                       <option value="other">Other</option>
+                      <option value="prefer-not-to-say">Prefer not to say</option>
                     </select>
                   </div>
 

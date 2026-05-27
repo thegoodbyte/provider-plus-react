@@ -185,33 +185,6 @@ const AddClient: React.FC = () => {
                     required
                   />
                 </div>
-              </div>
-            </div>
-
-            {/* Contact Information */}
-            <div>
-              <h2 className="text-lg font-medium text-apple-gray-900 mb-4">Contact Information</h2>
-              <div className="space-y-4">
-                <AppleInput
-                  label="Email"
-                  value={formData.email || ''}
-                  onChange={(value) => setFormData({ ...formData, email: value })}
-                  placeholder="Enter email address"
-                  type="email"
-                />
-
-                <div>
-                  <label className="block text-sm font-medium text-apple-gray-700 mb-1">Client Portal PIN</label>
-                  <input
-                    type="text"
-                    value="Generated automatically on save"
-                    readOnly
-                    className="w-full px-3 py-2 border border-apple-gray-200 rounded-apple bg-apple-gray-50 text-apple-gray-500 text-sm"
-                  />
-                  <p className="mt-1 text-xs text-apple-gray-500">
-                    A secure 6-digit PIN is assigned by the server when the client is created.
-                  </p>
-                </div>
 
                 <div>
                   <label className="block text-sm font-medium text-apple-gray-700 mb-1">Phone *</label>
@@ -240,13 +213,6 @@ const AddClient: React.FC = () => {
                   </div>
                 </div>
 
-                <AppleInput
-                  label="Address"
-                  value={formData.address || ''}
-                  onChange={(value) => setFormData({ ...formData, address: value })}
-                  placeholder="Enter address"
-                />
-
                 <div>
                   <label className="block text-sm font-medium text-apple-gray-700 mb-1">Country</label>
                   <SearchableCountrySelector
@@ -254,6 +220,7 @@ const AddClient: React.FC = () => {
                     onChange={(phonePrefix, countryCode) => {
                       setFormData({
                         ...formData,
+                        phoneCountryCode: phonePrefix,
                         country: countryCode
                       });
                     }}
@@ -263,10 +230,58 @@ const AddClient: React.FC = () => {
               </div>
             </div>
 
+            {/* Contact Information */}
+            <div>
+              <h2 className="text-lg font-medium text-apple-gray-900 mb-4">Contact Information</h2>
+              <div className="space-y-4">
+                <AppleInput
+                  label="Email"
+                  value={formData.email || ''}
+                  onChange={(value) => setFormData({ ...formData, email: value })}
+                  placeholder="Enter email address"
+                  type="email"
+                />
+
+                <div>
+                  <label className="block text-sm font-medium text-apple-gray-700 mb-1">Client Portal PIN</label>
+                  <input
+                    type="text"
+                    value="Generated automatically on save"
+                    readOnly
+                    className="w-full px-3 py-2 border border-apple-gray-200 rounded-apple bg-apple-gray-50 text-apple-gray-500 text-sm"
+                  />
+                  <p className="mt-1 text-xs text-apple-gray-500">
+                    A secure 6-digit PIN is assigned by the server when the client is created.
+                  </p>
+                </div>
+
+                <AppleInput
+                  label="Address"
+                  value={formData.address || ''}
+                  onChange={(value) => setFormData({ ...formData, address: value })}
+                  placeholder="Enter address"
+                />
+              </div>
+            </div>
+
             {/* Additional Information */}
             <div>
               <h2 className="text-lg font-medium text-apple-gray-900 mb-4">Additional Information</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-apple-gray-700 mb-1">Gender</label>
+                  <select
+                    className="w-full px-3 py-2 border border-apple-gray-200 rounded-apple focus:outline-none focus:ring-2 focus:ring-apple-blue/20 bg-white text-sm"
+                    value={formData.gender || ''}
+                    onChange={(e) => setFormData({ ...formData, gender: e.target.value as Client['gender'] })}
+                  >
+                    <option value="">Select gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                    <option value="prefer-not-to-say">Prefer not to say</option>
+                  </select>
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-apple-gray-700 mb-1">Workflow Status</label>
                   <select
