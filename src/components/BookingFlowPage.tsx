@@ -36,6 +36,8 @@ const makeDraft = (item: BookingFlowItem): FlowDraft => ({
 const BookingFlowPage: React.FC = () => {
   const navigate = useNavigate();
   const { bookingId } = useParams();
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [booking, setBooking] = useState<any>(null);
   const [retreat, setRetreat] = useState<Retreat | null>(null);
   const [items, setItems] = useState<BookingFlowItem[]>([]);
@@ -54,10 +56,23 @@ const BookingFlowPage: React.FC = () => {
     if (bookingId) {
       loadData();
     } else {
-      setLoading(false);
-      setError('Open Client Flow from a booking or workflow record.');
+      loadClientFlowIndex();
     }
   }, [bookingId]);
+
+  const loadClientFlowIndex = async () => {
+    try {
+      setError('');
+      setLoading(true);
+      const response = await bookingsApi.getAll();
+      setBookings(response.data || []);
+    } catch (err) {
+      console.error('Error loading client flow bookings:', err);
+      setError('Unable to load Client Flow bookings.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const hydrateDrafts = (nextItems: BookingFlowItem[]) => {
     setDrafts(Object.fromEntries(nextItems.map((item) => [item._id || item.key, makeDraft(item)])));
@@ -197,6 +212,93 @@ const BookingFlowPage: React.FC = () => {
 
   if (loading) {
     return <LoadingSpinner message="Loading client flow..." />;
+  }
+
+  const getClientName = (currentBooking: any): string => {
+    const client = currentBooking?.client || currentBooking?.clientId;
+    if (client && typeof client === 'object') {
+      const name = [client.firstName || client.fname, client.lastName || client.lname].filter(Boolean).join(' ');
+      return name || client.email || `Client ${getObjectId(client).slice(-6)}`;
+    }
+    return `Client ${getObjectId(client).slice(-6) || 'unknown'}`;
+  };
+
+  const getRetreatName = (currentBooking: any): string => {
+    const currentRetreat = currentBooking?.retreat || currentBooking?.retreatId;
+    if (currentRetreat && typeof currentRetreat === 'object') {
+      return currentRetreat.name || currentRetreat.title || `Retreat ${getObjectId(currentRetreat).slice(-6)}`;
+    }
+    return `Retreat ${getObjectId(currentRetreat).slice(-6) || 'unknown'}`;
+  };
+
+  const filteredBookings = bookings.filter((currentBooking) => {
+    const query = searchTerm.trim().toLowerCase();
+    if (!query) return true;
+    return [
+      getClientName(currentBooking),
+      getRetreatName(currentBooking),
+      currentBooking.bookingNumber,
+      currentBooking.status,
+    ].filter(Boolean).join(' ').toLowerCase().includes(query);
+  });
+
+  if (!bookingId) {
+    return (
+      <div className="p-6">
+        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">Client Flow</h1>
+            <p className="text-sm text-gray-600">Select a client booking to add, delete, edit, and reorder its flow steps.</p>
+          </div>
+          <button onClick={loadClientFlowIndex} className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+            <Icon icon={RefreshCw} className="h-4 w-4" />
+            Refresh
+          </button>
+        </div>
+
+        <div className="mb-5 rounded-lg border border-gray-200 bg-white p-4">
+          <input
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            placeholder="Search by client, retreat, booking number, or status"
+          />
+        </div>
+
+        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+          <div className="grid grid-cols-[120px_minmax(180px,1fr)_minmax(180px,1fr)_140px_130px] gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3 text-xs font-semibold uppercase text-gray-500">
+            <div>Booking</div>
+            <div>Client</div>
+            <div>Retreat</div>
+            <div>Status</div>
+            <div>Action</div>
+          </div>
+          {filteredBookings.length === 0 ? (
+            <div className="p-8 text-center text-sm text-gray-500">No bookings found.</div>
+          ) : (
+            filteredBookings.map((currentBooking) => {
+              const id = getObjectId(currentBooking);
+              return (
+                <div key={id} className="grid grid-cols-[120px_minmax(180px,1fr)_minmax(180px,1fr)_140px_130px] gap-3 border-b border-gray-100 px-4 py-3 text-sm last:border-b-0">
+                  <div className="font-medium text-gray-900">{currentBooking.bookingNumber ? `#${currentBooking.bookingNumber}` : id.slice(-8)}</div>
+                  <div className="text-gray-700">{getClientName(currentBooking)}</div>
+                  <div className="text-gray-700">{getRetreatName(currentBooking)}</div>
+                  <div className="capitalize text-gray-600">{currentBooking.status || 'pending'}</div>
+                  <div>
+                    <button
+                      onClick={() => navigate(id)}
+                      className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                    >
+                      Edit Flow
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    );
   }
 
   if (error) {

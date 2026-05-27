@@ -24,20 +24,7 @@ type MenuSection = {
   items: MenuItem[];
 };
 
-const getGradientColorForIndex = (index: number, total: number, isActive: boolean = false): string => {
-  const colorPalette = [
-    { bg: isActive ? 'rgb(219, 234, 254)' : 'rgb(248, 250, 252)' },
-    { bg: isActive ? 'rgb(224, 231, 255)' : 'rgb(249, 250, 251)' },
-    { bg: isActive ? 'rgb(237, 233, 254)' : 'rgb(248, 250, 252)' },
-    { bg: isActive ? 'rgb(240, 249, 255)' : 'rgb(249, 250, 251)' },
-    { bg: isActive ? 'rgb(241, 245, 249)' : 'rgb(248, 250, 252)' },
-  ];
-
-  const colorIndex = index % colorPalette.length;
-  return colorPalette[colorIndex].bg;
-};
-
-const getTextColorForIndex = (index: number, total: number, isActive: boolean = false): string => {
+const getTextColor = (isActive: boolean = false): string => {
   return isActive ? 'rgb(30, 64, 175)' : 'rgb(55, 65, 81)';
 };
 
@@ -359,20 +346,24 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
           {/* Navigation Items */}
           <div className="flex-1 overflow-y-auto py-2">
             <ul className={`px-3 space-y-1 ${!isExpanded && 'px-2'}`}>
-              {menuSections.map((section, sectionIndex) => {
+              {menuSections.map((section) => {
                 const sectionIsActive = section.items.some((item) => item.id === activeItem);
                 const sectionIsOpen = openSections[section.id] || sectionIsActive;
                 const SectionIcon = section.Icon;
-                const sectionBgColor = getGradientColorForIndex(sectionIndex, menuSections.length, sectionIsActive);
-                const sectionTextColor = getTextColorForIndex(sectionIndex, menuSections.length, sectionIsActive);
+                const sectionTextColor = getTextColor(sectionIsActive);
                 const sectionButton = (
                   <button
                     onClick={() => isExpanded ? toggleSection(section.id) : onItemClick(section.items[0]?.id || section.id)}
-                    style={{ backgroundColor: sectionBgColor, color: sectionTextColor }}
+                    style={{
+                      backgroundColor: 'white',
+                      color: sectionTextColor,
+                      borderColor: sectionTextColor,
+                      borderWidth: '3px',
+                    }}
                     className={`
                       w-full flex items-center gap-3 px-3 py-2 rounded-apple
                       transition-all duration-200 text-left
-                      ${sectionIsActive ? 'border border-blue-200 shadow-sm' : 'border border-transparent hover:bg-white hover:shadow-sm'}
+                      border shadow-sm hover:bg-white hover:shadow-md
                       ${!isExpanded && 'justify-center px-2'}
                     `}
                   >
@@ -417,10 +408,16 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                             <li key={item.id}>
                               <button
                                 onClick={() => onItemClick(item.id)}
+                                style={{
+                                  backgroundColor: 'white',
+                                  borderColor: isActive ? 'rgb(30, 64, 175)' : 'rgb(55, 65, 81)',
+                                  borderWidth: '3px',
+                                }}
                                 className={`
                                   w-full flex items-center gap-2 rounded-apple px-3 py-1.5 text-left
                                   transition-all duration-200
-                                  ${isActive ? 'bg-blue-50 text-blue-800 border border-blue-100 shadow-sm' : 'text-apple-gray-600 border border-transparent hover:bg-apple-gray-50 hover:text-apple-gray-900'}
+                                  border hover:bg-white hover:shadow-md
+                                  ${isActive ? 'text-blue-800 shadow-sm' : 'text-apple-gray-700 hover:text-apple-gray-900'}
                                 `}
                               >
                                 {React.createElement(IconComponent as any, { className: "w-4 h-4 flex-shrink-0" })}
