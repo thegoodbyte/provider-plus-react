@@ -1,10 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { AlertTriangle, CalendarDays, CheckCircle2, Plus, RefreshCw, Save, Trash2 } from 'lucide-react';
+import { GripVertical, Plus, Save, Trash2 } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
-import SearchableRetreatSelect from './SearchableRetreatSelect';
 import { bookingFlowApi, retreatsApi } from '../services/api';
-import { BookingFlowItem, BookingFlowTemplate, Retreat } from '../types';
+import { BookingFlowTemplate, Retreat } from '../types';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
@@ -68,10 +67,9 @@ const RetreatFlowPage: React.FC = () => {
   const [retreats, setRetreats] = useState<Retreat[]>([]);
   const [selectedRetreatId, setSelectedRetreatId] = useState<string>(retreatId || '');
   const [templates, setTemplates] = useState<BookingFlowTemplate[]>([]);
-  const [bookings, setBookings] = useState<any[]>([]);
-  const [items, setItems] = useState<BookingFlowItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [draggedTemplateId, setDraggedTemplateId] = useState<string>('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [form, setForm] = useState<TemplateForm>(emptyForm());
 
@@ -80,11 +78,16 @@ const RetreatFlowPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (selectedRetreatId) {
-      loadFlow(selectedRetreatId);
-      navigate(`${routePrefix}/retreat-flow/${selectedRetreatId}`, { replace: true });
+    const nextRetreatId = retreatId || '';
+    setSelectedRetreatId(nextRetreatId);
+    if (nextRetreatId) {
+      loadFlow(nextRetreatId);
+    } else {
+      setTemplates([]);
+      setSelectedTemplateId('');
+      setForm(emptyForm());
     }
-  }, [selectedRetreatId]);
+  }, [retreatId]);
 
   const loadRetreats = async () => {
     try {
@@ -92,8 +95,6 @@ const RetreatFlowPage: React.FC = () => {
       const response = await retreatsApi.getAll();
       const list = response.data || [];
       setRetreats(list);
-      const initial = retreatId || list[0]?._id || '';
-      setSelectedRetreatId(initial);
     } catch (error) {
       console.error('Error loading retreats:', error);
       setRetreats([]);
@@ -105,15 +106,9 @@ const RetreatFlowPage: React.FC = () => {
   const loadFlow = async (id: string) => {
     try {
       setLoading(true);
-      const [templatesResponse, bookingsResponse, itemsResponse] = await Promise.all([
-        bookingFlowApi.getTemplates(id),
-        bookingFlowApi.getMatrix(id),
-        bookingFlowApi.getItems({ retreatId: id }),
-      ]);
+      const templatesResponse = await bookingFlowApi.getTemplates(id);
 
       setTemplates(templatesResponse.data || []);
-      setBookings(bookingsResponse.data?.bookings || []);
-      setItems(itemsResponse.data || []);
 
       const firstTemplate = templatesResponse.data?.[0];
       if (firstTemplate) {
@@ -143,25 +138,13 @@ const RetreatFlowPage: React.FC = () => {
     } catch (error) {
       console.error('Error loading retreat flow:', error);
       setTemplates([]);
-      setBookings([]);
-      setItems([]);
     } finally {
       setLoading(false);
     }
   };
 
   const selectedRetreat = useMemo(() => retreats.find((retreat) => retreat._id === selectedRetreatId), [retreats, selectedRetreatId]);
-
-  const templateItems = useMemo(() => {
-    const map = new Map<string, BookingFlowItem[]>();
-    items.forEach((item) => {
-      const key = typeof item.templateId === 'string' ? item.templateId : item.templateId?._id || item.key;
-      const list = map.get(key) || [];
-      list.push(item);
-      map.set(key, list);
-    });
-    return map;
-  }, [items]);
+  const sortedTemplates = useMemo(() => templates.slice().sort((a, b) => (a.order || 0) - (b.order || 0)), [templates]);
 
   const handleSelectTemplate = (template: BookingFlowTemplate) => {
     setSelectedTemplateId(template._id || '');
@@ -222,52 +205,68 @@ const RetreatFlowPage: React.FC = () => {
     await loadFlow(selectedRetreatId);
   };
 
-  const handleRegenerate = async () => {
-    if (!selectedRetreatId) return;
-    await bookingFlowApi.generateForRetreat(selectedRetreatId);
+  const handleDropTemplate = async (targetTemplateId: string) => {
+    if (!draggedTemplateId || draggedTemplateId === targetTemplateId) return;
+    const current = [...sortedTemplates];
+    const fromIndex = current.findIndex((template) => template._id === draggedTemplateId);
+    const toIndex = current.findIndex((template) => template._id === targetTemplateId);
+    if (fromIndex < 0 || toIndex < 0) return;
+
+    const [dragged] = current.splice(fromIndex, 1);
+    current.splice(toIndex, 0, dragged);
+    const reordered = current.map((template, index) => ({ ...template, order: (index + 1) * 10 }));
+    setTemplates(reordered);
+    setDraggedTemplateId('');
+
+    await Promise.all(reordered.map((template) => (
+      template._id ? bookingFlowApi.updateTemplate(template._id, { order: template.order }) : Promise.resolve()
+    )));
     await loadFlow(selectedRetreatId);
   };
 
-  const markComplete = async (itemId: string) => {
-    await bookingFlowApi.completeItem(itemId);
-    await loadFlow(selectedRetreatId);
-  };
+  if (loading && retreats.length === 0 && templates.length === 0) {
+    return <LoadingSpinner message="Loading retreat readiness..." />;
+  }
 
-  const matrixRows = useMemo(() => templates.slice().sort((a, b) => (a.order || 0) - (b.order || 0)), [templates]);
-
-  if (loading && templates.length === 0 && bookings.length === 0) {
-    return <LoadingSpinner message="Loading retreat flow..." />;
+  if (!selectedRetreatId) {
+    return (
+      <div className="p-6">
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold text-gray-900">Retreat Readiness</h1>
+          <p className="text-sm text-gray-600">Choose a retreat to edit its readiness steps.</p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {retreats.map((retreat) => (
+            <button
+              key={retreat._id}
+              onClick={() => navigate(`${routePrefix}/retreat-flow/${retreat._id}`)}
+              className="rounded-lg border border-gray-200 bg-white p-4 text-left shadow-sm hover:border-blue-300 hover:shadow-md"
+            >
+              <div className="text-sm font-semibold text-gray-900">{retreat.name}</div>
+              <div className="mt-1 text-xs text-gray-500">
+                {formatDate(retreat.startDate)} - {formatDate(retreat.endDate)}
+              </div>
+              <div className="mt-2 text-xs capitalize text-gray-500">{retreat.status || 'upcoming'}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="p-6">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Retreat Flow</h1>
-          <p className="text-sm text-gray-600">Configure what happens and when, then view the retreat matrix by client.</p>
+          <h1 className="text-2xl font-semibold text-gray-900">Retreat Readiness</h1>
+          <p className="text-sm text-gray-600">{selectedRetreat?.name || 'Selected retreat'} • drag steps to reorder; top happens first.</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={handleSeed} className="inline-flex w-auto shrink-0 items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
             <Icon icon={Plus} className="h-4 w-4" />
             Apply Library
           </button>
-          <button onClick={handleRegenerate} className="inline-flex w-auto shrink-0 items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
-            <Icon icon={RefreshCw} className="h-4 w-4" />
-            Regenerate
-          </button>
-          <button onClick={() => navigate(`${routePrefix}/retreat-flow-library`)} className="inline-flex w-auto shrink-0 items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-            Open Library
-          </button>
         </div>
-      </div>
-
-      <div className="mb-4 max-w-lg">
-        <SearchableRetreatSelect
-          retreats={retreats}
-          selectedRetreatId={selectedRetreatId}
-          onRetreatSelect={setSelectedRetreatId}
-          placeholder="Select retreat"
-        />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
@@ -277,13 +276,18 @@ const RetreatFlowPage: React.FC = () => {
             <span className="text-xs text-gray-500">{templates.length} templates</span>
           </div>
           <div className="space-y-2">
-            {templates.map((template) => (
-              <button
+            {sortedTemplates.map((template) => (
+              <div
                 key={template._id}
-                onClick={() => handleSelectTemplate(template)}
-                className={`block w-full rounded-md border px-3 py-2 text-left ${selectedTemplateId === template._id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}
+                draggable
+                onDragStart={() => setDraggedTemplateId(template._id || '')}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={() => template._id && handleDropTemplate(template._id)}
+                className={`flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left ${selectedTemplateId === template._id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}
               >
-                <div className="flex items-center justify-between gap-3">
+                <Icon icon={GripVertical} className="h-4 w-4 flex-shrink-0 cursor-grab text-gray-400" />
+                <button type="button" onClick={() => handleSelectTemplate(template)} className="min-w-0 flex-1 text-left">
+                  <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="truncate text-sm font-semibold text-gray-900">{template.title}</div>
                     <div className="truncate text-xs text-gray-500">{template.category} • {formatDeadlineLabel(template)}</div>
@@ -294,7 +298,8 @@ const RetreatFlowPage: React.FC = () => {
                     <div>{template.isBlocking ? 'Blocking' : 'Non-blocking'}</div>
                   </div>
                 </div>
-              </button>
+                </button>
+              </div>
             ))}
             {templates.length === 0 && <div className="rounded-md border border-dashed border-gray-300 p-4 text-sm text-gray-500">No templates for this retreat yet. Seed defaults or add a custom step.</div>}
           </div>
@@ -417,74 +422,6 @@ const RetreatFlowPage: React.FC = () => {
               Delete
             </button>
           </div>
-        </div>
-
-        <div className="rounded-lg border border-gray-200 bg-white p-4 overflow-auto">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Retreat Matrix</h2>
-            <span className="text-xs text-gray-500">{bookings.length} bookings</span>
-          </div>
-          {!selectedRetreat ? (
-            <div className="p-4 text-sm text-gray-500">Select a retreat to view the flow matrix.</div>
-          ) : (
-            <table className="min-w-full border-collapse text-sm">
-              <thead>
-                <tr>
-                  <th className="sticky left-0 z-10 bg-white border-b border-gray-200 px-3 py-2 text-left text-xs uppercase tracking-wide text-gray-500">Flow Step</th>
-                  {bookings.map((booking) => (
-                    <th key={booking._id} className="border-b border-gray-200 px-3 py-2 text-left text-xs uppercase tracking-wide text-gray-500">
-                        <button className="text-left" onClick={() => navigate(`${routePrefix}/booking-flow/${booking._id}`)}>
-                          <div className="font-semibold text-gray-900">{booking.clientId?.firstName || ''} {booking.clientId?.lastName || ''}</div>
-                          <div className="text-[11px] text-gray-500">#{booking.clientId?.display_id || '—'}</div>
-                        </button>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {matrixRows.map((template) => (
-                  <tr key={template._id}>
-                    <td className="sticky left-0 z-10 border-b border-gray-100 bg-white px-3 py-2 align-top">
-                      <div className="font-medium text-gray-900">{template.title}</div>
-                      <div className="text-xs text-gray-500">{formatDeadlineLabel(template)}</div>
-                    </td>
-                    {bookings.map((booking) => {
-                      const bookingItems = templateItems.get(template._id || template.key) || [];
-                      const item = bookingItems.find((entry) => {
-                        const bookingItemId = typeof entry.bookingId === 'string' ? entry.bookingId : entry.bookingId?._id;
-                        return bookingItemId === booking._id;
-                      });
-                      return (
-                        <td key={`${template._id}-${booking._id}`} className="border-b border-gray-100 px-3 py-2 align-top">
-                          {item ? (
-                            <div className={`rounded-md border px-2 py-2 ${item.status === 'approved' ? 'border-green-200 bg-green-50' : item.status === 'rejected' ? 'border-red-200 bg-red-50' : 'border-gray-200 bg-gray-50'}`}>
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-xs font-semibold uppercase text-gray-700">{item.status}</span>
-                                {item.isBlocking && <AlertTriangle className="h-3.5 w-3.5 text-amber-600" />}
-                              </div>
-                              <div className="mt-1 text-xs text-gray-600">Due {formatDate(item.dueDate)}</div>
-                              <div className="mt-1 text-xs text-gray-500">{item.notes || 'No notes'}</div>
-                              {item.status !== 'completed' && item.status !== 'approved' && (
-                                <button
-                                  onClick={() => item._id && markComplete(item._id)}
-                                  className="mt-2 inline-flex items-center gap-1 rounded-md border border-green-200 bg-white px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-50"
-                                >
-                                  <CheckCircle2 className="h-3.5 w-3.5" />
-                                  Complete
-                                </button>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="text-xs text-gray-400">No item</div>
-                          )}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
         </div>
       </div>
     </div>
