@@ -577,6 +577,19 @@ export interface CeremonyParticipant {
   purgeTime?: string; // HH:MM first purge
   purgeDetails?: string;
 
+  eventLog?: Array<{
+    id?: string;
+    time: string;
+    eventType: 'medicine' | 'purge' | 'launch' | 'abnormality' | 'note' | 'arrival' | 'departure';
+    spoonCount?: number;
+    spoonAmount?: 'full' | 'half' | 'quarter' | string;
+    doseAmount?: string;
+    severity?: 'low' | 'medium' | 'high' | 'urgent' | string;
+    note?: string;
+    recordedAt?: Date | string;
+    recordedBy?: string;
+  }>;
+
   // Individual notes
   individualNotes?: string;
   experienceNotes?: string;
