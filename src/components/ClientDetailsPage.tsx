@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { clientsApi, paymentsApi, clientMedicalApi, bookingsApi } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
 import AppleButton from './AppleButton';
+import ClientBookingWorkflowTab from './ClientBookingWorkflowTab';
 import { FiArrowLeft, FiEdit2, FiUser, FiPhone, FiMail, FiMapPin, FiCalendar, FiDollarSign, FiActivity, FiFileText, FiAlertCircle, FiPlus, FiMessageSquare, FiCheckSquare, FiHeart, FiEye, FiEyeOff } from 'react-icons/fi';
 
 // Simple wrapper to fix TypeScript icon issues
@@ -346,6 +347,12 @@ const ClientDetailsPage: React.FC = () => {
             icon={FiCalendar}
             isActive={activeTab === 'bookings'}
             onClick={() => setActiveTab('bookings')}
+          />
+          <Tab
+            label="Booking Progress"
+            icon={FiCheckSquare}
+            isActive={activeTab === 'bookingProgress'}
+            onClick={() => setActiveTab('bookingProgress')}
           />
           <Tab
             label="Payments"
@@ -838,6 +845,10 @@ const ClientDetailsPage: React.FC = () => {
               </div>
             )}
           </div>
+        )}
+
+        {activeTab === 'bookingProgress' && (
+          <ClientBookingWorkflowTab bookings={bookings} />
         )}
 
         {activeTab === 'payments' && (

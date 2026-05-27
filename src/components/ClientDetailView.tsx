@@ -4,6 +4,7 @@ import { clientsApi, clientMedicalApi, clientRequirementsApi, remindersApi, book
 import MedicalTrackingTab from './MedicalTrackingTab';
 import ComprehensiveMedicalTrackingTab from './ComprehensiveMedicalTrackingTab';
 import ClientCeremoniesTab from './ClientCeremoniesTab';
+import ClientBookingWorkflowTab from './ClientBookingWorkflowTab';
 import { TasksWidget } from './Tasks/TasksWidget';
 import { generateBookingPDF } from './BookingConfirmationPDF';
 import './ClientsGrid.css';
@@ -335,6 +336,12 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
           onClick={() => setActiveTab('ceremonies')}
         >
           🔮 Ceremonies
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'bookingProgress' ? 'active' : ''}`}
+          onClick={() => setActiveTab('bookingProgress')}
+        >
+          ✅ Booking Progress
         </button>
         <button
           className={`tab-btn ${activeTab === 'tasks' ? 'active' : ''}`}
@@ -1122,6 +1129,9 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
 
         {activeTab === 'ceremonies' && (
           <ClientCeremoniesTab clientId={clientId} />
+        )}
+        {activeTab === 'bookingProgress' && (
+          <ClientBookingWorkflowTab bookings={clientBookings} />
         )}
         {activeTab === 'tasks' && (
           <TasksWidget clientId={clientId} title="Client Tasks" />
