@@ -84,7 +84,6 @@ const PaymentRequestsGrid: React.FC = () => {
         client.name.toLowerCase().includes(term) ||
         client.displayId.toLowerCase().includes(term) ||
         retreat.toLowerCase().includes(term) ||
-        (request.paymentType || '').toLowerCase().includes(term) ||
         (request.currency || '').toLowerCase().includes(term) ||
         (request.invoiceNumber || '').toLowerCase().includes(term) ||
         (request.note || '').toLowerCase().includes(term)
@@ -132,9 +131,7 @@ const PaymentRequestsGrid: React.FC = () => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Retreat</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quote</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Paid</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">USD</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Currency</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
@@ -158,12 +155,8 @@ const PaymentRequestsGrid: React.FC = () => {
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                       {request.paymentDate ? new Date(request.paymentDate).toLocaleDateString() : 'N/A'}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{request.paymentType}</td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                       {request.fullPriceQuote?.toLocaleString?.() ?? request.fullPriceQuote} {request.currency}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {request.amountPaid?.toLocaleString?.() ?? request.amountPaid}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                       {(request.usd_amount ?? 0).toLocaleString()} USD
@@ -200,7 +193,7 @@ const PaymentRequestsGrid: React.FC = () => {
               })}
               {filteredRequests.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="px-4 py-10 text-center text-gray-500">
+                  <td colSpan={9} className="px-4 py-10 text-center text-gray-500">
                     {searchTerm ? 'No payment requests found matching your search' : 'No payment requests found'}
                   </td>
                 </tr>

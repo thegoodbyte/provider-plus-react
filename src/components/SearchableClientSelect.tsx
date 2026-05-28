@@ -50,12 +50,16 @@ const SearchableClientSelect: React.FC<SearchableClientSelectProps> = ({
     if (!searchTerm) return clients;
 
     const term = searchTerm.toLowerCase();
+    const numericTerm = term.replace(/^#/, '');
     return clients.filter(client => {
       const fullName = `${client.firstName} ${client.lastName}`.toLowerCase();
       const displayId = client.display_id?.toString() || '';
-      const email = client.email.toLowerCase();
+      const displayIdWithHash = displayId ? `#${displayId}` : '';
+      const email = (client.email || '').toLowerCase();
 
       return fullName.includes(term) ||
+             displayIdWithHash.includes(term) ||
+             displayId.includes(numericTerm) ||
              displayId.includes(term) ||
              email.includes(term);
     });
@@ -133,7 +137,7 @@ const SearchableClientSelect: React.FC<SearchableClientSelectProps> = ({
 
   const formatClientDisplay = (client: Client) => {
     const displayId = client.display_id ? `#${client.display_id}` : '';
-    return `${client.firstName} ${client.lastName} ${displayId}`;
+    return `${displayId} ${client.firstName} ${client.lastName}`.trim();
   };
 
   return (
@@ -217,14 +221,12 @@ const SearchableClientSelect: React.FC<SearchableClientSelectProps> = ({
                     <div className="flex justify-between items-center">
                       <div>
                         <div className="font-medium text-gray-900">
-                          {client.firstName} {client.lastName}
+                          <span className="font-mono text-blue-700">{displayId}</span>
+                          <span className="ml-2">{client.firstName} {client.lastName}</span>
                         </div>
                         <div className="text-sm text-gray-500">
                           {client.email}
                         </div>
-                      </div>
-                      <div className="text-sm font-mono text-blue-600">
-                        {displayId}
                       </div>
                     </div>
                   </div>

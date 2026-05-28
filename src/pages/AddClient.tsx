@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import AppleButton from '../components/AppleButton';
 import AppleInput from '../components/AppleInput';
-import SearchableCountrySelector from '../components/SearchableCountrySelector';
 import { clientsApi } from '../services/api';
 import { Client } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -196,16 +195,11 @@ const AddClient: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-apple-gray-700 mb-1">Country</label>
-                  <SearchableCountrySelector
-                    value="+420"
-                    onChange={(_, countryCode) => {
-                      setFormData({
-                        ...formData,
-                        country: countryCode
-                      });
-                    }}
-                    placeholder="Select country"
+                  <AppleInput
+                    label="Country"
+                    value={formData.country || ''}
+                    onChange={(value) => setFormData({ ...formData, country: value })}
+                    placeholder="Enter country"
                   />
                 </div>
               </div>

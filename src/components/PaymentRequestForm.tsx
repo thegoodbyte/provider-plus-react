@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { PaymentRequest, Client, Retreat } from '../types';
 import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
-import { clientsApi, paymentRequestsApi, retreatsApi } from '../services/api';
+import { clientsApi, paymentRequestsApi, paymentsApi, retreatsApi } from '../services/api';
 import { FiSave, FiArrowLeft } from 'react-icons/fi';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -29,13 +29,19 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
   const [retreats, setRetreats] = useState<Retreat[]>([]);
   const [loading, setLoading] = useState(false);
   const [nextDisplayId, setNextDisplayId] = useState<number | null>(paymentRequest?.display_id || null);
+  const [formError, setFormError] = useState('');
+  const [usdPreview, setUsdPreview] = useState({
+    amount: paymentRequest?.usd_amount?.toString() || paymentRequest?.fullPriceUsdAmount?.toString() || '',
+    loading: false,
+    error: '',
+  });
   const [formData, setFormData] = useState({
     display_id: paymentRequest?.display_id || '',
     invoiceNumber: paymentRequest?.invoiceNumber || paymentRequest?.display_id?.toString() || '',
     clientId: resolveId(paymentRequest?.clientId),
     retreatId: resolveId(paymentRequest?.retreatId),
     paymentDate: paymentRequest?.paymentDate ? new Date(paymentRequest.paymentDate).toISOString().split('T')[0] : defaultDate(),
-    paymentType: paymentRequest?.paymentType || 'full_payment',
+    paymentType: paymentRequest?.paymentType || 'Other',
     fullPriceQuote: paymentRequest?.fullPriceQuote?.toString() || '',
     currency: paymentRequest?.currency || 'EUR',
     note: paymentRequest?.note || paymentRequest?.notes || '',
@@ -73,24 +79,71 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     loadOptions();
   }, []);
 
+  useEffect(() => {
+    const amount = Number(formData.fullPriceQuote);
+    if (!amount || Number.isNaN(amount) || !formData.currency) {
+      setUsdPreview({ amount: '', loading: false, error: '' });
+      return;
+    }
+
+    let active = true;
+    const timeout = window.setTimeout(async () => {
+      try {
+        setUsdPreview((current) => ({ ...current, loading: true, error: '' }));
+        const response = await paymentsApi.convertToUsd(amount, formData.currency);
+        if (active) {
+          setUsdPreview({
+            amount: String(response.data.usd_amount ?? ''),
+            loading: false,
+            error: '',
+          });
+        }
+      } catch (error) {
+        console.error('Error previewing USD payment request amount:', error);
+        if (active) {
+          setUsdPreview({ amount: '', loading: false, error: 'USD conversion unavailable' });
+        }
+      }
+    }, 350);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+    };
+  }, [formData.fullPriceQuote, formData.currency]);
+
   const handleChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError('');
 
-    if (!formData.clientId || !formData.retreatId || !formData.paymentDate || !formData.fullPriceQuote) {
+    const invoiceNumber = String(formData.invoiceNumber || '').trim();
+    if (!invoiceNumber || !formData.clientId || !formData.retreatId || !formData.paymentDate || !formData.fullPriceQuote) {
       alert('Please fill in all required fields');
       return;
     }
 
     setLoading(true);
     try {
+      const existingRequests = await paymentRequestsApi.getAll();
+      const normalizedInvoice = invoiceNumber.toLowerCase();
+      const duplicate = (existingRequests.data || []).find((request: PaymentRequest) => {
+        const requestId = request._id || '';
+        const currentId = paymentRequest?._id || '';
+        return requestId !== currentId && String(request.invoiceNumber || '').trim().toLowerCase() === normalizedInvoice;
+      });
+      if (duplicate) {
+        setFormError(`Invoice number ${invoiceNumber} already exists. Save cancelled.`);
+        return;
+      }
+
       const fullPriceQuote = parseFloat(formData.fullPriceQuote);
       await onSave({
         display_id: Number.isFinite(Number(formData.display_id)) ? Number(formData.display_id) : undefined,
-        invoiceNumber: formData.invoiceNumber || undefined,
+        invoiceNumber,
         clientId: formData.clientId,
         retreatId: formData.retreatId,
         paymentDate: formData.paymentDate,
@@ -141,6 +194,11 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+        {formError && (
+          <div className="mb-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {formError}
+          </div>
+        )}
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -148,12 +206,13 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
               <input
                 type="text"
                 value={formData.invoiceNumber}
-                readOnly
-                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700"
+                onChange={(e) => handleChange('invoiceNumber', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder={nextDisplayId ? nextDisplayId.toString() : '1001'}
+                required
               />
               <p className="mt-1 text-xs text-gray-500">
-                {isEdit ? 'This is the saved invoice number.' : 'This number is assigned before save.'}
+                Must be unique. Save is cancelled if another request already uses it.
               </p>
             </div>
 
@@ -163,7 +222,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                 clients={clients}
                 selectedClientId={formData.clientId}
                 onClientSelect={(clientId) => handleChange('clientId', clientId)}
-                placeholder="Search client by name, email, or display ID"
+                placeholder="Search client by display number, name, or email"
                 className="w-full"
               />
             </div>
@@ -217,6 +276,24 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                 <option value="EUR">EUR</option>
                 <option value="PLN">PLN</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">USD Amount</label>
+              <input
+                type="text"
+                value={
+                  usdPreview.loading
+                    ? 'Calculating...'
+                    : usdPreview.amount
+                      ? `$${Number(usdPreview.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                      : ''
+                }
+                readOnly
+                className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-700"
+                placeholder="Calculated on save"
+              />
+              {usdPreview.error && <p className="mt-1 text-xs text-red-600">{usdPreview.error}</p>}
             </div>
 
             <div>
