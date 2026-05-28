@@ -45,7 +45,7 @@ type LauncherSection = {
 
 type LauncherRow = {
   tiles: LauncherTile[];
-  shifted: boolean;
+  offset: number;
 };
 
 const getRoutePrefix = (pathname: string, role?: string) => {
@@ -69,9 +69,13 @@ const getRoutePrefix = (pathname: string, role?: string) => {
 const buildRows = (tiles: LauncherTile[]): LauncherRow[] => {
   const count = tiles.length;
   const patterns: Record<number, number[]> = {
-    23: [2, 3, 4, 5, 4, 3, 2],
-    12: [2, 3, 4, 3],
+    24: [1, 2, 3, 4, 5, 4, 3, 2],
+    23: [1, 2, 3, 4, 5, 4, 3, 1],
+    14: [2, 3, 4, 3, 2],
+    13: [1, 2, 3, 4, 3],
+    12: [1, 2, 3, 4, 2],
     8: [1, 2, 3, 2],
+    7: [1, 2, 2, 2],
     3: [1, 2],
   };
 
@@ -103,7 +107,7 @@ const buildRows = (tiles: LauncherTile[]): LauncherRow[] => {
   pattern.forEach((rowLength, rowIndex) => {
     rows.push({
       tiles: tiles.slice(index, index + rowLength),
-      shifted: rowIndex % 2 === 1,
+      offset: rowIndex % 2,
     });
     index += rowLength;
   });
@@ -111,7 +115,7 @@ const buildRows = (tiles: LauncherTile[]): LauncherRow[] => {
   if (index < tiles.length) {
     rows.push({
       tiles: tiles.slice(index),
-      shifted: rows.length % 2 === 1,
+      offset: rows.length % 2,
     });
   }
 
@@ -310,7 +314,11 @@ const ModuleLauncherPage: React.FC = () => {
       <div className="module-launcher-hive-shell">
         <div className="module-launcher-hive">
           {rows.map((row, rowIndex) => (
-            <div key={`row-${rowIndex}`} className={`module-launcher-row${row.shifted ? ' module-launcher-row-shifted' : ''}`}>
+            <div
+              key={`row-${rowIndex}`}
+              className="module-launcher-row"
+              style={{ '--launcher-row-offset': row.offset } as React.CSSProperties}
+            >
               {row.tiles.map((tile) => {
                 const Icon = tile.icon;
                 return (
