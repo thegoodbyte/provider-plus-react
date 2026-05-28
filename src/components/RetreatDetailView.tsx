@@ -31,7 +31,6 @@ interface RetreatDetailViewProps {
 interface QuickBookingFormData {
   firstName: string;
   lastName: string;
-  phoneCountryCode: string;
   phone: string;
   email: string;
   country: string;
@@ -283,7 +282,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       const clientData = {
         firstName: values.firstName,
         lastName: values.lastName,
-        phoneCountryCode: values.phoneCountryCode,
         phone: values.phone,
         email: values.email,
         country: values.country,
@@ -353,22 +351,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       setExistingClientBookingLoading(false);
     }
   };
-
-  const countryCodeOptions = [
-    { label: 'United States (+1)', value: '+1' },
-    { label: 'Canada (+1)', value: '+1' },
-    { label: 'United Kingdom (+44)', value: '+44' },
-    { label: 'Germany (+49)', value: '+49' },
-    { label: 'France (+33)', value: '+33' },
-    { label: 'Spain (+34)', value: '+34' },
-    { label: 'Italy (+39)', value: '+39' },
-    { label: 'Poland (+48)', value: '+48' },
-    { label: 'Czech Republic (+420)', value: '+420' },
-    { label: 'Netherlands (+31)', value: '+31' },
-    { label: 'Belgium (+32)', value: '+32' },
-    { label: 'Switzerland (+41)', value: '+41' },
-    { label: 'Austria (+43)', value: '+43' }
-  ];
 
   const countryOptions = [
     'USA', 'Canada', 'UK', 'Germany', 'France', 'Spain', 'Italy',
@@ -920,7 +902,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           onFinish={handleQuickBooking}
           autoComplete="off"
           initialValues={{
-            phoneCountryCode: '+1',
             country: 'USA',
             currency: 'EUR',
             totalAmount: 3000
@@ -946,28 +927,13 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             </Form.Item>
           </div>
 
-          <div style={{ display: 'flex', gap: '16px' }}>
-            <Form.Item
-              name="phoneCountryCode"
-              label="Country Code"
-              style={{ flex: 0.3 }}
-            >
-              <Select placeholder="Code">
-                {countryCodeOptions.map(option => (
-                  <Option key={option.value} value={option.value}>{option.label}</Option>
-                ))}
-              </Select>
-            </Form.Item>
-
-            <Form.Item
-              name="phone"
-              label="Phone Number"
-              rules={[{ required: true, message: 'Please enter phone number' }]}
-              style={{ flex: 0.7 }}
-            >
-              <Input placeholder="234 567 8900" />
-            </Form.Item>
-          </div>
+          <Form.Item
+            name="phone"
+            label="Phone Number"
+            rules={[{ required: true, message: 'Please enter phone number' }]}
+          >
+            <Input placeholder="+1 234 567 8900" />
+          </Form.Item>
 
           <Form.Item
             name="email"

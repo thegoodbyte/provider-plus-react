@@ -81,56 +81,9 @@ const COUNTRIES_WITH_CODES = [
 ].sort((a, b) => a.name.localeCompare(b.name));
 
 // Common country codes
-const COUNTRY_CODES = [
-  { code: '+1', country: 'USA/Canada' },
-  { code: '+420', country: 'Czech Republic' },
-  { code: '+48', country: 'Poland' },
-  { code: '+44', country: 'UK' },
-  { code: '+33', country: 'France' },
-  { code: '+34', country: 'Spain' },
-  { code: '+39', country: 'Italy' },
-  { code: '+49', country: 'Germany' },
-  { code: '+31', country: 'Netherlands' },
-  { code: '+32', country: 'Belgium' },
-  { code: '+41', country: 'Switzerland' },
-  { code: '+43', country: 'Austria' },
-  { code: '+45', country: 'Denmark' },
-  { code: '+46', country: 'Sweden' },
-  { code: '+47', country: 'Norway' },
-  { code: '+358', country: 'Finland' },
-  { code: '+351', country: 'Portugal' },
-  { code: '+353', country: 'Ireland' },
-  { code: '+30', country: 'Greece' },
-  { code: '+90', country: 'Turkey' },
-  { code: '+7', country: 'Russia' },
-  { code: '+380', country: 'Ukraine' },
-  { code: '+86', country: 'China' },
-  { code: '+81', country: 'Japan' },
-  { code: '+82', country: 'South Korea' },
-  { code: '+91', country: 'India' },
-  { code: '+61', country: 'Australia' },
-  { code: '+64', country: 'New Zealand' },
-  { code: '+27', country: 'South Africa' },
-  { code: '+234', country: 'Nigeria' },
-  { code: '+52', country: 'Mexico' },
-  { code: '+54', country: 'Argentina' },
-  { code: '+55', country: 'Brazil' },
-  { code: '+56', country: 'Chile' },
-  { code: '+57', country: 'Colombia' },
-  { code: '+58', country: 'Venezuela' },
-  { code: '+51', country: 'Peru' },
-  { code: '+972', country: 'Israel' },
-  { code: '+971', country: 'UAE' },
-  { code: '+966', country: 'Saudi Arabia' },
-  { code: '+20', country: 'Egypt' },
-  { code: '+212', country: 'Morocco' },
-].sort((a, b) => a.country.localeCompare(b.country));
-
 interface ClientFormData extends Partial<Client> {
   totalAmount?: number;
   currency?: string;
-  countryCode?: string;
-  phoneNumber?: string;
   yearOfBirth?: number;
 }
 
@@ -426,8 +379,7 @@ const ClientsGrid: React.FC = () => {
     setFormData({
       status: 'active',
       country: 'US',
-      countryCode: '+1',
-      phoneNumber: '',
+      phone: '',
       yearOfBirth: new Date().getFullYear() - 30
     });
     setSelectedRetreatId('');
@@ -451,14 +403,11 @@ const ClientsGrid: React.FC = () => {
     setValidationErrors([]);
 
     try {
-      // Combine country code and phone number
-      const fullPhone = formData.phoneNumber ? `${formData.countryCode}${formData.phoneNumber}` : undefined;
-
       const cleanData: any = {
         firstName: formData.firstName?.trim(),
         lastName: formData.lastName?.trim(),
         email: formData.email?.trim(),
-        phone: fullPhone,
+        phone: formData.phone?.trim() || undefined,
         country: formData.country,
         status: formData.status || 'active',
         weight: formData.weight
@@ -705,28 +654,13 @@ const ClientsGrid: React.FC = () => {
 
                   <div className="form-group">
                     <label htmlFor="phone">Phone:</label>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <select
-                        name="countryCode"
-                        value={formData.countryCode || '+420'}
-                        onChange={handleInputChange}
-                        style={{ width: '150px' }}
-                      >
-                        {COUNTRY_CODES.map(cc => (
-                          <option key={cc.code} value={cc.code}>
-                            {cc.code} ({cc.country})
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        type="tel"
-                        name="phoneNumber"
-                        placeholder="Phone number"
-                        value={formData.phoneNumber || ''}
-                        onChange={handleInputChange}
-                        style={{ flex: 1 }}
-                      />
-                    </div>
+                    <input
+                      type="tel"
+                      name="phone"
+                      placeholder="Full number with country code"
+                      value={formData.phone || ''}
+                      onChange={handleInputChange}
+                    />
                   </div>
 
                   <div className="form-group">

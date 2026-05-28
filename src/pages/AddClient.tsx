@@ -13,7 +13,6 @@ const AddClient: React.FC = () => {
   const { user } = useAuth();
   const [formData, setFormData] = useState<Partial<Client>>({
     workflowStatus: 'potential',
-    phoneCountryCode: '+420',
     country: 'CZ'
   });
   const [saving, setSaving] = useState(false);
@@ -188,39 +187,21 @@ const AddClient: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-apple-gray-700 mb-1">Phone *</label>
-                  <div className="flex">
-                    <div className="w-48">
-                      <SearchableCountrySelector
-                        value={formData.phoneCountryCode || '+420'}
-                        onChange={(phonePrefix, countryCode) => {
-                          setFormData({
-                            ...formData,
-                            phoneCountryCode: phonePrefix,
-                            country: countryCode
-                          });
-                        }}
-                        placeholder="Select country"
-                        className="rounded-r-none border-r-0"
-                      />
-                    </div>
-                    <AppleInput
-                      value={formData.phone || ''}
-                      onChange={(value) => setFormData({ ...formData, phone: value })}
-                      placeholder="Enter phone number"
-                      className="rounded-l-none border-l-0 flex-1"
-                      required
-                    />
-                  </div>
+                  <AppleInput
+                    value={formData.phone || ''}
+                    onChange={(value) => setFormData({ ...formData, phone: value })}
+                    placeholder="Enter full number with country code"
+                    required
+                  />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-apple-gray-700 mb-1">Country</label>
                   <SearchableCountrySelector
-                    value={formData.phoneCountryCode || '+420'}
-                    onChange={(phonePrefix, countryCode) => {
+                    value="+420"
+                    onChange={(_, countryCode) => {
                       setFormData({
                         ...formData,
-                        phoneCountryCode: phonePrefix,
                         country: countryCode
                       });
                     }}

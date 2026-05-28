@@ -35,9 +35,8 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     clientId: resolveId(paymentRequest?.clientId),
     retreatId: resolveId(paymentRequest?.retreatId),
     paymentDate: paymentRequest?.paymentDate ? new Date(paymentRequest.paymentDate).toISOString().split('T')[0] : defaultDate(),
-    paymentType: paymentRequest?.paymentType || 'Other',
+    paymentType: paymentRequest?.paymentType || 'full_payment',
     fullPriceQuote: paymentRequest?.fullPriceQuote?.toString() || '',
-    amountPaid: paymentRequest?.amountPaid?.toString() || '',
     currency: paymentRequest?.currency || 'EUR',
     note: paymentRequest?.note || paymentRequest?.notes || '',
     status: paymentRequest?.status || 'pending',
@@ -81,13 +80,14 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.clientId || !formData.retreatId || !formData.paymentDate || !formData.fullPriceQuote || !formData.amountPaid) {
+    if (!formData.clientId || !formData.retreatId || !formData.paymentDate || !formData.fullPriceQuote) {
       alert('Please fill in all required fields');
       return;
     }
 
     setLoading(true);
     try {
+      const fullPriceQuote = parseFloat(formData.fullPriceQuote);
       await onSave({
         display_id: Number.isFinite(Number(formData.display_id)) ? Number(formData.display_id) : undefined,
         invoiceNumber: formData.invoiceNumber || undefined,
@@ -95,8 +95,11 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
         retreatId: formData.retreatId,
         paymentDate: formData.paymentDate,
         paymentType: formData.paymentType as PaymentRequest['paymentType'],
-        fullPriceQuote: parseFloat(formData.fullPriceQuote),
-        amountPaid: parseFloat(formData.amountPaid),
+        requestType: 'full_payment',
+        requestedAmount: fullPriceQuote,
+        fullPrice: fullPriceQuote,
+        fullPriceQuote,
+        amountPaid: fullPriceQuote,
         currency: formData.currency as PaymentRequest['currency'],
         note: formData.note || '',
         status: formData.status as PaymentRequest['status'],
@@ -188,23 +191,6 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Type *</label>
-              <select
-                value={formData.paymentType}
-                onChange={(e) => handleChange('paymentType', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                required
-              >
-                <option value="CSOB">CSOB</option>
-                <option value="Paypal">Paypal</option>
-                <option value="Revolut">Revolut</option>
-                <option value="Wise">Wise</option>
-                <option value="Cash">Cash</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-
-            <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Full Price Quote *</label>
               <input
                 type="number"
@@ -212,20 +198,6 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                 step="0.01"
                 value={formData.fullPriceQuote}
                 onChange={(e) => handleChange('fullPriceQuote', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="0.00"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Amount Paid *</label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.amountPaid}
-                onChange={(e) => handleChange('amountPaid', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="0.00"
                 required
