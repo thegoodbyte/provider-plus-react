@@ -67,8 +67,8 @@ const BookingFlowPage: React.FC = () => {
       const response = await bookingsApi.getAll();
       setBookings(response.data || []);
     } catch (err) {
-      console.error('Error loading client flow bookings:', err);
-      setError('Unable to load Client Flow bookings.');
+      console.error('Error loading booking steps:', err);
+      setError('Unable to load bookings.');
     } finally {
       setLoading(false);
     }
@@ -105,8 +105,8 @@ const BookingFlowPage: React.FC = () => {
       setItems(flowItems);
       hydrateDrafts(flowItems);
     } catch (err) {
-      console.error('Error loading client flow:', err);
-      setError('Unable to load Client Flow.');
+      console.error('Error loading booking steps:', err);
+      setError('Unable to load Booking Steps.');
     } finally {
       setLoading(false);
     }
@@ -171,7 +171,7 @@ const BookingFlowPage: React.FC = () => {
 
   const deleteItem = async (item: BookingFlowItem) => {
     if (!item._id) return;
-    const confirmed = window.confirm(`Delete "${item.title}" from this client flow?`);
+    const confirmed = window.confirm(`Delete "${item.title}" from this booking?`);
     if (!confirmed) return;
     try {
       setSavingId(item._id);
@@ -211,7 +211,7 @@ const BookingFlowPage: React.FC = () => {
   };
 
   if (loading) {
-    return <LoadingSpinner message="Loading client flow..." />;
+    return <LoadingSpinner message="Loading booking steps..." />;
   }
 
   const getClientName = (currentBooking: any): string => {
@@ -247,7 +247,7 @@ const BookingFlowPage: React.FC = () => {
       <div className="p-6">
         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Client Flow</h1>
+            <h1 className="text-2xl font-semibold text-gray-900">Booking Steps</h1>
             <p className="text-sm text-gray-600">Select a client booking to add, delete, edit, and reorder its flow steps.</p>
           </div>
           <button onClick={loadClientFlowIndex} className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
@@ -289,7 +289,7 @@ const BookingFlowPage: React.FC = () => {
                       onClick={() => navigate(id)}
                       className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
                     >
-                      Edit Flow
+                      Edit Steps
                     </button>
                   </div>
                 </div>
@@ -320,7 +320,7 @@ const BookingFlowPage: React.FC = () => {
             <Icon icon={ArrowLeft} className="h-4 w-4" />
             Back
           </button>
-          <h1 className="text-2xl font-semibold text-gray-900">Client Flow</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Booking Steps</h1>
           <p className="text-sm text-gray-600">
             {(booking?.clientId as any)?.firstName ? `${(booking.clientId as any).firstName} ${(booking.clientId as any).lastName}` : 'Client'}
             {' '}• {retreat?.name || 'Retreat'} • top step happens first
@@ -401,7 +401,7 @@ const BookingFlowPage: React.FC = () => {
         </div>
 
         {sortedItems.length === 0 ? (
-          <div className="p-8 text-center text-sm text-gray-500">No client flow steps yet.</div>
+          <div className="p-8 text-center text-sm text-gray-500">No booking steps yet.</div>
         ) : (
           sortedItems.map((item, index) => {
             const id = item._id || item.key;

@@ -95,7 +95,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed,
     },
     {
       id: 'booking-flow',
-      label: 'Client Flow',
+      label: 'Booking Steps',
       icon: FiClipboard,
       description: 'Client-specific flow timeline'
     },

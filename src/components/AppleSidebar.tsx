@@ -92,7 +92,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
             Icon: Fi.FiLayers,
             items: [
               { id: 'retreat-flow', label: 'Retreat Readiness', Icon: Fi.FiCalendar },
-              { id: 'booking-flow', label: 'Client Flow', Icon: Fi.FiLayers },
+              { id: 'booking-flow', label: 'Booking Steps', Icon: Fi.FiLayers },
             ],
           },
           {
@@ -189,7 +189,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
             Icon: Fi.FiLayers,
             items: [
               { id: 'retreat-flow', label: 'Retreat Readiness', Icon: Fi.FiCalendar },
-              { id: 'booking-flow', label: 'Client Flow', Icon: Fi.FiLayers },
+              { id: 'booking-flow', label: 'Booking Steps', Icon: Fi.FiLayers },
             ],
           },
           { id: 'operations', label: 'Operations', Icon: Fi.FiBriefcase, items: [
@@ -208,7 +208,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
           ] },
           { id: 'readiness', label: 'Readiness', Icon: Fi.FiLayers, items: [
             { id: 'retreat-flow', label: 'Retreat Readiness', Icon: Fi.FiCalendar },
-            { id: 'booking-flow', label: 'Client Flow', Icon: Fi.FiLayers },
+            { id: 'booking-flow', label: 'Booking Steps', Icon: Fi.FiLayers },
           ] },
           { id: 'operations', label: 'Operations', Icon: Fi.FiBriefcase, items: [
             { id: 'communications', label: 'Communications', Icon: Fi.FiMail },

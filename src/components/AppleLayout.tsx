@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, useLocation, useNavigate, useParams } from 'react-router-dom';
 import AppleSidebar from './AppleSidebar';
 import UnifiedClientManager from './UnifiedClientManager';
 import HousesGrid from './HousesGrid';
@@ -13,6 +13,7 @@ import RetreatDetailView from '../pages/RetreatDetailView';
 // import ClientsGrid from './ClientsGrid'; // Now using UnifiedClientManager
 import BookingsGrid from './BookingsGrid';
 import BookingEditorPage from './BookingEditorPage';
+import BookingDetailView from './BookingDetailView';
 import CeremoniesPage from './CeremoniesPage';
 import MedicalGrid from './MedicalGrid';
 import MedicalTrackingNew from './MedicalTrackingNew';
@@ -57,6 +58,12 @@ import ClientMedicationForm from './ClientMedicationForm';
 import UserManagement from './UserManagement';
 import { Tasks } from '../pages/Tasks/Tasks';
 import { useAuth } from '../context/AuthContext';
+
+const BookingDetailRoute: React.FC = () => {
+  const { bookingId } = useParams();
+  const navigate = useNavigate();
+  return <BookingDetailView bookingId={bookingId || ''} onBack={() => navigate(-1)} />;
+};
 
 const AppleLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -307,6 +314,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="houses" element={<HousesGrid />} />
                       <Route path="bookings" element={<BookingsGrid />} />
                       <Route path="bookings/new" element={<BookingEditorPage mode="create" />} />
+                      <Route path="bookings/:bookingId" element={<BookingDetailRoute />} />
                       <Route path="bookings/:bookingId/edit" element={<BookingEditorPage mode="edit" />} />
                       <Route path="medical-tracking" element={<MedicalTrackingNew />} />
                       <Route path="medical-artifacts" element={<MedicalArtifactsPage />} />
@@ -400,6 +408,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="client/:clientId" element={<MedicalProfile />} />
                       <Route path="bookings" element={<BookingsGrid />} />
                       <Route path="bookings/new" element={<BookingEditorPage mode="create" />} />
+                      <Route path="bookings/:bookingId" element={<BookingDetailRoute />} />
                       <Route path="bookings/:bookingId/edit" element={<BookingEditorPage mode="edit" />} />
                       <Route path="retreats" element={<RetreatsGrid />} />
                       <Route path="retreats/:retreatId" element={<RetreatDetailView />} />
@@ -494,6 +503,7 @@ const AppleLayout: React.FC = () => {
                 <Route path="/houses" element={<ProtectedRoute><HousesGrid /></ProtectedRoute>} />
                 <Route path="/bookings" element={<ProtectedRoute><BookingsGrid /></ProtectedRoute>} />
                 <Route path="/bookings/new" element={<ProtectedRoute><BookingEditorPage mode="create" /></ProtectedRoute>} />
+                <Route path="/bookings/:bookingId" element={<ProtectedRoute><BookingDetailRoute /></ProtectedRoute>} />
                 <Route path="/bookings/:bookingId/edit" element={<ProtectedRoute><BookingEditorPage mode="edit" /></ProtectedRoute>} />
                 <Route path="/reminders" element={<ProtectedRoute><RemindersPage /></ProtectedRoute>} />
                 <Route path="/payments" element={<ProtectedRoute><PaymentsPage /></ProtectedRoute>} />

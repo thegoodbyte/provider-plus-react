@@ -8,6 +8,7 @@ import CeremoniesGrid from './CeremoniesGrid';
 import CeremonyAnalytics from './CeremonyAnalytics';
 import SearchableClientSelector from './SearchableClientSelector';
 import RetreatTrackingGrid from './RetreatTrackingGrid';
+import BookingStepsMatrix from './BookingStepsMatrix';
 import { TasksWidget } from './Tasks/TasksWidget';
 import { Modal, Form, Input, Select, Button, message, Collapse } from 'antd';
 import { Client } from '../types';
@@ -64,7 +65,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [expensesSummary, setExpensesSummary] = useState<ExpenseSummary | null>(null);
   const [paymentsSummary, setPaymentsSummary] = useState<PaymentSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'clients' | 'tracking' | 'expenses' | 'payments' | 'ceremonies' | 'analytics' | 'tasks'>('clients');
+  const [activeTab, setActiveTab] = useState<'clients' | 'bookingSteps' | 'tracking' | 'expenses' | 'payments' | 'ceremonies' | 'analytics' | 'tasks'>('clients');
   const [viewingClientId, setViewingClientId] = useState<string | null>(null);
   const [editingBookingId, setEditingBookingId] = useState<string | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -535,6 +536,12 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           📋 Clients ({clients.length})
         </button>
         <button
+          className={`tab-btn ${activeTab === 'bookingSteps' ? 'active' : ''}`}
+          onClick={() => setActiveTab('bookingSteps')}
+        >
+          ✅ Booking Steps
+        </button>
+        <button
           className={`tab-btn ${activeTab === 'tracking' ? 'active' : ''}`}
           onClick={() => setActiveTab('tracking')}
         >
@@ -720,6 +727,12 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {activeTab === 'bookingSteps' && (
+        <div className="booking-steps-section">
+          <BookingStepsMatrix retreatId={retreatId} />
         </div>
       )}
 

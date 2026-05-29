@@ -45,9 +45,10 @@ const formatDisplayDate = (date?: Date | string | null): string => {
 
 interface ClientBookingWorkflowTabProps {
   bookings: any[];
+  hideBookingSelector?: boolean;
 }
 
-const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ bookings }) => {
+const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ bookings, hideBookingSelector = false }) => {
   const [selectedBookingId, setSelectedBookingId] = useState('');
   const [items, setItems] = useState<BookingFlowItem[]>([]);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
@@ -142,8 +143,8 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
     return (
       <div className="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center">
         <Icon icon={FiCheckCircle} className="mx-auto h-10 w-10 text-gray-400" />
-        <h3 className="mt-3 text-sm font-medium text-gray-900">No booking workflow yet</h3>
-        <p className="mt-1 text-sm text-gray-500">Create or link a booking for this client before tracking booking progress.</p>
+        <h3 className="mt-3 text-sm font-medium text-gray-900">No booking steps yet</h3>
+        <p className="mt-1 text-sm text-gray-500">Create or link a booking before tracking booking steps.</p>
       </div>
     );
   }
@@ -152,10 +153,11 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
     <div className="space-y-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">Booking Progress</h2>
-          <p className="mt-1 text-sm text-gray-500">Track each client readiness step with completion dates, notes, and review outcomes.</p>
+          <h2 className="text-lg font-semibold text-gray-900">Booking Steps</h2>
+          <p className="mt-1 text-sm text-gray-500">Track this booking with completion dates, notes, and review outcomes.</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          {!hideBookingSelector && (
           <select
             value={selectedBookingId}
             onChange={(event) => setSelectedBookingId(event.target.value)}
@@ -170,6 +172,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
               );
             })}
           </select>
+          )}
           <AppleButton onClick={() => loadItems()} variant="ghost" className="px-3 py-2">
             <Icon icon={FiRefreshCw} className="mr-2 h-4 w-4" />
             Refresh
@@ -204,7 +207,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
         <div className="overflow-hidden rounded-lg border border-gray-200">
           {items.length === 0 ? (
             <div className="bg-gray-50 p-8 text-center text-sm text-gray-500">
-              No booking progress items were generated for this booking.
+              No booking steps were generated for this booking.
             </div>
           ) : (
             <div className="divide-y divide-gray-200 bg-white">
