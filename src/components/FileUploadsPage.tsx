@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
-import { fileUploadsApi } from '../services/api';
+import { configSummaryApi, fileUploadsApi } from '../services/api';
 import { FileUpload } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 
@@ -13,14 +13,19 @@ const formatBytes = (size?: number) => {
 
 const FileUploadsPage: React.FC = () => {
   const [files, setFiles] = useState<FileUpload[]>([]);
+  const [configSummary, setConfigSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [kindFilter, setKindFilter] = useState<'all' | FileUpload['documentKind']>('all');
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const response = await fileUploadsApi.getAll({ isActive: true });
-      setFiles(response.data || []);
+      const [filesResponse, configResponse] = await Promise.all([
+        fileUploadsApi.getAll({ isActive: true }),
+        configSummaryApi.get().catch(() => null),
+      ]);
+      setFiles(filesResponse.data || []);
+      setConfigSummary(configResponse?.data || null);
     } finally {
       setLoading(false);
     }
@@ -61,6 +66,47 @@ const FileUploadsPage: React.FC = () => {
           <option value="retreat_document">Retreat documents</option>
           <option value="other">Other</option>
         </select>
+      </div>
+
+      <div className="mb-6 rounded-md border border-gray-200 bg-white p-4">
+        <div className="mb-3">
+          <h2 className="text-lg font-semibold text-gray-900">Upload Storage Config</h2>
+          <p className="text-sm text-gray-600">Current generated paths for uploaded files. Use this to review the bucket layout before changing directory conventions.</p>
+        </div>
+
+        {configSummary ? (
+          <div className="grid gap-4 text-sm md:grid-cols-2">
+            <div className="rounded-md border border-gray-100 bg-gray-50 p-3">
+              <div><strong>Provider:</strong> {configSummary.storage?.provider || 'unavailable'}</div>
+              <div><strong>Bucket:</strong> {configSummary.storage?.bucket || 'not configured'}</div>
+              <div><strong>Region:</strong> {configSummary.storage?.region || '-'}</div>
+              <div><strong>S3 variables:</strong> {configSummary.storage?.s3Configured ? 'configured' : 'missing'}</div>
+              <div><strong>S3 connection:</strong> {configSummary.storage?.connectionOk ? 'reachable' : 'not verified / failing'}</div>
+            </div>
+            <div className="rounded-md border border-gray-100 bg-gray-50 p-3">
+              <div><strong>Thumbnail size:</strong> {configSummary.uploads?.thumbnailWidth || 160} x {configSummary.uploads?.thumbnailHeight || 120}</div>
+              <div><strong>Required env:</strong> {configSummary.storage?.requiredEnvironment?.join(', ') || '-'}</div>
+            </div>
+            {(configSummary.uploads?.sections || []).map((section: any) => (
+              <div key={section.section} className="rounded-md border border-gray-100 bg-gray-50 p-3 md:col-span-2">
+                <div className="mb-2 font-semibold text-gray-900">{section.section}</div>
+                <div className="break-all"><strong>Document kind:</strong> {section.documentKind}</div>
+                <div className="break-all"><strong>File path:</strong> {section.filePathPattern}</div>
+                <div className="break-all"><strong>Thumbnail path:</strong> {section.thumbnailPathPattern}</div>
+                {section.examples?.length > 0 && (
+                  <div className="mt-2">
+                    <div className="font-medium text-gray-700">Examples</div>
+                    {section.examples.map((example: string) => (
+                      <div key={example} className="break-all font-mono text-xs text-gray-600">{example}</div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500">Configuration summary is only visible to admins or could not be loaded.</p>
+        )}
       </div>
 
       <div className="overflow-hidden rounded-md border border-gray-200">
