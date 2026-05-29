@@ -668,6 +668,7 @@ export interface MedicalArtifact {
     | 'medication_list'
     | 'questionnaire'
     | 'food_intake'
+    | 'contract'
     | 'question'
     | 'other';
   title: string;

@@ -522,7 +522,7 @@ export const medicalAdvisorApi = {
 };
 
 export const medicalArtifactsApi = {
-  getAll: (filters: { clientId?: string; retreatId?: string; artifactType?: MedicalArtifact['artifactType']; status?: MedicalArtifact['status'] } = {}) => {
+  getAll: (filters: { clientId?: string; retreatId?: string; bookingId?: string; artifactType?: MedicalArtifact['artifactType']; status?: MedicalArtifact['status'] } = {}) => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value) params.set(key, value);

@@ -40,6 +40,7 @@ const artifactTypeLabels: Record<string, string> = {
   medication_list: 'Medication List',
   questionnaire: 'Questionnaire',
   food_intake: 'Food Intake',
+  contract: 'Contract',
   question: 'Question',
   other: 'Other',
 };
