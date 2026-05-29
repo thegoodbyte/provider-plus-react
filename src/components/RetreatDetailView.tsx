@@ -255,6 +255,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       if (retreatFormData.houseId?.trim()) cleanData.houseId = retreatFormData.houseId.trim();
       if (retreatFormData.status) cleanData.status = retreatFormData.status;
       if (retreatFormData.type) cleanData.type = retreatFormData.type;
+      if (retreatFormData.backgroundColor !== undefined) cleanData.backgroundColor = retreatFormData.backgroundColor;
+      if (retreatFormData.textColor !== undefined) cleanData.textColor = retreatFormData.textColor;
 
       await retreatsApi.update(retreatId, cleanData);
       setShowRetreatEditModal(false);
@@ -430,20 +432,21 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           });
           setShowRetreatEditModal(true);
         }} className="edit-retreat-btn" style={{
-          background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-          color: 'white',
-          border: 'none',
-          padding: '8px 16px',
+          background: 'white',
+          color: '#374151',
+          border: '1px solid #d1d5db',
+          padding: '8px 12px',
           borderRadius: '6px',
           cursor: 'pointer',
-          fontWeight: '500'
+          fontWeight: '500',
+          width: 'auto'
         }}>✏️ Edit Retreat</button>
           <div className="retreat-info">
             <h1>
               <span
               style={{
                 backgroundColor: retreat.backgroundColor || 'transparent',
-                color: retreat.backgroundColor ? '#fff' : 'inherit',
+                color: retreat.textColor || (retreat.backgroundColor ? '#111827' : 'inherit'),
                 padding: retreat.backgroundColor ? '4px 12px' : '0',
                 borderRadius: retreat.backgroundColor ? '4px' : '0',
                 display: 'inline-block'

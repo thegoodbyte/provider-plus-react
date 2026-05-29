@@ -12,6 +12,7 @@ export interface Retreat {
   status?: 'active' | 'completed' | 'cancelled' | 'upcoming';
   type?: 'regular' | 'booster';
   backgroundColor?: string; // Added for custom background color
+  textColor?: string;
   createdAt?: string;
   updatedAt?: string;
   // Legacy format support

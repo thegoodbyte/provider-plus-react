@@ -30,7 +30,12 @@ const RetreatsGrid: React.FC = () => {
     try {
       setIsLoading(true);
       const response = await retreatsApi.getAll();
-      setRetreats(response.data || []);
+      const sortedRetreats = [...(response.data || [])].sort((a, b) => {
+        const aTime = a.startDate ? new Date(a.startDate).getTime() : Number.MAX_SAFE_INTEGER;
+        const bTime = b.startDate ? new Date(b.startDate).getTime() : Number.MAX_SAFE_INTEGER;
+        return aTime - bTime;
+      });
+      setRetreats(sortedRetreats);
     } catch (error) {
       console.error('Error fetching retreats:', error);
       setRetreats([]);
@@ -107,6 +112,92 @@ const RetreatsGrid: React.FC = () => {
     }));
   };
 
+  const retreatLabelStyle = (retreat: Partial<Retreat>) => ({
+    backgroundColor: retreat.backgroundColor || 'transparent',
+    color: retreat.textColor || (retreat.backgroundColor ? '#111827' : 'inherit'),
+    padding: retreat.backgroundColor ? '4px 12px' : '0',
+    borderRadius: retreat.backgroundColor ? '4px' : '0',
+    display: 'inline-block',
+  });
+
+  const renderColorControls = () => (
+    <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Label Color
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={formData.textColor || '#111827'}
+              onChange={(e) => setFormData({ ...formData, textColor: e.target.value })}
+              className="h-10 w-14 cursor-pointer rounded border border-gray-300 bg-white"
+            />
+            <input
+              type="text"
+              value={formData.textColor || '#111827'}
+              onChange={(e) => setFormData({ ...formData, textColor: e.target.value })}
+              placeholder="#111827"
+              className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Background Color
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={formData.backgroundColor || '#FFFFFF'}
+              onChange={(e) => setFormData({ ...formData, backgroundColor: e.target.value })}
+              className="h-10 w-14 cursor-pointer rounded border border-gray-300 bg-white"
+            />
+            <input
+              type="text"
+              value={formData.backgroundColor || ''}
+              onChange={(e) => setFormData({ ...formData, backgroundColor: e.target.value || undefined })}
+              placeholder="#FFFFFF"
+              className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 rounded-md border border-gray-200 bg-white p-3">
+        <div className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500">Preview</div>
+        <div className="grid grid-cols-3 items-center gap-3 rounded-md border border-gray-100 px-3 py-3 text-sm">
+          <div className="font-medium text-gray-900">
+            <span style={retreatLabelStyle(formData)}>
+              {formData.name || 'BEN-08-03-26'}
+            </span>
+          </div>
+          <div className="text-gray-600">{formData.location || 'House / location'}</div>
+          <div className="text-gray-600">{formData.status || 'upcoming'}</div>
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => setFormData({ ...formData, textColor: undefined })}
+          className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+        >
+          Clear label
+        </button>
+        <button
+          type="button"
+          onClick={() => setFormData({ ...formData, backgroundColor: undefined })}
+          className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+        >
+          Clear background
+        </button>
+      </div>
+    </div>
+  );
+
   // If viewing a specific retreat, show the detail view
   if (viewingRetreatId) {
     return (
@@ -137,7 +228,7 @@ const RetreatsGrid: React.FC = () => {
             });
             setIsAddModalOpen(true);
           }}
-          className="inline-flex items-center px-3 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors duration-200"
+          className="inline-flex w-auto shrink-0 items-center whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
         >
           <Icon icon={FiPlus} className="w-4 h-4 mr-1" />
           Add New Retreat
@@ -179,10 +270,7 @@ const RetreatsGrid: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <span
                         className="text-sm font-medium text-gray-900 px-2 py-1 rounded"
-                        style={{
-                          backgroundColor: retreat.backgroundColor || 'transparent',
-                          color: retreat.backgroundColor ? '#fff' : 'inherit'
-                        }}
+                        style={retreatLabelStyle(retreat)}
                       >
                         {retreat.name}
                       </span>
@@ -383,38 +471,7 @@ const RetreatsGrid: React.FC = () => {
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Background Color
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={formData.backgroundColor || '#3B82F6'}
-                    onChange={(e) => setFormData({ ...formData, backgroundColor: e.target.value })}
-                    className="w-16 h-10 border border-gray-300 rounded cursor-pointer"
-                  />
-                  <input
-                    type="text"
-                    value={formData.backgroundColor || '#3B82F6'}
-                    onChange={(e) => setFormData({ ...formData, backgroundColor: e.target.value })}
-                    placeholder="#3B82F6"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  {formData.backgroundColor && (
-                    <button
-                      onClick={() => setFormData({ ...formData, backgroundColor: undefined })}
-                      className="text-gray-500 hover:text-gray-700"
-                      title="Clear color"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  This color will be used as background for the retreat name throughout the app
-                </p>
-              </div>
+              {renderColorControls()}
             </div>
 
             <div className="flex flex-col-reverse gap-3 pt-6 md:flex-row md:justify-end">
@@ -428,6 +485,7 @@ const RetreatsGrid: React.FC = () => {
                 Cancel
               </button>
               <AppleButton
+                variant="secondary"
                 onClick={async () => {
                   try {
                     if (!formData.name || !formData.location) {
@@ -445,7 +503,8 @@ const RetreatsGrid: React.FC = () => {
                       description: formData.description || '',
                       startDate: formData.startDate,
                       endDate: formData.endDate,
-                      backgroundColor: formData.backgroundColor
+                      backgroundColor: formData.backgroundColor,
+                      textColor: formData.textColor
                     };
                     await retreatsApi.create(retreatData);
                     fetchRetreats();
@@ -456,7 +515,7 @@ const RetreatsGrid: React.FC = () => {
                     alert('Error creating retreat. Please try again.');
                   }
                 }}
-                className="w-full md:w-auto apple-button-primary"
+                className="w-full md:w-auto"
               >
                 Create Retreat
               </AppleButton>
@@ -586,38 +645,7 @@ const RetreatsGrid: React.FC = () => {
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Background Color
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={formData.backgroundColor || '#3B82F6'}
-                    onChange={(e) => setFormData({ ...formData, backgroundColor: e.target.value })}
-                    className="w-16 h-10 border border-gray-300 rounded cursor-pointer"
-                  />
-                  <input
-                    type="text"
-                    value={formData.backgroundColor || '#3B82F6'}
-                    onChange={(e) => setFormData({ ...formData, backgroundColor: e.target.value })}
-                    placeholder="#3B82F6"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  {formData.backgroundColor && (
-                    <button
-                      onClick={() => setFormData({ ...formData, backgroundColor: undefined })}
-                      className="text-gray-500 hover:text-gray-700"
-                      title="Clear color"
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  This color will be used as background for the retreat name throughout the app
-                </p>
-              </div>
+              {renderColorControls()}
             </div>
 
             <div className="flex flex-col-reverse gap-3 pt-6 md:flex-row md:justify-end">
@@ -632,6 +660,7 @@ const RetreatsGrid: React.FC = () => {
                 Cancel
               </button>
               <AppleButton
+                variant="secondary"
                 onClick={async () => {
                   try {
                     if (editingRetreat?._id) {
@@ -645,7 +674,7 @@ const RetreatsGrid: React.FC = () => {
                     console.error('Error updating retreat:', error);
                   }
                 }}
-                className="w-full md:w-auto apple-button-primary"
+                className="w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-gray-700 hover:bg-gray-50 md:w-auto"
               >
                 Save Changes
               </AppleButton>
