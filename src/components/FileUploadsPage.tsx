@@ -82,6 +82,12 @@ const FileUploadsPage: React.FC = () => {
               <div><strong>Region:</strong> {configSummary.storage?.region || '-'}</div>
               <div><strong>S3 variables:</strong> {configSummary.storage?.s3Configured ? 'configured' : 'missing'}</div>
               <div><strong>S3 connection:</strong> {configSummary.storage?.connectionOk ? 'reachable' : 'not verified / failing'}</div>
+              {configSummary.storage?.connectionError && (
+                <div className="mt-2 rounded border border-red-200 bg-red-50 p-2 text-red-700">
+                  <div><strong>{configSummary.storage.connectionError.name || 'S3 error'}</strong></div>
+                  <div>{configSummary.storage.connectionError.message}</div>
+                </div>
+              )}
             </div>
             <div className="rounded-md border border-gray-100 bg-gray-50 p-3">
               <div><strong>Thumbnail size:</strong> {configSummary.uploads?.thumbnailWidth || 160} x {configSummary.uploads?.thumbnailHeight || 120}</div>
