@@ -679,6 +679,12 @@ export interface MedicalArtifact {
     filePath?: string;
     s3Key?: string;
     url?: string;
+    thumbnailPath?: string;
+    thumbnailS3Key?: string;
+    thumbnailFileName?: string;
+    thumbnailMimeType?: string;
+    thumbnailSize?: number;
+    thumbnailUrl?: string;
     mimeType?: string;
     size?: number;
     uploadedAt?: Date | string;
@@ -692,6 +698,37 @@ export interface MedicalArtifact {
   legacyMedicalTrackingId?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface FileUpload {
+  _id?: string;
+  fileHash: string;
+  originalFileName: string;
+  storedFileName: string;
+  filePath: string;
+  fileSize: number;
+  mimeType: string;
+  documentKind: 'medical_tracking' | 'medical_artifact' | 'client_medical' | 'retreat_document' | 'other';
+  foreignKey: string;
+  uploadedBy?: string;
+  uploadedAt?: Date | string;
+  isActive?: boolean;
+  description?: string;
+  tags?: string[];
+  accessLevel?: 'public' | 'private' | 'restricted';
+  expiresAt?: Date | string;
+  checksumMD5?: string;
+  section?: string;
+  storage?: 'local' | 's3';
+  bucket?: string;
+  thumbnailPath?: string;
+  thumbnailFileName?: string;
+  thumbnailMimeType?: string;
+  thumbnailSize?: number;
+  thumbnailConfig?: {
+    width?: number;
+    height?: number;
+  };
 }
 
 export interface MedicalReviewRequest {

@@ -102,6 +102,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
             items: [
               { id: 'medical-dashboard', label: 'Medical Dashboard', Icon: Fi.FiMonitor },
               { id: 'medical-artifacts', label: 'Medical Artifacts', Icon: Fi.FiFileText },
+              { id: 'file-uploads', label: 'File Uploads', Icon: Fi.FiFolder },
               { id: 'medical-tracking', label: 'Medical Readiness', Icon: Fi.FiHeart },
               { id: 'medical-review-requests', label: 'Review Requests', Icon: Fi.FiInbox },
               { id: 'client-medications', label: 'Client Medications', Icon: Fi.FiPlusSquare },
@@ -154,6 +155,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
             items: [
               { id: 'medical-dashboard', label: 'Dashboard', Icon: Fi.FiHome },
               { id: 'medical-artifacts', label: 'Medical Artifacts', Icon: Fi.FiFileText },
+              { id: 'file-uploads', label: 'File Uploads', Icon: Fi.FiFolder },
               { id: 'medical-tracking', label: 'Medical Readiness', Icon: Fi.FiHeart },
               { id: 'review-requests', label: 'Review Requests', Icon: Fi.FiInbox },
               { id: 'medical', label: 'Medical Profiles', Icon: Fi.FiActivity },

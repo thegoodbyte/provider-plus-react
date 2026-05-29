@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Retreat, House, Client, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalReviewRequest, BookingFlowItem, BookingFlowTemplate, MailSettings, EmailTemplate, SentEmail } from '../types';
+import { Retreat, House, Client, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalReviewRequest, FileUpload, BookingFlowItem, BookingFlowTemplate, MailSettings, EmailTemplate, SentEmail } from '../types';
 import { authService } from './authService';
 import { cacheService } from './cacheService';
 import { API_BASE_URL } from '../config/api.config';
@@ -565,6 +565,18 @@ export const medicalArtifactsApi = {
     cacheService.clearPattern('medical-artifacts:');
     return api.delete(`/medical-artifacts/${id}`);
   },
+};
+
+export const fileUploadsApi = {
+  getAll: (filters: { documentKind?: FileUpload['documentKind']; foreignKey?: string; isActive?: boolean; uploadedBy?: string } = {}) => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== '') params.set(key, String(value));
+    });
+    const suffix = params.toString() ? `?${params.toString()}` : '';
+    return cachedGet<FileUpload[]>(`file-uploads:${suffix || 'all'}`, () => api.get<FileUpload[]>(`/file-uploads${suffix}`));
+  },
+  getStats: () => cachedGet<any>('file-uploads:stats', () => api.get('/file-uploads/stats')),
 };
 
 export const medicalReviewRequestsApi = {

@@ -90,6 +90,7 @@ const MedicalArtifactsPage: React.FC = () => {
           <thead className="bg-gray-50 text-left text-xs font-semibold uppercase text-gray-500">
             <tr>
               <th className="px-4 py-3">ID</th>
+              <th className="px-4 py-3">Preview</th>
               <th className="px-4 py-3">Type</th>
               <th className="px-4 py-3">Title</th>
               <th className="px-4 py-3">Client</th>
@@ -103,6 +104,17 @@ const MedicalArtifactsPage: React.FC = () => {
             {filteredArtifacts.map((artifact) => (
               <tr key={artifact._id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 font-medium text-gray-900">#{artifact.display_id}</td>
+                <td className="px-4 py-3">
+                  {artifact.files?.find((file) => file.thumbnailUrl)?.thumbnailUrl ? (
+                    <img
+                      src={artifact.files.find((file) => file.thumbnailUrl)?.thumbnailUrl}
+                      alt={artifact.title}
+                      className="h-[60px] w-[80px] rounded border border-gray-200 object-contain"
+                    />
+                  ) : (
+                    <div className="flex h-[60px] w-[80px] items-center justify-center rounded border border-dashed border-gray-200 text-xs text-gray-400">No thumb</div>
+                  )}
+                </td>
                 <td className="px-4 py-3">{artifactTypeLabels[artifact.artifactType]}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
@@ -130,7 +142,7 @@ const MedicalArtifactsPage: React.FC = () => {
             ))}
             {filteredArtifacts.length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-gray-500">No medical artifacts yet.</td>
+                <td colSpan={9} className="px-4 py-8 text-center text-gray-500">No medical artifacts yet.</td>
               </tr>
             )}
           </tbody>

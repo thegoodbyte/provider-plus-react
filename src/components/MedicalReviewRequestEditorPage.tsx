@@ -11,6 +11,7 @@ type FormState = {
   medicalTrackingId: string;
   clientId: string;
   retreatId: string;
+  artifactIds: string[];
   requestType: MedicalReviewRequest['requestType'];
   status: MedicalReviewRequest['status'];
   requestedBy: string;
@@ -42,6 +43,11 @@ const getArtifactFileUrl = (file: NonNullable<MedicalArtifact['files']>[number])
   return /^https?:\/\//i.test(storedPath) ? storedPath : '';
 };
 
+const getRecordId = (value: string | { _id?: string } | undefined | null) => {
+  if (!value) return '';
+  return typeof value === 'string' ? value : value._id || '';
+};
+
 const MedicalReviewRequestEditorPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -56,10 +62,13 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
   const [retreats, setRetreats] = useState<Retreat[]>([]);
   const [medicalUsers, setMedicalUsers] = useState<User[]>([]);
   const [selectedArtifact, setSelectedArtifact] = useState<MedicalArtifact | null>(null);
+  const [clientArtifacts, setClientArtifacts] = useState<MedicalArtifact[]>([]);
+  const [isArtifactModalOpen, setIsArtifactModalOpen] = useState(false);
   const [form, setForm] = useState<FormState>({
     medicalTrackingId: '',
     clientId: '',
     retreatId: '',
+    artifactIds: [],
     requestType: 'both',
     status: 'pending',
     requestedBy: 'Provider Plus CRM',
@@ -104,6 +113,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           ...prev,
           clientId: typeof artifact.clientId === 'string' ? artifact.clientId : artifact.clientId?._id || prev.clientId,
           retreatId: typeof artifact.retreatId === 'string' ? artifact.retreatId : artifact.retreatId?._id || prev.retreatId,
+          artifactIds: artifact._id ? Array.from(new Set([...prev.artifactIds, artifact._id])) : prev.artifactIds,
           requestType: reviewTypeByArtifact(artifact.artifactType),
         }));
       }
@@ -115,6 +125,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           medicalTrackingId: typeof record.medicalTrackingId === 'string' ? record.medicalTrackingId : record.medicalTrackingId?._id || '',
           clientId: typeof record.clientId === 'string' ? record.clientId : record.clientId?._id || '',
           retreatId: typeof record.retreatId === 'string' ? record.retreatId : record.retreatId?._id || '',
+          artifactIds: (record.artifactIds || []).map((artifact: string | MedicalArtifact) => getRecordId(artifact)).filter(Boolean),
           requestType: record.requestType,
           status: record.status,
           requestedBy: record.requestedBy || '',
@@ -160,12 +171,31 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
     }));
   }, [selectedTracking]);
 
+  useEffect(() => {
+    const loadClientArtifacts = async () => {
+      if (!form.clientId) {
+        setClientArtifacts([]);
+        return;
+      }
+
+      try {
+        const response = await medicalArtifactsApi.getAll({ clientId: form.clientId });
+        setClientArtifacts(response.data || []);
+      } catch (error) {
+        console.error('Error loading client medical artifacts:', error);
+        setClientArtifacts([]);
+      }
+    };
+
+    loadClientArtifacts();
+  }, [form.clientId]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setSaving(true);
-      if (!form.medicalTrackingId && !selectedArtifact?._id) {
-        throw new Error('Select a medical tracking record or medical artifact first');
+      if (!form.medicalTrackingId && !selectedArtifact?._id && form.artifactIds.length === 0) {
+        throw new Error('Select a medical tracking record or linked medical artifact first');
       }
 
       if (isEdit && id) {
@@ -173,6 +203,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           clientId: form.clientId,
           retreatId: form.retreatId,
           medicalTrackingId: form.medicalTrackingId,
+          artifactIds: form.artifactIds,
           requestType: form.requestType,
           status: form.status,
           requestedBy: form.requestedBy,
@@ -190,6 +221,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
         const payload = {
           clientId: form.clientId,
           retreatId: form.retreatId || undefined,
+          artifactIds: form.artifactIds,
           requestType: form.requestType,
           status: form.status,
           assignedTo: form.assignedTo,
@@ -204,6 +236,8 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
         };
         if (selectedArtifact?._id) {
           await medicalReviewRequestsApi.createFromArtifact(selectedArtifact._id, form.requestType, payload);
+        } else if (form.artifactIds.length > 0) {
+          await medicalReviewRequestsApi.create(payload as any);
         } else {
           await medicalReviewRequestsApi.create({ ...payload, medicalTrackingId: form.medicalTrackingId } as any);
         }
@@ -220,6 +254,8 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
   if (loading) {
     return <LoadingSpinner message="Loading medical review request..." />;
   }
+
+  const selectedArtifacts = clientArtifacts.filter((artifact) => artifact._id && form.artifactIds.includes(artifact._id));
 
   return (
     <div className="min-h-[calc(100vh-96px)] bg-white px-3 py-4 sm:px-6">
@@ -263,38 +299,57 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
             <div className="mt-3 grid gap-3 text-sm text-gray-600 sm:grid-cols-2">
               <div>Client ID: {form.clientId || '—'}</div>
               <div>Retreat ID: {form.retreatId || '—'}</div>
-              {selectedArtifact ? (
-                <div className="sm:col-span-2">
-                  <div className="mb-2 font-medium text-gray-700">Linked files</div>
-                  {selectedArtifact.files?.length ? (
-                    <div className="space-y-2">
-                      {selectedArtifact.files.map((file, index) => {
-                        const fileUrl = getArtifactFileUrl(file);
-                        return (
-                          <div key={`${file.fileName || file.s3Key || index}`} className="rounded-md border border-gray-200 bg-gray-50 p-3">
-                            <div className="font-medium text-gray-900">{file.fileName || `File ${index + 1}`}</div>
-                            <div className="mt-1 break-all text-xs text-gray-500">{file.s3Key || file.filePath || 'No storage path recorded'}</div>
-                            {fileUrl ? (
-                              <a href={fileUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex rounded-md border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50">
-                                Open file
-                              </a>
-                            ) : (
-                              <div className="mt-2 text-xs text-gray-500">File URL is not available from the API.</div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-3 text-gray-500">No files are attached to this medical artifact.</div>
-                  )}
-                </div>
-              ) : (
+              {!selectedArtifact && (
                 <>
                   <div>EKG: {selectedTracking?.ekgFileName || 'No file'}</div>
                   <div>Liver: {selectedTracking?.liverPanelFileName || 'No file'}</div>
                 </>
               )}
+              <div className="sm:col-span-2">
+                <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="font-medium text-gray-700">Linked files</div>
+                  <button
+                    type="button"
+                    onClick={() => setIsArtifactModalOpen(true)}
+                    disabled={!form.clientId}
+                    className="rounded-md border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+                  >
+                    Add More Files
+                  </button>
+                </div>
+                {selectedArtifacts.length ? (
+                  <div className="space-y-2">
+                    {selectedArtifacts.map((artifact) => (
+                      <div key={artifact._id} className="rounded-md border border-gray-200 bg-gray-50 p-3">
+                        <div className="font-semibold text-gray-900">#{artifact.display_id || '—'} {artifact.title || 'Medical artifact'}</div>
+                        <div className="mt-1 text-xs capitalize text-gray-500">{artifact.artifactType?.replace(/_/g, ' ')} · {artifact.files?.length || 0} file(s)</div>
+                        {artifact.files?.length ? (
+                          <div className="mt-2 space-y-2">
+                            {artifact.files.map((file, index) => {
+                              const fileUrl = getArtifactFileUrl(file);
+                              return (
+                                <div key={`${file.fileName || file.s3Key || index}`} className="rounded-md border border-gray-200 bg-white p-2">
+                                  <div className="font-medium text-gray-900">{file.fileName || `File ${index + 1}`}</div>
+                                  <div className="mt-1 break-all text-xs text-gray-500">{file.s3Key || file.filePath || 'No storage path recorded'}</div>
+                                  {fileUrl && (
+                                    <a href={fileUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex rounded-md border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50">
+                                      Open file
+                                    </a>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="mt-2 text-xs text-gray-500">No files are attached to this medical artifact.</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-3 text-gray-500">No stored files linked yet.</div>
+                )}
+              </div>
             </div>
           </div>
 
@@ -400,6 +455,69 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           </button>
         </div>
       </form>
+
+      {isArtifactModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="max-h-[85vh] w-full max-w-3xl overflow-hidden rounded-lg bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Link Client Files</h2>
+                <p className="text-sm text-gray-500">Select the stored medical artifacts that should be reviewed with this request.</p>
+              </div>
+              <button type="button" onClick={() => setIsArtifactModalOpen(false)} className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50">
+                Done
+              </button>
+            </div>
+            <div className="max-h-[65vh] overflow-auto p-5">
+              {!form.clientId ? (
+                <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500">Select a client first.</div>
+              ) : clientArtifacts.length === 0 ? (
+                <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500">No medical artifacts found for this client.</div>
+              ) : (
+                <div className="space-y-3">
+                  {clientArtifacts.map((artifact) => {
+                    const artifactRecordId = artifact._id || '';
+                    const checked = artifactRecordId ? form.artifactIds.includes(artifactRecordId) : false;
+                    return (
+                      <label key={artifactRecordId || artifact.display_id} className="flex cursor-pointer gap-3 rounded-md border border-gray-200 p-3 hover:bg-gray-50">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={!artifactRecordId}
+                          onChange={(event) => {
+                            setForm((prev) => ({
+                              ...prev,
+                              artifactIds: event.target.checked
+                                ? Array.from(new Set([...prev.artifactIds, artifactRecordId]))
+                                : prev.artifactIds.filter((item) => item !== artifactRecordId),
+                            }));
+                          }}
+                          className="mt-1 h-4 w-4"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="font-semibold text-gray-900">#{artifact.display_id || '—'} {artifact.title || 'Medical artifact'}</div>
+                          <div className="mt-1 text-xs capitalize text-gray-500">{artifact.artifactType?.replace(/_/g, ' ')} · {artifact.receivedAt ? new Date(artifact.receivedAt).toLocaleString() : 'No received date'}</div>
+                          {artifact.files?.length ? (
+                            <div className="mt-2 space-y-1">
+                              {artifact.files.map((file, index) => (
+                                <div key={`${file.fileName || file.s3Key || index}`} className="break-all rounded bg-gray-50 px-2 py-1 text-xs text-gray-600">
+                                  {file.fileName || file.s3Key || file.filePath || `File ${index + 1}`}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="mt-2 text-xs text-gray-500">No files attached.</div>
+                          )}
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

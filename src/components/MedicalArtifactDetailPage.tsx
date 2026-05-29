@@ -35,6 +35,103 @@ const formatBytes = (size?: number) => {
 
 const getFileStoredPath = (file: NonNullable<MedicalArtifact['files']>[number]) => file.s3Key || file.filePath || '';
 
+const getFileName = (file: NonNullable<MedicalArtifact['files']>[number]) => {
+  const storedPath = getFileStoredPath(file);
+  return file.fileName || storedPath.split('/').pop() || 'Medical artifact file';
+};
+
+const isPreviewableFile = (file: NonNullable<MedicalArtifact['files']>[number]) => {
+  const fileName = getFileName(file).toLowerCase();
+  const mimeType = file.mimeType || '';
+  return mimeType.startsWith('image/') || mimeType.includes('pdf') || /\.(png|jpe?g|gif|webp|bmp|heic|heif|pdf)$/i.test(fileName);
+};
+
+const MedicalArtifactInlinePreview: React.FC<{
+  artifactId: string;
+  file: NonNullable<MedicalArtifact['files']>[number];
+}> = ({ artifactId, file }) => {
+  const [fileUrl, setFileUrl] = useState<string | null>(null);
+  const [contentType, setContentType] = useState(file.mimeType || '');
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const storedPath = getFileStoredPath(file);
+  const fileName = getFileName(file);
+  const isPdf = contentType.includes('pdf') || fileName.toLowerCase().endsWith('.pdf');
+  const isImage = contentType.startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp|heic|heif)$/i.test(fileName);
+
+  useEffect(() => {
+    let active = true;
+    let createdUrl = '';
+
+    const loadPreview = async () => {
+      if (!storedPath) {
+        setError('No storage path is recorded for this file.');
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        setError(null);
+        const response = await medicalArtifactsApi.getFileBlob(artifactId, storedPath);
+        const blob = response.data as Blob;
+        createdUrl = URL.createObjectURL(blob);
+        if (active) {
+          setContentType(blob.type || response.headers?.['content-type'] || file.mimeType || '');
+          setFileUrl(createdUrl);
+        }
+      } catch (previewError: any) {
+        console.error('Error loading medical artifact preview:', previewError);
+        if (active) {
+          setError(previewError?.response?.data?.message || previewError?.message || 'Unable to load this file preview.');
+        }
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    };
+
+    loadPreview();
+
+    return () => {
+      active = false;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
+  }, [artifactId, storedPath, file.mimeType]);
+
+  return (
+    <div className="rounded-md border border-gray-200 bg-white p-4">
+      <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="text-sm font-semibold text-gray-900">{fileName}</div>
+          <div className="text-xs text-gray-500">{contentType || file.mimeType || 'Unknown type'} · {formatBytes(file.size)}</div>
+        </div>
+      </div>
+
+      <div className="flex min-h-[360px] items-center justify-center rounded-md border border-gray-100 bg-gray-50">
+        {isLoading && <div className="text-sm text-gray-500">Loading preview...</div>}
+        {!isLoading && error && <div className="max-w-xl px-4 text-sm text-red-600">{error}</div>}
+        {!isLoading && !error && fileUrl && isImage && (
+          <img
+            src={fileUrl}
+            alt={fileName}
+            className="max-h-[620px] max-w-full object-contain"
+          />
+        )}
+        {!isLoading && !error && fileUrl && isPdf && (
+          <iframe
+            src={fileUrl}
+            title={fileName}
+            className="h-[620px] w-full border-0"
+          />
+        )}
+        {!isLoading && !error && fileUrl && !isImage && !isPdf && (
+          <div className="px-4 text-sm text-gray-600">Preview unavailable for this file type.</div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const MedicalArtifactDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -78,6 +175,10 @@ const MedicalArtifactDetailPage: React.FC = () => {
 
   const storagePaths = useMemo(() => {
     return artifact?.files?.map((file) => file.s3Key || file.filePath).filter(Boolean) || [];
+  }, [artifact]);
+
+  const previewFiles = useMemo(() => {
+    return artifact?.files?.filter((file) => getFileStoredPath(file) && isPreviewableFile(file)) || [];
   }, [artifact]);
 
   const handleSave = async (event: React.FormEvent) => {
@@ -151,6 +252,8 @@ const MedicalArtifactDetailPage: React.FC = () => {
     );
   }
 
+  const artifactId = artifact._id || id || '';
+
   return (
     <div className="p-6">
       <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -220,22 +323,37 @@ const MedicalArtifactDetailPage: React.FC = () => {
             </div>
           </form>
         ) : (
-          <div className="space-y-4 rounded-md border border-gray-200 bg-white p-4 text-sm">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Title</div>
-              <div className="mt-1 text-base font-semibold text-gray-900">{artifact.title || '-'}</div>
-            </div>
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Description</div>
-              <div className="mt-1 whitespace-pre-wrap text-gray-800">{artifact.description || '-'}</div>
-            </div>
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Admin Notes</div>
-              <div className="mt-1 whitespace-pre-wrap text-gray-800">{artifact.notes || '-'}</div>
-            </div>
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Status</div>
-              <div className="mt-1 capitalize text-gray-900">{artifact.status || 'stored'}</div>
+          <div className="space-y-4">
+            {previewFiles.length > 0 && (
+              <div className="space-y-4">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Preview</h2>
+                {previewFiles.map((file, index) => (
+                  <MedicalArtifactInlinePreview
+                    key={`${getFileStoredPath(file)}-${index}`}
+                    artifactId={artifactId}
+                    file={file}
+                  />
+                ))}
+              </div>
+            )}
+
+            <div className="space-y-4 rounded-md border border-gray-200 bg-white p-4 text-sm">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Title</div>
+                <div className="mt-1 text-base font-semibold text-gray-900">{artifact.title || '-'}</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Description</div>
+                <div className="mt-1 whitespace-pre-wrap text-gray-800">{artifact.description || '-'}</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Admin Notes</div>
+                <div className="mt-1 whitespace-pre-wrap text-gray-800">{artifact.notes || '-'}</div>
+              </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Status</div>
+                <div className="mt-1 capitalize text-gray-900">{artifact.status || 'stored'}</div>
+              </div>
             </div>
           </div>
         )}
@@ -291,7 +409,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
                   const storedPath = getFileStoredPath(file);
                   return (
                     <div key={`${file.fileName || storedPath || index}`} className="rounded-md border border-gray-200 p-3">
-                      <div className="font-medium text-gray-900">{file.fileName || `File ${index + 1}`}</div>
+                      <div className="font-medium text-gray-900">{getFileName(file) || `File ${index + 1}`}</div>
                       <div className="mt-1 text-xs text-gray-500">{file.mimeType || 'Unknown type'} · {formatBytes(file.size)}</div>
                       <div className="mt-2 break-all rounded bg-gray-50 p-2 text-xs text-gray-600">
                         <div className="font-semibold text-gray-500">S3 path</div>
