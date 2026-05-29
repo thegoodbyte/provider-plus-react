@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { currencyService, ExchangeRates } from '../services/currencyService';
+import { configSummaryApi } from '../services/api';
+import { API_BASE_URL } from '../config/api.config';
 import './CurrencySettings.css';
 
 interface CurrencySettingsProps {
@@ -8,6 +10,7 @@ interface CurrencySettingsProps {
 
 const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
   const [rates, setRates] = useState<ExchangeRates | null>(null);
+  const [configSummary, setConfigSummary] = useState<any>(null);
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const [nextUpdate, setNextUpdate] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
@@ -22,10 +25,14 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
     try {
       setIsLoading(true);
       setError(null);
-      const info = await currencyService.getExchangeRateInfo();
+      const [info, configResponse] = await Promise.all([
+        currencyService.getExchangeRateInfo(),
+        configSummaryApi.get().catch(() => null),
+      ]);
       setRates(info.rates);
       setLastUpdated(info.lastUpdated);
       setNextUpdate(info.nextUpdate);
+      setConfigSummary(configResponse?.data || null);
     } catch (err) {
       setError('Failed to load exchange rates');
       console.error('Error loading exchange rates:', err);
@@ -89,9 +96,40 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
         )}
 
         <div className="currency-info">
+          <p><strong>Frontend API URL:</strong> {API_BASE_URL}</p>
           <p><strong>Base Currency:</strong> USD (US Dollar)</p>
           <p><strong>Last Updated:</strong> {lastUpdated}</p>
           <p><strong>Next Auto Update:</strong> {nextUpdate}</p>
+        </div>
+
+        <div className="currency-info">
+          <h3>Application Configuration</h3>
+          {configSummary ? (
+            <div className="text-sm">
+              <p><strong>API environment:</strong> {configSummary.runtime?.nodeEnv}</p>
+              <p><strong>API port:</strong> {configSummary.runtime?.port}</p>
+              <p><strong>Database:</strong> {configSummary.database?.configured ? `configured via ${configSummary.database?.mongoSource}` : 'local fallback'}</p>
+              <p><strong>CORS origins:</strong> {configSummary.cors?.allowedOrigins?.length ? configSummary.cors.allowedOrigins.join(', ') : 'none configured'}</p>
+              <p><strong>Storage provider:</strong> {configSummary.storage?.provider}</p>
+              <p><strong>S3 configured:</strong> {configSummary.storage?.s3Configured ? 'Yes' : 'No'}</p>
+              <p><strong>S3 bucket:</strong> {configSummary.storage?.bucket || 'not configured'}</p>
+              <p><strong>S3 region:</strong> {configSummary.storage?.region}</p>
+              <p><strong>S3 access key:</strong> {configSummary.storage?.accessKeyConfigured ? 'set' : 'missing'}</p>
+              <p><strong>S3 secret:</strong> {configSummary.storage?.secretConfigured ? 'set' : 'missing'}</p>
+              <p><strong>Medical artifact path:</strong> {configSummary.uploads?.medicalArtifactPathPattern}</p>
+              <p><strong>Thumbnail path:</strong> {configSummary.uploads?.medicalArtifactThumbnailPathPattern}</p>
+              <p><strong>Thumbnail size:</strong> {configSummary.uploads?.thumbnailWidth} x {configSummary.uploads?.thumbnailHeight}</p>
+              <p><strong>Revolut token:</strong> {configSummary.integrations?.revolutApiTokenConfigured ? 'set' : 'missing'}</p>
+              <p><strong>Google OAuth:</strong> {configSummary.integrations?.googleOAuthConfigured ? 'configured' : 'not configured'}</p>
+              {!configSummary.storage?.s3Configured && (
+                <div className="error-message">
+                  Medical artifact uploads require S3 config: {configSummary.storage?.requiredEnvironment?.join(', ')}
+                </div>
+              )}
+            </div>
+          ) : (
+            <p>Configuration summary is only visible to admins or could not be loaded.</p>
+          )}
         </div>
 
         {rates && (

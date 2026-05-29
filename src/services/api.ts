@@ -579,6 +579,10 @@ export const fileUploadsApi = {
   getStats: () => cachedGet<any>('file-uploads:stats', () => api.get('/file-uploads/stats')),
 };
 
+export const configSummaryApi = {
+  get: () => api.get('/config-summary'),
+};
+
 export const medicalReviewRequestsApi = {
   getAll: () => cachedGet<MedicalReviewRequest[]>('medical-review-requests:all', () => api.get<MedicalReviewRequest[]>('/medical-review-requests')),
   getQueue: () => cachedGet<MedicalReviewRequest[]>('medical-review-requests:queue', () => api.get<MedicalReviewRequest[]>('/medical-review-requests/queue')),
