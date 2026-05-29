@@ -44,6 +44,7 @@ const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
         if (error.response) {
           // Server responded with error
           apiError.code = `${error.response.status}`;
+          const responseMessage = error.response.data?.message;
 
           switch (error.response.status) {
             case 404:
@@ -53,10 +54,12 @@ const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
               apiError.message = 'Server error occurred. Please try again later.';
               break;
             case 503:
-              apiError.message = 'Service temporarily unavailable';
+              apiError.message = /storage|s3|configured|configuration/i.test(responseMessage || '')
+                ? 'Upload error: storage is misconfigured. Check Settings and configure the S3 bucket before uploading files.'
+                : responseMessage || 'Service temporarily unavailable';
               break;
             default:
-              apiError.message = error.response.data?.message || 'An error occurred while loading data';
+              apiError.message = responseMessage || 'An error occurred while loading data';
           }
         } else if (error.request) {
           // No response received

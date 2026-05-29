@@ -41,6 +41,14 @@ const getFileName = (file: NonNullable<MedicalArtifact['files']>[number]) => {
   return file.fileName || storedPath.split('/').pop() || 'Medical artifact file';
 };
 
+const getUploadErrorMessage = (error: any) => {
+  const message = error?.response?.data?.message || error?.message;
+  if (error?.response?.status === 503 || /storage|s3|configured|configuration/i.test(message || '')) {
+    return 'Upload error: storage is misconfigured. Check Settings and configure the S3 bucket before uploading files.';
+  }
+  return message || 'Failed to upload selected files.';
+};
+
 const isPreviewableFile = (file: NonNullable<MedicalArtifact['files']>[number]) => {
   const fileName = getFileName(file).toLowerCase();
   const mimeType = file.mimeType || '';
@@ -197,7 +205,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
         await reloadArtifact();
       }
     } catch (saveError: any) {
-      setError(saveError?.response?.data?.message || saveError?.message || 'Failed to save medical artifact.');
+      setError(getUploadErrorMessage(saveError));
     } finally {
       setSaving(false);
       setUploading(false);
@@ -219,7 +227,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
       setSelectedFiles([]);
       await reloadArtifact();
     } catch (uploadError: any) {
-      setError(uploadError?.response?.data?.message || uploadError?.message || 'Failed to upload selected files.');
+      setError(getUploadErrorMessage(uploadError));
     } finally {
       setUploading(false);
     }
