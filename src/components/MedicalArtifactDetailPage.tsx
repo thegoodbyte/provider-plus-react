@@ -42,9 +42,21 @@ const getFileName = (file: NonNullable<MedicalArtifact['files']>[number]) => {
 };
 
 const getUploadErrorMessage = (error: any) => {
-  const message = error?.response?.data?.message || error?.message;
+  const data = error?.response?.data;
+  const details = data?.details;
+  const storageDetails = details?.storageDetails;
+  const message = data?.message || storageDetails?.message || error?.message;
   if (error?.response?.status === 503 || /storage|s3|configured|configuration/i.test(message || '')) {
-    return 'Upload error: storage is misconfigured. Check Settings and configure the S3 bucket before uploading files.';
+    const storageCode = storageDetails?.errorName || storageDetails?.code || details?.code;
+    const bucket = details?.bucket || storageDetails?.bucket;
+    const region = storageDetails?.region;
+    return [
+      'Upload error: storage is misconfigured.',
+      storageCode ? `Storage error: ${storageCode}.` : '',
+      bucket ? `Bucket: ${bucket}.` : '',
+      region ? `Region: ${region}.` : '',
+      'Open the browser console for the full upload diagnostics.',
+    ].filter(Boolean).join(' ');
   }
   return message || 'Failed to upload selected files.';
 };

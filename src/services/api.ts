@@ -547,8 +547,37 @@ export const medicalArtifactsApi = {
     const formData = new FormData();
     files.forEach((file) => formData.append('files', file));
     cacheService.clearPattern('medical-artifacts:');
+    const fileSummary = files.map((file) => ({
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      lastModified: file.lastModified,
+    }));
+    console.debug('[medical-artifact-upload] starting', {
+      artifactId: id,
+      fileCount: files.length,
+      files: fileSummary,
+    });
     return api.post(`/medical-artifacts/${id}/upload-files`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((response) => {
+      console.debug('[medical-artifact-upload] success', {
+        artifactId: id,
+        status: response.status,
+        response: response.data,
+      });
+      return response;
+    }).catch((error) => {
+      console.error('[medical-artifact-upload] failed', {
+        artifactId: id,
+        status: error?.response?.status,
+        response: error?.response?.data,
+        files: fileSummary,
+        requestUrl: error?.config?.url,
+        method: error?.config?.method,
+        message: error?.message,
+      });
+      throw error;
     });
   },
   deleteFile: (id: string, storedPath: string) => {
