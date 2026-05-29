@@ -189,10 +189,17 @@ const MedicalArtifactDetailPage: React.FC = () => {
     try {
       const response = await medicalArtifactsApi.update(id, form);
       setArtifact(response.data);
+      if (selectedFiles.length > 0) {
+        setUploading(true);
+        await medicalArtifactsApi.uploadFiles(id, selectedFiles);
+        setSelectedFiles([]);
+        await reloadArtifact();
+      }
     } catch (saveError: any) {
       setError(saveError?.response?.data?.message || saveError?.message || 'Failed to save medical artifact.');
     } finally {
       setSaving(false);
+      setUploading(false);
     }
   };
 
@@ -316,9 +323,9 @@ const MedicalArtifactDetailPage: React.FC = () => {
               <button type="button" onClick={() => navigate(`${routePrefix}/medical-artifacts/${artifact._id}`)} className="rounded-md border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
                 Cancel
               </button>
-              <button type="submit" disabled={saving || !form.title.trim()} className="inline-flex items-center gap-2 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-50">
+              <button type="submit" disabled={saving || uploading || !form.title.trim()} className="inline-flex items-center gap-2 rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-50">
                 <Save className="h-4 w-4" />
-                {saving ? 'Saving...' : 'Save Changes'}
+                {uploading ? 'Uploading files...' : saving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </form>
