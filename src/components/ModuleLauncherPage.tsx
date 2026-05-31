@@ -49,6 +49,7 @@ type LauncherRow = {
 };
 
 const getRoutePrefix = (pathname: string, role?: string) => {
+  if (role === 'admin') return '/admin';
   if (pathname.startsWith('/medical/')) return '/medical';
   if (pathname.startsWith('/staff/')) return '/staff';
   if (pathname.startsWith('/user/')) return '/user';

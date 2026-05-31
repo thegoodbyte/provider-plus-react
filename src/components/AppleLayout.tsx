@@ -153,6 +153,7 @@ const AppleLayout: React.FC = () => {
 
   const activeItem = getActiveItemFromPath();
   const isImpersonating = Boolean(user?.impersonatedBy || user?.originalRole);
+  const userEmail = user?.email || user?.username || '';
 
   useEffect(() => {
     if (location.pathname === '/') {
@@ -206,6 +207,7 @@ const AppleLayout: React.FC = () => {
         onClose={() => setSidebarOpen(false)}
         onLogout={logout}
         userRole={user?.role}
+        user={user}
       />
 
       {/* Main Content */}
@@ -268,13 +270,20 @@ const AppleLayout: React.FC = () => {
                 </button>
 
                 {/* User menu */}
-                <button
-                  onClick={logout}
-                  className="hidden sm:inline-flex px-3 py-1.5 text-sm font-medium text-apple-gray-600 hover:text-apple-gray-900
-                           bg-apple-gray-100 hover:bg-apple-gray-200 rounded-apple transition-all"
-                >
-                  Sign Out
-                </button>
+                <div className="hidden sm:flex items-center gap-2">
+                  {userEmail && (
+                    <span className="max-w-48 truncate text-xs font-medium text-apple-gray-600" title={userEmail}>
+                      {userEmail}
+                    </span>
+                  )}
+                  <button
+                    onClick={logout}
+                    className="inline-flex px-3 py-1.5 text-sm font-medium text-apple-gray-600 hover:text-apple-gray-900
+                             bg-apple-gray-100 hover:bg-apple-gray-200 rounded-apple transition-all"
+                  >
+                    Sign Out
+                  </button>
+                </div>
               </div>
             </div>
           </div>

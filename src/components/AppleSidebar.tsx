@@ -9,6 +9,15 @@ interface AppleSidebarProps {
   onClose: () => void;
   onLogout: () => void;
   userRole?: string;
+  user?: {
+    email?: string;
+    username?: string;
+    firstName?: string;
+    lastName?: string;
+    role?: string;
+    originalRole?: string;
+    impersonatedBy?: string;
+  } | null;
 }
 
 type MenuItem = {
@@ -34,7 +43,8 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
   isOpen,
   onClose,
   onLogout,
-  userRole
+  userRole,
+  user
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(() => {
     const saved = localStorage.getItem('sidebarCollapsed');
@@ -242,6 +252,14 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
   const menuSections = useMemo(() => getMenuSectionsForRole(), [getMenuSectionsForRole]);
 
   const isExpanded = !isCollapsed || isHovered;
+  const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
+  const displayEmail = user?.email || user?.username || '';
+  const displayRole =
+    userRole === 'admin' ? 'Administrator' :
+    userRole === 'medical_staff' ? 'Medical Staff' :
+    userRole === 'medical_advisor' ? 'Medical Advisor' :
+    userRole === 'facilitator' ? 'Facilitator' :
+    userRole === 'user' ? 'User' : 'User';
 
   useEffect(() => {
     const activeSection = menuSections.find((section) => section.items.some((item) => item.id === activeItem));
@@ -434,11 +452,18 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                 </div>
                 {isExpanded && (
                   <div className="flex-1 min-w-0">
+                    {displayName && (
+                      <p className="text-sm font-medium text-apple-gray-800 truncate">
+                        {displayName}
+                      </p>
+                    )}
+                    {displayEmail && (
+                      <p className="text-xs text-apple-gray-600 truncate">
+                        {displayEmail}
+                      </p>
+                    )}
                     <p className="text-xs text-apple-gray-500 truncate">
-                      {userRole === 'admin' ? 'Administrator' :
-                       userRole === 'medical_staff' ? 'Medical Staff' :
-                       userRole === 'facilitator' ? 'Facilitator' :
-                       userRole === 'user' ? 'User' : 'User'}
+                      {displayRole}
                     </p>
                   </div>
                 )}
