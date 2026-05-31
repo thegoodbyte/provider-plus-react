@@ -254,18 +254,20 @@ const MedicalReviewRequestsPage: React.FC = () => {
     return <LoadingSpinner message="Loading medical review requests..." />;
   }
 
+  const isDetailView = Boolean(id);
+
   return (
     <div className="p-6">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">
-            {isMedicalRoute ? 'Medical Review Requests' : 'Medical Review Requests'}
+            {isDetailView && selected ? `Medical Review Request #${selected.display_id || '—'}` : 'Medical Review Requests'}
           </h1>
           <p className="text-sm text-gray-600">
-            {isMedicalRoute ? 'Queue for review and commentary on medical records, ceremony EKG, and blood pressure.' : 'Administrative review request queue and history.'}
+            {isDetailView ? 'Review the linked files and record a final decision.' : isMedicalRoute ? 'Queue for review and commentary on medical records, ceremony EKG, and blood pressure.' : 'Administrative review request queue and history.'}
           </p>
         </div>
-        {!isMedicalRoute && (
+        {!isMedicalRoute && !isDetailView && (
           <button
             onClick={() => navigate('/admin/medical-review-requests/new')}
             className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
@@ -275,49 +277,55 @@ const MedicalReviewRequestsPage: React.FC = () => {
         )}
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-2">
-        {(['all', 'pending', 'in_review', 'approved', 'rejected', 'caution', 'needs_resubmission', 'completed'] as const).map((status) => (
-          <button
-            key={status}
-            onClick={() => setStatusFilter(status)}
-            className={`rounded-full px-3 py-1 text-xs font-semibold ${statusFilter === status ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+      {!isDetailView && (
+        <div className="mb-4 flex items-center justify-end gap-2">
+          <label htmlFor="review-request-status-filter" className="text-sm font-medium text-gray-700">Status</label>
+          <select
+            id="review-request-status-filter"
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
+            className="w-full max-w-xs rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
           >
-            {status}
-          </button>
-        ))}
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-        <div className="rounded-lg border border-gray-200 bg-white">
-          <div className="border-b border-gray-200 px-4 py-3 text-sm font-semibold text-gray-900">Queue</div>
-          <div className="max-h-[70vh] overflow-auto">
-            {filteredRequests.length === 0 ? (
-              <div className="p-6 text-sm text-gray-500">No review requests found.</div>
-            ) : (
-              filteredRequests.map((request) => (
-                <button
-                  key={request._id}
-                  onClick={() => handleSelect(request)}
-                  className={`block w-full border-b border-gray-100 px-4 py-3 text-left hover:bg-gray-50 ${selected?._id === request._id ? 'bg-blue-50' : ''}`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold text-gray-900">
-                        #{request.display_id || '—'} {typeof request.clientId === 'string' ? request.clientId : request.clientId?.display_id ? `#${request.clientId.display_id}` : 'Client'}
-                      </div>
-                      <div className="text-xs text-gray-500">
-                        {requestTypeLabels[request.requestType] || request.requestType} • Attempt {request.attemptNumber || 1} • {request.source || 'Provider Plus CRM'}
-                      </div>
-                    </div>
-                    <span className={`rounded-full px-2 py-1 text-xs font-semibold ${reviewStatusStyle[request.status] || 'bg-gray-100 text-gray-700'}`}>
-                      {request.status}
-                    </span>
-                  </div>
-                </button>
-              ))
-            )}
-          </div>
+            {(['all', 'pending', 'in_review', 'approved', 'rejected', 'caution', 'needs_resubmission', 'completed'] as const).map((status) => (
+              <option key={status} value={status}>{status}</option>
+            ))}
+          </select>
         </div>
+      )}
+
+      <div className={isDetailView ? 'grid gap-6' : 'grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]'}>
+        {!isDetailView && (
+          <div className="rounded-lg border border-gray-200 bg-white">
+            <div className="border-b border-gray-200 px-4 py-3 text-sm font-semibold text-gray-900">Queue</div>
+            <div className="max-h-[70vh] overflow-auto">
+              {filteredRequests.length === 0 ? (
+                <div className="p-6 text-sm text-gray-500">No review requests found.</div>
+              ) : (
+                filteredRequests.map((request) => (
+                  <button
+                    key={request._id}
+                    onClick={() => handleSelect(request)}
+                    className={`block w-full border-b border-gray-100 px-4 py-3 text-left hover:bg-gray-50 ${selected?._id === request._id ? 'bg-blue-50' : ''}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-gray-900">
+                          #{request.display_id || '—'} {typeof request.clientId === 'string' ? request.clientId : request.clientId?.display_id ? `#${request.clientId.display_id}` : 'Client'}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {requestTypeLabels[request.requestType] || request.requestType} • Attempt {request.attemptNumber || 1} • {request.source || 'Provider Plus CRM'}
+                        </div>
+                      </div>
+                      <span className={`rounded-full px-2 py-1 text-xs font-semibold ${reviewStatusStyle[request.status] || 'bg-gray-100 text-gray-700'}`}>
+                        {request.status}
+                      </span>
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
+        )}
 
         <div className="rounded-lg border border-gray-200 bg-white p-4">
           {!selected ? (
@@ -338,7 +346,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 </span>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-2">
+              {!isDetailView && (
+                <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-md border border-gray-200 p-3">
                   <div className="text-xs uppercase tracking-wide text-gray-500">Client Context</div>
                   {profileHref ? (
@@ -353,7 +362,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   <div className="text-xs uppercase tracking-wide text-gray-500">Attempt</div>
                   <div className="mt-1 text-sm text-gray-900">{selected.attemptNumber || 1}</div>
                 </div>
-              </div>
+                </div>
+              )}
 
               <div className="rounded-md border border-gray-200 p-3">
                 <div className="flex items-center justify-between gap-3">
@@ -432,7 +442,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="rounded-md border border-gray-200 p-3">
+              {!isDetailView && (
+                <div className="rounded-md border border-gray-200 p-3">
                 <div className="text-sm font-semibold text-gray-900">Other client medical artifacts</div>
                 <div className="mt-3 max-h-44 space-y-2 overflow-auto">
                   {relatedArtifacts.filter((artifact) => !artifact._id || !selectedArtifactIds.has(artifact._id)).length === 0 ? (
@@ -446,9 +457,10 @@ const MedicalReviewRequestsPage: React.FC = () => {
                     ))
                   )}
                 </div>
-              </div>
+                </div>
+              )}
 
-              {selected.sourceSnapshot && (
+              {!isDetailView && selected.sourceSnapshot && (
                 <div className="rounded-md border border-gray-200 p-3">
                   <div className="text-sm font-semibold text-gray-900">Source snapshot</div>
                   <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap text-xs text-gray-600">{JSON.stringify(selected.sourceSnapshot, null, 2)}</pre>
@@ -506,7 +518,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="rounded-md border border-gray-200 p-3">
+              {!isDetailView && (
+                <div className="rounded-md border border-gray-200 p-3">
                 <div className="text-sm font-semibold text-gray-900">Previous requests</div>
                 <div className="mt-3 space-y-2">
                   {selectedHistory.length === 0 ? (
@@ -525,7 +538,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
                     ))
                   )}
                 </div>
-              </div>
+                </div>
+              )}
             </div>
           )}
         </div>

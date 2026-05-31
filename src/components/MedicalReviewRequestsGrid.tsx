@@ -129,16 +129,18 @@ const MedicalReviewRequestsGrid: React.FC = () => {
         </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap gap-2">
-        {(['all', 'pending', 'in_review', 'approved', 'rejected', 'caution', 'needs_resubmission', 'completed'] as const).map((status) => (
-          <button
-            key={status}
-            onClick={() => setFilterStatus(status)}
-            className={`rounded-full px-3 py-1 text-xs font-semibold ${filterStatus === status ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-          >
-            {status}
-          </button>
-        ))}
+      <div className="mb-4 flex items-center justify-end gap-2">
+        <label htmlFor="review-status-filter" className="text-sm font-medium text-gray-700">Status</label>
+        <select
+          id="review-status-filter"
+          value={filterStatus}
+          onChange={(event) => setFilterStatus(event.target.value as typeof filterStatus)}
+          className="w-full max-w-xs rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        >
+          {(['all', 'pending', 'in_review', 'approved', 'rejected', 'caution', 'needs_resubmission', 'completed'] as const).map((status) => (
+            <option key={status} value={status}>{status}</option>
+          ))}
+        </select>
       </div>
 
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
