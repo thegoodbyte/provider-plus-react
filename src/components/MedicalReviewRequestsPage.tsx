@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner';
+import { useAuth } from '../context/AuthContext';
 import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { Client, MedicalArtifact, MedicalReviewRequest } from '../types';
 
@@ -96,7 +97,9 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams();
+  const { user } = useAuth();
   const isMedicalRoute = location.pathname.startsWith('/medical/');
+  const isAdvisorReviewRoute = isMedicalRoute || user?.role === 'medical_advisor';
   const routeId = id === 'new' ? undefined : id;
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState<MedicalReviewRequest[]>([]);
@@ -113,7 +116,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const loadRequests = useCallback(async () => {
     try {
       setLoading(true);
-      const response = isMedicalRoute
+      const response = isAdvisorReviewRoute
         ? await medicalReviewRequestsApi.getQueue()
         : await medicalReviewRequestsApi.getAll();
       const items = response.data || [];
@@ -137,14 +140,14 @@ const MedicalReviewRequestsPage: React.FC = () => {
         if (clientId && retreatId) {
           const [historyResponse, artifactsResponse] = await Promise.all([
             medicalReviewRequestsApi.getByClientAndRetreat(clientId, retreatId),
-            isMedicalRoute
+            isAdvisorReviewRoute
               ? Promise.resolve({ data: getPopulatedArtifacts(selectedItem) })
               : medicalArtifactsApi.getAll({ clientId }),
           ]);
           setHistory(historyResponse.data || []);
           setRelatedArtifacts(artifactsResponse.data || []);
         } else if (clientId) {
-          const artifactsResponse = isMedicalRoute
+          const artifactsResponse = isAdvisorReviewRoute
             ? { data: getPopulatedArtifacts(selectedItem) }
             : await medicalArtifactsApi.getAll({ clientId });
           setRelatedArtifacts(artifactsResponse.data || []);
@@ -173,7 +176,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [routeId, isMedicalRoute]);
+  }, [routeId, isAdvisorReviewRoute]);
 
   useEffect(() => {
     loadRequests();
