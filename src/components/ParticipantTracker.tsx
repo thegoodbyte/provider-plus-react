@@ -50,9 +50,11 @@ const getClientName = (participant: CeremonyParticipant) => {
 
 const getEventSummary = (event: CeremonyEvent) => {
   if (event.eventType === 'medicine') {
+    const form = event.medicineForm || 'spoon';
+    const unit = form === 'spoon' ? `spoon${event.spoonCount === 1 ? '' : 's'}` : form;
     const parts = [
-      event.spoonCount ? `${event.spoonCount} spoon${event.spoonCount === 1 ? '' : 's'}` : '',
-      event.spoonAmount,
+      event.spoonCount ? `${event.spoonCount} ${unit}` : form,
+      form === 'spoon' ? event.spoonAmount : '',
       event.doseAmount,
     ].filter(Boolean);
     return parts.join(' - ') || 'Medicine';
@@ -150,6 +152,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
       eventType: event?.eventType || 'medicine',
       spoonCount: event?.spoonCount || 1,
       spoonAmount: event?.spoonAmount || 'full',
+      medicineForm: event?.medicineForm || 'spoon',
       doseAmount: event?.doseAmount || '',
       severity: event?.severity || 'medium',
       note: event?.note || '',
@@ -166,6 +169,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
       eventType: values.eventType,
       spoonCount: values.eventType === 'medicine' ? Number(values.spoonCount || 0) : undefined,
       spoonAmount: values.eventType === 'medicine' ? values.spoonAmount : undefined,
+      medicineForm: values.eventType === 'medicine' ? values.medicineForm : undefined,
       doseAmount: values.eventType === 'medicine' ? values.doseAmount : undefined,
       severity: values.eventType === 'abnormality' ? values.severity : undefined,
       note: values.note || '',
@@ -221,9 +225,10 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
 
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Ceremony Participant Tracking</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Ceremony Medicine Grid</h1>
           <p className="text-sm text-gray-600">
-            Ceremony #{ceremony?.ceremonyNumber || '-'} - {ceremony?.date ? moment(ceremony.date).format('MMMM DD, YYYY') : 'Date TBD'}
+            Ceremony #{ceremony?.ceremonyNumber || '-'} - medicine timing and dose form by participant.
+            {ceremony?.date ? ` ${moment(ceremony.date).format('MMMM DD, YYYY')}` : ''}
           </p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700">
@@ -235,7 +240,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
       <Row gutter={16} className="mb-5">
         <Col xs={12} lg={4}><Card><Statistic title="Participants" value={stats.total} /></Card></Col>
         <Col xs={12} lg={5}><Card><Statistic title="Took Medicine" value={stats.tookMedicine} suffix={`/ ${stats.total}`} /></Card></Col>
-        <Col xs={12} lg={5}><Card><Statistic title="Total Spoons" value={stats.totalSpoons} /></Card></Col>
+        <Col xs={12} lg={5}><Card><Statistic title="Total Doses" value={stats.totalSpoons} /></Card></Col>
         <Col xs={12} lg={5}><Card><Statistic title="Purged" value={stats.purged} suffix={`/ ${stats.tookMedicine}`} /></Card></Col>
         <Col xs={12} lg={5}><Card><Statistic title="Abnormalities" value={stats.abnormalities} valueStyle={{ color: stats.abnormalities ? '#b91c1c' : '#166534' }} /></Card></Col>
       </Row>
@@ -249,11 +254,11 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                 <th key={participant._id} className="min-w-[220px] border-b border-r border-gray-200 px-3 py-3 text-left align-top">
                   <div className="text-sm font-semibold text-gray-900">{getClientName(participant)}</div>
                   <div className="mt-1 text-xs text-gray-500">
-                    {participant.spoonsTaken || 0} spoons
+                    {participant.spoonsTaken || 0} dose units
                     {participant.purged ? ` - purged ${participant.purgeTime || ''}` : ''}
                   </div>
                   <Button size="small" type="link" className="mt-1 p-0" onClick={() => openEventModal(participant)}>
-                    Add event
+                    Add medicine
                   </Button>
                 </th>
               ))}
@@ -298,7 +303,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                 <td className="sticky left-0 z-10 border-r border-gray-200 bg-gray-50 px-3 py-3 text-sm font-semibold text-gray-900">Totals</td>
                 {participants.map((participant) => (
                   <td key={`${participant._id}-total`} className="border-r border-gray-200 px-3 py-3 text-sm text-gray-700">
-                    <div>{participant.spoonsTaken || 0} spoons</div>
+                    <div>{participant.spoonsTaken || 0} dose units</div>
                     <div>{participant.purged ? `Purged ${participant.purgeTime || ''}` : 'No purge recorded'}</div>
                     {participant.purgeDetails && <div className="mt-1 whitespace-pre-wrap text-xs text-gray-500">{participant.purgeDetails}</div>}
                   </td>
@@ -342,16 +347,16 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
             {({ getFieldValue }) => getFieldValue('eventType') === 'medicine' && (
               <Row gutter={16}>
                 <Col span={8}>
-                  <Form.Item name="spoonCount" label="Spoons">
+                  <Form.Item name="spoonCount" label="Amount">
                     <InputNumber min={0} max={20} style={{ width: '100%' }} />
                   </Form.Item>
                 </Col>
                 <Col span={8}>
-                  <Form.Item name="spoonAmount" label="Spoon Amount">
+                  <Form.Item name="medicineForm" label="Form">
                     <Select>
-                      <Select.Option value="full">Full</Select.Option>
-                      <Select.Option value="half">Half</Select.Option>
-                      <Select.Option value="quarter">Quarter</Select.Option>
+                      <Select.Option value="spoon">Spoon</Select.Option>
+                      <Select.Option value="capsules">Capsules</Select.Option>
+                      <Select.Option value="tea">Tea</Select.Option>
                       <Select.Option value="other">Other</Select.Option>
                     </Select>
                   </Form.Item>
@@ -359,6 +364,20 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                 <Col span={8}>
                   <Form.Item name="doseAmount" label="Dose Note">
                     <Input placeholder="Optional" />
+                  </Form.Item>
+                </Col>
+                <Col span={8}>
+                  <Form.Item noStyle shouldUpdate={(prev, current) => prev.medicineForm !== current.medicineForm}>
+                    {({ getFieldValue }) => getFieldValue('medicineForm') === 'spoon' && (
+                      <Form.Item name="spoonAmount" label="Spoon Amount">
+                        <Select>
+                          <Select.Option value="full">Full</Select.Option>
+                          <Select.Option value="half">Half</Select.Option>
+                          <Select.Option value="quarter">Quarter</Select.Option>
+                          <Select.Option value="other">Other</Select.Option>
+                        </Select>
+                      </Form.Item>
+                    )}
                   </Form.Item>
                 </Col>
               </Row>

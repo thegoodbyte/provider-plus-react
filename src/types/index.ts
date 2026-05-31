@@ -584,6 +584,7 @@ export interface CeremonyParticipant {
     eventType: 'medicine' | 'purge' | 'launch' | 'abnormality' | 'note' | 'arrival' | 'departure';
     spoonCount?: number;
     spoonAmount?: 'full' | 'half' | 'quarter' | string;
+    medicineForm?: 'spoon' | 'capsules' | 'tea' | 'other' | string;
     doseAmount?: string;
     severity?: 'low' | 'medium' | 'high' | 'urgent' | string;
     note?: string;
