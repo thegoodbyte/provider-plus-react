@@ -330,6 +330,23 @@
   word-break: break-word;
 }
 
+.workflow-medical-requirement {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.workflow-medical-requirement-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.workflow-medical-requirement-head h4 {
+  margin-bottom: 0;
+}
+
 .workflow-table {
   overflow: hidden;
 }

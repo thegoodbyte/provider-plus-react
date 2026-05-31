@@ -13,6 +13,8 @@ import {
   bookingsApi,
   clientMedicalApi,
   clientRequirementsApi,
+  medicalArtifactsApi,
+  medicalReviewRequestsApi,
   paymentsApi,
   remindersApi,
   retreatsApi,
@@ -27,6 +29,8 @@ import {
   Retreat,
   RetreatClient,
   Client,
+  MedicalArtifact,
+  MedicalReviewRequest,
 } from '../types';
 import './WorkflowDashboard.css';
 
@@ -49,11 +53,20 @@ interface WorkflowBookingRow extends RetreatClient {
   requirements: ClientRequirement[];
   payments: Payment[];
   medical: ClientMedical | null;
+  medicalRequirements: BookingMedicalReviewRequirement[];
   reminders: Reminder[];
   readinessScore: number;
   readinessState: 'ready' | 'attention' | 'blocked';
   nextAction: string;
   missingItems: string[];
+}
+
+interface BookingMedicalReviewRequirement {
+  type: 'ekg' | 'liver_panel';
+  label: string;
+  artifact?: MedicalArtifact;
+  review?: MedicalReviewRequest;
+  state: 'missing' | 'needs_review' | 'pending' | 'approved' | 'caution' | 'rejected';
 }
 
 interface WorkflowInboxItem {
@@ -104,6 +117,49 @@ const formatRelativeDate = (date?: string | Date) => {
   return `${Math.abs(diffDays)} days ago`;
 };
 
+const artifactDate = (artifact: MedicalArtifact) =>
+  new Date(artifact.receivedAt || artifact.createdAt || 0).getTime();
+
+const reviewDate = (review: MedicalReviewRequest) =>
+  new Date(review.reviewedAt || review.requestedAt || review.createdAt || 0).getTime();
+
+const getLatestReview = (reviews: MedicalReviewRequest[] = []) =>
+  [...reviews].sort((a, b) => reviewDate(b) - reviewDate(a))[0];
+
+const getReviewState = (artifact?: MedicalArtifact, review?: MedicalReviewRequest): BookingMedicalReviewRequirement['state'] => {
+  if (!artifact || !(artifact.files || []).length) return 'missing';
+  if (!review) return 'needs_review';
+  if (review.status === 'approved' || review.status === 'completed' || review.reviewDecision === 'OK') return 'approved';
+  if (review.status === 'caution' || review.reviewDecision === 'caution') return 'caution';
+  if (review.status === 'rejected' || review.status === 'needs_resubmission' || review.reviewDecision === 'NOT OK') return 'rejected';
+  return 'pending';
+};
+
+const getMedicalRequirementLabel = (state: BookingMedicalReviewRequirement['state']) => {
+  switch (state) {
+    case 'missing':
+      return 'Missing file';
+    case 'needs_review':
+      return 'Needs MRR';
+    case 'pending':
+      return 'Review pending';
+    case 'approved':
+      return 'Approved';
+    case 'caution':
+      return 'Caution';
+    case 'rejected':
+      return 'Rejected';
+    default:
+      return state;
+  }
+};
+
+const getMedicalRequirementPill = (state: BookingMedicalReviewRequirement['state']): 'ready' | 'attention' | 'blocked' => {
+  if (state === 'approved') return 'ready';
+  if (state === 'caution' || state === 'pending' || state === 'needs_review') return 'attention';
+  return 'blocked';
+};
+
 const WorkflowDashboard: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -137,6 +193,49 @@ const WorkflowDashboard: React.FC = () => {
       }
     }
   }, [bookingId, workflowRows]);
+
+  const loadBookingMedicalRequirements = async (bookingIdValue?: string): Promise<BookingMedicalReviewRequirement[]> => {
+    if (!bookingIdValue) {
+      return [
+        { type: 'ekg', label: 'EKG', state: 'missing' },
+        { type: 'liver_panel', label: 'Liver Panel', state: 'missing' },
+      ];
+    }
+
+    try {
+      const artifactsResponse = await medicalArtifactsApi.getAll({ bookingId: bookingIdValue });
+      const artifacts: MedicalArtifact[] = artifactsResponse.data || [];
+      const sections: Array<{ type: 'ekg' | 'liver_panel'; label: string }> = [
+        { type: 'ekg', label: 'EKG' },
+        { type: 'liver_panel', label: 'Liver Panel' },
+      ];
+
+      return Promise.all(sections.map(async (section) => {
+        const artifact = artifacts
+          .filter((item) => item.artifactType === section.type && item.status !== 'voided')
+          .sort((a, b) => artifactDate(b) - artifactDate(a))[0];
+
+        if (!artifact?._id) {
+          return { ...section, state: 'missing' as const };
+        }
+
+        const reviewsResponse = await medicalReviewRequestsApi.getByArtifact(artifact._id).catch(() => ({ data: [] }));
+        const review = getLatestReview(reviewsResponse.data || []);
+        return {
+          ...section,
+          artifact,
+          review,
+          state: getReviewState(artifact, review),
+        };
+      }));
+    } catch (error) {
+      console.error('Error loading booking medical review requirements:', error);
+      return [
+        { type: 'ekg', label: 'EKG', state: 'missing' },
+        { type: 'liver_panel', label: 'Liver Panel', state: 'missing' },
+      ];
+    }
+  };
 
   const loadInitialData = async () => {
     try {
@@ -195,30 +294,30 @@ const WorkflowDashboard: React.FC = () => {
                 : retreatId);
           const clientInfo = typeof client === 'object' ? client : undefined;
 
-          const [requirementsResponse, paymentsResponse, medicalResponse] = await Promise.all([
+          const [requirementsResponse, paymentsResponse, medicalResponse, medicalRequirements] = await Promise.all([
             clientRequirementsApi.getByClientAndRetreat(bookingClientId, retreatIdValue).catch(() => ({ data: [] })),
             paymentsApi.getByClientAndRetreat(bookingClientId, retreatIdValue).catch(() => ({ data: [] })),
             clientMedicalApi.getByClientAndRetreat(bookingClientId, retreatIdValue).catch(() => ({ data: null })),
+            loadBookingMedicalRequirements(booking._id),
           ]);
 
           const bookingRequirements: ClientRequirement[] = requirementsResponse.data || [];
           const bookingPayments: Payment[] = paymentsResponse.data || [];
           const medical: ClientMedical | null = medicalResponse.data || null;
           const clientReminders: Reminder[] = retreatReminders.filter((reminder: Reminder) => reminder.clientId === bookingClientId);
+          const ekgRequirement = medicalRequirements.find((item) => item.type === 'ekg');
+          const liverRequirement = medicalRequirements.find((item) => item.type === 'liver_panel');
 
           const requirementTotal = Math.max(requirements.filter((req) => req.isActive !== false).length, bookingRequirements.length);
           const requirementApproved = bookingRequirements.filter((req) => req.status === 'approved').length;
-          const medicalComplete = Boolean(
-            medical?.ekgStatus === 'approved' &&
-            medical?.liverPanelStatus === 'approved'
-          );
+          const medicalComplete = medicalRequirements.every((item) => item.state === 'approved');
           const depositPaid = bookingPayments.some((payment) => payment.status === 'completed' && (payment.isDeposit || payment.paymentType?.includes('deposit')));
           const docsComplete = requirementTotal > 0 ? requirementApproved >= requirementTotal : bookingRequirements.length === 0;
           const remindersDue = clientReminders.filter((reminder) => reminder.status !== 'completed' && reminder.status !== 'dismissed').length;
 
           const missingItems: string[] = [];
-          if (!medical?.ekgStatus || medical.ekgStatus !== 'approved') missingItems.push('EKG approval');
-          if (!medical?.liverPanelStatus || medical.liverPanelStatus !== 'approved') missingItems.push('Liver approval');
+          if (ekgRequirement?.state !== 'approved') missingItems.push(`EKG: ${getMedicalRequirementLabel(ekgRequirement?.state || 'missing')}`);
+          if (liverRequirement?.state !== 'approved') missingItems.push(`Liver panel: ${getMedicalRequirementLabel(liverRequirement?.state || 'missing')}`);
           if (!depositPaid) missingItems.push('Deposit payment');
           if (!docsComplete) missingItems.push('Requirements');
           if (remindersDue > 0) missingItems.push(`${remindersDue} reminder${remindersDue === 1 ? '' : 's'} due`);
@@ -235,10 +334,10 @@ const WorkflowDashboard: React.FC = () => {
           else if (missingItems.length > 0) readinessState = 'attention';
 
           const nextAction =
-            !medical?.ekgStatus || medical.ekgStatus !== 'approved'
-              ? 'Approve EKG'
-              : !medical?.liverPanelStatus || medical.liverPanelStatus !== 'approved'
-                ? 'Approve liver panel'
+            ekgRequirement?.state !== 'approved'
+              ? `Resolve EKG: ${getMedicalRequirementLabel(ekgRequirement?.state || 'missing')}`
+              : liverRequirement?.state !== 'approved'
+                ? `Resolve liver panel: ${getMedicalRequirementLabel(liverRequirement?.state || 'missing')}`
                 : !depositPaid
                   ? 'Collect deposit'
                   : !docsComplete
@@ -258,6 +357,7 @@ const WorkflowDashboard: React.FC = () => {
             requirements: bookingRequirements,
             payments: bookingPayments,
             medical,
+            medicalRequirements,
             reminders: clientReminders,
             readinessScore,
             readinessState,
@@ -566,8 +666,8 @@ const WorkflowDashboard: React.FC = () => {
                     </div>
                     <div>
                       <div className="workflow-booking-sub">Medical</div>
-                      <div className={`workflow-pill ${row.medical?.ekgStatus === 'approved' && row.medical?.liverPanelStatus === 'approved' ? 'ready' : 'attention'}`}>
-                        {row.medical?.ekgStatus === 'approved' && row.medical?.liverPanelStatus === 'approved' ? 'Approved' : 'Incomplete'}
+                      <div className={`workflow-pill ${row.medicalRequirements.every((item) => item.state === 'approved') ? 'ready' : row.medicalRequirements.some((item) => item.state === 'missing' || item.state === 'rejected') ? 'blocked' : 'attention'}`}>
+                        {row.medicalRequirements.every((item) => item.state === 'approved') ? 'Approved' : 'Incomplete'}
                       </div>
                     </div>
                     <div>
@@ -679,26 +779,24 @@ const WorkflowDashboard: React.FC = () => {
                   <div className="workflow-card">
                     <div className="workflow-section-header">
                       <h3>Medical</h3>
-                      <span>{detail.medical ? 'Record found' : 'No medical record'}</span>
+                      <span>{detail.medicalRequirements.every((item) => item.state === 'approved') ? 'Ready' : 'Action required'}</span>
                     </div>
-                    {!detail.medical ? (
-                      <div className="workflow-empty">No EKG or liver panel record exists yet.</div>
-                    ) : (
-                      <div className="workflow-detail-grid">
-                        <div className="workflow-detail-item">
-                          <h4>EKG</h4>
-                          <p>Status: {detail.medical.ekgStatus || 'pending'}</p>
-                          <p>Received: {formatDate(detail.medical.ekgReceivedDate)}</p>
-                          <p>File: {detail.medical.ekgFileName || 'No files'}</p>
+                    <div className="workflow-detail-grid">
+                      {detail.medicalRequirements.map((requirement) => (
+                        <div className="workflow-detail-item workflow-medical-requirement" key={requirement.type}>
+                          <div className="workflow-medical-requirement-head">
+                            <h4>{requirement.label}</h4>
+                            <span className={`workflow-pill ${getMedicalRequirementPill(requirement.state)}`}>
+                              {getMedicalRequirementLabel(requirement.state)}
+                            </span>
+                          </div>
+                          <p>Artifact: {requirement.artifact?.display_id ? `#${requirement.artifact.display_id}` : 'No artifact linked'}</p>
+                          <p>Received: {formatDate(requirement.artifact?.receivedAt || requirement.artifact?.createdAt)}</p>
+                          <p>Files: {(requirement.artifact?.files || []).map((file) => file.fileName).filter(Boolean).join(', ') || 'No files'}</p>
+                          <p>Review: {requirement.review?.display_id ? `#${requirement.review.display_id} ${requirement.review.status}` : 'No medical review request'}</p>
                         </div>
-                        <div className="workflow-detail-item">
-                          <h4>Liver Panel</h4>
-                          <p>Status: {detail.medical.liverPanelStatus || 'pending'}</p>
-                          <p>Received: {formatDate(detail.medical.liverPanelReceivedDate)}</p>
-                          <p>File: {detail.medical.liverPanelFileName || 'No files'}</p>
-                        </div>
-                      </div>
-                    )}
+                      ))}
+                    </div>
                   </div>
                 )}
 

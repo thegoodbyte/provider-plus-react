@@ -158,9 +158,40 @@
     color: #721c24;
 }
 
+.badge-caution {
+    background: #fff3cd;
+    color: #856404;
+}
+
 .badge-default {
     background: #e2e3e5;
     color: #383d41;
+}
+
+.booking-medical-status-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.booking-medical-file-heading {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.booking-medical-file-heading span {
+    color: #666;
+    font-size: 12px;
+}
+
+.booking-medical-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
 }
 
 .file-info {
@@ -317,6 +348,15 @@
 
 .booking-medical-upload .btn-primary:hover {
     background: #0056b3;
+}
+
+.booking-medical-upload .btn-secondary {
+    background: #e2e8f0;
+    color: #0f172a;
+}
+
+.booking-medical-upload .btn-secondary:hover {
+    background: #cbd5e1;
 }
 
 .booking-medical-upload .btn-warning {
