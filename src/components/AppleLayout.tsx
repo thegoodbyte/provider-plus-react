@@ -377,8 +377,10 @@ const AppleLayout: React.FC = () => {
                         <Route path="dashboard" element={<MedicalReviewRequestsPage />} />
                         <Route path="medical-dashboard" element={<MedicalReviewRequestsPage />} />
                         <Route path="review-requests" element={<MedicalReviewRequestsPage />} />
+                        <Route path="review-requests/new" element={<Unauthorized />} />
                         <Route path="review-requests/:id" element={<MedicalReviewRequestsPage />} />
                         <Route path="medical-review-requests" element={<MedicalReviewRequestsPage />} />
+                        <Route path="medical-review-requests/new" element={<Unauthorized />} />
                         <Route path="medical-review-requests/:id" element={<MedicalReviewRequestsPage />} />
                         <Route path="*" element={<Unauthorized />} />
                       </Routes>
@@ -402,6 +404,7 @@ const AppleLayout: React.FC = () => {
                         <Route path="medical-tracking/:id/edit" element={<MedicalTrackingEditPage />} />
                         <Route path="medical-tracking/:id/view/:type" element={<MedicalTrackingFileViewPage />} />
                         <Route path="review-requests" element={<MedicalReviewRequestsPage />} />
+                        <Route path="review-requests/new" element={<MedicalReviewRequestEditorPage />} />
                         <Route path="review-requests/:id" element={<MedicalReviewRequestsPage />} />
                         <Route path="medical-review-requests" element={<MedicalReviewRequestsPage />} />
                         <Route path="medical-review-requests/new" element={<MedicalReviewRequestEditorPage />} />
@@ -496,6 +499,7 @@ const AppleLayout: React.FC = () => {
                 <Route path="/admin/medical-review-requests/:id" element={<ProtectedRoute><MedicalReviewRequestsPage /></ProtectedRoute>} />
                 <Route path="/admin/medical-review-requests/:id/edit" element={<ProtectedRoute><MedicalReviewRequestEditorPage /></ProtectedRoute>} />
                 <Route path="/medical/review-requests" element={<ProtectedRoute><MedicalReviewRequestsPage /></ProtectedRoute>} />
+                <Route path="/medical/review-requests/new" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><MedicalReviewRequestEditorPage /></ProtectedRoute>} />
                 <Route path="/medical/review-requests/:id" element={<ProtectedRoute><MedicalReviewRequestsPage /></ProtectedRoute>} />
                 <Route path="/communications" element={<ProtectedRoute><CommunicationsPage /></ProtectedRoute>} />
                 <Route path="/admin/communications" element={<ProtectedRoute><CommunicationsPage /></ProtectedRoute>} />

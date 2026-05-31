@@ -64,6 +64,8 @@ const getArtifactFileUrl = (file: ArtifactFile) => file.url || file.filePath || 
 const getArtifactFileKey = (file: ArtifactFile) => file.s3Key || file.filePath || file.url || file.fileName || '';
 const isImageFile = (file: ArtifactFile) => Boolean(file.mimeType?.startsWith('image/'));
 const isPdfFile = (file: ArtifactFile) => file.mimeType === 'application/pdf' || /\.pdf($|\?)/i.test(file.fileName || '');
+const getPopulatedArtifacts = (request: MedicalReviewRequest) =>
+  (request.artifactIds || []).filter((artifact): artifact is MedicalArtifact => typeof artifact !== 'string');
 
 const ArtifactInlinePreview: React.FC<{ file: ArtifactFile; index: number }> = ({ file, index }) => {
   const url = getArtifactFileUrl(file);
@@ -95,6 +97,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const location = useLocation();
   const { id } = useParams();
   const isMedicalRoute = location.pathname.startsWith('/medical/');
+  const routeId = id === 'new' ? undefined : id;
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState<MedicalReviewRequest[]>([]);
   const [selected, setSelected] = useState<MedicalReviewRequest | null>(null);
@@ -116,7 +119,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
       const items = response.data || [];
       setRequests(items);
 
-      const selectedId = id || items[0]?._id;
+      const selectedId = routeId || items[0]?._id;
       let selectedItem = selectedId ? items.find((item: MedicalReviewRequest) => item._id === selectedId) || null : null;
       if (selectedId && !selectedItem) {
         const selectedResponse = await medicalReviewRequestsApi.getOne(selectedId);
@@ -134,12 +137,16 @@ const MedicalReviewRequestsPage: React.FC = () => {
         if (clientId && retreatId) {
           const [historyResponse, artifactsResponse] = await Promise.all([
             medicalReviewRequestsApi.getByClientAndRetreat(clientId, retreatId),
-            medicalArtifactsApi.getAll({ clientId }),
+            isMedicalRoute
+              ? Promise.resolve({ data: getPopulatedArtifacts(selectedItem) })
+              : medicalArtifactsApi.getAll({ clientId }),
           ]);
           setHistory(historyResponse.data || []);
           setRelatedArtifacts(artifactsResponse.data || []);
         } else if (clientId) {
-          const artifactsResponse = await medicalArtifactsApi.getAll({ clientId });
+          const artifactsResponse = isMedicalRoute
+            ? { data: getPopulatedArtifacts(selectedItem) }
+            : await medicalArtifactsApi.getAll({ clientId });
           setRelatedArtifacts(artifactsResponse.data || []);
         } else {
           setHistory([]);
@@ -166,7 +173,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [id, isMedicalRoute]);
+  }, [routeId, isMedicalRoute]);
 
   useEffect(() => {
     loadRequests();
@@ -254,7 +261,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
     return <LoadingSpinner message="Loading medical review requests..." />;
   }
 
-  const isDetailView = Boolean(id);
+  const isDetailView = Boolean(routeId);
 
   return (
     <div className="p-6">
