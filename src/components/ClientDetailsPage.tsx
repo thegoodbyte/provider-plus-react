@@ -261,6 +261,36 @@ const ClientDetailsPage: React.FC = () => {
     );
   };
 
+  const screeningData = client?.screeningData || {};
+  const getScreeningValue = (...keys: string[]) => {
+    for (const key of keys) {
+      const value = client?.[key] ?? screeningData?.[key];
+      if (value !== undefined && value !== null && value !== '') return value;
+    }
+    return '';
+  };
+
+  const screeningFileUrl = getScreeningValue('handwritingImageUrl');
+  const hasScreeningDetails = [
+    'mainIntent',
+    'whySeekingIboga',
+    'riskNotes',
+    'whatToChange',
+    'heartCondition',
+    'heartConditions',
+    'liverCondition',
+    'liverConditions',
+    'asthmaCondition',
+    'asthmaConditions',
+    'medications',
+    'currentMedications',
+    'bloodPressure',
+    'bloodPressureIssues',
+    'generalNotes',
+    'notes',
+    'handwritingImageUrl',
+  ].some((key) => Boolean(getScreeningValue(key)));
+
   const handleEKGFileUpload = async (files: File[]) => {
     if (!clientId || files.length === 0) return;
 
@@ -594,24 +624,73 @@ const ClientDetailsPage: React.FC = () => {
                 </div>
               </div>
 
-              {client.whySeekingIboga && (
+              {!hasScreeningDetails && (
+                <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-500">
+                  No screening details have been saved for this client yet.
+                </div>
+              )}
+
+              {getScreeningValue('whySeekingIboga', 'mainIntent') && (
                 <div>
                   <h3 className="text-sm font-medium text-gray-500 mb-2">Why Seeking Iboga</h3>
-                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{client.whySeekingIboga}</p>
+                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{getScreeningValue('whySeekingIboga', 'mainIntent')}</p>
                 </div>
               )}
 
-              {client.whatToChange && (
+              {getScreeningValue('whatToChange', 'riskNotes') && (
                 <div>
                   <h3 className="text-sm font-medium text-gray-500 mb-2">What to Change</h3>
-                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{client.whatToChange}</p>
+                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{getScreeningValue('whatToChange', 'riskNotes')}</p>
                 </div>
               )}
 
-              {client.observations && (
+              <div className="grid gap-4 md:grid-cols-2">
+                {getScreeningValue('heartConditions', 'heartCondition') && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 mb-2">Heart</h3>
+                    <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{getScreeningValue('heartConditions', 'heartCondition')}</p>
+                  </div>
+                )}
+                {getScreeningValue('liverConditions', 'liverCondition') && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 mb-2">Liver</h3>
+                    <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{getScreeningValue('liverConditions', 'liverCondition')}</p>
+                  </div>
+                )}
+                {getScreeningValue('asthmaConditions', 'asthmaCondition') && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 mb-2">Asthma</h3>
+                    <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{getScreeningValue('asthmaConditions', 'asthmaCondition')}</p>
+                  </div>
+                )}
+                {getScreeningValue('bloodPressureIssues', 'bloodPressure') && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 mb-2">Blood Pressure</h3>
+                    <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{getScreeningValue('bloodPressureIssues', 'bloodPressure')}</p>
+                  </div>
+                )}
+              </div>
+
+              {getScreeningValue('currentMedications', 'medications') && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">Current Medications</h3>
+                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{getScreeningValue('currentMedications', 'medications')}</p>
+                </div>
+              )}
+
+              {getScreeningValue('observations', 'generalNotes', 'notes') && (
                 <div>
                   <h3 className="text-sm font-medium text-gray-500 mb-2">Observations</h3>
-                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{client.observations}</p>
+                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{getScreeningValue('observations', 'generalNotes', 'notes')}</p>
+                </div>
+              )}
+
+              {screeningFileUrl && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">Uploaded Screening File</h3>
+                  <a href={screeningFileUrl} target="_blank" rel="noreferrer" className="inline-flex rounded-md border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50">
+                    Open uploaded file
+                  </a>
                 </div>
               )}
 
