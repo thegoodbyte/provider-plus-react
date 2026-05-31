@@ -543,10 +543,13 @@ export const medicalArtifactsApi = {
     cacheService.clearPattern('medical-artifacts:');
     return api.post<MedicalArtifact>('/medical-artifacts', data);
   },
-  uploadFiles: (id: string, files: File[]) => {
+  uploadFiles: (id: string, files: File[], options: { reviewRequestNumber?: number | string } = {}) => {
     const formData = new FormData();
     files.forEach((file) => formData.append('files', file));
     cacheService.clearPattern('medical-artifacts:');
+    const params = new URLSearchParams();
+    if (options.reviewRequestNumber) params.set('reviewRequestNumber', String(options.reviewRequestNumber));
+    const suffix = params.toString() ? `?${params.toString()}` : '';
     const fileSummary = files.map((file) => ({
       name: file.name,
       type: file.type,
@@ -555,10 +558,11 @@ export const medicalArtifactsApi = {
     }));
     console.debug('[medical-artifact-upload] starting', {
       artifactId: id,
+      reviewRequestNumber: options.reviewRequestNumber,
       fileCount: files.length,
       files: fileSummary,
     });
-    return api.post(`/medical-artifacts/${id}/upload-files`, formData, {
+    return api.post(`/medical-artifacts/${id}/upload-files${suffix}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then((response) => {
       console.debug('[medical-artifact-upload] success', {

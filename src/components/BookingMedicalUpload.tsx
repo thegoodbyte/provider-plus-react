@@ -180,8 +180,13 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
       });
 
       if (created.data._id) {
-        await medicalArtifactsApi.uploadFiles(created.data._id, fileArray);
-        await createReviewRequest(created.data, section.requestType);
+        const review = await createReviewRequest(created.data, section.requestType);
+        if (!review?.display_id) {
+          throw new Error('Medical review request could not be created before upload.');
+        }
+        await medicalArtifactsApi.uploadFiles(created.data._id, fileArray, {
+          reviewRequestNumber: review.display_id,
+        });
       }
 
       await loadMedicalArtifacts();

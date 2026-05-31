@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Edit, Eye, Inbox, Save, Trash2, Upload } from 'lucide-react';
-import { medicalArtifactsApi } from '../services/api';
-import { Client, MedicalArtifact } from '../types';
+import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { Client, MedicalArtifact, MedicalReviewRequest } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 
 const artifactTypeLabels: Record<MedicalArtifact['artifactType'], string> = {
@@ -66,6 +66,9 @@ const isPreviewableFile = (file: NonNullable<MedicalArtifact['files']>[number]) 
   const mimeType = file.mimeType || '';
   return mimeType.startsWith('image/') || mimeType.includes('pdf') || /\.(png|jpe?g|gif|webp|bmp|heic|heif|pdf)$/i.test(fileName);
 };
+
+const getReviewSortTime = (review: MedicalReviewRequest) =>
+  new Date(review.reviewedAt || review.requestedAt || review.createdAt || 0).getTime();
 
 const MedicalArtifactInlinePreview: React.FC<{
   artifactId: string;
@@ -166,6 +169,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
   const [deletingPath, setDeletingPath] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [reviewRequests, setReviewRequests] = useState<MedicalReviewRequest[]>([]);
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -179,8 +183,10 @@ const MedicalArtifactDetailPage: React.FC = () => {
       setLoading(true);
       try {
         const response = await medicalArtifactsApi.getOne(id);
+        const reviewsResponse = await medicalReviewRequestsApi.getByArtifact(id).catch(() => ({ data: [] }));
         const item = response.data;
         setArtifact(item);
+        setReviewRequests(((reviewsResponse.data || []) as MedicalReviewRequest[]).sort((a, b) => getReviewSortTime(b) - getReviewSortTime(a)));
         setForm({
           title: item.title || '',
           description: item.description || '',
@@ -212,7 +218,9 @@ const MedicalArtifactDetailPage: React.FC = () => {
       setArtifact(response.data);
       if (selectedFiles.length > 0) {
         setUploading(true);
-        await medicalArtifactsApi.uploadFiles(id, selectedFiles);
+        await medicalArtifactsApi.uploadFiles(id, selectedFiles, {
+          reviewRequestNumber: reviewRequests[0]?.display_id,
+        });
         setSelectedFiles([]);
         await reloadArtifact();
       }
@@ -226,8 +234,12 @@ const MedicalArtifactDetailPage: React.FC = () => {
 
   const reloadArtifact = async () => {
     if (!id) return;
-    const response = await medicalArtifactsApi.getOne(id);
+    const [response, reviewsResponse] = await Promise.all([
+      medicalArtifactsApi.getOne(id),
+      medicalReviewRequestsApi.getByArtifact(id).catch(() => ({ data: [] })),
+    ]);
     setArtifact(response.data);
+    setReviewRequests(((reviewsResponse.data || []) as MedicalReviewRequest[]).sort((a, b) => getReviewSortTime(b) - getReviewSortTime(a)));
   };
 
   const handleUploadFiles = async () => {
@@ -235,7 +247,9 @@ const MedicalArtifactDetailPage: React.FC = () => {
     setUploading(true);
     setError(null);
     try {
-      await medicalArtifactsApi.uploadFiles(id, selectedFiles);
+      await medicalArtifactsApi.uploadFiles(id, selectedFiles, {
+        reviewRequestNumber: reviewRequests[0]?.display_id,
+      });
       setSelectedFiles([]);
       await reloadArtifact();
     } catch (uploadError: any) {
@@ -396,6 +410,53 @@ const MedicalArtifactDetailPage: React.FC = () => {
               <div><dt className="text-gray-500">Source</dt><dd className="font-medium capitalize text-gray-900">{artifact.source || 'manual'}</dd></div>
               <div><dt className="text-gray-500">Version</dt><dd className="font-medium text-gray-900">{artifact.version || 1}</dd></div>
             </dl>
+          </div>
+
+          <div className="rounded-md border border-gray-200 bg-white p-4 text-sm">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Review History</h2>
+              <button
+                type="button"
+                onClick={() => navigate(`${routePrefix}/medical-review-requests/new?artifactId=${artifact._id}`)}
+                className="rounded-md border border-blue-200 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50"
+              >
+                New MRR
+              </button>
+            </div>
+            {reviewRequests.length > 0 ? (
+              <div className="space-y-3">
+                {reviewRequests.map((request) => (
+                  <button
+                    key={request._id}
+                    type="button"
+                    onClick={() => navigate(`${routePrefix}/medical-review-requests/${request._id}`)}
+                    className="block w-full rounded-md border border-gray-200 p-3 text-left hover:bg-gray-50"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold text-gray-900">#{request.display_id || request._id}</span>
+                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold capitalize text-gray-700">
+                        {request.status?.replace(/_/g, ' ') || 'pending'}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-xs text-gray-500">
+                      {request.requestType?.replace(/_/g, ' ') || 'review'} · Attempt {request.attemptNumber || 1}
+                    </div>
+                    <div className="mt-1 text-xs text-gray-500">
+                      Requested {request.requestedAt ? new Date(request.requestedAt).toLocaleString() : '-'}
+                    </div>
+                    {(request.reviewDecision || request.reviewNotes || request.overallNotes) && (
+                      <div className="mt-2 line-clamp-2 text-xs text-gray-700">
+                        {[request.reviewDecision, request.reviewNotes || request.overallNotes].filter(Boolean).join(': ')}
+                      </div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-4 text-center text-gray-500">
+                No medical review requests linked yet.
+              </div>
+            )}
           </div>
 
           <div className="rounded-md border border-gray-200 bg-white p-4 text-sm">
