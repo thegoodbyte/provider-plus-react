@@ -620,6 +620,7 @@ export const medicalReviewRequestsApi = {
   getAll: () => cachedGet<MedicalReviewRequest[]>('medical-review-requests:all', () => api.get<MedicalReviewRequest[]>('/medical-review-requests')),
   getQueue: () => cachedGet<MedicalReviewRequest[]>('medical-review-requests:queue', () => api.get<MedicalReviewRequest[]>('/medical-review-requests/queue')),
   getOne: (id: string) => cachedGet<MedicalReviewRequest>(`medical-review-requests:${id}`, () => api.get<MedicalReviewRequest>(`/medical-review-requests/${id}`)),
+  getContext: (id: string) => cachedGet<any>(`medical-review-requests:${id}:context`, () => api.get<any>(`/medical-review-requests/${id}/context`)),
   getByClientAndRetreat: (clientId: string, retreatId: string) => cachedGet<MedicalReviewRequest[]>(`medical-review-requests:${clientId}:${retreatId}`, () => api.get<MedicalReviewRequest[]>(`/medical-review-requests?clientId=${clientId}&retreatId=${retreatId}`)),
   getByMedicalTracking: (medicalTrackingId: string) => cachedGet<MedicalReviewRequest[]>(`medical-review-requests:tracking:${medicalTrackingId}`, () => api.get<MedicalReviewRequest[]>(`/medical-review-requests?medicalTrackingId=${medicalTrackingId}`)),
   getByArtifact: (artifactId: string) => cachedGet<MedicalReviewRequest[]>(`medical-review-requests:artifact:${artifactId}`, () => api.get<MedicalReviewRequest[]>(`/medical-review-requests?artifactId=${artifactId}`)),

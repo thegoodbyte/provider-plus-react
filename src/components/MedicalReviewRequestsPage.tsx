@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
-import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { medicalReviewRequestsApi } from '../services/api';
+import { API_BASE_URL } from '../config/api.config';
 import { Client, MedicalArtifact, MedicalReviewRequest } from '../types';
 
 const reviewStatusStyle: Record<string, string> = {
@@ -60,6 +61,22 @@ type FileReviewDraft = {
   decision?: 'OK' | 'caution' | 'NOT OK' | '';
   notes?: string;
 };
+type ReviewContext = {
+  client?: any;
+  bookings?: any[];
+  screenings?: any[];
+  medicalRecords?: any[];
+  medications?: any[];
+  artifacts?: {
+    all?: MedicalArtifact[];
+    entryEkg?: MedicalArtifact[];
+    entryLiver?: MedicalArtifact[];
+    medications?: MedicalArtifact[];
+    questionnaire?: MedicalArtifact[];
+    other?: MedicalArtifact[];
+  };
+  reviewHistory?: MedicalReviewRequest[];
+};
 
 const getArtifactFileUrl = (file: ArtifactFile) => file.url || file.filePath || file.s3Key || '';
 const getArtifactFileKey = (file: ArtifactFile) => file.s3Key || file.filePath || file.url || file.fileName || '';
@@ -67,6 +84,21 @@ const isImageFile = (file: ArtifactFile) => Boolean(file.mimeType?.startsWith('i
 const isPdfFile = (file: ArtifactFile) => file.mimeType === 'application/pdf' || /\.pdf($|\?)/i.test(file.fileName || '');
 const getPopulatedArtifacts = (request: MedicalReviewRequest) =>
   (request.artifactIds || []).filter((artifact): artifact is MedicalArtifact => typeof artifact !== 'string');
+const formatDateTime = (value?: string | Date | null) => {
+  if (!value) return 'Not set';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 'Not set' : date.toLocaleString();
+};
+const renderValue = (value: any): string => {
+  if (value === null || value === undefined || value === '') return 'Not provided';
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (Array.isArray(value)) return value.length ? value.map((item) => renderValue(item)).join(', ') : 'Not provided';
+  return JSON.stringify(value, null, 2);
+};
+const getMedicationPdfUrl = (filePath?: string) => {
+  if (!filePath) return '';
+  return /^https?:\/\//i.test(filePath) ? filePath : `${API_BASE_URL}${filePath}`;
+};
 
 const ArtifactInlinePreview: React.FC<{ file: ArtifactFile; index: number }> = ({ file, index }) => {
   const url = getArtifactFileUrl(file);
@@ -111,6 +143,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [overallNotes, setOverallNotes] = useState('');
   const [medicalStaffNotes, setMedicalStaffNotes] = useState('');
   const [fileReviews, setFileReviews] = useState<FileReviewDraft[]>([]);
+  const [reviewContext, setReviewContext] = useState<ReviewContext | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | MedicalReviewRequest['status']>('all');
 
   const loadRequests = useCallback(async () => {
@@ -135,23 +168,14 @@ const MedicalReviewRequestsPage: React.FC = () => {
       setSelected(selectedItem);
 
       if (selectedItem) {
-        const clientId = getId(selectedItem.clientId);
-        const retreatId = getId(selectedItem.retreatId);
-        if (clientId && retreatId) {
-          const [historyResponse, artifactsResponse] = await Promise.all([
-            medicalReviewRequestsApi.getByClientAndRetreat(clientId, retreatId),
-            isAdvisorReviewRoute
-              ? Promise.resolve({ data: getPopulatedArtifacts(selectedItem) })
-              : medicalArtifactsApi.getAll({ clientId }),
-          ]);
-          setHistory(historyResponse.data || []);
-          setRelatedArtifacts(artifactsResponse.data || []);
-        } else if (clientId) {
-          const artifactsResponse = isAdvisorReviewRoute
-            ? { data: getPopulatedArtifacts(selectedItem) }
-            : await medicalArtifactsApi.getAll({ clientId });
-          setRelatedArtifacts(artifactsResponse.data || []);
+        if (selectedItem._id) {
+          const contextResponse = await medicalReviewRequestsApi.getContext(selectedItem._id);
+          const context = contextResponse.data || null;
+          setReviewContext(context);
+          setHistory(context?.reviewHistory || []);
+          setRelatedArtifacts(context?.artifacts?.all || getPopulatedArtifacts(selectedItem));
         } else {
+          setReviewContext(null);
           setHistory([]);
           setRelatedArtifacts([]);
         }
@@ -164,6 +188,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
           decision: review.decision || '',
         })));
       } else {
+        setReviewContext(null);
         setHistory([]);
         setRelatedArtifacts([]);
       }
@@ -171,6 +196,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
       console.error('Error loading review requests:', error);
       setRequests([]);
       setSelected(null);
+      setReviewContext(null);
       setHistory([]);
       setRelatedArtifacts([]);
     } finally {
@@ -259,6 +285,38 @@ const MedicalReviewRequestsPage: React.FC = () => {
     const fileKey = getArtifactFileKey(file);
     return fileReviews.find((review) => review.artifactId === artifactId && review.fileKey === fileKey) || {};
   };
+
+  const renderArtifactList = (artifacts: MedicalArtifact[] = [], emptyText: string) => {
+    if (!artifacts.length) return <div className="text-sm text-gray-500">{emptyText}</div>;
+    return (
+      <div className="space-y-2">
+        {artifacts.map((artifact) => (
+          <div key={artifact._id || `${artifact.artifactType}-${artifact.title}`} className="rounded-md border border-gray-200 bg-white p-3 text-sm">
+            <div className="font-semibold text-gray-900">#{artifact.display_id || '—'} {artifactTypeLabels[artifact.artifactType] || artifact.artifactType}: {artifact.title}</div>
+            <div className="text-xs text-gray-500">{formatDateTime(artifact.receivedAt)} • {artifact.files?.length || 0} file(s)</div>
+            {artifact.textContent && <div className="mt-2 whitespace-pre-wrap text-gray-700">{artifact.textContent}</div>}
+            {artifact.notes && <div className="mt-2 text-gray-600">Notes: {artifact.notes}</div>}
+            {!!artifact.files?.length && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {artifact.files.map((file, index) => {
+                  const url = getArtifactFileUrl(file);
+                  return url ? (
+                    <a key={`${file.fileName || url}-${index}`} href={url} target="_blank" rel="noreferrer" className="rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50">
+                      {file.fileName || `File ${index + 1}`}
+                    </a>
+                  ) : (
+                    <span key={`${file.fileName || index}`} className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-500">{file.fileName || `File ${index + 1}`}</span>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const contextSummary = (count: number, empty = 'No records') => count ? `${count} record${count === 1 ? '' : 's'}` : empty;
 
   if (loading) {
     return <LoadingSpinner message="Loading medical review requests..." />;
@@ -374,6 +432,105 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 </div>
                 </div>
               )}
+
+              <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
+                <div className="mb-3">
+                  <div className="text-sm font-semibold text-gray-900">Client medical context</div>
+                  <div className="text-xs text-gray-500">Screening, booking medical requirements, medications, and questionnaire information available for this client.</div>
+                </div>
+                <div className="space-y-2">
+                  <details className="rounded-md border border-gray-200 bg-white p-3" open>
+                    <summary className="cursor-pointer text-sm font-semibold text-gray-900">
+                      Screening • {contextSummary(reviewContext?.screenings?.length || 0)}
+                    </summary>
+                    <div className="mt-3 space-y-3">
+                      {reviewContext?.client && (
+                        <div className="grid gap-3 text-sm sm:grid-cols-2">
+                          <div><span className="font-medium text-gray-700">Client:</span> {reviewContext.client.firstName} {reviewContext.client.lastName} {reviewContext.client.display_id ? `#${reviewContext.client.display_id}` : ''}</div>
+                          <div><span className="font-medium text-gray-700">Medical conditions:</span> {renderValue(reviewContext.client.medicalConditions)}</div>
+                          <div><span className="font-medium text-gray-700">Allergies:</span> {renderValue(reviewContext.client.allergies)}</div>
+                          <div><span className="font-medium text-gray-700">Current medications:</span> {renderValue(reviewContext.client.currentMedications)}</div>
+                          <div><span className="font-medium text-gray-700">Heart:</span> {renderValue(reviewContext.client.heartConditions)}</div>
+                          <div><span className="font-medium text-gray-700">Liver:</span> {renderValue(reviewContext.client.liverConditions)}</div>
+                        </div>
+                      )}
+                      {reviewContext?.screenings?.length ? reviewContext.screenings.slice(0, 2).map((screening) => (
+                        <div key={screening._id || screening.createdAt} className="rounded-md border border-gray-200 p-3 text-sm">
+                          <div className="font-semibold text-gray-900">{screening.status || 'screening'} • {formatDateTime(screening.screeningCompletedDate || screening.updatedAt || screening.createdAt)}</div>
+                          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                            <div><span className="font-medium text-gray-700">Why seeking iboga:</span> {renderValue(screening.whySeekingIboga)}</div>
+                            <div><span className="font-medium text-gray-700">What to change:</span> {renderValue(screening.whatToChange)}</div>
+                            <div><span className="font-medium text-gray-700">Mental health:</span> {renderValue(screening.mentalHealthHistory)}</div>
+                            <div><span className="font-medium text-gray-700">Addiction:</span> {renderValue(screening.addictionHistory)}</div>
+                            <div><span className="font-medium text-gray-700">Medications:</span> {renderValue(screening.currentMedications)}</div>
+                            <div><span className="font-medium text-gray-700">Substances:</span> {renderValue(screening.recreationalDrugs)}</div>
+                          </div>
+                          {screening.notes && <div className="mt-2 whitespace-pre-wrap text-gray-700">Notes: {screening.notes}</div>}
+                        </div>
+                      )) : <div className="text-sm text-gray-500">No screening record found.</div>}
+                    </div>
+                  </details>
+
+                  <details className="rounded-md border border-gray-200 bg-white p-3" open>
+                    <summary className="cursor-pointer text-sm font-semibold text-gray-900">
+                      Entry EKG • {contextSummary((reviewContext?.artifacts?.entryEkg?.length || 0) + (reviewContext?.medicalRecords?.filter((record) => record.ekgFileName || record.ekgStatus !== 'pending').length || 0))}
+                    </summary>
+                    <div className="mt-3 space-y-3">
+                      {renderArtifactList(reviewContext?.artifacts?.entryEkg || [], 'No EKG artifacts found.')}
+                      {reviewContext?.medicalRecords?.filter((record) => record.ekgFileName || record.ekgStatus !== 'pending').map((record) => (
+                        <div key={`ekg-${record._id}`} className="rounded-md border border-gray-200 bg-white p-3 text-sm">
+                          <div className="font-semibold text-gray-900">Legacy EKG record • {record.ekgStatus || 'pending'}</div>
+                          <div className="text-xs text-gray-500">Received {formatDateTime(record.ekgReceivedDate)} • {record.ekgFileName || 'No file name'}</div>
+                          {record.ekgAdvisorNotes && <div className="mt-2 text-gray-700">Notes: {record.ekgAdvisorNotes}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+
+                  <details className="rounded-md border border-gray-200 bg-white p-3" open>
+                    <summary className="cursor-pointer text-sm font-semibold text-gray-900">
+                      Entry Liver Panel • {contextSummary((reviewContext?.artifacts?.entryLiver?.length || 0) + (reviewContext?.medicalRecords?.filter((record) => record.liverPanelFileName || record.liverPanelStatus !== 'pending').length || 0))}
+                    </summary>
+                    <div className="mt-3 space-y-3">
+                      {renderArtifactList(reviewContext?.artifacts?.entryLiver || [], 'No liver panel artifacts found.')}
+                      {reviewContext?.medicalRecords?.filter((record) => record.liverPanelFileName || record.liverPanelStatus !== 'pending').map((record) => (
+                        <div key={`liver-${record._id}`} className="rounded-md border border-gray-200 bg-white p-3 text-sm">
+                          <div className="font-semibold text-gray-900">Legacy liver panel record • {record.liverPanelStatus || 'pending'}</div>
+                          <div className="text-xs text-gray-500">Received {formatDateTime(record.liverPanelReceivedDate)} • {record.liverPanelFileName || 'No file name'}</div>
+                          {record.liverPanelAdvisorNotes && <div className="mt-2 text-gray-700">Notes: {record.liverPanelAdvisorNotes}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+
+                  <details className="rounded-md border border-gray-200 bg-white p-3">
+                    <summary className="cursor-pointer text-sm font-semibold text-gray-900">
+                      Medications • {contextSummary((reviewContext?.medications?.length || 0) + (reviewContext?.artifacts?.medications?.length || 0))}
+                    </summary>
+                    <div className="mt-3 space-y-3">
+                      {renderArtifactList(reviewContext?.artifacts?.medications || [], 'No medication artifacts found.')}
+                      {reviewContext?.medications?.length ? reviewContext.medications.map((medication) => (
+                        <div key={medication._id} className="rounded-md border border-gray-200 bg-white p-3 text-sm">
+                          <div className="font-semibold text-gray-900">Medication record #{medication.display_id || '—'}</div>
+                          <div className="text-xs text-gray-500">Collected {formatDateTime(medication.date_collected)}</div>
+                          {medication.admin_notes && <div className="mt-2 text-gray-700">Admin notes: {medication.admin_notes}</div>}
+                          {medication.medstaff_review_notes && <div className="mt-2 text-gray-700">Medical review: {medication.medstaff_review_notes}</div>}
+                          {medication.pdf_file && <a href={getMedicationPdfUrl(medication.pdf_file)} target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs font-semibold text-blue-700">Open PDF</a>}
+                        </div>
+                      )) : <div className="text-sm text-gray-500">No structured medication records found.</div>}
+                    </div>
+                  </details>
+
+                  <details className="rounded-md border border-gray-200 bg-white p-3">
+                    <summary className="cursor-pointer text-sm font-semibold text-gray-900">
+                      Questionnaire • {contextSummary(reviewContext?.artifacts?.questionnaire?.length || 0)}
+                    </summary>
+                    <div className="mt-3">
+                      {renderArtifactList(reviewContext?.artifacts?.questionnaire || [], 'No questionnaire artifact found.')}
+                    </div>
+                  </details>
+                </div>
+              </div>
 
               <div className="rounded-md border border-gray-200 p-3">
                 <div className="flex items-center justify-between gap-3">
