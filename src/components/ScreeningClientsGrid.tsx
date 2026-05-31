@@ -85,7 +85,7 @@ const ScreeningClientsGrid: React.FC = () => {
     <div className="p-6 h-full">
       <div className="mb-6 flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-gray-900">Screening Clients</h1>
-        <AppleButton onClick={() => {/* TODO: Add new screening client modal */}} className="apple-button-primary">
+        <AppleButton onClick={() => navigate('/admin/clients/add?workflowStatus=screening')} className="apple-button-primary">
           <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
           Add New Screening
         </AppleButton>

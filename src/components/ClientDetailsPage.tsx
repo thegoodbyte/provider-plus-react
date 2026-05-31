@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { clientsApi, paymentsApi, clientMedicalApi, bookingsApi } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
 import AppleButton from './AppleButton';
@@ -36,13 +36,14 @@ const Tab: React.FC<TabProps> = ({ label, icon, isActive, onClick }) => (
 const ClientDetailsPage: React.FC = () => {
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [client, setClient] = useState<any>(null);
   const [payments, setPayments] = useState<any[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
   const [medicalInfo, setMedicalInfo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(() => new URLSearchParams(location.search).get('tab') || 'overview');
   const [error, setError] = useState<string | null>(null);
   const [showAddNoteModal, setShowAddNoteModal] = useState(false);
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
@@ -89,6 +90,21 @@ const ClientDetailsPage: React.FC = () => {
       fetchClientData();
     }
   }, [clientId]);
+
+  useEffect(() => {
+    const requestedTab = new URLSearchParams(location.search).get('tab');
+    if (requestedTab) {
+      setActiveTab(requestedTab);
+    }
+
+    const navigationState = location.state as { refreshClient?: boolean; client?: any } | null;
+    if (navigationState?.client) {
+      setClient(navigationState.client);
+    }
+    if (clientId && navigationState?.refreshClient) {
+      fetchClientData();
+    }
+  }, [clientId, location.search, location.state]);
 
   useEffect(() => {
     const amount = Number(newPayment.amount);
