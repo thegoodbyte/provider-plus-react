@@ -33,6 +33,128 @@ type MenuSection = {
   items: MenuItem[];
 };
 
+type RolePermissions = Record<string, string[]>;
+
+const NAVIGATION_PERMISSIONS_STORAGE_KEY = 'navigationPermissions:v1';
+
+const NAVIGATION_ROLE_OVERRIDES: Record<string, string> = {
+  admin: 'admin',
+};
+
+const FULL_MENU_SECTIONS: MenuSection[] = [
+  { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: 'Home', Icon: Fi.FiGrid }] },
+  {
+    id: 'clients',
+    label: 'Clients',
+    Icon: Fi.FiUsers,
+    items: [
+      { id: 'clients', label: 'Clients', Icon: Fi.FiUsers },
+      { id: 'potential-clients', label: 'Potential Clients', Icon: Fi.FiUserPlus },
+      { id: 'screening', label: 'Screenings', Icon: Fi.FiClipboard },
+    ],
+  },
+  {
+    id: 'retreats',
+    label: 'Retreat Operations',
+    Icon: Fi.FiCalendar,
+    items: [
+      { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
+      { id: 'ceremonies', label: 'Ceremonies', Icon: Fi.FiClock },
+      { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
+      { id: 'houses', label: 'Houses', Icon: Fi.FiHome },
+    ],
+  },
+  {
+    id: 'workflow',
+    label: 'Readiness',
+    Icon: Fi.FiLayers,
+    items: [
+      { id: 'retreat-flow', label: 'Retreat Readiness', Icon: Fi.FiCalendar },
+      { id: 'booking-flow', label: 'Booking Steps', Icon: Fi.FiLayers },
+    ],
+  },
+  {
+    id: 'medical',
+    label: 'Medical',
+    Icon: Fi.FiActivity,
+    items: [
+      { id: 'medical-dashboard', label: 'Medical Dashboard', Icon: Fi.FiMonitor },
+      { id: 'medical-artifacts', label: 'Medical Artifacts', Icon: Fi.FiFileText },
+      { id: 'medical-tracking', label: 'Medical Readiness', Icon: Fi.FiHeart },
+      { id: 'medical-review-requests', label: 'Review Requests', Icon: Fi.FiInbox },
+      { id: 'client-medications', label: 'Client Medications', Icon: Fi.FiPlusSquare },
+    ],
+  },
+  {
+    id: 'payments',
+    label: 'Payments',
+    Icon: Fi.FiCreditCard,
+    items: [
+      { id: 'payments', label: 'Payments', Icon: Fi.FiCreditCard },
+      { id: 'payment-requests', label: 'Payment Requests', Icon: Fi.FiFileText },
+    ],
+  },
+  {
+    id: 'operations',
+    label: 'Operations',
+    Icon: Fi.FiBriefcase,
+    items: [
+      { id: 'tasks', label: 'General Tasks', Icon: Fi.FiCheckSquare },
+      { id: 'reminders', label: 'Reminders', Icon: Fi.FiBell },
+      { id: 'communications', label: 'Communications', Icon: Fi.FiMail },
+    ],
+  },
+  {
+    id: 'misc',
+    label: 'Misc',
+    Icon: Fi.FiMoreHorizontal,
+    items: [
+      { id: 'file-uploads', label: 'File Uploads', Icon: Fi.FiFolder },
+      { id: 'analytics', label: 'Analytics', Icon: Fi.FiBarChart },
+    ],
+  },
+  {
+    id: 'admin',
+    label: 'Admin',
+    Icon: Fi.FiShield,
+    items: [
+      { id: 'permissions', label: 'Permissions', Icon: Fi.FiShield },
+      { id: 'users', label: 'Users', Icon: Fi.FiUser },
+    ],
+  },
+];
+
+const getStoredNavigationPermissions = (): RolePermissions | null => {
+  const raw = localStorage.getItem(NAVIGATION_PERMISSIONS_STORAGE_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+};
+
+const filterMenuSections = (sections: MenuSection[], allowedItems: string[]) => {
+  const allowed = new Set(allowedItems);
+  return sections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => allowed.has(item.id)),
+    }))
+    .filter((section) => section.items.length > 0);
+};
+
+const getNavigationRole = (userRole?: string, user?: AppleSidebarProps['user']) => {
+  const originalRole = user?.originalRole;
+  if (originalRole && NAVIGATION_ROLE_OVERRIDES[originalRole]) {
+    return NAVIGATION_ROLE_OVERRIDES[originalRole];
+  }
+  if (userRole && NAVIGATION_ROLE_OVERRIDES[userRole]) {
+    return NAVIGATION_ROLE_OVERRIDES[userRole];
+  }
+  return userRole;
+};
+
 const getTextColor = (isActive: boolean = false): string => {
   return isActive ? 'rgb(30, 64, 175)' : 'rgb(55, 65, 81)';
 };
@@ -51,6 +173,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
     return saved === 'true';
   });
   const [isHovered, setIsHovered] = useState(false);
+  const [permissionVersion, setPermissionVersion] = useState(0);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
     const saved = localStorage.getItem('sidebarOpenSections');
     if (!saved) return {};
@@ -70,91 +193,29 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
     localStorage.setItem('sidebarOpenSections', JSON.stringify(openSections));
   }, [openSections]);
 
+  useEffect(() => {
+    const refreshNavigationPermissions = () => setPermissionVersion((version) => version + 1);
+    window.addEventListener('storage', refreshNavigationPermissions);
+    window.addEventListener('navigationPermissionsChange', refreshNavigationPermissions);
+    return () => {
+      window.removeEventListener('storage', refreshNavigationPermissions);
+      window.removeEventListener('navigationPermissionsChange', refreshNavigationPermissions);
+    };
+  }, []);
+
+  const navigationRole = getNavigationRole(userRole, user);
+
   const getMenuSectionsForRole = useCallback((): MenuSection[] => {
-    switch (userRole) {
+    void permissionVersion;
+    const configuredPermissions = getStoredNavigationPermissions();
+    const configuredItems = navigationRole ? configuredPermissions?.[navigationRole] : undefined;
+    if (configuredItems) {
+      return filterMenuSections(FULL_MENU_SECTIONS, configuredItems);
+    }
+
+    switch (navigationRole) {
       case 'admin':
-        return [
-          { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: 'Home', Icon: Fi.FiGrid }] },
-          {
-            id: 'clients',
-            label: 'Clients',
-            Icon: Fi.FiUsers,
-            items: [
-              { id: 'clients', label: 'Clients', Icon: Fi.FiUsers },
-              { id: 'potential-clients', label: 'Potential Clients', Icon: Fi.FiUserPlus },
-              { id: 'screening', label: 'Screenings', Icon: Fi.FiClipboard },
-            ],
-          },
-          {
-            id: 'retreats',
-            label: 'Retreat Operations',
-            Icon: Fi.FiCalendar,
-            items: [
-              { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
-              { id: 'ceremonies', label: 'Ceremonies', Icon: Fi.FiClock },
-              { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
-              { id: 'houses', label: 'Houses', Icon: Fi.FiHome },
-            ],
-          },
-          {
-            id: 'workflow',
-            label: 'Readiness',
-            Icon: Fi.FiLayers,
-            items: [
-              { id: 'retreat-flow', label: 'Retreat Readiness', Icon: Fi.FiCalendar },
-              { id: 'booking-flow', label: 'Booking Steps', Icon: Fi.FiLayers },
-            ],
-          },
-          {
-            id: 'medical',
-            label: 'Medical',
-            Icon: Fi.FiActivity,
-            items: [
-              { id: 'medical-dashboard', label: 'Medical Dashboard', Icon: Fi.FiMonitor },
-              { id: 'medical-artifacts', label: 'Medical Artifacts', Icon: Fi.FiFileText },
-              { id: 'medical-tracking', label: 'Medical Readiness', Icon: Fi.FiHeart },
-              { id: 'medical-review-requests', label: 'Review Requests', Icon: Fi.FiInbox },
-              { id: 'client-medications', label: 'Client Medications', Icon: Fi.FiPlusSquare },
-            ],
-          },
-          {
-            id: 'payments',
-            label: 'Payments',
-            Icon: Fi.FiCreditCard,
-            items: [
-              { id: 'payments', label: 'Payments', Icon: Fi.FiCreditCard },
-              { id: 'payment-requests', label: 'Payment Requests', Icon: Fi.FiFileText },
-            ],
-          },
-          {
-            id: 'operations',
-            label: 'Operations',
-            Icon: Fi.FiBriefcase,
-            items: [
-              { id: 'tasks', label: 'General Tasks', Icon: Fi.FiCheckSquare },
-              { id: 'reminders', label: 'Reminders', Icon: Fi.FiBell },
-              { id: 'communications', label: 'Communications', Icon: Fi.FiMail },
-            ],
-          },
-          {
-            id: 'misc',
-            label: 'Misc',
-            Icon: Fi.FiMoreHorizontal,
-            items: [
-              { id: 'file-uploads', label: 'File Uploads', Icon: Fi.FiFolder },
-              { id: 'analytics', label: 'Analytics', Icon: Fi.FiBarChart },
-            ],
-          },
-          {
-            id: 'admin',
-            label: 'Admin',
-            Icon: Fi.FiShield,
-            items: [
-              { id: 'permissions', label: 'Permissions', Icon: Fi.FiShield },
-              { id: 'users', label: 'Users', Icon: Fi.FiUser },
-            ],
-          },
-        ];
+        return FULL_MENU_SECTIONS;
       case 'medical_staff':
         return [
           { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: 'Home', Icon: Fi.FiGrid }] },
@@ -247,7 +308,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
           { id: 'clients', label: 'Clients', Icon: Fi.FiUsers, items: [{ id: 'clients', label: 'Clients', Icon: Fi.FiUsers }] },
         ];
     }
-  }, [userRole]);
+  }, [navigationRole, permissionVersion]);
 
   const menuSections = useMemo(() => getMenuSectionsForRole(), [getMenuSectionsForRole]);
 
@@ -255,11 +316,11 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
   const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
   const displayEmail = user?.email || user?.username || '';
   const displayRole =
-    userRole === 'admin' ? 'Administrator' :
-    userRole === 'medical_staff' ? 'Medical Staff' :
-    userRole === 'medical_advisor' ? 'Medical Advisor' :
-    userRole === 'facilitator' ? 'Facilitator' :
-    userRole === 'user' ? 'User' : 'User';
+    navigationRole === 'admin' ? 'Administrator' :
+    navigationRole === 'medical_staff' ? 'Medical Staff' :
+    navigationRole === 'medical_advisor' ? 'Medical Advisor' :
+    navigationRole === 'facilitator' ? 'Facilitator' :
+    navigationRole === 'user' ? 'User' : 'User';
 
   useEffect(() => {
     const activeSection = menuSections.find((section) => section.items.some((item) => item.id === activeItem));

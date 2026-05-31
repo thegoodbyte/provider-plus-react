@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { clientsApi } from '../services/api';
-import { Client } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import AppleButton from './AppleButton';
 import { FiPlus, FiEdit2, FiTrash2, FiUser, FiPhone, FiMail, FiEye } from 'react-icons/fi';
@@ -115,25 +114,40 @@ const ScreeningClientsGrid: React.FC = () => {
 
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-[1480px] divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Client Info
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Name
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Contact
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  ID
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Country
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Phone
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Email
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Priority
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   First Contact
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Completed
+                </th>
+                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Motivation
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -141,42 +155,36 @@ const ScreeningClientsGrid: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredClients.map((client) => (
                 <tr key={client._id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <Icon icon={FiUser} className="w-5 h-5 mr-3 text-gray-400" />
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">
-                          <button
-                            onClick={() => navigate(`/clients/${client._id}`)}
-                            className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
-                          >
-                            {client.firstName} {client.lastName}
-                          </button>
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {client.display_id ? `ID: ${client.display_id}` : 'No ID'}
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {client.country}
-                        </div>
-                      </div>
-                    </div>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    <button
+                      onClick={() => navigate(`/clients/${client._id}`)}
+                      className="inline-flex max-w-[220px] items-center gap-2 truncate text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                    >
+                      <Icon icon={FiUser} className="h-4 w-4 shrink-0 text-gray-400" />
+                      <span className="truncate">{client.firstName} {client.lastName}</span>
+                    </button>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      <div className="flex items-center">
-                        <Icon icon={FiPhone} className="w-4 h-4 mr-1 text-gray-400" />
-                        {client.phone}
-                      </div>
-                      {client.email && (
-                        <div className="flex items-center mt-1">
-                          <Icon icon={FiMail} className="w-4 h-4 mr-1 text-gray-400" />
-                          {client.email}
-                        </div>
-                      )}
-                    </div>
+                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-600">
+                    {client.display_id ? `#${client.display_id}` : 'No ID'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-600">
+                    {client.country || 'N/A'}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                    <span className="inline-flex max-w-[170px] items-center gap-1 truncate">
+                      <Icon icon={FiPhone} className="h-4 w-4 shrink-0 text-gray-400" />
+                      <span className="truncate">{client.phone || 'N/A'}</span>
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                    {client.email ? (
+                      <span className="inline-flex max-w-[230px] items-center gap-1 truncate">
+                        <Icon icon={FiMail} className="h-4 w-4 shrink-0 text-gray-400" />
+                        <span className="truncate">{client.email}</span>
+                      </span>
+                    ) : 'N/A'}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       client.status === 'approved' ? 'bg-green-100 text-green-800' :
                       client.status === 'rejected' ? 'bg-red-100 text-red-800' :
@@ -187,29 +195,25 @@ const ScreeningClientsGrid: React.FC = () => {
                     }`}>
                       {client.status || 'initial'}
                     </span>
-                    {client.priority && (
-                      <div className="mt-1">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                          client.priority === 'urgent' ? 'bg-red-100 text-red-800' :
-                          client.priority === 'high' ? 'bg-orange-100 text-orange-800' :
-                          client.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {client.priority}
-                        </span>
-                      </div>
-                    )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                      client.priority === 'urgent' ? 'bg-red-100 text-red-800' :
+                      client.priority === 'high' ? 'bg-orange-100 text-orange-800' :
+                      client.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {client.priority || 'normal'}
+                    </span>
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
                     {formatDate(client.firstContactDate)}
-                    {client.screeningCompletedDate && (
-                      <div className="text-xs text-gray-500 mt-1">
-                        Completed: {formatDate(client.screeningCompletedDate)}
-                      </div>
-                    )}
                   </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900 max-w-xs truncate">
+                  <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
+                    {formatDate(client.screeningCompletedDate)}
+                  </td>
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    <div className="max-w-[260px] truncate text-sm text-gray-900">
                       {client.whySeekingIboga ?
                         (client.whySeekingIboga.length > 50 ?
                           client.whySeekingIboga.substring(0, 50) + '...' :
@@ -218,12 +222,12 @@ const ScreeningClientsGrid: React.FC = () => {
                       }
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex space-x-2">
+                  <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium">
+                    <div className="flex justify-end gap-2">
                       <div title="View Details">
                         <AppleButton
                           onClick={() => {/* TODO: View details */}}
-                          className="apple-button-secondary p-2"
+                          className="apple-button-secondary p-1.5"
                         >
                           <Icon icon={FiEye} className="w-4 h-4" />
                         </AppleButton>
@@ -231,7 +235,7 @@ const ScreeningClientsGrid: React.FC = () => {
                       <div title="Edit">
                         <AppleButton
                           onClick={() => {/* TODO: Edit client */}}
-                          className="apple-button-secondary p-2"
+                          className="apple-button-secondary p-1.5"
                         >
                           <Icon icon={FiEdit2} className="w-4 h-4" />
                         </AppleButton>
@@ -240,7 +244,7 @@ const ScreeningClientsGrid: React.FC = () => {
                         <div title="Promote to Client">
                           <AppleButton
                             onClick={() => handlePromote(client._id!)}
-                            className="apple-button-primary p-2"
+                            className="apple-button-primary p-1.5"
                           >
                             ↗
                           </AppleButton>
@@ -249,7 +253,7 @@ const ScreeningClientsGrid: React.FC = () => {
                       <div title="Delete">
                         <AppleButton
                           onClick={() => handleDelete(client._id!)}
-                          className="apple-button-danger p-2"
+                          className="apple-button-danger p-1.5"
                         >
                           <Icon icon={FiTrash2} className="w-4 h-4" />
                         </AppleButton>

@@ -601,6 +601,14 @@ export const medicalArtifactsApi = {
 };
 
 export const fileUploadsApi = {
+  upload: (formData: FormData) => {
+    cacheService.clearPattern('file-uploads:');
+    return api.post<FileUpload>('/file-uploads/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
   getAll: (filters: { documentKind?: FileUpload['documentKind']; foreignKey?: string; isActive?: boolean; uploadedBy?: string } = {}) => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
@@ -836,7 +844,10 @@ export const waitingListApi = {
 // Screening API
 export const screeningApi = {
   // Create screening
-  create: (data: any) => api.post('/screening', data),
+  create: (data: any) => {
+    cacheService.clearPattern('clients:');
+    return api.put(`/clients/${data.clientId}/screening`, data);
+  },
 
   // Get all screenings
   getAll: () => api.get('/screening'),
@@ -848,16 +859,28 @@ export const screeningApi = {
   getByClient: (clientId: string) => api.get(`/screening/client/${clientId}`),
 
   // Update screening
-  update: (id: string, data: any) => api.put(`/screening/${id}`, data),
+  update: (id: string, data: any) => {
+    cacheService.clearPattern('clients:');
+    return api.put(`/clients/${id}/screening`, data);
+  },
 
   // Delete screening
   delete: (id: string) => api.delete(`/screening/${id}`),
 
   // Upload handwriting image
-  uploadHandwriting: (id: string, formData: FormData) =>
-    api.post(`/screening/${id}/upload-handwriting`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
+  uploadHandwriting: async (id: string, formData: FormData) => {
+    formData.set('documentKind', 'other');
+    formData.set('foreignKey', id);
+    formData.set('description', 'Screening handwriting upload');
+
+    const response = await fileUploadsApi.upload(formData);
+    const storedFileName = response.data.storedFileName;
+    return {
+      ...response,
+      data: {
+        ...response.data,
+        imageUrl: storedFileName ? `${API_BASE_URL}/uploads/medical-tracking/${storedFileName}` : '',
       },
-    }),
+    };
+  },
 };

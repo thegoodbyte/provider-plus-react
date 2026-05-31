@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
-import { medicalReviewRequestsApi } from '../services/api';
+import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
 import { Client, MedicalArtifact, MedicalReviewRequest } from '../types';
 
@@ -80,7 +80,7 @@ type ReviewContext = {
 
 const getArtifactFileUrl = (file: ArtifactFile) => file.url || file.filePath || file.s3Key || '';
 const getArtifactFileKey = (file: ArtifactFile) => file.s3Key || file.filePath || file.url || file.fileName || '';
-const isImageFile = (file: ArtifactFile) => Boolean(file.mimeType?.startsWith('image/'));
+const isImageFile = (file: ArtifactFile) => Boolean(file.mimeType?.startsWith('image/')) || /\.(png|jpe?g|gif|webp|bmp|heic|heif)$/i.test(file.fileName || '');
 const isPdfFile = (file: ArtifactFile) => file.mimeType === 'application/pdf' || /\.pdf($|\?)/i.test(file.fileName || '');
 const getPopulatedArtifacts = (request: MedicalReviewRequest) =>
   (request.artifactIds || []).filter((artifact): artifact is MedicalArtifact => typeof artifact !== 'string');
@@ -100,26 +100,81 @@ const getMedicationPdfUrl = (filePath?: string) => {
   return /^https?:\/\//i.test(filePath) ? filePath : `${API_BASE_URL}${filePath}`;
 };
 
-const ArtifactInlinePreview: React.FC<{ file: ArtifactFile; index: number }> = ({ file, index }) => {
-  const url = getArtifactFileUrl(file);
-  if (!url) return null;
+const ArtifactInlinePreview: React.FC<{ artifactId?: string; file: ArtifactFile; index: number }> = ({ artifactId, file, index }) => {
+  const storedPath = file.s3Key || file.filePath || '';
+  const fallbackUrl = getArtifactFileUrl(file);
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [contentType, setContentType] = useState(file.mimeType || '');
+  const [isLoading, setIsLoading] = useState(false);
+  const [previewError, setPreviewError] = useState('');
+  const fileName = file.fileName || `File ${index + 1}`;
+
+  useEffect(() => {
+    let active = true;
+    let objectUrl = '';
+
+    const loadPreview = async () => {
+      if (!artifactId || !storedPath) {
+        setPreviewUrl(fallbackUrl);
+        return;
+      }
+
+      setIsLoading(true);
+      setPreviewError('');
+      try {
+        const response = await medicalArtifactsApi.getFileBlob(artifactId, storedPath);
+        const blob = response.data as Blob;
+        objectUrl = URL.createObjectURL(blob);
+        if (active) {
+          setContentType(blob.type || response.headers?.['content-type'] || file.mimeType || '');
+          setPreviewUrl(objectUrl);
+        }
+      } catch (error: any) {
+        console.error('Error loading review request file preview:', error);
+        if (active) {
+          setPreviewError(error?.response?.data?.message || error?.message || 'Unable to load preview.');
+          setPreviewUrl(fallbackUrl);
+        }
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    };
+
+    loadPreview();
+
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [artifactId, storedPath, fallbackUrl, file.mimeType]);
+
+  const previewFile = { ...file, mimeType: contentType || file.mimeType, fileName };
+  const url = previewUrl || fallbackUrl;
 
   return (
     <div className="mt-2 rounded-md border border-gray-200 bg-gray-50">
-      {isImageFile(file) && (
-        <img src={url} alt={file.fileName || `Medical file ${index + 1}`} className="max-h-64 w-full rounded-t-md bg-white object-contain" />
+      {isLoading && (
+        <div className="flex h-64 items-center justify-center rounded-t-md bg-white text-sm text-gray-500">Loading preview...</div>
       )}
-      {isPdfFile(file) && (
-        <iframe src={url} title={file.fileName || `Medical PDF ${index + 1}`} className="h-64 w-full rounded-t-md bg-white" />
+      {!isLoading && previewError && !url && (
+        <div className="p-3 text-xs text-red-600">{previewError}</div>
       )}
-      {!isImageFile(file) && !isPdfFile(file) && (
+      {!isLoading && url && isImageFile(previewFile) && (
+        <img src={url} alt={fileName} className="max-h-[520px] w-full rounded-t-md bg-white object-contain" />
+      )}
+      {!isLoading && url && isPdfFile(previewFile) && (
+        <iframe src={url} title={fileName} className="h-[520px] w-full rounded-t-md bg-white" />
+      )}
+      {!isLoading && (!url || (!isImageFile(previewFile) && !isPdfFile(previewFile))) && (
         <div className="p-3 text-xs text-gray-600">Preview unavailable for this file type.</div>
       )}
       <div className="flex items-center justify-between gap-3 border-t border-gray-200 p-2 text-xs">
-        <span className="truncate text-gray-700">{file.fileName || `File ${index + 1}`}</span>
-        <a href={url} target="_blank" rel="noreferrer" className="shrink-0 font-semibold text-blue-700 hover:text-blue-900">
-          Open
-        </a>
+        <span className="truncate text-gray-700">{fileName}</span>
+        {url && (
+          <a href={url} target="_blank" rel="noreferrer" className="shrink-0 font-semibold text-blue-700 hover:text-blue-900">
+            Open
+          </a>
+        )}
       </div>
     </div>
   );
@@ -297,13 +352,11 @@ const MedicalReviewRequestsPage: React.FC = () => {
             {artifact.textContent && <div className="mt-2 whitespace-pre-wrap text-gray-700">{artifact.textContent}</div>}
             {artifact.notes && <div className="mt-2 text-gray-600">Notes: {artifact.notes}</div>}
             {!!artifact.files?.length && (
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="mt-2 space-y-3">
                 {artifact.files.map((file, index) => {
                   const url = getArtifactFileUrl(file);
-                  return url ? (
-                    <a key={`${file.fileName || url}-${index}`} href={url} target="_blank" rel="noreferrer" className="rounded-md border border-gray-300 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50">
-                      {file.fileName || `File ${index + 1}`}
-                    </a>
+                  return (artifact._id && (file.s3Key || file.filePath)) || url ? (
+                    <ArtifactInlinePreview key={`${file.fileName || url}-${index}`} artifactId={artifact._id} file={file} index={index} />
                   ) : (
                     <span key={`${file.fileName || index}`} className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-500">{file.fileName || `File ${index + 1}`}</span>
                   );
@@ -574,7 +627,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                                 const fileReview = getFileReview(artifact, file);
                                 return (
                                   <div key={`${file.fileName || file.s3Key || index}`} className="rounded-md border border-gray-200 bg-white p-3">
-                                    <ArtifactInlinePreview file={file} index={index} />
+                                    <ArtifactInlinePreview artifactId={artifact._id} file={file} index={index} />
                                     <div className="mt-3 grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)]">
                                       <select
                                         value={fileReview.decision || ''}
