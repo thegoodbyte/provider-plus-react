@@ -201,19 +201,9 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
         ];
       case 'medical_advisor':
         return [
-          { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: 'Home', Icon: Fi.FiGrid }] },
           { id: 'medical', label: 'Medical', Icon: Fi.FiActivity, items: [
             { id: 'medical-dashboard', label: 'Medical Dashboard', Icon: Fi.FiMonitor },
-            { id: 'medical-artifacts', label: 'Medical Artifacts', Icon: Fi.FiFileText },
-            { id: 'medical-tracking', label: 'Medical Readiness', Icon: Fi.FiHeart },
             { id: 'review-requests', label: 'Review Requests', Icon: Fi.FiInbox },
-          ] },
-          { id: 'readiness', label: 'Readiness', Icon: Fi.FiLayers, items: [
-            { id: 'retreat-flow', label: 'Retreat Readiness', Icon: Fi.FiCalendar },
-            { id: 'booking-flow', label: 'Booking Steps', Icon: Fi.FiLayers },
-          ] },
-          { id: 'operations', label: 'Operations', Icon: Fi.FiBriefcase, items: [
-            { id: 'communications', label: 'Communications', Icon: Fi.FiMail },
           ] },
         ];
       case 'facilitator':
