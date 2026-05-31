@@ -11,7 +11,7 @@ const AddClient: React.FC = () => {
   const location = useLocation();
   const { user } = useAuth();
   const [formData, setFormData] = useState<Partial<Client>>({
-    workflowStatus: 'potential',
+    workflowStatus: new URLSearchParams(location.search).get('workflowStatus') as any || 'potential',
     country: 'CZ'
   });
   const [saving, setSaving] = useState(false);

@@ -203,8 +203,12 @@ const ClientScreening: React.FC = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await screeningApi.create(formData);
-      navigate(-1);
+      const response = await screeningApi.create(formData);
+      const rolePrefix = user?.role === 'admin' ? '/admin' : '';
+      navigate(`${rolePrefix}/clients/${clientId}?tab=screening`, {
+        replace: true,
+        state: { refreshClient: true, client: response.data },
+      });
     } catch (error) {
       console.error('Error saving screening:', error);
       setSaving(false);
