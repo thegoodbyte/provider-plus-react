@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { bookingsApi, clientsApi } from '../services/api';
+import { bookingsApi } from '../services/api';
 import BookingPaymentManagement from './BookingPaymentManagement';
 import BookingMedicalUpload from './BookingMedicalUpload';
+import BookingDocumentsUpload from './BookingDocumentsUpload';
+import ClientBookingWorkflowTab from './ClientBookingWorkflowTab';
 import ClientEditModal from './ClientEditModal';
 import { generateBookingPDF } from './BookingConfirmationPDF';
 import { formatBookingHashForDisplay } from '../utils/hashGenerator';
@@ -258,6 +260,18 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
           retreatId={typeof retreat === 'object' ? retreat._id : retreat}
           onUploadComplete={fetchBookingDetails}
         />
+
+        <BookingDocumentsUpload
+          bookingId={bookingId}
+          bookingNumber={booking.bookingNumber}
+          clientId={typeof client === 'object' ? client._id : client}
+          retreatId={typeof retreat === 'object' ? retreat._id : retreat}
+          onUploadComplete={fetchBookingDetails}
+        />
+
+        <div className="detail-section">
+          <ClientBookingWorkflowTab bookings={[booking]} hideBookingSelector />
+        </div>
 
         {booking.specialRequests && (
           <div className="detail-section pdf-section">

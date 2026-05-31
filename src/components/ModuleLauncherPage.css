@@ -1,6 +1,6 @@
 .module-launcher-page {
   min-height: 100%;
-  padding: 24px;
+  padding: 24px 24px 76px;
   background:
     radial-gradient(circle at 50% 18%, rgba(96, 165, 250, 0.12), transparent 26%),
     radial-gradient(circle at 10% 70%, rgba(168, 85, 247, 0.08), transparent 24%),
@@ -69,40 +69,41 @@
 .module-launcher-hive-shell {
   display: flex;
   justify-content: center;
-  padding: 18px 0 28px;
+  padding: 10px 0 34px;
+  overflow-x: auto;
+  overflow-y: visible;
 }
 
 .module-launcher-hive {
-  --launcher-tile-width: 138px;
+  --launcher-tile-width: 118px;
   --launcher-tile-height: calc(var(--launcher-tile-width) / 1.1547);
-  --launcher-row-shift: calc(var(--launcher-tile-width) / 2);
-  width: min(1180px, 100%);
+  --launcher-gap: 10px;
+  --launcher-row-shift: calc((var(--launcher-tile-width) + var(--launcher-gap)) / 2);
+  width: max-content;
+  min-width: min(100%, 360px);
   display: flex;
   flex-direction: column;
   align-items: center;
+  padding: 8px calc(var(--launcher-row-shift) + var(--launcher-gap)) 18px;
 }
 
 .module-launcher-row {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 0;
+  gap: var(--launcher-gap);
+  transform: translateX(calc(var(--launcher-row-offset, 0) * var(--launcher-row-shift)));
 }
 
 .module-launcher-row + .module-launcher-row {
-  margin-top: calc(var(--launcher-tile-height) * -0.34);
-}
-
-.module-launcher-row-shifted {
-  transform: translateX(var(--launcher-row-shift));
+  margin-top: calc((var(--launcher-tile-height) * -0.24) + var(--launcher-gap));
 }
 
 .launcher-hex {
   width: var(--launcher-tile-width);
   aspect-ratio: 1.1547 / 1;
-  margin: 0 -2px;
   border: none;
-  padding: 14px 12px 16px;
+  padding: 12px 10px 14px;
   color: #fff;
   clip-path: polygon(25% 6.7%, 75% 6.7%, 100% 50%, 75% 93.3%, 25% 93.3%, 0% 50%);
   box-shadow: 0 12px 22px rgba(15, 23, 42, 0.12);
@@ -177,19 +178,16 @@
 
 @media (max-width: 1024px) {
   .module-launcher-hive {
-    --launcher-tile-width: 124px;
+    --launcher-tile-width: 110px;
     --launcher-tile-height: calc(var(--launcher-tile-width) / 1.1547);
-    --launcher-row-shift: calc(var(--launcher-tile-width) / 2);
-  }
-
-  .launcher-hex {
-    margin: 0 -1px;
+    --launcher-gap: 9px;
+    --launcher-row-shift: calc((var(--launcher-tile-width) + var(--launcher-gap)) / 2);
   }
 }
 
 @media (max-width: 768px) {
   .module-launcher-page {
-    padding: 18px 16px 24px;
+    padding: 18px 16px 72px;
   }
 
   .module-launcher-header {
@@ -198,25 +196,19 @@
   }
 
   .module-launcher-hive {
-    --launcher-tile-width: 112px;
+    --launcher-tile-width: 100px;
     --launcher-tile-height: calc(var(--launcher-tile-width) / 1.1547);
-    --launcher-row-shift: calc(var(--launcher-tile-width) / 2);
-  }
-
-  .module-launcher-row + .module-launcher-row {
-    margin-top: calc(var(--launcher-tile-height) * -0.37);
+    --launcher-gap: 8px;
+    --launcher-row-shift: calc((var(--launcher-tile-width) + var(--launcher-gap)) / 2);
   }
 }
 
 @media (max-width: 560px) {
   .module-launcher-hive {
-    --launcher-tile-width: 96px;
+    --launcher-tile-width: 88px;
     --launcher-tile-height: calc(var(--launcher-tile-width) / 1.1547);
-    --launcher-row-shift: calc(var(--launcher-tile-width) / 2);
-  }
-
-  .launcher-hex {
-    margin: 0 -1px;
+    --launcher-gap: 7px;
+    --launcher-row-shift: calc((var(--launcher-tile-width) + var(--launcher-gap)) / 2);
   }
 
   .launcher-hex {

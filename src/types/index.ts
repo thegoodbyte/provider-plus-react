@@ -12,6 +12,7 @@ export interface Retreat {
   status?: 'active' | 'completed' | 'cancelled' | 'upcoming';
   type?: 'regular' | 'booster';
   backgroundColor?: string; // Added for custom background color
+  textColor?: string;
   createdAt?: string;
   updatedAt?: string;
   // Legacy format support
@@ -577,6 +578,20 @@ export interface CeremonyParticipant {
   purgeTime?: string; // HH:MM first purge
   purgeDetails?: string;
 
+  eventLog?: Array<{
+    id?: string;
+    time: string;
+    eventType: 'medicine' | 'purge' | 'launch' | 'abnormality' | 'note' | 'arrival' | 'departure';
+    spoonCount?: number;
+    spoonAmount?: 'full' | 'half' | 'quarter' | string;
+    medicineForm?: 'spoon' | 'capsules' | 'tea' | 'other' | string;
+    doseAmount?: string;
+    severity?: 'low' | 'medium' | 'high' | 'urgent' | string;
+    note?: string;
+    recordedAt?: Date | string;
+    recordedBy?: string;
+  }>;
+
   // Individual notes
   individualNotes?: string;
   experienceNotes?: string;
@@ -654,6 +669,7 @@ export interface MedicalArtifact {
     | 'medication_list'
     | 'questionnaire'
     | 'food_intake'
+    | 'contract'
     | 'question'
     | 'other';
   title: string;
@@ -664,6 +680,13 @@ export interface MedicalArtifact {
     fileName?: string;
     filePath?: string;
     s3Key?: string;
+    url?: string;
+    thumbnailPath?: string;
+    thumbnailS3Key?: string;
+    thumbnailFileName?: string;
+    thumbnailMimeType?: string;
+    thumbnailSize?: number;
+    thumbnailUrl?: string;
     mimeType?: string;
     size?: number;
     uploadedAt?: Date | string;
@@ -677,6 +700,37 @@ export interface MedicalArtifact {
   legacyMedicalTrackingId?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface FileUpload {
+  _id?: string;
+  fileHash: string;
+  originalFileName: string;
+  storedFileName: string;
+  filePath: string;
+  fileSize: number;
+  mimeType: string;
+  documentKind: 'medical_tracking' | 'medical_artifact' | 'client_medical' | 'retreat_document' | 'other';
+  foreignKey: string;
+  uploadedBy?: string;
+  uploadedAt?: Date | string;
+  isActive?: boolean;
+  description?: string;
+  tags?: string[];
+  accessLevel?: 'public' | 'private' | 'restricted';
+  expiresAt?: Date | string;
+  checksumMD5?: string;
+  section?: string;
+  storage?: 'local' | 's3';
+  bucket?: string;
+  thumbnailPath?: string;
+  thumbnailFileName?: string;
+  thumbnailMimeType?: string;
+  thumbnailSize?: number;
+  thumbnailConfig?: {
+    width?: number;
+    height?: number;
+  };
 }
 
 export interface MedicalReviewRequest {
@@ -715,6 +769,16 @@ export interface MedicalReviewRequest {
   reviewDecision?: 'OK' | 'caution' | 'NOT OK';
   reviewNotes?: string;
   overallNotes?: string;
+  medicalStaffNotes?: string;
+  fileReviews?: Array<{
+    artifactId?: string;
+    fileKey?: string;
+    fileName?: string;
+    decision?: 'OK' | 'caution' | 'NOT OK';
+    notes?: string;
+    reviewedAt?: Date | string;
+    reviewedBy?: string;
+  }>;
   ekgReviewDecision?: 'OK' | 'caution' | 'NOT OK';
   ekgReviewNotes?: string;
   liverReviewDecision?: 'OK' | 'caution' | 'NOT OK';

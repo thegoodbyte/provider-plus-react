@@ -8,6 +8,7 @@ import CeremoniesGrid from './CeremoniesGrid';
 import CeremonyAnalytics from './CeremonyAnalytics';
 import SearchableClientSelector from './SearchableClientSelector';
 import RetreatTrackingGrid from './RetreatTrackingGrid';
+import BookingStepsMatrix from './BookingStepsMatrix';
 import { TasksWidget } from './Tasks/TasksWidget';
 import { Modal, Form, Input, Select, Button, message, Collapse } from 'antd';
 import { Client } from '../types';
@@ -31,7 +32,6 @@ interface RetreatDetailViewProps {
 interface QuickBookingFormData {
   firstName: string;
   lastName: string;
-  phoneCountryCode: string;
   phone: string;
   email: string;
   country: string;
@@ -65,7 +65,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [expensesSummary, setExpensesSummary] = useState<ExpenseSummary | null>(null);
   const [paymentsSummary, setPaymentsSummary] = useState<PaymentSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'clients' | 'tracking' | 'expenses' | 'payments' | 'ceremonies' | 'analytics' | 'tasks'>('clients');
+  const [activeTab, setActiveTab] = useState<'clients' | 'bookingSteps' | 'tracking' | 'expenses' | 'payments' | 'ceremonies' | 'analytics' | 'tasks'>('clients');
   const [viewingClientId, setViewingClientId] = useState<string | null>(null);
   const [editingBookingId, setEditingBookingId] = useState<string | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -256,6 +256,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       if (retreatFormData.houseId?.trim()) cleanData.houseId = retreatFormData.houseId.trim();
       if (retreatFormData.status) cleanData.status = retreatFormData.status;
       if (retreatFormData.type) cleanData.type = retreatFormData.type;
+      if (retreatFormData.backgroundColor !== undefined) cleanData.backgroundColor = retreatFormData.backgroundColor;
+      if (retreatFormData.textColor !== undefined) cleanData.textColor = retreatFormData.textColor;
 
       await retreatsApi.update(retreatId, cleanData);
       setShowRetreatEditModal(false);
@@ -283,7 +285,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       const clientData = {
         firstName: values.firstName,
         lastName: values.lastName,
-        phoneCountryCode: values.phoneCountryCode,
         phone: values.phone,
         email: values.email,
         country: values.country,
@@ -353,22 +354,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       setExistingClientBookingLoading(false);
     }
   };
-
-  const countryCodeOptions = [
-    { label: 'United States (+1)', value: '+1' },
-    { label: 'Canada (+1)', value: '+1' },
-    { label: 'United Kingdom (+44)', value: '+44' },
-    { label: 'Germany (+49)', value: '+49' },
-    { label: 'France (+33)', value: '+33' },
-    { label: 'Spain (+34)', value: '+34' },
-    { label: 'Italy (+39)', value: '+39' },
-    { label: 'Poland (+48)', value: '+48' },
-    { label: 'Czech Republic (+420)', value: '+420' },
-    { label: 'Netherlands (+31)', value: '+31' },
-    { label: 'Belgium (+32)', value: '+32' },
-    { label: 'Switzerland (+41)', value: '+41' },
-    { label: 'Austria (+43)', value: '+43' }
-  ];
 
   const countryOptions = [
     'USA', 'Canada', 'UK', 'Germany', 'France', 'Spain', 'Italy',
@@ -448,20 +433,21 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           });
           setShowRetreatEditModal(true);
         }} className="edit-retreat-btn" style={{
-          background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-          color: 'white',
-          border: 'none',
-          padding: '8px 16px',
+          background: 'white',
+          color: '#374151',
+          border: '1px solid #d1d5db',
+          padding: '8px 12px',
           borderRadius: '6px',
           cursor: 'pointer',
-          fontWeight: '500'
+          fontWeight: '500',
+          width: 'auto'
         }}>✏️ Edit Retreat</button>
           <div className="retreat-info">
             <h1>
               <span
               style={{
                 backgroundColor: retreat.backgroundColor || 'transparent',
-                color: retreat.backgroundColor ? '#fff' : 'inherit',
+                color: retreat.textColor || (retreat.backgroundColor ? '#111827' : 'inherit'),
                 padding: retreat.backgroundColor ? '4px 12px' : '0',
                 borderRadius: retreat.backgroundColor ? '4px' : '0',
                 display: 'inline-block'
@@ -548,6 +534,12 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           onClick={() => setActiveTab('clients')}
         >
           📋 Clients ({clients.length})
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'bookingSteps' ? 'active' : ''}`}
+          onClick={() => setActiveTab('bookingSteps')}
+        >
+          ✅ Booking Steps
         </button>
         <button
           className={`tab-btn ${activeTab === 'tracking' ? 'active' : ''}`}
@@ -738,6 +730,12 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         </div>
       )}
 
+      {activeTab === 'bookingSteps' && (
+        <div className="booking-steps-section">
+          <BookingStepsMatrix retreatId={retreatId} />
+        </div>
+      )}
+
       {activeTab === 'tracking' && (
         <div className="tracking-section">
           <RetreatTrackingGrid retreatId={retreatId} />
@@ -920,7 +918,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           onFinish={handleQuickBooking}
           autoComplete="off"
           initialValues={{
-            phoneCountryCode: '+1',
             country: 'USA',
             currency: 'EUR',
             totalAmount: 3000
@@ -946,28 +943,13 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             </Form.Item>
           </div>
 
-          <div style={{ display: 'flex', gap: '16px' }}>
-            <Form.Item
-              name="phoneCountryCode"
-              label="Country Code"
-              style={{ flex: 0.3 }}
-            >
-              <Select placeholder="Code">
-                {countryCodeOptions.map(option => (
-                  <Option key={option.value} value={option.value}>{option.label}</Option>
-                ))}
-              </Select>
-            </Form.Item>
-
-            <Form.Item
-              name="phone"
-              label="Phone Number"
-              rules={[{ required: true, message: 'Please enter phone number' }]}
-              style={{ flex: 0.7 }}
-            >
-              <Input placeholder="234 567 8900" />
-            </Form.Item>
-          </div>
+          <Form.Item
+            name="phone"
+            label="Phone Number"
+            rules={[{ required: true, message: 'Please enter phone number' }]}
+          >
+            <Input placeholder="+1 234 567 8900" />
+          </Form.Item>
 
           <Form.Item
             name="email"

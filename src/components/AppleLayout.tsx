@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, useLocation, useNavigate, useParams } from 'react-router-dom';
 import AppleSidebar from './AppleSidebar';
 import UnifiedClientManager from './UnifiedClientManager';
 import HousesGrid from './HousesGrid';
@@ -13,9 +13,15 @@ import RetreatDetailView from '../pages/RetreatDetailView';
 // import ClientsGrid from './ClientsGrid'; // Now using UnifiedClientManager
 import BookingsGrid from './BookingsGrid';
 import BookingEditorPage from './BookingEditorPage';
+import BookingDetailView from './BookingDetailView';
+import CeremoniesPage from './CeremoniesPage';
 import MedicalGrid from './MedicalGrid';
 import MedicalTrackingNew from './MedicalTrackingNew';
 import MedicalArtifactsPage from './MedicalArtifactsPage';
+import MedicalArtifactCreatePage from './MedicalArtifactCreatePage';
+import MedicalArtifactDetailPage from './MedicalArtifactDetailPage';
+import MedicalArtifactFileViewPage from './MedicalArtifactFileViewPage';
+import FileUploadsPage from './FileUploadsPage';
 import MedicalTrackingCreatePage from './MedicalTrackingCreatePage';
 import MedicalTrackingDetail from './MedicalTrackingDetail';
 import MedicalTrackingEditPage from './MedicalTrackingEditPage';
@@ -53,6 +59,12 @@ import UserManagement from './UserManagement';
 import { Tasks } from '../pages/Tasks/Tasks';
 import { useAuth } from '../context/AuthContext';
 
+const BookingDetailRoute: React.FC = () => {
+  const { bookingId } = useParams();
+  const navigate = useNavigate();
+  return <BookingDetailView bookingId={bookingId || ''} onBack={() => navigate(-1)} />;
+};
+
 const AppleLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
@@ -60,7 +72,7 @@ const AppleLayout: React.FC = () => {
     return saved === 'true';
   });
   const [showSettings, setShowSettings] = useState(false);
-  const { logout, user } = useAuth();
+  const { logout, user, startMedicalStaffPreview, stopImpersonation } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -91,6 +103,7 @@ const AppleLayout: React.FC = () => {
     if (route === 'booking-flow') return 'booking-flow';
     if (route === 'flow-tasks') return 'flow-tasks';
     if (route === 'retreats') return 'retreats';
+    if (route === 'ceremonies') return 'ceremonies';
     if (route === 'houses') return 'houses';
     if (route === 'bookings') return 'bookings';
     if (route === 'reminders') return 'reminders';
@@ -113,7 +126,7 @@ const AppleLayout: React.FC = () => {
       case 'medical_staff':
         return 'launcher';
       case 'medical_advisor':
-        return 'launcher';
+        return 'medical-dashboard';
       case 'facilitator':
         return 'launcher';
       default:
@@ -139,6 +152,8 @@ const AppleLayout: React.FC = () => {
   };
 
   const activeItem = getActiveItemFromPath();
+  const isImpersonating = Boolean(user?.impersonatedBy || user?.originalRole);
+  const userEmail = user?.email || user?.username || '';
 
   useEffect(() => {
     if (location.pathname === '/') {
@@ -192,6 +207,7 @@ const AppleLayout: React.FC = () => {
         onClose={() => setSidebarOpen(false)}
         onLogout={logout}
         userRole={user?.role}
+        user={user}
       />
 
       {/* Main Content */}
@@ -218,6 +234,28 @@ const AppleLayout: React.FC = () => {
 
                 {/* Actions */}
               <div className="flex items-center gap-2">
+                {user?.role === 'admin' && !isImpersonating && (
+                  <button
+                    onClick={async () => {
+                      await startMedicalStaffPreview();
+                      navigate('/medical/launcher');
+                    }}
+                    className="hidden md:inline-flex px-3 py-1.5 text-sm font-medium text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 rounded-apple transition-all"
+                  >
+                    Medical View
+                  </button>
+                )}
+                {isImpersonating && (
+                  <button
+                    onClick={() => {
+                      stopImpersonation();
+                      navigate('/admin/launcher');
+                    }}
+                    className="hidden md:inline-flex px-3 py-1.5 text-sm font-medium text-amber-800 hover:text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-apple transition-all"
+                  >
+                    Exit Medical View
+                  </button>
+                )}
                 {/* Settings button */}
                 <button
                   onClick={() => setShowSettings(true)}
@@ -232,17 +270,30 @@ const AppleLayout: React.FC = () => {
                 </button>
 
                 {/* User menu */}
-                <button
-                  onClick={logout}
-                  className="hidden sm:inline-flex px-3 py-1.5 text-sm font-medium text-apple-gray-600 hover:text-apple-gray-900
-                           bg-apple-gray-100 hover:bg-apple-gray-200 rounded-apple transition-all"
-                >
-                  Sign Out
-                </button>
+                <div className="hidden sm:flex items-center gap-2">
+                  {userEmail && (
+                    <span className="max-w-48 truncate text-xs font-medium text-apple-gray-600" title={userEmail}>
+                      {userEmail}
+                    </span>
+                  )}
+                  <button
+                    onClick={logout}
+                    className="inline-flex px-3 py-1.5 text-sm font-medium text-apple-gray-600 hover:text-apple-gray-900
+                             bg-apple-gray-100 hover:bg-apple-gray-200 rounded-apple transition-all"
+                  >
+                    Sign Out
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </header>
+
+        {isImpersonating && (
+          <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+            Previewing the medical staff view as an admin. This session is audited and intended for read-only verification.
+          </div>
+        )}
 
         {/* Page Content */}
         <main className="px-4 sm:px-6 lg:px-8 py-6 overflow-y-auto" style={{ height: 'calc(100vh - 64px - 32px)' }}>
@@ -268,12 +319,19 @@ const AppleLayout: React.FC = () => {
                       <Route path="potential-clients" element={<UnifiedClientManager />} />
                       <Route path="retreats" element={<RetreatsGrid />} />
                       <Route path="retreats/:retreatId" element={<RetreatDetailView />} />
+                      <Route path="ceremonies" element={<CeremoniesPage />} />
                       <Route path="houses" element={<HousesGrid />} />
                       <Route path="bookings" element={<BookingsGrid />} />
                       <Route path="bookings/new" element={<BookingEditorPage mode="create" />} />
+                      <Route path="bookings/:bookingId" element={<BookingDetailRoute />} />
                       <Route path="bookings/:bookingId/edit" element={<BookingEditorPage mode="edit" />} />
                       <Route path="medical-tracking" element={<MedicalTrackingNew />} />
                       <Route path="medical-artifacts" element={<MedicalArtifactsPage />} />
+                      <Route path="medical-artifacts/new" element={<MedicalArtifactCreatePage />} />
+                      <Route path="medical-artifacts/:id" element={<MedicalArtifactDetailPage />} />
+                      <Route path="medical-artifacts/:id/edit" element={<MedicalArtifactDetailPage />} />
+                      <Route path="medical-artifacts/:id/files/:fileIndex" element={<MedicalArtifactFileViewPage />} />
+                      <Route path="file-uploads" element={<FileUploadsPage />} />
                       <Route path="medical-tracking/new" element={<MedicalTrackingCreatePage />} />
                       <Route path="medical-tracking/:id" element={<MedicalTrackingDetail />} />
                       <Route path="medical-tracking/:id/edit" element={<MedicalTrackingEditPage />} />
@@ -288,7 +346,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="retreat-flow" element={<RetreatFlowPage />} />
                       <Route path="retreat-flow/:retreatId" element={<RetreatFlowPage />} />
                       <Route path="retreat-flow-library" element={<RetreatFlowLibraryPage />} />
-                      <Route path="booking-flow" element={<WorkflowDashboard />} />
+                      <Route path="booking-flow" element={<BookingFlowPage />} />
                       <Route path="booking-flow/:bookingId" element={<BookingFlowPage />} />
                       <Route path="flow-tasks" element={<FlowTaskInboxPage />} />
                       <Route path="medical-dashboard" element={<MedicalAdvisorDashboard />} />
@@ -321,45 +379,73 @@ const AppleLayout: React.FC = () => {
                 {/* Medical staff routes */}
                 <Route path="/medical/*" element={
                   <ProtectedRoute requiredRole={['medical_staff', 'medical_advisor', 'admin']}>
-                    <Routes>
-                      <Route index element={<ModuleLauncherPage />} />
-                      <Route path="launcher" element={<ModuleLauncherPage />} />
-                      <Route path="dashboard" element={<MedicalAdvisorDashboard />} />
-                      <Route path="medical-dashboard" element={<MedicalAdvisorDashboard />} />
-                      <Route path="tracking" element={<MedicalTrackingNew />} />
-                      <Route path="medical-tracking" element={<MedicalTrackingNew />} />
-                      <Route path="medical-artifacts" element={<MedicalArtifactsPage />} />
-                      <Route path="medical-tracking/new" element={<MedicalTrackingCreatePage />} />
-                      <Route path="tracking/:id" element={<MedicalTrackingDetail />} />
-                      <Route path="medical-tracking/:id" element={<MedicalTrackingDetail />} />
-                      <Route path="medical-tracking/:id/edit" element={<MedicalTrackingEditPage />} />
-                      <Route path="medical-tracking/:id/view/:type" element={<MedicalTrackingFileViewPage />} />
-                      <Route path="review-requests" element={<MedicalReviewRequestsPage />} />
-                      <Route path="review-requests/:id" element={<MedicalReviewRequestsPage />} />
-                      <Route path="workflow" element={<WorkflowDashboard />} />
-                      <Route path="workflow/bookings/:bookingId" element={<WorkflowDashboard />} />
-                      <Route path="retreat-flow" element={<RetreatFlowPage />} />
-                      <Route path="retreat-flow/:retreatId" element={<RetreatFlowPage />} />
-                      <Route path="retreat-flow-library" element={<RetreatFlowLibraryPage />} />
-                      <Route path="booking-flow" element={<WorkflowDashboard />} />
-                      <Route path="booking-flow/:bookingId" element={<BookingFlowPage />} />
-                      <Route path="flow-tasks" element={<FlowTaskInboxPage />} />
-                      <Route path="review/:id" element={<MedicalAdvisorReview />} />
-                      <Route path="medical-review/:id" element={<MedicalAdvisorReview />} />
-                      <Route path="medical-review/:bookingId" element={<MedicalReviewDetail />} />
-                      <Route path="medical-retreats" element={<MedicalRetreats />} />
-                      <Route path="clients" element={<UnifiedClientManager />} />
-                      <Route path="clients/add" element={<AddClient />} />
-                      <Route path="potential-clients" element={<UnifiedClientManager />} />
-                      <Route path="client/:clientId" element={<MedicalProfile />} />
-                      <Route path="bookings" element={<BookingsGrid />} />
-                      <Route path="bookings/new" element={<BookingEditorPage mode="create" />} />
-                      <Route path="bookings/:bookingId/edit" element={<BookingEditorPage mode="edit" />} />
-                      <Route path="retreats" element={<RetreatsGrid />} />
-                      <Route path="retreats/:retreatId" element={<RetreatDetailView />} />
-                      <Route path="reminders" element={<RemindersPage />} />
-                      <Route path="communications" element={<CommunicationsPage />} />
-                    </Routes>
+                    {isMedicalAdvisor ? (
+                      <Routes>
+                        <Route index element={<MedicalReviewRequestsPage />} />
+                        <Route path="launcher" element={<MedicalReviewRequestsPage />} />
+                        <Route path="dashboard" element={<MedicalReviewRequestsPage />} />
+                        <Route path="medical-dashboard" element={<MedicalReviewRequestsPage />} />
+                        <Route path="review-requests" element={<MedicalReviewRequestsPage />} />
+                        <Route path="review-requests/new" element={<Unauthorized />} />
+                        <Route path="review-requests/:id" element={<MedicalReviewRequestsPage />} />
+                        <Route path="medical-review-requests" element={<MedicalReviewRequestsPage />} />
+                        <Route path="medical-review-requests/new" element={<Unauthorized />} />
+                        <Route path="medical-review-requests/:id" element={<MedicalReviewRequestsPage />} />
+                        <Route path="*" element={<Unauthorized />} />
+                      </Routes>
+                    ) : (
+                      <Routes>
+                        <Route index element={<ModuleLauncherPage />} />
+                        <Route path="launcher" element={<ModuleLauncherPage />} />
+                        <Route path="dashboard" element={<MedicalAdvisorDashboard />} />
+                        <Route path="medical-dashboard" element={<MedicalAdvisorDashboard />} />
+                        <Route path="tracking" element={<MedicalTrackingNew />} />
+                        <Route path="medical-tracking" element={<MedicalTrackingNew />} />
+                        <Route path="medical-artifacts" element={<MedicalArtifactsPage />} />
+                        <Route path="medical-artifacts/new" element={<MedicalArtifactCreatePage />} />
+                        <Route path="medical-artifacts/:id" element={<MedicalArtifactDetailPage />} />
+                        <Route path="medical-artifacts/:id/edit" element={<MedicalArtifactDetailPage />} />
+                        <Route path="medical-artifacts/:id/files/:fileIndex" element={<MedicalArtifactFileViewPage />} />
+                        <Route path="file-uploads" element={<FileUploadsPage />} />
+                        <Route path="medical-tracking/new" element={<MedicalTrackingCreatePage />} />
+                        <Route path="tracking/:id" element={<MedicalTrackingDetail />} />
+                        <Route path="medical-tracking/:id" element={<MedicalTrackingDetail />} />
+                        <Route path="medical-tracking/:id/edit" element={<MedicalTrackingEditPage />} />
+                        <Route path="medical-tracking/:id/view/:type" element={<MedicalTrackingFileViewPage />} />
+                        <Route path="review-requests" element={<MedicalReviewRequestsPage />} />
+                        <Route path="review-requests/new" element={<MedicalReviewRequestEditorPage />} />
+                        <Route path="review-requests/:id" element={<MedicalReviewRequestsPage />} />
+                        <Route path="medical-review-requests" element={<MedicalReviewRequestsPage />} />
+                        <Route path="medical-review-requests/new" element={<MedicalReviewRequestEditorPage />} />
+                        <Route path="medical-review-requests/:id" element={<MedicalReviewRequestsPage />} />
+                        <Route path="medical-review-requests/:id/edit" element={<MedicalReviewRequestEditorPage />} />
+                        <Route path="workflow" element={<WorkflowDashboard />} />
+                        <Route path="workflow/bookings/:bookingId" element={<WorkflowDashboard />} />
+                        <Route path="retreat-flow" element={<RetreatFlowPage />} />
+                        <Route path="retreat-flow/:retreatId" element={<RetreatFlowPage />} />
+                        <Route path="retreat-flow-library" element={<RetreatFlowLibraryPage />} />
+                        <Route path="booking-flow" element={<BookingFlowPage />} />
+                        <Route path="booking-flow/:bookingId" element={<BookingFlowPage />} />
+                        <Route path="flow-tasks" element={<FlowTaskInboxPage />} />
+                        <Route path="review/:id" element={<MedicalAdvisorReview />} />
+                        <Route path="medical-review/:id" element={<MedicalAdvisorReview />} />
+                        <Route path="medical-review/:bookingId" element={<MedicalReviewDetail />} />
+                        <Route path="medical-retreats" element={<MedicalRetreats />} />
+                        <Route path="clients" element={<UnifiedClientManager />} />
+                        <Route path="clients/add" element={<AddClient />} />
+                        <Route path="potential-clients" element={<UnifiedClientManager />} />
+                        <Route path="client/:clientId" element={<MedicalProfile />} />
+                        <Route path="bookings" element={<BookingsGrid />} />
+                        <Route path="bookings/new" element={<BookingEditorPage mode="create" />} />
+                        <Route path="bookings/:bookingId" element={<BookingDetailRoute />} />
+                        <Route path="bookings/:bookingId/edit" element={<BookingEditorPage mode="edit" />} />
+                        <Route path="retreats" element={<RetreatsGrid />} />
+                        <Route path="retreats/:retreatId" element={<RetreatDetailView />} />
+                        <Route path="ceremonies" element={<CeremoniesPage />} />
+                        <Route path="reminders" element={<RemindersPage />} />
+                        <Route path="communications" element={<CommunicationsPage />} />
+                      </Routes>
+                    )}
                   </ProtectedRoute>
                 } />
 
@@ -372,6 +458,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="bookings" element={<BookingsGrid />} />
                       <Route path="retreats" element={<RetreatsGrid />} />
                       <Route path="retreats/:retreatId" element={<RetreatDetailView />} />
+                      <Route path="ceremonies" element={<CeremoniesPage />} />
                       <Route path="houses" element={<HousesGrid />} />
                       <Route path="clients" element={<UnifiedClientManager />} />
                       <Route path="clients/add" element={<AddClient />} />
@@ -397,26 +484,31 @@ const AppleLayout: React.FC = () => {
                 } />
 
                 {/* Legacy routes for backwards compatibility - redirect to appropriate prefixed routes */}
-                <Route path="/medical-dashboard" element={<ProtectedRoute><MedicalAdvisorDashboard /></ProtectedRoute>} />
-                <Route path="/launcher" element={<ProtectedRoute><ModuleLauncherPage /></ProtectedRoute>} />
-                <Route path="/medical-review/:bookingId" element={<ProtectedRoute><MedicalReviewDetail /></ProtectedRoute>} />
-                <Route path="/medical-retreats" element={<ProtectedRoute><MedicalRetreats /></ProtectedRoute>} />
+                <Route path="/medical-dashboard" element={<ProtectedRoute requiredRole={['medical_staff', 'medical_advisor', 'admin']}><MedicalReviewRequestsPage /></ProtectedRoute>} />
+                <Route path="/launcher" element={<ProtectedRoute>{isMedicalAdvisor ? <MedicalReviewRequestsPage /> : <ModuleLauncherPage />}</ProtectedRoute>} />
+                <Route path="/medical-review/:bookingId" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><MedicalReviewDetail /></ProtectedRoute>} />
+                <Route path="/medical-retreats" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><MedicalRetreats /></ProtectedRoute>} />
                 <Route path="/medical-tracking" element={<ProtectedRoute><MedicalTrackingNew /></ProtectedRoute>} />
                 <Route path="/medical-tracking/new" element={<ProtectedRoute><MedicalTrackingCreatePage /></ProtectedRoute>} />
                 <Route path="/medical-tracking/:id" element={<ProtectedRoute><MedicalTrackingDetail /></ProtectedRoute>} />
                 <Route path="/medical-tracking/:id/edit" element={<ProtectedRoute><MedicalTrackingEditPage /></ProtectedRoute>} />
                 <Route path="/medical-tracking/:id/view/:type" element={<ProtectedRoute><MedicalTrackingFileViewPage /></ProtectedRoute>} />
-                <Route path="/medical-review-requests" element={<ProtectedRoute><MedicalReviewRequestsGrid /></ProtectedRoute>} />
-                <Route path="/medical-review-requests/new" element={<ProtectedRoute><MedicalReviewRequestEditorPage /></ProtectedRoute>} />
-                <Route path="/medical-review-requests/:id" element={<ProtectedRoute><MedicalReviewRequestsPage /></ProtectedRoute>} />
-                <Route path="/medical-review-requests/:id/edit" element={<ProtectedRoute><MedicalReviewRequestEditorPage /></ProtectedRoute>} />
-                <Route path="/medical-review-requests/*" element={<ProtectedRoute><MedicalReviewRequestsGrid /></ProtectedRoute>} />
-                <Route path="/medical/client/:clientId" element={<ProtectedRoute><MedicalClientView /></ProtectedRoute>} />
+                <Route path="/medical-artifacts/:id" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><MedicalArtifactDetailPage /></ProtectedRoute>} />
+                <Route path="/medical-artifacts/:id/edit" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><MedicalArtifactDetailPage /></ProtectedRoute>} />
+                <Route path="/medical-artifacts/:id/files/:fileIndex" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><MedicalArtifactFileViewPage /></ProtectedRoute>} />
+                <Route path="/file-uploads" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><FileUploadsPage /></ProtectedRoute>} />
+                <Route path="/medical-review-requests" element={<ProtectedRoute requiredRole={['medical_staff', 'medical_advisor', 'admin']}><MedicalReviewRequestsGrid /></ProtectedRoute>} />
+                <Route path="/medical-review-requests/new" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><MedicalReviewRequestEditorPage /></ProtectedRoute>} />
+                <Route path="/medical-review-requests/:id" element={<ProtectedRoute requiredRole={['medical_staff', 'medical_advisor', 'admin']}><MedicalReviewRequestsPage /></ProtectedRoute>} />
+                <Route path="/medical-review-requests/:id/edit" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><MedicalReviewRequestEditorPage /></ProtectedRoute>} />
+                <Route path="/medical-review-requests/*" element={<ProtectedRoute requiredRole={['medical_staff', 'medical_advisor', 'admin']}><MedicalReviewRequestsGrid /></ProtectedRoute>} />
+                <Route path="/medical/client/:clientId" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><MedicalClientView /></ProtectedRoute>} />
                 <Route path="/admin/medical-review-requests" element={<ProtectedRoute><MedicalReviewRequestsGrid /></ProtectedRoute>} />
                 <Route path="/admin/medical-review-requests/new" element={<ProtectedRoute><MedicalReviewRequestEditorPage /></ProtectedRoute>} />
                 <Route path="/admin/medical-review-requests/:id" element={<ProtectedRoute><MedicalReviewRequestsPage /></ProtectedRoute>} />
                 <Route path="/admin/medical-review-requests/:id/edit" element={<ProtectedRoute><MedicalReviewRequestEditorPage /></ProtectedRoute>} />
                 <Route path="/medical/review-requests" element={<ProtectedRoute><MedicalReviewRequestsPage /></ProtectedRoute>} />
+                <Route path="/medical/review-requests/new" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><MedicalReviewRequestEditorPage /></ProtectedRoute>} />
                 <Route path="/medical/review-requests/:id" element={<ProtectedRoute><MedicalReviewRequestsPage /></ProtectedRoute>} />
                 <Route path="/communications" element={<ProtectedRoute><CommunicationsPage /></ProtectedRoute>} />
                 <Route path="/admin/communications" element={<ProtectedRoute><CommunicationsPage /></ProtectedRoute>} />
@@ -425,14 +517,14 @@ const AppleLayout: React.FC = () => {
                 <Route path="/medical/launcher" element={<ProtectedRoute><ModuleLauncherPage /></ProtectedRoute>} />
                 <Route path="/staff/launcher" element={<ProtectedRoute><ModuleLauncherPage /></ProtectedRoute>} />
                 <Route path="/user/launcher" element={<ProtectedRoute><ModuleLauncherPage /></ProtectedRoute>} />
-                <Route path="/workflow" element={<ProtectedRoute><WorkflowDashboard /></ProtectedRoute>} />
-                <Route path="/workflow/bookings/:bookingId" element={<ProtectedRoute><WorkflowDashboard /></ProtectedRoute>} />
-                <Route path="/retreat-flow" element={<ProtectedRoute><RetreatFlowPage /></ProtectedRoute>} />
-                <Route path="/retreat-flow/:retreatId" element={<ProtectedRoute><RetreatFlowPage /></ProtectedRoute>} />
-                <Route path="/retreat-flow-library" element={<ProtectedRoute><RetreatFlowLibraryPage /></ProtectedRoute>} />
-                <Route path="/booking-flow" element={<ProtectedRoute><WorkflowDashboard /></ProtectedRoute>} />
-                <Route path="/booking-flow/:bookingId" element={<ProtectedRoute><BookingFlowPage /></ProtectedRoute>} />
-                <Route path="/flow-tasks" element={<ProtectedRoute><FlowTaskInboxPage /></ProtectedRoute>} />
+                <Route path="/workflow" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><WorkflowDashboard /></ProtectedRoute>} />
+                <Route path="/workflow/bookings/:bookingId" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><WorkflowDashboard /></ProtectedRoute>} />
+                <Route path="/retreat-flow" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><RetreatFlowPage /></ProtectedRoute>} />
+                <Route path="/retreat-flow/:retreatId" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><RetreatFlowPage /></ProtectedRoute>} />
+                <Route path="/retreat-flow-library" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><RetreatFlowLibraryPage /></ProtectedRoute>} />
+                <Route path="/booking-flow" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><BookingFlowPage /></ProtectedRoute>} />
+                <Route path="/booking-flow/:bookingId" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><BookingFlowPage /></ProtectedRoute>} />
+                <Route path="/flow-tasks" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><FlowTaskInboxPage /></ProtectedRoute>} />
                 <Route path="/clients" element={<ProtectedRoute><UnifiedClientManager /></ProtectedRoute>} />
                 <Route path="/clients/add" element={<ProtectedRoute><AddClient /></ProtectedRoute>} />
                 <Route path="/clients/:clientId" element={<ProtectedRoute><ClientDetailsPage /></ProtectedRoute>} />
@@ -442,6 +534,7 @@ const AppleLayout: React.FC = () => {
                 <Route path="/houses" element={<ProtectedRoute><HousesGrid /></ProtectedRoute>} />
                 <Route path="/bookings" element={<ProtectedRoute><BookingsGrid /></ProtectedRoute>} />
                 <Route path="/bookings/new" element={<ProtectedRoute><BookingEditorPage mode="create" /></ProtectedRoute>} />
+                <Route path="/bookings/:bookingId" element={<ProtectedRoute><BookingDetailRoute /></ProtectedRoute>} />
                 <Route path="/bookings/:bookingId/edit" element={<ProtectedRoute><BookingEditorPage mode="edit" /></ProtectedRoute>} />
                 <Route path="/reminders" element={<ProtectedRoute><RemindersPage /></ProtectedRoute>} />
                 <Route path="/payments" element={<ProtectedRoute><PaymentsPage /></ProtectedRoute>} />

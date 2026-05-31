@@ -22,6 +22,9 @@
 }
 
 .refresh-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   padding: 8px 16px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
@@ -83,9 +86,16 @@
   background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
 }
 
-.tracking-table th.client-header.empty {
-  color: #adb5bd;
-  font-style: italic;
+.client-header-name {
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.client-header-meta {
+  margin-top: 3px;
+  font-size: 12px;
+  font-family: monospace;
+  color: #64748b;
 }
 
 .tracking-table tbody tr {
@@ -117,11 +127,6 @@
 .tracking-table td.data-cell {
   text-align: center;
   vertical-align: middle;
-}
-
-.tracking-table td.data-cell.empty {
-  color: #adb5bd;
-  font-style: italic;
 }
 
 .tracking-table td.data-cell.email {
@@ -180,11 +185,18 @@
 
 /* Status Styling */
 .status-complete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   color: #28a745;
   font-weight: 600;
 }
 
 .status-pending {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: #dc3545;
 }
 
@@ -253,8 +265,21 @@
 }
 
 .loading-spinner {
-  font-size: 48px;
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #667eea;
+  border-radius: 999px;
   animation: spin 1s linear infinite;
+}
+
+.tracking-empty-state {
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  padding: 32px;
+  text-align: center;
+  color: #64748b;
+  background: #f8fafc;
 }
 
 @keyframes spin {

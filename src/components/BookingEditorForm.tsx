@@ -14,8 +14,16 @@ type BookingFormData = {
   totalAmount: number;
   amountPaid: number;
   currency: 'EUR' | 'USD' | 'CZK' | 'PLN';
-  status: 'pending' | 'conditional' | 'confirmed' | 'approved' | 'declined' | 'moved' | 'checked-in' | 'checked-out' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'checked-in' | 'checked-out' | 'cancelled';
   bookingNumber: string;
+};
+
+const bookingStatusValues = ['pending', 'confirmed', 'checked-in', 'checked-out', 'cancelled'] as const;
+type BookingStatus = typeof bookingStatusValues[number];
+
+const normalizeBookingStatus = (status?: string | null): BookingStatus => {
+  const normalized = status === 'checked_in' ? 'checked-in' : status === 'checked_out' ? 'checked-out' : status;
+  return bookingStatusValues.includes(normalized as BookingStatus) ? normalized as BookingStatus : 'pending';
 };
 
 const formatDate = (value?: string | Date | null) => {
@@ -103,7 +111,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
           totalAmount: Number(currentBooking.totalAmount || 0),
           amountPaid: Number(currentBooking.amountPaid || 0),
           currency: (currentBooking.currency || 'EUR') as BookingFormData['currency'],
-          status: (currentBooking.status || 'pending') as BookingFormData['status'],
+          status: normalizeBookingStatus(currentBooking.status),
           bookingNumber: currentBooking.bookingNumber?.toString() || '',
         });
       } else {
@@ -313,11 +321,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
               className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="pending">Pending</option>
-              <option value="conditional">Conditional</option>
               <option value="confirmed">Confirmed</option>
-              <option value="approved">Approved</option>
-              <option value="declined">Declined</option>
-              <option value="moved">Moved</option>
               <option value="checked-in">Checked In</option>
               <option value="checked-out">Checked Out</option>
               <option value="cancelled">Cancelled</option>

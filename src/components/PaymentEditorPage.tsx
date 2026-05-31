@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { clientsApi, paymentsApi, retreatsApi } from '../services/api';
-import { Client, Payment, Retreat } from '../types';
+import { bookingsApi, clientsApi, paymentsApi, retreatsApi } from '../services/api';
+import { Client, Payment, Retreat, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
@@ -24,6 +24,10 @@ const PaymentEditorPage: React.FC = () => {
   const [loading, setLoading] = useState(Boolean(id));
   const [clients, setClients] = useState<Client[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
+  const [bookings, setBookings] = useState<RetreatClient[]>([]);
+  const [usdPreview, setUsdPreview] = useState<number | null>(null);
+  const [usdPreviewLoading, setUsdPreviewLoading] = useState(false);
+  const [usdPreviewError, setUsdPreviewError] = useState('');
   const [formData, setFormData] = useState({
     paymentRequestId: '',
     clientId: '',
@@ -47,14 +51,16 @@ const PaymentEditorPage: React.FC = () => {
     const loadData = async () => {
       try {
         setLoading(true);
-        const [clientsResponse, retreatsResponse, paymentResponse] = await Promise.all([
+        const [clientsResponse, retreatsResponse, bookingsResponse, paymentResponse] = await Promise.all([
           clientsApi.getAll(),
           retreatsApi.getAll(),
+          bookingsApi.getAll(),
           id ? paymentsApi.getOne(id) : Promise.resolve(null),
         ]);
 
         setClients(clientsResponse.data || []);
         setRetreats(retreatsResponse.data || []);
+        setBookings(bookingsResponse.data || []);
 
         if (paymentResponse?.data) {
           const payment = paymentResponse.data as Payment;
@@ -91,6 +97,53 @@ const PaymentEditorPage: React.FC = () => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
+  const bookingOptions = useMemo(() => {
+    return bookings.filter((booking) => {
+      const clientId = resolveId(booking.clientId);
+      const retreatId = resolveId(booking.retreatId);
+      if (formData.clientId && clientId && clientId !== formData.clientId) return false;
+      if (formData.retreatId && retreatId && retreatId !== formData.retreatId) return false;
+      return true;
+    });
+  }, [bookings, formData.clientId, formData.retreatId]);
+
+  const selectedBooking = useMemo(
+    () => bookings.find((booking) => booking._id === formData.bookingId),
+    [bookings, formData.bookingId],
+  );
+
+  useEffect(() => {
+    const amount = Number(formData.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setUsdPreview(null);
+      setUsdPreviewError('');
+      return;
+    }
+
+    let active = true;
+    const timeout = window.setTimeout(async () => {
+      try {
+        setUsdPreviewLoading(true);
+        setUsdPreviewError('');
+        const response = await paymentsApi.convertToUsd(amount, formData.currency);
+        if (active) setUsdPreview(response.data.usd_amount);
+      } catch (error) {
+        console.error('Error converting payment amount to USD:', error);
+        if (active) {
+          setUsdPreview(null);
+          setUsdPreviewError('USD conversion unavailable');
+        }
+      } finally {
+        if (active) setUsdPreviewLoading(false);
+      }
+    }, 350);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+    };
+  }, [formData.amount, formData.currency]);
+
   const handlePaymentRequestSelect = (paymentRequestId: string, paymentRequest?: any) => {
     const amount = paymentRequest?.fullPriceQuote ?? paymentRequest?.amountPaid ?? '';
     const currency = paymentRequest?.currency || formData.currency;
@@ -105,6 +158,18 @@ const PaymentEditorPage: React.FC = () => {
       amount: amount !== '' ? String(amount) : prev.amount,
       currency,
       description: prev.description || `Payment for invoice ${paymentRequest?.invoiceNumber || paymentRequest?.display_id || ''}`.trim(),
+    }));
+  };
+
+  const handleBookingSelect = (bookingId: string) => {
+    const booking = bookings.find((item) => item._id === bookingId);
+    setFormData((prev) => ({
+      ...prev,
+      bookingId,
+      clientId: resolveId(booking?.clientId) || prev.clientId,
+      retreatId: resolveId(booking?.retreatId) || prev.retreatId,
+      currency: (booking?.currency as typeof prev.currency) || prev.currency,
+      amount: prev.amount || (booking?.totalAmount ? String(booking.totalAmount) : prev.amount),
     }));
   };
 
@@ -209,6 +274,31 @@ const PaymentEditorPage: React.FC = () => {
               />
             </div>
 
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Booking Number</label>
+              <select
+                value={formData.bookingId}
+                onChange={(e) => handleBookingSelect(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">No booking linked</option>
+                {bookingOptions.map((booking) => {
+                  const client = typeof booking.clientId === 'object' ? booking.clientId as Client : clients.find((item) => item._id === booking.clientId);
+                  const retreat = typeof booking.retreatId === 'object' ? booking.retreatId as Retreat : retreats.find((item) => item._id === booking.retreatId);
+                  return (
+                    <option key={booking._id} value={booking._id}>
+                      #{booking.bookingNumber || booking._id?.slice(-6)} · {client ? `${client.firstName} ${client.lastName}` : 'Client'} · {retreat?.name || 'Retreat'}
+                    </option>
+                  );
+                })}
+              </select>
+              {selectedBooking && (
+                <p className="mt-1 text-xs text-gray-500">
+                  Linked to booking #{selectedBooking.bookingNumber || selectedBooking._id?.slice(-6)}
+                </p>
+              )}
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Amount *</label>
               <input
@@ -236,6 +326,18 @@ const PaymentEditorPage: React.FC = () => {
                 <option value="CZK">CZK</option>
                 <option value="PLN">PLN</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">USD Amount</label>
+              <input
+                type="text"
+                value={usdPreviewLoading ? 'Calculating...' : usdPreview !== null ? `$${usdPreview.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}
+                readOnly
+                className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-700"
+                placeholder="Calculated from Revolut rate"
+              />
+              {usdPreviewError && <p className="mt-1 text-xs text-red-600">{usdPreviewError}</p>}
             </div>
 
             <div>

@@ -9,6 +9,15 @@ interface AppleSidebarProps {
   onClose: () => void;
   onLogout: () => void;
   userRole?: string;
+  user?: {
+    email?: string;
+    username?: string;
+    firstName?: string;
+    lastName?: string;
+    role?: string;
+    originalRole?: string;
+    impersonatedBy?: string;
+  } | null;
 }
 
 type MenuItem = {
@@ -24,69 +33,130 @@ type MenuSection = {
   items: MenuItem[];
 };
 
-// Professional gradient using 3 colors: Blue, Purple, and Gray with subtle variations
-const getGradientColorForIndex = (index: number, total: number, isActive: boolean = false): string => {
-  // Create a professional gradient using blue → purple → slate shades
-  // Each color family has light, medium, and deeper variations for smooth transitions
-  const colorPalette = [
-    // Light Blue
-    { bg: isActive ? 'rgb(59, 130, 246)' : 'rgb(219, 234, 254)', text: isActive ? 'white' : 'rgb(30, 64, 175)' },
-    // Medium Blue
-    { bg: isActive ? 'rgb(37, 99, 235)' : 'rgb(191, 219, 254)', text: isActive ? 'white' : 'rgb(29, 78, 216)' },
-    // Deep Blue
-    { bg: isActive ? 'rgb(29, 78, 216)' : 'rgb(147, 197, 253)', text: isActive ? 'white' : 'rgb(30, 58, 138)' },
-    // Blue-Indigo transition
-    { bg: isActive ? 'rgb(67, 56, 202)' : 'rgb(165, 180, 252)', text: isActive ? 'white' : 'rgb(55, 48, 163)' },
-    // Light Indigo
-    { bg: isActive ? 'rgb(99, 102, 241)' : 'rgb(196, 181, 253)', text: isActive ? 'white' : 'rgb(79, 70, 229)' },
-    // Medium Purple
-    { bg: isActive ? 'rgb(124, 58, 237)' : 'rgb(221, 214, 254)', text: isActive ? 'white' : 'rgb(107, 33, 168)' },
-    // Deep Purple
-    { bg: isActive ? 'rgb(109, 40, 217)' : 'rgb(196, 181, 253)', text: isActive ? 'white' : 'rgb(88, 28, 135)' },
-    // Purple-Slate transition
-    { bg: isActive ? 'rgb(100, 116, 139)' : 'rgb(203, 213, 225)', text: isActive ? 'white' : 'rgb(71, 85, 105)' },
-    // Light Slate
-    { bg: isActive ? 'rgb(71, 85, 105)' : 'rgb(226, 232, 240)', text: isActive ? 'white' : 'rgb(51, 65, 85)' },
-    // Medium Slate
-    { bg: isActive ? 'rgb(51, 65, 85)' : 'rgb(203, 213, 225)', text: isActive ? 'white' : 'rgb(30, 41, 59)' },
-    // Blue-Gray
-    { bg: isActive ? 'rgb(30, 64, 175)' : 'rgb(191, 219, 254)', text: isActive ? 'white' : 'rgb(30, 58, 138)' },
-    // Light Blue return
-    { bg: isActive ? 'rgb(14, 165, 233)' : 'rgb(186, 230, 253)', text: isActive ? 'white' : 'rgb(2, 132, 199)' },
-    // Sky Blue
-    { bg: isActive ? 'rgb(2, 132, 199)' : 'rgb(125, 211, 252)', text: isActive ? 'white' : 'rgb(3, 105, 161)' },
-    // Indigo return
-    { bg: isActive ? 'rgb(79, 70, 229)' : 'rgb(165, 180, 252)', text: isActive ? 'white' : 'rgb(67, 56, 202)' },
-    // Purple return
-    { bg: isActive ? 'rgb(147, 51, 234)' : 'rgb(233, 213, 255)', text: isActive ? 'white' : 'rgb(126, 34, 206)' },
-  ];
+type RolePermissions = Record<string, string[]>;
 
-  // Use modulo to cycle through colors if there are more items than colors
-  const colorIndex = index % colorPalette.length;
-  return colorPalette[colorIndex].bg;
+const NAVIGATION_PERMISSIONS_STORAGE_KEY = 'navigationPermissions:v1';
+
+const NAVIGATION_ROLE_OVERRIDES: Record<string, string> = {
+  admin: 'admin',
 };
 
-const getTextColorForIndex = (index: number, total: number, isActive: boolean = false): string => {
-  const colorPalette = [
-    { text: isActive ? 'white' : 'rgb(30, 64, 175)' }, // Light blue text
-    { text: isActive ? 'white' : 'rgb(29, 78, 216)' }, // Medium blue text
-    { text: isActive ? 'white' : 'rgb(30, 58, 138)' }, // Deep blue text
-    { text: isActive ? 'white' : 'rgb(55, 48, 163)' }, // Blue-indigo text
-    { text: isActive ? 'white' : 'rgb(79, 70, 229)' }, // Light indigo text
-    { text: isActive ? 'white' : 'rgb(107, 33, 168)' }, // Medium purple text
-    { text: isActive ? 'white' : 'rgb(88, 28, 135)' }, // Deep purple text
-    { text: isActive ? 'white' : 'rgb(71, 85, 105)' }, // Purple-slate text
-    { text: isActive ? 'white' : 'rgb(51, 65, 85)' }, // Light slate text
-    { text: isActive ? 'white' : 'rgb(30, 41, 59)' }, // Medium slate text
-    { text: isActive ? 'white' : 'rgb(30, 58, 138)' }, // Blue-gray text
-    { text: isActive ? 'white' : 'rgb(2, 132, 199)' }, // Light blue return text
-    { text: isActive ? 'white' : 'rgb(3, 105, 161)' }, // Sky blue text
-    { text: isActive ? 'white' : 'rgb(67, 56, 202)' }, // Indigo return text
-    { text: isActive ? 'white' : 'rgb(126, 34, 206)' }, // Purple return text
-  ];
+const FULL_MENU_SECTIONS: MenuSection[] = [
+  { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: 'Home', Icon: Fi.FiGrid }] },
+  {
+    id: 'clients',
+    label: 'Clients',
+    Icon: Fi.FiUsers,
+    items: [
+      { id: 'clients', label: 'Clients', Icon: Fi.FiUsers },
+      { id: 'potential-clients', label: 'Potential Clients', Icon: Fi.FiUserPlus },
+      { id: 'screening', label: 'Screenings', Icon: Fi.FiClipboard },
+    ],
+  },
+  {
+    id: 'retreats',
+    label: 'Retreat Operations',
+    Icon: Fi.FiCalendar,
+    items: [
+      { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
+      { id: 'ceremonies', label: 'Ceremonies', Icon: Fi.FiClock },
+      { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
+      { id: 'houses', label: 'Houses', Icon: Fi.FiHome },
+    ],
+  },
+  {
+    id: 'workflow',
+    label: 'Readiness',
+    Icon: Fi.FiLayers,
+    items: [
+      { id: 'retreat-flow', label: 'Retreat Readiness', Icon: Fi.FiCalendar },
+      { id: 'booking-flow', label: 'Booking Steps', Icon: Fi.FiLayers },
+    ],
+  },
+  {
+    id: 'medical',
+    label: 'Medical',
+    Icon: Fi.FiActivity,
+    items: [
+      { id: 'medical-dashboard', label: 'Medical Dashboard', Icon: Fi.FiMonitor },
+      { id: 'medical-artifacts', label: 'Medical Artifacts', Icon: Fi.FiFileText },
+      { id: 'medical-tracking', label: 'Medical Readiness', Icon: Fi.FiHeart },
+      { id: 'medical-review-requests', label: 'Review Requests', Icon: Fi.FiInbox },
+      { id: 'client-medications', label: 'Client Medications', Icon: Fi.FiPlusSquare },
+    ],
+  },
+  {
+    id: 'payments',
+    label: 'Payments',
+    Icon: Fi.FiCreditCard,
+    items: [
+      { id: 'payments', label: 'Payments', Icon: Fi.FiCreditCard },
+      { id: 'payment-requests', label: 'Payment Requests', Icon: Fi.FiFileText },
+    ],
+  },
+  {
+    id: 'operations',
+    label: 'Operations',
+    Icon: Fi.FiBriefcase,
+    items: [
+      { id: 'tasks', label: 'General Tasks', Icon: Fi.FiCheckSquare },
+      { id: 'reminders', label: 'Reminders', Icon: Fi.FiBell },
+      { id: 'communications', label: 'Communications', Icon: Fi.FiMail },
+    ],
+  },
+  {
+    id: 'misc',
+    label: 'Misc',
+    Icon: Fi.FiMoreHorizontal,
+    items: [
+      { id: 'file-uploads', label: 'File Uploads', Icon: Fi.FiFolder },
+      { id: 'analytics', label: 'Analytics', Icon: Fi.FiBarChart },
+    ],
+  },
+  {
+    id: 'admin',
+    label: 'Admin',
+    Icon: Fi.FiShield,
+    items: [
+      { id: 'permissions', label: 'Permissions', Icon: Fi.FiShield },
+      { id: 'users', label: 'Users', Icon: Fi.FiUser },
+    ],
+  },
+];
 
-  const colorIndex = index % colorPalette.length;
-  return colorPalette[colorIndex].text;
+const getStoredNavigationPermissions = (): RolePermissions | null => {
+  const raw = localStorage.getItem(NAVIGATION_PERMISSIONS_STORAGE_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+};
+
+const filterMenuSections = (sections: MenuSection[], allowedItems: string[]) => {
+  const allowed = new Set(allowedItems);
+  return sections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => allowed.has(item.id)),
+    }))
+    .filter((section) => section.items.length > 0);
+};
+
+const getNavigationRole = (userRole?: string, user?: AppleSidebarProps['user']) => {
+  const originalRole = user?.originalRole;
+  if (originalRole && NAVIGATION_ROLE_OVERRIDES[originalRole]) {
+    return NAVIGATION_ROLE_OVERRIDES[originalRole];
+  }
+  if (userRole && NAVIGATION_ROLE_OVERRIDES[userRole]) {
+    return NAVIGATION_ROLE_OVERRIDES[userRole];
+  }
+  return userRole;
+};
+
+const getTextColor = (isActive: boolean = false): string => {
+  return isActive ? 'rgb(30, 64, 175)' : 'rgb(55, 65, 81)';
 };
 
 const AppleSidebar: React.FC<AppleSidebarProps> = ({
@@ -95,13 +165,15 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
   isOpen,
   onClose,
   onLogout,
-  userRole
+  userRole,
+  user
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(() => {
     const saved = localStorage.getItem('sidebarCollapsed');
     return saved === 'true';
   });
   const [isHovered, setIsHovered] = useState(false);
+  const [permissionVersion, setPermissionVersion] = useState(0);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
     const saved = localStorage.getItem('sidebarOpenSections');
     if (!saved) return {};
@@ -121,93 +193,29 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
     localStorage.setItem('sidebarOpenSections', JSON.stringify(openSections));
   }, [openSections]);
 
+  useEffect(() => {
+    const refreshNavigationPermissions = () => setPermissionVersion((version) => version + 1);
+    window.addEventListener('storage', refreshNavigationPermissions);
+    window.addEventListener('navigationPermissionsChange', refreshNavigationPermissions);
+    return () => {
+      window.removeEventListener('storage', refreshNavigationPermissions);
+      window.removeEventListener('navigationPermissionsChange', refreshNavigationPermissions);
+    };
+  }, []);
+
+  const navigationRole = getNavigationRole(userRole, user);
+
   const getMenuSectionsForRole = useCallback((): MenuSection[] => {
-    switch (userRole) {
+    void permissionVersion;
+    const configuredPermissions = getStoredNavigationPermissions();
+    const configuredItems = navigationRole ? configuredPermissions?.[navigationRole] : undefined;
+    if (configuredItems) {
+      return filterMenuSections(FULL_MENU_SECTIONS, configuredItems);
+    }
+
+    switch (navigationRole) {
       case 'admin':
-        return [
-          { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: 'Home', Icon: Fi.FiGrid }] },
-          {
-            id: 'clients',
-            label: 'Clients',
-            Icon: Fi.FiUsers,
-            items: [
-              { id: 'clients', label: 'Clients', Icon: Fi.FiUsers },
-              { id: 'potential-clients', label: 'Potential Clients', Icon: Fi.FiUserPlus },
-              { id: 'screening', label: 'Screenings', Icon: Fi.FiClipboard },
-            ],
-          },
-          {
-            id: 'retreats',
-            label: 'Retreat Operations',
-            Icon: Fi.FiCalendar,
-            items: [
-              { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
-              { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
-              { id: 'houses', label: 'Houses', Icon: Fi.FiHome },
-            ],
-          },
-          {
-            id: 'workflow',
-            label: 'Readiness',
-            Icon: Fi.FiLayers,
-            items: [
-              { id: 'workflow', label: 'Readiness Dashboard', Icon: Fi.FiLayers },
-              { id: 'retreat-flow', label: 'Retreat Requirements', Icon: Fi.FiCalendar },
-              { id: 'retreat-flow-library', label: 'Readiness Library', Icon: Fi.FiBook },
-              { id: 'booking-flow', label: 'Client Readiness', Icon: Fi.FiLayers },
-              { id: 'requirements', label: 'Legacy Requirements', Icon: Fi.FiCheckSquare },
-            ],
-          },
-          {
-            id: 'medical',
-            label: 'Medical',
-            Icon: Fi.FiActivity,
-            items: [
-              { id: 'medical-dashboard', label: 'Medical Dashboard', Icon: Fi.FiMonitor },
-              { id: 'medical-artifacts', label: 'Medical Artifacts', Icon: Fi.FiFileText },
-              { id: 'medical-tracking', label: 'Medical Readiness', Icon: Fi.FiHeart },
-              { id: 'medical-review-requests', label: 'Review Requests', Icon: Fi.FiInbox },
-              { id: 'client-medications', label: 'Client Medications', Icon: Fi.FiPlusSquare },
-            ],
-          },
-          {
-            id: 'payments',
-            label: 'Payments',
-            Icon: Fi.FiCreditCard,
-            items: [
-              { id: 'payments', label: 'Payments', Icon: Fi.FiCreditCard },
-              { id: 'payment-requests', label: 'Payment Requests', Icon: Fi.FiFileText },
-            ],
-          },
-          {
-            id: 'operations',
-            label: 'Operations',
-            Icon: Fi.FiBriefcase,
-            items: [
-              { id: 'flow-tasks', label: 'Flow Tasks', Icon: Fi.FiList },
-              { id: 'tasks', label: 'General Tasks', Icon: Fi.FiCheckSquare },
-              { id: 'reminders', label: 'Reminders', Icon: Fi.FiBell },
-              { id: 'communications', label: 'Communications', Icon: Fi.FiMail },
-            ],
-          },
-          {
-            id: 'misc',
-            label: 'Misc',
-            Icon: Fi.FiMoreHorizontal,
-            items: [
-              { id: 'analytics', label: 'Analytics', Icon: Fi.FiBarChart },
-            ],
-          },
-          {
-            id: 'admin',
-            label: 'Admin',
-            Icon: Fi.FiShield,
-            items: [
-              { id: 'permissions', label: 'Permissions', Icon: Fi.FiShield },
-              { id: 'users', label: 'Users', Icon: Fi.FiUser },
-            ],
-          },
-        ];
+        return FULL_MENU_SECTIONS;
       case 'medical_staff':
         return [
           { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: 'Home', Icon: Fi.FiGrid }] },
@@ -231,6 +239,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
             items: [
               { id: 'medical-retreats', label: 'Medical Retreats', Icon: Fi.FiCalendar },
               { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
+              { id: 'ceremonies', label: 'Ceremonies', Icon: Fi.FiClock },
               { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
             ],
           },
@@ -249,34 +258,23 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
             label: 'Readiness',
             Icon: Fi.FiLayers,
             items: [
-              { id: 'workflow', label: 'Readiness Dashboard', Icon: Fi.FiLayers },
-              { id: 'retreat-flow', label: 'Retreat Requirements', Icon: Fi.FiCalendar },
-              { id: 'retreat-flow-library', label: 'Readiness Library', Icon: Fi.FiBook },
+              { id: 'retreat-flow', label: 'Retreat Readiness', Icon: Fi.FiCalendar },
+              { id: 'booking-flow', label: 'Booking Steps', Icon: Fi.FiLayers },
             ],
           },
           { id: 'operations', label: 'Operations', Icon: Fi.FiBriefcase, items: [
-            { id: 'flow-tasks', label: 'Flow Tasks', Icon: Fi.FiList },
             { id: 'communications', label: 'Communications', Icon: Fi.FiMail },
             { id: 'reminders', label: 'Reminders', Icon: Fi.FiBell },
+          ] },
+          { id: 'misc', label: 'Misc', Icon: Fi.FiMoreHorizontal, items: [
+            { id: 'file-uploads', label: 'File Uploads', Icon: Fi.FiFolder },
           ] },
         ];
       case 'medical_advisor':
         return [
-          { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: 'Home', Icon: Fi.FiGrid }] },
           { id: 'medical', label: 'Medical', Icon: Fi.FiActivity, items: [
             { id: 'medical-dashboard', label: 'Medical Dashboard', Icon: Fi.FiMonitor },
-            { id: 'medical-artifacts', label: 'Medical Artifacts', Icon: Fi.FiFileText },
-            { id: 'medical-tracking', label: 'Medical Readiness', Icon: Fi.FiHeart },
             { id: 'review-requests', label: 'Review Requests', Icon: Fi.FiInbox },
-          ] },
-          { id: 'readiness', label: 'Readiness', Icon: Fi.FiLayers, items: [
-            { id: 'workflow', label: 'Readiness Dashboard', Icon: Fi.FiLayers },
-            { id: 'retreat-flow', label: 'Retreat Requirements', Icon: Fi.FiCalendar },
-            { id: 'retreat-flow-library', label: 'Readiness Library', Icon: Fi.FiBook },
-            { id: 'flow-tasks', label: 'Flow Tasks', Icon: Fi.FiList },
-          ] },
-          { id: 'operations', label: 'Operations', Icon: Fi.FiBriefcase, items: [
-            { id: 'communications', label: 'Communications', Icon: Fi.FiMail },
           ] },
         ];
       case 'facilitator':
@@ -284,6 +282,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
           { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: 'Home', Icon: Fi.FiGrid }] },
           { id: 'retreats', label: 'Retreat Operations', Icon: Fi.FiCalendar, items: [
             { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
+            { id: 'ceremonies', label: 'Ceremonies', Icon: Fi.FiClock },
             { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
             { id: 'houses', label: 'Houses', Icon: Fi.FiHome },
           ] },
@@ -309,11 +308,19 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
           { id: 'clients', label: 'Clients', Icon: Fi.FiUsers, items: [{ id: 'clients', label: 'Clients', Icon: Fi.FiUsers }] },
         ];
     }
-  }, [userRole]);
+  }, [navigationRole, permissionVersion]);
 
   const menuSections = useMemo(() => getMenuSectionsForRole(), [getMenuSectionsForRole]);
 
   const isExpanded = !isCollapsed || isHovered;
+  const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
+  const displayEmail = user?.email || user?.username || '';
+  const displayRole =
+    navigationRole === 'admin' ? 'Administrator' :
+    navigationRole === 'medical_staff' ? 'Medical Staff' :
+    navigationRole === 'medical_advisor' ? 'Medical Advisor' :
+    navigationRole === 'facilitator' ? 'Facilitator' :
+    navigationRole === 'user' ? 'User' : 'User';
 
   useEffect(() => {
     const activeSection = menuSections.find((section) => section.items.some((item) => item.id === activeItem));
@@ -404,20 +411,24 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
           {/* Navigation Items */}
           <div className="flex-1 overflow-y-auto py-2">
             <ul className={`px-3 space-y-1 ${!isExpanded && 'px-2'}`}>
-              {menuSections.map((section, sectionIndex) => {
+              {menuSections.map((section) => {
                 const sectionIsActive = section.items.some((item) => item.id === activeItem);
                 const sectionIsOpen = openSections[section.id] || sectionIsActive;
                 const SectionIcon = section.Icon;
-                const sectionBgColor = getGradientColorForIndex(sectionIndex, menuSections.length, sectionIsActive);
-                const sectionTextColor = getTextColorForIndex(sectionIndex, menuSections.length, sectionIsActive);
+                const sectionTextColor = getTextColor(sectionIsActive);
                 const sectionButton = (
                   <button
                     onClick={() => isExpanded ? toggleSection(section.id) : onItemClick(section.items[0]?.id || section.id)}
-                    style={{ backgroundColor: sectionBgColor, color: sectionTextColor }}
+                    style={{
+                      backgroundColor: 'white',
+                      color: sectionTextColor,
+                      borderColor: sectionTextColor,
+                      borderWidth: '3px',
+                    }}
                     className={`
                       w-full flex items-center gap-3 px-3 py-2 rounded-apple
                       transition-all duration-200 text-left
-                      ${sectionIsActive ? 'shadow-lg transform scale-105' : 'hover:scale-102 hover:shadow-md'}
+                      border shadow-sm hover:bg-white hover:shadow-md
                       ${!isExpanded && 'justify-center px-2'}
                     `}
                   >
@@ -462,10 +473,16 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                             <li key={item.id}>
                               <button
                                 onClick={() => onItemClick(item.id)}
+                                style={{
+                                  backgroundColor: 'white',
+                                  borderColor: isActive ? 'rgb(30, 64, 175)' : 'rgb(55, 65, 81)',
+                                  borderWidth: '3px',
+                                }}
                                 className={`
                                   w-full flex items-center gap-2 rounded-apple px-3 py-1.5 text-left
                                   transition-all duration-200
-                                  ${isActive ? 'bg-apple-gray-900 text-white shadow-sm' : 'text-apple-gray-600 hover:bg-apple-gray-100 hover:text-apple-gray-900'}
+                                  border hover:bg-white hover:shadow-md
+                                  ${isActive ? 'text-blue-800 shadow-sm' : 'text-apple-gray-700 hover:text-apple-gray-900'}
                                 `}
                               >
                                 {React.createElement(IconComponent as any, { className: "w-4 h-4 flex-shrink-0" })}
@@ -496,11 +513,18 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                 </div>
                 {isExpanded && (
                   <div className="flex-1 min-w-0">
+                    {displayName && (
+                      <p className="text-sm font-medium text-apple-gray-800 truncate">
+                        {displayName}
+                      </p>
+                    )}
+                    {displayEmail && (
+                      <p className="text-xs text-apple-gray-600 truncate">
+                        {displayEmail}
+                      </p>
+                    )}
                     <p className="text-xs text-apple-gray-500 truncate">
-                      {userRole === 'admin' ? 'Administrator' :
-                       userRole === 'medical_staff' ? 'Medical Staff' :
-                       userRole === 'facilitator' ? 'Facilitator' :
-                       userRole === 'user' ? 'User' : 'User'}
+                      {displayRole}
                     </p>
                   </div>
                 )}

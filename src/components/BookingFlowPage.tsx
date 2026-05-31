@@ -1,47 +1,82 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { AlertTriangle, ArrowLeft, CheckCircle2, RefreshCw, Save } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, Plus, RefreshCw, Save, Trash2 } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
 import { bookingsApi, bookingFlowApi, retreatsApi } from '../services/api';
-import { BookingFlowItem, BookingFlowTemplate, RetreatClient, Retreat } from '../types';
+import { BookingFlowItem, Retreat } from '../types';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
-const statusOptions: BookingFlowItem['status'][] = ['pending', 'sent', 'received', 'sent_for_review', 'in_review', 'reviewed', 'approved', 'caution', 'rejected', 'needs_resubmission', 'completed', 'blocked', 'waived', 'scheduled'];
+type FlowDraft = {
+  title: string;
+  order: string;
+  offsetDays: string;
+  notes: string;
+};
 
-const formatDeadlineLabel = (template: BookingFlowTemplate) => {
-  const basis = template.deadlineBasis || template.triggerType || 'before_retreat_start';
-  if (basis === 'after_signup') return `${template.offsetDays} days after signup`;
-  if (basis === 'after_booking') return `${template.offsetDays} days after booking`;
-  if (basis === 'manual') return 'Manual due date';
-  return `${template.offsetDays} days before retreat`;
+const getObjectId = (value: any): string => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  return value._id || value.id || '';
 };
 
 const formatDate = (value?: string | Date | null) => {
-  if (!value) return '—';
+  if (!value) return '-';
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString();
+  return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
 };
+
+const makeDraft = (item: BookingFlowItem): FlowDraft => ({
+  title: item.title || '',
+  order: String(item.order || 0),
+  offsetDays: String(item.offsetDays || 0),
+  notes: item.notes || '',
+});
 
 const BookingFlowPage: React.FC = () => {
   const navigate = useNavigate();
   const { bookingId } = useParams();
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [booking, setBooking] = useState<any>(null);
   const [retreat, setRetreat] = useState<Retreat | null>(null);
-  const [templates, setTemplates] = useState<BookingFlowTemplate[]>([]);
   const [items, setItems] = useState<BookingFlowItem[]>([]);
+  const [drafts, setDrafts] = useState<Record<string, FlowDraft>>({});
+  const [newStep, setNewStep] = useState<FlowDraft>({ title: '', order: '0', offsetDays: '0', notes: '' });
   const [loading, setLoading] = useState(true);
-  const [savingId, setSavingId] = useState<string>('');
-  const [error, setError] = useState<string>('');
+  const [savingId, setSavingId] = useState('');
+  const [error, setError] = useState('');
+
+  const sortedItems = useMemo(
+    () => [...items].sort((a, b) => (a.order || 0) - (b.order || 0) || String(a.title).localeCompare(String(b.title))),
+    [items],
+  );
 
   useEffect(() => {
     if (bookingId) {
       loadData();
     } else {
-      setLoading(false);
-      setError('Open a booking from the bookings grid or workflow dashboard.');
+      loadClientFlowIndex();
     }
   }, [bookingId]);
+
+  const loadClientFlowIndex = async () => {
+    try {
+      setError('');
+      setLoading(true);
+      const response = await bookingsApi.getAll();
+      setBookings(response.data || []);
+    } catch (err) {
+      console.error('Error loading booking steps:', err);
+      setError('Unable to load bookings.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const hydrateDrafts = (nextItems: BookingFlowItem[]) => {
+    setDrafts(Object.fromEntries(nextItems.map((item) => [item._id || item.key, makeDraft(item)])));
+  };
 
   const loadData = async () => {
     if (!bookingId) return;
@@ -51,96 +86,226 @@ const BookingFlowPage: React.FC = () => {
       const bookingResponse = await bookingsApi.getOne(bookingId);
       const currentBooking = bookingResponse.data;
       setBooking(currentBooking);
-      const retreatId = typeof currentBooking.retreatId === 'string' ? currentBooking.retreatId : currentBooking.retreatId?._id;
+
+      const retreatId = getObjectId(currentBooking.retreat || currentBooking.retreatId);
+      let currentRetreat: Retreat | null = null;
       if (retreatId) {
-        const [retreatResponse, templatesResponse, itemsResponse] = await Promise.all([
-          retreatsApi.getOne(retreatId),
-          bookingFlowApi.getTemplates(retreatId),
-          bookingFlowApi.getItems({ bookingId }),
-        ]);
-        setRetreat(retreatResponse.data || null);
-        setTemplates(templatesResponse.data || []);
-        let flowItems = itemsResponse.data || [];
-        if (flowItems.length === 0 && templatesResponse.data?.length) {
-          const generated = await bookingFlowApi.generateForBooking(bookingId);
-          flowItems = generated.data || [];
-        }
-        setItems(flowItems);
+        const retreatResponse = await retreatsApi.getOne(retreatId);
+        currentRetreat = retreatResponse.data || null;
+        setRetreat(currentRetreat);
       }
-    } catch (error) {
-      console.error('Error loading booking flow:', error);
-      setBooking(null);
-      setItems([]);
-      setError('Unable to load booking flow. The booking record or flow templates may be missing.');
+
+      let flowItems = (await bookingFlowApi.getItems({ bookingId })).data || [];
+      if (flowItems.length === 0 && retreatId) {
+        await bookingFlowApi.seedLibraryTemplates();
+        await bookingFlowApi.seedTemplates(retreatId);
+        flowItems = (await bookingFlowApi.generateForBooking(bookingId)).data || [];
+      }
+
+      setItems(flowItems);
+      hydrateDrafts(flowItems);
+    } catch (err) {
+      console.error('Error loading booking steps:', err);
+      setError('Unable to load Booking Steps.');
     } finally {
       setLoading(false);
     }
   };
 
-  const itemsByTemplate = useMemo(() => {
-    const map = new Map<string, BookingFlowItem>();
-    items.forEach((item) => {
-      const key = typeof item.templateId === 'string' ? item.templateId : item.templateId?._id || item.key;
-      map.set(key, item);
-    });
-    return map;
-  }, [items]);
+  const calculateDueDate = (offsetDays: number): string | null => {
+    if (!retreat?.startDate) return null;
+    const dueDate = new Date(retreat.startDate);
+    dueDate.setDate(dueDate.getDate() - offsetDays);
+    return dueDate.toISOString();
+  };
 
-  const groupedTemplates = useMemo(() => {
-    return [...templates].sort((a, b) => (a.order || 0) - (b.order || 0));
-  }, [templates]);
+  const setDraft = (itemId: string, patch: Partial<FlowDraft>) => {
+    setDrafts((current) => ({
+      ...current,
+      [itemId]: {
+        ...(current[itemId] || { title: '', order: '0', offsetDays: '0', notes: '' }),
+        ...patch,
+      },
+    }));
+  };
 
-  const stats = useMemo(() => ({
-    total: items.length,
-    completed: items.filter((item) => item.status === 'completed' || item.status === 'approved').length,
-    blocked: items.filter((item) => item.status === 'blocked' || item.isBlocking).length,
-    dueSoon: items.filter((item) => {
-      if (!item.dueDate) return false;
-      const diffDays = Math.ceil((new Date(item.dueDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-      return diffDays <= 7;
-    }).length,
-  }), [items]);
-
-  const updateItem = async (itemId: string, data: Partial<BookingFlowItem>) => {
+  const saveItem = async (item: BookingFlowItem) => {
+    if (!item._id) return;
+    const draft = drafts[item._id] || makeDraft(item);
+    const offsetDays = Number(draft.offsetDays || 0);
     try {
-      setSavingId(itemId);
-      await bookingFlowApi.updateItem(itemId, data);
+      setSavingId(item._id);
+      await bookingFlowApi.updateItem(item._id, {
+        title: draft.title.trim(),
+        order: Number(draft.order || 0),
+        offsetDays,
+        dueDate: calculateDueDate(offsetDays),
+        notes: draft.notes,
+      });
       await loadData();
     } finally {
       setSavingId('');
     }
   };
 
-  const markComplete = async (itemId: string, notes?: string) => {
+  const addItem = async () => {
+    if (!bookingId || !newStep.title.trim()) return;
+    const offsetDays = Number(newStep.offsetDays || 0);
     try {
-      setSavingId(itemId);
-      await bookingFlowApi.completeItem(itemId, notes);
+      setSavingId('new');
+      await bookingFlowApi.createItem({
+        bookingId,
+        title: newStep.title.trim(),
+        order: Number(newStep.order || 0),
+        offsetDays,
+        dueDate: calculateDueDate(offsetDays),
+        notes: newStep.notes,
+        category: 'other',
+      });
+      setNewStep({ title: '', order: String((sortedItems.at(-1)?.order || 0) + 10), offsetDays: '0', notes: '' });
       await loadData();
     } finally {
       setSavingId('');
     }
   };
 
-  const regenerate = async () => {
-    if (!bookingId) return;
-    await bookingFlowApi.generateForBooking(bookingId);
-    await loadData();
+  const deleteItem = async (item: BookingFlowItem) => {
+    if (!item._id) return;
+    const confirmed = window.confirm(`Delete "${item.title}" from this booking?`);
+    if (!confirmed) return;
+    try {
+      setSavingId(item._id);
+      await bookingFlowApi.deleteItem(item._id);
+      await loadData();
+    } finally {
+      setSavingId('');
+    }
+  };
+
+  const moveItem = async (index: number, direction: -1 | 1) => {
+    const current = sortedItems[index];
+    const target = sortedItems[index + direction];
+    if (!current?._id || !target?._id) return;
+    try {
+      setSavingId(current._id);
+      await Promise.all([
+        bookingFlowApi.updateItem(current._id, { order: target.order || 0 }),
+        bookingFlowApi.updateItem(target._id, { order: current.order || 0 }),
+      ]);
+      await loadData();
+    } finally {
+      setSavingId('');
+    }
+  };
+
+  const normalizeOrder = async () => {
+    try {
+      setSavingId('normalize');
+      await Promise.all(sortedItems.map((item, index) => (
+        item._id ? bookingFlowApi.updateItem(item._id, { order: (index + 1) * 10 }) : Promise.resolve()
+      )));
+      await loadData();
+    } finally {
+      setSavingId('');
+    }
   };
 
   if (loading) {
-    return <LoadingSpinner message="Loading booking flow..." />;
+    return <LoadingSpinner message="Loading booking steps..." />;
+  }
+
+  const getClientName = (currentBooking: any): string => {
+    const client = currentBooking?.client || currentBooking?.clientId;
+    if (client && typeof client === 'object') {
+      const name = [client.firstName || client.fname, client.lastName || client.lname].filter(Boolean).join(' ');
+      return name || client.email || `Client ${getObjectId(client).slice(-6)}`;
+    }
+    return `Client ${getObjectId(client).slice(-6) || 'unknown'}`;
+  };
+
+  const getRetreatName = (currentBooking: any): string => {
+    const currentRetreat = currentBooking?.retreat || currentBooking?.retreatId;
+    if (currentRetreat && typeof currentRetreat === 'object') {
+      return currentRetreat.name || currentRetreat.title || `Retreat ${getObjectId(currentRetreat).slice(-6)}`;
+    }
+    return `Retreat ${getObjectId(currentRetreat).slice(-6) || 'unknown'}`;
+  };
+
+  const filteredBookings = bookings.filter((currentBooking) => {
+    const query = searchTerm.trim().toLowerCase();
+    if (!query) return true;
+    return [
+      getClientName(currentBooking),
+      getRetreatName(currentBooking),
+      currentBooking.bookingNumber,
+      currentBooking.status,
+    ].filter(Boolean).join(' ').toLowerCase().includes(query);
+  });
+
+  if (!bookingId) {
+    return (
+      <div className="p-6">
+        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">Booking Steps</h1>
+            <p className="text-sm text-gray-600">Select a client booking to add, delete, edit, and reorder its flow steps.</p>
+          </div>
+          <button onClick={loadClientFlowIndex} className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+            <Icon icon={RefreshCw} className="h-4 w-4" />
+            Refresh
+          </button>
+        </div>
+
+        <div className="mb-5 rounded-lg border border-gray-200 bg-white p-4">
+          <input
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            placeholder="Search by client, retreat, booking number, or status"
+          />
+        </div>
+
+        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+          <div className="grid grid-cols-[120px_minmax(180px,1fr)_minmax(180px,1fr)_140px_130px] gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3 text-xs font-semibold uppercase text-gray-500">
+            <div>Booking</div>
+            <div>Client</div>
+            <div>Retreat</div>
+            <div>Status</div>
+            <div>Action</div>
+          </div>
+          {filteredBookings.length === 0 ? (
+            <div className="p-8 text-center text-sm text-gray-500">No bookings found.</div>
+          ) : (
+            filteredBookings.map((currentBooking) => {
+              const id = getObjectId(currentBooking);
+              return (
+                <div key={id} className="grid grid-cols-[120px_minmax(180px,1fr)_minmax(180px,1fr)_140px_130px] gap-3 border-b border-gray-100 px-4 py-3 text-sm last:border-b-0">
+                  <div className="font-medium text-gray-900">{currentBooking.bookingNumber ? `#${currentBooking.bookingNumber}` : id.slice(-8)}</div>
+                  <div className="text-gray-700">{getClientName(currentBooking)}</div>
+                  <div className="text-gray-700">{getRetreatName(currentBooking)}</div>
+                  <div className="capitalize text-gray-600">{currentBooking.status || 'pending'}</div>
+                  <div>
+                    <button
+                      onClick={() => navigate(id)}
+                      className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                    >
+                      Edit Steps
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    );
   }
 
   if (error) {
     return (
       <div className="p-6">
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          {error}
-        </div>
-        <button
-          onClick={() => navigate(-1)}
-          className="mt-4 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-        >
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">{error}</div>
+        <button onClick={() => navigate(-1)} className="mt-4 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
           Back
         </button>
       </div>
@@ -149,166 +314,166 @@ const BookingFlowPage: React.FC = () => {
 
   return (
     <div className="p-6">
-      <div className="mb-6 flex items-start justify-between gap-4">
+      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <button onClick={() => navigate(-1)} className="mb-3 inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
             <Icon icon={ArrowLeft} className="h-4 w-4" />
             Back
           </button>
-          <h1 className="text-2xl font-semibold text-gray-900">Booking Flow</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Booking Steps</h1>
           <p className="text-sm text-gray-600">
-            {booking?.clientId?.firstName ? `${booking.clientId.firstName} ${booking.clientId.lastName}` : 'Unknown client'}
-            {' '}• {retreat?.name || 'Unknown retreat'}
+            {(booking?.clientId as any)?.firstName ? `${(booking.clientId as any).firstName} ${(booking.clientId as any).lastName}` : 'Client'}
+            {' '}• {retreat?.name || 'Retreat'} • top step happens first
           </p>
         </div>
-        <button onClick={regenerate} className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
-          <Icon icon={RefreshCw} className="h-4 w-4" />
-          Regenerate
-        </button>
-      </div>
-
-      <div className="mb-6 grid gap-4 sm:grid-cols-4">
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="text-xs uppercase tracking-wide text-gray-500">Total</div>
-          <div className="mt-1 text-2xl font-semibold text-gray-900">{stats.total}</div>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="text-xs uppercase tracking-wide text-gray-500">Completed</div>
-          <div className="mt-1 text-2xl font-semibold text-green-700">{stats.completed}</div>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="text-xs uppercase tracking-wide text-gray-500">Blocked</div>
-          <div className="mt-1 text-2xl font-semibold text-red-700">{stats.blocked}</div>
-        </div>
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="text-xs uppercase tracking-wide text-gray-500">Due soon</div>
-          <div className="mt-1 text-2xl font-semibold text-amber-700">{stats.dueSoon}</div>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={normalizeOrder} disabled={savingId === 'normalize'} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+            Re-number
+          </button>
+          <button onClick={loadData} className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+            <Icon icon={RefreshCw} className="h-4 w-4" />
+            Refresh
+          </button>
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-        <div className="space-y-3">
-          {groupedTemplates.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-gray-300 bg-white p-6 text-sm text-gray-500">
-              No templates exist for this retreat. Create them in Retreat Flow first.
-            </div>
-          ) : (
-            groupedTemplates.map((template) => {
-              const item = itemsByTemplate.get(template._id || template.key);
-              return (
-                <div key={template._id} className="rounded-lg border border-gray-200 bg-white p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold text-gray-900">{template.title}</div>
-                      <div className="text-xs text-gray-500">
-                        {template.workflowStage || 'potential'} • {template.category} • {formatDeadlineLabel(template)}
-                      </div>
-                      {template.description && <div className="mt-1 text-sm text-gray-600">{template.description}</div>}
-                    </div>
-                    <div className="text-right text-xs text-gray-500">
-                      <div>{item?.status || 'missing'}</div>
-                      <div>{item?.dueDate ? `Due ${new Date(item.dueDate).toLocaleDateString()}` : 'No due date'}</div>
-                    </div>
-                  </div>
+      <div className="mb-5 rounded-lg border border-gray-200 bg-white p-4">
+        <div className="mb-3 text-sm font-semibold text-gray-900">Add Step</div>
+        <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_100px_130px_minmax(220px,1fr)_auto]">
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Step name</span>
+            <input
+              value={newStep.title}
+              onChange={(event) => setNewStep((current) => ({ ...current, title: event.target.value }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              placeholder="Example: EKG received"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Order</span>
+            <input
+              type="number"
+              value={newStep.order}
+              onChange={(event) => setNewStep((current) => ({ ...current, order: event.target.value }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              placeholder="10"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Days before retreat</span>
+            <input
+              type="number"
+              value={newStep.offsetDays}
+              onChange={(event) => setNewStep((current) => ({ ...current, offsetDays: event.target.value }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              placeholder="21"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Note</span>
+            <input
+              value={newStep.notes}
+              onChange={(event) => setNewStep((current) => ({ ...current, notes: event.target.value }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              placeholder="Optional note"
+            />
+          </label>
+          <button
+            onClick={addItem}
+            disabled={!newStep.title.trim() || savingId === 'new'}
+            className="inline-flex items-center justify-center gap-2 self-end rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+          >
+            <Icon icon={Plus} className="h-4 w-4" />
+            Add
+          </button>
+        </div>
+      </div>
 
-                  <div className="mt-4 grid gap-3 md:grid-cols-2">
-                    <select
-                      value={item?.status || 'pending'}
-                      onChange={(e) => item?._id && updateItem(item._id, { status: e.target.value as BookingFlowItem['status'] })}
-                      className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-                    >
-                      {statusOptions.map((status) => (
-                        <option key={status} value={status}>{status}</option>
-                      ))}
-                    </select>
-                    <input
-                      value={item?.assignedTo || ''}
-                      onChange={(e) => item?._id && updateItem(item._id, { assignedTo: e.target.value })}
-                      className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-                      placeholder="Assigned to"
-                    />
-                    <textarea
-                      value={item?.notes || ''}
-                      onChange={(e) => item?._id && setItems((prev) => prev.map((entry) => entry._id === item._id ? { ...entry, notes: e.target.value } : entry))}
-                      rows={3}
-                      className="md:col-span-2 rounded-md border border-gray-300 px-3 py-2 text-sm"
-                      placeholder="Notes"
-                    />
-                    {(template.reviewRequired || item?.metadata?.reviewRequired) && (
-                      <>
-                        <select
-                          value={item?.reviewDecision || ''}
-                          onChange={(e) => item?._id && updateItem(item._id, { reviewDecision: e.target.value as BookingFlowItem['reviewDecision'] })}
-                          className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-                        >
-                          <option value="">Review result</option>
-                          <option value="OK">OK</option>
-                          <option value="caution">Caution</option>
-                          <option value="NOT OK">NOT OK</option>
-                        </select>
-                        <textarea
-                          value={item?.reviewNotes || ''}
-                          onChange={(e) => item?._id && setItems((prev) => prev.map((entry) => entry._id === item._id ? { ...entry, reviewNotes: e.target.value } : entry))}
-                          rows={2}
-                          className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-                          placeholder="Review notes"
-                        />
-                      </>
-                    )}
-                  </div>
+      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+        <div className="grid min-w-[1100px] grid-cols-[72px_minmax(220px,1fr)_100px_130px_minmax(220px,1fr)_140px_150px] gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3 text-xs font-semibold uppercase text-gray-500">
+          <div>Move</div>
+          <div>Name</div>
+          <div>Order</div>
+          <div>Days prior</div>
+          <div>Note</div>
+          <div>Last update</div>
+          <div>Actions</div>
+        </div>
 
-                    <div className="mt-3 flex items-center gap-2">
-                      <button
-                        disabled={!item?._id || savingId === item._id}
-                        onClick={() => item?._id && updateItem(item._id, { notes: item.notes, assignedTo: item.assignedTo, reviewNotes: item.reviewNotes, reviewDecision: item.reviewDecision })}
-                        className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-                      >
-                        <Icon icon={Save} className="h-4 w-4" />
-                        Save
-                      </button>
-                      <button
-                        disabled={!item?._id || savingId === item._id}
-                        onClick={() => item?._id && markComplete(item._id, item.notes)}
-                        className="inline-flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm font-medium text-green-700 hover:bg-green-100 disabled:opacity-50"
-                      >
-                        <Icon icon={CheckCircle2} className="h-4 w-4" />
-                        Complete
-                      </button>
-                      {template.isBlocking && <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800"><Icon icon={AlertTriangle} className="h-3.5 w-3.5" /> Blocking</span>}
-                      {item?.status === 'approved' && <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800"><Icon icon={CheckCircle2} className="h-3.5 w-3.5" /> Approved</span>}
-                    </div>
+        {sortedItems.length === 0 ? (
+          <div className="p-8 text-center text-sm text-gray-500">No booking steps yet.</div>
+        ) : (
+          sortedItems.map((item, index) => {
+            const id = item._id || item.key;
+            const draft = drafts[id] || makeDraft(item);
+            return (
+              <div key={id} className="grid min-w-[1100px] grid-cols-[72px_minmax(220px,1fr)_100px_130px_minmax(220px,1fr)_140px_150px] gap-3 border-b border-gray-100 px-4 py-3 last:border-b-0">
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => moveItem(index, -1)}
+                    disabled={index === 0 || savingId === item._id}
+                    className="rounded-md border border-gray-200 p-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                    title="Move up"
+                  >
+                    <Icon icon={ArrowUp} className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => moveItem(index, 1)}
+                    disabled={index === sortedItems.length - 1 || savingId === item._id}
+                    className="rounded-md border border-gray-200 p-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                    title="Move down"
+                  >
+                    <Icon icon={ArrowDown} className="h-4 w-4" />
+                  </button>
                 </div>
-              );
-            })
-          )}
-        </div>
-
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="mb-3 text-lg font-semibold text-gray-900">Booking Snapshot</div>
-          <div className="space-y-3 text-sm text-gray-700">
-            <div><span className="font-medium">Client:</span> {booking?.clientId?.firstName ? `${booking.clientId.firstName} ${booking.clientId.lastName}` : 'Unknown'}</div>
-            <div><span className="font-medium">Retreat:</span> {retreat?.name || 'Unknown'}</div>
-            <div><span className="font-medium">Start:</span> {formatDate(retreat?.startDate)}</div>
-            <div><span className="font-medium">End:</span> {formatDate(retreat?.endDate)}</div>
-            <div><span className="font-medium">Status:</span> {booking?.status || 'pending'}</div>
-          </div>
-
-          <div className="mt-5 border-t border-gray-200 pt-4">
-            <div className="text-sm font-semibold text-gray-900">Open items</div>
-            <div className="mt-3 space-y-2">
-              {items.filter((item) => item.status !== 'completed' && item.status !== 'approved').length === 0 ? (
-                <div className="text-sm text-gray-500">All steps are cleared.</div>
-              ) : (
-                items.filter((item) => item.status !== 'completed' && item.status !== 'approved').map((item) => (
-                  <div key={item._id} className="rounded-md border border-gray-200 p-3 text-sm">
-                    <div className="font-medium text-gray-900">{item.title}</div>
-                    <div className="text-gray-500">{item.status}</div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
+                <input
+                  value={draft.title}
+                  onChange={(event) => setDraft(id, { title: event.target.value })}
+                  className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+                />
+                <input
+                  type="number"
+                  value={draft.order}
+                  onChange={(event) => setDraft(id, { order: event.target.value })}
+                  className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+                />
+                <input
+                  type="number"
+                  value={draft.offsetDays}
+                  onChange={(event) => setDraft(id, { offsetDays: event.target.value })}
+                  className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+                />
+                <textarea
+                  value={draft.notes}
+                  onChange={(event) => setDraft(id, { notes: event.target.value })}
+                  rows={2}
+                  className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+                />
+                <div className="flex items-center text-sm text-gray-600">
+                  {formatDate(item.updatedAt)}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => saveItem(item)}
+                    disabled={savingId === item._id}
+                    className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    <Icon icon={Save} className="h-4 w-4" />
+                    Save
+                  </button>
+                  <button
+                    onClick={() => deleteItem(item)}
+                    disabled={savingId === item._id}
+                    className="inline-flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-50"
+                    title="Delete step"
+                  >
+                    <Icon icon={Trash2} className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );

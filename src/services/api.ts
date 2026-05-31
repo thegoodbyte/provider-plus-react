@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Retreat, House, Client, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalReviewRequest, BookingFlowItem, BookingFlowTemplate, MailSettings, EmailTemplate, SentEmail } from '../types';
+import { Retreat, House, Client, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalReviewRequest, FileUpload, BookingFlowItem, BookingFlowTemplate, MailSettings, EmailTemplate, SentEmail } from '../types';
 import { authService } from './authService';
 import { cacheService } from './cacheService';
 import { API_BASE_URL } from '../config/api.config';
@@ -242,6 +242,7 @@ export const paymentsApi = {
   getByBookingHash: (bookingHash: string) => cachedGet<Payment[]>(`payments:hash:${bookingHash}`, () => api.get<Payment[]>(`/payments/by-booking-hash/${bookingHash}`)),
   getByClientAndRetreat: (clientId: string, retreatId: string) => cachedGet<Payment[]>(`payments:client-retreat:${clientId}-${retreatId}`, () => api.get<Payment[]>(`/payments/by-client-and-retreat?clientId=${clientId}&retreatId=${retreatId}`)),
   getRetreatSummary: (retreatId: string) => cachedGet<PaymentSummary>(`payments:summary:${retreatId}`, () => api.get<PaymentSummary>(`/payments/retreat-summary/${retreatId}`)),
+  convertToUsd: (amount: number, currency: string) => api.get<{ amount: number; currency: string; usd_amount: number }>(`/payments/convert-to-usd?amount=${encodeURIComponent(String(amount))}&currency=${encodeURIComponent(currency)}`),
   create: (data: Omit<Payment, '_id'>) => {
     cacheService.clearPattern('payments:');
     cacheService.clearPattern('bookings:'); // Clear bookings cache too as payments affect booking status
@@ -521,7 +522,7 @@ export const medicalAdvisorApi = {
 };
 
 export const medicalArtifactsApi = {
-  getAll: (filters: { clientId?: string; retreatId?: string; artifactType?: MedicalArtifact['artifactType']; status?: MedicalArtifact['status'] } = {}) => {
+  getAll: (filters: { clientId?: string; retreatId?: string; bookingId?: string; artifactType?: MedicalArtifact['artifactType']; status?: MedicalArtifact['status'] } = {}) => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value) params.set(key, value);
@@ -536,19 +537,59 @@ export const medicalArtifactsApi = {
     bucket: string | null;
     keyPattern: string;
     note: string;
+    requiredEnvironment?: string[];
   }>(`/medical-artifacts/upload-target/preview?artifactType=${encodeURIComponent(artifactType)}&fileName=${encodeURIComponent(fileName || 'medical-record.pdf')}`),
   create: (data: Omit<MedicalArtifact, '_id'>) => {
     cacheService.clearPattern('medical-artifacts:');
     return api.post<MedicalArtifact>('/medical-artifacts', data);
   },
-  uploadFiles: (id: string, files: File[]) => {
+  uploadFiles: (id: string, files: File[], options: { reviewRequestNumber?: number | string } = {}) => {
     const formData = new FormData();
     files.forEach((file) => formData.append('files', file));
     cacheService.clearPattern('medical-artifacts:');
-    return api.post(`/medical-artifacts/${id}/upload-files`, formData, {
+    const params = new URLSearchParams();
+    if (options.reviewRequestNumber) params.set('reviewRequestNumber', String(options.reviewRequestNumber));
+    const suffix = params.toString() ? `?${params.toString()}` : '';
+    const fileSummary = files.map((file) => ({
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      lastModified: file.lastModified,
+    }));
+    console.debug('[medical-artifact-upload] starting', {
+      artifactId: id,
+      reviewRequestNumber: options.reviewRequestNumber,
+      fileCount: files.length,
+      files: fileSummary,
+    });
+    return api.post(`/medical-artifacts/${id}/upload-files${suffix}`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
+    }).then((response) => {
+      console.debug('[medical-artifact-upload] success', {
+        artifactId: id,
+        status: response.status,
+        response: response.data,
+      });
+      return response;
+    }).catch((error) => {
+      console.error('[medical-artifact-upload] failed', {
+        artifactId: id,
+        status: error?.response?.status,
+        response: error?.response?.data,
+        files: fileSummary,
+        requestUrl: error?.config?.url,
+        method: error?.config?.method,
+        message: error?.message,
+      });
+      throw error;
     });
   },
+  deleteFile: (id: string, storedPath: string) => {
+    cacheService.clearPattern('medical-artifacts:');
+    return api.delete<MedicalArtifact>(`/medical-artifacts/${id}/files?storedPath=${encodeURIComponent(storedPath)}`);
+  },
+  getFileBlob: (id: string, storedPath: string) =>
+    api.get(`/medical-artifacts/${id}/files/view?storedPath=${encodeURIComponent(storedPath)}`, { responseType: 'blob' }),
   update: (id: string, data: Partial<MedicalArtifact>) => {
     cacheService.clearPattern('medical-artifacts:');
     return api.patch<MedicalArtifact>(`/medical-artifacts/${id}`, data);
@@ -559,10 +600,35 @@ export const medicalArtifactsApi = {
   },
 };
 
+export const fileUploadsApi = {
+  upload: (formData: FormData) => {
+    cacheService.clearPattern('file-uploads:');
+    return api.post<FileUpload>('/file-uploads/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+  getAll: (filters: { documentKind?: FileUpload['documentKind']; foreignKey?: string; isActive?: boolean; uploadedBy?: string } = {}) => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== '') params.set(key, String(value));
+    });
+    const suffix = params.toString() ? `?${params.toString()}` : '';
+    return cachedGet<FileUpload[]>(`file-uploads:${suffix || 'all'}`, () => api.get<FileUpload[]>(`/file-uploads${suffix}`));
+  },
+  getStats: () => cachedGet<any>('file-uploads:stats', () => api.get('/file-uploads/stats')),
+};
+
+export const configSummaryApi = {
+  get: () => api.get('/config-summary'),
+};
+
 export const medicalReviewRequestsApi = {
   getAll: () => cachedGet<MedicalReviewRequest[]>('medical-review-requests:all', () => api.get<MedicalReviewRequest[]>('/medical-review-requests')),
   getQueue: () => cachedGet<MedicalReviewRequest[]>('medical-review-requests:queue', () => api.get<MedicalReviewRequest[]>('/medical-review-requests/queue')),
   getOne: (id: string) => cachedGet<MedicalReviewRequest>(`medical-review-requests:${id}`, () => api.get<MedicalReviewRequest>(`/medical-review-requests/${id}`)),
+  getContext: (id: string) => cachedGet<any>(`medical-review-requests:${id}:context`, () => api.get<any>(`/medical-review-requests/${id}/context`)),
   getByClientAndRetreat: (clientId: string, retreatId: string) => cachedGet<MedicalReviewRequest[]>(`medical-review-requests:${clientId}:${retreatId}`, () => api.get<MedicalReviewRequest[]>(`/medical-review-requests?clientId=${clientId}&retreatId=${retreatId}`)),
   getByMedicalTracking: (medicalTrackingId: string) => cachedGet<MedicalReviewRequest[]>(`medical-review-requests:tracking:${medicalTrackingId}`, () => api.get<MedicalReviewRequest[]>(`/medical-review-requests?medicalTrackingId=${medicalTrackingId}`)),
   getByArtifact: (artifactId: string) => cachedGet<MedicalReviewRequest[]>(`medical-review-requests:artifact:${artifactId}`, () => api.get<MedicalReviewRequest[]>(`/medical-review-requests?artifactId=${artifactId}`)),
@@ -589,6 +655,8 @@ export const medicalReviewRequestsApi = {
     reviewDecision?: 'OK' | 'caution' | 'NOT OK';
     reviewNotes?: string;
     overallNotes?: string;
+    medicalStaffNotes?: string;
+    fileReviews?: MedicalReviewRequest['fileReviews'];
     ekgReviewDecision?: 'OK' | 'caution' | 'NOT OK';
     ekgReviewNotes?: string;
     liverReviewDecision?: 'OK' | 'caution' | 'NOT OK';
@@ -677,6 +745,10 @@ export const bookingFlowApi = {
   },
   getMatrix: (retreatId: string) => cachedGet<any>(`booking-flow:matrix:${retreatId}`, () => api.get<any>(`/booking-flow/matrix/${retreatId}`)),
   getItem: (id: string) => cachedGet<BookingFlowItem>(`booking-flow:item:${id}`, () => api.get<BookingFlowItem>(`/booking-flow/items/${id}`)),
+  createItem: (data: Partial<BookingFlowItem> & { bookingId: string; title: string }) => {
+    cacheService.clearPattern('booking-flow:');
+    return api.post<BookingFlowItem>('/booking-flow/items', data);
+  },
   updateItem: (id: string, data: Partial<BookingFlowItem>) => {
     cacheService.clearPattern('booking-flow:');
     return api.patch<BookingFlowItem>(`/booking-flow/items/${id}`, data);
@@ -772,7 +844,10 @@ export const waitingListApi = {
 // Screening API
 export const screeningApi = {
   // Create screening
-  create: (data: any) => api.post('/screening', data),
+  create: (data: any) => {
+    cacheService.clearPattern('clients:');
+    return api.put(`/clients/${data.clientId}/screening`, data);
+  },
 
   // Get all screenings
   getAll: () => api.get('/screening'),
@@ -784,16 +859,28 @@ export const screeningApi = {
   getByClient: (clientId: string) => api.get(`/screening/client/${clientId}`),
 
   // Update screening
-  update: (id: string, data: any) => api.put(`/screening/${id}`, data),
+  update: (id: string, data: any) => {
+    cacheService.clearPattern('clients:');
+    return api.put(`/clients/${id}/screening`, data);
+  },
 
   // Delete screening
   delete: (id: string) => api.delete(`/screening/${id}`),
 
   // Upload handwriting image
-  uploadHandwriting: (id: string, formData: FormData) =>
-    api.post(`/screening/${id}/upload-handwriting`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
+  uploadHandwriting: async (id: string, formData: FormData) => {
+    formData.set('documentKind', 'other');
+    formData.set('foreignKey', id);
+    formData.set('description', 'Screening handwriting upload');
+
+    const response = await fileUploadsApi.upload(formData);
+    const storedFileName = response.data.storedFileName;
+    return {
+      ...response,
+      data: {
+        ...response.data,
+        imageUrl: storedFileName ? `${API_BASE_URL}/uploads/medical-tracking/${storedFileName}` : '',
       },
-    }),
+    };
+  },
 };

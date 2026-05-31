@@ -24,7 +24,6 @@ const QuickAddClient: React.FC<QuickAddClientProps> = ({ visible, onClose, onSuc
             const clientData = {
                 firstName: values.firstName,
                 lastName: values.lastName,
-                phoneCountryCode: values.phoneCountryCode || '+1',
                 phone: values.phone,
                 email: values.email || '',
                 loginPin: values.loginPin || undefined,
@@ -58,22 +57,6 @@ const QuickAddClient: React.FC<QuickAddClientProps> = ({ visible, onClose, onSuc
         'Friend',
         'Previous Client',
         'Other'
-    ];
-
-    const countryCodeOptions = [
-        { label: 'United States (+1)', value: '+1' },
-        { label: 'Canada (+1)', value: '+1' },
-        { label: 'United Kingdom (+44)', value: '+44' },
-        { label: 'Germany (+49)', value: '+49' },
-        { label: 'France (+33)', value: '+33' },
-        { label: 'Spain (+34)', value: '+34' },
-        { label: 'Italy (+39)', value: '+39' },
-        { label: 'Poland (+48)', value: '+48' },
-        { label: 'Czech Republic (+420)', value: '+420' },
-        { label: 'Netherlands (+31)', value: '+31' },
-        { label: 'Belgium (+32)', value: '+32' },
-        { label: 'Switzerland (+41)', value: '+41' },
-        { label: 'Austria (+43)', value: '+43' }
     ];
 
     const countryOptions = [
@@ -128,29 +111,13 @@ const QuickAddClient: React.FC<QuickAddClientProps> = ({ visible, onClose, onSuc
                     </Form.Item>
                 </div>
 
-                <div className="form-row">
-                    <Form.Item
-                        name="phoneCountryCode"
-                        label="Country Code"
-                        initialValue="+1"
-                        style={{ flex: 0.3, marginRight: 8 }}
-                    >
-                        <Select placeholder="Code">
-                            {countryCodeOptions.map(option => (
-                                <Option key={option.value} value={option.value}>{option.label}</Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
-
-                    <Form.Item
-                        name="phone"
-                        label="Phone Number"
-                        rules={[{ required: true, message: 'Please enter phone number' }]}
-                        style={{ flex: 0.7, marginRight: 8 }}
-                    >
-                        <Input placeholder="234 567 8900" />
-                    </Form.Item>
-                </div>
+                <Form.Item
+                    name="phone"
+                    label="Phone Number"
+                    rules={[{ required: true, message: 'Please enter phone number' }]}
+                >
+                    <Input placeholder="+1 234 567 8900" />
+                </Form.Item>
 
                 <Form.Item
                     name="country"

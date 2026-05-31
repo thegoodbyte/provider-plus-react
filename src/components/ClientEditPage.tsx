@@ -12,51 +12,12 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
   return <IconComponent className={className} />;
 };
 
-const COUNTRY_CODES = [
-  { code: '+1', country: 'US/CA' },
-  { code: '+420', country: 'Czech' },
-  { code: '+421', country: 'Slovak' },
-  { code: '+48', country: 'Poland' },
-  { code: '+49', country: 'Germany' },
-  { code: '+44', country: 'UK' },
-  { code: '+33', country: 'France' },
-  { code: '+34', country: 'Spain' },
-  { code: '+39', country: 'Italy' },
-  { code: '+31', country: 'Netherlands' },
-  { code: '+32', country: 'Belgium' },
-  { code: '+41', country: 'Switzerland' },
-  { code: '+43', country: 'Austria' },
-  { code: '+45', country: 'Denmark' },
-  { code: '+46', country: 'Sweden' },
-  { code: '+47', country: 'Norway' },
-  { code: '+358', country: 'Finland' },
-  { code: '+351', country: 'Portugal' },
-  { code: '+30', country: 'Greece' },
-  { code: '+90', country: 'Turkey' },
-  { code: '+7', country: 'Russia' },
-  { code: '+380', country: 'Ukraine' },
-  { code: '+86', country: 'China' },
-  { code: '+81', country: 'Japan' },
-  { code: '+82', country: 'Korea' },
-  { code: '+91', country: 'India' },
-  { code: '+61', country: 'Australia' },
-  { code: '+64', country: 'NZ' },
-  { code: '+27', country: 'S.Africa' },
-  { code: '+52', country: 'Mexico' },
-  { code: '+55', country: 'Brazil' },
-  { code: '+54', country: 'Argentina' },
-  { code: '+972', country: 'Israel' },
-  { code: '+971', country: 'UAE' }
-];
-
 const ClientEditPage: React.FC = () => {
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [client, setClient] = useState<Client | null>(null);
   const [formData, setFormData] = useState<Client & {
-    countryCode?: string;
-    phoneNumber?: string;
     yearOfBirth?: number;
     medications?: string;
     allergies?: string;
@@ -79,20 +40,6 @@ const ClientEditPage: React.FC = () => {
       const clientData = response.data;
       setClient(clientData);
 
-      // Parse phone number to extract country code
-      let countryCode = '+420'; // Default to Czech Republic
-      let phoneNumber = clientData.phone || '';
-
-      // Check if phone starts with a country code
-      if (phoneNumber.startsWith('+')) {
-        // Try to match against known country codes
-        const matchedCode = COUNTRY_CODES.find(cc => phoneNumber.startsWith(cc.code));
-        if (matchedCode) {
-          countryCode = matchedCode.code;
-          phoneNumber = phoneNumber.substring(matchedCode.code.length).trim();
-        }
-      }
-
       // Extract year from dateOfBirth if present
       let yearOfBirth;
       if (clientData.dateOfBirth) {
@@ -101,8 +48,6 @@ const ClientEditPage: React.FC = () => {
 
       setFormData({
         ...clientData,
-        countryCode,
-        phoneNumber,
         yearOfBirth
       });
     } catch (error) {
@@ -135,7 +80,7 @@ const ClientEditPage: React.FC = () => {
     if (!formData.firstName?.trim()) errors.push('First name is required');
     if (!formData.lastName?.trim()) errors.push('Last name is required');
     if (!formData.email?.trim()) errors.push('Email is required');
-    if (!formData.phoneNumber?.trim()) errors.push('Phone number is required');
+    if (!formData.phone?.trim()) errors.push('Phone number is required');
     const displayIdValue = formData.display_id as unknown;
     if (displayIdValue !== undefined && displayIdValue !== null && Number.isNaN(Number(displayIdValue))) {
       errors.push('Client ID must be a number');
@@ -157,9 +102,6 @@ const ClientEditPage: React.FC = () => {
     setIsSubmitting(true);
 
     try {
-      // Combine country code and phone number
-      const fullPhone = `${formData.countryCode}${formData.phoneNumber}`;
-
       // Prepare client data with proper typing
       const displayIdValue = formData.display_id as unknown;
       const clientData: Partial<Client> = {
@@ -168,7 +110,7 @@ const ClientEditPage: React.FC = () => {
         lastName: formData.lastName?.trim(),
         email: formData.email?.trim(),
         loginPin: normalizeOptionalValue(formData.loginPin),
-        phone: fullPhone,
+        phone: formData.phone?.trim(),
         address: formData.address,
         city: formData.city,
         state: formData.state,
@@ -317,6 +259,32 @@ const ClientEditPage: React.FC = () => {
             </div>
 
             <div className="form-group">
+              <label htmlFor="phone">Phone *:</label>
+              <input
+                type="tel"
+                id="phone"
+                name="phone"
+                value={formData.phone || ''}
+                onChange={handleInputChange}
+                placeholder="Full number with country code"
+                required
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="country">Country:</label>
+              <input
+                type="text"
+                id="country"
+                name="country"
+                value={formData.country || ''}
+                onChange={handleInputChange}
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="form-group">
               <label htmlFor="email">Email *:</label>
               <input
                 type="email"
@@ -351,36 +319,6 @@ const ClientEditPage: React.FC = () => {
             </div>
 
             <div className="form-group">
-              <label htmlFor="phone">Phone *:</label>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <select
-                  name="countryCode"
-                  value={formData.countryCode || '+1'}
-                  onChange={handleInputChange}
-                  style={{ width: '160px' }}
-                  className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  {COUNTRY_CODES.map(cc => (
-                    <option key={cc.code} value={cc.code}>
-                      {cc.code} {cc.country}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="tel"
-                  id="phoneNumber"
-                  name="phoneNumber"
-                  value={formData.phoneNumber || ''}
-                  onChange={handleInputChange}
-                  placeholder="Phone number"
-                  required
-                  style={{ flex: 1 }}
-                  className="p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
               <label htmlFor="yearOfBirth">Year of Birth:</label>
               <input
                 type="number"
@@ -408,6 +346,7 @@ const ClientEditPage: React.FC = () => {
                 <option value="male">Male</option>
                 <option value="female">Female</option>
                 <option value="other">Other</option>
+                <option value="prefer-not-to-say">Prefer not to say</option>
               </select>
             </div>
 
@@ -481,17 +420,6 @@ const ClientEditPage: React.FC = () => {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="country">Country:</label>
-              <input
-                type="text"
-                id="country"
-                name="country"
-                value={formData.country || ''}
-                onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
           </div>
 
           <div className="form-section">

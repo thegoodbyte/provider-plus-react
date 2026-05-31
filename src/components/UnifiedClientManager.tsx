@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppleButton from './AppleButton';
 import AppleInput from './AppleInput';
-import SearchableCountrySelector from './SearchableCountrySelector';
 import LoadingSpinner from './LoadingSpinner';
 import { clientsApi } from '../services/api';
 import { Client } from '../types';
@@ -40,7 +39,6 @@ const UnifiedClientManager: React.FC = () => {
     lastName: '',
     email: '',
     phone: '',
-    phoneCountryCode: '+420',
     address: '',
     country: 'CZ',
     workflowStatus: 'potential',
@@ -109,7 +107,7 @@ const UnifiedClientManager: React.FC = () => {
     try {
       // Define allowed fields for client creation/update
       const allowedFields = [
-        'firstName', 'lastName', 'email', 'loginPin', 'phoneCountryCode', 'phone', 'address',
+        'firstName', 'lastName', 'email', 'loginPin', 'phone', 'address',
         'city', 'state', 'zipCode', 'country', 'dateOfBirth', 'emergencyContact',
         'emergencyContactPhone', 'medicalConditions', 'dietaryRestrictions', 'status',
         'notes', 'preferredName', 'occupation', 'gender', 'height', 'weight', 'source',
@@ -174,7 +172,6 @@ const UnifiedClientManager: React.FC = () => {
         lastName: '',
         email: '',
         phone: '',
-        phoneCountryCode: '+420',
         address: '',
         country: 'CZ',
         workflowStatus: 'potential',
@@ -205,7 +202,7 @@ const UnifiedClientManager: React.FC = () => {
 
   const buildClientFormData = (client: Client): Partial<Client> => {
     const allowedFields = [
-      'firstName', 'lastName', 'email', 'loginPin', 'phoneCountryCode', 'phone', 'address',
+      'firstName', 'lastName', 'email', 'loginPin', 'phone', 'address',
       'city', 'state', 'zipCode', 'country', 'dateOfBirth', 'emergencyContact',
       'emergencyContactPhone', 'medicalConditions', 'dietaryRestrictions', 'status',
       'notes', 'preferredName', 'occupation', 'gender', 'height', 'weight', 'source',
@@ -423,7 +420,7 @@ const UnifiedClientManager: React.FC = () => {
                       {client.email && (
                         <div>{client.email}</div>
                       )}
-                      <div>{client.phoneCountryCode || ''} {client.phone}</div>
+                      <div>{client.phone}</div>
                     </div>
                   </td>
                   <td className="px-3 py-1.5 whitespace-nowrap">
@@ -563,28 +560,11 @@ const UnifiedClientManager: React.FC = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-apple-gray-700 mb-1">Phone *</label>
-                  <div className="flex">
-                    <div className="w-48">
-                      <SearchableCountrySelector
-                        value={formData.phoneCountryCode || '+420'}
-                        onChange={(phonePrefix, countryCode) => {
-                          setFormData({
-                            ...formData,
-                            phoneCountryCode: phonePrefix,
-                            country: countryCode
-                          });
-                        }}
-                        placeholder="Select country"
-                        className="rounded-r-none border-r-0"
-                      />
-                    </div>
-                    <AppleInput
-                      value={formData.phone || ''}
-                      onChange={(value) => setFormData({ ...formData, phone: value })}
-                      placeholder="Enter phone number"
-                      className="rounded-l-none border-l-0 flex-1"
-                    />
-                  </div>
+                  <AppleInput
+                    value={formData.phone || ''}
+                    onChange={(value) => setFormData({ ...formData, phone: value })}
+                    placeholder="Enter full number with country code"
+                  />
                 </div>
 
                 <AppleInput
@@ -594,19 +574,12 @@ const UnifiedClientManager: React.FC = () => {
                   placeholder="Enter address"
                 />
 
-                <div>
-                  <label className="block text-sm font-medium text-apple-gray-700 mb-1">Country</label>
-                  <SearchableCountrySelector
-                    value={formData.phoneCountryCode || '+420'}
-                    onChange={(phonePrefix, countryCode) => {
-                      setFormData({
-                        ...formData,
-                        country: countryCode
-                      });
-                    }}
-                    placeholder="Select country"
-                  />
-                </div>
+                <AppleInput
+                  label="Country"
+                  value={formData.country || ''}
+                  onChange={(value) => setFormData({ ...formData, country: value })}
+                  placeholder="Enter country"
+                />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>

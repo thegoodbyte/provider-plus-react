@@ -10,6 +10,7 @@ interface TaskFormProps {
   onCancel: () => void;
   clientId?: string;
   retreatId?: string;
+  error?: string | null;
 }
 
 export const TaskForm: React.FC<TaskFormProps> = ({
@@ -18,6 +19,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
   onCancel,
   clientId,
   retreatId,
+  error,
 }) => {
   const [formData, setFormData] = useState<CreateTaskDto>({
     name: '',
@@ -202,6 +204,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         </div>
 
         <form onSubmit={handleSubmit} className="task-form">
+          {error && <div className="error-message">{error}</div>}
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="name">Task Name *</label>

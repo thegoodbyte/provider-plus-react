@@ -4,11 +4,15 @@ import { cacheService } from './cacheService';
 interface LoginResponse {
   access_token: string;
   user: {
+    id?: string;
     username: string; // This is now the email for compatibility
     email: string;
     role: string;
     firstName?: string;
     lastName?: string;
+    originalRole?: string;
+    impersonatedBy?: string;
+    readOnly?: boolean;
   };
 }
 
@@ -63,6 +67,52 @@ export const authService = {
     cacheService.clear();
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('originalToken');
+    localStorage.removeItem('originalUser');
+  },
+
+  async startMedicalStaffPreview(): Promise<LoginResponse> {
+    const token = this.getToken();
+    const user = this.getUser();
+    if (!token || !user) {
+      throw new Error('Not authenticated');
+    }
+
+    if (!localStorage.getItem('originalToken')) {
+      localStorage.setItem('originalToken', token);
+      localStorage.setItem('originalUser', JSON.stringify(user));
+    }
+
+    const response = await fetch(`${API_BASE_URL}/auth/impersonate/medical-staff`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Unable to start medical staff preview');
+    }
+
+    const data = await response.json();
+    cacheService.clear();
+    localStorage.setItem('token', data.access_token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    return data;
+  },
+
+  stopImpersonation() {
+    const originalToken = localStorage.getItem('originalToken');
+    const originalUser = localStorage.getItem('originalUser');
+    if (!originalToken || !originalUser) return null;
+
+    cacheService.clear();
+    localStorage.setItem('token', originalToken);
+    localStorage.setItem('user', originalUser);
+    localStorage.removeItem('originalToken');
+    localStorage.removeItem('originalUser');
+    return JSON.parse(originalUser);
   },
 
   getToken(): string | null {

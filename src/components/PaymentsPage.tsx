@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiPlus, FiEdit2, FiTrash2, FiDollarSign } from 'react-icons/fi';
-import { paymentsApi, clientsApi, retreatsApi } from '../services/api';
-import { Payment, Client, Retreat } from '../types';
+import { paymentsApi, clientsApi, retreatsApi, bookingsApi } from '../services/api';
+import { Payment, Client, Retreat, RetreatClient } from '../types';
 import CurrencyDisplay from './CurrencyDisplay';
 import LoadingSpinner from './LoadingSpinner';
 
@@ -14,6 +14,7 @@ interface PaymentWithDetails extends Payment {
   clientName?: string;
   clientDisplayId?: number;
   retreatName?: string;
+  bookingNumber?: number;
 }
 
 const PaymentsPage: React.FC = () => {
@@ -24,10 +25,11 @@ const PaymentsPage: React.FC = () => {
   const fetchPayments = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [paymentsResponse, clientsResponse, retreatsResponse] = await Promise.all([
+      const [paymentsResponse, clientsResponse, retreatsResponse, bookingsResponse] = await Promise.all([
         paymentsApi.getAll(),
         clientsApi.getAll(),
         retreatsApi.getAll(),
+        bookingsApi.getAll(),
       ]);
 
       const clientsMap = new Map<string, Client>(
@@ -42,19 +44,29 @@ const PaymentsPage: React.FC = () => {
           .map((retreat: Retreat) => [retreat._id!, retreat]),
       );
 
+      const bookingsMap = new Map<string, RetreatClient>(
+        (bookingsResponse.data || [])
+          .filter((booking: RetreatClient) => booking._id)
+          .map((booking: RetreatClient) => [booking._id!, booking]),
+      );
+
       const enrichedPayments: PaymentWithDetails[] = (paymentsResponse.data || []).map((payment: Payment) => {
         const clientId = typeof payment.clientId === 'string' ? payment.clientId : payment.clientId?._id;
         const retreatId = typeof payment.retreatId === 'string' ? payment.retreatId : payment.retreatId?._id;
+        const bookingId = typeof payment.bookingId === 'string' ? payment.bookingId : payment.bookingId?._id;
         const client = clientId ? clientsMap.get(clientId) : undefined;
         const retreat = retreatId ? retreatsMap.get(retreatId) : undefined;
+        const booking = bookingId ? bookingsMap.get(bookingId) : undefined;
 
         return {
           ...payment,
           clientId,
           retreatId,
+          bookingId,
           clientName: client ? `${client.firstName} ${client.lastName}` : 'Unknown Client',
           clientDisplayId: client?.display_id,
           retreatName: retreat ? retreat.name : 'Unknown Retreat',
+          bookingNumber: (typeof payment.bookingId === 'object' ? payment.bookingId?.bookingNumber : undefined) || booking?.bookingNumber,
         };
       });
 
@@ -134,7 +146,9 @@ const PaymentsPage: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Retreat</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Booking #</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">USD</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Method</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
@@ -157,7 +171,13 @@ const PaymentsPage: React.FC = () => {
                     {payment.retreatName}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {payment.bookingNumber ? `#${payment.bookingNumber}` : '-'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <CurrencyDisplay amount={payment.amount} currency={payment.currency} />
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {payment.usd_amount !== undefined ? <CurrencyDisplay amount={payment.usd_amount} currency="USD" /> : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {payment.paymentMethod.replace(/_/g, ' ')}

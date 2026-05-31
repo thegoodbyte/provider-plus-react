@@ -12,13 +12,20 @@ interface RolePermissions {
   [route: string]: string[]; // route -> allowed roles
 }
 
+const NAVIGATION_PERMISSIONS_STORAGE_KEY = 'navigationPermissions:v1';
+
 // Define all available routes and their metadata
 const AVAILABLE_PERMISSIONS: Permission[] = [
+  { route: 'launcher', name: 'Home / Launcher', description: 'Module launcher and home screen', category: 'Core' },
+
   // Client Management
   { route: 'clients', name: 'Client Management', description: 'View and manage client information', category: 'Client Management' },
   { route: 'potential-clients', name: 'Potential Clients', description: 'Manage potential/screening clients', category: 'Client Management' },
+  { route: 'screening', name: 'Screenings', description: 'Screening client workflow', category: 'Client Management' },
 
   // Medical
+  { route: 'medical-artifacts', name: 'Medical Artifacts', description: 'Stored medical documents and artifacts', category: 'Medical' },
+  { route: 'medical-review-requests', name: 'Medical Review Requests', description: 'Medical review request queue and reviews', category: 'Medical' },
   { route: 'medical-tracking', name: 'Medical Tracking', description: 'Medical document tracking and review', category: 'Medical' },
   { route: 'client-medications', name: 'Client Medications', description: 'Client medication documents and records', category: 'Medical' },
   { route: 'medical-dashboard', name: 'Medical Dashboard', description: 'Medical advisor dashboard', category: 'Medical' },
@@ -28,11 +35,18 @@ const AVAILABLE_PERMISSIONS: Permission[] = [
   // Operations
   { route: 'bookings', name: 'Bookings', description: 'Booking management and scheduling', category: 'Operations' },
   { route: 'retreats', name: 'Retreats', description: 'Retreat management', category: 'Operations' },
+  { route: 'ceremonies', name: 'Ceremonies', description: 'Ceremony management and participant tracking', category: 'Operations' },
   { route: 'houses', name: 'Houses', description: 'Property management', category: 'Operations' },
   { route: 'reminders', name: 'Reminders', description: 'Task reminders and notifications', category: 'Operations' },
+  { route: 'communications', name: 'Communications', description: 'Client communications and templates', category: 'Operations' },
+  { route: 'tasks', name: 'General Tasks', description: 'General task queue', category: 'Operations' },
+  { route: 'retreat-flow', name: 'Retreat Readiness', description: 'Retreat readiness workflow', category: 'Operations' },
+  { route: 'booking-flow', name: 'Booking Steps', description: 'Booking readiness workflow', category: 'Operations' },
+  { route: 'file-uploads', name: 'File Uploads', description: 'File upload inventory', category: 'Operations' },
 
   // Financial
   { route: 'payments', name: 'Payments', description: 'Payment processing and tracking', category: 'Financial' },
+  { route: 'payment-requests', name: 'Payment Requests', description: 'Payment request and invoice management', category: 'Financial' },
   { route: 'requirements', name: 'Requirements', description: 'System requirements management', category: 'Financial' },
 
   // Administration
@@ -45,31 +59,53 @@ const ROLES = [
   { key: 'user', name: 'User', description: 'Basic user access', color: 'bg-blue-50 text-blue-700' },
   { key: 'facilitator', name: 'Facilitator', description: 'Retreat and operations staff', color: 'bg-green-50 text-green-700' },
   { key: 'medical_staff', name: 'Medical Staff', description: 'Medical advisors and staff', color: 'bg-purple-50 text-purple-700' },
+  { key: 'medical_advisor', name: 'Medical Advisor', description: 'External medical review access', color: 'bg-indigo-50 text-indigo-700' },
   { key: 'admin', name: 'Administrator', description: 'Full system access', color: 'bg-red-50 text-red-700' },
 ];
 
 // Default permission matrix - you can load this from backend later
 const DEFAULT_PERMISSIONS: RolePermissions = {
+  'launcher': ['user', 'facilitator', 'medical_staff', 'admin'],
   'clients': ['user', 'facilitator', 'medical_staff', 'admin'],
   'potential-clients': ['facilitator', 'medical_staff', 'admin'],
+  'screening': ['facilitator', 'medical_staff', 'admin'],
+  'medical-artifacts': ['medical_staff', 'admin'],
+  'medical-review-requests': ['medical_staff', 'medical_advisor', 'admin'],
   'medical-tracking': ['medical_staff', 'admin'],
   'client-medications': ['medical_staff', 'admin'],
-  'medical-dashboard': ['medical_staff', 'admin'],
+  'medical-dashboard': ['medical_staff', 'medical_advisor', 'admin'],
   'medical-retreats': ['medical_staff', 'admin'],
   'medical': ['medical_staff', 'admin'],
   'bookings': ['facilitator', 'medical_staff', 'admin'],
   'retreats': ['facilitator', 'medical_staff', 'admin'],
+  'ceremonies': ['facilitator', 'medical_staff', 'admin'],
   'houses': ['facilitator', 'admin'],
   'reminders': ['user', 'facilitator', 'medical_staff', 'admin'],
+  'communications': ['user', 'facilitator', 'medical_staff', 'admin'],
+  'tasks': ['admin'],
+  'retreat-flow': ['medical_staff', 'admin'],
+  'booking-flow': ['medical_staff', 'admin'],
+  'file-uploads': ['medical_staff', 'admin'],
   'payments': ['admin'],
+  'payment-requests': ['admin'],
   'requirements': ['admin'],
   'analytics': ['admin'],
   'users': ['admin'],
   'permissions': ['admin'],
 };
 
+const getInitialPermissions = () => {
+  const saved = localStorage.getItem(NAVIGATION_PERMISSIONS_STORAGE_KEY);
+  if (!saved) return DEFAULT_PERMISSIONS;
+  try {
+    return { ...DEFAULT_PERMISSIONS, ...JSON.parse(saved) };
+  } catch {
+    return DEFAULT_PERMISSIONS;
+  }
+};
+
 const PermissionsMatrix: React.FC = () => {
-  const [permissions, setPermissions] = useState<RolePermissions>(DEFAULT_PERMISSIONS);
+  const [permissions, setPermissions] = useState<RolePermissions>(getInitialPermissions);
   const [hasChanges, setHasChanges] = useState(false);
   const [groupedPermissions, setGroupedPermissions] = useState<Record<string, Permission[]>>({});
 
@@ -106,8 +142,8 @@ const PermissionsMatrix: React.FC = () => {
 
   const savePermissions = async () => {
     try {
-      // TODO: Implement API call to save permissions
-      console.log('Saving permissions:', permissions);
+      localStorage.setItem(NAVIGATION_PERMISSIONS_STORAGE_KEY, JSON.stringify(permissions));
+      window.dispatchEvent(new Event('navigationPermissionsChange'));
       setHasChanges(false);
       alert('Permissions saved successfully!');
     } catch (error) {
@@ -119,6 +155,8 @@ const PermissionsMatrix: React.FC = () => {
   const resetToDefaults = () => {
     if (window.confirm('Are you sure you want to reset to default permissions? This will lose all customizations.')) {
       setPermissions(DEFAULT_PERMISSIONS);
+      localStorage.setItem(NAVIGATION_PERMISSIONS_STORAGE_KEY, JSON.stringify(DEFAULT_PERMISSIONS));
+      window.dispatchEvent(new Event('navigationPermissionsChange'));
       setHasChanges(true);
     }
   };
@@ -226,10 +264,10 @@ const PermissionsMatrix: React.FC = () => {
                       <td className="px-3 py-4 text-center">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           getRoleCount(permission.route) === 0 ? 'bg-red-100 text-red-800' :
-                          getRoleCount(permission.route) === 4 ? 'bg-green-100 text-green-800' :
+                          getRoleCount(permission.route) === ROLES.length ? 'bg-green-100 text-green-800' :
                           'bg-yellow-100 text-yellow-800'
                         }`}>
-                          {getRoleCount(permission.route)}/4
+                          {getRoleCount(permission.route)}/{ROLES.length}
                         </span>
                       </td>
                     </tr>
@@ -255,7 +293,7 @@ const PermissionsMatrix: React.FC = () => {
                   .filter(p => hasPermission(p.route, role.key))
                   .map(p => (
                     <div key={p.route} className="text-xs">
-                      /{role.key === 'user' ? 'user' : role.key === 'facilitator' ? 'staff' : role.key === 'medical_staff' ? 'medical' : 'admin'}/{p.route}
+                      /{role.key === 'user' ? 'user' : role.key === 'facilitator' ? 'staff' : role.key === 'medical_staff' || role.key === 'medical_advisor' ? 'medical' : 'admin'}/{p.route}
                     </div>
                   ))
                 }

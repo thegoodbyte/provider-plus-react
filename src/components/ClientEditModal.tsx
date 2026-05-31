@@ -9,65 +9,14 @@ interface ClientEditModalProps {
   onSave: (client: Client) => void;
 }
 
-const COUNTRY_CODES = [
-  { code: '+1', country: 'US/CA' },
-  { code: '+420', country: 'Czech' },
-  { code: '+421', country: 'Slovak' },
-  { code: '+48', country: 'Poland' },
-  { code: '+49', country: 'Germany' },
-  { code: '+44', country: 'UK' },
-  { code: '+33', country: 'France' },
-  { code: '+34', country: 'Spain' },
-  { code: '+39', country: 'Italy' },
-  { code: '+31', country: 'Netherlands' },
-  { code: '+32', country: 'Belgium' },
-  { code: '+41', country: 'Switzerland' },
-  { code: '+43', country: 'Austria' },
-  { code: '+45', country: 'Denmark' },
-  { code: '+46', country: 'Sweden' },
-  { code: '+47', country: 'Norway' },
-  { code: '+358', country: 'Finland' },
-  { code: '+351', country: 'Portugal' },
-  { code: '+30', country: 'Greece' },
-  { code: '+90', country: 'Turkey' },
-  { code: '+7', country: 'Russia' },
-  { code: '+380', country: 'Ukraine' },
-  { code: '+86', country: 'China' },
-  { code: '+81', country: 'Japan' },
-  { code: '+82', country: 'Korea' },
-  { code: '+91', country: 'India' },
-  { code: '+61', country: 'Australia' },
-  { code: '+64', country: 'NZ' },
-  { code: '+27', country: 'S.Africa' },
-  { code: '+52', country: 'Mexico' },
-  { code: '+55', country: 'Brazil' },
-  { code: '+54', country: 'Argentina' },
-  { code: '+972', country: 'Israel' },
-  { code: '+971', country: 'UAE' }
-];
-
 const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSave }) => {
-  const [formData, setFormData] = useState<Client & { countryCode?: string; phoneNumber?: string; yearOfBirth?: number; medications?: string; allergies?: string; specialRequests?: string; language?: 'EN' | 'PL' | 'CZ' | 'ES' | 'FR' | 'DE' }>({
+  const [formData, setFormData] = useState<Client & { yearOfBirth?: number; medications?: string; allergies?: string; specialRequests?: string; language?: 'EN' | 'PL' | 'CZ' | 'ES' | 'FR' | 'DE' }>({
     ...client
   });
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    // Parse phone number to extract country code
-    let countryCode = '+420'; // Default to Czech Republic
-    let phoneNumber = client.phone || '';
-
-    // Check if phone starts with a country code
-    if (phoneNumber.startsWith('+')) {
-      // Try to match against known country codes
-      const matchedCode = COUNTRY_CODES.find(cc => phoneNumber.startsWith(cc.code));
-      if (matchedCode) {
-        countryCode = matchedCode.code;
-        phoneNumber = phoneNumber.substring(matchedCode.code.length).trim();
-      }
-    }
-
     // Extract year from dateOfBirth if present
     let yearOfBirth;
     if (client.dateOfBirth) {
@@ -76,8 +25,6 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
 
     setFormData({
       ...client,
-      countryCode,
-      phoneNumber,
       yearOfBirth
     });
   }, [client]);
@@ -104,7 +51,7 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
     if (!formData.firstName?.trim()) errors.push('First name is required');
     if (!formData.lastName?.trim()) errors.push('Last name is required');
     if (!formData.email?.trim()) errors.push('Email is required');
-    if (!formData.phoneNumber?.trim()) errors.push('Phone number is required');
+    if (!formData.phone?.trim()) errors.push('Phone number is required');
     if (formData.loginPin && !/^\d{4,6}$/.test(formData.loginPin)) {
       errors.push('Client portal PIN must be 4-6 digits');
     }
@@ -122,16 +69,13 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
     setIsSubmitting(true);
 
     try {
-      // Combine country code and phone number
-      const fullPhone = `${formData.countryCode}${formData.phoneNumber}`;
-
       // Prepare client data with proper typing
       const clientData: Partial<Client> = {
         firstName: formData.firstName?.trim(),
         lastName: formData.lastName?.trim(),
         email: formData.email?.trim(),
         loginPin: normalizeOptionalValue(formData.loginPin),
-        phone: fullPhone,
+        phone: formData.phone?.trim(),
         address: formData.address,
         city: formData.city,
         state: formData.state,
@@ -262,30 +206,15 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
 
               <div className="form-group">
                 <label htmlFor="phone">Phone *:</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <select
-                    name="countryCode"
-                    value={formData.countryCode || '+1'}
-                    onChange={handleInputChange}
-                    style={{ width: '160px' }}
-                  >
-                    {COUNTRY_CODES.map(cc => (
-                      <option key={cc.code} value={cc.code}>
-                        {cc.code} {cc.country}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="tel"
-                    id="phoneNumber"
-                    name="phoneNumber"
-                    value={formData.phoneNumber || ''}
-                    onChange={handleInputChange}
-                    placeholder="Phone number"
-                    required
-                    style={{ flex: 1 }}
-                  />
-                </div>
+                <input
+                  type="tel"
+                  id="phone"
+                  name="phone"
+                  value={formData.phone || ''}
+                  onChange={handleInputChange}
+                  placeholder="Full number with country code"
+                  required
+                />
               </div>
 
               <div className="form-group">

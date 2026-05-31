@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { clientsApi, paymentsApi, clientMedicalApi, bookingsApi } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
 import AppleButton from './AppleButton';
+import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
+import { PaymentRequest } from '../types';
 import { FiArrowLeft, FiEdit2, FiUser, FiPhone, FiMail, FiMapPin, FiCalendar, FiDollarSign, FiActivity, FiFileText, FiAlertCircle, FiPlus, FiMessageSquare, FiCheckSquare, FiHeart, FiEye, FiEyeOff } from 'react-icons/fi';
 
 // Simple wrapper to fix TypeScript icon issues
@@ -61,7 +63,12 @@ const ClientDetailsPage: React.FC = () => {
     date: '',
     type: '',
     amount: '',
+    currency: 'EUR',
+    retreatId: '',
     paymentRequestId: '',
+    usdAmount: '',
+    usdPreviewLoading: false,
+    usdPreviewError: '',
     note: ''
   });
   const [newMedical, setNewMedical] = useState({
@@ -83,8 +90,118 @@ const ClientDetailsPage: React.FC = () => {
     }
   }, [clientId]);
 
+  useEffect(() => {
+    const amount = Number(newPayment.amount);
+    if (!amount || Number.isNaN(amount) || !newPayment.currency) {
+      setNewPayment((current) => ({ ...current, usdAmount: '', usdPreviewError: '', usdPreviewLoading: false }));
+      return;
+    }
+
+    let active = true;
+    const timeout = window.setTimeout(async () => {
+      try {
+        setNewPayment((current) => ({ ...current, usdPreviewLoading: true, usdPreviewError: '' }));
+        const response = await paymentsApi.convertToUsd(amount, newPayment.currency);
+        if (active) {
+          setNewPayment((current) => ({
+            ...current,
+            usdAmount: String(response.data.usd_amount ?? ''),
+            usdPreviewLoading: false,
+          }));
+        }
+      } catch (conversionError) {
+        console.error('Error converting payment amount to USD:', conversionError);
+        if (active) {
+          setNewPayment((current) => ({
+            ...current,
+            usdAmount: '',
+            usdPreviewLoading: false,
+            usdPreviewError: 'USD conversion unavailable',
+          }));
+        }
+      }
+    }, 350);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+    };
+  }, [newPayment.amount, newPayment.currency]);
+
   const handleClientUpdate = (updatedClient: any) => {
     setClient(updatedClient);
+  };
+
+  const resetNewPayment = () => {
+    setNewPayment({
+      date: '',
+      type: '',
+      amount: '',
+      currency: 'EUR',
+      retreatId: '',
+      paymentRequestId: '',
+      usdAmount: '',
+      usdPreviewLoading: false,
+      usdPreviewError: '',
+      note: ''
+    });
+  };
+
+  const getId = (value: any) => {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    return value._id || value.id || '';
+  };
+
+  const handlePaymentRequestSelect = (paymentRequestId: string, paymentRequest?: PaymentRequest) => {
+    setNewPayment((current) => ({
+      ...current,
+      paymentRequestId,
+      amount: paymentRequest ? String(paymentRequest.fullPriceQuote ?? paymentRequest.amountPaid ?? current.amount) : current.amount,
+      currency: paymentRequest?.currency || current.currency,
+      retreatId: paymentRequest ? getId(paymentRequest.retreatId) : current.retreatId,
+      note: current.note || (paymentRequest ? `Payment for invoice ${paymentRequest.invoiceNumber || paymentRequest.display_id || ''}`.trim() : ''),
+    }));
+  };
+
+  const handleAddPayment = async () => {
+    if (!clientId || !newPayment.date || !newPayment.type || !newPayment.amount) return;
+
+    const retreatId = newPayment.retreatId || getId(bookings[0]?.retreatId || bookings[0]?.retreat);
+    if (!retreatId) {
+      alert('Please link a payment request or make sure the client has a booking with a retreat.');
+      return;
+    }
+
+    const paymentTypeMap: Record<string, string> = {
+      deposit: 'deposit_non_refundable',
+      full_payment: 'regular_payment',
+      installment: 'regular_payment',
+      refund: 'refund',
+    };
+
+    try {
+      await paymentsApi.create({
+        clientId,
+        retreatId,
+        paymentRequestId: newPayment.paymentRequestId || undefined,
+        amount: parseFloat(newPayment.amount),
+        usd_amount: newPayment.usdAmount ? Number(newPayment.usdAmount) : undefined,
+        currency: newPayment.currency as any,
+        status: newPayment.type === 'refund' ? 'refunded' : 'completed',
+        paymentMethod: 'other',
+        paymentType: (paymentTypeMap[newPayment.type] || 'regular_payment') as any,
+        description: newPayment.note || undefined,
+        paymentDate: new Date(newPayment.date),
+        notes: newPayment.note || undefined,
+      } as any);
+      await fetchClientData();
+      resetNewPayment();
+      setShowAddPaymentModal(false);
+    } catch (paymentError) {
+      console.error('Error adding payment:', paymentError);
+      alert('Failed to add payment');
+    }
   };
 
   const fetchClientData = async () => {
@@ -1019,11 +1136,11 @@ const ClientDetailsPage: React.FC = () => {
                 <AppleButton
                   onClick={() => {
                     if (newNote.trim()) {
-                      setNotes([...notes, {
+                      setNotes([{
                         content: newNote,
                         createdAt: new Date().toISOString(),
                         createdBy: 'Admin'
-                      }]);
+                      }, ...notes]);
                       setNewNote('');
                       setShowAddNoteModal(false);
                     }
@@ -1165,6 +1282,16 @@ const ClientDetailsPage: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Payment Request (Optional)
+                  </label>
+                  <SearchablePaymentRequestSelect
+                    selectedPaymentRequestId={newPayment.paymentRequestId}
+                    onPaymentRequestSelect={handlePaymentRequestSelect}
+                    placeholder="Search by invoice/display number, client, or retreat"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Amount
                   </label>
                   <input
@@ -1176,17 +1303,35 @@ const ClientDetailsPage: React.FC = () => {
                     className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Payment Request ID (Optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={newPayment.paymentRequestId}
-                    onChange={(e) => setNewPayment({...newPayment, paymentRequestId: e.target.value})}
-                    placeholder="Enter payment request ID"
-                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Currency
+                    </label>
+                    <select
+                      value={newPayment.currency}
+                      onChange={(e) => setNewPayment({...newPayment, currency: e.target.value})}
+                      className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="EUR">EUR</option>
+                      <option value="USD">USD</option>
+                      <option value="CZK">CZK</option>
+                      <option value="PLN">PLN</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      USD Amount
+                    </label>
+                    <input
+                      type="text"
+                      value={newPayment.usdPreviewLoading ? 'Calculating...' : newPayment.usdAmount ? `$${Number(newPayment.usdAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}
+                      readOnly
+                      placeholder="Calculated"
+                      className="w-full p-2 border border-gray-200 rounded-md bg-gray-50 text-gray-700"
+                    />
+                    {newPayment.usdPreviewError && <p className="mt-1 text-xs text-red-600">{newPayment.usdPreviewError}</p>}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1205,29 +1350,14 @@ const ClientDetailsPage: React.FC = () => {
                 <AppleButton
                   onClick={() => {
                     setShowAddPaymentModal(false);
-                    setNewPayment({ date: '', type: '', amount: '', paymentRequestId: '', note: '' });
+                    resetNewPayment();
                   }}
                   variant="ghost"
                 >
                   Cancel
                 </AppleButton>
                 <AppleButton
-                  onClick={() => {
-                    if (newPayment.date && newPayment.type && newPayment.amount) {
-                      const payment = {
-                        _id: Date.now().toString(),
-                        paymentDate: newPayment.date,
-                        type: newPayment.type,
-                        amount: parseFloat(newPayment.amount),
-                        status: 'completed',
-                        reference: newPayment.paymentRequestId || 'Manual Entry',
-                        note: newPayment.note
-                      };
-                      setPayments([payment, ...payments]);
-                      setNewPayment({ date: '', type: '', amount: '', paymentRequestId: '', note: '' });
-                      setShowAddPaymentModal(false);
-                    }
-                  }}
+                  onClick={handleAddPayment}
                   className="apple-button-primary"
                 >
                   Add Payment

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import AppleButton from '../components/AppleButton';
 import AppleInput from '../components/AppleInput';
-import SearchableCountrySelector from '../components/SearchableCountrySelector';
 import { clientsApi } from '../services/api';
 import { Client } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -13,7 +12,6 @@ const AddClient: React.FC = () => {
   const { user } = useAuth();
   const [formData, setFormData] = useState<Partial<Client>>({
     workflowStatus: 'potential',
-    phoneCountryCode: '+420',
     country: 'CZ'
   });
   const [saving, setSaving] = useState(false);
@@ -185,6 +183,25 @@ const AddClient: React.FC = () => {
                     required
                   />
                 </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-apple-gray-700 mb-1">Phone *</label>
+                  <AppleInput
+                    value={formData.phone || ''}
+                    onChange={(value) => setFormData({ ...formData, phone: value })}
+                    placeholder="Enter full number with country code"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <AppleInput
+                    label="Country"
+                    value={formData.country || ''}
+                    onChange={(value) => setFormData({ ...formData, country: value })}
+                    placeholder="Enter country"
+                  />
+                </div>
               </div>
             </div>
 
@@ -213,53 +230,12 @@ const AddClient: React.FC = () => {
                   </p>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-apple-gray-700 mb-1">Phone *</label>
-                  <div className="flex">
-                    <div className="w-48">
-                      <SearchableCountrySelector
-                        value={formData.phoneCountryCode || '+420'}
-                        onChange={(phonePrefix, countryCode) => {
-                          setFormData({
-                            ...formData,
-                            phoneCountryCode: phonePrefix,
-                            country: countryCode
-                          });
-                        }}
-                        placeholder="Select country"
-                        className="rounded-r-none border-r-0"
-                      />
-                    </div>
-                    <AppleInput
-                      value={formData.phone || ''}
-                      onChange={(value) => setFormData({ ...formData, phone: value })}
-                      placeholder="Enter phone number"
-                      className="rounded-l-none border-l-0 flex-1"
-                      required
-                    />
-                  </div>
-                </div>
-
                 <AppleInput
                   label="Address"
                   value={formData.address || ''}
                   onChange={(value) => setFormData({ ...formData, address: value })}
                   placeholder="Enter address"
                 />
-
-                <div>
-                  <label className="block text-sm font-medium text-apple-gray-700 mb-1">Country</label>
-                  <SearchableCountrySelector
-                    value={formData.phoneCountryCode || '+420'}
-                    onChange={(phonePrefix, countryCode) => {
-                      setFormData({
-                        ...formData,
-                        country: countryCode
-                      });
-                    }}
-                    placeholder="Select country"
-                  />
-                </div>
               </div>
             </div>
 
@@ -267,6 +243,20 @@ const AddClient: React.FC = () => {
             <div>
               <h2 className="text-lg font-medium text-apple-gray-900 mb-4">Additional Information</h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-apple-gray-700 mb-1">Gender</label>
+                  <select
+                    className="w-full px-3 py-2 border border-apple-gray-200 rounded-apple focus:outline-none focus:ring-2 focus:ring-apple-blue/20 bg-white text-sm"
+                    value={formData.gender || ''}
+                    onChange={(e) => setFormData({ ...formData, gender: e.target.value as Client['gender'] })}
+                  >
+                    <option value="">Select gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                    <option value="prefer-not-to-say">Prefer not to say</option>
+                  </select>
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-apple-gray-700 mb-1">Workflow Status</label>
                   <select

@@ -8,29 +8,30 @@ interface ProtectedRouteProps {
   fallbackPath?: string;
 }
 
-// Role hierarchy - higher roles inherit permissions from lower roles
-const ROLE_HIERARCHY = {
-  admin: 4,
-  medical_advisor: 3,
-  medical_staff: 3, // Alias for backwards compatibility
-  facilitator: 2,
-  user: 1
+const hasRoleAccess = (userRole: string, allowedRoles: string[]) => {
+  if (userRole === 'admin') return true;
+  return allowedRoles.includes(userRole);
 };
 
-// Route prefix to minimum role mapping
-const ROUTE_PERMISSIONS: Record<string, string> = {
-  '/admin': 'admin',
-  '/medical': 'medical_staff',
-  '/staff': 'facilitator',
-  '/user': 'user',
+// Route prefix to allowed role mapping.
+const ROUTE_PERMISSIONS: Record<string, string[]> = {
+  '/admin': ['admin'],
+  '/medical': ['medical_staff', 'medical_advisor', 'admin'],
+  '/staff': ['facilitator', 'medical_staff', 'admin'],
+  '/user': ['user', 'facilitator', 'medical_staff', 'admin'],
   // Default routes (backwards compatibility)
-  '/medical-tracking': 'medical_staff',
-  '/clients': 'user',
-  '/bookings': 'facilitator',
-  '/houses': 'facilitator',
-  '/retreats': 'facilitator',
-  '/payments': 'admin',
-  '/requirements': 'admin'
+  '/medical-tracking': ['medical_staff', 'admin'],
+  '/medical-artifacts': ['medical_staff', 'admin'],
+  '/clients': ['user', 'facilitator', 'medical_staff', 'admin'],
+  '/bookings': ['facilitator', 'medical_staff', 'admin'],
+  '/houses': ['facilitator', 'medical_staff', 'admin'],
+  '/retreats': ['facilitator', 'medical_staff', 'admin'],
+  '/workflow': ['medical_staff', 'admin'],
+  '/retreat-flow': ['medical_staff', 'admin'],
+  '/booking-flow': ['medical_staff', 'admin'],
+  '/flow-tasks': ['medical_staff', 'admin'],
+  '/payments': ['admin'],
+  '/requirements': ['admin']
 };
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
@@ -50,16 +51,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   const userRole = user.role;
-  const userRoleLevel = ROLE_HIERARCHY[userRole as keyof typeof ROLE_HIERARCHY] || 0;
 
   // Check if user has required role (if specified)
   if (requiredRole) {
-    const hasPermission = requiredRole.some(role => {
-      const requiredLevel = ROLE_HIERARCHY[role as keyof typeof ROLE_HIERARCHY] || 999;
-      return userRoleLevel >= requiredLevel;
-    });
-
-    if (!hasPermission) {
+    if (!hasRoleAccess(userRole, requiredRole)) {
       return <Navigate to={fallbackPath} replace />;
     }
   }
@@ -73,10 +68,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   );
 
   if (matchingRoute) {
-    const requiredRoleForRoute = ROUTE_PERMISSIONS[matchingRoute];
-    const requiredLevel = ROLE_HIERARCHY[requiredRoleForRoute as keyof typeof ROLE_HIERARCHY] || 999;
-
-    if (userRoleLevel < requiredLevel) {
+    const allowedRolesForRoute = ROUTE_PERMISSIONS[matchingRoute];
+    if (!hasRoleAccess(userRole, allowedRolesForRoute)) {
       // Redirect to appropriate route for user's role
       const redirectPath = getRedirectPathForRole(userRole, currentPath);
       return <Navigate to={redirectPath} replace />;
