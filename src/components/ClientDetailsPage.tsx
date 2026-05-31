@@ -287,6 +287,10 @@ const ClientDetailsPage: React.FC = () => {
   };
 
   const screeningFileUrl = getScreeningValue('handwritingImageUrl');
+  const screeningFileName = screeningFileUrl ? decodeURIComponent(screeningFileUrl.split('/').pop() || 'Screening file') : '';
+  const screeningFileLower = screeningFileName.toLowerCase();
+  const isScreeningImage = /\.(png|jpe?g|gif|webp|bmp|heic|heif)$/i.test(screeningFileLower);
+  const isScreeningPdf = /\.pdf($|\?)/i.test(screeningFileLower);
   const hasScreeningDetails = [
     'mainIntent',
     'whySeekingIboga',
@@ -704,9 +708,35 @@ const ClientDetailsPage: React.FC = () => {
               {screeningFileUrl && (
                 <div>
                   <h3 className="text-sm font-medium text-gray-500 mb-2">Uploaded Screening File</h3>
-                  <a href={screeningFileUrl} target="_blank" rel="noreferrer" className="inline-flex rounded-md border border-blue-200 bg-white px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50">
-                    Open uploaded file
-                  </a>
+                  <div className="overflow-hidden rounded-md border border-gray-200 bg-white">
+                    <div className="flex flex-col gap-2 border-b border-gray-100 px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+                      <span className="truncate text-sm font-medium text-gray-900">{screeningFileName}</span>
+                      <a href={screeningFileUrl} target="_blank" rel="noreferrer" className="text-sm font-semibold text-blue-700 hover:text-blue-800">
+                        Open in new tab
+                      </a>
+                    </div>
+                    <div className="flex min-h-[420px] items-center justify-center bg-gray-50">
+                      {isScreeningImage && (
+                        <img
+                          src={screeningFileUrl}
+                          alt={screeningFileName}
+                          className="max-h-[620px] max-w-full object-contain"
+                        />
+                      )}
+                      {isScreeningPdf && (
+                        <iframe
+                          src={screeningFileUrl}
+                          title={screeningFileName}
+                          className="h-[620px] w-full border-0 bg-white"
+                        />
+                      )}
+                      {!isScreeningImage && !isScreeningPdf && (
+                        <div className="px-4 text-sm text-gray-600">
+                          Preview unavailable for this file type. Use "Open in new tab" to view it.
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
 
