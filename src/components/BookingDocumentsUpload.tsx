@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FileText, RefreshCw, Upload } from 'lucide-react';
-import { medicalArtifactsApi } from '../services/api';
-import { MedicalArtifact } from '../types';
+import { Eye, FileText, RefreshCw, Send, Upload } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { MedicalArtifact, MedicalReviewRequest } from '../types';
 import './BookingMedicalUpload.css';
 
 type BookingDocumentType = 'contract' | 'food_intake' | 'medications_form' | 'questionnaire';
@@ -18,11 +19,12 @@ const documentSections: Array<{
   type: BookingDocumentType;
   title: string;
   description: string;
+  requestType?: MedicalReviewRequest['requestType'];
 }> = [
   { type: 'contract', title: 'Contract', description: 'Signed client contract for this booking.' },
-  { type: 'food_intake', title: 'Food Form', description: 'Food intake, allergies, and kitchen notes.' },
-  { type: 'medications_form', title: 'Medications Form', description: 'Initial or follow-up medication information.' },
-  { type: 'questionnaire', title: 'Questionnaire Form', description: 'Client questionnaire submitted for this booking.' },
+  { type: 'food_intake', title: 'Food Form', description: 'Food intake, allergies, and kitchen notes.', requestType: 'food_review' },
+  { type: 'medications_form', title: 'Medications Form', description: 'Initial or follow-up medication information.', requestType: 'medications_review' },
+  { type: 'questionnaire', title: 'Questionnaire Form', description: 'Client questionnaire submitted for this booking.', requestType: 'questionnaire_review' },
 ];
 
 const getApiErrorMessage = (error: any) => {
@@ -53,9 +55,12 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
   retreatId,
   onUploadComplete,
 }) => {
+  const navigate = useNavigate();
   const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
+  const [reviewsByArtifact, setReviewsByArtifact] = useState<Record<string, MedicalReviewRequest[]>>({});
   const [loading, setLoading] = useState(false);
   const [uploadingType, setUploadingType] = useState<BookingDocumentType | null>(null);
+  const [creatingReviewFor, setCreatingReviewFor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const loadDocuments = async () => {
@@ -64,7 +69,21 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
     try {
       const response = await medicalArtifactsApi.getAll({ bookingId });
       const bookingArtifacts: MedicalArtifact[] = response.data || [];
-      setArtifacts(bookingArtifacts.filter((artifact) => documentSections.some((section) => section.type === artifact.artifactType)));
+      const documentArtifacts = bookingArtifacts.filter((artifact) => documentSections.some((section) => section.type === artifact.artifactType));
+      setArtifacts(documentArtifacts);
+      const reviewEntries = await Promise.all(
+        documentArtifacts
+          .filter((artifact) => artifact._id)
+          .map(async (artifact) => {
+            try {
+              const reviewsResponse = await medicalReviewRequestsApi.getByArtifact(artifact._id!);
+              return [artifact._id!, reviewsResponse.data || []] as const;
+            } catch {
+              return [artifact._id!, []] as const;
+            }
+          })
+      );
+      setReviewsByArtifact(Object.fromEntries(reviewEntries));
     } catch (loadError: any) {
       setError(loadError?.response?.data?.message || loadError?.message || 'Unable to load booking documents.');
     } finally {
@@ -110,7 +129,17 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
       });
 
       if (created.data._id) {
+        if (section?.requestType) {
+          const review = await createReviewRequest(created.data, section.requestType);
+          if (!review?.display_id) {
+            throw new Error('Medical review request could not be created before upload.');
+          }
+          await medicalArtifactsApi.uploadFiles(created.data._id, fileArray, {
+            reviewRequestNumber: review.display_id,
+          });
+        } else {
         await medicalArtifactsApi.uploadFiles(created.data._id, fileArray);
+        }
       }
 
       await loadDocuments();
@@ -119,6 +148,24 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
       setError(getApiErrorMessage(uploadError));
     } finally {
       setUploadingType(null);
+    }
+  };
+
+  const createReviewRequest = async (artifact: MedicalArtifact, requestType: MedicalReviewRequest['requestType']) => {
+    if (!artifact._id) return undefined;
+    setCreatingReviewFor(artifact._id);
+    setError(null);
+    try {
+      const response = await medicalReviewRequestsApi.createFromArtifact(artifact._id, requestType, {
+        medicalStaffNotes: `${artifact.title} linked to booking ${bookingNumber || bookingId}.`,
+      });
+      await loadDocuments();
+      return response.data;
+    } catch (reviewError: any) {
+      setError(reviewError?.response?.data?.message || reviewError?.message || 'Unable to create medical review request.');
+      return undefined;
+    } finally {
+      setCreatingReviewFor(null);
     }
   };
 
@@ -168,6 +215,29 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
                             {file.fileName || 'Uploaded file'} ({formatBytes(file.size)})
                           </span>
                         ))}
+                      </div>
+                      <div className="booking-medical-actions">
+                        {artifact._id && (
+                          <button className="btn btn-sm btn-secondary" type="button" onClick={() => navigate(`/medical-artifacts/${artifact._id}`)}>
+                            <Eye size={16} /> Artifact
+                          </button>
+                        )}
+                        {section.requestType && (
+                          (reviewsByArtifact[artifact._id || ''] || [])[0]?._id ? (
+                            <button className="btn btn-sm btn-secondary" type="button" onClick={() => navigate(`/medical-review-requests/${(reviewsByArtifact[artifact._id || ''] || [])[0]._id}`)}>
+                              <Eye size={16} /> Review #{(reviewsByArtifact[artifact._id || ''] || [])[0].display_id || (reviewsByArtifact[artifact._id || ''] || [])[0]._id}
+                            </button>
+                          ) : (
+                            <button
+                              className="btn btn-sm btn-primary"
+                              type="button"
+                              disabled={!artifact._id || creatingReviewFor === artifact._id}
+                              onClick={() => createReviewRequest(artifact, section.requestType!)}
+                            >
+                              <Send size={16} /> {creatingReviewFor === artifact._id ? 'Creating...' : 'Create Review'}
+                            </button>
+                          )
+                        )}
                       </div>
                     </div>
                   ))

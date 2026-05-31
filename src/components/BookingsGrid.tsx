@@ -454,7 +454,7 @@ const BookingsGrid: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center justify-end gap-2">
                       <button
-                        onClick={() => console.log('View booking:', booking._id)}
+                        onClick={() => navigate(`${routePrefix}/bookings/${booking._id}`)}
                         className="text-blue-600 hover:text-blue-900"
                         title="View Details"
                       >

@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { bookingsApi } from '../services/api';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { bookingsApi, bookingFlowApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import BookingPaymentManagement from './BookingPaymentManagement';
 import BookingMedicalUpload from './BookingMedicalUpload';
 import BookingDocumentsUpload from './BookingDocumentsUpload';
@@ -7,6 +8,7 @@ import ClientBookingWorkflowTab from './ClientBookingWorkflowTab';
 import ClientEditModal from './ClientEditModal';
 import { generateBookingPDF } from './BookingConfirmationPDF';
 import { formatBookingHashForDisplay } from '../utils/hashGenerator';
+import { BookingFlowItem, MedicalArtifact, MedicalReviewRequest } from '../types';
 import './BookingDetailView.css';
 
 interface BookingDetailViewProps {
@@ -14,12 +16,173 @@ interface BookingDetailViewProps {
   onBack: () => void;
 }
 
+const requirementDefinitions = [
+  { key: 'ekg', label: 'EKG', artifactTypes: ['ekg'], readinessGroups: ['ekg'] },
+  { key: 'liver', label: 'Liver Panel', artifactTypes: ['liver_panel'], readinessGroups: ['liver'] },
+  { key: 'medications', label: 'Medications Form', artifactTypes: ['medications_form', 'medication_list'], readinessGroups: ['medications'] },
+  { key: 'questionnaire', label: 'Questionnaire', artifactTypes: ['questionnaire'], readinessGroups: ['questionnaire'] },
+  { key: 'food', label: 'Food Form', artifactTypes: ['food_intake'], readinessGroups: ['food'] },
+];
+
+const completedStatuses = new Set(['received', 'reviewed', 'approved', 'completed', 'caution']);
+const reviewedStatuses = new Set(['reviewed', 'approved', 'completed', 'caution', 'rejected', 'needs_resubmission']);
+
+const getArtifactTime = (artifact: MedicalArtifact) =>
+  new Date(artifact.receivedAt || artifact.createdAt || 0).getTime();
+
+const getReviewTime = (review: MedicalReviewRequest) =>
+  new Date(review.reviewedAt || review.requestedAt || review.createdAt || 0).getTime();
+
+const BookingRequirementsPanel: React.FC<{
+  bookingId: string;
+  refreshKey: number;
+}> = ({ bookingId, refreshKey }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const routePrefix = useMemo(() => {
+    const firstSegment = location.pathname.split('/').filter(Boolean)[0];
+    return ['admin', 'medical', 'staff', 'user'].includes(firstSegment) ? `/${firstSegment}` : '';
+  }, [location.pathname]);
+  const [items, setItems] = useState<BookingFlowItem[]>([]);
+  const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
+  const [reviewsByArtifact, setReviewsByArtifact] = useState<Record<string, MedicalReviewRequest[]>>({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const loadRequirements = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [itemsResponse, artifactsResponse] = await Promise.all([
+        bookingFlowApi.getItems({ bookingId }),
+        medicalArtifactsApi.getAll({ bookingId }),
+      ]);
+      const loadedArtifacts: MedicalArtifact[] = artifactsResponse.data || [];
+      const reviewEntries = await Promise.all(
+        loadedArtifacts
+          .filter((artifact) => artifact._id)
+          .map(async (artifact) => {
+            try {
+              const reviewsResponse = await medicalReviewRequestsApi.getByArtifact(artifact._id!);
+              return [artifact._id!, reviewsResponse.data || []] as const;
+            } catch {
+              return [artifact._id!, []] as const;
+            }
+          })
+      );
+      setItems(itemsResponse.data || []);
+      setArtifacts(loadedArtifacts);
+      setReviewsByArtifact(Object.fromEntries(reviewEntries));
+    } catch (loadError: any) {
+      setError(loadError?.response?.data?.message || loadError?.message || 'Unable to load booking requirements.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRequirements();
+  }, [bookingId, refreshKey]);
+
+  const rows = requirementDefinitions.map((definition) => {
+    const relatedItems = items.filter((item) => {
+      const template = typeof item.templateId === 'object' ? item.templateId : undefined;
+      const readinessGroup = item.metadata?.readinessGroup || template?.readinessGroup;
+      const expectedArtifact = item.metadata?.expectedArtifact || template?.expectedArtifact;
+      return definition.readinessGroups.includes(readinessGroup) || definition.artifactTypes.includes(expectedArtifact);
+    });
+    const relatedArtifacts = artifacts
+      .filter((artifact) => definition.artifactTypes.includes(artifact.artifactType))
+      .sort((a, b) => getArtifactTime(b) - getArtifactTime(a));
+    const latestArtifact = relatedArtifacts[0];
+    const reviews = latestArtifact?._id ? (reviewsByArtifact[latestArtifact._id] || []) : [];
+    const latestReview = [...reviews].sort((a, b) => getReviewTime(b) - getReviewTime(a))[0];
+    const uploaded = relatedArtifacts.some((artifact) => (artifact.files || []).length > 0);
+    const flowReceived = relatedItems.some((item) => completedStatuses.has(item.status));
+    const reviewed = Boolean(latestReview && reviewedStatuses.has(latestReview.status)) ||
+      relatedItems.some((item) => item.status === 'reviewed' || item.status === 'approved' || item.status === 'caution');
+    const required = relatedItems.length === 0 || relatedItems.some((item) => item.isBlocking);
+
+    return {
+      ...definition,
+      required,
+      uploaded: uploaded || flowReceived,
+      reviewed,
+      latestArtifact,
+      latestReview,
+      relatedItems,
+    };
+  });
+
+  return (
+    <div className="detail-section">
+      <div className="section-header">
+        <h3 className="pdf-section-title">Mandatory Booking Requirements</h3>
+        <button className="edit-btn" type="button" onClick={loadRequirements} disabled={loading}>
+          {loading ? 'Refreshing...' : 'Refresh'}
+        </button>
+      </div>
+      <p className="text-sm text-gray-600 mb-3">
+        Driven by booking-flow requirements and linked booking artifacts/review requests.
+      </p>
+      {error && <div className="alert alert-danger">{error}</div>}
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200 text-sm">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-3 py-2 text-left font-medium text-gray-600">Requirement</th>
+              <th className="px-3 py-2 text-left font-medium text-gray-600">Required</th>
+              <th className="px-3 py-2 text-left font-medium text-gray-600">Uploaded</th>
+              <th className="px-3 py-2 text-left font-medium text-gray-600">Reviewed</th>
+              <th className="px-3 py-2 text-left font-medium text-gray-600">Latest File / Review</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100 bg-white">
+            {rows.map((row) => (
+              <tr key={row.key}>
+                <td className="px-3 py-2 font-medium text-gray-900">{row.label}</td>
+                <td className="px-3 py-2">{row.required ? 'Yes' : 'No'}</td>
+                <td className="px-3 py-2">
+                  <span className={`status-badge ${row.uploaded ? 'badge-received' : 'badge-pending'}`}>
+                    {row.uploaded ? 'uploaded' : 'missing'}
+                  </span>
+                </td>
+                <td className="px-3 py-2">
+                  <span className={`status-badge ${row.reviewed ? 'badge-approved' : 'badge-pending'}`}>
+                    {row.reviewed ? (row.latestReview?.reviewDecision || row.latestReview?.status || 'reviewed') : 'pending'}
+                  </span>
+                </td>
+                <td className="px-3 py-2">
+                  <div className="flex flex-wrap gap-2">
+                    {row.latestArtifact?._id && (
+                      <button type="button" className="text-blue-700 hover:underline" onClick={() => navigate(`${routePrefix}/medical-artifacts/${row.latestArtifact!._id}`)}>
+                        Artifact #{row.latestArtifact.display_id || row.latestArtifact._id}
+                      </button>
+                    )}
+                    {row.latestReview?._id && (
+                      <button type="button" className="text-blue-700 hover:underline" onClick={() => navigate(`${routePrefix}/medical-review-requests/${row.latestReview!._id}`)}>
+                        Review #{row.latestReview.display_id || row.latestReview._id}
+                      </button>
+                    )}
+                    {!row.latestArtifact && !row.latestReview && <span className="text-gray-500">No linked record</span>}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
 const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack }) => {
   const [booking, setBooking] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [isEditingClient, setIsEditingClient] = useState(false);
   const [pdfLanguage, setPdfLanguage] = useState<'pl' | 'cz' | 'en'>('pl');
+  const [requirementsRefreshKey, setRequirementsRefreshKey] = useState(0);
   const pdfRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -65,6 +228,11 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const handleClientUpdate = async (updatedClient: any) => {
     // Update the booking with the new client info
     fetchBookingDetails();
+  };
+
+  const handleBookingRelatedUpdate = () => {
+    fetchBookingDetails();
+    setRequirementsRefreshKey((current) => current + 1);
   };
 
   const generatePDF = async () => {
@@ -253,12 +421,14 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
           onPaymentUpdate={fetchBookingDetails}
         />
 
+        <BookingRequirementsPanel bookingId={bookingId} refreshKey={requirementsRefreshKey} />
+
         <BookingMedicalUpload
           bookingId={bookingId}
           bookingNumber={booking.bookingNumber}
           clientId={typeof client === 'object' ? client._id : client}
           retreatId={typeof retreat === 'object' ? retreat._id : retreat}
-          onUploadComplete={fetchBookingDetails}
+          onUploadComplete={handleBookingRelatedUpdate}
         />
 
         <BookingDocumentsUpload
@@ -266,7 +436,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
           bookingNumber={booking.bookingNumber}
           clientId={typeof client === 'object' ? client._id : client}
           retreatId={typeof retreat === 'object' ? retreat._id : retreat}
-          onUploadComplete={fetchBookingDetails}
+          onUploadComplete={handleBookingRelatedUpdate}
         />
 
         <div className="detail-section">
