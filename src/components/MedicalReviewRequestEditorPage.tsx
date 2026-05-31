@@ -20,10 +20,7 @@ type FormState = {
   reviewDecision: 'OK' | 'caution' | 'NOT OK' | '';
   reviewNotes: string;
   overallNotes: string;
-  ekgReviewDecision: 'OK' | 'caution' | 'NOT OK' | '';
-  ekgReviewNotes: string;
-  liverReviewDecision: 'OK' | 'caution' | 'NOT OK' | '';
-  liverReviewNotes: string;
+  medicalStaffNotes: string;
 };
 
 const reviewTypeByArtifact = (artifactType: MedicalArtifact['artifactType']): MedicalReviewRequest['requestType'] => {
@@ -77,10 +74,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
     reviewDecision: '',
     reviewNotes: '',
     overallNotes: '',
-    ekgReviewDecision: '',
-    ekgReviewNotes: '',
-    liverReviewDecision: '',
-    liverReviewNotes: '',
+    medicalStaffNotes: '',
   });
 
   const [requestNumber, setRequestNumber] = useState<number | null>(null);
@@ -134,10 +128,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           reviewDecision: record.reviewDecision || '',
           reviewNotes: record.reviewNotes || '',
           overallNotes: record.overallNotes || '',
-          ekgReviewDecision: record.ekgReviewDecision || '',
-          ekgReviewNotes: record.ekgReviewNotes || '',
-          liverReviewDecision: record.liverReviewDecision || '',
-          liverReviewNotes: record.liverReviewNotes || '',
+          medicalStaffNotes: record.medicalStaffNotes || '',
         });
       }
     } catch (error) {
@@ -212,10 +203,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           reviewDecision: form.reviewDecision || undefined,
           reviewNotes: form.reviewNotes,
           overallNotes: form.overallNotes,
-          ekgReviewDecision: form.ekgReviewDecision || undefined,
-          ekgReviewNotes: form.ekgReviewNotes,
-          liverReviewDecision: form.liverReviewDecision || undefined,
-          liverReviewNotes: form.liverReviewNotes,
+          medicalStaffNotes: form.medicalStaffNotes,
         });
       } else {
         const payload = {
@@ -229,10 +217,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           reviewDecision: form.reviewDecision || undefined,
           reviewNotes: form.reviewNotes,
           overallNotes: form.overallNotes,
-          ekgReviewDecision: form.ekgReviewDecision || undefined,
-          ekgReviewNotes: form.ekgReviewNotes,
-          liverReviewDecision: form.liverReviewDecision || undefined,
-          liverReviewNotes: form.liverReviewNotes,
+          medicalStaffNotes: form.medicalStaffNotes,
         };
         if (selectedArtifact?._id) {
           await medicalReviewRequestsApi.createFromArtifact(selectedArtifact._id, form.requestType, payload);
@@ -426,23 +411,14 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           </div>
 
           <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <label className="mb-2 block text-sm font-medium text-gray-700">EKG Notes</label>
-            <select value={form.ekgReviewDecision} onChange={(e) => setForm({ ...form, ekgReviewDecision: e.target.value as FormState['ekgReviewDecision'] })} className="w-full rounded-md border border-gray-300 px-3 py-2">
-              <option value="">Select</option>
-              <option value="OK">Accept</option>
-              <option value="caution">Caution</option>
-              <option value="NOT OK">Deny</option>
-            </select>
-            <textarea value={form.ekgReviewNotes} onChange={(e) => setForm({ ...form, ekgReviewNotes: e.target.value })} rows={4} className="mt-3 w-full rounded-md border border-gray-300 px-3 py-2" placeholder="EKG-specific comment" />
-
-            <label className="mb-2 mt-4 block text-sm font-medium text-gray-700">Liver Notes</label>
-            <select value={form.liverReviewDecision} onChange={(e) => setForm({ ...form, liverReviewDecision: e.target.value as FormState['liverReviewDecision'] })} className="w-full rounded-md border border-gray-300 px-3 py-2">
-              <option value="">Select</option>
-              <option value="OK">Accept</option>
-              <option value="caution">Caution</option>
-              <option value="NOT OK">Deny</option>
-            </select>
-            <textarea value={form.liverReviewNotes} onChange={(e) => setForm({ ...form, liverReviewNotes: e.target.value })} rows={4} className="mt-3 w-full rounded-md border border-gray-300 px-3 py-2" placeholder="Liver-specific comment" />
+            <label className="mb-2 block text-sm font-medium text-gray-700">Medical Staff Notes</label>
+            <textarea
+              value={form.medicalStaffNotes}
+              onChange={(e) => setForm({ ...form, medicalStaffNotes: e.target.value })}
+              rows={10}
+              className="w-full rounded-md border border-gray-300 px-3 py-2"
+              placeholder="Instructions, context, or questions for the medical advisor"
+            />
           </div>
         </div>
 

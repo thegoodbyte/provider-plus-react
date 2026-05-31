@@ -768,6 +768,16 @@ export interface MedicalReviewRequest {
   reviewDecision?: 'OK' | 'caution' | 'NOT OK';
   reviewNotes?: string;
   overallNotes?: string;
+  medicalStaffNotes?: string;
+  fileReviews?: Array<{
+    artifactId?: string;
+    fileKey?: string;
+    fileName?: string;
+    decision?: 'OK' | 'caution' | 'NOT OK';
+    notes?: string;
+    reviewedAt?: Date | string;
+    reviewedBy?: string;
+  }>;
   ekgReviewDecision?: 'OK' | 'caution' | 'NOT OK';
   ekgReviewNotes?: string;
   liverReviewDecision?: 'OK' | 'caution' | 'NOT OK';

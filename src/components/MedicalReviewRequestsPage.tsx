@@ -52,8 +52,16 @@ const getId = (value: any): string | undefined => {
 };
 
 type ArtifactFile = NonNullable<MedicalArtifact['files']>[number];
+type FileReviewDraft = {
+  artifactId?: string;
+  fileKey?: string;
+  fileName?: string;
+  decision?: 'OK' | 'caution' | 'NOT OK' | '';
+  notes?: string;
+};
 
 const getArtifactFileUrl = (file: ArtifactFile) => file.url || file.filePath || file.s3Key || '';
+const getArtifactFileKey = (file: ArtifactFile) => file.s3Key || file.filePath || file.url || file.fileName || '';
 const isImageFile = (file: ArtifactFile) => Boolean(file.mimeType?.startsWith('image/'));
 const isPdfFile = (file: ArtifactFile) => file.mimeType === 'application/pdf' || /\.pdf($|\?)/i.test(file.fileName || '');
 
@@ -95,10 +103,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [reviewDecision, setReviewDecision] = useState<'OK' | 'caution' | 'NOT OK' | ''>('');
   const [reviewNotes, setReviewNotes] = useState('');
   const [overallNotes, setOverallNotes] = useState('');
-  const [ekgDecision, setEkgDecision] = useState<'OK' | 'caution' | 'NOT OK' | ''>('');
-  const [ekgNotes, setEkgNotes] = useState('');
-  const [liverDecision, setLiverDecision] = useState<'OK' | 'caution' | 'NOT OK' | ''>('');
-  const [liverNotes, setLiverNotes] = useState('');
+  const [medicalStaffNotes, setMedicalStaffNotes] = useState('');
+  const [fileReviews, setFileReviews] = useState<FileReviewDraft[]>([]);
   const [statusFilter, setStatusFilter] = useState<'all' | MedicalReviewRequest['status']>('all');
 
   const loadRequests = useCallback(async () => {
@@ -142,10 +148,11 @@ const MedicalReviewRequestsPage: React.FC = () => {
         setReviewDecision(selectedItem.reviewDecision || '');
         setReviewNotes(selectedItem.reviewNotes || '');
         setOverallNotes(selectedItem.overallNotes || '');
-        setEkgDecision(selectedItem.ekgReviewDecision || '');
-        setEkgNotes(selectedItem.ekgReviewNotes || '');
-        setLiverDecision(selectedItem.liverReviewDecision || '');
-        setLiverNotes(selectedItem.liverReviewNotes || '');
+        setMedicalStaffNotes(selectedItem.medicalStaffNotes || '');
+        setFileReviews((selectedItem.fileReviews || []).map((review: NonNullable<MedicalReviewRequest['fileReviews']>[number]) => ({
+          ...review,
+          decision: review.decision || '',
+        })));
       } else {
         setHistory([]);
         setRelatedArtifacts([]);
@@ -182,6 +189,13 @@ const MedicalReviewRequestsPage: React.FC = () => {
     return new Set((selected?.artifactIds || []).map((artifact) => getId(artifact)));
   }, [selected]);
 
+  const linkedArtifacts = useMemo(() => {
+    if (!selected) return [];
+    const populated = (selected.artifactIds || []).filter((artifact): artifact is MedicalArtifact => typeof artifact !== 'string');
+    if (populated.length) return populated;
+    return relatedArtifacts.filter((artifact) => artifact._id && selectedArtifactIds.has(artifact._id));
+  }, [relatedArtifacts, selected, selectedArtifactIds]);
+
   const profileHref = useMemo(() => {
     const clientId = getId(selected?.clientId);
     if (!clientId) return undefined;
@@ -195,18 +209,45 @@ const MedicalReviewRequestsPage: React.FC = () => {
 
   const handleSaveReview = async () => {
     if (!selected?._id) return;
+    const cleanedFileReviews = fileReviews
+      .filter((review) => review.fileKey || review.fileName || review.notes || review.decision)
+      .map((review) => ({
+        ...review,
+        decision: review.decision || undefined,
+      }));
     await medicalReviewRequestsApi.review(selected._id, {
       status: reviewDecision === 'OK' ? 'approved' : reviewDecision === 'NOT OK' ? 'rejected' : reviewDecision === 'caution' ? 'caution' : 'in_review',
       reviewDecision: reviewDecision || undefined,
       reviewNotes,
       overallNotes,
-      ekgReviewDecision: ekgDecision || undefined,
-      ekgReviewNotes: ekgNotes,
-      liverReviewDecision: liverDecision || undefined,
-      liverReviewNotes: liverNotes,
+      medicalStaffNotes,
+      fileReviews: cleanedFileReviews,
       reviewedBy: 'medical_staff',
     });
     await loadRequests();
+  };
+
+  const updateFileReview = (artifact: MedicalArtifact, file: ArtifactFile, patch: Partial<FileReviewDraft>) => {
+    const artifactId = artifact._id;
+    const fileKey = getArtifactFileKey(file);
+    setFileReviews((prev) => {
+      const existingIndex = prev.findIndex((review) => review.artifactId === artifactId && review.fileKey === fileKey);
+      const nextReview = {
+        artifactId,
+        fileKey,
+        fileName: file.fileName,
+        ...(existingIndex >= 0 ? prev[existingIndex] : {}),
+        ...patch,
+      };
+      if (existingIndex < 0) return [...prev, nextReview];
+      return prev.map((review, index) => index === existingIndex ? nextReview : review);
+    });
+  };
+
+  const getFileReview = (artifact: MedicalArtifact, file: ArtifactFile) => {
+    const artifactId = artifact._id;
+    const fileKey = getArtifactFileKey(file);
+    return fileReviews.find((review) => review.artifactId === artifactId && review.fileKey === fileKey) || {};
   };
 
   if (loading) {
@@ -317,8 +358,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
               <div className="rounded-md border border-gray-200 p-3">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <div className="text-sm font-semibold text-gray-900">Related Medical Artifacts</div>
-                    <div className="text-xs text-gray-500">Entry EKG, liver panel, medications, questionnaires, medical notes, ceremony EKG, and blood pressure for this client.</div>
+                    <div className="text-sm font-semibold text-gray-900">Linked Files For This Request</div>
+                    <div className="text-xs text-gray-500">These are the stored files included in this medical review request.</div>
                   </div>
                   {profileHref && (
                     <button type="button" onClick={() => navigate(profileHref)} className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
@@ -327,14 +368,13 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   )}
                 </div>
                 <div className="mt-3 max-h-72 space-y-2 overflow-auto">
-                  {relatedArtifacts.length === 0 ? (
-                    <div className="text-sm text-gray-500">No stored artifacts found for this client yet.</div>
+                  {linkedArtifacts.length === 0 ? (
+                    <div className="text-sm text-gray-500">No linked files are available for this request.</div>
                   ) : (
-                    relatedArtifacts.map((artifact) => {
-                      const isSource = artifact._id ? selectedArtifactIds.has(artifact._id) : false;
+                    linkedArtifacts.map((artifact) => {
                       const client = typeof artifact.clientId === 'string' ? undefined : artifact.clientId as Client;
                       return (
-                        <div key={artifact._id} className={`rounded-md border p-3 text-sm ${isSource ? 'border-blue-300 bg-blue-50' : 'border-gray-200'}`}>
+                        <div key={artifact._id} className="rounded-md border border-blue-300 bg-blue-50 p-3 text-sm">
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <div className="font-semibold text-gray-900">
@@ -344,7 +384,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                                 {client ? `${client.firstName} ${client.lastName}` : 'Client record'} • {artifact.receivedAt ? new Date(artifact.receivedAt).toLocaleString() : 'No received date'}
                               </div>
                             </div>
-                            {isSource && <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">This request</span>}
+                            <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">This request</span>
                           </div>
                           {artifact.textContent && <div className="mt-2 whitespace-pre-wrap text-gray-700">{artifact.textContent}</div>}
                           {artifact.notes && <div className="mt-2 text-xs text-gray-600">Notes: {artifact.notes}</div>}
@@ -352,15 +392,58 @@ const MedicalReviewRequestsPage: React.FC = () => {
                             <pre className="mt-2 max-h-24 overflow-auto rounded bg-gray-50 p-2 text-xs text-gray-600">{JSON.stringify(artifact.data, null, 2)}</pre>
                           )}
                           {!!artifact.files?.length && (
-                            <div className="mt-2">
-                              {artifact.files.map((file, index) => (
-                                <ArtifactInlinePreview key={`${file.fileName || file.s3Key || index}`} file={file} index={index} />
-                              ))}
+                            <div className="mt-2 space-y-3">
+                              {artifact.files.map((file, index) => {
+                                const fileReview = getFileReview(artifact, file);
+                                return (
+                                  <div key={`${file.fileName || file.s3Key || index}`} className="rounded-md border border-gray-200 bg-white p-3">
+                                    <ArtifactInlinePreview file={file} index={index} />
+                                    <div className="mt-3 grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)]">
+                                      <select
+                                        value={fileReview.decision || ''}
+                                        onChange={(event) => updateFileReview(artifact, file, { decision: event.target.value as FileReviewDraft['decision'] })}
+                                        className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+                                      >
+                                        <option value="">File decision</option>
+                                        <option value="OK">Accept file</option>
+                                        <option value="caution">Caution</option>
+                                        <option value="NOT OK">Deny file</option>
+                                      </select>
+                                      <textarea
+                                        value={fileReview.notes || ''}
+                                        onChange={(event) => updateFileReview(artifact, file, { notes: event.target.value })}
+                                        rows={2}
+                                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                                        placeholder="Comment on this file"
+                                      />
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
+                          )}
+                          {!artifact.files?.length && (
+                            <div className="mt-2 text-xs text-gray-500">This linked artifact has no uploaded files.</div>
                           )}
                         </div>
                       );
                     })
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-md border border-gray-200 p-3">
+                <div className="text-sm font-semibold text-gray-900">Other client medical artifacts</div>
+                <div className="mt-3 max-h-44 space-y-2 overflow-auto">
+                  {relatedArtifacts.filter((artifact) => !artifact._id || !selectedArtifactIds.has(artifact._id)).length === 0 ? (
+                    <div className="text-sm text-gray-500">No additional stored artifacts found for this client.</div>
+                  ) : (
+                    relatedArtifacts.filter((artifact) => !artifact._id || !selectedArtifactIds.has(artifact._id)).map((artifact) => (
+                      <div key={artifact._id} className="rounded-md border border-gray-200 p-3 text-sm">
+                        <div className="font-semibold text-gray-900">#{artifact.display_id || '—'} {artifactTypeLabels[artifact.artifactType] || artifact.artifactType}: {artifact.title}</div>
+                        <div className="text-xs text-gray-500">{artifact.files?.length || 0} file(s)</div>
+                      </div>
+                    ))
                   )}
                 </div>
               </div>
@@ -391,48 +474,15 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 </div>
 
                 <div className="rounded-md border border-gray-200 p-3">
-                  <div className="mb-2 text-sm font-semibold text-gray-900">Overall notes</div>
+                  <div className="mb-2 text-sm font-semibold text-gray-900">Final notes</div>
                   <textarea value={overallNotes} onChange={(e) => setOverallNotes(e.target.value)} rows={4} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Additional information or context" />
                 </div>
               </div>
 
-              {(['ekg', 'both', 'ekg_review', 'ceremony_ekg_review'] as string[]).includes(selected.requestType) && (
-                <div className="rounded-md border border-gray-200 p-3">
-                  <div className="mb-2 text-sm font-semibold text-gray-900">{selected.requestType === 'ceremony_ekg_review' ? 'Ceremony EKG review' : 'EKG review'}</div>
-                  <div className="flex flex-wrap gap-2">
-                    {decisionOptions.map((option) => (
-                      <button
-                        key={option}
-                        type="button"
-                        onClick={() => setEkgDecision(option)}
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${ekgDecision === option ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                      >
-                        {option}
-                      </button>
-                    ))}
-                  </div>
-                  <textarea value={ekgNotes} onChange={(e) => setEkgNotes(e.target.value)} rows={3} className="mt-3 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="EKG comment" />
-                </div>
-              )}
-
-              {(['liver', 'both', 'liver_panel_review'] as string[]).includes(selected.requestType) && (
-                <div className="rounded-md border border-gray-200 p-3">
-                  <div className="mb-2 text-sm font-semibold text-gray-900">Liver review</div>
-                  <div className="flex flex-wrap gap-2">
-                    {decisionOptions.map((option) => (
-                      <button
-                        key={option}
-                        type="button"
-                        onClick={() => setLiverDecision(option)}
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${liverDecision === option ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                      >
-                        {option}
-                      </button>
-                    ))}
-                  </div>
-                  <textarea value={liverNotes} onChange={(e) => setLiverNotes(e.target.value)} rows={3} className="mt-3 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Liver comment" />
-                </div>
-              )}
+              <div className="rounded-md border border-gray-200 p-3">
+                <div className="mb-2 text-sm font-semibold text-gray-900">Medical staff notes</div>
+                <textarea value={medicalStaffNotes} onChange={(e) => setMedicalStaffNotes(e.target.value)} rows={4} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Internal medical staff notes" />
+              </div>
 
               <div className="flex items-center justify-between gap-3">
                 <div className="text-xs text-gray-500">

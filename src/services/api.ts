@@ -642,6 +642,8 @@ export const medicalReviewRequestsApi = {
     reviewDecision?: 'OK' | 'caution' | 'NOT OK';
     reviewNotes?: string;
     overallNotes?: string;
+    medicalStaffNotes?: string;
+    fileReviews?: MedicalReviewRequest['fileReviews'];
     ekgReviewDecision?: 'OK' | 'caution' | 'NOT OK';
     ekgReviewNotes?: string;
     liverReviewDecision?: 'OK' | 'caution' | 'NOT OK';
