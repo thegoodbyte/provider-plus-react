@@ -109,6 +109,8 @@ export interface Client {
   weightRange?: string;
   pregnancyStatus?: string;
   screeningCompletedDate?: Date | string;
+  screeningData?: Record<string, any>;
+  handwritingImageUrl?: string;
   followUpDate?: Date | string;
   priority?: 'low' | 'medium' | 'high' | 'urgent';
   signupDate?: Date | string;
