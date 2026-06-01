@@ -952,6 +952,11 @@ export interface SentEmail {
   subject: string;
   bodyText: string;
   bodyHtml?: string;
+  attachments?: Array<{
+    fileName: string;
+    mimeType?: string;
+    size?: number;
+  }>;
   to: string[];
   cc?: string[];
   bcc?: string[];
