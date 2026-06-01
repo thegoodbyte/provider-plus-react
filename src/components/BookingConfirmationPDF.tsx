@@ -140,7 +140,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   pdfContent.style.color = '#000';
 
   pdfContent.innerHTML = `
-    <div style="width: 100%; background: white;">
+    <div style="width: 100%; min-height: 1043px; background-color: white; background-image: linear-gradient(rgba(255,255,255,0.85), rgba(255,255,255,0.85)), url('/images/tree/tree-svg-bg.webp'); background-repeat: no-repeat; background-position: center center; background-size: 76%; position: relative;">
       <!-- Header with Logo and Company Info -->
       <table style="width: 100%; border: none; margin-bottom: 15px;">
         <tr>
