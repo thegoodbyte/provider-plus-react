@@ -9,18 +9,60 @@ import {
   FiPlus,
   FiSearch,
   FiChevronDown,
-  FiMail,
-  FiPhone,
   FiEdit2,
   FiUserCheck,
   FiCheck,
   FiX,
-  FiTrash2
+  FiTrash2,
+  FiCamera,
+  FiUser
 } from 'react-icons/fi';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
+};
+
+const cropImageToProfileSquare = (file: File, size = 200): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    image.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('Image editor is not available in this browser.');
+
+        const sourceSize = Math.min(image.naturalWidth, image.naturalHeight);
+        const sourceX = (image.naturalWidth - sourceSize) / 2;
+        const sourceY = (image.naturalHeight - sourceSize) / 2;
+        context.drawImage(image, sourceX, sourceY, sourceSize, sourceSize, 0, 0, size, size);
+
+        canvas.toBlob((blob) => {
+          URL.revokeObjectURL(objectUrl);
+          if (!blob) {
+            reject(new Error('Could not prepare profile picture.'));
+            return;
+          }
+          const baseName = file.name.replace(/\.[^/.]+$/, '').trim() || 'profile-picture';
+          resolve(new File([blob], `${baseName}-profile.jpg`, { type: 'image/jpeg' }));
+        }, 'image/jpeg', 0.9);
+      } catch (error) {
+        URL.revokeObjectURL(objectUrl);
+        reject(error);
+      }
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Could not read this image file.'));
+    };
+
+    image.src = objectUrl;
+  });
 };
 
 const UnifiedClientManager: React.FC = () => {
@@ -41,10 +83,66 @@ const UnifiedClientManager: React.FC = () => {
     phone: '',
     address: '',
     country: 'CZ',
+    language: 'EN',
     workflowStatus: 'potential',
     signupDate: new Date().toISOString().split('T')[0],
     status: 'active'
   } as Partial<Client>);
+  const [profilePictureFile, setProfilePictureFile] = useState<File | null>(null);
+  const [profilePicturePreviewUrl, setProfilePicturePreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (profilePicturePreviewUrl) URL.revokeObjectURL(profilePicturePreviewUrl);
+    };
+  }, [profilePicturePreviewUrl]);
+
+  useEffect(() => {
+    let active = true;
+    let objectUrl = '';
+
+    const loadProfilePicture = async () => {
+      if (!showForm || !selectedClient?._id || !selectedClient.profilePictureS3Key || profilePictureFile) {
+        if (!profilePictureFile) setProfilePicturePreviewUrl(null);
+        return;
+      }
+
+      try {
+        const response = await clientsApi.getProfilePictureBlob(selectedClient._id);
+        objectUrl = URL.createObjectURL(response.data as Blob);
+        if (active) setProfilePicturePreviewUrl(objectUrl);
+      } catch (error) {
+        console.error('Error loading profile picture:', error);
+        if (active) setProfilePicturePreviewUrl(null);
+      }
+    };
+
+    loadProfilePicture();
+
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [showForm, selectedClient?._id, selectedClient?.profilePictureS3Key, profilePictureFile]);
+
+  const resetForm = () => {
+    setSelectedClient(null);
+    setProfilePictureFile(null);
+    if (profilePicturePreviewUrl) URL.revokeObjectURL(profilePicturePreviewUrl);
+    setProfilePicturePreviewUrl(null);
+    setFormData({
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      address: '',
+      country: 'CZ',
+      language: 'EN',
+      workflowStatus: 'potential',
+      signupDate: new Date().toISOString().split('T')[0],
+      status: 'active'
+    } as Partial<Client>);
+  };
 
   // Fetch clients
   const fetchClients = async () => {
@@ -111,7 +209,7 @@ const UnifiedClientManager: React.FC = () => {
         'city', 'state', 'zipCode', 'country', 'dateOfBirth', 'emergencyContact',
         'emergencyContactPhone', 'medicalConditions', 'dietaryRestrictions', 'status',
         'notes', 'preferredName', 'occupation', 'gender', 'height', 'weight', 'source',
-        'display_id', 'signupDate', 'workflowStatus'
+        'display_id', 'signupDate', 'workflowStatus', 'language'
       ];
 
       if (formData.loginPin && !/^\d{4,6}$/.test(formData.loginPin)) {
@@ -159,25 +257,21 @@ const UnifiedClientManager: React.FC = () => {
         console.log('Calling update API...');
         const updateResult = await clientsApi.update(selectedClient._id, cleanData);
         console.log('Update API response:', updateResult);
+        if (profilePictureFile) {
+          await clientsApi.uploadProfilePicture(selectedClient._id, profilePictureFile);
+        }
       } else {
         console.log('Calling create API...');
         const createResult = await clientsApi.quickAdd(cleanData);
         console.log('Create API response:', createResult);
+        const createdClientId = (createResult.data as Client)?._id;
+        if (profilePictureFile && createdClientId) {
+          await clientsApi.uploadProfilePicture(createdClientId, profilePictureFile);
+        }
       }
       fetchClients();
       setShowForm(false);
-      setSelectedClient(null);
-      setFormData({
-        firstName: '',
-        lastName: '',
-        email: '',
-        phone: '',
-        address: '',
-        country: 'CZ',
-        workflowStatus: 'potential',
-        signupDate: new Date().toISOString().split('T')[0],
-        status: 'active'
-      } as Partial<Client>);
+      resetForm();
     } catch (error: any) {
       console.error('=== SAVE ERROR ===');
       console.error('Error object:', error);
@@ -206,7 +300,7 @@ const UnifiedClientManager: React.FC = () => {
       'city', 'state', 'zipCode', 'country', 'dateOfBirth', 'emergencyContact',
       'emergencyContactPhone', 'medicalConditions', 'dietaryRestrictions', 'status',
       'notes', 'preferredName', 'occupation', 'gender', 'height', 'weight', 'source',
-      'display_id', 'signupDate', 'workflowStatus'
+      'display_id', 'signupDate', 'workflowStatus', 'language'
     ];
 
     return allowedFields.reduce((acc, field) => {
@@ -230,6 +324,7 @@ const UnifiedClientManager: React.FC = () => {
       const cleanFormData = buildClientFormData(client);
       setSelectedClient(client);
       setFormData(cleanFormData);
+      setProfilePictureFile(null);
       setShowForm(true);
     } catch (error) {
       console.error('Error opening client editor:', error);
@@ -252,6 +347,36 @@ const UnifiedClientManager: React.FC = () => {
   const handleClientClick = (client: Client) => {
     // Navigate to the client details page
     navigate(`/clients/${client._id}`);
+  };
+
+  const handleNewClient = () => {
+    resetForm();
+    setShowForm(true);
+  };
+
+  const handleCloseForm = () => {
+    setShowForm(false);
+    resetForm();
+  };
+
+  const handleProfilePictureSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Please choose an image file.');
+      return;
+    }
+
+    try {
+      const croppedFile = await cropImageToProfileSquare(file, 200);
+      if (profilePicturePreviewUrl) URL.revokeObjectURL(profilePicturePreviewUrl);
+      setProfilePictureFile(croppedFile);
+      setProfilePicturePreviewUrl(URL.createObjectURL(croppedFile));
+    } catch (error: any) {
+      console.error('Error preparing profile picture:', error);
+      alert(error?.message || 'Could not prepare profile picture.');
+    }
   };
 
   const handleSort = (field: keyof Client) => {
@@ -302,7 +427,7 @@ const UnifiedClientManager: React.FC = () => {
         <h1 className="text-2xl font-bold text-apple-gray-900">Clients</h1>
         <AppleButton
           variant="primary"
-          onClick={() => navigate('/clients/add')}
+          onClick={handleNewClient}
           className="w-auto shrink-0 whitespace-nowrap"
         >
           <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
@@ -501,89 +626,135 @@ const UnifiedClientManager: React.FC = () => {
       {/* Form Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-          <div className="bg-white rounded-apple border border-apple-gray-200 shadow-xl w-full max-w-2xl max-h-screen overflow-y-auto">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-semibold text-apple-gray-900">
+          <div className="w-full max-w-6xl max-h-[92vh] overflow-hidden rounded-lg border border-slate-200 bg-slate-50 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
+                <h3 className="text-lg font-semibold text-slate-950">
                   {selectedClient ? 'Edit Client' : 'Add New Client'}
                 </h3>
                 <button
-                  onClick={() => setShowForm(false)}
-                  className="text-apple-gray-400 hover:text-apple-gray-600"
+                  onClick={handleCloseForm}
+                  className="rounded-md p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
                 >
                   <Icon icon={FiX} className="w-5 h-5" />
                 </button>
-              </div>
+            </div>
 
-              <div className="space-y-4">
-                <AppleInput
-                  label="Client ID"
-                  value={formData.display_id?.toString() || ''}
-                  onChange={(value) => setFormData({ ...formData, display_id: value ? parseInt(value) : undefined })}
-                  placeholder="Auto-generated if empty (min 1001)"
-                  type="number"
-                />
+            <div className="max-h-[calc(92vh-73px)] overflow-y-auto p-5">
+              <div className="grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
+                <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-0 lg:self-start">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="relative h-36 w-36 overflow-hidden rounded-full border border-slate-200 bg-slate-50 shadow-sm">
+                      {profilePicturePreviewUrl ? (
+                        <img src={profilePicturePreviewUrl} alt="Client profile preview" className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-slate-400">
+                          <Icon icon={FiUser} className="h-12 w-12" />
+                        </div>
+                      )}
+                      <label className="absolute inset-x-0 bottom-0 flex cursor-pointer items-center justify-center gap-2 bg-black/60 px-3 py-2 text-xs font-semibold text-white hover:bg-black/75">
+                        <Icon icon={FiCamera} className="h-3.5 w-3.5" />
+                        Upload
+                        <input type="file" accept="image/*" onChange={handleProfilePictureSelect} className="hidden" />
+                      </label>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-sm font-semibold text-slate-900">{formData.firstName || 'New'} {formData.lastName || 'Client'}</div>
+                      <p className="mt-1 text-xs text-slate-500">Profile images are center-cropped to 200 x 200.</p>
+                    </div>
+                  </div>
+                </aside>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <AppleInput
-                    label="First Name *"
-                    value={formData.firstName || ''}
-                    onChange={(value) => setFormData({ ...formData, firstName: value })}
-                    placeholder="Enter first name"
-                  />
-                  <AppleInput
-                    label="Last Name *"
-                    value={formData.lastName || ''}
-                    onChange={(value) => setFormData({ ...formData, lastName: value })}
-                    placeholder="Enter last name"
-                  />
-                </div>
+                <div className="grid gap-5 lg:grid-cols-2">
+                  <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                    <h4 className="mb-4 border-b border-slate-200 pb-3 text-base font-semibold text-slate-900">Basic Information</h4>
+                    <div className="space-y-4">
+                      <AppleInput
+                        label="Client ID"
+                        value={formData.display_id?.toString() || ''}
+                        onChange={(value) => setFormData({ ...formData, display_id: value ? parseInt(value) : undefined })}
+                        placeholder="Auto-generated if empty (min 1001)"
+                        type="number"
+                      />
 
-                <AppleInput
-                  label="Email"
-                  value={formData.email || ''}
-                  onChange={(value) => setFormData({ ...formData, email: value })}
-                  placeholder="Enter email address"
-                  type="email"
-                />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <AppleInput
+                          label="First Name *"
+                          value={formData.firstName || ''}
+                          onChange={(value) => setFormData({ ...formData, firstName: value })}
+                          placeholder="Enter first name"
+                        />
+                        <AppleInput
+                          label="Last Name *"
+                          value={formData.lastName || ''}
+                          onChange={(value) => setFormData({ ...formData, lastName: value })}
+                          placeholder="Enter last name"
+                        />
+                      </div>
 
-                <AppleInput
-                  label="Client Portal PIN"
-                  value={formData.loginPin || ''}
-                  onChange={(value) => setFormData({
-                    ...formData,
-                    loginPin: value.replace(/\D/g, '').slice(0, 6)
-                  })}
-                  placeholder="4-6 digit login PIN"
-                  type="text"
-                />
+                      <AppleInput
+                        label="Email"
+                        value={formData.email || ''}
+                        onChange={(value) => setFormData({ ...formData, email: value })}
+                        placeholder="Enter email address"
+                        type="email"
+                      />
 
-                <div>
-                  <label className="block text-sm font-medium text-apple-gray-700 mb-1">Phone *</label>
-                  <AppleInput
-                    value={formData.phone || ''}
-                    onChange={(value) => setFormData({ ...formData, phone: value })}
-                    placeholder="Enter full number with country code"
-                  />
-                </div>
+                      <AppleInput
+                        label="Client Portal PIN"
+                        value={formData.loginPin || ''}
+                        onChange={(value) => setFormData({
+                          ...formData,
+                          loginPin: value.replace(/\D/g, '').slice(0, 6)
+                        })}
+                        placeholder="4-6 digit login PIN"
+                        type="text"
+                      />
 
-                <AppleInput
-                  label="Address"
-                  value={formData.address || ''}
-                  onChange={(value) => setFormData({ ...formData, address: value })}
-                  placeholder="Enter address"
-                />
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Phone *</label>
+                        <AppleInput
+                          value={formData.phone || ''}
+                          onChange={(value) => setFormData({ ...formData, phone: value })}
+                          placeholder="Enter full number with country code"
+                        />
+                      </div>
 
-                <AppleInput
-                  label="Country"
-                  value={formData.country || ''}
-                  onChange={(value) => setFormData({ ...formData, country: value })}
-                  placeholder="Enter country"
-                />
+                      <div>
+                        <label className="block text-sm font-medium text-slate-700 mb-1">Preferred Language</label>
+                        <select
+                          className="w-full px-3 py-2 border border-apple-gray-200 rounded-apple focus:outline-none focus:ring-2 focus:ring-apple-blue/20 bg-white text-sm"
+                          value={formData.language || 'EN'}
+                          onChange={(e) => setFormData({ ...formData, language: e.target.value as Client['language'] })}
+                        >
+                          <option value="EN">English</option>
+                          <option value="CZ">Czech</option>
+                          <option value="PL">Polish</option>
+                          <option value="RU">Russian</option>
+                          <option value="OTHER">Other</option>
+                        </select>
+                      </div>
+                    </div>
+                  </section>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                    <h4 className="mb-4 border-b border-slate-200 pb-3 text-base font-semibold text-slate-900">Address and Status</h4>
+                    <div className="space-y-4">
+                      <AppleInput
+                        label="Address"
+                        value={formData.address || ''}
+                        onChange={(value) => setFormData({ ...formData, address: value })}
+                        placeholder="Enter address"
+                      />
+
+                      <AppleInput
+                        label="Country"
+                        value={formData.country || ''}
+                        onChange={(value) => setFormData({ ...formData, country: value })}
+                        placeholder="Enter country"
+                      />
+
                   <div>
-                    <label className="block text-sm font-medium text-apple-gray-700 mb-1">Workflow Status</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Workflow Status</label>
                     <select
                       className="w-full px-3 py-2 border border-apple-gray-200 rounded-apple focus:outline-none focus:ring-2 focus:ring-apple-blue/20 bg-white text-sm"
                       value={formData.workflowStatus || 'potential'}
@@ -597,7 +768,7 @@ const UnifiedClientManager: React.FC = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-apple-gray-700 mb-1">Signup Date</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">Signup Date</label>
                     <input
                       type="date"
                       className="w-full px-3 py-2 border border-apple-gray-200 rounded-apple focus:outline-none focus:ring-2 focus:ring-apple-blue/20 bg-white text-sm"
@@ -605,11 +776,13 @@ const UnifiedClientManager: React.FC = () => {
                       onChange={(e) => setFormData({ ...formData, signupDate: e.target.value } as Partial<Client>)}
                     />
                   </div>
+                    </div>
+                  </section>
                 </div>
               </div>
 
-              <div className="flex space-x-3 mt-6 justify-end">
-                <AppleButton variant="secondary" onClick={() => setShowForm(false)}>
+              <div className="mt-5 flex justify-end gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+                <AppleButton variant="secondary" onClick={handleCloseForm}>
                   Cancel
                 </AppleButton>
                 <AppleButton variant="primary" onClick={handleSave}>
