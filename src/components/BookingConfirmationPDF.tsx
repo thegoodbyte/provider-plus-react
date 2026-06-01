@@ -7,6 +7,17 @@ interface BookingConfirmationPDFProps {
   onComplete?: () => void;
 }
 
+const waitForImages = async (container: HTMLElement) => {
+  const images = Array.from(container.querySelectorAll('img'));
+  await Promise.all(images.map((image) => {
+    if (image.complete) return Promise.resolve();
+    return new Promise<void>((resolve) => {
+      image.onload = () => resolve();
+      image.onerror = () => resolve();
+    });
+  }));
+};
+
 // Translation object for all supported languages
 const translations = {
   pl: {
@@ -137,17 +148,19 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   pdfContent.style.backgroundColor = 'white';
   pdfContent.style.fontFamily = 'Arial, Helvetica, sans-serif';
   pdfContent.style.fontSize = '14px';
-  pdfContent.style.color = '#000';
+  pdfContent.style.color = '#374151';
 
   pdfContent.innerHTML = `
-    <div style="width: 100%; min-height: 1043px; background-color: white; background-image: linear-gradient(rgba(255,255,255,0.85), rgba(255,255,255,0.85)), url('/images/tree/tree-svg-bg.webp'); background-repeat: no-repeat; background-position: center center; background-size: 76%; position: relative;">
+    <div style="width: 100%; min-height: 1043px; background-color: white; position: relative; overflow: hidden; color: #374151; font-weight: 400;">
+      <img src="/images/tree/tree-svg-bg.webp" alt="" style="position: absolute; left: 50%; top: 50%; width: 76%; max-width: 620px; transform: translate(-50%, -48%); opacity: 0.15; z-index: 0; pointer-events: none;" />
+      <div style="position: relative; z-index: 1;">
       <!-- Header with Logo and Company Info -->
       <table style="width: 100%; border: none; margin-bottom: 15px;">
         <tr>
           <td style="vertical-align: top; width: 300px; padding: 0;">
             <div style="display: flex; align-items: center; margin-bottom: 15px;">
               <img src="/images/logo/iscz-logo-500w.png" style="width: 80px; height: 80px; margin-right: 15px;" />
-              <div style="font-size: 13px; line-height: 1.3; color: #333;">
+              <div style="font-size: 13px; line-height: 1.3; color: #4b5563;">
                 IbogaSpirit.cz<br>
                 Náměstí 41<br>
                 Mýto v Čechách<br>
@@ -156,7 +169,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
             </div>
           </td>
           <td style="text-align: right; vertical-align: top; padding: 0;">
-            <div style="font-size: 12px; color: #555; line-height: 1.4;">
+            <div style="font-size: 12px; color: #4b5563; line-height: 1.4;">
               USA Mobil : +1 917 741 3162 (${language === 'pl' ? 'Użyj do WhatsApp' : language === 'cz' ? 'Použijte pro WhatsApp' : 'Use for WhatsApp'})<br>
               Email: info@ibogaspirit.cz
             </div>
@@ -165,7 +178,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
       </table>
 
       <!-- Title -->
-      <h1 style="text-align: center; font-size: 28px; margin: 10px 0 15px 0; font-weight: 500; color: #000;">
+      <h1 style="text-align: center; font-size: 28px; margin: 10px 0 15px 0; font-weight: 400; color: #1f2937;">
         ${t.title}
       </h1>
 
@@ -175,18 +188,18 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
           <td style="vertical-align: top; width: 50%; padding: 0;">
             <table style="border: none;">
               <tr>
-                <td style="font-size: 14px; padding: 3px 0; color: #333;">${t.date}:</td>
-                <td style="font-size: 14px; padding: 3px 0 3px 15px; font-weight: bold; color: #000;">${new Date().toLocaleDateString(getDateLocale())}</td>
+                <td style="font-size: 14px; padding: 3px 0; color: #4b5563;">${t.date}:</td>
+                <td style="font-size: 14px; padding: 3px 0 3px 15px; font-weight: 600; color: #1f2937;">${new Date().toLocaleDateString(getDateLocale())}</td>
               </tr>
               <tr>
-                <td style="font-size: 14px; padding: 3px 0; color: #333;">${t.number}:</td>
-                <td style="font-size: 14px; padding: 3px 0 3px 15px; font-weight: bold; color: #000;">${booking.bookingNumber || '1201'}</td>
+                <td style="font-size: 14px; padding: 3px 0; color: #4b5563;">${t.number}:</td>
+                <td style="font-size: 14px; padding: 3px 0 3px 15px; font-weight: 600; color: #1f2937;">${booking.bookingNumber || '1201'}</td>
               </tr>
             </table>
           </td>
           <td style="text-align: right; vertical-align: top; padding: 0;">
             <div>
-              <h3 style="font-size: 16px; margin: 0 0 10px 0; font-weight: 600; color: #000;">${t.participant}</h3>
+              <h3 style="font-size: 16px; margin: 0 0 10px 0; font-weight: 500; color: #1f2937;">${t.participant}</h3>
               <div style="font-size: 13px; line-height: 1.5; text-align: right;">
                 <div style="margin-bottom: 2px;"><strong style="font-size: 14px;">${client ? `${client.firstName || client.fname} ${client.lastName || client.lname}` : 'N/A'}</strong></div>
                 <div style="margin-bottom: 2px;">${t.name}: <strong>${client ? `${client.firstName || client.fname} ${client.lastName || client.lname}` : 'N/A'}</strong></div>
@@ -231,35 +244,35 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
       <!-- Payment Table -->
       <table style="width: 100%; border-collapse: collapse; margin-top: 25px; font-size: 13px;">
         <thead>
-          <tr style="background-color: #90EE90;">
-            <th style="border: 1px solid rgba(0,0,0,0.5); padding: 8px 10px; text-align: left; font-weight: 600;">${t.presentation}</th>
-            <th style="border: 1px solid rgba(0,0,0,0.5); padding: 8px 10px; text-align: left; font-weight: 600;">${t.tableDate}</th>
-            <th style="border: 1px solid rgba(0,0,0,0.5); padding: 8px 10px; text-align: left; font-weight: 600;">${t.reference}</th>
-            <th style="border: 1px solid rgba(0,0,0,0.5); padding: 8px 10px; text-align: right; font-weight: 600;">${t.price}</th>
+          <tr style="background-color: rgba(144,238,144,0.42);">
+            <th style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: left; font-weight: 500;">${t.presentation}</th>
+            <th style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: left; font-weight: 500;">${t.tableDate}</th>
+            <th style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: left; font-weight: 500;">${t.reference}</th>
+            <th style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right; font-weight: 500;">${t.price}</th>
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td style="border: 1px solid rgba(0,0,0,0.5); padding: 8px 10px;">Jindrichuv Hradec retreat 28.03-04.04 2026</td>
-            <td style="border: 1px solid rgba(0,0,0,0.5); padding: 8px 10px;"></td>
-            <td style="border: 1px solid rgba(0,0,0,0.5); padding: 8px 10px;"></td>
-            <td style="border: 1px solid rgba(0,0,0,0.5); padding: 8px 10px; text-align: right;">${formatAmount(7500)}</td>
+            <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">Jindrichuv Hradec retreat 28.03-04.04 2026</td>
+            <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;"></td>
+            <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;"></td>
+            <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right;">${formatAmount(7500)}</td>
           </tr>
           <tr>
-            <td style="border: 1px solid rgba(0,0,0,0.5); padding: 8px 10px;">${t.deposit}</td>
-            <td style="border: 1px solid rgba(0,0,0,0.5); padding: 8px 10px;">8/3/2026</td>
-            <td style="border: 1px solid rgba(0,0,0,0.5); padding: 8px 10px;">Revolut</td>
-            <td style="border: 1px solid rgba(0,0,0,0.5); padding: 8px 10px; text-align: right;">${formatAmount(3000)}</td>
+            <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">${t.deposit}</td>
+            <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">8/3/2026</td>
+            <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">Revolut</td>
+            <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right;">${formatAmount(3000)}</td>
           </tr>
           <tr>
-            <td colspan="3" style="border: 1px solid rgba(0,0,0,0.5); padding: 8px 10px; text-align: right; font-weight: bold;">${t.balance}</td>
-            <td style="border: 1px solid rgba(0,0,0,0.5); padding: 8px 10px; text-align: right; font-weight: bold;">${formatAmount(4500)}</td>
+            <td colspan="3" style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right; font-weight: 600;">${t.balance}</td>
+            <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right; font-weight: 600;">${formatAmount(4500)}</td>
           </tr>
         </tbody>
       </table>
 
       <!-- Footer notes -->
-      <div style="margin-top: 30px; font-size: 11px; line-height: 1.6; color: #333;">
+      <div style="margin-top: 30px; font-size: 11px; line-height: 1.6; color: #4b5563;">
         <div style="font-style: italic; margin-bottom: 15px;">
           ${t.footerNote1}<br>
           ${t.footerNote2}
@@ -275,12 +288,24 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
           ${t.footerNote6}
         </div>
       </div>
+      </div>
     </div>
   `;
 
   document.body.appendChild(pdfContent);
+  pdfContent.querySelectorAll<HTMLElement>('*').forEach((element) => {
+    const color = element.style.color.toLowerCase();
+    if (['#000', '#000000', 'black', 'rgb(0, 0, 0)'].includes(color)) element.style.color = '#1f2937';
+    if (['#333', '#333333', 'rgb(51, 51, 51)'].includes(color)) element.style.color = '#4b5563';
+    if (element.style.fontWeight === 'bold') element.style.fontWeight = '500';
+  });
+  pdfContent.querySelectorAll<HTMLElement>('strong').forEach((element) => {
+    element.style.fontWeight = '500';
+    element.style.color = '#1f2937';
+  });
 
   try {
+    await waitForImages(pdfContent);
     // Generate canvas from HTML with optimized quality
     const canvas = await html2canvas(pdfContent, {
       scale: 1.5, // Reduced from 2 to 1.5 for smaller file size
