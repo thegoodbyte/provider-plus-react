@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FiAlertCircle, FiCheckCircle, FiMail, FiPlus, FiRefreshCw, FiSave, FiSend, FiTrash2 } from 'react-icons/fi';
+import { useLocation } from 'react-router-dom';
 import { communicationsApi, clientsApi, retreatsApi } from '../services/api';
 import { Client, EmailTemplate, MailSettings, Retreat, SentEmail } from '../types';
 import SearchableClientSelect from './SearchableClientSelect';
@@ -35,10 +36,13 @@ const defaultComposeForm = {
   fromName: '',
   fromEmail: '',
   replyTo: '',
+  relatedEntityType: '',
+  relatedEntityId: '',
 };
 
 const CommunicationsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabKey>('settings');
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<MailSettings | null>(null);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
@@ -98,6 +102,26 @@ const CommunicationsPage: React.FC = () => {
   useEffect(() => {
     void loadAll();
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab') as TabKey | null;
+    if (tab && ['settings', 'templates', 'compose', 'sent'].includes(tab)) {
+      setActiveTab(tab);
+    }
+    if (location.search.length > 1) {
+      setComposeForm((prev) => ({
+        ...prev,
+        clientId: params.get('clientId') || prev.clientId,
+        retreatId: params.get('retreatId') || prev.retreatId,
+        to: params.get('to') || prev.to,
+        subject: params.get('subject') || prev.subject,
+        bodyText: params.get('bodyText') || prev.bodyText,
+        relatedEntityType: params.get('relatedEntityType') || prev.relatedEntityType,
+        relatedEntityId: params.get('relatedEntityId') || prev.relatedEntityId,
+      }));
+    }
+  }, [location.search]);
 
   useEffect(() => {
     if (!selectedTemplateId) {
@@ -223,6 +247,8 @@ const CommunicationsPage: React.FC = () => {
         replyTo: composeForm.replyTo.trim() || settings?.replyTo,
         clientId: composeForm.clientId || undefined,
         retreatId: composeForm.retreatId || undefined,
+        relatedEntityType: composeForm.relatedEntityType || undefined,
+        relatedEntityId: composeForm.relatedEntityId || undefined,
         variables: buildVariables(),
       };
 
@@ -258,6 +284,19 @@ const CommunicationsPage: React.FC = () => {
       alert('Error saving settings');
     } finally {
       setSavingSettings(false);
+    }
+  };
+
+  const handleDeleteSentEmail = async (id?: string) => {
+    if (!id) return;
+    if (!window.confirm('Delete this communication log entry? This will not delete it from Gmail.')) return;
+    try {
+      await communicationsApi.deleteSentEmail(id);
+      setSelectedSentEmailId('');
+      await loadAll();
+    } catch (error) {
+      console.error('Error deleting communication log:', error);
+      alert('Unable to delete communication log');
     }
   };
 
@@ -346,7 +385,7 @@ const CommunicationsPage: React.FC = () => {
                   value={settings?.senderEmail || ''}
                   onChange={(e) => setSettings((prev) => ({ ...(prev || {}), senderEmail: e.target.value }))}
                   className="w-full rounded-md border border-gray-300 px-3 py-2"
-                  placeholder="hello@example.com"
+                  placeholder="info@ibogaspirit.cz"
                 />
               </div>
             </div>
@@ -411,7 +450,7 @@ const CommunicationsPage: React.FC = () => {
               <div>Last error: <span className="font-medium text-red-600">{settings?.lastError || 'None'}</span></div>
             </div>
             <div className="rounded-md bg-gray-50 p-3 text-xs text-gray-600">
-              Configure Google OAuth redirect URI to point at <code>/communications/gmail/callback</code> on the API host.
+              Configure Google OAuth redirect URI to point at <code>/communications/gmail/callback</code> on the API host. The sending domain should be an authorized Gmail or Google Workspace mailbox for <code>ibogaspirit.cz</code>.
             </div>
           </section>
         </div>
@@ -747,6 +786,16 @@ const CommunicationsPage: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900">Message Detail</h2>
             {selectedSentEmail ? (
               <div className="space-y-3">
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteSentEmail(selectedSentEmail._id)}
+                    className="inline-flex items-center gap-2 rounded-md border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+                  >
+                    <Icon icon={FiTrash2} />
+                    Delete Log
+                  </button>
+                </div>
                 <div><span className="text-gray-500">Message #:</span> <span className="font-mono">#{selectedSentEmail.display_id || 'n/a'}</span></div>
                 <div><span className="text-gray-500">Status:</span> {selectedSentEmail.status}</div>
                 <div><span className="text-gray-500">To:</span> {(selectedSentEmail.to || []).join(', ')}</div>

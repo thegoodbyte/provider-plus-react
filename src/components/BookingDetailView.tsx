@@ -6,7 +6,7 @@ import BookingMedicalUpload from './BookingMedicalUpload';
 import BookingDocumentsUpload from './BookingDocumentsUpload';
 import ClientBookingWorkflowTab from './ClientBookingWorkflowTab';
 import ClientEditModal from './ClientEditModal';
-import { generateBookingPDF } from './BookingConfirmationPDF';
+import { createBookingConfirmationPdf, generateBookingPDF } from './BookingConfirmationPDF';
 import { formatBookingHashForDisplay } from '../utils/hashGenerator';
 import { BookingFlowItem, MedicalArtifact, MedicalReviewRequest } from '../types';
 import './BookingDetailView.css';
@@ -177,17 +177,32 @@ const BookingRequirementsPanel: React.FC<{
 };
 
 const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [booking, setBooking] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [isEditingClient, setIsEditingClient] = useState(false);
   const [pdfLanguage, setPdfLanguage] = useState<'pl' | 'cz' | 'en'>('pl');
   const [requirementsRefreshKey, setRequirementsRefreshKey] = useState(0);
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [previewFileName, setPreviewFileName] = useState('');
+  const [isPreviewingPDF, setIsPreviewingPDF] = useState(false);
   const pdfRef = useRef<HTMLDivElement>(null);
+  const routePrefix = useMemo(() => {
+    const firstSegment = location.pathname.split('/').filter(Boolean)[0];
+    return ['admin', 'medical', 'staff', 'user'].includes(firstSegment) ? `/${firstSegment}` : '';
+  }, [location.pathname]);
 
   useEffect(() => {
     fetchBookingDetails();
   }, [bookingId]);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
 
   const fetchBookingDetails = async () => {
     try {
@@ -254,6 +269,47 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     }
   };
 
+  const previewPDF = async () => {
+    if (!booking) return;
+    setIsPreviewingPDF(true);
+    try {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      const { blob, fileName } = await createBookingConfirmationPdf({ booking, language: pdfLanguage });
+      setPreviewUrl(URL.createObjectURL(blob));
+      setPreviewFileName(fileName);
+    } catch (error) {
+      console.error('Error previewing PDF:', error);
+    } finally {
+      setIsPreviewingPDF(false);
+    }
+  };
+
+  const emailBookingConfirmation = () => {
+    const client = booking?.clientId || booking?.clientDetails;
+    const retreat = booking?.retreatId || booking?.retreatDetails;
+    const params = new URLSearchParams({
+      tab: 'compose',
+      relatedEntityType: 'booking',
+      relatedEntityId: bookingId,
+      subject: `Booking confirmation ${booking?.bookingNumber || ''}`.trim(),
+      bodyText: [
+        `Hello ${client?.firstName || ''},`,
+        '',
+        'Please find your booking confirmation details below. The PDF confirmation can be downloaded from the booking preview for now.',
+        '',
+        `Booking number: ${booking?.bookingNumber || ''}`,
+        retreat?.name ? `Retreat: ${retreat.name}` : '',
+        '',
+        'Thank you,',
+        'IbogaSpirit.cz',
+      ].filter(Boolean).join('\n'),
+    });
+    if (client?._id) params.set('clientId', client._id);
+    if (client?.email) params.set('to', client.email);
+    if (retreat?._id) params.set('retreatId', retreat._id);
+    navigate(`${routePrefix}/communications?${params.toString()}`);
+  };
+
   if (isLoading) {
     return (
       <div className="loading-container">
@@ -294,6 +350,25 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
             <option value="en">English (EN)</option>
           </select>
           <button
+            onClick={() => navigate(`${routePrefix}/bookings/${bookingId}/edit`)}
+            className="pdf-btn"
+          >
+            Edit Booking
+          </button>
+          <button
+            onClick={previewPDF}
+            disabled={isPreviewingPDF}
+            className="pdf-btn"
+          >
+            {isPreviewingPDF ? 'Previewing...' : 'Preview PDF'}
+          </button>
+          <button
+            onClick={emailBookingConfirmation}
+            className="pdf-btn"
+          >
+            Email Confirmation
+          </button>
+          <button
             onClick={generatePDF}
             disabled={isGeneratingPDF}
             className="pdf-btn"
@@ -304,6 +379,22 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
       </div>
 
       <div className="detail-content" ref={pdfRef}>
+        {previewUrl && (
+          <div className="detail-section pdf-section">
+            <div className="section-header">
+              <h3 className="pdf-section-title">Booking Confirmation Preview</h3>
+              <a href={previewUrl} download={previewFileName} className="edit-btn">
+                Download Preview
+              </a>
+            </div>
+            <iframe
+              src={previewUrl}
+              title={previewFileName || 'Booking confirmation preview'}
+              className="w-full border-0"
+              style={{ height: '70vh', background: '#fff' }}
+            />
+          </div>
+        )}
 
         <div className="detail-section pdf-section">
           <h3 className="pdf-section-title">Booking Information</h3>

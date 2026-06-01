@@ -326,6 +326,10 @@ export const communicationsApi = {
   },
   getSentEmails: () => cachedGet<SentEmail[]>('communications:sent-emails', () => api.get<SentEmail[]>('/communications/sent-emails')),
   getSentEmail: (id: string) => cachedGet<SentEmail>(`communications:sent-emails:${id}`, () => api.get<SentEmail>(`/communications/sent-emails/${id}`)),
+  deleteSentEmail: (id: string) => {
+    cacheService.clearPattern('communications:sent-emails');
+    return api.delete(`/communications/sent-emails/${id}`);
+  },
   sendEmail: (data: {
     to: string;
     cc?: string;
