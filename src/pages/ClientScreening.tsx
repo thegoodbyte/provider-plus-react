@@ -201,14 +201,42 @@ const ClientScreening: React.FC = () => {
       const response = await clientsApi.getOne(clientId);
       const clientData = response.data;
       setClient(clientData);
+      const existingScreening = clientData.screeningData || {};
+      const existingValue = (screeningKey: keyof ScreeningData, ...clientKeys: string[]) => {
+        const screeningValue = existingScreening[screeningKey as string];
+        if (screeningValue !== undefined && screeningValue !== null && screeningValue !== '') return screeningValue;
+        for (const key of clientKeys) {
+          const clientValue = (clientData as any)[key];
+          if (clientValue !== undefined && clientValue !== null && clientValue !== '') return clientValue;
+        }
+        return undefined;
+      };
 
       // Pre-populate client info
       setFormData(prev => ({
         ...prev,
+        ...existingScreening,
+        clientId,
         firstName: clientData.firstName || '',
         lastName: clientData.lastName || '',
         displayId: clientData.display_id || 0,
-        phoneNumber: clientData.phone || ''
+        phoneNumber: clientData.phone || '',
+        mainIntent: existingValue('mainIntent', 'whySeekingIboga') ?? prev.mainIntent,
+        riskNotes: existingValue('riskNotes', 'whatToChange') ?? prev.riskNotes,
+        childhood: existingValue('childhood', 'childhood') ?? prev.childhood,
+        heartCondition: existingValue('heartCondition', 'heartConditions') ?? prev.heartCondition,
+        liverCondition: existingValue('liverCondition', 'liverConditions') ?? prev.liverCondition,
+        asthmaCondition: existingValue('asthmaCondition', 'asthmaConditions') ?? prev.asthmaCondition,
+        medications: existingValue('medications', 'currentMedications') ?? prev.medications,
+        drugsHistory: existingValue('drugsHistory', 'recreationalDrugs', 'addictionHistory') ?? prev.drugsHistory,
+        alcoholHistory: existingValue('alcoholHistory', 'alcoholConsumption') ?? prev.alcoholHistory,
+        healthComplications: existingValue('healthComplications', 'otherMedicalComplications') ?? prev.healthComplications,
+        bloodPressure: existingValue('bloodPressure', 'bloodPressureIssues') ?? prev.bloodPressure,
+        generalNotes: existingValue('generalNotes', 'notes') ?? prev.generalNotes,
+        handwritingImageUrl: existingValue('handwritingImageUrl', 'handwritingImageUrl') ?? prev.handwritingImageUrl,
+        screeningDate: existingValue('screeningDate', 'screeningCompletedDate')
+          ? new Date(existingValue('screeningDate', 'screeningCompletedDate') as string).toISOString().split('T')[0]
+          : prev.screeningDate,
       }));
 
       setLoading(false);

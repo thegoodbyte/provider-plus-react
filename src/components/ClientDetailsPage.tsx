@@ -757,7 +757,16 @@ const ClientDetailsPage: React.FC = () => {
 
         {activeTab === 'screening' && (
           <div>
-            <h2 className="text-lg font-semibold mb-4">Screening Information</h2>
+            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <h2 className="text-lg font-semibold">Screening Information</h2>
+              <AppleButton
+                onClick={() => navigate(`/admin/clients/${clientId}/screening`)}
+                className="apple-button-primary px-3 py-2 w-full sm:w-auto whitespace-nowrap"
+              >
+                <Icon icon={FiEdit2} className="w-4 h-4 mr-2" />
+                {hasScreeningDetails ? 'Edit Screening' : 'Add Screening'}
+              </AppleButton>
+            </div>
             <div className="space-y-4">
               <div>
                 <h3 className="text-sm font-medium text-gray-500 mb-2">Screening Status</h3>
