@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { FiArrowLeft, FiDownload, FiEdit3, FiEye, FiMail, FiSend } from 'react-icons/fi';
 import { bookingsApi, bookingFlowApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import BookingPaymentManagement from './BookingPaymentManagement';
 import BookingMedicalUpload from './BookingMedicalUpload';
@@ -15,6 +16,8 @@ interface BookingDetailViewProps {
   bookingId: string;
   onBack: () => void;
 }
+
+const HeaderIcon: React.FC<{ icon: any }> = ({ icon: IconComponent }) => <IconComponent />;
 
 const requirementDefinitions = [
   { key: 'ekg', label: 'EKG', artifactTypes: ['ekg'], readinessGroups: ['ekg'] },
@@ -487,8 +490,13 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   return (
     <div className="booking-detail-container">
       <div className="detail-header">
-        <button onClick={onBack} className="back-btn">← Back to Bookings</button>
-        <h2>Booking Details - {booking.bookingNumber || 'N/A'}</h2>
+        <button onClick={onBack} className="back-btn" title="Back to bookings" aria-label="Back to bookings">
+          <HeaderIcon icon={FiArrowLeft} />
+        </button>
+        <div className="booking-title-block">
+          <span className="booking-title-kicker">Booking Details</span>
+          <h1>Booking #{booking.bookingNumber || 'N/A'}</h1>
+        </div>
         <div className="header-actions">
           <select
             value={pdfLanguage}
@@ -503,35 +511,55 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
           <button
             onClick={() => navigate(`${routePrefix}/bookings/${bookingId}/edit`)}
             className="pdf-btn"
+            title="Edit booking"
+            aria-label="Edit booking"
+            data-tooltip="Edit booking"
           >
-            Edit Booking
+            <HeaderIcon icon={FiEdit3} />
+            <span>Edit</span>
           </button>
           <button
             onClick={previewPDF}
             disabled={isPreviewingPDF}
             className="pdf-btn"
+            title="Preview PDF"
+            aria-label="Preview PDF"
+            data-tooltip="Preview PDF"
           >
-            {isPreviewingPDF ? 'Previewing...' : 'Preview PDF'}
+            <HeaderIcon icon={FiEye} />
+            <span>{isPreviewingPDF ? 'Previewing' : 'Preview'}</span>
           </button>
           <button
             onClick={sendBookingConfirmationEmail}
             disabled={isSendingConfirmation}
-            className="pdf-btn"
+            className="pdf-btn primary-action"
+            title="Send email with PDF attachment"
+            aria-label="Send email with PDF attachment"
+            data-tooltip="Send email + PDF"
           >
-            {isSendingConfirmation ? 'Sending...' : 'Send Email + PDF'}
+            <HeaderIcon icon={FiSend} />
+            <span>{isSendingConfirmation ? 'Sending' : 'Send'}</span>
           </button>
           <button
             onClick={emailBookingConfirmation}
             className="pdf-btn"
+            title="Compose email"
+            aria-label="Compose email"
+            data-tooltip="Compose email"
           >
-            Compose Email
+            <HeaderIcon icon={FiMail} />
+            <span>Compose</span>
           </button>
           <button
             onClick={generatePDF}
             disabled={isGeneratingPDF}
             className="pdf-btn"
+            title="Download PDF"
+            aria-label="Download PDF"
+            data-tooltip="Download PDF"
           >
-            {isGeneratingPDF ? 'Generating...' : 'Download PDF'}
+            <HeaderIcon icon={FiDownload} />
+            <span>{isGeneratingPDF ? 'Generating' : 'Download'}</span>
           </button>
         </div>
       </div>
