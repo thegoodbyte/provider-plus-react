@@ -24,6 +24,7 @@ interface ScreeningData {
   liverCondition: string;
   asthmaCondition: string;
   medications: string;
+  ssris: string;
   drugsHistory: string;
   marijuana: boolean;
   marijuanaDetails: string;
@@ -67,6 +68,57 @@ interface ScreeningData {
   status: string;
 }
 
+const compressScreeningImage = (file: File, maxDimension = 1800, quality = 0.82): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) {
+      resolve(file);
+      return;
+    }
+
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    image.onload = () => {
+      try {
+        const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
+        const width = Math.max(1, Math.round(image.naturalWidth * scale));
+        const height = Math.max(1, Math.round(image.naturalHeight * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('Image compression is not available in this browser.');
+
+        context.fillStyle = '#ffffff';
+        context.fillRect(0, 0, width, height);
+        context.drawImage(image, 0, 0, width, height);
+
+        canvas.toBlob((blob) => {
+          URL.revokeObjectURL(objectUrl);
+          if (!blob) {
+            reject(new Error('Could not compress screening image.'));
+            return;
+          }
+
+          const originalBaseName = file.name.replace(/\.[^/.]+$/, '').trim() || 'screening';
+          const compressed = new File([blob], `${originalBaseName}-compressed.jpg`, { type: 'image/jpeg' });
+          resolve(compressed.size < file.size ? compressed : file);
+        }, 'image/jpeg', quality);
+      } catch (compressionError) {
+        URL.revokeObjectURL(objectUrl);
+        reject(compressionError);
+      }
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Could not read this screening image.'));
+    };
+
+    image.src = objectUrl;
+  });
+};
+
 const ClientScreening: React.FC = () => {
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
@@ -94,6 +146,7 @@ const ClientScreening: React.FC = () => {
     liverCondition: '',
     asthmaCondition: '',
     medications: '',
+    ssris: '',
     drugsHistory: '',
     marijuana: false,
     marijuanaDetails: '',
@@ -183,19 +236,21 @@ const ClientScreening: React.FC = () => {
     if (!file) return;
 
     setUploadingImage(true);
-    const formDataUpload = new FormData();
-    formDataUpload.append('file', file);
 
     try {
+      const uploadFile = await compressScreeningImage(file);
+      const formDataUpload = new FormData();
+      formDataUpload.append('file', uploadFile);
+
       // First save the screening to get an ID
       let screeningId = formData.clientId;
 
       // Upload image
       const response = await screeningApi.uploadHandwriting(screeningId, formDataUpload);
       setFormData(prev => ({ ...prev, handwritingImageUrl: response.data.imageUrl }));
-      setUploadingImage(false);
     } catch (error) {
       console.error('Error uploading image:', error);
+    } finally {
       setUploadingImage(false);
     }
   };
@@ -435,6 +490,17 @@ const ClientScreening: React.FC = () => {
             />
           </div>
           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">SSRIs</label>
+            <textarea
+              name="ssris"
+              value={formData.ssris}
+              onChange={handleInputChange}
+              rows={2}
+              className="w-full px-3 py-2 border border-gray-200 rounded-md"
+              placeholder="Current or recent SSRI medications, dose, and stop date if applicable"
+            />
+          </div>
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Blood Pressure</label>
             <input
               type="text"
@@ -573,7 +639,7 @@ const ClientScreening: React.FC = () => {
             disabled={uploadingImage}
             className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
           />
-          {uploadingImage && <p className="mt-2 text-sm text-gray-500">Uploading...</p>}
+          {uploadingImage && <p className="mt-2 text-sm text-gray-500">Compressing and uploading...</p>}
           {formData.handwritingImageUrl && (
             <div className="mt-4">
               <img

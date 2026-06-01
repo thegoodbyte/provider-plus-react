@@ -11,6 +11,68 @@ const formatBytes = (size?: number) => {
   return `${(size / 1024 / 1024).toFixed(1)} MB`;
 };
 
+const isImageFile = (file: FileUpload) =>
+  file.mimeType?.startsWith('image/') || /\.(png|jpe?g|gif|webp|bmp)$/i.test(file.originalFileName || file.storedFileName || '');
+
+const isPdfFile = (file: FileUpload) =>
+  file.mimeType?.includes('pdf') || /\.pdf$/i.test(file.originalFileName || file.storedFileName || '');
+
+const FilePreview: React.FC<{ file: FileUpload }> = ({ file }) => {
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const canPreview = isImageFile(file) || isPdfFile(file);
+
+  useEffect(() => {
+    let active = true;
+    let objectUrl = '';
+
+    const loadPreview = async () => {
+      if (!canPreview || !file.fileHash) return;
+      try {
+        const response = await fileUploadsApi.getViewBlob(file.fileHash);
+        objectUrl = URL.createObjectURL(response.data as Blob);
+        if (active) setPreviewUrl(objectUrl);
+      } catch (previewError) {
+        console.error('Error loading file preview:', previewError);
+        if (active) setFailed(true);
+      }
+    };
+
+    loadPreview();
+
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [canPreview, file.fileHash]);
+
+  if (!canPreview) {
+    return <div className="text-xs text-gray-400">No preview</div>;
+  }
+
+  if (failed) {
+    return <div className="text-xs text-red-500">Preview failed</div>;
+  }
+
+  if (!previewUrl) {
+    return <div className="text-xs text-gray-400">Loading...</div>;
+  }
+
+  if (isImageFile(file)) {
+    return (
+      <a href={previewUrl} target="_blank" rel="noreferrer" className="block h-20 w-20 overflow-hidden rounded-md border border-gray-200 bg-gray-50">
+        <img src={previewUrl} alt={file.originalFileName} className="h-full w-full object-cover" />
+      </a>
+    );
+  }
+
+  return (
+    <a href={previewUrl} target="_blank" rel="noreferrer" className="block h-20 w-20 overflow-hidden rounded-md border border-gray-200 bg-gray-50">
+      <iframe src={previewUrl} title={file.originalFileName} className="h-full w-full pointer-events-none border-0" />
+    </a>
+  );
+};
+
 const FileUploadsPage: React.FC = () => {
   const [files, setFiles] = useState<FileUpload[]>([]);
   const [configSummary, setConfigSummary] = useState<any>(null);
@@ -63,6 +125,7 @@ const FileUploadsPage: React.FC = () => {
           <option value="medical_artifact">Medical artifacts</option>
           <option value="medical_tracking">Medical tracking</option>
           <option value="client_medical">Client medical</option>
+          <option value="client_profile_picture">Client profile pictures</option>
           <option value="retreat_document">Retreat documents</option>
           <option value="other">Other</option>
         </select>
@@ -120,6 +183,7 @@ const FileUploadsPage: React.FC = () => {
           <thead className="bg-gray-50 text-left text-xs font-semibold uppercase text-gray-500">
             <tr>
               <th className="px-4 py-3">Uploaded</th>
+              <th className="px-4 py-3">Preview</th>
               <th className="px-4 py-3">Original Name</th>
               <th className="px-4 py-3">Section</th>
               <th className="px-4 py-3">Stored Name</th>
@@ -133,6 +197,7 @@ const FileUploadsPage: React.FC = () => {
             {filteredFiles.map((file) => (
               <tr key={file._id || file.fileHash} className="hover:bg-gray-50">
                 <td className="whitespace-nowrap px-4 py-3 text-gray-700">{file.uploadedAt ? new Date(file.uploadedAt).toLocaleString() : '-'}</td>
+                <td className="px-4 py-3 text-gray-700"><FilePreview file={file} /></td>
                 <td className="px-4 py-3 font-medium text-gray-900">{file.originalFileName}</td>
                 <td className="px-4 py-3">
                   <div className="capitalize text-gray-900">{file.documentKind.replace(/_/g, ' ')}</div>
@@ -154,7 +219,7 @@ const FileUploadsPage: React.FC = () => {
             ))}
             {filteredFiles.length === 0 && (
               <tr>
-                <td className="px-4 py-8 text-center text-gray-500" colSpan={8}>No file uploads found.</td>
+                <td className="px-4 py-8 text-center text-gray-500" colSpan={9}>No file uploads found.</td>
               </tr>
             )}
           </tbody>

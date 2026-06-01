@@ -1,0 +1,46 @@
+.client-edit-page .form-group {
+  margin-bottom: 16px;
+}
+
+.client-edit-page .form-group:last-child {
+  margin-bottom: 0;
+}
+
+.client-edit-page label {
+  display: block;
+  margin-bottom: 6px;
+  color: #475569;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.client-edit-page input,
+.client-edit-page select,
+.client-edit-page textarea {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 0.95rem;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.client-edit-page input:focus,
+.client-edit-page select:focus,
+.client-edit-page textarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  outline: none;
+}
+
+.client-edit-page textarea {
+  min-height: 76px;
+  resize: vertical;
+}
+
+@media (max-width: 640px) {
+  .client-edit-page .form-group {
+    margin-bottom: 14px;
+  }
+}

@@ -68,7 +68,7 @@ export interface Client {
   blacklistReason?: string;
   blacklistDate?: Date | string;
   display_id?: number;
-  language?: 'EN' | 'PL' | 'CZ' | 'ES' | 'FR' | 'DE';
+  language?: 'EN' | 'CZ' | 'PL' | 'RU' | 'OTHER';
   initialContactDate?: Date | string;
   conversionDate?: Date | string;
   firstContactDate?: Date | string;
@@ -111,6 +111,9 @@ export interface Client {
   screeningCompletedDate?: Date | string;
   screeningData?: Record<string, any>;
   handwritingImageUrl?: string;
+  profilePictureUrl?: string;
+  profilePictureS3Key?: string;
+  profilePictureFileUploadId?: string;
   followUpDate?: Date | string;
   priority?: 'low' | 'medium' | 'high' | 'urgent';
   signupDate?: Date | string;
@@ -712,7 +715,7 @@ export interface FileUpload {
   filePath: string;
   fileSize: number;
   mimeType: string;
-  documentKind: 'medical_tracking' | 'medical_artifact' | 'client_medical' | 'retreat_document' | 'other';
+  documentKind: 'medical_tracking' | 'medical_artifact' | 'client_medical' | 'client_profile_picture' | 'retreat_document' | 'other';
   foreignKey: string;
   uploadedBy?: string;
   uploadedAt?: Date | string;

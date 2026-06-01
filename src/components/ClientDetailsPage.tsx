@@ -5,7 +5,7 @@ import LoadingSpinner from './LoadingSpinner';
 import AppleButton from './AppleButton';
 import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
 import { PaymentRequest } from '../types';
-import { FiArrowLeft, FiEdit2, FiUser, FiPhone, FiMail, FiMapPin, FiCalendar, FiDollarSign, FiActivity, FiFileText, FiAlertCircle, FiPlus, FiMessageSquare, FiCheckSquare, FiHeart, FiEye, FiEyeOff } from 'react-icons/fi';
+import { FiArrowLeft, FiCamera, FiEdit2, FiUser, FiPhone, FiMail, FiMapPin, FiCalendar, FiDollarSign, FiActivity, FiFileText, FiAlertCircle, FiPlus, FiMessageSquare, FiCheckSquare, FiHeart, FiEye, FiEyeOff } from 'react-icons/fi';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -32,6 +32,50 @@ const Tab: React.FC<TabProps> = ({ label, icon, isActive, onClick }) => (
     <span>{label}</span>
   </button>
 );
+
+const cropImageToProfileSquare = (file: File, size = 200): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    image.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const context = canvas.getContext('2d');
+        if (!context) {
+          throw new Error('Image editor is not available in this browser.');
+        }
+
+        const sourceSize = Math.min(image.naturalWidth, image.naturalHeight);
+        const sourceX = (image.naturalWidth - sourceSize) / 2;
+        const sourceY = (image.naturalHeight - sourceSize) / 2;
+        context.drawImage(image, sourceX, sourceY, sourceSize, sourceSize, 0, 0, size, size);
+
+        canvas.toBlob((blob) => {
+          URL.revokeObjectURL(objectUrl);
+          if (!blob) {
+            reject(new Error('Could not prepare profile picture.'));
+            return;
+          }
+          const baseName = file.name.replace(/\.[^/.]+$/, '').trim() || 'profile-picture';
+          resolve(new File([blob], `${baseName}-profile.jpg`, { type: 'image/jpeg' }));
+        }, 'image/jpeg', 0.9);
+      } catch (cropError) {
+        URL.revokeObjectURL(objectUrl);
+        reject(cropError);
+      }
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Could not read this image file.'));
+    };
+
+    image.src = objectUrl;
+  });
+};
 
 const ClientDetailsPage: React.FC = () => {
   const { clientId } = useParams<{ clientId: string }>();
@@ -84,6 +128,8 @@ const ClientDetailsPage: React.FC = () => {
   const [liverPanelFiles, setLiverPanelFiles] = useState<any[]>([]);
   const [uploadingEKG, setUploadingEKG] = useState(false);
   const [uploadingLiverPanel, setUploadingLiverPanel] = useState(false);
+  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
+  const [uploadingProfilePicture, setUploadingProfilePicture] = useState(false);
 
   useEffect(() => {
     if (clientId) {
@@ -143,6 +189,34 @@ const ClientDetailsPage: React.FC = () => {
       window.clearTimeout(timeout);
     };
   }, [newPayment.amount, newPayment.currency]);
+
+  useEffect(() => {
+    let active = true;
+    let objectUrl = '';
+
+    const loadProfilePicture = async () => {
+      if (!clientId || !client?.profilePictureS3Key) {
+        setProfilePictureUrl(null);
+        return;
+      }
+
+      try {
+        const response = await clientsApi.getProfilePictureBlob(clientId);
+        objectUrl = URL.createObjectURL(response.data as Blob);
+        if (active) setProfilePictureUrl(objectUrl);
+      } catch (pictureError) {
+        console.error('Error loading profile picture:', pictureError);
+        if (active) setProfilePictureUrl(null);
+      }
+    };
+
+    loadProfilePicture();
+
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [clientId, client?.profilePictureS3Key, client?.updatedAt]);
 
   const handleClientUpdate = (updatedClient: any) => {
     setClient(updatedClient);
@@ -220,6 +294,28 @@ const ClientDetailsPage: React.FC = () => {
     }
   };
 
+  const handleProfilePictureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!clientId || !file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Please choose an image file.');
+      return;
+    }
+
+    try {
+      setUploadingProfilePicture(true);
+      const croppedFile = await cropImageToProfileSquare(file, 200);
+      const response = await clientsApi.uploadProfilePicture(clientId, croppedFile);
+      setClient(response.data.client);
+    } catch (uploadError: any) {
+      console.error('Error uploading profile picture:', uploadError);
+      alert(uploadError?.response?.data?.message || uploadError?.message || 'Failed to upload profile picture.');
+    } finally {
+      setUploadingProfilePicture(false);
+    }
+  };
+
   const fetchClientData = async () => {
     try {
       setIsLoading(true);
@@ -275,6 +371,17 @@ const ClientDetailsPage: React.FC = () => {
         {status || 'unknown'}
       </span>
     );
+  };
+
+  const getLanguageLabel = (language?: string) => {
+    const labels: Record<string, string> = {
+      EN: 'English',
+      CZ: 'Czech',
+      PL: 'Polish',
+      RU: 'Russian',
+      OTHER: 'Other',
+    };
+    return labels[language || ''] || 'Not set';
   };
 
   const screeningData = client?.screeningData || {};
@@ -428,6 +535,20 @@ const ClientDetailsPage: React.FC = () => {
               <Icon icon={FiArrowLeft} className="w-4 h-4 mr-2" />
               Back
             </AppleButton>
+            <div className="relative h-[96px] w-[96px] shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-100 shadow-sm sm:h-[200px] sm:w-[200px]">
+              {profilePictureUrl ? (
+                <img src={profilePictureUrl} alt={`${client.firstName} ${client.lastName}`} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-gray-400">
+                  <Icon icon={FiUser} className="h-10 w-10" />
+                </div>
+              )}
+              <label className="absolute inset-x-0 bottom-0 flex cursor-pointer items-center justify-center gap-1 bg-black/55 px-2 py-2 text-xs font-medium text-white transition hover:bg-black/70">
+                <Icon icon={FiCamera} className="h-3.5 w-3.5" />
+                {uploadingProfilePicture ? 'Uploading' : 'Photo'}
+                <input type="file" accept="image/*" onChange={handleProfilePictureUpload} className="hidden" disabled={uploadingProfilePicture} />
+              </label>
+            </div>
             <h1 className="text-2xl font-semibold text-gray-900 break-words">
               {client.firstName} {client.lastName}
             </h1>
@@ -578,6 +699,10 @@ const ClientDetailsPage: React.FC = () => {
                   <div className="flex flex-wrap justify-between gap-2">
                     <dt className="text-sm text-gray-600">Country:</dt>
                     <dd className="text-sm font-medium">{client.country || 'N/A'}</dd>
+                  </div>
+                  <div className="flex flex-wrap justify-between gap-2">
+                    <dt className="text-sm text-gray-600">Preferred Language:</dt>
+                    <dd className="text-sm font-medium">{getLanguageLabel(client.language)}</dd>
                   </div>
                   <div className="flex flex-wrap justify-between gap-2">
                     <dt className="text-sm text-gray-600">City:</dt>

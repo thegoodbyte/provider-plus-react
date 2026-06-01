@@ -10,11 +10,13 @@ interface ClientEditModalProps {
 }
 
 const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSave }) => {
-  const [formData, setFormData] = useState<Client & { yearOfBirth?: number; medications?: string; allergies?: string; specialRequests?: string; language?: 'EN' | 'PL' | 'CZ' | 'ES' | 'FR' | 'DE' }>({
+  const [formData, setFormData] = useState<Client & { yearOfBirth?: number; medications?: string; allergies?: string; specialRequests?: string; language?: 'EN' | 'CZ' | 'PL' | 'RU' | 'OTHER' }>({
     ...client
   });
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
+  const [uploadingProfilePicture, setUploadingProfilePicture] = useState(false);
 
   useEffect(() => {
     // Extract year from dateOfBirth if present
@@ -29,6 +31,34 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
     });
   }, [client]);
 
+  useEffect(() => {
+    let active = true;
+    let objectUrl = '';
+
+    const loadProfilePicture = async () => {
+      if (!client._id || !client.profilePictureS3Key) {
+        setProfilePictureUrl(null);
+        return;
+      }
+
+      try {
+        const response = await clientsApi.getProfilePictureBlob(client._id);
+        objectUrl = URL.createObjectURL(response.data as Blob);
+        if (active) setProfilePictureUrl(objectUrl);
+      } catch (error) {
+        console.error('Error loading profile picture:', error);
+        if (active) setProfilePictureUrl(null);
+      }
+    };
+
+    loadProfilePicture();
+
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [client._id, client.profilePictureS3Key, client.updatedAt]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
@@ -40,6 +70,29 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
   const normalizeOptionalValue = (value?: string) => {
     const trimmed = typeof value === 'string' ? value.trim() : value;
     return trimmed ? trimmed : undefined;
+  };
+
+  const handleProfilePictureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!client._id || !file) return;
+    if (!file.type.startsWith('image/')) {
+      setValidationErrors(['Please choose an image file.']);
+      return;
+    }
+
+    try {
+      setUploadingProfilePicture(true);
+      setValidationErrors([]);
+      const response = await clientsApi.uploadProfilePicture(client._id, file);
+      setFormData((current) => ({ ...current, ...response.data.client }));
+      onSave(response.data.client);
+    } catch (error: any) {
+      console.error('Error uploading profile picture:', error);
+      setValidationErrors([error?.response?.data?.message || error?.message || 'Failed to upload profile picture.']);
+    } finally {
+      setUploadingProfilePicture(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -145,6 +198,23 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
         )}
 
         <form onSubmit={handleSubmit}>
+          <div className="profile-picture-editor">
+            <div className="profile-picture-preview">
+              {profilePictureUrl ? (
+                <img src={profilePictureUrl} alt={`${formData.firstName || ''} ${formData.lastName || ''}`} />
+              ) : (
+                <span>{`${formData.firstName?.[0] || ''}${formData.lastName?.[0] || ''}` || 'Client'}</span>
+              )}
+            </div>
+            <div className="profile-picture-copy">
+              <strong>Profile image</strong>
+              <p>Upload a client photo for the profile header and client lists.</p>
+            </div>
+            <label className="profile-picture-upload">
+              {uploadingProfilePicture ? 'Uploading...' : 'Upload image'}
+              <input type="file" accept="image/*" onChange={handleProfilePictureUpload} disabled={uploadingProfilePicture || isSubmitting} />
+            </label>
+          </div>
           <div className="form-grid">
             <div className="form-section">
               <h4>Basic Information</h4>
@@ -255,11 +325,10 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
                   onChange={handleInputChange}
                 >
                   <option value="EN">English</option>
-                  <option value="PL">Polish</option>
                   <option value="CZ">Czech</option>
-                  <option value="ES">Spanish</option>
-                  <option value="FR">French</option>
-                  <option value="DE">German</option>
+                  <option value="PL">Polish</option>
+                  <option value="RU">Russian</option>
+                  <option value="OTHER">Other</option>
                 </select>
               </div>
             </div>

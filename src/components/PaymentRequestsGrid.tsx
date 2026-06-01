@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { paymentRequestsApi } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiCheckCircle, FiClock, FiAlertTriangle } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiCheckCircle, FiClock, FiAlertTriangle, FiSend } from 'react-icons/fi';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
@@ -27,6 +27,7 @@ const PaymentRequestsGrid: React.FC = () => {
   const navigate = useNavigate();
   const [paymentRequests, setPaymentRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sendingRequestId, setSendingRequestId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   const fetchPaymentRequests = async () => {
@@ -54,6 +55,19 @@ const PaymentRequestsGrid: React.FC = () => {
     } catch (error) {
       console.error('Error deleting payment request:', error);
       alert('Failed to delete payment request');
+    }
+  };
+
+  const handleSendPaymentRequest = async (id: string) => {
+    setSendingRequestId(id);
+    try {
+      await paymentRequestsApi.sendReminder(id);
+      await fetchPaymentRequests();
+    } catch (error) {
+      console.error('Error sending payment request:', error);
+      alert('Failed to send payment request');
+    } finally {
+      setSendingRequestId(null);
     }
   };
 
@@ -172,6 +186,14 @@ const PaymentRequestsGrid: React.FC = () => {
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleSendPaymentRequest(request._id)}
+                          disabled={sendingRequestId === request._id}
+                          className="text-blue-600 hover:text-blue-900 disabled:opacity-50"
+                          title="Send payment request"
+                        >
+                          <Icon icon={FiSend} className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => navigate(`/admin/payment-requests/${request._id}/edit`)}
                           className="text-indigo-600 hover:text-indigo-900"

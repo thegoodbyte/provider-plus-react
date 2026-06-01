@@ -128,6 +128,18 @@ export const clientsApi = {
     cacheService.clearPattern('clients:');
     return api.put(`/clients/${id}/screening`, screeningData);
   },
+  uploadProfilePicture: (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    cacheService.clearPattern('clients:');
+    return api.post<{ client: Client; fileUpload: FileUpload }>(`/clients/${id}/profile-picture`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+  getProfilePictureBlob: (id: string) =>
+    api.get(`/clients/${id}/profile-picture`, { responseType: 'blob' }),
 };
 
 export const clientMedicalApi = {
@@ -627,6 +639,8 @@ export const fileUploadsApi = {
     return cachedGet<FileUpload[]>(`file-uploads:${suffix || 'all'}`, () => api.get<FileUpload[]>(`/file-uploads${suffix}`));
   },
   getStats: () => cachedGet<any>('file-uploads:stats', () => api.get('/file-uploads/stats')),
+  getViewBlob: (fileHash: string) =>
+    api.get(`/file-uploads/view/${fileHash}`, { responseType: 'blob' }),
 };
 
 export const configSummaryApi = {

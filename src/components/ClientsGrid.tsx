@@ -727,11 +727,10 @@ const ClientsGrid: React.FC = () => {
                       onChange={handleInputChange}
                     >
                       <option value="EN">English</option>
-                      <option value="PL">Polish</option>
                       <option value="CZ">Czech</option>
-                      <option value="ES">Spanish</option>
-                      <option value="FR">French</option>
-                      <option value="DE">German</option>
+                      <option value="PL">Polish</option>
+                      <option value="RU">Russian</option>
+                      <option value="OTHER">Other</option>
                     </select>
                   </div>
 
