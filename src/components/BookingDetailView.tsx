@@ -56,6 +56,29 @@ const formatFileSize = (bytes: number) => {
 const getClientName = (client: any) =>
   [client?.firstName || client?.fname, client?.lastName || client?.lname].filter(Boolean).join(' ').trim();
 
+const getRetreatCode = (retreat: any) => {
+  const rawName = String(retreat?.name || retreat?.location || 'Retreat').trim();
+  const initials = rawName
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .slice(0, 3)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || 'RET';
+  const dateValue = retreat?.startDate || retreat?.dates?.startDate;
+  const date = dateValue ? new Date(dateValue) : null;
+  if (!date || Number.isNaN(date.getTime())) return initials;
+  const two = (value: number) => String(value).padStart(2, '0');
+  return `${initials}-${two(date.getUTCMonth() + 1)}-${two(date.getUTCDate())}-${two(date.getUTCFullYear() % 100)}`;
+};
+
+const getReadableTextColor = (background?: string, fallback = '#111827') => {
+  if (!background || !/^#[0-9a-f]{6}$/i.test(background)) return fallback;
+  const red = parseInt(background.slice(1, 3), 16);
+  const green = parseInt(background.slice(3, 5), 16);
+  const blue = parseInt(background.slice(5, 7), 16);
+  return ((red * 299 + green * 587 + blue * 114) / 1000) >= 150 ? '#111827' : '#ffffff';
+};
+
 const getArtifactTime = (artifact: MedicalArtifact) =>
   new Date(artifact.receivedAt || artifact.createdAt || 0).getTime();
 
@@ -286,7 +309,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     const contactEmail = 'info@ibogaspirit.cz';
     const rows = [
       ['Booking number', booking?.bookingNumber || 'N/A'],
-      ['Booking type', booking?.bookingType === 'booster' ? 'Booster' : 'Full Retreat'],
+      ['Booking type', `${booking?.bookingType === 'booster' ? 'B' : 'F'} / ${getRetreatCode(retreatData)}`],
       ['Status', booking?.status || 'pending'],
       ['Client', getClientName(clientData) || 'N/A'],
       ['Retreat', retreatData?.name || 'N/A'],
@@ -486,6 +509,9 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   // Extract client and retreat info
   const client = booking.clientId || booking.clientDetails;
   const retreat = booking.retreatId || booking.retreatDetails;
+  const retreatColor = retreat?.backgroundColor || (booking.bookingType === 'booster' ? '#1976d2' : '#7b1fa2');
+  const retreatTextColor = retreat?.textColor || getReadableTextColor(retreatColor);
+  const typeLetter = booking.bookingType === 'booster' ? 'B' : 'F';
 
   return (
     <div className="booking-detail-container">
@@ -599,11 +625,26 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
             )}
             <div className="info-item">
               <label>Booking Type:</label>
-              <span className="booking-type" style={{
-                fontWeight: 'bold',
-                color: booking.bookingType === 'booster' ? '#1976d2' : '#7b1fa2'
-              }}>
-                {booking.bookingType === 'booster' ? '🚀 Booster' : '🏔️ Full Retreat'}
+              <span className="booking-type-display">
+                <span
+                  className="booking-type-dot"
+                  style={{
+                    backgroundColor: booking.bookingType === 'booster' ? '#1976d2' : '#7b1fa2',
+                  }}
+                  title={booking.bookingType === 'booster' ? 'Booster' : 'Full retreat'}
+                >
+                  {typeLetter}
+                </span>
+                <span
+                  className="retreat-code-pill"
+                  style={{
+                    backgroundColor: retreatColor,
+                    color: retreatTextColor,
+                  }}
+                  title={retreat?.name || 'Retreat'}
+                >
+                  {getRetreatCode(retreat)}
+                </span>
               </span>
             </div>
             <div className="info-item">
