@@ -104,7 +104,7 @@ const translations = {
   }
 };
 
-export const generateBookingPDF = async ({ booking, language = 'pl', onComplete }: BookingConfirmationPDFProps) => {
+export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }: BookingConfirmationPDFProps) => {
   const client = booking.clientId || booking.clientDetails;
   const retreat = booking.retreatId || booking.retreatDetails;
 
@@ -312,19 +312,21 @@ export const generateBookingPDF = async ({ booking, language = 'pl', onComplete 
 
     pdf.addImage(imgData, 'JPEG', 0, y, imgWidth, imgHeight);
 
-    // Save PDF with language suffix
     const fileName = `Booking_Confirmation_${booking.bookingNumber || 'Unknown'}_${language.toUpperCase()}_${new Date().toISOString().split('T')[0]}.pdf`;
-    pdf.save(fileName);
-
-    if (onComplete) {
-      onComplete();
-    }
+    return { pdf, fileName, blob: pdf.output('blob') };
   } catch (error) {
     console.error('Error generating PDF:', error);
     alert('Error generating PDF. Please try again.');
+    throw error;
   } finally {
     document.body.removeChild(pdfContent);
   }
+};
+
+export const generateBookingPDF = async ({ booking, language = 'pl', onComplete }: BookingConfirmationPDFProps) => {
+  const { pdf, fileName } = await createBookingConfirmationPdf({ booking, language });
+  pdf.save(fileName);
+  onComplete?.();
 };
 
 export default generateBookingPDF;
