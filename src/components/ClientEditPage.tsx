@@ -4,12 +4,54 @@ import { clientsApi } from '../services/api';
 import { Client } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import AppleButton from './AppleButton';
-import { FiArrowLeft, FiSave } from 'react-icons/fi';
-import './ClientEditModal.css';
+import { FiArrowLeft, FiCamera, FiSave, FiUser } from 'react-icons/fi';
+import './ClientEditPage.css';
 
 // Icon wrapper component for consistent icon rendering
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
+};
+
+const cropImageToProfileSquare = (file: File, size = 200): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    image.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('Image editor is not available in this browser.');
+
+        const sourceSize = Math.min(image.naturalWidth, image.naturalHeight);
+        const sourceX = (image.naturalWidth - sourceSize) / 2;
+        const sourceY = (image.naturalHeight - sourceSize) / 2;
+        context.drawImage(image, sourceX, sourceY, sourceSize, sourceSize, 0, 0, size, size);
+
+        canvas.toBlob((blob) => {
+          URL.revokeObjectURL(objectUrl);
+          if (!blob) {
+            reject(new Error('Could not prepare profile picture.'));
+            return;
+          }
+          const baseName = file.name.replace(/\.[^/.]+$/, '').trim() || 'profile-picture';
+          resolve(new File([blob], `${baseName}-profile.jpg`, { type: 'image/jpeg' }));
+        }, 'image/jpeg', 0.9);
+      } catch (cropError) {
+        URL.revokeObjectURL(objectUrl);
+        reject(cropError);
+      }
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Could not read this image file.'));
+    };
+
+    image.src = objectUrl;
+  });
 };
 
 const ClientEditPage: React.FC = () => {
@@ -22,16 +64,46 @@ const ClientEditPage: React.FC = () => {
     medications?: string;
     allergies?: string;
     specialRequests?: string;
-    language?: 'EN' | 'PL' | 'CZ' | 'ES' | 'FR' | 'DE'
+    language?: 'EN' | 'CZ' | 'PL' | 'RU' | 'OTHER'
   }>({} as any);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
+  const [uploadingProfilePicture, setUploadingProfilePicture] = useState(false);
 
   useEffect(() => {
     if (clientId) {
       fetchClient();
     }
   }, [clientId]);
+
+  useEffect(() => {
+    let active = true;
+    let objectUrl = '';
+
+    const loadProfilePicture = async () => {
+      if (!clientId || !client?.profilePictureS3Key) {
+        setProfilePictureUrl(null);
+        return;
+      }
+
+      try {
+        const response = await clientsApi.getProfilePictureBlob(clientId);
+        objectUrl = URL.createObjectURL(response.data as Blob);
+        if (active) setProfilePictureUrl(objectUrl);
+      } catch (error) {
+        console.error('Error loading profile picture:', error);
+        if (active) setProfilePictureUrl(null);
+      }
+    };
+
+    loadProfilePicture();
+
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [clientId, client?.profilePictureS3Key, client?.updatedAt]);
 
   const fetchClient = async () => {
     try {
@@ -69,6 +141,30 @@ const ClientEditPage: React.FC = () => {
   const normalizeOptionalValue = (value?: string) => {
     const trimmed = typeof value === 'string' ? value.trim() : value;
     return trimmed ? trimmed : undefined;
+  };
+
+  const handleProfilePictureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!clientId || !file) return;
+    if (!file.type.startsWith('image/')) {
+      setValidationErrors(['Please choose an image file.']);
+      return;
+    }
+
+    try {
+      setUploadingProfilePicture(true);
+      setValidationErrors([]);
+      const croppedFile = await cropImageToProfileSquare(file, 200);
+      const response = await clientsApi.uploadProfilePicture(clientId, croppedFile);
+      setClient(response.data.client);
+      setFormData((current) => ({ ...current, ...response.data.client }));
+    } catch (error: any) {
+      console.error('Error uploading profile picture:', error);
+      setValidationErrors([error?.response?.data?.message || error?.message || 'Failed to upload profile picture.']);
+    } finally {
+      setUploadingProfilePicture(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -183,41 +279,64 @@ const ClientEditPage: React.FC = () => {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
-      <div className="mb-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-start gap-3 mb-4">
+    <div className="client-edit-page min-h-screen bg-slate-50 px-4 py-5 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+      <div className="mb-6 rounded-lg border border-slate-200 bg-white px-4 py-4 shadow-sm sm:px-6">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-start">
           <AppleButton onClick={() => navigate(`/admin/clients/${clientId}`)} variant="ghost">
             <Icon icon={FiArrowLeft} className="w-4 h-4 mr-2" />
             Back to Client
           </AppleButton>
         </div>
 
-        <div className="w-full flex flex-col items-center">
-          <h1 className="w-full max-w-4xl text-center text-2xl font-semibold text-gray-900 whitespace-normal sm:whitespace-nowrap break-words">
+        <div className="w-full">
+          <h1 className="text-2xl font-semibold text-slate-950">
             Edit Client: {formData.firstName} {formData.lastName}
           </h1>
-          <div className="mt-2 flex flex-wrap items-center justify-center gap-2 w-full max-w-2xl text-center text-sm text-gray-500">
-            <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1 font-medium text-gray-700">
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+            <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 font-medium text-slate-700">
               Client ID: {formData.display_id || client.display_id || 'N/A'}
             </span>
-            Client ID is editable below and must remain unique.
+            <span>Client ID is editable below and must remain unique.</span>
           </div>
         </div>
 
         {validationErrors.length > 0 && (
-          <div className="validation-errors mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-4">
+          <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-red-700">
             {validationErrors.map((error, index) => (
-              <p key={index} className="error-message">{error}</p>
+              <p key={index} className="text-sm">{error}</p>
             ))}
           </div>
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow-sm p-6">
-        <div className="form-grid">
-          <div className="form-section">
-            <h4 className="text-lg font-medium mb-4">Basic Information</h4>
-            <div className="form-group mb-5">
+      <form onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-6 lg:self-start">
+          <div className="flex flex-col items-center gap-4">
+          <div className="relative h-40 w-40 overflow-hidden rounded-full border border-slate-200 bg-slate-50 shadow-sm">
+            {profilePictureUrl ? (
+              <img src={profilePictureUrl} alt={`${formData.firstName || ''} ${formData.lastName || ''}`} className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-slate-400">
+                <Icon icon={FiUser} className="h-14 w-14" />
+              </div>
+            )}
+            <label className="absolute inset-x-0 bottom-0 flex cursor-pointer items-center justify-center gap-2 bg-black/55 px-3 py-3 text-sm font-medium text-white transition hover:bg-black/70">
+              <Icon icon={FiCamera} className="h-4 w-4" />
+              {uploadingProfilePicture ? 'Uploading...' : 'Upload Photo'}
+              <input type="file" accept="image/*" onChange={handleProfilePictureUpload} className="hidden" disabled={uploadingProfilePicture || isSubmitting} />
+            </label>
+          </div>
+          <div className="text-center">
+            <div className="text-sm font-semibold text-slate-900">{formData.firstName} {formData.lastName}</div>
+            <p className="mt-1 text-xs text-slate-500">Upload a square client profile image. Images are center-cropped to 200 x 200.</p>
+          </div>
+          </div>
+        </aside>
+        <div className="grid gap-5 lg:grid-cols-2">
+          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <h4 className="mb-4 border-b border-slate-200 pb-3 text-base font-semibold text-slate-900">Basic Information</h4>
+            <div className="mb-5">
               <label htmlFor="display_id">Client ID:</label>
               <input
                 type="number"
@@ -360,17 +479,16 @@ const ClientEditPage: React.FC = () => {
                 className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="EN">English</option>
-                <option value="PL">Polish</option>
                 <option value="CZ">Czech</option>
-                <option value="ES">Spanish</option>
-                <option value="FR">French</option>
-                <option value="DE">German</option>
+                <option value="PL">Polish</option>
+                <option value="RU">Russian</option>
+                <option value="OTHER">Other</option>
               </select>
             </div>
-          </div>
+          </section>
 
-          <div className="form-section">
-            <h4 className="text-lg font-medium mb-4">Address Information</h4>
+          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <h4 className="mb-4 border-b border-slate-200 pb-3 text-base font-semibold text-slate-900">Address Information</h4>
             <div className="form-group">
               <label htmlFor="address">Address:</label>
               <input
@@ -420,10 +538,10 @@ const ClientEditPage: React.FC = () => {
               />
             </div>
 
-          </div>
+          </section>
 
-          <div className="form-section">
-            <h4 className="text-lg font-medium mb-4">Medical Information</h4>
+          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <h4 className="mb-4 border-b border-slate-200 pb-3 text-base font-semibold text-slate-900">Medical Information</h4>
             <div className="form-group">
               <label htmlFor="medicalConditions">Medical Conditions:</label>
               <textarea
@@ -471,10 +589,10 @@ const ClientEditPage: React.FC = () => {
                 className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-          </div>
+          </section>
 
-          <div className="form-section">
-            <h4 className="text-lg font-medium mb-4">Emergency Contact</h4>
+          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <h4 className="mb-4 border-b border-slate-200 pb-3 text-base font-semibold text-slate-900">Emergency Contact</h4>
             <div className="form-group">
               <label htmlFor="emergencyContact">Emergency Contact Name:</label>
               <input
@@ -498,10 +616,10 @@ const ClientEditPage: React.FC = () => {
                 className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-          </div>
+          </section>
 
-          <div className="form-section full-width">
-            <h4 className="text-lg font-medium mb-4">Additional Information</h4>
+          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
+            <h4 className="mb-4 border-b border-slate-200 pb-3 text-base font-semibold text-slate-900">Additional Information</h4>
             <div className="form-group">
               <label htmlFor="specialRequests">Special Requests:</label>
               <textarea
@@ -525,10 +643,10 @@ const ClientEditPage: React.FC = () => {
                 className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-          </div>
+          </section>
         </div>
 
-        <div className="modal-actions flex justify-end gap-3 mt-6 pt-6 border-t">
+        <div className="flex justify-end gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm lg:col-start-2">
           <AppleButton
             type="button"
             onClick={() => navigate(`/admin/clients/${clientId}`)}
@@ -547,6 +665,7 @@ const ClientEditPage: React.FC = () => {
           </AppleButton>
         </div>
       </form>
+      </div>
     </div>
   );
 };

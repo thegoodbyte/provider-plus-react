@@ -6,16 +6,67 @@ import { clientsApi } from '../services/api';
 import { Client } from '../types';
 import { useAuth } from '../context/AuthContext';
 
+const cropImageToProfileSquare = (file: File, size = 200): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    image.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('Image editor is not available in this browser.');
+
+        const sourceSize = Math.min(image.naturalWidth, image.naturalHeight);
+        const sourceX = (image.naturalWidth - sourceSize) / 2;
+        const sourceY = (image.naturalHeight - sourceSize) / 2;
+        context.drawImage(image, sourceX, sourceY, sourceSize, sourceSize, 0, 0, size, size);
+
+        canvas.toBlob((blob) => {
+          URL.revokeObjectURL(objectUrl);
+          if (!blob) {
+            reject(new Error('Could not prepare profile picture.'));
+            return;
+          }
+          const baseName = file.name.replace(/\.[^/.]+$/, '').trim() || 'profile-picture';
+          resolve(new File([blob], `${baseName}-profile.jpg`, { type: 'image/jpeg' }));
+        }, 'image/jpeg', 0.9);
+      } catch (cropError) {
+        URL.revokeObjectURL(objectUrl);
+        reject(cropError);
+      }
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Could not read this image file.'));
+    };
+
+    image.src = objectUrl;
+  });
+};
+
 const AddClient: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
   const [formData, setFormData] = useState<Partial<Client>>({
     workflowStatus: new URLSearchParams(location.search).get('workflowStatus') as any || 'potential',
-    country: 'CZ'
+    country: 'CZ',
+    language: 'EN'
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [profilePictureFile, setProfilePictureFile] = useState<File | null>(null);
+  const [profilePicturePreviewUrl, setProfilePicturePreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (profilePicturePreviewUrl) URL.revokeObjectURL(profilePicturePreviewUrl);
+    };
+  }, [profilePicturePreviewUrl]);
 
   // Fetch next display ID on mount
   useEffect(() => {
@@ -86,6 +137,12 @@ const AddClient: React.FC = () => {
       console.log('Saving client with data:', dataToSave);
       const response = await clientsApi.create(dataToSave as Omit<Client, '_id'>);
       console.log('Client created successfully:', response);
+      const createdClient = response.data as Client;
+      const createdClientId = createdClient._id;
+
+      if (profilePictureFile && createdClientId) {
+        await clientsApi.uploadProfilePicture(createdClientId, profilePictureFile);
+      }
 
       // Navigate based on user role
       const rolePrefix = user?.role === 'admin' ? '/admin' :
@@ -98,6 +155,27 @@ const AddClient: React.FC = () => {
       const errorMessage = err.response?.data?.message || err.message || 'Failed to create client';
       setError(Array.isArray(errorMessage) ? errorMessage.join(', ') : errorMessage);
       setSaving(false);
+    }
+  };
+
+  const handleProfilePictureSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setError('Please choose an image file.');
+      return;
+    }
+
+    try {
+      const croppedFile = await cropImageToProfileSquare(file, 200);
+      if (profilePicturePreviewUrl) URL.revokeObjectURL(profilePicturePreviewUrl);
+      setProfilePictureFile(croppedFile);
+      setProfilePicturePreviewUrl(URL.createObjectURL(croppedFile));
+      setError('');
+    } catch (cropError: any) {
+      console.error('Error preparing profile picture:', cropError);
+      setError(cropError?.message || 'Could not prepare profile picture.');
     }
   };
 
@@ -155,6 +233,21 @@ const AddClient: React.FC = () => {
 
         <div className="bg-white rounded-apple border border-apple-gray-200 p-6">
           <div className="space-y-6">
+            <div className="flex flex-col items-center justify-center gap-3 rounded-apple border border-apple-gray-200 bg-apple-gray-50 p-5">
+              <div className="relative h-[160px] w-[160px] overflow-hidden rounded-full border border-apple-gray-200 bg-white shadow-sm sm:h-[200px] sm:w-[200px]">
+                {profilePicturePreviewUrl ? (
+                  <img src={profilePicturePreviewUrl} alt="Client profile preview" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-sm font-medium text-apple-gray-400">Profile</div>
+                )}
+                <label className="absolute inset-x-0 bottom-0 flex cursor-pointer items-center justify-center bg-black/55 px-3 py-3 text-sm font-medium text-white transition hover:bg-black/70">
+                  Upload Photo
+                  <input type="file" accept="image/*" onChange={handleProfilePictureSelect} className="hidden" disabled={saving} />
+                </label>
+              </div>
+              <p className="text-center text-xs text-apple-gray-500">Images are center-cropped to a 200 x 200 profile picture after save.</p>
+            </div>
+
             {/* Basic Information */}
             <div>
               <h2 className="text-lg font-medium text-apple-gray-900 mb-4">Basic Information</h2>
@@ -255,6 +348,20 @@ const AddClient: React.FC = () => {
                     <option value="female">Female</option>
                     <option value="other">Other</option>
                     <option value="prefer-not-to-say">Prefer not to say</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-apple-gray-700 mb-1">Preferred Language</label>
+                  <select
+                    className="w-full px-3 py-2 border border-apple-gray-200 rounded-apple focus:outline-none focus:ring-2 focus:ring-apple-blue/20 bg-white text-sm"
+                    value={formData.language || 'EN'}
+                    onChange={(e) => setFormData({ ...formData, language: e.target.value as Client['language'] })}
+                  >
+                    <option value="EN">English</option>
+                    <option value="CZ">Czech</option>
+                    <option value="PL">Polish</option>
+                    <option value="RU">Russian</option>
+                    <option value="OTHER">Other</option>
                   </select>
                 </div>
                 <div>
