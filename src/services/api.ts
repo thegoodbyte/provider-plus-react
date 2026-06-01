@@ -346,6 +346,11 @@ export const communicationsApi = {
     fromEmail?: string;
     replyTo?: string;
     variables?: Record<string, any>;
+    attachments?: Array<{
+      fileName: string;
+      mimeType?: string;
+      contentBase64: string;
+    }>;
     createdBy?: string;
   }) => {
     cacheService.clearPattern('communications:sent-emails');

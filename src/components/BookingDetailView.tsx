@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { bookingsApi, bookingFlowApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { bookingsApi, bookingFlowApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import BookingPaymentManagement from './BookingPaymentManagement';
 import BookingMedicalUpload from './BookingMedicalUpload';
 import BookingDocumentsUpload from './BookingDocumentsUpload';
@@ -26,6 +26,25 @@ const requirementDefinitions = [
 
 const completedStatuses = new Set(['received', 'reviewed', 'approved', 'completed', 'caution']);
 const reviewedStatuses = new Set(['reviewed', 'approved', 'completed', 'caution', 'rejected', 'needs_resubmission']);
+
+const escapeHtml = (value: any) =>
+  String(value ?? '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[char] || char));
+
+const blobToBase64 = (blob: Blob) => new Promise<string>((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onloadend = () => resolve(String(reader.result || '').split(',')[1] || '');
+  reader.onerror = reject;
+  reader.readAsDataURL(blob);
+});
+
+const getClientName = (client: any) =>
+  [client?.firstName || client?.fname, client?.lastName || client?.lname].filter(Boolean).join(' ').trim();
 
 const getArtifactTime = (artifact: MedicalArtifact) =>
   new Date(artifact.receivedAt || artifact.createdAt || 0).getTime();
@@ -188,6 +207,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [previewUrl, setPreviewUrl] = useState('');
   const [previewFileName, setPreviewFileName] = useState('');
   const [isPreviewingPDF, setIsPreviewingPDF] = useState(false);
+  const [isSendingConfirmation, setIsSendingConfirmation] = useState(false);
   const pdfRef = useRef<HTMLDivElement>(null);
   const routePrefix = useMemo(() => {
     const firstSegment = location.pathname.split('/').filter(Boolean)[0];
@@ -238,6 +258,73 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
       day: 'numeric',
       timeZone: 'UTC' // Force UTC to prevent timezone shift
     });
+  };
+
+  const getRetreatDateRange = (retreatData: any) => {
+    const startDate = retreatData?.startDate || retreatData?.dates?.startDate;
+    const endDate = retreatData?.endDate || retreatData?.dates?.endDate;
+    if (startDate && endDate) return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+    return formatDate(startDate || endDate);
+  };
+
+  const buildBookingConfirmationEmail = () => {
+    const clientData = booking?.clientId || booking?.clientDetails;
+    const retreatData = booking?.retreatId || booking?.retreatDetails;
+    const firstName = clientData?.firstName || clientData?.fname || 'there';
+    const locationText = retreatData?.location || 'our retreat center';
+    const dateText = getRetreatDateRange(retreatData);
+    const contactEmail = 'info@ibogaspirit.cz';
+    const rows = [
+      ['Booking number', booking?.bookingNumber || 'N/A'],
+      ['Booking type', booking?.bookingType === 'booster' ? 'Booster' : 'Full Retreat'],
+      ['Status', booking?.status || 'pending'],
+      ['Client', getClientName(clientData) || 'N/A'],
+      ['Retreat', retreatData?.name || 'N/A'],
+      ['Location', retreatData?.location || 'N/A'],
+      ['Dates', dateText],
+      ['Check-in', formatDate(booking?.checkInDate)],
+      ['Check-out', formatDate(booking?.checkOutDate)],
+      ['Special requests', booking?.specialRequests || 'None'],
+    ];
+    const bodyText = [
+      `Hello ${firstName},`,
+      '',
+      `We are excited to welcome you to our retreat in ${locationText} on ${dateText}.`,
+      '',
+      'Below is your booking information. A PDF copy of your booking confirmation is attached to this email.',
+      '',
+      ...rows.map(([label, value]) => `${label}: ${value}`),
+      '',
+      'We will email more information as we get closer to the retreat.',
+      `If you have any questions, please do not hesitate to reach out to ${contactEmail}.`,
+      '',
+      'Warmly,',
+      'IbogaSpirit.cz',
+    ].join('\n');
+    const rowHtml = rows.map(([label, value]) => `
+      <tr>
+        <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-weight:600;width:34%;">${escapeHtml(label)}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;color:#111827;">${escapeHtml(value)}</td>
+      </tr>
+    `).join('');
+    const bodyHtml = `
+      <div style="font-family:Arial,Helvetica,sans-serif;color:#111827;line-height:1.55;max-width:720px;margin:0 auto;">
+        <p>Hello ${escapeHtml(firstName)},</p>
+        <p>We are excited to welcome you to our retreat in <strong>${escapeHtml(locationText)}</strong> on <strong>${escapeHtml(dateText)}</strong>.</p>
+        <p>Below is your booking information. A PDF copy of your booking confirmation is attached to this email.</p>
+        <table style="border-collapse:collapse;width:100%;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;margin:22px 0;">
+          <tbody>${rowHtml}</tbody>
+        </table>
+        <p>We will email more information as we get closer to the retreat.</p>
+        <p>If you have any questions, please do not hesitate to reach out to <a href="mailto:${escapeHtml(contactEmail)}">${escapeHtml(contactEmail)}</a>.</p>
+        <p>Warmly,<br/>IbogaSpirit.cz</p>
+      </div>
+    `;
+    return {
+      subject: `Booking confirmation ${booking?.bookingNumber || ''}`.trim(),
+      bodyText,
+      bodyHtml,
+    };
   };
 
   const handleClientUpdate = async (updatedClient: any) => {
@@ -310,6 +397,48 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     navigate(`${routePrefix}/communications?${params.toString()}`);
   };
 
+  const sendBookingConfirmationEmail = async () => {
+    const clientData = booking?.clientId || booking?.clientDetails;
+    const retreatData = booking?.retreatId || booking?.retreatDetails;
+    if (!clientData?.email) {
+      alert('This client does not have an email address on file.');
+      return;
+    }
+    if (!window.confirm(`Send booking confirmation email with PDF attachment to ${clientData.email}?`)) return;
+
+    setIsSendingConfirmation(true);
+    try {
+      const { blob, fileName } = await createBookingConfirmationPdf({ booking, language: pdfLanguage });
+      const contentBase64 = await blobToBase64(blob);
+      const email = buildBookingConfirmationEmail();
+      const response = await communicationsApi.sendEmail({
+        to: clientData.email,
+        subject: email.subject,
+        bodyText: email.bodyText,
+        bodyHtml: email.bodyHtml,
+        clientId: clientData?._id,
+        retreatId: retreatData?._id,
+        relatedEntityType: 'booking',
+        relatedEntityId: bookingId,
+        attachments: [{
+          fileName,
+          mimeType: 'application/pdf',
+          contentBase64,
+        }],
+      });
+      if (response.data.status === 'failed') {
+        alert(`Email was logged but Gmail failed to send it: ${response.data.errorMessage || 'Unknown error'}`);
+        return;
+      }
+      alert('Booking confirmation email sent.');
+    } catch (error: any) {
+      console.error('Error sending booking confirmation email:', error);
+      alert(error?.response?.data?.message || error?.message || 'Unable to send booking confirmation email.');
+    } finally {
+      setIsSendingConfirmation(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="loading-container">
@@ -363,10 +492,17 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
             {isPreviewingPDF ? 'Previewing...' : 'Preview PDF'}
           </button>
           <button
+            onClick={sendBookingConfirmationEmail}
+            disabled={isSendingConfirmation}
+            className="pdf-btn"
+          >
+            {isSendingConfirmation ? 'Sending...' : 'Send Email + PDF'}
+          </button>
+          <button
             onClick={emailBookingConfirmation}
             className="pdf-btn"
           >
-            Email Confirmation
+            Compose Email
           </button>
           <button
             onClick={generatePDF}
