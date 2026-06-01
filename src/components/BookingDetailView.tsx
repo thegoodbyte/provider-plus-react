@@ -43,6 +43,13 @@ const blobToBase64 = (blob: Blob) => new Promise<string>((resolve, reject) => {
   reader.readAsDataURL(blob);
 });
 
+const formatFileSize = (bytes: number) => {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  return `${(bytes / Math.pow(1024, index)).toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
+};
+
 const getClientName = (client: any) =>
   [client?.firstName || client?.fname, client?.lastName || client?.lname].filter(Boolean).join(' ').trim();
 
@@ -400,6 +407,8 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const sendBookingConfirmationEmail = async () => {
     const clientData = booking?.clientId || booking?.clientDetails;
     const retreatData = booking?.retreatId || booking?.retreatDetails;
+    let pdfSize = 0;
+    let payloadSize = 0;
     if (!clientData?.email) {
       alert('This client does not have an email address on file.');
       return;
@@ -409,9 +418,10 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     setIsSendingConfirmation(true);
     try {
       const { blob, fileName } = await createBookingConfirmationPdf({ booking, language: pdfLanguage });
+      pdfSize = blob.size;
       const contentBase64 = await blobToBase64(blob);
       const email = buildBookingConfirmationEmail();
-      const response = await communicationsApi.sendEmail({
+      const payload = {
         to: clientData.email,
         subject: email.subject,
         bodyText: email.bodyText,
@@ -425,7 +435,9 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
           mimeType: 'application/pdf',
           contentBase64,
         }],
-      });
+      };
+      payloadSize = new Blob([JSON.stringify(payload)]).size;
+      const response = await communicationsApi.sendEmail(payload);
       if (response.data.status === 'failed') {
         alert(`Email was logged but Gmail failed to send it: ${response.data.errorMessage || 'Unknown error'}`);
         return;
@@ -433,7 +445,17 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
       alert('Booking confirmation email sent.');
     } catch (error: any) {
       console.error('Error sending booking confirmation email:', error);
-      alert(error?.response?.data?.message || error?.message || 'Unable to send booking confirmation email.');
+      const status = error?.response?.status;
+      const data = error?.response?.data || {};
+      const details = [
+        data?.message || error?.message || 'Unable to send booking confirmation email.',
+        status ? `Status: ${status}` : '',
+        pdfSize ? `PDF attachment size: ${formatFileSize(pdfSize)}` : '',
+        payloadSize ? `Request payload size: ${formatFileSize(payloadSize)}` : '',
+        data?.limitBytes ? `API limit: ${formatFileSize(Number(data.limitBytes))}` : '',
+        data?.receivedBytes ? `Received by API: ${formatFileSize(Number(data.receivedBytes))}` : '',
+      ].filter(Boolean).join('\n');
+      alert(details);
     } finally {
       setIsSendingConfirmation(false);
     }
