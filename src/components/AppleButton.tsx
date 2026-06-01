@@ -27,6 +27,7 @@ const AppleButton: React.FC<AppleButtonProps> = ({
   const baseStyles = `
     inline-flex items-center justify-center
     font-medium rounded-apple
+    whitespace-nowrap
     transition-all duration-200 transform
     active:scale-[0.98]
     focus:outline-none focus:ring-2 focus:ring-offset-2
@@ -41,11 +42,11 @@ const AppleButton: React.FC<AppleButtonProps> = ({
       shadow-apple-sm hover:shadow-apple
     `,
     secondary: `
-      bg-white text-apple-gray-700
+      bg-apple-gray-50 text-apple-gray-600
       border border-apple-gray-200
-      hover:bg-apple-gray-50 active:bg-apple-gray-100
+      hover:bg-white active:bg-apple-gray-100
       focus:ring-apple-gray-200
-      shadow-apple-sm hover:shadow-apple
+      shadow-none hover:shadow-apple-sm
     `,
     ghost: `
       bg-transparent text-apple-gray-600

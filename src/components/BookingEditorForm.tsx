@@ -357,11 +357,11 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-          <div className="text-xs text-gray-500">
+        <div className="flex flex-wrap items-center gap-3 pt-2">
+          <div className="min-w-[220px] flex-1 text-xs text-gray-500">
             A booking can be created without a payment request. That is valid for cash or offline payment flows.
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-3">
             <AppleButton type="button" onClick={onCancel} className="apple-button-secondary">
               Cancel
             </AppleButton>
