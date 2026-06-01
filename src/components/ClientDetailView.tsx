@@ -39,6 +39,8 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
   const [pdfLanguage, setPdfLanguage] = useState<'pl' | 'cz' | 'en'>('en');
   const [generatingPDF, setGeneratingPDF] = useState<string | null>(null);
   const [notes, setNotes] = useState<any[]>([]);
+  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
+  const [uploadingProfilePicture, setUploadingProfilePicture] = useState(false);
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [editingNote, setEditingNote] = useState<any | null>(null);
   const [noteFormData, setNoteFormData] = useState({
@@ -52,6 +54,34 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
   useEffect(() => {
     fetchClientData();
   }, [clientId]);
+
+  useEffect(() => {
+    let active = true;
+    let objectUrl = '';
+
+    const loadProfilePicture = async () => {
+      if (!clientId || !client?.profilePictureS3Key) {
+        setProfilePictureUrl(null);
+        return;
+      }
+
+      try {
+        const response = await clientsApi.getProfilePictureBlob(clientId);
+        objectUrl = URL.createObjectURL(response.data as Blob);
+        if (active) setProfilePictureUrl(objectUrl);
+      } catch (error) {
+        console.error('Error loading profile picture:', error);
+        if (active) setProfilePictureUrl(null);
+      }
+    };
+
+    loadProfilePicture();
+
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [clientId, client?.profilePictureS3Key, client?.updatedAt]);
 
   const fetchClientData = async () => {
     try {
@@ -131,6 +161,27 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
       fetchClientData(); // Refresh data
     } catch (error) {
       console.error('Error uploading file:', error);
+    }
+  };
+
+  const handleProfilePictureUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Please choose an image file.');
+      return;
+    }
+
+    try {
+      setUploadingProfilePicture(true);
+      const response = await clientsApi.uploadProfilePicture(clientId, file);
+      setClient(response.data.client);
+    } catch (error: any) {
+      console.error('Error uploading profile picture:', error);
+      alert(error?.response?.data?.message || error?.message || 'Failed to upload profile image.');
+    } finally {
+      setUploadingProfilePicture(false);
     }
   };
 
@@ -286,8 +337,20 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
     <div className="client-detail-container">
       <div className="client-detail-header">
         <button onClick={onBack} className="back-btn">← Back to Clients</button>
+        <div className="client-header-profile">
+          <div className="client-profile-avatar">
+            {profilePictureUrl ? (
+              <img src={profilePictureUrl} alt={`${client.firstName} ${client.lastName}`} />
+            ) : (
+              <span>{`${client.firstName?.[0] || ''}${client.lastName?.[0] || ''}` || 'Client'}</span>
+            )}
+            <label className="client-profile-upload">
+              {uploadingProfilePicture ? 'Uploading' : 'Upload'}
+              <input type="file" accept="image/*" onChange={handleProfilePictureUpload} disabled={uploadingProfilePicture} />
+            </label>
+          </div>
         <div className="client-header-info">
-          <h1>👤 {client.firstName} {client.lastName}</h1>
+          <h1>{client.firstName} {client.lastName}</h1>
           <div className="client-meta">
             <span className="client-id">ID: {client._id}</span>
             <span className="client-email">📧 {client.email}</span>
@@ -296,6 +359,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
               {overallStatus.status}
             </span>
           </div>
+        </div>
         </div>
       </div>
 
