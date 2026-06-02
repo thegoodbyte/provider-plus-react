@@ -31,6 +31,10 @@ const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
     const interceptor = api.interceptors.response.use(
       (response) => response,
       (error) => {
+        if ((error.config as any)?.suppressGlobalError) {
+          return Promise.reject(error);
+        }
+
         // Don't show error for 401 (handled by auth service)
         if (error.response?.status === 401) {
           return Promise.reject(error);

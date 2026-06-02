@@ -139,7 +139,7 @@ export const clientsApi = {
     });
   },
   getProfilePictureBlob: (id: string) =>
-    api.get(`/clients/${id}/profile-picture`, { responseType: 'blob' }),
+    api.get(`/clients/${id}/profile-picture`, { responseType: 'blob', suppressGlobalError: true } as any),
 };
 
 export const clientMedicalApi = {

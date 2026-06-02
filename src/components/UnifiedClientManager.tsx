@@ -46,9 +46,10 @@ const getRetreatCode = (retreat: any) => {
 
 const ClientListAvatar: React.FC<{ client: Client; name: string }> = ({ client }) => {
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(client.profilePictureUrl || null);
+  const hasProfilePicture = Boolean(client.profilePictureUrl || client.profilePictureS3Key || client.profilePictureFileUploadId);
 
   useEffect(() => {
-    if (!client._id || client.profilePictureUrl) {
+    if (!client._id || client.profilePictureUrl || !hasProfilePicture) {
       setProfilePictureUrl(client.profilePictureUrl || null);
       return;
     }
@@ -69,7 +70,7 @@ const ClientListAvatar: React.FC<{ client: Client; name: string }> = ({ client }
       active = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [client._id, client.profilePictureFileUploadId, client.profilePictureS3Key, client.profilePictureUrl, client.updatedAt]);
+  }, [client._id, client.profilePictureFileUploadId, client.profilePictureS3Key, client.profilePictureUrl, client.updatedAt, hasProfilePicture]);
 
   return (
     <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-slate-500 ring-1 ring-slate-200">
