@@ -158,7 +158,7 @@ const ScreeningClientsGrid: React.FC = () => {
                   <td className="px-3 py-2 whitespace-nowrap">
                     <button
                       onClick={() => navigate(`/clients/${client._id}`)}
-                      className="inline-flex max-w-[220px] items-center gap-2 truncate text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                      className="!inline-flex max-w-[220px] !items-center !justify-start gap-2 truncate !rounded-none !border-0 !bg-transparent !p-0 !text-left text-sm font-medium !text-blue-600 !shadow-none hover:!bg-transparent hover:!text-blue-800 hover:underline"
                     >
                       <Icon icon={FiUser} className="h-4 w-4 shrink-0 text-gray-400" />
                       <span className="truncate">{client.firstName} {client.lastName}</span>
