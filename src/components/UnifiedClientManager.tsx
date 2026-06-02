@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import AppleButton from './AppleButton';
 import AppleInput from './AppleInput';
 import LoadingSpinner from './LoadingSpinner';
-import { clientsApi } from '../services/api';
-import { Client } from '../types';
+import { bookingsApi, clientsApi, retreatsApi } from '../services/api';
+import { Client, Retreat, RetreatClient } from '../types';
 import {
   FiPlus,
   FiSearch,
@@ -21,6 +21,68 @@ import {
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
+};
+
+const getObjectId = (value: any): string => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  return value._id || value.id || '';
+};
+
+const getRetreatCode = (retreat: any) => {
+  const rawName = String(retreat?.name || retreat?.location || 'Retreat').trim();
+  const initials = rawName
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .slice(0, 3)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || 'RET';
+  const dateValue = retreat?.startDate || retreat?.dates?.startDate;
+  const date = dateValue ? new Date(dateValue) : null;
+  if (!date || Number.isNaN(date.getTime())) return initials;
+  const two = (value: number) => String(value).padStart(2, '0');
+  return `${initials}-${two(date.getUTCMonth() + 1)}-${two(date.getUTCDate())}-${two(date.getUTCFullYear() % 100)}`;
+};
+
+const ClientListAvatar: React.FC<{ client: Client; name: string }> = ({ client, name }) => {
+  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(client.profilePictureUrl || null);
+  const hasProfilePicture = Boolean(client.profilePictureUrl || client.profilePictureS3Key || client.profilePictureFileUploadId);
+
+  useEffect(() => {
+    if (!client._id || client.profilePictureUrl || !hasProfilePicture) {
+      setProfilePictureUrl(client.profilePictureUrl || null);
+      return;
+    }
+
+    let active = true;
+    let objectUrl = '';
+
+    clientsApi.getProfilePictureBlob(client._id)
+      .then((response) => {
+        objectUrl = URL.createObjectURL(response.data as Blob);
+        if (active) setProfilePictureUrl(objectUrl);
+      })
+      .catch(() => {
+        if (active) setProfilePictureUrl(null);
+      });
+
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [client._id, client.profilePictureFileUploadId, client.profilePictureS3Key, client.profilePictureUrl, hasProfilePicture]);
+
+  if (!hasProfilePicture) return null;
+
+  return (
+    <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-xs font-semibold text-slate-600">
+      {profilePictureUrl ? (
+        <img src={profilePictureUrl} alt="" className="h-full w-full object-cover" />
+      ) : (
+        name.charAt(0).toUpperCase()
+      )}
+    </span>
+  );
 };
 
 const cropImageToProfileSquare = (file: File, size = 200): Promise<File> => {
@@ -71,6 +133,8 @@ const UnifiedClientManager: React.FC = () => {
   const isValidClientStatus = (value: unknown): value is Client['status'] =>
     typeof value === 'string' && validClientStatuses.includes(value as any);
   const [clients, setClients] = useState<Client[]>([]);
+  const [bookings, setBookings] = useState<RetreatClient[]>([]);
+  const [retreats, setRetreats] = useState<Retreat[]>([]);
   const [filteredClients, setFilteredClients] = useState<Client[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -160,8 +224,24 @@ const UnifiedClientManager: React.FC = () => {
     }
   };
 
+  const fetchBookingContext = async () => {
+    try {
+      const [bookingsResponse, retreatsResponse] = await Promise.all([
+        bookingsApi.getAll(),
+        retreatsApi.getAll(),
+      ]);
+      setBookings(bookingsResponse.data || []);
+      setRetreats(retreatsResponse.data || []);
+    } catch (error) {
+      console.error('Error fetching booking context:', error);
+      setBookings([]);
+      setRetreats([]);
+    }
+  };
+
   useEffect(() => {
     fetchClients();
+    fetchBookingContext();
   }, []);
 
   // Filter and search clients
@@ -427,6 +507,32 @@ const UnifiedClientManager: React.FC = () => {
     );
   };
 
+  const getClientBooking = (client: Client) => {
+    if (!client._id) return undefined;
+    const activeStatuses = new Set(['confirmed', 'approved', 'checked-in', 'pending', 'conditional']);
+    return bookings.find((booking) => {
+      const bookingClientId = getObjectId((booking as any).clientId || (booking as any).client);
+      return bookingClientId === client._id && activeStatuses.has(String(booking.status || 'pending'));
+    });
+  };
+
+  const getBookingRetreat = (booking?: RetreatClient) => {
+    if (!booking) return undefined;
+    const retreatValue = (booking as any).retreatId || (booking as any).retreat || (booking as any).retreatDetails;
+    const retreatId = getObjectId(retreatValue);
+    if (retreatValue && typeof retreatValue === 'object' && (retreatValue.name || retreatValue.location)) {
+      return retreatValue;
+    }
+    return retreats.find((retreat) => retreat._id === retreatId);
+  };
+
+  const getClientRetreatCode = (client: Client) => {
+    const status = client.workflowStatus || (client.status as string);
+    if (status !== 'booked') return '';
+    const retreat = getBookingRetreat(getClientBooking(client));
+    return retreat ? getRetreatCode(retreat) : '';
+  };
+
   if (isLoading) {
     return <LoadingSpinner message="Loading clients..." />;
   }
@@ -518,6 +624,9 @@ const UnifiedClientManager: React.FC = () => {
                   </div>
                 </th>
                 <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Retreat
+                </th>
+                <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Signup Date
                 </th>
                 <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -540,9 +649,10 @@ const UnifiedClientManager: React.FC = () => {
                     <div>
                       <button
                         onClick={() => handleClientClick(client)}
-                        className="text-sm font-medium text-gray-900 hover:text-blue-600"
+                        className="!inline-flex !w-auto !items-center !justify-start gap-2 !rounded-none !border-0 !bg-transparent !p-0 !text-left !text-sm !font-medium !text-gray-900 !shadow-none hover:!bg-transparent hover:!text-blue-600"
                       >
-                        {client.firstName} {client.lastName}
+                        <ClientListAvatar client={client} name={`${client.firstName || ''} ${client.lastName || ''}`.trim()} />
+                        <span>{client.firstName} {client.lastName}</span>
                       </button>
                       {client.preferredName && (
                         <span className="text-xs text-gray-400 ml-1">
@@ -561,6 +671,15 @@ const UnifiedClientManager: React.FC = () => {
                   </td>
                   <td className="px-3 py-1.5 whitespace-nowrap">
                     {getStatusBadge(client.workflowStatus || 'potential')}
+                  </td>
+                  <td className="px-3 py-1.5 whitespace-nowrap">
+                    {getClientRetreatCode(client) ? (
+                      <span className="inline-flex rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">
+                        {getClientRetreatCode(client)}
+                      </span>
+                    ) : (
+                      <span className="text-sm text-gray-400">-</span>
+                    )}
                   </td>
                   <td className="px-3 py-1.5 whitespace-nowrap">
                     {getSignupDateBadge(typeof client.signupDate === 'string' ? client.signupDate : client.signupDate?.toISOString().split('T')[0])}
@@ -624,7 +743,7 @@ const UnifiedClientManager: React.FC = () => {
               ))}
               {filteredClients.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
                     No clients found
                   </td>
                 </tr>
