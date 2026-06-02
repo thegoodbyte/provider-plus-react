@@ -1218,11 +1218,11 @@ const ClientDetailsPage: React.FC = () => {
 
         {activeTab === 'payments' && (
           <div>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">Payment History</h2>
+            <div className="flex w-full items-center gap-4 mb-4">
+              <h2 className="text-lg font-semibold whitespace-nowrap">Payment History</h2>
               <AppleButton
                 onClick={() => setShowAddPaymentModal(true)}
-                className="apple-button-primary px-3 py-2"
+                className="apple-button-primary ml-auto w-auto flex-none px-3 py-2 whitespace-nowrap"
               >
                 <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
                 Add Payment

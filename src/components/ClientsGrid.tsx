@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { clientsApi, retreatsApi, bookingsApi, clientMedicalApi } from '../services/api';
-import { Client } from '../types';
+import { Client, Retreat, RetreatClient } from '../types';
 import ClientDetailView from './ClientDetailView';
 import QuickAddClient from './QuickAddClient';
 import SimpleTable, { Column } from './SimpleTable';
@@ -87,12 +87,93 @@ interface ClientFormData extends Partial<Client> {
   yearOfBirth?: number;
 }
 
+const getObjectId = (value: any): string => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  return value._id || value.id || '';
+};
+
+const getRetreatCode = (retreat: any) => {
+  const rawName = String(retreat?.name || retreat?.location || 'Retreat').trim();
+  const initials = rawName
+    .split(/[\s_-]+/)
+    .filter(Boolean)
+    .slice(0, 3)
+    .map((part) => part[0]?.toUpperCase())
+    .join('') || 'RET';
+  const dateValue = retreat?.startDate || retreat?.dates?.startDate;
+  const date = dateValue ? new Date(dateValue) : null;
+  if (!date || Number.isNaN(date.getTime())) return initials;
+  const two = (value: number) => String(value).padStart(2, '0');
+  return `${initials}-${two(date.getUTCMonth() + 1)}-${two(date.getUTCDate())}-${two(date.getUTCFullYear() % 100)}`;
+};
+
+const isBookedClient = (client: Client) => (
+  (client.status as string) === 'booked' || client.workflowStatus === 'booked'
+);
+
+const ClientNameCell: React.FC<{
+  client: Client;
+  name: string;
+  onView: (client: Client) => void;
+}> = ({ client, name, onView }) => {
+  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(client.profilePictureUrl || null);
+  const hasProfilePicture = Boolean(client.profilePictureUrl || client.profilePictureS3Key || client.profilePictureFileUploadId);
+
+  useEffect(() => {
+    if (!client._id || client.profilePictureUrl || !hasProfilePicture) {
+      setProfilePictureUrl(client.profilePictureUrl || null);
+      return;
+    }
+
+    let objectUrl: string | null = null;
+    let active = true;
+
+    clientsApi.getProfilePictureBlob(client._id)
+      .then((response) => {
+        if (!active) return;
+        objectUrl = URL.createObjectURL(response.data);
+        setProfilePictureUrl(objectUrl);
+      })
+      .catch(() => {
+        if (active) setProfilePictureUrl(null);
+      });
+
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [client._id, client.profilePictureFileUploadId, client.profilePictureS3Key, client.profilePictureUrl, hasProfilePicture]);
+
+  return (
+    <button
+      className="client-name-button"
+      onClick={(e) => {
+        e.stopPropagation();
+        onView(client);
+      }}
+    >
+      {hasProfilePicture && (
+        <span className="client-list-avatar" aria-hidden="true">
+          {profilePictureUrl ? (
+            <img src={profilePictureUrl} alt="" />
+          ) : (
+            <span>{name.charAt(0).toUpperCase()}</span>
+          )}
+        </span>
+      )}
+      <span className="client-name-text">{name}</span>
+    </button>
+  );
+};
+
 const ClientsGrid: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [clients, setClients] = useState<Client[]>([]);
   const [retreats, setRetreats] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<RetreatClient[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [apiError, setApiError] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -167,6 +248,24 @@ const ClientsGrid: React.FC = () => {
     }
   }, []);
 
+  const getBookingRetreat = useCallback((booking: RetreatClient) => {
+    const retreatValue = (booking as any).retreatId || (booking as any).retreat || (booking as any).retreatDetails;
+    const retreatId = getObjectId(retreatValue);
+    if (retreatValue && typeof retreatValue === 'object' && (retreatValue.name || retreatValue.location)) {
+      return retreatValue;
+    }
+    return retreats.find((retreat: Retreat) => retreat._id === retreatId);
+  }, [retreats]);
+
+  const getClientBooking = useCallback((client: Client) => {
+    if (!client._id) return undefined;
+    const activeStatuses = new Set(['confirmed', 'approved', 'checked-in', 'pending', 'conditional']);
+    return bookings.find((booking) => {
+      const bookingClientId = getObjectId((booking as any).clientId || (booking as any).client);
+      return bookingClientId === client._id && activeStatuses.has(String(booking.status || 'pending'));
+    });
+  }, [bookings]);
+
   const columns: Column[] = useMemo(() => [
     {
       field: 'fullName',
@@ -178,15 +277,7 @@ const ClientsGrid: React.FC = () => {
         return `${firstName} ${lastName}`.trim();
       },
       renderCell: (value, row) => (
-        <button
-          className="client-name-button"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleView(row);
-          }}
-        >
-          {value}
-        </button>
+        <ClientNameCell client={row} name={value || 'Unnamed client'} onView={handleView} />
       ),
       sortable: true
     },
@@ -232,6 +323,9 @@ const ClientsGrid: React.FC = () => {
           case 'potential':
             color = 'info';
             break;
+          case 'booked':
+            color = 'primary';
+            break;
         }
         return <Chip label={value?.toUpperCase() || 'N/A'} color={color} size="small" />;
       },
@@ -255,6 +349,23 @@ const ClientsGrid: React.FC = () => {
             color = 'warning';
         }
         return <Chip label={value?.toUpperCase() || 'POTENTIAL'} color={color} size="small" />;
+      },
+      sortable: true
+    },
+    {
+      field: 'retreatCode',
+      headerName: 'Retreat',
+      width: 140,
+      valueGetter: (row) => {
+        const booking = getClientBooking(row);
+        return isBookedClient(row) && booking ? getRetreatCode(getBookingRetreat(booking)) : '';
+      },
+      renderCell: (_, row) => {
+        const booking = getClientBooking(row);
+        if (!isBookedClient(row) || !booking) return '';
+        const retreat = getBookingRetreat(booking);
+        const code = getRetreatCode(retreat);
+        return code ? <span className="client-retreat-code">{code}</span> : '';
       },
       sortable: true
     },
@@ -298,7 +409,7 @@ const ClientsGrid: React.FC = () => {
         </div>
       )
     }
-  ], [handleView, handleEdit, handleGenerateDepositLink, handleDelete]);
+  ], [handleView, handleEdit, handleGenerateDepositLink, handleDelete, getClientBooking, getBookingRetreat]);
 
   const fetchClients = useCallback(async () => {
     setIsLoading(true);
@@ -324,10 +435,22 @@ const ClientsGrid: React.FC = () => {
     }
   }, []);
 
+  const fetchBookings = useCallback(async () => {
+    try {
+      const response = await bookingsApi.getAll();
+      setBookings(response.data || []);
+    } catch (error: any) {
+      console.error('Error fetching bookings:', error);
+      setBookings([]);
+    }
+  }, []);
+
   // Initial data load
   useEffect(() => {
     fetchClients();
-  }, [fetchClients]);
+    fetchBookings();
+    fetchRetreats();
+  }, [fetchClients, fetchBookings, fetchRetreats]);
 
   // Handle URL parameters for direct navigation to client detail
   useEffect(() => {
@@ -355,7 +478,7 @@ const ClientsGrid: React.FC = () => {
       });
     } else if (workflowFilter === 'booked') {
       result = result.filter(c => {
-        return false; // For now, will need to join with bookings data
+        return isBookedClient(c) || Boolean(getClientBooking(c));
       });
     }
 
@@ -372,7 +495,7 @@ const ClientsGrid: React.FC = () => {
     }
 
     return result;
-  }, [clients, workflowFilter, searchTerm]);
+  }, [clients, workflowFilter, searchTerm, bookings, getClientBooking]);
 
   const handleAdd = () => {
     setEditingClient(null);
