@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { clientsApi, paymentsApi, clientMedicalApi, bookingsApi } from '../services/api';
+import { clientsApi, paymentsApi, clientMedicalApi, bookingsApi, paymentRequestsApi } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
 import AppleButton from './AppleButton';
 import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
@@ -84,6 +84,7 @@ const ClientDetailsPage: React.FC = () => {
 
   const [client, setClient] = useState<any>(null);
   const [payments, setPayments] = useState<any[]>([]);
+  const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
   const [medicalInfo, setMedicalInfo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -243,6 +244,33 @@ const ClientDetailsPage: React.FC = () => {
     return value._id || value.id || '';
   };
 
+  const getBookingFullPrice = (booking: any) => (
+    booking?.totalAmount || booking?.totalPrice || booking?.fullPrice || booking?.fullPriceQuote || ''
+  );
+
+  const getPaymentRequestUrl = (request: PaymentRequest) => (
+    request.publicHash ? `https://ibogaspirit.com/clients/payments/deposit/v2/${request.publicHash}` : ''
+  );
+
+  const handleCreateDepositPaymentRequest = () => {
+    if (!clientId) return;
+
+    const selectedBooking = bookings[0];
+    const retreatId = getId(selectedBooking?.retreatId || selectedBooking?.retreat);
+    const params = new URLSearchParams({
+      clientId,
+      requestType: 'deposit',
+      paymentType: 'Other',
+    });
+
+    if (retreatId) params.set('retreatId', retreatId);
+    const fullPrice = getBookingFullPrice(selectedBooking);
+    if (fullPrice) params.set('fullPrice', String(fullPrice));
+    if (selectedBooking?.currency) params.set('currency', selectedBooking.currency);
+
+    navigate(`/admin/payment-requests/new?${params.toString()}`);
+  };
+
   const handlePaymentRequestSelect = (paymentRequestId: string, paymentRequest?: PaymentRequest) => {
     setNewPayment((current) => ({
       ...current,
@@ -322,15 +350,17 @@ const ClientDetailsPage: React.FC = () => {
       setError(null);
 
       // Fetch all data in parallel
-      const [clientResponse, paymentsResponse, bookingsResponse, medicalResponse] = await Promise.all([
+      const [clientResponse, paymentsResponse, paymentRequestsResponse, bookingsResponse, medicalResponse] = await Promise.all([
         clientsApi.getOne(clientId!),
         paymentsApi.getByClient(clientId!).catch(() => ({ data: [] })),
+        paymentRequestsApi.getByClient(clientId!).catch(() => ({ data: [] })),
         bookingsApi.getByClient(clientId!).catch(() => ({ data: [] })),
         clientMedicalApi.getByClient(clientId!).catch(() => ({ data: null }))
       ]);
 
       setClient(clientResponse.data);
       setPayments(paymentsResponse.data || []);
+      setPaymentRequests(paymentRequestsResponse.data || []);
       setBookings(bookingsResponse.data || []);
       setMedicalInfo(medicalResponse.data);
     } catch (error: any) {
@@ -1228,6 +1258,76 @@ const ClientDetailsPage: React.FC = () => {
                 Add Payment
               </AppleButton>
             </div>
+
+            <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-4">
+              <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900">Payment Requests</h3>
+                  <p className="mt-1 text-xs text-gray-500">Create deposit requests and copy the public consent/payment link.</p>
+                </div>
+                <AppleButton
+                  onClick={handleCreateDepositPaymentRequest}
+                  className="apple-button-primary w-auto flex-none px-3 py-2 whitespace-nowrap"
+                >
+                  <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
+                  Create Deposit Request
+                </AppleButton>
+              </div>
+
+              {paymentRequests.length > 0 ? (
+                <div className="space-y-3">
+                  {paymentRequests.map((request) => {
+                    const paymentUrl = getPaymentRequestUrl(request);
+                    return (
+                      <div key={request._id} className="rounded-md border border-gray-200 bg-white p-3">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <div className="text-sm font-semibold text-gray-900">
+                              {request.invoiceNumber || request.display_id || request._id}
+                            </div>
+                            <div className="mt-1 text-xs text-gray-500">
+                              {request.requestType || request.paymentType || 'request'} · {request.requestedAmount || request.amountPaid || 0} {request.currency} · {request.status}
+                            </div>
+                          </div>
+                          <AppleButton
+                            onClick={() => navigate(`/admin/payment-requests/${request._id}/edit`)}
+                            className="apple-button-secondary w-auto flex-none px-3 py-2 whitespace-nowrap"
+                          >
+                            Edit Request
+                          </AppleButton>
+                        </div>
+
+                        {paymentUrl ? (
+                          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                            <input
+                              value={paymentUrl}
+                              readOnly
+                              className="min-w-0 flex-1 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700"
+                            />
+                            <AppleButton
+                              onClick={() => {
+                                navigator.clipboard.writeText(paymentUrl);
+                                alert('Payment request link copied.');
+                              }}
+                              className="apple-button-primary w-auto flex-none px-3 py-2 whitespace-nowrap"
+                            >
+                              Copy Link
+                            </AppleButton>
+                          </div>
+                        ) : (
+                          <p className="mt-3 text-xs text-amber-700">
+                            This older request does not have a public hash yet. Open and save it once to generate the link.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">No payment requests yet.</p>
+              )}
+            </div>
+
             {payments.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
