@@ -67,6 +67,9 @@ const cropImageToProfileSquare = (file: File, size = 200): Promise<File> => {
 
 const UnifiedClientManager: React.FC = () => {
   const navigate = useNavigate();
+  const validClientStatuses = ['active', 'inactive', 'suspended'] as const;
+  const isValidClientStatus = (value: unknown): value is Client['status'] =>
+    typeof value === 'string' && validClientStatuses.includes(value as any);
   const [clients, setClients] = useState<Client[]>([]);
   const [filteredClients, setFilteredClients] = useState<Client[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -239,6 +242,10 @@ const UnifiedClientManager: React.FC = () => {
           } else {
             acc[key] = new Date(value as string | number).toISOString().split('T')[0];
           }
+        } else if (key === 'status') {
+          if (isValidClientStatus(value)) {
+            acc[key] = value;
+          }
         } else {
           acc[key] = value;
         }
@@ -310,6 +317,10 @@ const UnifiedClientManager: React.FC = () => {
           const date = new Date(clientValue);
           if (!Number.isNaN(date.getTime())) {
             (acc as any)[field] = date.toISOString().split('T')[0];
+          }
+        } else if (field === 'status') {
+          if (isValidClientStatus(clientValue)) {
+            (acc as any)[field] = clientValue;
           }
         } else {
           (acc as any)[field] = clientValue;
