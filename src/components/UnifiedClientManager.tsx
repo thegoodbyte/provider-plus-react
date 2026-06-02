@@ -44,12 +44,11 @@ const getRetreatCode = (retreat: any) => {
   return `${initials}-${two(date.getUTCMonth() + 1)}-${two(date.getUTCDate())}-${two(date.getUTCFullYear() % 100)}`;
 };
 
-const ClientListAvatar: React.FC<{ client: Client; name: string }> = ({ client, name }) => {
+const ClientListAvatar: React.FC<{ client: Client; name: string }> = ({ client }) => {
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(client.profilePictureUrl || null);
-  const hasProfilePicture = Boolean(client.profilePictureUrl || client.profilePictureS3Key || client.profilePictureFileUploadId);
 
   useEffect(() => {
-    if (!client._id || client.profilePictureUrl || !hasProfilePicture) {
+    if (!client._id || client.profilePictureUrl) {
       setProfilePictureUrl(client.profilePictureUrl || null);
       return;
     }
@@ -70,16 +69,14 @@ const ClientListAvatar: React.FC<{ client: Client; name: string }> = ({ client, 
       active = false;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [client._id, client.profilePictureFileUploadId, client.profilePictureS3Key, client.profilePictureUrl, hasProfilePicture]);
-
-  if (!hasProfilePicture) return null;
+  }, [client._id, client.profilePictureFileUploadId, client.profilePictureS3Key, client.profilePictureUrl, client.updatedAt]);
 
   return (
-    <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-200 text-xs font-semibold text-slate-600">
+    <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-slate-500 ring-1 ring-slate-200">
       {profilePictureUrl ? (
         <img src={profilePictureUrl} alt="" className="h-full w-full object-cover" />
       ) : (
-        name.charAt(0).toUpperCase()
+        <Icon icon={FiUser} className="h-4 w-4" />
       )}
     </span>
   );
