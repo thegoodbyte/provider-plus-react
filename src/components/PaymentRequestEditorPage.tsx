@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import PaymentRequestForm from './PaymentRequestForm';
 import LoadingSpinner from './LoadingSpinner';
 import { paymentRequestsApi } from '../services/api';
@@ -8,14 +8,25 @@ import { PaymentRequest } from '../types';
 const PaymentRequestEditorPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(Boolean(id));
   const [paymentRequest, setPaymentRequest] = useState<Partial<PaymentRequest> | undefined>(undefined);
 
   useEffect(() => {
     const loadRequest = async () => {
       if (!id) {
+        const params = new URLSearchParams(location.search);
         setLoading(false);
-        setPaymentRequest(undefined);
+        setPaymentRequest({
+          clientId: params.get('clientId') || undefined,
+          retreatId: params.get('retreatId') || undefined,
+          requestType: (params.get('requestType') as PaymentRequest['requestType']) || undefined,
+          paymentType: (params.get('paymentType') as PaymentRequest['paymentType']) || undefined,
+          fullPriceQuote: params.get('fullPrice') ? Number(params.get('fullPrice')) : undefined,
+          fullPrice: params.get('fullPrice') ? Number(params.get('fullPrice')) : undefined,
+          currency: (params.get('currency') as PaymentRequest['currency']) || undefined,
+          note: params.get('note') || undefined,
+        });
         return;
       }
 
@@ -31,7 +42,7 @@ const PaymentRequestEditorPage: React.FC = () => {
     };
 
     loadRequest();
-  }, [id]);
+  }, [id, location.search]);
 
   const handleSave = async (data: Omit<PaymentRequest, '_id'>) => {
     if (id) {

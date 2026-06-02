@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Client, ClientMedical, ClientRequirement, Reminder } from '../types';
-import { clientsApi, clientMedicalApi, clientRequirementsApi, remindersApi, bookingsApi, notesApi } from '../services/api';
+import { useNavigate } from 'react-router-dom';
+import { Client, ClientMedical, ClientRequirement, PaymentRequest, Reminder } from '../types';
+import { clientsApi, clientMedicalApi, clientRequirementsApi, remindersApi, bookingsApi, notesApi, paymentRequestsApi } from '../services/api';
 import MedicalTrackingTab from './MedicalTrackingTab';
 import ComprehensiveMedicalTrackingTab from './ComprehensiveMedicalTrackingTab';
 import ClientCeremoniesTab from './ClientCeremoniesTab';
@@ -15,11 +16,13 @@ interface ClientDetailViewProps {
 }
 
 const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack }) => {
+  const navigate = useNavigate();
   const [client, setClient] = useState<Client | null>(null);
   const [medicalData, setMedicalData] = useState<ClientMedical[]>([]);
   const [requirements, setRequirements] = useState<ClientRequirement[]>([]);
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [clientBookings, setClientBookings] = useState<any[]>([]);
+  const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -112,6 +115,14 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
       } catch (notesError) {
         console.error('Error fetching notes:', notesError);
         setNotes([]);
+      }
+
+      try {
+        const paymentRequestsResponse = await paymentRequestsApi.getByClient(clientId);
+        setPaymentRequests(paymentRequestsResponse.data || []);
+      } catch (paymentRequestError) {
+        console.error('Error fetching payment requests:', paymentRequestError);
+        setPaymentRequests([]);
       }
 
       // Set first retreat as selected by default
@@ -217,6 +228,36 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
       alert('Error regenerating deposit hash. Please try again.');
     }
   };
+
+  const getBookingRetreatId = (booking: any) => {
+    const retreat = booking?.retreatDetails || booking?.retreatId || booking?.retreat;
+    return retreat?._id || retreat || '';
+  };
+
+  const getBookingFullPrice = (booking: any) => (
+    booking?.totalAmount || booking?.totalPrice || booking?.fullPrice || booking?.fullPriceQuote || ''
+  );
+
+  const handleCreateDepositPaymentRequest = () => {
+    const selectedBooking = clientBookings.find((booking) => getBookingRetreatId(booking) === selectedRetreatId) || clientBookings[0];
+    const retreatId = getBookingRetreatId(selectedBooking);
+    const params = new URLSearchParams({
+      clientId,
+      requestType: 'deposit',
+      paymentType: 'Other',
+    });
+
+    if (retreatId) params.set('retreatId', retreatId);
+    const fullPrice = getBookingFullPrice(selectedBooking);
+    if (fullPrice) params.set('fullPrice', String(fullPrice));
+    if (selectedBooking?.currency) params.set('currency', selectedBooking.currency);
+
+    navigate(`/admin/payment-requests/new?${params.toString()}`);
+  };
+
+  const getDepositPaymentUrl = (request: PaymentRequest) => (
+    request.publicHash ? `https://ibogaspirit.com/clients/payments/deposit/v2/${request.publicHash}` : ''
+  );
 
   const handleAddReminder = () => {
     setEditingReminder(null);
@@ -381,6 +422,12 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
           onClick={() => setActiveTab('requirements')}
         >
           ✅ Requirements
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'payments' ? 'active' : ''}`}
+          onClick={() => setActiveTab('payments')}
+        >
+          💳 Payments
         </button>
         <button
           className={`tab-btn ${activeTab === 'reminders' ? 'active' : ''}`}
@@ -922,6 +969,89 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                 <p>This client has no retreat bookings. Requirements are tied to specific retreats.</p>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === 'payments' && (
+          <div className="payments-tab">
+            <div className="info-card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                <div>
+                  <h3>💳 Payment Requests</h3>
+                  <p style={{ margin: '4px 0 0', color: '#6b7280' }}>
+                    Create deposit links for this client and copy the public payment consent URL.
+                  </p>
+                </div>
+                <button
+                  onClick={handleCreateDepositPaymentRequest}
+                  style={{
+                    padding: '10px 16px',
+                    backgroundColor: '#2563eb',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  Create Deposit Request
+                </button>
+              </div>
+
+              {paymentRequests.length === 0 ? (
+                <div className="no-medical-records">
+                  <p>No payment requests yet.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gap: '12px' }}>
+                  {paymentRequests.map((request) => {
+                    const paymentUrl = getDepositPaymentUrl(request);
+                    return (
+                      <div key={request._id} style={{ border: '1px solid #e5e7eb', borderRadius: '8px', padding: '14px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                          <div>
+                            <strong>{request.invoiceNumber || request._id}</strong>
+                            <div style={{ color: '#6b7280', fontSize: '14px', marginTop: '4px' }}>
+                              {request.requestType || request.paymentType} · {request.requestedAmount || request.amountPaid || 0} {request.currency} · {request.status}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => navigate(`/admin/payment-requests/${request._id}/edit`)}
+                            style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px', background: 'white', cursor: 'pointer' }}
+                          >
+                            Edit
+                          </button>
+                        </div>
+                        {paymentUrl ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '12px' }}>
+                            <input
+                              type="text"
+                              value={paymentUrl}
+                              readOnly
+                              style={{ flex: 1, padding: '8px', border: '1px solid #ddd', borderRadius: '4px', backgroundColor: '#f9f9f9' }}
+                            />
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(paymentUrl);
+                                alert('Payment link copied to clipboard.');
+                              }}
+                              style={{ padding: '8px 12px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                            >
+                              Copy
+                            </button>
+                          </div>
+                        ) : (
+                          <p style={{ marginTop: '10px', color: '#b45309' }}>
+                            Save this request again after deployment if it does not yet have a public hash.
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

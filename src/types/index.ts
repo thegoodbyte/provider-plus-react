@@ -891,6 +891,7 @@ export interface PaymentRequest {
   note?: string;
   status: 'pending' | 'sent' | 'paid' | 'overdue' | 'cancelled';
   invoiceNumber?: string;
+  publicHash?: string;
   dueDate?: Date | string;
   paidDate?: Date | string;
   sentAt?: Date | string;

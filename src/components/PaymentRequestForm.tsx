@@ -42,7 +42,9 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     retreatId: resolveId(paymentRequest?.retreatId),
     paymentDate: paymentRequest?.paymentDate ? new Date(paymentRequest.paymentDate).toISOString().split('T')[0] : defaultDate(),
     paymentType: paymentRequest?.paymentType || 'Other',
+    requestType: paymentRequest?.requestType || 'full_payment',
     fullPriceQuote: paymentRequest?.fullPriceQuote?.toString() || '',
+    requestedAmount: (paymentRequest?.requestedAmount ?? paymentRequest?.amountPaid)?.toString() || '',
     currency: paymentRequest?.currency || 'EUR',
     note: paymentRequest?.note || paymentRequest?.notes || '',
     status: paymentRequest?.status || 'pending',
@@ -112,6 +114,20 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     };
   }, [formData.fullPriceQuote, formData.currency]);
 
+  useEffect(() => {
+    const fullPrice = Number(formData.fullPriceQuote);
+    if (!Number.isFinite(fullPrice) || fullPrice <= 0) return;
+
+    if (formData.requestType === 'deposit') {
+      const depositAmount = String(Math.round(fullPrice * 0.4 * 100) / 100);
+      if (formData.requestedAmount !== depositAmount) {
+        setFormData(prev => ({ ...prev, requestedAmount: depositAmount }));
+      }
+    } else if (!formData.requestedAmount || Number(formData.requestedAmount) === 0) {
+      setFormData(prev => ({ ...prev, requestedAmount: String(fullPrice) }));
+    }
+  }, [formData.fullPriceQuote, formData.requestedAmount, formData.requestType]);
+
   const handleChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -121,7 +137,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     setFormError('');
 
     const invoiceNumber = String(formData.invoiceNumber || '').trim();
-    if (!invoiceNumber || !formData.clientId || !formData.retreatId || !formData.paymentDate || !formData.fullPriceQuote) {
+    if (!invoiceNumber || !formData.clientId || !formData.retreatId || !formData.paymentDate || !formData.fullPriceQuote || !formData.requestedAmount) {
       alert('Please fill in all required fields');
       return;
     }
@@ -141,6 +157,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
       }
 
       const fullPriceQuote = parseFloat(formData.fullPriceQuote);
+      const requestedAmount = parseFloat(formData.requestedAmount);
       await onSave({
         display_id: Number.isFinite(Number(formData.display_id)) ? Number(formData.display_id) : undefined,
         invoiceNumber,
@@ -148,11 +165,11 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
         retreatId: formData.retreatId,
         paymentDate: formData.paymentDate,
         paymentType: formData.paymentType as PaymentRequest['paymentType'],
-        requestType: 'full_payment',
-        requestedAmount: fullPriceQuote,
+        requestType: formData.requestType as PaymentRequest['requestType'],
+        requestedAmount,
         fullPrice: fullPriceQuote,
         fullPriceQuote,
-        amountPaid: fullPriceQuote,
+        amountPaid: requestedAmount,
         currency: formData.currency as PaymentRequest['currency'],
         note: formData.note || '',
         status: formData.status as PaymentRequest['status'],
@@ -250,6 +267,21 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
             </div>
 
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Request Type</label>
+              <select
+                value={formData.requestType}
+                onChange={(e) => handleChange('requestType', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              >
+                <option value="deposit">Deposit</option>
+                <option value="balance">Balance</option>
+                <option value="full_payment">Full Payment</option>
+                <option value="additional">Additional</option>
+              </select>
+            </div>
+
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Full Price Quote *</label>
               <input
                 type="number"
@@ -261,6 +293,23 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                 placeholder="0.00"
                 required
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Requested Amount *</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.requestedAmount}
+                onChange={(e) => handleChange('requestedAmount', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="0.00"
+                required
+              />
+              {formData.requestType === 'deposit' && (
+                <p className="mt-1 text-xs text-gray-500">Auto-calculated as 40% of the full price.</p>
+              )}
             </div>
 
             <div>
