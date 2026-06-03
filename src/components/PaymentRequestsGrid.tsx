@@ -1,19 +1,23 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { paymentRequestsApi } from '../services/api';
+import { API_BASE_URL } from '../config/api.config';
 import LoadingSpinner from './LoadingSpinner';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiCheckCircle, FiClock, FiAlertTriangle, FiSend } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiCheckCircle, FiClock, FiAlertTriangle, FiSend, FiCopy, FiExternalLink } from 'react-icons/fi';
+import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
 };
 
 const resolveClient = (clientValue: any) => {
-  if (!clientValue) return { name: 'Unknown Client', displayId: '' };
-  if (typeof clientValue === 'string') return { name: clientValue, displayId: '' };
+  if (!clientValue) return { name: 'Unknown Client', displayId: '', email: '', firstName: '' };
+  if (typeof clientValue === 'string') return { name: clientValue, displayId: '', email: '', firstName: '' };
   return {
     name: `${clientValue.firstName || ''} ${clientValue.lastName || ''}`.trim() || 'Unknown Client',
     displayId: clientValue.display_id ? `#${clientValue.display_id}` : '',
+    email: clientValue.email || '',
+    firstName: clientValue.firstName || '',
   };
 };
 
@@ -23,11 +27,25 @@ const resolveRetreat = (retreatValue: any) => {
   return [retreatValue.name, retreatValue.location].filter(Boolean).join(' - ') || 'Unknown Retreat';
 };
 
+const getPublicPaymentUrl = (request: any) => (
+  request?.publicHash ? `https://ibogaspirit.com/clients/payments/deposit/v2/${request.publicHash}` : ''
+);
+
+const getPublicPaymentApiUrl = (request: any) => (
+  request?.publicHash ? `${API_BASE_URL}/payment-requests/public/deposit/${request.publicHash}` : ''
+);
+
+const formatAmount = (amount: any, currency: string) => {
+  const numericAmount = Number(amount || 0);
+  if (!Number.isFinite(numericAmount) || numericAmount <= 0) return '';
+  return `${numericAmount.toLocaleString()} ${currency || ''}`.trim();
+};
+
 const PaymentRequestsGrid: React.FC = () => {
   const navigate = useNavigate();
   const [paymentRequests, setPaymentRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sendingRequestId, setSendingRequestId] = useState<string | null>(null);
+  const [selectedSendRequest, setSelectedSendRequest] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   const fetchPaymentRequests = async () => {
@@ -58,17 +76,54 @@ const PaymentRequestsGrid: React.FC = () => {
     }
   };
 
-  const handleSendPaymentRequest = async (id: string) => {
-    setSendingRequestId(id);
-    try {
-      await paymentRequestsApi.sendReminder(id);
-      await fetchPaymentRequests();
-    } catch (error) {
-      console.error('Error sending payment request:', error);
-      alert('Failed to send payment request');
-    } finally {
-      setSendingRequestId(null);
+  const handleSendPaymentRequest = (request: any) => {
+    if (!request.publicHash) {
+      alert('This payment request does not have a public hash yet. Open and save it once, then send it.');
+      return;
     }
+    setSelectedSendRequest(request);
+  };
+
+  const copyToClipboard = async (value: string) => {
+    await navigator.clipboard.writeText(value);
+    alert('Copied.');
+  };
+
+  const buildPaymentEmail = (request: any): EmailComposeInitialValues => {
+    const client = resolveClient(request.clientId);
+    const retreat = resolveRetreat(request.retreatId);
+    const paymentUrl = getPublicPaymentUrl(request);
+    const invoiceNumber = request.invoiceNumber || request.display_id || request._id;
+    const requestedAmount = formatAmount(request.requestedAmount || request.amountPaid || request.fullPriceQuote, request.currency);
+    const totalAmount = formatAmount(request.fullPriceQuote || request.fullPrice || request.fullPriceQuote, request.currency);
+    const greetingName = client.firstName || client.name || 'there';
+
+    return {
+      to: client.email,
+      subject: `Payment request ${invoiceNumber}`,
+      bodyText: [
+        `Hi ${greetingName},`,
+        '',
+        `Your payment request for ${retreat} is ready.`,
+        ...(requestedAmount ? [`Requested amount: ${requestedAmount}`] : []),
+        ...(totalAmount ? [`Total retreat price: ${totalAmount}`] : []),
+        '',
+        'Please open the secure link below to review the payment request and complete the required confirmations before payment:',
+        paymentUrl,
+        '',
+        'Thank you,',
+        'Iboga Spirit',
+      ].join('\n'),
+      clientId: typeof request.clientId === 'string' ? request.clientId : request.clientId?._id,
+      retreatId: typeof request.retreatId === 'string' ? request.retreatId : request.retreatId?._id,
+      relatedEntityType: 'payment_request',
+      relatedEntityId: request._id,
+      variables: {
+        paymentRequest: request,
+        paymentUrl,
+        paymentApiUrl: getPublicPaymentApiUrl(request),
+      },
+    };
   };
 
   const getStatusColor = (status: string) => {
@@ -187,10 +242,9 @@ const PaymentRequestsGrid: React.FC = () => {
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => handleSendPaymentRequest(request._id)}
-                          disabled={sendingRequestId === request._id}
+                          onClick={() => handleSendPaymentRequest(request)}
                           className="text-blue-600 hover:text-blue-900 disabled:opacity-50"
-                          title="Send payment request"
+                          title="Compose payment request email"
                         >
                           <Icon icon={FiSend} className="w-4 h-4" />
                         </button>
@@ -224,6 +278,64 @@ const PaymentRequestsGrid: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {selectedSendRequest && (
+        <EmailComposeModal
+          title="Send Payment Request"
+          initialValues={buildPaymentEmail(selectedSendRequest)}
+          onClose={() => setSelectedSendRequest(null)}
+          onSent={async () => {
+            await paymentRequestsApi.update(selectedSendRequest._id, {
+              status: 'sent',
+              sentAt: new Date().toISOString(),
+              sentToClient: true,
+            });
+            await fetchPaymentRequests();
+          }}
+          extraContent={selectedSendRequest.publicHash ? (
+            <div className="space-y-3 rounded-md border border-blue-100 bg-blue-50 p-3">
+              <div>
+                <div className="mb-1 text-xs font-semibold uppercase text-blue-800">Client URL</div>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input
+                    readOnly
+                    value={getPublicPaymentUrl(selectedSendRequest)}
+                    className="min-w-0 flex-1 rounded-md border border-blue-200 bg-white px-3 py-2 text-xs text-gray-800"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(getPublicPaymentUrl(selectedSendRequest))}
+                    className="inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700"
+                  >
+                    <Icon icon={FiCopy} className="h-4 w-4" />
+                    Copy
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => window.open(getPublicPaymentUrl(selectedSendRequest), '_blank', 'noopener,noreferrer')}
+                    className="inline-flex items-center justify-center gap-2 rounded-md border border-blue-200 bg-white px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-50"
+                  >
+                    <Icon icon={FiExternalLink} className="h-4 w-4" />
+                    Open
+                  </button>
+                </div>
+              </div>
+              <div>
+                <div className="mb-1 text-xs font-semibold uppercase text-blue-800">API</div>
+                <input
+                  readOnly
+                  value={`GET ${getPublicPaymentApiUrl(selectedSendRequest)}`}
+                  className="w-full rounded-md border border-blue-200 bg-white px-3 py-2 text-xs text-gray-800"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              This payment request does not have a public hash yet. Open and save it once, then use this send button again.
+            </div>
+          )}
+        />
+      )}
     </div>
   );
 };
