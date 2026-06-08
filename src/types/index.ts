@@ -584,6 +584,32 @@ export interface CeremonyParticipant {
     reviewedAt?: Date | string;
   };
 
+  preCeremonyChecks?: Array<{
+    id?: string;
+    recordedAt?: Date | string;
+    preCeremonyEkg?: {
+      fileUrl?: string;
+      fileName?: string;
+      uploadedAt?: Date | string;
+      approved?: boolean;
+      notes?: string;
+      reviewedBy?: string;
+      reviewedAt?: Date | string;
+    };
+    preCeremonyBloodPressure?: {
+      systolic?: number;
+      diastolic?: number;
+      pulse?: number;
+      recordedAt?: Date | string;
+      approved?: boolean;
+      notes?: string;
+      reviewedBy?: string;
+      reviewedAt?: Date | string;
+    };
+    medicalClearance?: 'approved' | 'not_approved' | 'conditional' | 'pending';
+    medicalClearanceNotes?: string;
+  }>;
+
   medicalClearance?: 'approved' | 'not_approved' | 'conditional' | 'pending';
   medicalClearanceNotes?: string;
 
