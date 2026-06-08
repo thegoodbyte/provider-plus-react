@@ -220,6 +220,7 @@ const RetreatsGrid: React.FC = () => {
           onClick={() => {
             setFormData({
               name: '',
+              retreatCode: '',
               location: '',
               status: 'upcoming',
               capacity: 20,
@@ -242,6 +243,9 @@ const RetreatsGrid: React.FC = () => {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Name
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Retreat Code
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Dates
@@ -280,6 +284,9 @@ const RetreatsGrid: React.FC = () => {
                         {retreat.description}
                       </div>
                     )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                    {retreat.retreatCode || '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center text-sm text-gray-900">
@@ -383,6 +390,19 @@ const RetreatsGrid: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Enter retreat name"
                   required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Retreat Code
+                </label>
+                <input
+                  type="text"
+                  value={formData.retreatCode || ''}
+                  onChange={(e) => setFormData({ ...formData, retreatCode: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g. BEN-08-03-26"
                 />
               </div>
 
@@ -495,6 +515,7 @@ const RetreatsGrid: React.FC = () => {
 
                     const retreatData = {
                       name: formData.name!,
+                      retreatCode: formData.retreatCode?.trim() || undefined,
                       location: formData.location!,
                       status: formData.status || 'upcoming' as 'upcoming' | 'active' | 'completed' | 'cancelled',
                       capacity: formData.capacity ?? 20,
@@ -541,6 +562,19 @@ const RetreatsGrid: React.FC = () => {
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Enter retreat name"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Retreat Code
+                </label>
+                <input
+                  type="text"
+                  value={formData.retreatCode || ''}
+                  onChange={(e) => setFormData({ ...formData, retreatCode: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g. BEN-08-03-26"
                 />
               </div>
 
@@ -664,7 +698,11 @@ const RetreatsGrid: React.FC = () => {
                 onClick={async () => {
                   try {
                     if (editingRetreat?._id) {
-                      await retreatsApi.update(editingRetreat._id, formData);
+                      const updateData = {
+                        ...formData,
+                        retreatCode: formData.retreatCode?.trim() || undefined,
+                      };
+                      await retreatsApi.update(editingRetreat._id, updateData);
                       fetchRetreats();
                       setIsEditModalOpen(false);
                       setEditingRetreat(null);
