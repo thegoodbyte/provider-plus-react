@@ -59,6 +59,27 @@ interface RetreatClientData {
   notes?: string;
 }
 
+const USD_FALLBACK_RATES: Record<string, number> = {
+  USD: 1,
+  EUR: 1.08,
+  CZK: 0.044,
+  PLN: 0.26
+};
+
+const convertAmountToUSD = (amount: number, currency?: string) => {
+  const rate = USD_FALLBACK_RATES[(currency || 'USD').toUpperCase()] || 1;
+  return amount * rate;
+};
+
+const formatUSD = (amount: number) => {
+  return amount.toLocaleString('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+};
+
 const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack }) => {
   const [retreat, setRetreat] = useState<Retreat | null>(null);
   const [clients, setClients] = useState<RetreatClientData[]>([]);
@@ -392,12 +413,13 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     );
   }
 
-  const totalRevenue = paymentsSummary?.completedPaymentsEUR || 0;
-  const totalExpected = clients.reduce((sum, client) => sum + (client.totalAmount || 0), 0);
-  const totalExpenses = expensesSummary?.totalExpenses || 0;
-  // Convert expenses from CZK to EUR for consistency (simple conversion rate)
-  const totalExpensesEUR = totalExpenses / 25; // Approximate CZK to EUR conversion
-  const profit = totalRevenue - totalExpensesEUR;
+  const totalRevenueUSD = paymentsSummary?.completedPaymentsUSD || 0;
+  const totalExpectedUSD = clients.reduce(
+    (sum, client) => sum + convertAmountToUSD(client.totalAmount || 0, client.currency),
+    0
+  );
+  const totalExpensesUSD = expensesSummary?.totalExpensesUSD || 0;
+  const profitUSD = totalRevenueUSD - totalExpensesUSD;
   const occupancyRate = retreat.capacity ? Math.round((clients.length / retreat.capacity) * 100) : 0;
 
   // If viewing a specific client, show the client detail view
@@ -498,11 +520,11 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
               <div className="stat-label">Occupancy Rate</div>
             </div>
             <div className="stat-card">
-              <div className="stat-number">{totalRevenue.toFixed(2)} EUR</div>
+              <div className="stat-number">{formatUSD(totalRevenueUSD)}</div>
               <div className="stat-label">Revenue Collected</div>
             </div>
             <div className="stat-card">
-              <div className="stat-number">{totalExpected.toFixed(2)} EUR</div>
+              <div className="stat-number">{formatUSD(totalExpectedUSD)}</div>
               <div className="stat-label">Expected Revenue</div>
             </div>
             <div className="stat-card">
@@ -514,12 +536,12 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
               <div className="stat-label">Checked In</div>
             </div>
             <div className="stat-card">
-              <div className="stat-number">{totalExpensesEUR.toFixed(2)} EUR</div>
+              <div className="stat-number">{formatUSD(totalExpensesUSD)}</div>
               <div className="stat-label">Total Expenses</div>
             </div>
             <div className="stat-card">
-              <div className={`stat-number ${profit >= 0 ? 'profit-positive' : 'profit-negative'}`}>
-                {profit.toFixed(2)} EUR
+              <div className={`stat-number ${profitUSD >= 0 ? 'profit-positive' : 'profit-negative'}`}>
+                {formatUSD(profitUSD)}
               </div>
               <div className="stat-label">Profit</div>
             </div>
