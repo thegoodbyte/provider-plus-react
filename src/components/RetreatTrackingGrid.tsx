@@ -244,7 +244,7 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
         <table className="tracking-table">
           <thead>
             <tr>
-              <th className="row-header">Field</th>
+              <th className="row-header" aria-label="Tracking item"></th>
               {trackingData.map((client) => (
                 <th key={client.bookingId} className="client-header">
                   <div className="client-header-name">{client.clientName || 'Unknown Client'}</div>
