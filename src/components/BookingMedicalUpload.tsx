@@ -64,6 +64,16 @@ const artifactDate = (artifact: MedicalArtifact) =>
 const reviewDate = (review: MedicalReviewRequest) =>
   new Date(review.reviewedAt || review.requestedAt || review.createdAt || 0).getTime();
 
+const mergeArtifacts = (artifactGroups: MedicalArtifact[][]) => {
+  const seen = new Set<string>();
+  return artifactGroups.flat().filter((artifact) => {
+    const key = artifact._id || `${artifact.artifactType}:${artifact.title}:${artifact.createdAt}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
 const getLatestReview = (reviews: MedicalReviewRequest[] = []) =>
   [...reviews].sort((a, b) => reviewDate(b) - reviewDate(a))[0];
 
@@ -101,8 +111,11 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
     setLoading(true);
     setError(null);
     try {
-      const response = await medicalArtifactsApi.getAll({ bookingId });
-      const medicalArtifacts: MedicalArtifact[] = ((response.data || []) as MedicalArtifact[]).filter((artifact) =>
+      const responses = await Promise.all([
+        medicalArtifactsApi.getAll({ bookingId }),
+        clientId && retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId }) : Promise.resolve({ data: [] }),
+      ]);
+      const medicalArtifacts: MedicalArtifact[] = mergeArtifacts(responses.map((response) => response.data || [])).filter((artifact) =>
         medicalTestSections.some((section) => section.type === artifact.artifactType)
       );
       setArtifacts(medicalArtifacts);

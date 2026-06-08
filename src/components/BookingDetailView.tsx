@@ -85,10 +85,24 @@ const getArtifactTime = (artifact: MedicalArtifact) =>
 const getReviewTime = (review: MedicalReviewRequest) =>
   new Date(review.reviewedAt || review.requestedAt || review.createdAt || 0).getTime();
 
+const getObjectId = (value: any) => typeof value === 'object' ? value?._id || value?.id : value;
+
+const mergeArtifacts = (artifactGroups: MedicalArtifact[][]) => {
+  const seen = new Set<string>();
+  return artifactGroups.flat().filter((artifact) => {
+    const key = artifact._id || `${artifact.artifactType}:${artifact.title}:${artifact.createdAt}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
 const BookingRequirementsPanel: React.FC<{
   bookingId: string;
+  clientId?: string;
+  retreatId?: string;
   refreshKey: number;
-}> = ({ bookingId, refreshKey }) => {
+}> = ({ bookingId, clientId, retreatId, refreshKey }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const routePrefix = useMemo(() => {
@@ -107,9 +121,12 @@ const BookingRequirementsPanel: React.FC<{
     try {
       const [itemsResponse, artifactsResponse] = await Promise.all([
         bookingFlowApi.getItems({ bookingId }),
-        medicalArtifactsApi.getAll({ bookingId }),
+        Promise.all([
+          medicalArtifactsApi.getAll({ bookingId }),
+          clientId && retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId }) : Promise.resolve({ data: [] }),
+        ]),
       ]);
-      const loadedArtifacts: MedicalArtifact[] = artifactsResponse.data || [];
+      const loadedArtifacts: MedicalArtifact[] = mergeArtifacts(artifactsResponse.map((response) => response.data || []));
       const reviewEntries = await Promise.all(
         loadedArtifacts
           .filter((artifact) => artifact._id)
@@ -739,7 +756,12 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
           onPaymentUpdate={fetchBookingDetails}
         />
 
-        <BookingRequirementsPanel bookingId={bookingId} refreshKey={requirementsRefreshKey} />
+        <BookingRequirementsPanel
+          bookingId={bookingId}
+          clientId={getObjectId(client)}
+          retreatId={getObjectId(retreat)}
+          refreshKey={requirementsRefreshKey}
+        />
 
         <BookingMedicalUpload
           bookingId={bookingId}
