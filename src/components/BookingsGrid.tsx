@@ -419,9 +419,14 @@ const BookingsGrid: React.FC = () => {
               {filteredAndSortedBookings.map((booking) => (
                 <tr key={booking._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">
+                    <button
+                      type="button"
+                      onClick={() => navigate(`${routePrefix}/bookings/${booking._id}`)}
+                      className="text-sm font-semibold text-gray-900 hover:text-gray-950 hover:underline"
+                      title="View booking"
+                    >
                       #{booking.bookingNumber || booking._id?.slice(-6)}
-                    </div>
+                    </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
