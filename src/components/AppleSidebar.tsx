@@ -156,7 +156,7 @@ const getNavigationRole = (userRole?: string, user?: AppleSidebarProps['user']) 
 };
 
 const getTextColor = (isActive: boolean = false): string => {
-  return isActive ? 'rgb(30, 64, 175)' : 'rgb(55, 65, 81)';
+  return isActive ? 'rgb(17, 24, 39)' : 'rgb(55, 65, 81)';
 };
 
 const AppleSidebar: React.FC<AppleSidebarProps> = ({
@@ -420,15 +420,15 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                   <button
                     onClick={() => isExpanded ? toggleSection(section.id) : onItemClick(section.items[0]?.id || section.id)}
                     style={{
-                      backgroundColor: 'white',
+                      backgroundColor: 'transparent',
                       color: sectionTextColor,
-                      borderColor: sectionTextColor,
-                      borderWidth: '3px',
+                      borderColor: sectionIsActive ? 'rgba(17, 24, 39, 0.24)' : 'transparent',
+                      borderWidth: '1px',
                     }}
                     className={`
                       w-full flex items-center gap-3 px-3 py-2 rounded-apple
                       transition-all duration-200 text-left
-                      border shadow-sm hover:bg-white hover:shadow-md
+                      border hover:bg-transparent hover:border-apple-gray-300 hover:shadow-sm
                       ${!isExpanded && 'justify-center px-2'}
                     `}
                   >
@@ -474,15 +474,15 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                               <button
                                 onClick={() => onItemClick(item.id)}
                                 style={{
-                                  backgroundColor: 'white',
-                                  borderColor: isActive ? 'rgb(30, 64, 175)' : 'rgb(55, 65, 81)',
-                                  borderWidth: '3px',
+                                  backgroundColor: 'transparent',
+                                  borderColor: isActive ? 'rgba(17, 24, 39, 0.24)' : 'transparent',
+                                  borderWidth: '1px',
                                 }}
                                 className={`
                                   w-full flex items-center gap-2 rounded-apple px-3 py-1.5 text-left
                                   transition-all duration-200
-                                  border hover:bg-white hover:shadow-md
-                                  ${isActive ? 'text-blue-800 shadow-sm' : 'text-apple-gray-700 hover:text-apple-gray-900'}
+                                  border hover:bg-transparent hover:border-apple-gray-300 hover:shadow-sm
+                                  ${isActive ? 'text-gray-950 shadow-none' : 'text-apple-gray-700 hover:text-apple-gray-950'}
                                 `}
                               >
                                 {React.createElement(IconComponent as any, { className: "w-4 h-4 flex-shrink-0" })}

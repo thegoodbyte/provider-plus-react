@@ -647,7 +647,7 @@ const UnifiedClientManager: React.FC = () => {
                     <div>
                       <button
                         onClick={() => handleClientClick(client)}
-                        className="!inline-flex !w-auto !max-w-full !items-center !justify-start gap-2 !rounded-none !border-0 !bg-transparent !p-0 !text-left !text-sm !font-medium !text-gray-900 !shadow-none hover:!bg-transparent hover:!text-blue-600"
+                        className="!inline-flex !w-auto !max-w-full !items-center !justify-start gap-2 !rounded-none !border-0 !bg-transparent !p-0 !text-left !text-sm !font-medium !text-gray-900 !shadow-none hover:!bg-transparent hover:!text-gray-950 hover:underline"
                       >
                         <ClientListAvatar client={client} name={`${client.firstName || ''} ${client.lastName || ''}`.trim()} />
                         <span className="truncate">{client.firstName} {client.lastName}</span>
@@ -695,7 +695,7 @@ const UnifiedClientManager: React.FC = () => {
                           event.stopPropagation();
                           handleEdit(client);
                         }}
-                        className="inline-flex items-center gap-1 rounded px-2 py-1 text-blue-700 hover:bg-blue-50 hover:text-blue-900 max-sm:px-1.5"
+                        className="inline-flex items-center gap-1 rounded px-2 py-1 text-gray-700 hover:bg-transparent hover:text-gray-950 max-sm:px-1.5"
                         title="Edit"
                       >
                         <Icon icon={FiEdit2} className="w-3.5 h-3.5" />
