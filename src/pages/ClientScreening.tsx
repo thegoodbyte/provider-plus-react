@@ -22,8 +22,11 @@ interface ScreeningData {
   age: number;
   screeningDate: string;
   riskLevel: number;
+  heartConditionOk: boolean;
   heartCondition: string;
+  liverConditionOk: boolean;
   liverCondition: string;
+  asthmaConditionOk: boolean;
   asthmaCondition: string;
   medications: string;
   ssris: string;
@@ -57,6 +60,7 @@ interface ScreeningData {
     other: boolean;
     details: string;
   };
+  plantMedicineExperience: boolean;
   ayahuasca: boolean;
   ayahuascaDetails: string;
   iboga: boolean;
@@ -162,8 +166,11 @@ const ClientScreening: React.FC = () => {
     age: 0,
     screeningDate: new Date().toISOString().split('T')[0],
     riskLevel: 1,
+    heartConditionOk: false,
     heartCondition: '',
+    liverConditionOk: false,
     liverCondition: '',
+    asthmaConditionOk: false,
     asthmaCondition: '',
     medications: '',
     ssris: '',
@@ -197,6 +204,7 @@ const ClientScreening: React.FC = () => {
       other: false,
       details: '',
     },
+    plantMedicineExperience: false,
     ayahuasca: false,
     ayahuascaDetails: '',
     iboga: false,
@@ -247,6 +255,23 @@ const ClientScreening: React.FC = () => {
         }
         return undefined;
       };
+      const heartCondition = existingValue('heartCondition', 'heartConditions') ?? '';
+      const liverCondition = existingValue('liverCondition', 'liverConditions') ?? '';
+      const asthmaCondition = existingValue('asthmaCondition', 'asthmaConditions') ?? '';
+      const plantMedicineFields = [
+        'ayahuasca',
+        'iboga',
+        'psilocybin',
+        'bufo',
+        'kambo',
+        'sanPedro',
+        'mescaline',
+        'dmt',
+        'ketamine',
+        'mdma',
+      ];
+      const hasPlantMedicineExperience = existingScreening.plantMedicineExperience === true
+        || plantMedicineFields.some((field) => Boolean(existingScreening[field] || existingScreening[`${field}Details`]));
 
       // Pre-populate client info
       setFormData(prev => ({
@@ -260,9 +285,12 @@ const ClientScreening: React.FC = () => {
         mainIntent: existingValue('mainIntent', 'whySeekingIboga') ?? prev.mainIntent,
         riskNotes: existingValue('riskNotes', 'whatToChange') ?? prev.riskNotes,
         childhood: existingValue('childhood', 'childhood') ?? prev.childhood,
-        heartCondition: existingValue('heartCondition', 'heartConditions') ?? prev.heartCondition,
-        liverCondition: existingValue('liverCondition', 'liverConditions') ?? prev.liverCondition,
-        asthmaCondition: existingValue('asthmaCondition', 'asthmaConditions') ?? prev.asthmaCondition,
+        heartConditionOk: existingScreening.heartConditionOk === true || heartCondition === 'OK',
+        heartCondition,
+        liverConditionOk: existingScreening.liverConditionOk === true || liverCondition === 'OK',
+        liverCondition,
+        asthmaConditionOk: existingScreening.asthmaConditionOk === true || asthmaCondition === 'OK',
+        asthmaCondition,
         medications: existingValue('medications', 'currentMedications') ?? prev.medications,
         drugsHistory: existingValue('drugsHistory', 'recreationalDrugs', 'addictionHistory') ?? prev.drugsHistory,
         alcoholHistory: existingValue('alcoholHistory', 'alcoholConsumption') ?? prev.alcoholHistory,
@@ -276,6 +304,7 @@ const ClientScreening: React.FC = () => {
             ? existingScreening.vitaminsSupplements
             : {}),
         },
+        plantMedicineExperience: hasPlantMedicineExperience,
         generalNotes: existingValue('generalNotes', 'notes') ?? prev.generalNotes,
         handwritingImageUrl: existingValue('handwritingImageUrl', 'handwritingImageUrl') ?? prev.handwritingImageUrl,
         screeningDate: existingValue('screeningDate', 'screeningCompletedDate')
@@ -295,6 +324,44 @@ const ClientScreening: React.FC = () => {
 
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked;
+      if (['heartConditionOk', 'liverConditionOk', 'asthmaConditionOk'].includes(name)) {
+        const conditionField = name.replace('Ok', '');
+        setFormData(prev => ({
+          ...prev,
+          [name]: checked,
+          [conditionField]: checked ? 'OK' : '',
+        }));
+        return;
+      }
+      if (name === 'plantMedicineExperience') {
+        setFormData(prev => ({
+          ...prev,
+          plantMedicineExperience: checked,
+          ...(!checked ? {
+            ayahuasca: false,
+            ayahuascaDetails: '',
+            iboga: false,
+            ibogaDetails: '',
+            psilocybin: false,
+            psilocybinDetails: '',
+            bufo: false,
+            bufoDetails: '',
+            kambo: false,
+            kamboDetails: '',
+            sanPedro: false,
+            sanPedroDetails: '',
+            mescaline: false,
+            mescalineDetails: '',
+            dmt: false,
+            dmtDetails: '',
+            ketamine: false,
+            ketamineDetails: '',
+            mdma: false,
+            mdmaDetails: '',
+          } : {}),
+        }));
+        return;
+      }
       setFormData(prev => ({ ...prev, [name]: checked }));
     } else if (type === 'number') {
       setFormData(prev => ({ ...prev, [name]: parseFloat(value) || 0 }));
@@ -356,6 +423,9 @@ const ClientScreening: React.FC = () => {
       ].filter(Boolean).join(' - ');
       const response = await screeningApi.create({
         ...formData,
+        heartCondition: formData.heartConditionOk ? 'OK' : formData.heartCondition,
+        liverCondition: formData.liverConditionOk ? 'OK' : formData.liverCondition,
+        asthmaCondition: formData.asthmaConditionOk ? 'OK' : formData.asthmaCondition,
         bloodPressure: bloodPressure || formData.bloodPressure,
       });
       const rolePrefix = user?.role === 'admin' ? '/admin' : '';
@@ -572,34 +642,76 @@ const ClientScreening: React.FC = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Heart Condition</label>
-            <textarea
-              name="heartCondition"
-              value={formData.heartCondition}
-              onChange={handleInputChange}
-              rows={2}
-              className="w-full px-3 py-2 border border-gray-200 rounded-md"
-            />
+            <div className="mb-1 flex items-center justify-between gap-3">
+              <label className="block text-sm font-medium text-gray-700">Heart Condition</label>
+              <label className="flex items-center gap-2 text-sm font-medium text-green-700">
+                <input
+                  type="checkbox"
+                  name="heartConditionOk"
+                  checked={formData.heartConditionOk}
+                  onChange={handleInputChange}
+                  className="rounded"
+                />
+                OK
+              </label>
+            </div>
+            {!formData.heartConditionOk && (
+              <textarea
+                name="heartCondition"
+                value={formData.heartCondition}
+                onChange={handleInputChange}
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-200 rounded-md"
+              />
+            )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Liver Condition</label>
-            <textarea
-              name="liverCondition"
-              value={formData.liverCondition}
-              onChange={handleInputChange}
-              rows={2}
-              className="w-full px-3 py-2 border border-gray-200 rounded-md"
-            />
+            <div className="mb-1 flex items-center justify-between gap-3">
+              <label className="block text-sm font-medium text-gray-700">Liver Condition</label>
+              <label className="flex items-center gap-2 text-sm font-medium text-green-700">
+                <input
+                  type="checkbox"
+                  name="liverConditionOk"
+                  checked={formData.liverConditionOk}
+                  onChange={handleInputChange}
+                  className="rounded"
+                />
+                OK
+              </label>
+            </div>
+            {!formData.liverConditionOk && (
+              <textarea
+                name="liverCondition"
+                value={formData.liverCondition}
+                onChange={handleInputChange}
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-200 rounded-md"
+              />
+            )}
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Asthma</label>
-            <textarea
-              name="asthmaCondition"
-              value={formData.asthmaCondition}
-              onChange={handleInputChange}
-              rows={2}
-              className="w-full px-3 py-2 border border-gray-200 rounded-md"
-            />
+            <div className="mb-1 flex items-center justify-between gap-3">
+              <label className="block text-sm font-medium text-gray-700">Asthma</label>
+              <label className="flex items-center gap-2 text-sm font-medium text-green-700">
+                <input
+                  type="checkbox"
+                  name="asthmaConditionOk"
+                  checked={formData.asthmaConditionOk}
+                  onChange={handleInputChange}
+                  className="rounded"
+                />
+                OK
+              </label>
+            </div>
+            {!formData.asthmaConditionOk && (
+              <textarea
+                name="asthmaCondition"
+                value={formData.asthmaCondition}
+                onChange={handleInputChange}
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-200 rounded-md"
+              />
+            )}
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Medications/Pills</label>
@@ -765,43 +877,56 @@ const ClientScreening: React.FC = () => {
       <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
         <h2 className="text-lg font-semibold mb-4">Plant Medicine Experience</h2>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[
-            { name: 'ayahuasca', label: 'Ayahuasca' },
-            { name: 'iboga', label: 'Iboga' },
-            { name: 'psilocybin', label: 'Psilocybin' },
-            { name: 'bufo', label: 'Bufo' },
-            { name: 'kambo', label: 'Kambo' },
-            { name: 'sanPedro', label: 'San Pedro' },
-            { name: 'mescaline', label: 'Mescaline' },
-            { name: 'dmt', label: 'DMT' },
-            { name: 'ketamine', label: 'Ketamine' },
-            { name: 'mdma', label: 'MDMA' }
-          ].map(medicine => (
-            <div key={medicine.name}>
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  name={medicine.name}
-                  checked={formData[medicine.name as keyof ScreeningData] as boolean}
-                  onChange={handleInputChange}
-                  className="rounded"
-                />
-                <span className="text-sm font-medium text-gray-700">{medicine.label}</span>
-              </label>
-              {formData[medicine.name as keyof ScreeningData] && (
-                <input
-                  type="text"
-                  name={`${medicine.name}Details`}
-                  value={formData[`${medicine.name}Details` as keyof ScreeningData] as string}
-                  onChange={handleInputChange}
-                  className="w-full mt-2 px-3 py-2 border border-gray-200 rounded-md"
-                  placeholder="Experience details..."
-                />
-              )}
-            </div>
-          ))}
-        </div>
+        <label className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            name="plantMedicineExperience"
+            checked={formData.plantMedicineExperience}
+            onChange={handleInputChange}
+            className="rounded"
+          />
+          <span className="text-sm font-medium text-gray-700">Has plant medicine experience</span>
+        </label>
+
+        {formData.plantMedicineExperience && (
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[
+              { name: 'ayahuasca', label: 'Ayahuasca' },
+              { name: 'iboga', label: 'Iboga' },
+              { name: 'psilocybin', label: 'Psilocybin' },
+              { name: 'bufo', label: 'Bufo' },
+              { name: 'kambo', label: 'Kambo' },
+              { name: 'sanPedro', label: 'San Pedro' },
+              { name: 'mescaline', label: 'Mescaline' },
+              { name: 'dmt', label: 'DMT' },
+              { name: 'ketamine', label: 'Ketamine' },
+              { name: 'mdma', label: 'MDMA' }
+            ].map(medicine => (
+              <div key={medicine.name}>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    name={medicine.name}
+                    checked={formData[medicine.name as keyof ScreeningData] as boolean}
+                    onChange={handleInputChange}
+                    className="rounded"
+                  />
+                  <span className="text-sm font-medium text-gray-700">{medicine.label}</span>
+                </label>
+                {formData[medicine.name as keyof ScreeningData] && (
+                  <input
+                    type="text"
+                    name={`${medicine.name}Details`}
+                    value={formData[`${medicine.name}Details` as keyof ScreeningData] as string}
+                    onChange={handleInputChange}
+                    className="w-full mt-2 px-3 py-2 border border-gray-200 rounded-md"
+                    placeholder="Experience details..."
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Handwriting Upload */}

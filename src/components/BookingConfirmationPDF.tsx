@@ -1,5 +1,7 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { MedicalArtifact, MedicalReviewRequest } from '../types';
 
 interface BookingConfirmationPDFProps {
   booking: any;
@@ -18,6 +20,93 @@ const waitForImages = async (container: HTMLElement) => {
   }));
 };
 
+const positiveReviewStatuses = new Set(['reviewed', 'approved', 'completed', 'caution']);
+const negativeReviewStatuses = new Set(['rejected', 'declined', 'needs_resubmission']);
+
+const escapeHtml = (value: any) =>
+  String(value ?? '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[char] || char));
+
+const getArtifactTime = (artifact: MedicalArtifact) =>
+  new Date(artifact.receivedAt || artifact.createdAt || 0).getTime();
+
+const getReviewTime = (review: MedicalReviewRequest) =>
+  new Date(review.reviewedAt || review.requestedAt || review.createdAt || 0).getTime();
+
+const getReviewStatus = (review?: MedicalReviewRequest) =>
+  String(review?.reviewDecision || review?.status || '').toLowerCase();
+
+const isArtifactVerified = (artifact?: MedicalArtifact, review?: MedicalReviewRequest) => {
+  const artifactStatus = String(artifact?.status || '').toLowerCase();
+  const reviewStatus = getReviewStatus(review);
+  if (negativeReviewStatuses.has(reviewStatus) || negativeReviewStatuses.has(artifactStatus)) return false;
+  return positiveReviewStatuses.has(reviewStatus) || positiveReviewStatuses.has(artifactStatus);
+};
+
+const buildRequirementStatus = async (booking: any) => {
+  const bookingId = booking?._id || booking?.id;
+  const fallback = {
+    status: 'conditional',
+    ekgVerified: false,
+    liverVerified: false,
+    contractSigned: false,
+    missingRequirements: ['EKG review', 'liver panel review', 'signed participant agreement'],
+  };
+
+  if (!bookingId) return fallback;
+
+  try {
+    const artifactsResponse = await medicalArtifactsApi.getAll({ bookingId });
+    const artifacts: MedicalArtifact[] = artifactsResponse.data || [];
+    const relevantArtifacts = artifacts.filter((artifact) => ['ekg', 'liver_panel', 'contract'].includes(artifact.artifactType));
+    const reviewEntries = await Promise.all(
+      relevantArtifacts
+        .filter((artifact) => artifact._id)
+        .map(async (artifact) => {
+          try {
+            const reviewsResponse = await medicalReviewRequestsApi.getByArtifact(artifact._id!);
+            const latestReview = [...(reviewsResponse.data || [])].sort((a, b) => getReviewTime(b) - getReviewTime(a))[0];
+            return [artifact._id!, latestReview] as const;
+          } catch {
+            return [artifact._id!, undefined] as const;
+          }
+        })
+    );
+    const reviewsByArtifact = Object.fromEntries(reviewEntries);
+    const latestArtifact = (type: string) => relevantArtifacts
+      .filter((artifact) => artifact.artifactType === type && (artifact.files || []).length > 0)
+      .sort((a, b) => getArtifactTime(b) - getArtifactTime(a))[0];
+
+    const ekgArtifact = latestArtifact('ekg');
+    const liverArtifact = latestArtifact('liver_panel');
+    const contractArtifact = latestArtifact('contract');
+    const ekgVerified = isArtifactVerified(ekgArtifact, ekgArtifact?._id ? reviewsByArtifact[ekgArtifact._id] : undefined);
+    const liverVerified = isArtifactVerified(liverArtifact, liverArtifact?._id ? reviewsByArtifact[liverArtifact._id] : undefined);
+    const contractSigned = Boolean(contractArtifact);
+    const missingRequirements = [
+      !ekgVerified ? 'EKG review' : '',
+      !liverVerified ? 'liver panel review' : '',
+      !contractSigned ? 'signed participant agreement' : '',
+    ].filter(Boolean);
+
+    return {
+      status: missingRequirements.length > 0 ? 'conditional' : 'confirmed',
+      ekgVerified,
+      liverVerified,
+      contractSigned,
+      missingRequirements,
+    };
+  } catch (error) {
+    console.error('Error loading booking requirements for PDF:', error);
+    return fallback;
+  }
+};
+
 // Translation object for all supported languages
 const translations = {
   pl: {
@@ -29,6 +118,16 @@ const translations = {
     address: 'Adres',
     email: 'Email',
     phone: 'Tel',
+    bookingStatus: 'Status rezerwacji',
+    confirmedStatus: 'Potwierdzona',
+    conditionalStatus: 'Warunkowa',
+    requirementsTitle: 'Warunki rezerwacji',
+    ekgStatus: 'EKG',
+    liverStatus: 'Panel wątroby',
+    contractStatus: 'Umowa uczestnika',
+    verified: 'zweryfikowano',
+    pending: 'wymagane',
+    conditionalNotice: 'Ta rezerwacja pozostaje warunkowa do czasu spełnienia poniższych wymagań:',
     retreatDescription: 'Pobyt uzdrawiający psychoduchowo z dwiema ceremoniami Missoko Bwiti Iboga, zakwaterowaniem (pokój Aleksism) i wyżywieniem.',
     location: 'Miejsce',
     dates: 'Data',
@@ -60,6 +159,16 @@ const translations = {
     address: 'Adresa',
     email: 'Email',
     phone: 'Tel',
+    bookingStatus: 'Stav rezervace',
+    confirmedStatus: 'Potvrzená',
+    conditionalStatus: 'Podmíněná',
+    requirementsTitle: 'Podmínky rezervace',
+    ekgStatus: 'EKG',
+    liverStatus: 'Jaterní panel',
+    contractStatus: 'Smlouva účastníka',
+    verified: 'ověřeno',
+    pending: 'vyžadováno',
+    conditionalNotice: 'Tato rezervace zůstává podmíněná, dokud nebudou splněny následující požadavky:',
     retreatDescription: 'Psychospiritualní léčebný pobyt se dvěma ceremoniemi Missoko Bwiti Iboga, ubytováním (pokoj Aleksism) a stravováním.',
     location: 'Místo',
     dates: 'Datum',
@@ -91,6 +200,16 @@ const translations = {
     address: 'Address',
     email: 'Email',
     phone: 'Phone',
+    bookingStatus: 'Booking Status',
+    confirmedStatus: 'Confirmed',
+    conditionalStatus: 'Conditional',
+    requirementsTitle: 'Booking Conditions',
+    ekgStatus: 'EKG',
+    liverStatus: 'Liver Panel',
+    contractStatus: 'Participant Agreement',
+    verified: 'verified',
+    pending: 'required',
+    conditionalNotice: 'This reservation remains conditional until the following requirements are completed:',
     retreatDescription: 'Psycho-spiritual healing retreat with two Missoko Bwiti Iboga ceremonies, accommodation (Aleksism room) and meals.',
     location: 'Location',
     dates: 'Dates',
@@ -118,9 +237,18 @@ const translations = {
 export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }: BookingConfirmationPDFProps) => {
   const client = booking.clientId || booking.clientDetails;
   const retreat = booking.retreatId || booking.retreatDetails;
+  const requirementStatus = await buildRequirementStatus(booking);
 
   // Get translations for selected language
   const t = translations[language];
+  const bookingStatusText = requirementStatus.status === 'confirmed' ? t.confirmedStatus : t.conditionalStatus;
+  const bookingStatusColor = requirementStatus.status === 'confirmed' ? '#047857' : '#92400e';
+  const bookingStatusBg = requirementStatus.status === 'confirmed' ? '#d1fae5' : '#fef3c7';
+  const requirementRows = [
+    { label: t.ekgStatus, complete: requirementStatus.ekgVerified },
+    { label: t.liverStatus, complete: requirementStatus.liverVerified },
+    { label: t.contractStatus, complete: requirementStatus.contractSigned },
+  ];
 
   // Format currency amount based on language
   const formatAmount = (amount: number) => {
@@ -152,7 +280,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
 
   pdfContent.innerHTML = `
     <div style="width: 100%; min-height: 1043px; background-color: white; position: relative; overflow: hidden; color: #374151; font-weight: 400;">
-      <img src="/images/tree/tree-svg-bg.webp" alt="" style="position: absolute; left: 50%; top: 50%; width: 76%; max-width: 620px; transform: translate(-50%, -48%); opacity: 0.15; z-index: 0; pointer-events: none;" />
+      <img src="/images/tree/tree-svg-bg.webp" alt="" style="position: absolute; left: 50%; top: 50%; width: 76%; max-width: 620px; transform: translate(-50%, -48%); opacity: 0.075; z-index: 0; pointer-events: none;" />
       <div style="position: relative; z-index: 1;">
       <!-- Header with Logo and Company Info -->
       <table style="width: 100%; border: none; margin-bottom: 15px;">
@@ -195,6 +323,12 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
                 <td style="font-size: 14px; padding: 3px 0; color: #4b5563;">${t.number}:</td>
                 <td style="font-size: 14px; padding: 3px 0 3px 15px; font-weight: 600; color: #1f2937;">${booking.bookingNumber || '1201'}</td>
               </tr>
+              <tr>
+                <td style="font-size: 14px; padding: 3px 0; color: #4b5563;">${t.bookingStatus}:</td>
+                <td style="font-size: 14px; padding: 3px 0 3px 15px;">
+                  <span style="display: inline-block; border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 600; color: ${bookingStatusColor}; background: ${bookingStatusBg};">${bookingStatusText}</span>
+                </td>
+              </tr>
             </table>
           </td>
           <td style="text-align: right; vertical-align: top; padding: 0;">
@@ -217,6 +351,27 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
       <!-- Info text -->
       <div style="margin: 25px 0 25px 0; font-size: 13px; line-height: 1.4;">
         <strong>${t.retreatDescription}</strong>
+      </div>
+
+      <div style="margin: 18px 0 24px 0; border: 1px solid rgba(31,41,55,0.14); border-radius: 8px; overflow: hidden; background: rgba(255,255,255,0.86);">
+        <div style="padding: 9px 12px; font-size: 13px; font-weight: 600; color: #1f2937; background: ${bookingStatusBg};">
+          ${t.requirementsTitle}: <span style="color: ${bookingStatusColor};">${bookingStatusText}</span>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+          <tbody>
+            ${requirementRows.map((row) => `
+              <tr>
+                <td style="border-top: 1px solid rgba(31,41,55,0.10); padding: 7px 12px; color: #4b5563;">${row.label}</td>
+                <td style="border-top: 1px solid rgba(31,41,55,0.10); padding: 7px 12px; text-align: right; color: ${row.complete ? '#047857' : '#92400e'}; font-weight: 600;">${row.complete ? t.verified : t.pending}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        ${requirementStatus.missingRequirements.length > 0 ? `
+          <div style="padding: 9px 12px; font-size: 11px; line-height: 1.45; color: #92400e; background: rgba(254,243,199,0.55);">
+            ${t.conditionalNotice} ${requirementStatus.missingRequirements.map(escapeHtml).join(', ')}.
+          </div>
+        ` : ''}
       </div>
 
       <!-- Location Details -->
