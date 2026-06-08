@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { clientsApi, paymentsApi, clientMedicalApi, bookingsApi, paymentRequestsApi } from '../services/api';
+import { clientsApi, paymentsApi, clientMedicalApi, bookingsApi, paymentRequestsApi, retreatsApi } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
 import AppleButton from './AppleButton';
 import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
 import { PaymentRequest } from '../types';
-import { FiArrowLeft, FiCamera, FiEdit2, FiUser, FiPhone, FiMail, FiMapPin, FiCalendar, FiDollarSign, FiActivity, FiFileText, FiAlertCircle, FiPlus, FiMessageSquare, FiCheckSquare, FiHeart, FiEye, FiEyeOff } from 'react-icons/fi';
+import { FiArrowLeft, FiCamera, FiEdit2, FiTrash2, FiUser, FiPhone, FiMail, FiMapPin, FiCalendar, FiDollarSign, FiActivity, FiFileText, FiAlertCircle, FiPlus, FiMessageSquare, FiCheckSquare, FiHeart, FiEye, FiEyeOff } from 'react-icons/fi';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -86,12 +86,14 @@ const ClientDetailsPage: React.FC = () => {
   const [payments, setPayments] = useState<any[]>([]);
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
+  const [retreats, setRetreats] = useState<any[]>([]);
   const [medicalInfo, setMedicalInfo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(() => new URLSearchParams(location.search).get('tab') || 'overview');
   const [error, setError] = useState<string | null>(null);
   const [showAddNoteModal, setShowAddNoteModal] = useState(false);
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
+  const [editingPayment, setEditingPayment] = useState<any | null>(null);
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [showAddMedicalModal, setShowAddMedicalModal] = useState(false);
   const [showLoginPin, setShowLoginPin] = useState(false);
@@ -223,13 +225,21 @@ const ClientDetailsPage: React.FC = () => {
     setClient(updatedClient);
   };
 
+  const getId = (value: any) => {
+    if (!value) return '';
+    if (typeof value === 'string') return value;
+    return value._id || value.id || '';
+  };
+
+  const getDefaultRetreatId = () => getId(bookings[0]?.retreatId || bookings[0]?.retreat);
+
   const resetNewPayment = () => {
     setNewPayment({
       date: '',
       type: '',
       amount: '',
       currency: 'EUR',
-      retreatId: '',
+      retreatId: getDefaultRetreatId(),
       paymentRequestId: '',
       usdAmount: '',
       usdPreviewLoading: false,
@@ -238,15 +248,80 @@ const ClientDetailsPage: React.FC = () => {
     });
   };
 
-  const getId = (value: any) => {
-    if (!value) return '';
-    if (typeof value === 'string') return value;
-    return value._id || value.id || '';
-  };
-
   const getBookingFullPrice = (booking: any) => (
     booking?.totalAmount || booking?.totalPrice || booking?.fullPrice || booking?.fullPriceQuote || ''
   );
+
+  const getPaymentTypeFormValue = (paymentType?: string) => {
+    const typeMap: Record<string, string> = {
+      deposit_non_refundable: 'deposit',
+      deposit_refundable: 'deposit',
+      regular_payment: 'installment',
+      balance_payment: 'full_payment',
+      refund: 'refund',
+      adjustment: 'installment',
+    };
+    return typeMap[paymentType || ''] || 'installment';
+  };
+
+  const getRetreatLabel = (retreat: any) => {
+    if (!retreat) return 'Unknown retreat';
+    return [
+      retreat.retreatCode || retreat.code || retreat.name || retreat.title,
+      retreat.location,
+      retreat.startDate ? formatDate(retreat.startDate) : '',
+    ].filter(Boolean).join(' - ') || getId(retreat);
+  };
+
+  const getRetreatById = (retreatId: string) => {
+    if (!retreatId) return null;
+    return retreats.find((retreat) => getId(retreat) === retreatId)
+      || bookings.map((booking) => booking.retreat || booking.retreatId).find((retreat) => getId(retreat) === retreatId)
+      || null;
+  };
+
+  const getRetreatOptions = () => {
+    const options = new Map<string, any>();
+    bookings.forEach((booking) => {
+      const retreat = booking.retreat || booking.retreatId;
+      const id = getId(retreat);
+      if (id) options.set(id, retreat);
+    });
+    retreats.forEach((retreat) => {
+      const id = getId(retreat);
+      if (id && !options.has(id)) options.set(id, retreat);
+    });
+    return Array.from(options.entries()).map(([id, retreat]) => ({ id, label: getRetreatLabel(retreat) }));
+  };
+
+  const formatPaymentAmount = (payment: any) => {
+    const amount = Number(payment.amount || 0);
+    const currency = payment.currency || 'USD';
+    return `${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
+  };
+
+  const openAddPaymentModal = () => {
+    setEditingPayment(null);
+    resetNewPayment();
+    setShowAddPaymentModal(true);
+  };
+
+  const openEditPaymentModal = (payment: any) => {
+    setEditingPayment(payment);
+    setNewPayment({
+      date: payment.paymentDate ? new Date(payment.paymentDate).toISOString().slice(0, 10) : '',
+      type: getPaymentTypeFormValue(payment.paymentType || payment.type),
+      amount: payment.amount ? String(payment.amount) : '',
+      currency: payment.currency || 'EUR',
+      retreatId: getId(payment.retreatId) || getDefaultRetreatId(),
+      paymentRequestId: getId(payment.paymentRequestId),
+      usdAmount: payment.usd_amount ? String(payment.usd_amount) : '',
+      usdPreviewLoading: false,
+      usdPreviewError: '',
+      note: payment.notes || payment.description || '',
+    });
+    setShowAddPaymentModal(true);
+  };
 
   const getPaymentRequestUrl = (request: PaymentRequest) => (
     request.publicHash ? `https://ibogaspirit.com/clients/payments/deposit/v2/${request.publicHash}` : ''
@@ -282,12 +357,12 @@ const ClientDetailsPage: React.FC = () => {
     }));
   };
 
-  const handleAddPayment = async () => {
+  const handleSavePayment = async () => {
     if (!clientId || !newPayment.date || !newPayment.type || !newPayment.amount) return;
 
-    const retreatId = newPayment.retreatId || getId(bookings[0]?.retreatId || bookings[0]?.retreat);
+    const retreatId = newPayment.retreatId || getDefaultRetreatId();
     if (!retreatId) {
-      alert('Please link a payment request or make sure the client has a booking with a retreat.');
+      alert('Please select a retreat for this payment.');
       return;
     }
 
@@ -299,7 +374,7 @@ const ClientDetailsPage: React.FC = () => {
     };
 
     try {
-      await paymentsApi.create({
+      const paymentData = {
         clientId,
         retreatId,
         paymentRequestId: newPayment.paymentRequestId || undefined,
@@ -312,13 +387,34 @@ const ClientDetailsPage: React.FC = () => {
         description: newPayment.note || undefined,
         paymentDate: new Date(newPayment.date),
         notes: newPayment.note || undefined,
-      } as any);
+      } as any;
+
+      if (editingPayment?._id) {
+        await paymentsApi.update(editingPayment._id, paymentData);
+      } else {
+        await paymentsApi.create(paymentData);
+      }
+
       await fetchClientData();
       resetNewPayment();
+      setEditingPayment(null);
       setShowAddPaymentModal(false);
     } catch (paymentError) {
-      console.error('Error adding payment:', paymentError);
-      alert('Failed to add payment');
+      console.error('Error saving payment:', paymentError);
+      alert('Failed to save payment');
+    }
+  };
+
+  const handleDeletePayment = async (payment: any) => {
+    if (!payment?._id) return;
+    if (!window.confirm('Delete this payment? This cannot be undone.')) return;
+
+    try {
+      await paymentsApi.delete(payment._id);
+      await fetchClientData();
+    } catch (paymentError) {
+      console.error('Error deleting payment:', paymentError);
+      alert('Failed to delete payment');
     }
   };
 
@@ -350,11 +446,12 @@ const ClientDetailsPage: React.FC = () => {
       setError(null);
 
       // Fetch all data in parallel
-      const [clientResponse, paymentsResponse, paymentRequestsResponse, bookingsResponse, medicalResponse] = await Promise.all([
+      const [clientResponse, paymentsResponse, paymentRequestsResponse, bookingsResponse, retreatsResponse, medicalResponse] = await Promise.all([
         clientsApi.getOne(clientId!),
         paymentsApi.getByClient(clientId!).catch(() => ({ data: [] })),
         paymentRequestsApi.getByClient(clientId!).catch(() => ({ data: [] })),
         bookingsApi.getByClient(clientId!).catch(() => ({ data: [] })),
+        retreatsApi.getAll().catch(() => ({ data: [] })),
         clientMedicalApi.getByClient(clientId!).catch(() => ({ data: null }))
       ]);
 
@@ -362,6 +459,7 @@ const ClientDetailsPage: React.FC = () => {
       setPayments(paymentsResponse.data || []);
       setPaymentRequests(paymentRequestsResponse.data || []);
       setBookings(bookingsResponse.data || []);
+      setRetreats(retreatsResponse.data || []);
       setMedicalInfo(medicalResponse.data);
     } catch (error: any) {
       console.error('Error fetching client data:', error);
@@ -374,11 +472,6 @@ const ClientDetailsPage: React.FC = () => {
   const formatDate = (date: Date | string | undefined) => {
     if (!date) return 'N/A';
     return new Date(date).toLocaleDateString();
-  };
-
-  const formatCurrency = (amount: number | undefined) => {
-    if (!amount) return '$0.00';
-    return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   const getStatusBadge = (status: string) => {
@@ -1378,7 +1471,7 @@ const ClientDetailsPage: React.FC = () => {
             <div className="flex w-full items-center gap-4 mb-4">
               <h2 className="text-lg font-semibold whitespace-nowrap">Payment History</h2>
               <AppleButton
-                onClick={() => setShowAddPaymentModal(true)}
+                onClick={openAddPaymentModal}
                 className="apple-button-primary ml-auto w-auto flex-none px-3 py-2 whitespace-nowrap"
               >
                 <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
@@ -1467,6 +1560,9 @@ const ClientDetailsPage: React.FC = () => {
                         Amount
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Retreat
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Type
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1475,28 +1571,58 @@ const ClientDetailsPage: React.FC = () => {
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Reference
                       </th>
+                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {payments.map((payment) => (
-                      <tr key={payment._id}>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {formatDate(payment.paymentDate)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                          {formatCurrency(payment.amount)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {payment.type || 'Payment'}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {getStatusBadge(payment.status || 'completed')}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                          {payment.reference || 'N/A'}
-                        </td>
-                      </tr>
-                    ))}
+                    {payments.map((payment) => {
+                      const paymentRetreatId = getId(payment.retreatId);
+                      const paymentRetreat = getRetreatById(paymentRetreatId);
+                      return (
+                        <tr key={payment._id}>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {formatDate(payment.paymentDate)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {formatPaymentAmount(payment)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {paymentRetreat ? getRetreatLabel(paymentRetreat) : 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {payment.paymentType || payment.type || 'Payment'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            {getStatusBadge(payment.status || 'completed')}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {payment.transactionReference || payment.transactionId || payment.reference || payment.description || 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <div className="flex justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => openEditPaymentModal(payment)}
+                                className="inline-flex items-center rounded-md border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50"
+                              >
+                                <Icon icon={FiEdit2} className="mr-1 h-3.5 w-3.5" />
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeletePayment(payment)}
+                                className="inline-flex items-center rounded-md border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+                              >
+                                <Icon icon={FiTrash2} className="mr-1 h-3.5 w-3.5" />
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -1737,7 +1863,7 @@ const ClientDetailsPage: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
           <div className="bg-white rounded-lg shadow-lg w-full max-w-md">
             <div className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Add Payment</h3>
+              <h3 className="text-lg font-semibold mb-4">{editingPayment ? 'Edit Payment' : 'Add Payment'}</h3>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1764,6 +1890,23 @@ const ClientDetailsPage: React.FC = () => {
                     <option value="full_payment">Full Payment</option>
                     <option value="installment">Installment</option>
                     <option value="refund">Refund</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Retreat
+                  </label>
+                  <select
+                    value={newPayment.retreatId}
+                    onChange={(e) => setNewPayment({...newPayment, retreatId: e.target.value})}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="">Select retreat</option>
+                    {getRetreatOptions().map((retreat) => (
+                      <option key={retreat.id} value={retreat.id}>
+                        {retreat.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -1836,6 +1979,7 @@ const ClientDetailsPage: React.FC = () => {
                 <AppleButton
                   onClick={() => {
                     setShowAddPaymentModal(false);
+                    setEditingPayment(null);
                     resetNewPayment();
                   }}
                   variant="ghost"
@@ -1843,10 +1987,10 @@ const ClientDetailsPage: React.FC = () => {
                   Cancel
                 </AppleButton>
                 <AppleButton
-                  onClick={handleAddPayment}
+                  onClick={handleSavePayment}
                   className="apple-button-primary"
                 >
-                  Add Payment
+                  {editingPayment ? 'Update Payment' : 'Add Payment'}
                 </AppleButton>
               </div>
             </div>
