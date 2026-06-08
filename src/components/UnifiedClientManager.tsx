@@ -753,9 +753,9 @@ const UnifiedClientManager: React.FC = () => {
 
       {/* Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-          <div className="w-full max-w-6xl max-h-[92vh] overflow-hidden rounded-lg border border-slate-200 bg-slate-50 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
+        <div className="fixed inset-0 z-50 flex items-stretch justify-center bg-white sm:items-center sm:bg-black sm:bg-opacity-50 sm:p-4">
+          <div className="flex h-full w-full flex-col overflow-hidden bg-slate-50 sm:h-auto sm:max-h-[92vh] sm:max-w-6xl sm:rounded-lg sm:border sm:border-slate-200 sm:shadow-2xl">
+            <div className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-white px-4 py-3 sm:px-5 sm:py-4">
                 <h3 className="text-lg font-semibold text-slate-950">
                   {selectedClient ? 'Edit Client' : 'Add New Client'}
                 </h3>
@@ -767,9 +767,9 @@ const UnifiedClientManager: React.FC = () => {
                 </button>
             </div>
 
-            <div className="max-h-[calc(92vh-73px)] overflow-y-auto p-5">
-              <div className="grid gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
-                <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-0 lg:self-start">
+            <div className="flex-1 overflow-y-auto p-3 sm:max-h-[calc(92vh-73px)] sm:p-5">
+              <div className="grid gap-3 sm:gap-5 lg:grid-cols-[260px_minmax(0,1fr)]">
+                <aside className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5 lg:sticky lg:top-0 lg:self-start">
                   <div className="flex flex-col items-center gap-4">
                     <div className="relative h-36 w-36 overflow-hidden rounded-full border border-slate-200 bg-slate-50 shadow-sm">
                       {profilePicturePreviewUrl ? (
@@ -792,8 +792,8 @@ const UnifiedClientManager: React.FC = () => {
                   </div>
                 </aside>
 
-                <div className="grid gap-5 lg:grid-cols-2">
-                  <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="grid gap-3 sm:gap-5 lg:grid-cols-2">
+                  <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                     <h4 className="mb-4 border-b border-slate-200 pb-3 text-base font-semibold text-slate-900">Basic Information</h4>
                     <div className="space-y-4">
                       <AppleInput
@@ -864,7 +864,7 @@ const UnifiedClientManager: React.FC = () => {
                     </div>
                   </section>
 
-                  <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+                  <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                     <h4 className="mb-4 border-b border-slate-200 pb-3 text-base font-semibold text-slate-900">Address and Status</h4>
                     <div className="space-y-4">
                       <AppleInput
@@ -909,7 +909,7 @@ const UnifiedClientManager: React.FC = () => {
                 </div>
               </div>
 
-              <div className="mt-5 flex justify-end gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="sticky bottom-0 mt-4 flex justify-end gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm sm:mt-5 sm:p-4">
                 <AppleButton variant="secondary" onClick={handleCloseForm}>
                   Cancel
                 </AppleButton>
