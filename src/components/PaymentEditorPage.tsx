@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { bookingsApi, clientsApi, paymentsApi, retreatsApi } from '../services/api';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { bookingsApi, clientsApi, paymentRequestsApi, paymentsApi, retreatsApi } from '../services/api';
 import { Client, Payment, PaymentRequest, Retreat, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import SearchableClientSelect from './SearchableClientSelect';
@@ -62,7 +62,9 @@ const paymentTypeFromRequest = (requestType?: PaymentRequest['requestType']): Pa
 const PaymentEditorPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const isEdit = Boolean(id);
+  const paymentRequestIdFromQuery = new URLSearchParams(location.search).get('paymentRequestId') || '';
 
   const [loading, setLoading] = useState(Boolean(id));
   const [clients, setClients] = useState<Client[]>([]);
@@ -128,6 +130,9 @@ const PaymentEditorPage: React.FC = () => {
             isRefundable: payment.isRefundable || false,
             paymentType: payment.paymentType || 'regular_payment',
           });
+        } else if (paymentRequestIdFromQuery) {
+          const paymentRequestResponse = await paymentRequestsApi.getOne(paymentRequestIdFromQuery);
+          applyPaymentRequest(paymentRequestIdFromQuery, paymentRequestResponse.data, bookingsResponse.data || []);
         }
       } catch (error) {
         console.error('Error loading payment editor data:', error);
@@ -137,7 +142,7 @@ const PaymentEditorPage: React.FC = () => {
     };
 
     loadData();
-  }, [id]);
+  }, [id, paymentRequestIdFromQuery]);
 
   const handleChange = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -190,16 +195,16 @@ const PaymentEditorPage: React.FC = () => {
     };
   }, [formData.amount, formData.currency]);
 
-  const findBookingForPaymentRequest = (paymentRequestId: string, clientId?: string, retreatId?: string) => {
-    return bookings.find((booking) => resolveId(booking.paymentRequestId) === paymentRequestId)
-      || bookings.find((booking) => {
+  const findBookingForPaymentRequest = (paymentRequestId: string, clientId?: string, retreatId?: string, bookingList = bookings) => {
+    return bookingList.find((booking) => resolveId(booking.paymentRequestId) === paymentRequestId)
+      || bookingList.find((booking) => {
         const bookingClientId = resolveId(booking.clientId);
         const bookingRetreatId = resolveId(booking.retreatId);
         return Boolean(clientId && retreatId && bookingClientId === clientId && bookingRetreatId === retreatId);
       });
   };
 
-  const handlePaymentRequestSelect = (paymentRequestId: string, paymentRequest?: PaymentRequest) => {
+  const applyPaymentRequest = (paymentRequestId: string, paymentRequest?: PaymentRequest, bookingList = bookings) => {
     setSelectedPaymentRequest(paymentRequest || null);
 
     if (!paymentRequestId || !paymentRequest) {
@@ -214,7 +219,7 @@ const PaymentEditorPage: React.FC = () => {
     const currency = paymentRequest?.currency || formData.currency;
     const clientId = resolveId(paymentRequest?.clientId);
     const retreatId = resolveId(paymentRequest?.retreatId);
-    const booking = findBookingForPaymentRequest(paymentRequestId, clientId, retreatId);
+    const booking = findBookingForPaymentRequest(paymentRequestId, clientId, retreatId, bookingList);
     const requestPaymentType = paymentTypeFromRequest(paymentRequest.requestType);
 
     setFormData((prev) => ({
@@ -234,6 +239,10 @@ const PaymentEditorPage: React.FC = () => {
       description: `Payment for invoice ${paymentRequest.invoiceNumber || paymentRequest.display_id || ''}`.trim(),
       notes: prev.notes || paymentRequest.note || paymentRequest.notes || '',
     }));
+  };
+
+  const handlePaymentRequestSelect = (paymentRequestId: string, paymentRequest?: PaymentRequest) => {
+    applyPaymentRequest(paymentRequestId, paymentRequest);
   };
 
   const handleBookingSelect = (bookingId: string) => {
@@ -331,7 +340,7 @@ const PaymentEditorPage: React.FC = () => {
                 className="w-full"
               />
               {selectedPaymentRequest && (
-                <div className="mt-3 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950">
+                <div className="mt-3 rounded-md border border-gray-200 bg-white p-3 text-sm text-gray-800">
                   <div className="font-semibold">
                     Invoice {selectedPaymentRequest.invoiceNumber || `#${selectedPaymentRequest.display_id || 'n/a'}`}
                   </div>

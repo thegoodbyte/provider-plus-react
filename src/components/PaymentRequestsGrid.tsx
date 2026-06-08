@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { paymentRequestsApi } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
 import LoadingSpinner from './LoadingSpinner';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiCheckCircle, FiClock, FiAlertTriangle, FiSend, FiCopy, FiExternalLink } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiCheckCircle, FiClock, FiAlertTriangle, FiSend, FiCopy, FiExternalLink, FiDollarSign } from 'react-icons/fi';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -241,6 +241,13 @@ const PaymentRequestsGrid: React.FC = () => {
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => navigate(`/admin/payments/new?paymentRequestId=${request._id}`)}
+                          className="text-green-600 hover:text-green-900"
+                          title="Add payment"
+                        >
+                          <Icon icon={FiDollarSign} className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => handleSendPaymentRequest(request)}
                           className="text-blue-600 hover:text-blue-900 disabled:opacity-50"
