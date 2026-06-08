@@ -417,11 +417,17 @@ const ClientDetailsPage: React.FC = () => {
   const screeningData = client?.screeningData || {};
   const getScreeningValue = (...keys: string[]) => {
     for (const key of keys) {
-      const value = client?.[key] ?? screeningData?.[key];
+      const value = screeningData?.[key] ?? client?.[key];
       if (value !== undefined && value !== null && value !== '') return value;
     }
     return '';
   };
+
+  const humanizeScreeningKey = (key: string) => (
+    key
+      .replace(/([A-Z])/g, ' $1')
+      .replace(/^./, (letter) => letter.toUpperCase())
+  );
 
   const formatScreeningValue = (value: any) => {
     if (!value || typeof value !== 'object') return value;
@@ -443,7 +449,49 @@ const ClientDetailsPage: React.FC = () => {
       .filter(([key]) => Boolean(value[key]))
       .map(([, label]) => label);
     const details = value.details || value.otherDetails;
-    return [selected.join(', '), details].filter(Boolean).join('\n') || '';
+    const extraValues = Object.entries(value)
+      .filter(([key, entryValue]) => !labels[key] && !['details', 'otherDetails'].includes(key) && Boolean(entryValue))
+      .map(([key, entryValue]) => `${humanizeScreeningKey(key)}: ${entryValue}`);
+    return [
+      selected.length ? `Selected: ${selected.join(', ')}` : '',
+      details,
+      ...extraValues,
+    ].filter(Boolean).join('\n') || '';
+  };
+
+  const getBooleanDetailValue = (flagKey: string, detailKey: string) => {
+    const flag = getScreeningValue(flagKey);
+    const details = getScreeningValue(detailKey);
+    if (details) return details;
+    if (flag === true || flag === 'true' || flag === 'yes' || flag === 'Yes') return 'Yes';
+    return '';
+  };
+
+  const renderScreeningField = (label: string, value: any) => {
+    const formattedValue = formatScreeningValue(value);
+    if (!formattedValue) return null;
+
+    return (
+      <div>
+        <h3 className="text-sm font-medium text-gray-500 mb-2">{label}</h3>
+        <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded whitespace-pre-wrap">{formattedValue}</p>
+      </div>
+    );
+  };
+
+  const renderScreeningGrid = (items: Array<{ label: string; value: any }>) => {
+    const visibleItems = items.filter((item) => Boolean(formatScreeningValue(item.value)));
+    if (visibleItems.length === 0) return null;
+
+    return (
+      <div className="grid gap-4 md:grid-cols-2">
+        {visibleItems.map((item) => (
+          <React.Fragment key={item.label}>
+            {renderScreeningField(item.label, item.value)}
+          </React.Fragment>
+        ))}
+      </div>
+    );
   };
 
   const screeningFileUrl = getScreeningValue('handwritingImageUrl');
@@ -469,8 +517,55 @@ const ClientDetailsPage: React.FC = () => {
     'bloodPressureStatus',
     'bloodPressureValue',
     'vitaminsSupplements',
+    'age',
+    'screeningDate',
+    'riskLevel',
+    'phoneNumber',
+    'childhood',
+    'sexualAbuse',
+    'sexualAbuseDetails',
+    'physicalAbuse',
+    'physicalAbuseDetails',
     'psychologicalAbuse',
     'psychologicalAbuseDetails',
+    'ssris',
+    'drugsHistory',
+    'marijuana',
+    'marijuanaDetails',
+    'cocaine',
+    'cocaineDetails',
+    'meth',
+    'methDetails',
+    'heroin',
+    'heroinDetails',
+    'benzos',
+    'benzosDetails',
+    'alcoholHistory',
+    'healthComplications',
+    'ayahuasca',
+    'ayahuascaDetails',
+    'iboga',
+    'ibogaDetails',
+    'psilocybin',
+    'psilocybinDetails',
+    'bufo',
+    'bufoDetails',
+    'kambo',
+    'kamboDetails',
+    'sanPedro',
+    'sanPedroDetails',
+    'mescaline',
+    'mescalineDetails',
+    'dmt',
+    'dmtDetails',
+    'ketamine',
+    'ketamineDetails',
+    'mdma',
+    'mdmaDetails',
+    'desiredRetreat',
+    'quotedPrice',
+    'screenedBy',
+    'status',
     'generalNotes',
     'notes',
     'handwritingImageUrl',
@@ -842,84 +937,64 @@ const ClientDetailsPage: React.FC = () => {
                 </div>
               )}
 
-              {getScreeningValue('whySeekingIboga', 'mainIntent') && (
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">Why Seeking Iboga</h3>
-                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{getScreeningValue('whySeekingIboga', 'mainIntent')}</p>
-                </div>
-              )}
+              {renderScreeningGrid([
+                { label: 'Screening Date', value: getScreeningValue('screeningDate') ? formatDate(getScreeningValue('screeningDate')) : '' },
+                { label: 'Age', value: getScreeningValue('age') },
+                { label: 'Risk Level', value: getScreeningValue('riskLevel') },
+                { label: 'Screening Form Status', value: getScreeningValue('status') },
+                { label: 'Desired Retreat', value: getScreeningValue('desiredRetreat') },
+                { label: 'Quoted Price', value: getScreeningValue('quotedPrice') },
+                { label: 'Screened By', value: getScreeningValue('screenedBy') },
+                { label: 'Phone Number', value: getScreeningValue('phoneNumber') },
+              ])}
 
-              {getScreeningValue('whatToChange', 'riskNotes') && (
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">What to Change</h3>
-                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{getScreeningValue('whatToChange', 'riskNotes')}</p>
-                </div>
-              )}
+              {renderScreeningGrid([
+                { label: 'Why Seeking Iboga', value: getScreeningValue('whySeekingIboga', 'mainIntent') },
+                { label: 'What to Change / Risk Notes', value: getScreeningValue('whatToChange', 'riskNotes') },
+                { label: 'Childhood', value: getScreeningValue('childhood') },
+                { label: 'Observations / General Notes', value: getScreeningValue('observations', 'generalNotes', 'notes') },
+              ])}
 
-              <div className="grid gap-4 md:grid-cols-2">
-                {getScreeningValue('heartConditions', 'heartCondition') && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Heart</h3>
-                    <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{getScreeningValue('heartConditions', 'heartCondition')}</p>
-                  </div>
-                )}
-                {getScreeningValue('liverConditions', 'liverCondition') && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Liver</h3>
-                    <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{getScreeningValue('liverConditions', 'liverCondition')}</p>
-                  </div>
-                )}
-                {getScreeningValue('asthmaConditions', 'asthmaCondition') && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Asthma</h3>
-                    <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{getScreeningValue('asthmaConditions', 'asthmaCondition')}</p>
-                  </div>
-                )}
-                {getScreeningValue('bloodPressureIssues', 'bloodPressure') && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Blood Pressure</h3>
-                    <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{getScreeningValue('bloodPressureIssues', 'bloodPressure')}</p>
-                  </div>
-                )}
-                {(getScreeningValue('bloodPressureStatus') || getScreeningValue('bloodPressureValue')) && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-500 mb-2">Blood Pressure Details</h3>
-                    <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">
-                      {[getScreeningValue('bloodPressureStatus'), getScreeningValue('bloodPressureValue')].filter(Boolean).join(' - ')}
-                    </p>
-                  </div>
-                )}
-              </div>
+              {renderScreeningGrid([
+                { label: 'Sexual Abuse', value: getBooleanDetailValue('sexualAbuse', 'sexualAbuseDetails') },
+                { label: 'Physical Abuse', value: getBooleanDetailValue('physicalAbuse', 'physicalAbuseDetails') },
+                { label: 'Psychological Abuse', value: getBooleanDetailValue('psychologicalAbuse', 'psychologicalAbuseDetails') },
+              ])}
 
-              {getScreeningValue('currentMedications', 'medications') && (
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">Current Medications</h3>
-                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{getScreeningValue('currentMedications', 'medications')}</p>
-                </div>
-              )}
+              {renderScreeningGrid([
+                { label: 'Heart', value: getScreeningValue('heartConditions', 'heartCondition') },
+                { label: 'Liver', value: getScreeningValue('liverConditions', 'liverCondition') },
+                { label: 'Asthma', value: getScreeningValue('asthmaConditions', 'asthmaCondition') },
+                { label: 'Current Medications', value: getScreeningValue('currentMedications', 'medications') },
+                { label: 'SSRIs', value: getScreeningValue('ssris') },
+                { label: 'Blood Pressure', value: getScreeningValue('bloodPressureIssues', 'bloodPressure') },
+                { label: 'Blood Pressure Details', value: [getScreeningValue('bloodPressureStatus'), getScreeningValue('bloodPressureValue')].filter(Boolean).join(' - ') },
+                { label: 'Alcohol History', value: getScreeningValue('alcoholHistory') },
+                { label: 'Health Complications', value: getScreeningValue('healthComplications') },
+                { label: 'Vitamins & Supplements', value: getScreeningValue('vitaminsSupplements') },
+              ])}
 
-              {getScreeningValue('vitaminsSupplements') && (
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">Vitamins & Supplements</h3>
-                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded whitespace-pre-wrap">{formatScreeningValue(getScreeningValue('vitaminsSupplements'))}</p>
-                </div>
-              )}
+              {renderScreeningGrid([
+                { label: 'Drug History', value: getScreeningValue('drugsHistory') },
+                { label: 'Marijuana', value: getBooleanDetailValue('marijuana', 'marijuanaDetails') },
+                { label: 'Cocaine', value: getBooleanDetailValue('cocaine', 'cocaineDetails') },
+                { label: 'Meth', value: getBooleanDetailValue('meth', 'methDetails') },
+                { label: 'Heroin', value: getBooleanDetailValue('heroin', 'heroinDetails') },
+                { label: 'Benzos', value: getBooleanDetailValue('benzos', 'benzosDetails') },
+              ])}
 
-              {(getScreeningValue('psychologicalAbuse') || getScreeningValue('psychologicalAbuseDetails')) && (
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">Psychological Abuse</h3>
-                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded whitespace-pre-wrap">
-                    {getScreeningValue('psychologicalAbuseDetails') || 'Yes'}
-                  </p>
-                </div>
-              )}
-
-              {getScreeningValue('observations', 'generalNotes', 'notes') && (
-                <div>
-                  <h3 className="text-sm font-medium text-gray-500 mb-2">Observations</h3>
-                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{getScreeningValue('observations', 'generalNotes', 'notes')}</p>
-                </div>
-              )}
+              {renderScreeningGrid([
+                { label: 'Ayahuasca', value: getBooleanDetailValue('ayahuasca', 'ayahuascaDetails') },
+                { label: 'Iboga', value: getBooleanDetailValue('iboga', 'ibogaDetails') },
+                { label: 'Psilocybin', value: getBooleanDetailValue('psilocybin', 'psilocybinDetails') },
+                { label: 'Bufo', value: getBooleanDetailValue('bufo', 'bufoDetails') },
+                { label: 'Kambo', value: getBooleanDetailValue('kambo', 'kamboDetails') },
+                { label: 'San Pedro', value: getBooleanDetailValue('sanPedro', 'sanPedroDetails') },
+                { label: 'Mescaline', value: getBooleanDetailValue('mescaline', 'mescalineDetails') },
+                { label: 'DMT', value: getBooleanDetailValue('dmt', 'dmtDetails') },
+                { label: 'Ketamine', value: getBooleanDetailValue('ketamine', 'ketamineDetails') },
+                { label: 'MDMA', value: getBooleanDetailValue('mdma', 'mdmaDetails') },
+              ])}
 
               {screeningFileUrl && (
                 <div>
