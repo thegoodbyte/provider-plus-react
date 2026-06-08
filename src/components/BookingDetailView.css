@@ -394,7 +394,7 @@
   }
 }
 
-@media (max-width: 560px) {
+@media (max-width: 768px) {
   .booking-detail-container {
     padding: 8px;
   }
@@ -419,12 +419,11 @@
   }
 
   .booking-title-kicker {
-    font-size: 11px;
-    letter-spacing: 0.06em;
+    display: none;
   }
 
   .detail-header h1 {
-    font-size: 30px;
+    font-size: 22px;
     line-height: 1.05;
     overflow-wrap: anywhere;
   }
@@ -437,6 +436,8 @@
     overflow-x: auto;
     padding: 2px 2px 6px;
     scrollbar-width: none;
+    align-items: center;
+    justify-content: flex-start;
   }
 
   .header-actions::-webkit-scrollbar {
@@ -456,7 +457,7 @@
 
   .pdf-btn,
   .pdf-btn.primary-action {
-    flex: 0 0 40px;
+    flex: 0 0 38px;
     width: 40px;
     height: 40px;
     padding: 0;
