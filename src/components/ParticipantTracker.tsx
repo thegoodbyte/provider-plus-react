@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { bookingsApi, ceremoniesApi } from '../services/api';
 import { Ceremony, CeremonyParticipant, RetreatClient } from '../types';
 import { Button, Card, Col, Form, Input, InputNumber, Modal, Row, Select, Statistic, TimePicker, message } from 'antd';
-import { ArrowLeft, Clock3, Plus, Trash2 } from 'lucide-react';
+import { Activity, ArrowLeft, Clock3, Plus, Trash2 } from 'lucide-react';
 import moment from 'moment';
 
 interface ParticipantTrackerProps {
@@ -120,12 +120,14 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState<CeremonyParticipant | null>(null);
+  const [medicalParticipant, setMedicalParticipant] = useState<CeremonyParticipant | null>(null);
   const [editingEventId, setEditingEventId] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [addingRow, setAddingRow] = useState(false);
   const [rowTime, setRowTime] = useState(moment().format('HH:mm'));
   const [rowInputs, setRowInputs] = useState<Record<string, string>>({});
   const [form] = Form.useForm();
+  const [medicalForm] = Form.useForm();
 
   useEffect(() => {
     loadData();
@@ -195,6 +197,21 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
       note: event?.note || '',
     });
     setModalOpen(true);
+  };
+
+  const openMedicalModal = (participant: CeremonyParticipant) => {
+    setMedicalParticipant(participant);
+    medicalForm.setFieldsValue({
+      ekgApproved: participant.preCeremonyEkg?.approved === undefined ? 'pending' : participant.preCeremonyEkg.approved ? 'approved' : 'rejected',
+      ekgNotes: participant.preCeremonyEkg?.notes || '',
+      systolic: participant.preCeremonyBloodPressure?.systolic,
+      diastolic: participant.preCeremonyBloodPressure?.diastolic,
+      pulse: participant.preCeremonyBloodPressure?.pulse,
+      bpApproved: participant.preCeremonyBloodPressure?.approved === undefined ? 'pending' : participant.preCeremonyBloodPressure.approved ? 'approved' : 'rejected',
+      bpNotes: participant.preCeremonyBloodPressure?.notes || '',
+      medicalClearance: participant.medicalClearance || 'pending',
+      medicalClearanceNotes: participant.medicalClearanceNotes || '',
+    });
   };
 
   const ensureSavedParticipant = async (participant: CeremonyParticipant) => {
@@ -311,6 +328,40 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
     }
   };
 
+  const saveMedicalCheck = async (values: any) => {
+    if (!medicalParticipant || !ceremony) return;
+
+    try {
+      setSaving(true);
+      const participantToUpdate = await ensureSavedParticipant(medicalParticipant);
+      await ceremoniesApi.updateMedicalCheck(participantToUpdate._id!, {
+        preCeremonyEkg: {
+          approved: values.ekgApproved === 'pending' ? undefined : values.ekgApproved === 'approved',
+          notes: values.ekgNotes || '',
+          reviewedAt: values.ekgApproved && values.ekgApproved !== 'pending' ? new Date().toISOString() : undefined,
+        },
+        preCeremonyBloodPressure: {
+          systolic: values.systolic ? Number(values.systolic) : undefined,
+          diastolic: values.diastolic ? Number(values.diastolic) : undefined,
+          pulse: values.pulse ? Number(values.pulse) : undefined,
+          approved: values.bpApproved === 'pending' ? undefined : values.bpApproved === 'approved',
+          notes: values.bpNotes || '',
+          recordedAt: new Date().toISOString(),
+        },
+        medicalClearance: values.medicalClearance || 'pending',
+        medicalClearanceNotes: values.medicalClearanceNotes || '',
+      });
+      message.success('Pre-ceremony medical check saved');
+      setMedicalParticipant(null);
+      await loadData();
+    } catch (error) {
+      message.error('Failed to save pre-ceremony medical check');
+      console.error('Error saving pre-ceremony medical check:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const deleteEvent = async (participant: CeremonyParticipant, eventId?: string) => {
     if (!participant._id || !eventId) return;
     const eventLog = (participant.eventLog || []).filter((event) => event.id !== eventId);
@@ -347,7 +398,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
         </div>
         <div className="flex items-center gap-2">
           <Button type="primary" icon={<Icon icon={Plus} className="h-4 w-4" />} onClick={startRowAdd} disabled={addingRow || participants.length === 0}>
-            Add
+            Add spoons
           </Button>
           <div className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700">
             <Icon icon={Clock3} className="h-4 w-4" />
@@ -376,6 +427,12 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                     {participant.spoonsTaken || 0} spoons
                     {participant.purged ? ` - purged ${participant.purgeTime || ''}` : ''}
                   </div>
+                  <Button size="small" type="link" className="mt-1 p-0" onClick={() => openMedicalModal(participant)}>
+                    <span className="inline-flex items-center gap-1">
+                      <Icon icon={Activity} className="h-3.5 w-3.5" />
+                      Pre-ceremony
+                    </span>
+                  </Button>
                 </th>
               ))}
             </tr>
@@ -402,7 +459,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                       <Input
                         value={rowInputs[key] || ''}
                         onChange={(event) => setRowInputs(prev => ({ ...prev, [key]: event.target.value }))}
-                        placeholder="Spoon amount or note"
+                        placeholder="Spoons"
                       />
                     </td>
                   );
@@ -436,7 +493,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
             {timeRows.length === 0 && (
               <tr>
                 <td colSpan={participants.length + 1} className="px-4 py-8 text-center text-sm text-gray-500">
-                  {loading ? 'Loading participants...' : 'No spoon or time events recorded yet. Use Add to create a time row.'}
+                  {loading ? 'Loading participants...' : 'No spoon rows recorded yet. Use Add spoons to create a row.'}
                 </td>
               </tr>
             )}
@@ -543,6 +600,77 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
 
           <Form.Item name="note" label="Notes">
             <Input.TextArea rows={4} placeholder="Purge details, launch details, abnormalities, observations, or other notes" />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title={`Pre-Ceremony Medical - ${medicalParticipant ? getClientName(medicalParticipant) : ''}`}
+        open={Boolean(medicalParticipant)}
+        onCancel={() => setMedicalParticipant(null)}
+        onOk={() => medicalForm.submit()}
+        confirmLoading={saving}
+        width={680}
+      >
+        <Form form={medicalForm} layout="vertical" onFinish={saveMedicalCheck}>
+          <Row gutter={16}>
+            <Col xs={24} md={12}>
+              <Form.Item name="ekgApproved" label="Pre-Ceremony EKG">
+                <Select>
+                  <Select.Option value="pending">Pending</Select.Option>
+                  <Select.Option value="approved">Approved</Select.Option>
+                  <Select.Option value="rejected">Not Approved</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col xs={24} md={12}>
+              <Form.Item name="medicalClearance" label="Medical Clearance">
+                <Select>
+                  <Select.Option value="pending">Pending</Select.Option>
+                  <Select.Option value="approved">Approved</Select.Option>
+                  <Select.Option value="conditional">Conditional</Select.Option>
+                  <Select.Option value="not_approved">Not Approved</Select.Option>
+                </Select>
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item name="ekgNotes" label="EKG Notes">
+            <Input.TextArea rows={2} placeholder="EKG observations or medical advisor notes" />
+          </Form.Item>
+
+          <Row gutter={16}>
+            <Col xs={12} md={8}>
+              <Form.Item name="systolic" label="Systolic">
+                <InputNumber min={60} max={250} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={12} md={8}>
+              <Form.Item name="diastolic" label="Diastolic">
+                <InputNumber min={40} max={150} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+            <Col xs={12} md={8}>
+              <Form.Item name="pulse" label="Pulse">
+                <InputNumber min={30} max={220} style={{ width: '100%' }} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Form.Item name="bpApproved" label="Blood Pressure Status">
+            <Select>
+              <Select.Option value="pending">Pending</Select.Option>
+              <Select.Option value="approved">Approved</Select.Option>
+              <Select.Option value="rejected">Not Approved</Select.Option>
+            </Select>
+          </Form.Item>
+
+          <Form.Item name="bpNotes" label="Blood Pressure Notes">
+            <Input.TextArea rows={2} placeholder="Blood pressure context, concerns, or recheck notes" />
+          </Form.Item>
+
+          <Form.Item name="medicalClearanceNotes" label="Clearance Notes">
+            <Input.TextArea rows={3} placeholder="Overall pre-ceremony medical clearance notes" />
           </Form.Item>
         </Form>
       </Modal>
