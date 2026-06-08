@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { bookingsApi, ceremoniesApi, fileUploadsApi } from '../services/api';
 import { Ceremony, CeremonyParticipant, RetreatClient } from '../types';
 import { Button, Card, Col, Form, Input, InputNumber, Modal, Row, Select, Statistic, TimePicker, message } from 'antd';
-import { Activity, ArrowLeft, Clock3, Plus, Trash2 } from 'lucide-react';
+import { Activity, ArrowLeft, Clock3, FileText, HeartPulse, Plus, Trash2 } from 'lucide-react';
 import moment from 'moment';
 
 interface ParticipantTrackerProps {
@@ -141,6 +141,15 @@ const getMedicineValue = (event: CeremonyEvent) => {
   return event.spoonAmount || 'Dose';
 };
 
+const getFileHashFromUrl = (fileUrl?: string) => {
+  if (!fileUrl) return '';
+  const match = fileUrl.match(/\/file-uploads\/view\/([^/?#]+)/);
+  return match?.[1] || '';
+};
+
+const isImageFile = (fileName?: string) => /\.(jpe?g|png|gif|webp)$/i.test(fileName || '');
+const isPdfFile = (fileName?: string) => /\.pdf$/i.test(fileName || '');
+
 const participantFromBooking = (ceremony: Ceremony, booking: RetreatClient): CeremonyParticipant | null => {
   const clientId = getObjectId(booking.clientId);
   const retreatId = getObjectId(booking.retreatId);
@@ -191,6 +200,9 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
   const [medicalParticipant, setMedicalParticipant] = useState<CeremonyParticipant | null>(null);
   const [editingMedicalCheckId, setEditingMedicalCheckId] = useState<string>('');
   const [ekgUploadFile, setEkgUploadFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [previewFileName, setPreviewFileName] = useState<string>('');
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [editingEventId, setEditingEventId] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [addingRow, setAddingRow] = useState(false);
@@ -202,6 +214,10 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
   useEffect(() => {
     loadData();
   }, [ceremonyId]);
+
+  useEffect(() => () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
 
   const loadData = async () => {
     try {
@@ -474,6 +490,57 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
     }
   };
 
+  const deleteMedicalCheck = async (participant: CeremonyParticipant, checkId?: string) => {
+    if (!checkId || !window.confirm('Delete this pre-ceremony check?')) return;
+
+    try {
+      const participantToUpdate = await ensureSavedParticipant(participant);
+      const nextChecks = getPreCeremonyChecks(participantToUpdate).filter((check) => check.id !== checkId);
+      const latestCheck = nextChecks[nextChecks.length - 1];
+
+      await ceremoniesApi.updateMedicalCheck(participantToUpdate._id!, {
+        preCeremonyChecks: nextChecks,
+        preCeremonyEkg: latestCheck?.preCeremonyEkg,
+        preCeremonyBloodPressure: latestCheck?.preCeremonyBloodPressure,
+        medicalClearance: latestCheck?.medicalClearance || 'pending',
+        medicalClearanceNotes: latestCheck?.medicalClearanceNotes || '',
+      });
+
+      message.success('Pre-ceremony check deleted');
+      await loadData();
+    } catch (error) {
+      message.error('Failed to delete pre-ceremony check');
+      console.error('Error deleting pre-ceremony check:', error);
+    }
+  };
+
+  const openFilePreview = async (fileUrl?: string, fileName?: string) => {
+    const fileHash = getFileHashFromUrl(fileUrl);
+    if (!fileHash) {
+      message.error('Unable to preview this file');
+      return;
+    }
+
+    try {
+      setPreviewLoading(true);
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      const response = await fileUploadsApi.getViewBlob(fileHash);
+      setPreviewUrl(URL.createObjectURL(response.data as Blob));
+      setPreviewFileName(fileName || 'Pre-ceremony EKG');
+    } catch (error) {
+      message.error('Failed to load file preview');
+      console.error('Error loading EKG preview:', error);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  const closeFilePreview = () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    setPreviewUrl('');
+    setPreviewFileName('');
+  };
+
   const deleteEvent = async (participant: CeremonyParticipant, eventId?: string) => {
     if (!participant._id || !eventId) return;
     const eventLog = (participant.eventLog || []).filter((event) => event.id !== eventId);
@@ -556,35 +623,52 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                           <div key={check.id || index} className="rounded-md border border-gray-200 bg-gray-50 px-2 py-2 text-xs text-gray-700">
                             <div className="flex items-start justify-between gap-2">
                               <div className="font-semibold text-gray-900">Check {index + 1}</div>
-                              <button
-                                type="button"
-                                onClick={() => openMedicalModal(participant, check)}
-                                className="rounded border border-gray-300 bg-white px-2 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
-                              >
-                                Edit
-                              </button>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => openMedicalModal(participant, check)}
+                                  className="rounded border border-gray-300 bg-white px-2 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteMedicalCheck(participant, check.id)}
+                                  className="rounded border border-red-200 bg-white px-2 py-0.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                                >
+                                  Delete
+                                </button>
+                              </div>
                             </div>
                             <div className="mt-1">{getCheckTimeLabel(check)}</div>
-                            <div>{getBloodPressureLabel(check)} - {getApprovalLabel(check.preCeremonyBloodPressure?.approved)}</div>
-                            <div>
-                              EKG {getApprovalLabel(check.preCeremonyEkg?.approved)}
+                            <div className="mt-2 rounded-md border border-blue-100 bg-blue-50 px-2 py-2 text-blue-950">
+                              <div className="flex items-center gap-2">
+                                <Icon icon={FileText} className="h-4 w-4 text-blue-600" />
+                                <span className="font-semibold">EKG</span>
+                                <span className="rounded bg-white/80 px-1.5 py-0.5 text-[11px] text-blue-700">{getApprovalLabel(check.preCeremonyEkg?.approved)}</span>
+                              </div>
                               {check.preCeremonyEkg?.fileUrl && (
-                                <>
-                                  {' - '}
-                                  <a
-                                    href={check.preCeremonyEkg.fileUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="font-medium text-blue-600 hover:text-blue-800"
-                                  >
-                                    {check.preCeremonyEkg.fileName || 'View file'}
-                                  </a>
-                                </>
+                                <button
+                                  type="button"
+                                  onClick={() => openFilePreview(check.preCeremonyEkg?.fileUrl, check.preCeremonyEkg?.fileName)}
+                                  className="mt-1 block truncate font-medium text-blue-700 hover:text-blue-900"
+                                  title={check.preCeremonyEkg.fileName || 'Preview EKG file'}
+                                >
+                                  {check.preCeremonyEkg.fileName || 'Preview EKG file'}
+                                </button>
                               )}
+                              {check.preCeremonyEkg?.notes && <div className="mt-1 whitespace-pre-wrap text-blue-900">Notes: {check.preCeremonyEkg.notes}</div>}
                             </div>
-                            <div>Clearance {check.medicalClearance || 'pending'}</div>
-                            {check.preCeremonyEkg?.notes && <div className="mt-1 whitespace-pre-wrap text-gray-600">EKG: {check.preCeremonyEkg.notes}</div>}
-                            {check.preCeremonyBloodPressure?.notes && <div className="whitespace-pre-wrap text-gray-600">BP: {check.preCeremonyBloodPressure.notes}</div>}
+                            <div className="mt-2 rounded-md border border-rose-100 bg-rose-50 px-2 py-2 text-rose-950">
+                              <div className="flex items-center gap-2">
+                                <Icon icon={HeartPulse} className="h-4 w-4 text-rose-600" />
+                                <span className="font-semibold">Blood pressure</span>
+                                <span className="rounded bg-white/80 px-1.5 py-0.5 text-[11px] text-rose-700">{getApprovalLabel(check.preCeremonyBloodPressure?.approved)}</span>
+                              </div>
+                              <div className="mt-1 font-medium">{getBloodPressureLabel(check)}</div>
+                              {check.preCeremonyBloodPressure?.notes && <div className="mt-1 whitespace-pre-wrap text-rose-900">Notes: {check.preCeremonyBloodPressure.notes}</div>}
+                            </div>
+                            <div className="mt-2 font-medium">Clearance {check.medicalClearance || 'pending'}</div>
                             {check.medicalClearanceNotes && <div className="whitespace-pre-wrap text-gray-600">Clearance: {check.medicalClearanceNotes}</div>}
                           </div>
                         ))}
@@ -867,6 +951,31 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
             <Input.TextArea rows={3} placeholder="Overall pre-ceremony medical clearance notes" />
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal
+        title={previewFileName || 'File preview'}
+        open={Boolean(previewUrl) || previewLoading}
+        onCancel={closeFilePreview}
+        footer={previewUrl ? (
+          <a href={previewUrl} download={previewFileName} className="text-sm font-medium text-blue-600 hover:text-blue-800">
+            Download file
+          </a>
+        ) : null}
+        width={900}
+      >
+        {previewLoading && <div className="py-10 text-center text-sm text-gray-500">Loading preview...</div>}
+        {!previewLoading && previewUrl && isImageFile(previewFileName) && (
+          <img src={previewUrl} alt={previewFileName} className="max-h-[70vh] w-full rounded-md object-contain" />
+        )}
+        {!previewLoading && previewUrl && isPdfFile(previewFileName) && (
+          <iframe src={previewUrl} title={previewFileName} className="h-[70vh] w-full rounded-md border border-gray-200 bg-white" />
+        )}
+        {!previewLoading && previewUrl && !isImageFile(previewFileName) && !isPdfFile(previewFileName) && (
+          <div className="rounded-md border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+            Preview is not available for this file type. Use Download file to open it.
+          </div>
+        )}
       </Modal>
     </div>
   );
