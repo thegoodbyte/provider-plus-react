@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { bookingsApi, ceremoniesApi } from '../services/api';
 import { Ceremony, CeremonyParticipant, RetreatClient } from '../types';
 import { Button, Card, Col, Form, Input, InputNumber, Modal, Row, Select, Statistic, TimePicker, message } from 'antd';
-import { ArrowLeft, Clock3, Trash2 } from 'lucide-react';
+import { ArrowLeft, Clock3, Plus, Trash2 } from 'lucide-react';
 import moment from 'moment';
 
 interface ParticipantTrackerProps {
@@ -92,6 +92,10 @@ const buildParticipantUpdate = (participant: CeremonyParticipant, eventLog: Cere
   };
 };
 
+const getParticipantKey = (participant: CeremonyParticipant) => (
+  participant._id || getObjectId(participant.clientId)
+);
+
 const participantFromBooking = (ceremony: Ceremony, booking: RetreatClient): CeremonyParticipant | null => {
   const clientId = getObjectId(booking.clientId);
   const retreatId = getObjectId(booking.retreatId);
@@ -118,6 +122,9 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
   const [selectedParticipant, setSelectedParticipant] = useState<CeremonyParticipant | null>(null);
   const [editingEventId, setEditingEventId] = useState<string>('');
   const [saving, setSaving] = useState(false);
+  const [addingRow, setAddingRow] = useState(false);
+  const [rowTime, setRowTime] = useState(moment().format('HH:mm'));
+  const [rowInputs, setRowInputs] = useState<Record<string, string>>({});
   const [form] = Form.useForm();
 
   useEffect(() => {
@@ -190,6 +197,82 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
     setModalOpen(true);
   };
 
+  const ensureSavedParticipant = async (participant: CeremonyParticipant) => {
+    if (!ceremony) throw new Error('Ceremony is not loaded');
+    if (participant._id && !participant._id.startsWith('pending-')) return participant;
+
+    const createdParticipant = await ceremoniesApi.addParticipant({
+      ceremonyId: ceremony._id!,
+      clientId: getObjectId(participant.clientId),
+      retreatId: getObjectId(participant.retreatId),
+      medicalClearance: participant.medicalClearance || 'pending',
+      participated: false,
+      spoonsTaken: 0,
+      purged: false,
+      eventLog: [],
+    });
+    return createdParticipant.data;
+  };
+
+  const startRowAdd = () => {
+    setRowTime(moment().format('HH:mm'));
+    setRowInputs({});
+    setAddingRow(true);
+  };
+
+  const cancelRowAdd = () => {
+    setAddingRow(false);
+    setRowInputs({});
+  };
+
+  const saveRow = async () => {
+    const filledEntries = participants
+      .map((participant) => ({
+        participant,
+        value: (rowInputs[getParticipantKey(participant)] || '').trim(),
+      }))
+      .filter(({ value }) => value.length > 0);
+
+    if (filledEntries.length === 0) {
+      message.warning('Enter a spoon amount or note for at least one client');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const time = rowTime || moment().format('HH:mm');
+
+      for (const { participant, value } of filledEntries) {
+        const participantToUpdate = await ensureSavedParticipant(participant);
+        const spoonMatch = value.match(/(\d+(?:\.\d+)?)/);
+        const spoonCount = spoonMatch ? Number(spoonMatch[1]) : 1;
+        const nextEvent: CeremonyEvent = {
+          id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+          time,
+          eventType: 'medicine',
+          spoonCount,
+          medicineForm: 'spoon',
+          spoonAmount: value.toLowerCase().includes('half') ? 'half' : value.toLowerCase().includes('quarter') ? 'quarter' : 'full',
+          doseAmount: value,
+          note: value,
+          recordedAt: new Date().toISOString(),
+        };
+        const eventLog = [...(participantToUpdate.eventLog || []), nextEvent];
+        await ceremoniesApi.updateParticipant(participantToUpdate._id!, buildParticipantUpdate(participantToUpdate, eventLog));
+      }
+
+      message.success('Ceremony row saved');
+      setAddingRow(false);
+      setRowInputs({});
+      await loadData();
+    } catch (error) {
+      message.error('Failed to save ceremony row');
+      console.error('Error saving ceremony row:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const saveEvent = async (values: any) => {
     if (!selectedParticipant?._id || !ceremony) return;
     const eventLog = [...(selectedParticipant.eventLog || [])];
@@ -215,20 +298,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
 
     try {
       setSaving(true);
-      let participantToUpdate = selectedParticipant;
-      if (selectedParticipant._id.startsWith('pending-')) {
-        const createdParticipant = await ceremoniesApi.addParticipant({
-          ceremonyId: ceremony._id!,
-          clientId: getObjectId(selectedParticipant.clientId),
-          retreatId: getObjectId(selectedParticipant.retreatId),
-          medicalClearance: selectedParticipant.medicalClearance || 'pending',
-          participated: false,
-          spoonsTaken: 0,
-          purged: false,
-          eventLog: [],
-        });
-        participantToUpdate = createdParticipant.data;
-      }
+      const participantToUpdate = await ensureSavedParticipant(selectedParticipant);
       await ceremoniesApi.updateParticipant(participantToUpdate._id!, buildParticipantUpdate(participantToUpdate, eventLog));
       message.success('Ceremony event saved');
       setModalOpen(false);
@@ -275,9 +345,14 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
             {ceremony?.date ? ` ${moment(ceremony.date).format('MMMM DD, YYYY')}` : ''}
           </p>
         </div>
-        <div className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700">
-          <Icon icon={Clock3} className="h-4 w-4" />
-          {moment().format('HH:mm')}
+        <div className="flex items-center gap-2">
+          <Button type="primary" icon={<Icon icon={Plus} className="h-4 w-4" />} onClick={startRowAdd} disabled={addingRow || participants.length === 0}>
+            Add
+          </Button>
+          <div className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700">
+            <Icon icon={Clock3} className="h-4 w-4" />
+            {moment().format('HH:mm')}
+          </div>
         </div>
       </div>
 
@@ -301,14 +376,39 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                     {participant.spoonsTaken || 0} spoons
                     {participant.purged ? ` - purged ${participant.purgeTime || ''}` : ''}
                   </div>
-                  <Button size="small" type="link" className="mt-1 p-0" onClick={() => openEventModal(participant)}>
-                    Add spoon/time
-                  </Button>
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
+            {addingRow && (
+              <tr className="bg-blue-50">
+                <td className="sticky left-0 z-10 border-b border-r border-blue-200 bg-blue-50 px-3 py-3 align-top">
+                  <input
+                    type="time"
+                    value={rowTime}
+                    onChange={(event) => setRowTime(event.target.value)}
+                    className="w-full rounded-md border border-gray-200 px-2 py-1 text-sm"
+                  />
+                  <div className="mt-2 flex gap-2">
+                    <Button size="small" type="primary" onClick={saveRow} loading={saving}>Save</Button>
+                    <Button size="small" onClick={cancelRowAdd} disabled={saving}>Cancel</Button>
+                  </div>
+                </td>
+                {participants.map((participant) => {
+                  const key = getParticipantKey(participant);
+                  return (
+                    <td key={`${key}-add`} className="border-b border-r border-blue-200 p-2 align-top">
+                      <Input
+                        value={rowInputs[key] || ''}
+                        onChange={(event) => setRowInputs(prev => ({ ...prev, [key]: event.target.value }))}
+                        placeholder="Spoon amount or note"
+                      />
+                    </td>
+                  );
+                })}
+              </tr>
+            )}
             {timeRows.map((time) => (
               <tr key={time} className="hover:bg-gray-50">
                 <td className="sticky left-0 z-10 border-b border-r border-gray-200 bg-white px-3 py-3 text-sm font-semibold text-gray-900">{time}</td>
@@ -336,7 +436,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
             {timeRows.length === 0 && (
               <tr>
                 <td colSpan={participants.length + 1} className="px-4 py-8 text-center text-sm text-gray-500">
-                  {loading ? 'Loading participants...' : 'No spoon or time events recorded yet. Use Add spoon/time under a participant name.'}
+                  {loading ? 'Loading participants...' : 'No spoon or time events recorded yet. Use Add to create a time row.'}
                 </td>
               </tr>
             )}
