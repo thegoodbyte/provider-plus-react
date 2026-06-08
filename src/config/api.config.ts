@@ -4,11 +4,21 @@
 const getRuntimeApiBaseUrl = (): string => {
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
+    const isProductionHost = hostname === 'retreatengine.com' || hostname === 'www.retreatengine.com';
+    const isDevHost = hostname === 'dev.retreatengine.com';
     const isStagingHost =
       hostname === 'provider-plus-react-staging.up.railway.app' ||
       hostname === 'stage-retreat-engine-front-end-production.up.railway.app' ||
       hostname.includes('staging') ||
       hostname.includes('stage-retreat-engine');
+
+    if (isProductionHost) {
+      return 'https://api.retreatengine.com';
+    }
+
+    if (isDevHost) {
+      return 'https://api.dev.retreatengine.com';
+    }
 
     if (isStagingHost) {
       return 'https://provider-plus-nestjs-staging.up.railway.app';
