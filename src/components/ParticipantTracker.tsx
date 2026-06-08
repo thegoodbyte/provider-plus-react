@@ -114,6 +114,29 @@ const participantFromBooking = (ceremony: Ceremony, booking: RetreatClient): Cer
   };
 };
 
+const mergeParticipantsWithBookings = (
+  ceremony: Ceremony,
+  ceremonyParticipants: CeremonyParticipant[],
+  bookings: RetreatClient[],
+): CeremonyParticipant[] => {
+  const participantsByClientId = new Map<string, CeremonyParticipant>();
+
+  ceremonyParticipants.forEach((participant) => {
+    const clientId = getObjectId(participant.clientId);
+    if (clientId) participantsByClientId.set(clientId, participant);
+  });
+
+  bookings.forEach((booking) => {
+    const clientId = getObjectId(booking.clientId);
+    if (!clientId || participantsByClientId.has(clientId)) return;
+
+    const participant = participantFromBooking(ceremony, booking);
+    if (participant) participantsByClientId.set(clientId, participant);
+  });
+
+  return Array.from(participantsByClientId.values());
+};
+
 const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onBack }) => {
   const [ceremony, setCeremony] = useState<Ceremony | null>(null);
   const [participants, setParticipants] = useState<CeremonyParticipant[]>([]);
@@ -142,14 +165,14 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
       ]);
       let nextParticipants = participantsResponse.data || [];
 
-      if (nextParticipants.length === 0) {
-        const retreatId = getObjectId(ceremonyResponse.data.retreatId);
-        if (retreatId) {
-          const bookingsResponse = await bookingsApi.getByRetreatWithDetails(retreatId);
-          nextParticipants = ((bookingsResponse.data || []) as RetreatClient[])
-            .map((booking: RetreatClient) => participantFromBooking(ceremonyResponse.data, booking))
-            .filter(Boolean) as CeremonyParticipant[];
-        }
+      const retreatId = getObjectId(ceremonyResponse.data.retreatId);
+      if (retreatId) {
+        const bookingsResponse = await bookingsApi.getByRetreatWithDetails(retreatId);
+        nextParticipants = mergeParticipantsWithBookings(
+          ceremonyResponse.data,
+          nextParticipants,
+          (bookingsResponse.data || []) as RetreatClient[],
+        );
       }
 
       setCeremony(ceremonyResponse.data);
