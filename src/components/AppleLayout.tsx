@@ -381,21 +381,23 @@ const AppleLayout: React.FC = () => {
                   <ProtectedRoute requiredRole={['medical_staff', 'medical_advisor', 'admin']}>
                     {isMedicalAdvisor ? (
                       <Routes>
-                        <Route index element={<MedicalReviewRequestsPage />} />
-                        <Route path="launcher" element={<MedicalReviewRequestsPage />} />
-                        <Route path="dashboard" element={<MedicalReviewRequestsPage />} />
-                        <Route path="medical-dashboard" element={<MedicalReviewRequestsPage />} />
-                        <Route path="review-requests" element={<MedicalReviewRequestsPage />} />
+                        <Route index element={<MedicalReviewRequestsGrid />} />
+                        <Route path="launcher" element={<MedicalReviewRequestsGrid />} />
+                        <Route path="dashboard" element={<MedicalReviewRequestsGrid />} />
+                        <Route path="medical-dashboard" element={<MedicalReviewRequestsGrid />} />
+                        <Route path="review-requests" element={<MedicalReviewRequestsGrid />} />
                         <Route path="review-requests/new" element={<Unauthorized />} />
                         <Route path="review-requests/:id" element={<MedicalReviewRequestsPage />} />
-                        <Route path="medical-review-requests" element={<MedicalReviewRequestsPage />} />
+                        <Route path="review-requests/:id/edit" element={<MedicalReviewRequestsPage />} />
+                        <Route path="medical-review-requests" element={<MedicalReviewRequestsGrid />} />
                         <Route path="medical-review-requests/new" element={<Unauthorized />} />
                         <Route path="medical-review-requests/:id" element={<MedicalReviewRequestsPage />} />
+                        <Route path="medical-review-requests/:id/edit" element={<MedicalReviewRequestsPage />} />
                         <Route path="*" element={<Unauthorized />} />
                       </Routes>
                     ) : (
                       <Routes>
-                        <Route index element={<ModuleLauncherPage />} />
+                        <Route index element={<MedicalReviewRequestsGrid />} />
                         <Route path="launcher" element={<ModuleLauncherPage />} />
                         <Route path="dashboard" element={<MedicalAdvisorDashboard />} />
                         <Route path="medical-dashboard" element={<MedicalAdvisorDashboard />} />
@@ -412,13 +414,14 @@ const AppleLayout: React.FC = () => {
                         <Route path="medical-tracking/:id" element={<MedicalTrackingDetail />} />
                         <Route path="medical-tracking/:id/edit" element={<MedicalTrackingEditPage />} />
                         <Route path="medical-tracking/:id/view/:type" element={<MedicalTrackingFileViewPage />} />
-                        <Route path="review-requests" element={<MedicalReviewRequestsPage />} />
+                        <Route path="review-requests" element={<MedicalReviewRequestsGrid />} />
                         <Route path="review-requests/new" element={<MedicalReviewRequestEditorPage />} />
                         <Route path="review-requests/:id" element={<MedicalReviewRequestsPage />} />
-                        <Route path="medical-review-requests" element={<MedicalReviewRequestsPage />} />
+                        <Route path="review-requests/:id/edit" element={<MedicalReviewRequestsPage />} />
+                        <Route path="medical-review-requests" element={<MedicalReviewRequestsGrid />} />
                         <Route path="medical-review-requests/new" element={<MedicalReviewRequestEditorPage />} />
                         <Route path="medical-review-requests/:id" element={<MedicalReviewRequestsPage />} />
-                        <Route path="medical-review-requests/:id/edit" element={<MedicalReviewRequestEditorPage />} />
+                        <Route path="medical-review-requests/:id/edit" element={<MedicalReviewRequestsPage />} />
                         <Route path="workflow" element={<WorkflowDashboard />} />
                         <Route path="workflow/bookings/:bookingId" element={<WorkflowDashboard />} />
                         <Route path="retreat-flow" element={<RetreatFlowPage />} />
@@ -484,8 +487,8 @@ const AppleLayout: React.FC = () => {
                 } />
 
                 {/* Legacy routes for backwards compatibility - redirect to appropriate prefixed routes */}
-                <Route path="/medical-dashboard" element={<ProtectedRoute requiredRole={['medical_staff', 'medical_advisor', 'admin']}><MedicalReviewRequestsPage /></ProtectedRoute>} />
-                <Route path="/launcher" element={<ProtectedRoute>{isMedicalAdvisor ? <MedicalReviewRequestsPage /> : <ModuleLauncherPage />}</ProtectedRoute>} />
+                <Route path="/medical-dashboard" element={<ProtectedRoute requiredRole={['medical_staff', 'medical_advisor', 'admin']}><MedicalReviewRequestsGrid /></ProtectedRoute>} />
+                <Route path="/launcher" element={<ProtectedRoute>{isMedicalAdvisor ? <MedicalReviewRequestsGrid /> : <ModuleLauncherPage />}</ProtectedRoute>} />
                 <Route path="/medical-review/:bookingId" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><MedicalReviewDetail /></ProtectedRoute>} />
                 <Route path="/medical-retreats" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><MedicalRetreats /></ProtectedRoute>} />
                 <Route path="/medical-tracking" element={<ProtectedRoute><MedicalTrackingNew /></ProtectedRoute>} />
@@ -500,7 +503,7 @@ const AppleLayout: React.FC = () => {
                 <Route path="/medical-review-requests" element={<ProtectedRoute requiredRole={['medical_staff', 'medical_advisor', 'admin']}><MedicalReviewRequestsGrid /></ProtectedRoute>} />
                 <Route path="/medical-review-requests/new" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><MedicalReviewRequestEditorPage /></ProtectedRoute>} />
                 <Route path="/medical-review-requests/:id" element={<ProtectedRoute requiredRole={['medical_staff', 'medical_advisor', 'admin']}><MedicalReviewRequestsPage /></ProtectedRoute>} />
-                <Route path="/medical-review-requests/:id/edit" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><MedicalReviewRequestEditorPage /></ProtectedRoute>} />
+                <Route path="/medical-review-requests/:id/edit" element={<ProtectedRoute requiredRole={['medical_staff', 'medical_advisor', 'admin']}><MedicalReviewRequestsPage /></ProtectedRoute>} />
                 <Route path="/medical-review-requests/*" element={<ProtectedRoute requiredRole={['medical_staff', 'medical_advisor', 'admin']}><MedicalReviewRequestsGrid /></ProtectedRoute>} />
                 <Route path="/medical/client/:clientId" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><MedicalClientView /></ProtectedRoute>} />
                 <Route path="/admin/medical-review-requests" element={<ProtectedRoute><MedicalReviewRequestsGrid /></ProtectedRoute>} />

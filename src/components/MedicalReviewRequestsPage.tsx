@@ -186,6 +186,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const { id } = useParams();
   const { user } = useAuth();
   const isMedicalRoute = location.pathname.startsWith('/medical/');
+  const isEditRoute = location.pathname.endsWith('/edit');
   const isAdvisorReviewRoute = isMedicalRoute || user?.role === 'medical_advisor';
   const routeId = id === 'new' ? undefined : id;
   const [loading, setLoading] = useState(true);
@@ -376,6 +377,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   }
 
   const isDetailView = Boolean(routeId);
+  const isReadOnlyView = isDetailView && !isEditRoute;
 
   return (
     <div className="p-6">
@@ -385,7 +387,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
             {isDetailView && selected ? `Medical Review Request #${selected.display_id || '—'}` : 'Medical Review Requests'}
           </h1>
           <p className="text-sm text-gray-600">
-            {isDetailView ? 'Review the linked files and record a final decision.' : isMedicalRoute ? 'Queue for review and commentary on medical records, ceremony EKG, and blood pressure.' : 'Administrative review request queue and history.'}
+            {isReadOnlyView ? 'Read-only record of the request, linked files, and decision history.' : isDetailView ? 'Review the linked files and record a final decision.' : isMedicalRoute ? 'Queue for review and commentary on medical records, ceremony EKG, and blood pressure.' : 'Administrative review request queue and history.'}
           </p>
         </div>
         {!isMedicalRoute && !isDetailView && (
@@ -628,25 +630,32 @@ const MedicalReviewRequestsPage: React.FC = () => {
                                 return (
                                   <div key={`${file.fileName || file.s3Key || index}`} className="rounded-md border border-gray-200 bg-white p-3">
                                     <ArtifactInlinePreview artifactId={artifact._id} file={file} index={index} />
-                                    <div className="mt-3 grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)]">
-                                      <select
-                                        value={fileReview.decision || ''}
-                                        onChange={(event) => updateFileReview(artifact, file, { decision: event.target.value as FileReviewDraft['decision'] })}
-                                        className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-                                      >
-                                        <option value="">File decision</option>
-                                        <option value="OK">Accept file</option>
-                                        <option value="caution">Caution</option>
-                                        <option value="NOT OK">Deny file</option>
-                                      </select>
-                                      <textarea
-                                        value={fileReview.notes || ''}
-                                        onChange={(event) => updateFileReview(artifact, file, { notes: event.target.value })}
-                                        rows={2}
-                                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                                        placeholder="Comment on this file"
-                                      />
-                                    </div>
+                                    {isReadOnlyView ? (
+                                      <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm">
+                                        <div className="font-medium text-gray-900">File decision: {fileReview.decision || 'Not reviewed'}</div>
+                                        <div className="mt-1 whitespace-pre-wrap text-gray-600">{fileReview.notes || 'No file notes.'}</div>
+                                      </div>
+                                    ) : (
+                                      <div className="mt-3 grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)]">
+                                        <select
+                                          value={fileReview.decision || ''}
+                                          onChange={(event) => updateFileReview(artifact, file, { decision: event.target.value as FileReviewDraft['decision'] })}
+                                          className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+                                        >
+                                          <option value="">File decision</option>
+                                          <option value="OK">Accept file</option>
+                                          <option value="caution">Caution</option>
+                                          <option value="NOT OK">Deny file</option>
+                                        </select>
+                                        <textarea
+                                          value={fileReview.notes || ''}
+                                          onChange={(event) => updateFileReview(artifact, file, { notes: event.target.value })}
+                                          rows={2}
+                                          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                                          placeholder="Comment on this file"
+                                        />
+                                      </div>
+                                    )}
                                   </div>
                                 );
                               })}
@@ -690,30 +699,47 @@ const MedicalReviewRequestsPage: React.FC = () => {
               <div className="grid gap-4 lg:grid-cols-2">
                 <div className="rounded-md border border-gray-200 p-3">
                   <div className="mb-2 text-sm font-semibold text-gray-900">Review decision</div>
-                  <div className="flex flex-wrap gap-2">
-                    {decisionOptions.map((option) => (
-                      <button
-                        key={option}
-                        type="button"
-                        onClick={() => setReviewDecision(option)}
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${reviewDecision === option ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                      >
-                        {option}
-                      </button>
-                    ))}
-                  </div>
-                  <textarea value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} rows={4} className="mt-3 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="General review notes" />
+                  {isReadOnlyView ? (
+                    <div className="rounded-md bg-gray-50 p-3 text-sm">
+                      <div className="font-semibold text-gray-900">{selected.reviewDecision || 'No decision recorded'}</div>
+                      <div className="mt-2 whitespace-pre-wrap text-gray-600">{selected.reviewNotes || 'No review notes.'}</div>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex flex-wrap gap-2">
+                        {decisionOptions.map((option) => (
+                          <button
+                            key={option}
+                            type="button"
+                            onClick={() => setReviewDecision(option)}
+                            className={`rounded-full px-3 py-1 text-xs font-semibold ${reviewDecision === option ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                          >
+                            {option}
+                          </button>
+                        ))}
+                      </div>
+                      <textarea value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} rows={4} className="mt-3 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="General review notes" />
+                    </>
+                  )}
                 </div>
 
                 <div className="rounded-md border border-gray-200 p-3">
                   <div className="mb-2 text-sm font-semibold text-gray-900">Final notes</div>
-                  <textarea value={overallNotes} onChange={(e) => setOverallNotes(e.target.value)} rows={4} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Additional information or context" />
+                  {isReadOnlyView ? (
+                    <div className="min-h-24 whitespace-pre-wrap rounded-md bg-gray-50 p-3 text-sm text-gray-700">{selected.overallNotes || 'No final notes.'}</div>
+                  ) : (
+                    <textarea value={overallNotes} onChange={(e) => setOverallNotes(e.target.value)} rows={4} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Additional information or context" />
+                  )}
                 </div>
               </div>
 
               <div className="rounded-md border border-gray-200 p-3">
                 <div className="mb-2 text-sm font-semibold text-gray-900">Medical staff notes</div>
-                <textarea value={medicalStaffNotes} onChange={(e) => setMedicalStaffNotes(e.target.value)} rows={4} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Internal medical staff notes" />
+                {isReadOnlyView ? (
+                  <div className="min-h-24 whitespace-pre-wrap rounded-md bg-gray-50 p-3 text-sm text-gray-700">{selected.medicalStaffNotes || 'No medical staff notes.'}</div>
+                ) : (
+                  <textarea value={medicalStaffNotes} onChange={(e) => setMedicalStaffNotes(e.target.value)} rows={4} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Internal medical staff notes" />
+                )}
               </div>
 
               <div className="flex items-center justify-between gap-3">
@@ -728,13 +754,54 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   >
                     Back
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleSaveReview}
-                    className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-                  >
-                    Save Review
-                  </button>
+                  {isReadOnlyView ? (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`${isMedicalRoute ? '/medical/review-requests' : '/admin/medical-review-requests'}/${selected._id}/edit`)}
+                      className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                    >
+                      Edit
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSaveReview}
+                      className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                    >
+                      Save Review
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-md border border-gray-200 p-3">
+                <div className="text-sm font-semibold text-gray-900">Decision history</div>
+                <div className="mt-3 space-y-2">
+                  {selected.decisionHistory?.length ? (
+                    selected.decisionHistory
+                      .slice()
+                      .reverse()
+                      .map((entry, index) => (
+                        <div key={`${entry.reviewedAt || index}`} className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="font-semibold text-gray-900">{entry.decision || 'No decision'} • {entry.reviewedBy || 'Unknown reviewer'}</div>
+                            <span className="text-xs text-gray-500">{formatDateTime(entry.reviewedAt)}</span>
+                          </div>
+                          <div className="mt-1 whitespace-pre-wrap text-gray-700">{entry.notes || 'No notes'}</div>
+                          {!!entry.fileReviews?.length && (
+                            <div className="mt-2 space-y-1">
+                              {entry.fileReviews.map((fileReview, fileIndex) => (
+                                <div key={`${fileReview.fileKey || fileReview.fileName || fileIndex}`} className="rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700">
+                                  <span className="font-semibold">{fileReview.fileName || fileReview.fileKey || `File ${fileIndex + 1}`}:</span> {fileReview.decision || 'No decision'}{fileReview.notes ? ` - ${fileReview.notes}` : ''}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ))
+                  ) : (
+                    <div className="text-sm text-gray-500">No decision history saved yet.</div>
+                  )}
                 </div>
               </div>
 

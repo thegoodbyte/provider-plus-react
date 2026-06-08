@@ -832,6 +832,18 @@ export interface MedicalReviewRequest {
     reviewedAt?: Date | string;
     reviewedBy?: string;
   }>;
+  decisionHistory?: Array<{
+    status?: 'pending' | 'in_review' | 'approved' | 'rejected' | 'caution' | 'needs_resubmission' | 'completed';
+    decision?: 'OK' | 'caution' | 'NOT OK';
+    notes?: string;
+    overallNotes?: string;
+    medicalStaffNotes?: string;
+    fileReviews?: MedicalReviewRequest['fileReviews'];
+    reviewedAt?: Date | string;
+    reviewedBy?: string;
+    reviewedByUserId?: string | any;
+    source?: string;
+  }>;
   ekgReviewDecision?: 'OK' | 'caution' | 'NOT OK';
   ekgReviewNotes?: string;
   liverReviewDecision?: 'OK' | 'caution' | 'NOT OK';

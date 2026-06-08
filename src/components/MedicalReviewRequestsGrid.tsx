@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { FiPlus, FiEdit2, FiTrash2, FiEye, FiRefreshCw } from 'react-icons/fi';
 import LoadingSpinner from './LoadingSpinner';
-import CurrencyDisplay from './CurrencyDisplay';
 import { medicalReviewRequestsApi, medicalTrackingApi, clientsApi, retreatsApi } from '../services/api';
 import { MedicalItem, MedicalReviewRequest, Client, Retreat } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
@@ -26,10 +26,11 @@ const statusClass: Record<string, string> = {
 
 const MedicalReviewRequestsGrid: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth();
+  const basePath = location.pathname.startsWith('/medical') ? '/medical/review-requests' : '/admin/medical-review-requests';
+  const canManageRequests = user?.role === 'admin' || user?.role === 'medical_staff';
   const [requests, setRequests] = useState<EnrichedReviewRequest[]>([]);
-  const [trackingMap, setTrackingMap] = useState<Record<string, MedicalItem>>({});
-  const [clientsMap, setClientsMap] = useState<Record<string, Client>>({});
-  const [retreatsMap, setRetreatsMap] = useState<Record<string, Retreat>>({});
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<'all' | MedicalReviewRequest['status']>('all');
 
@@ -47,19 +48,16 @@ const MedicalReviewRequestsGrid: React.FC = () => {
         if (item._id) acc[item._id] = item;
         return acc;
       }, {});
-      setTrackingMap(trackingMapValue);
 
       const clientMapValue = (clientsResponse.data || []).reduce((acc: Record<string, Client>, client: Client) => {
         if (client._id) acc[client._id] = client;
         return acc;
       }, {});
-      setClientsMap(clientMapValue);
 
       const retreatMapValue = (retreatsResponse.data || []).reduce((acc: Record<string, Retreat>, retreat: Retreat) => {
         if (retreat._id) acc[retreat._id] = retreat;
         return acc;
       }, {});
-      setRetreatsMap(retreatMapValue);
 
       const enriched = (requestsResponse.data || []).map((request: MedicalReviewRequest) => {
         const clientId = typeof request.clientId === 'string' ? request.clientId : request.clientId?._id;
@@ -119,13 +117,15 @@ const MedicalReviewRequestsGrid: React.FC = () => {
             <Icon icon={FiRefreshCw} className="h-4 w-4" />
             Refresh
           </button>
-          <button
-            onClick={() => navigate('/admin/medical-review-requests/new')}
-            className="inline-flex w-auto shrink-0 items-center gap-2 whitespace-nowrap rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-          >
-            <Icon icon={FiPlus} className="h-4 w-4" />
-            Add New Request
-          </button>
+          {canManageRequests && (
+            <button
+              onClick={() => navigate(`${basePath}/new`)}
+              className="inline-flex w-auto shrink-0 items-center gap-2 whitespace-nowrap rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+            >
+              <Icon icon={FiPlus} className="h-4 w-4" />
+              Add New Request
+            </button>
+          )}
         </div>
       </div>
 
@@ -178,26 +178,28 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                   <td className="px-6 py-4 text-sm font-medium">
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => navigate(`/admin/medical-review-requests/${request._id}`)}
+                        onClick={() => navigate(`${basePath}/${request._id}`)}
                         className="text-green-600 hover:text-green-900"
                         title="View"
                       >
                         <Icon icon={FiEye} className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => navigate(`/admin/medical-review-requests/${request._id}/edit`)}
+                        onClick={() => navigate(`${basePath}/${request._id}/edit`)}
                         className="text-indigo-600 hover:text-indigo-900"
                         title="Edit"
                       >
                         <Icon icon={FiEdit2} className="h-4 w-4" />
                       </button>
-                      <button
-                        onClick={() => handleDelete(request._id!)}
-                        className="text-red-600 hover:text-red-900"
-                        title="Delete"
-                      >
-                        <Icon icon={FiTrash2} className="h-4 w-4" />
-                      </button>
+                      {canManageRequests && (
+                        <button
+                          onClick={() => handleDelete(request._id!)}
+                          className="text-red-600 hover:text-red-900"
+                          title="Delete"
+                        >
+                          <Icon icon={FiTrash2} className="h-4 w-4" />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
