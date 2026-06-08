@@ -98,11 +98,27 @@ export interface Client {
   asthmaConditions?: string;
   otherMedicalComplications?: string;
   bloodPressureIssues?: string;
+  bloodPressureStatus?: 'higher' | 'normal' | 'lower' | string;
+  bloodPressureValue?: string;
   seizureHistory?: string;
   psychoticEpisodes?: string;
   currentMedications?: string;
   recreationalDrugs?: string;
-  vitaminsSupplements?: string;
+  vitaminsSupplements?: string | {
+    vitaminD?: boolean;
+    vitaminB12?: boolean;
+    vitaminC?: boolean;
+    omega3?: boolean;
+    magnesium?: boolean;
+    zinc?: boolean;
+    iron?: boolean;
+    probiotics?: boolean;
+    multivitamin?: boolean;
+    creatine?: boolean;
+    other?: boolean;
+    details?: string;
+    otherDetails?: string;
+  };
   alcoholConsumption?: string;
   suicidalThoughts?: string;
   hospitalizations?: string;
@@ -459,6 +475,8 @@ export interface ScreeningClient {
   asthmaConditions?: string;
   otherMedicalComplications?: string;
   bloodPressureIssues?: string;
+  bloodPressureStatus?: 'higher' | 'normal' | 'lower' | string;
+  bloodPressureValue?: string;
   seizureHistory?: string;
   psychoticEpisodes?: string;
 
@@ -483,11 +501,14 @@ export interface ScreeningClient {
     vitaminC?: boolean;
     omega3?: boolean;
     magnesium?: boolean;
+    zinc?: boolean;
+    iron?: boolean;
     probiotics?: boolean;
     multivitamin?: boolean;
     kratom?: boolean;
     creatine?: boolean;
     other?: boolean;
+    details?: string;
     otherDetails?: string;
   };
   alcoholConsumption?: string;

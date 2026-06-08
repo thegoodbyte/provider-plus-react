@@ -423,6 +423,29 @@ const ClientDetailsPage: React.FC = () => {
     return '';
   };
 
+  const formatScreeningValue = (value: any) => {
+    if (!value || typeof value !== 'object') return value;
+
+    const labels: Record<string, string> = {
+      vitaminD: 'Vitamin D',
+      vitaminB12: 'Vitamin B12',
+      vitaminC: 'Vitamin C',
+      omega3: 'Omega-3',
+      magnesium: 'Magnesium',
+      zinc: 'Zinc',
+      iron: 'Iron',
+      probiotics: 'Probiotics',
+      multivitamin: 'Multivitamin',
+      creatine: 'Creatine',
+      other: 'Other',
+    };
+    const selected = Object.entries(labels)
+      .filter(([key]) => Boolean(value[key]))
+      .map(([, label]) => label);
+    const details = value.details || value.otherDetails;
+    return [selected.join(', '), details].filter(Boolean).join('\n') || '';
+  };
+
   const screeningFileUrl = getScreeningValue('handwritingImageUrl');
   const screeningFileName = screeningFileUrl ? decodeURIComponent(screeningFileUrl.split('/').pop() || 'Screening file') : '';
   const screeningFileLower = screeningFileName.toLowerCase();
@@ -443,6 +466,11 @@ const ClientDetailsPage: React.FC = () => {
     'currentMedications',
     'bloodPressure',
     'bloodPressureIssues',
+    'bloodPressureStatus',
+    'bloodPressureValue',
+    'vitaminsSupplements',
+    'psychologicalAbuse',
+    'psychologicalAbuseDetails',
     'generalNotes',
     'notes',
     'handwritingImageUrl',
@@ -853,12 +881,36 @@ const ClientDetailsPage: React.FC = () => {
                     <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{getScreeningValue('bloodPressureIssues', 'bloodPressure')}</p>
                   </div>
                 )}
+                {(getScreeningValue('bloodPressureStatus') || getScreeningValue('bloodPressureValue')) && (
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-500 mb-2">Blood Pressure Details</h3>
+                    <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">
+                      {[getScreeningValue('bloodPressureStatus'), getScreeningValue('bloodPressureValue')].filter(Boolean).join(' - ')}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {getScreeningValue('currentMedications', 'medications') && (
                 <div>
                   <h3 className="text-sm font-medium text-gray-500 mb-2">Current Medications</h3>
                   <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded">{getScreeningValue('currentMedications', 'medications')}</p>
+                </div>
+              )}
+
+              {getScreeningValue('vitaminsSupplements') && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">Vitamins & Supplements</h3>
+                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded whitespace-pre-wrap">{formatScreeningValue(getScreeningValue('vitaminsSupplements'))}</p>
+                </div>
+              )}
+
+              {(getScreeningValue('psychologicalAbuse') || getScreeningValue('psychologicalAbuseDetails')) && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-500 mb-2">Psychological Abuse</h3>
+                  <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded whitespace-pre-wrap">
+                    {getScreeningValue('psychologicalAbuseDetails') || 'Yes'}
+                  </p>
                 </div>
               )}
 

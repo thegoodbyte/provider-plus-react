@@ -17,6 +17,8 @@ interface ScreeningData {
   sexualAbuseDetails: string;
   physicalAbuse: boolean;
   physicalAbuseDetails: string;
+  psychologicalAbuse: boolean;
+  psychologicalAbuseDetails: string;
   age: number;
   screeningDate: string;
   riskLevel: number;
@@ -39,6 +41,22 @@ interface ScreeningData {
   alcoholHistory: string;
   healthComplications: string;
   bloodPressure: string;
+  bloodPressureStatus: string;
+  bloodPressureValue: string;
+  vitaminsSupplements: {
+    vitaminD: boolean;
+    vitaminB12: boolean;
+    vitaminC: boolean;
+    omega3: boolean;
+    magnesium: boolean;
+    zinc: boolean;
+    iron: boolean;
+    probiotics: boolean;
+    multivitamin: boolean;
+    creatine: boolean;
+    other: boolean;
+    details: string;
+  };
   ayahuasca: boolean;
   ayahuascaDetails: string;
   iboga: boolean;
@@ -139,6 +157,8 @@ const ClientScreening: React.FC = () => {
     sexualAbuseDetails: '',
     physicalAbuse: false,
     physicalAbuseDetails: '',
+    psychologicalAbuse: false,
+    psychologicalAbuseDetails: '',
     age: 0,
     screeningDate: new Date().toISOString().split('T')[0],
     riskLevel: 1,
@@ -161,6 +181,22 @@ const ClientScreening: React.FC = () => {
     alcoholHistory: '',
     healthComplications: '',
     bloodPressure: '',
+    bloodPressureStatus: '',
+    bloodPressureValue: '',
+    vitaminsSupplements: {
+      vitaminD: false,
+      vitaminB12: false,
+      vitaminC: false,
+      omega3: false,
+      magnesium: false,
+      zinc: false,
+      iron: false,
+      probiotics: false,
+      multivitamin: false,
+      creatine: false,
+      other: false,
+      details: '',
+    },
     ayahuasca: false,
     ayahuascaDetails: '',
     iboga: false,
@@ -232,6 +268,14 @@ const ClientScreening: React.FC = () => {
         alcoholHistory: existingValue('alcoholHistory', 'alcoholConsumption') ?? prev.alcoholHistory,
         healthComplications: existingValue('healthComplications', 'otherMedicalComplications') ?? prev.healthComplications,
         bloodPressure: existingValue('bloodPressure', 'bloodPressureIssues') ?? prev.bloodPressure,
+        bloodPressureStatus: existingValue('bloodPressureStatus') ?? prev.bloodPressureStatus,
+        bloodPressureValue: existingValue('bloodPressureValue') ?? prev.bloodPressureValue,
+        vitaminsSupplements: {
+          ...prev.vitaminsSupplements,
+          ...(typeof existingScreening.vitaminsSupplements === 'object' && existingScreening.vitaminsSupplements
+            ? existingScreening.vitaminsSupplements
+            : {}),
+        },
         generalNotes: existingValue('generalNotes', 'notes') ?? prev.generalNotes,
         handwritingImageUrl: existingValue('handwritingImageUrl', 'handwritingImageUrl') ?? prev.handwritingImageUrl,
         screeningDate: existingValue('screeningDate', 'screeningCompletedDate')
@@ -283,10 +327,37 @@ const ClientScreening: React.FC = () => {
     }
   };
 
+  const handleVitaminChange = (name: string, checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      vitaminsSupplements: {
+        ...prev.vitaminsSupplements,
+        [name]: checked,
+      },
+    }));
+  };
+
+  const handleVitaminDetailsChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      vitaminsSupplements: {
+        ...prev.vitaminsSupplements,
+        details: value,
+      },
+    }));
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
-      const response = await screeningApi.create(formData);
+      const bloodPressure = [
+        formData.bloodPressureStatus,
+        formData.bloodPressureValue,
+      ].filter(Boolean).join(' - ');
+      const response = await screeningApi.create({
+        ...formData,
+        bloodPressure: bloodPressure || formData.bloodPressure,
+      });
       const rolePrefix = user?.role === 'admin' ? '/admin' : '';
       navigate(`${rolePrefix}/clients/${clientId}?tab=screening`, {
         replace: true,
@@ -433,6 +504,29 @@ const ClientScreening: React.FC = () => {
                 />
               )}
             </div>
+
+            <div>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  name="psychologicalAbuse"
+                  checked={formData.psychologicalAbuse}
+                  onChange={handleInputChange}
+                  className="rounded"
+                />
+                <span className="text-sm font-medium text-gray-700">Psychological Abuse</span>
+              </label>
+              {formData.psychologicalAbuse && (
+                <textarea
+                  name="psychologicalAbuseDetails"
+                  value={formData.psychologicalAbuseDetails}
+                  onChange={handleInputChange}
+                  rows={2}
+                  className="w-full mt-2 px-3 py-2 border border-gray-200 rounded-md"
+                  placeholder="Details..."
+                />
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -530,13 +624,27 @@ const ClientScreening: React.FC = () => {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Blood Pressure</label>
-            <input
-              type="text"
-              name="bloodPressure"
-              value={formData.bloodPressure}
-              onChange={handleInputChange}
-              className="w-full px-3 py-2 border border-gray-200 rounded-md"
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <select
+                name="bloodPressureStatus"
+                value={formData.bloodPressureStatus}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-200 rounded-md"
+              >
+                <option value="">Select status...</option>
+                <option value="higher">Higher</option>
+                <option value="normal">Normal</option>
+                <option value="lower">Lower</option>
+              </select>
+              <input
+                type="text"
+                name="bloodPressureValue"
+                value={formData.bloodPressureValue}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-200 rounded-md"
+                placeholder="e.g. 120/80"
+              />
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Health Complications</label>
@@ -548,6 +656,48 @@ const ClientScreening: React.FC = () => {
               className="w-full px-3 py-2 border border-gray-200 rounded-md"
             />
           </div>
+        </div>
+      </div>
+
+      {/* Vitamins and Supplements */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
+        <h2 className="text-lg font-semibold mb-4">Vitamins & Supplements</h2>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+          {[
+            { name: 'vitaminD', label: 'Vitamin D' },
+            { name: 'vitaminB12', label: 'Vitamin B12' },
+            { name: 'vitaminC', label: 'Vitamin C' },
+            { name: 'omega3', label: 'Omega-3' },
+            { name: 'magnesium', label: 'Magnesium' },
+            { name: 'zinc', label: 'Zinc' },
+            { name: 'iron', label: 'Iron' },
+            { name: 'probiotics', label: 'Probiotics' },
+            { name: 'multivitamin', label: 'Multivitamin' },
+            { name: 'creatine', label: 'Creatine' },
+            { name: 'other', label: 'Other' },
+          ].map(vitamin => (
+            <label key={vitamin.name} className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={Boolean((formData.vitaminsSupplements as any)[vitamin.name])}
+                onChange={(e) => handleVitaminChange(vitamin.name, e.target.checked)}
+                className="rounded"
+              />
+              <span className="text-sm font-medium text-gray-700">{vitamin.label}</span>
+            </label>
+          ))}
+        </div>
+
+        <div className="mt-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">More Information</label>
+          <textarea
+            value={formData.vitaminsSupplements.details}
+            onChange={(e) => handleVitaminDetailsChange(e.target.value)}
+            rows={3}
+            className="w-full px-3 py-2 border border-gray-200 rounded-md"
+            placeholder="Dose, frequency, brand, start date, or other supplement details"
+          />
         </div>
       </div>
 
