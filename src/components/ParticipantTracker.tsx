@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ceremoniesApi } from '../services/api';
-import { Ceremony, CeremonyParticipant } from '../types';
+import { bookingsApi, ceremoniesApi } from '../services/api';
+import { Ceremony, CeremonyParticipant, RetreatClient } from '../types';
 import { Button, Card, Col, Form, Input, InputNumber, Modal, Row, Select, Statistic, TimePicker, message } from 'antd';
 import { ArrowLeft, Clock3, Trash2 } from 'lucide-react';
 import moment from 'moment';
@@ -92,6 +92,24 @@ const buildParticipantUpdate = (participant: CeremonyParticipant, eventLog: Cere
   };
 };
 
+const participantFromBooking = (ceremony: Ceremony, booking: RetreatClient): CeremonyParticipant | null => {
+  const clientId = getObjectId(booking.clientId);
+  const retreatId = getObjectId(booking.retreatId);
+  if (!clientId || !retreatId || booking.status === 'cancelled') return null;
+
+  return {
+    _id: `pending-${clientId}`,
+    ceremonyId: ceremony._id || '',
+    clientId: booking.clientId as any,
+    retreatId,
+    medicalClearance: 'pending',
+    participated: false,
+    spoonsTaken: 0,
+    purged: false,
+    eventLog: [],
+  };
+};
+
 const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onBack }) => {
   const [ceremony, setCeremony] = useState<Ceremony | null>(null);
   const [participants, setParticipants] = useState<CeremonyParticipant[]>([]);
@@ -113,8 +131,20 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
         ceremoniesApi.getOne(ceremonyId),
         ceremoniesApi.getParticipants(ceremonyId),
       ]);
+      let nextParticipants = participantsResponse.data || [];
+
+      if (nextParticipants.length === 0) {
+        const retreatId = getObjectId(ceremonyResponse.data.retreatId);
+        if (retreatId) {
+          const bookingsResponse = await bookingsApi.getByRetreatWithDetails(retreatId);
+          nextParticipants = ((bookingsResponse.data || []) as RetreatClient[])
+            .map((booking: RetreatClient) => participantFromBooking(ceremonyResponse.data, booking))
+            .filter(Boolean) as CeremonyParticipant[];
+        }
+      }
+
       setCeremony(ceremonyResponse.data);
-      setParticipants(participantsResponse.data || []);
+      setParticipants(nextParticipants);
     } catch (error) {
       message.error('Failed to load ceremony tracking data');
       console.error('Error loading ceremony tracker:', error);
@@ -161,7 +191,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
   };
 
   const saveEvent = async (values: any) => {
-    if (!selectedParticipant?._id) return;
+    if (!selectedParticipant?._id || !ceremony) return;
     const eventLog = [...(selectedParticipant.eventLog || [])];
     const nextEvent: CeremonyEvent = {
       id: editingEventId || `${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -185,7 +215,21 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
 
     try {
       setSaving(true);
-      await ceremoniesApi.updateParticipant(selectedParticipant._id, buildParticipantUpdate(selectedParticipant, eventLog));
+      let participantToUpdate = selectedParticipant;
+      if (selectedParticipant._id.startsWith('pending-')) {
+        const createdParticipant = await ceremoniesApi.addParticipant({
+          ceremonyId: ceremony._id!,
+          clientId: getObjectId(selectedParticipant.clientId),
+          retreatId: getObjectId(selectedParticipant.retreatId),
+          medicalClearance: selectedParticipant.medicalClearance || 'pending',
+          participated: false,
+          spoonsTaken: 0,
+          purged: false,
+          eventLog: [],
+        });
+        participantToUpdate = createdParticipant.data;
+      }
+      await ceremoniesApi.updateParticipant(participantToUpdate._id!, buildParticipantUpdate(participantToUpdate, eventLog));
       message.success('Ceremony event saved');
       setModalOpen(false);
       await loadData();
