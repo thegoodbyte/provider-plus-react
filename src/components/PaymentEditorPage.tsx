@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { bookingsApi, clientsApi, paymentsApi, retreatsApi } from '../services/api';
-import { Client, Payment, Retreat, RetreatClient } from '../types';
+import { Client, Payment, PaymentRequest, Retreat, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
@@ -16,6 +16,49 @@ const resolveId = (value: any) => (typeof value === 'object' && value?._id ? val
 
 const defaultDate = () => new Date().toISOString().split('T')[0];
 
+const getPaymentRequestAmount = (paymentRequest?: PaymentRequest | null) => {
+  if (!paymentRequest) return '';
+  const candidates = [
+    paymentRequest.requestedAmount,
+    paymentRequest.fullPriceQuote,
+    paymentRequest.fullPrice,
+    paymentRequest.amountPaid,
+  ];
+  const amount = candidates.find((value) => Number(value) > 0);
+  return amount ?? '';
+};
+
+const paymentMethodFromRequest = (paymentType?: PaymentRequest['paymentType']): Payment['paymentMethod'] => {
+  switch (paymentType) {
+    case 'Paypal':
+      return 'paypal';
+    case 'Revolut':
+      return 'revolut';
+    case 'Wise':
+      return 'wise';
+    case 'Cash':
+      return 'cash';
+    case 'CSOB':
+      return 'bank_transfer';
+    default:
+      return 'bank_transfer';
+  }
+};
+
+const paymentTypeFromRequest = (requestType?: PaymentRequest['requestType']): Payment['paymentType'] => {
+  switch (requestType) {
+    case 'deposit':
+      return 'deposit_non_refundable';
+    case 'balance':
+      return 'balance_payment';
+    case 'additional':
+      return 'adjustment';
+    case 'full_payment':
+    default:
+      return 'regular_payment';
+  }
+};
+
 const PaymentEditorPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -25,6 +68,7 @@ const PaymentEditorPage: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
   const [bookings, setBookings] = useState<RetreatClient[]>([]);
+  const [selectedPaymentRequest, setSelectedPaymentRequest] = useState<PaymentRequest | null>(null);
   const [usdPreview, setUsdPreview] = useState<number | null>(null);
   const [usdPreviewLoading, setUsdPreviewLoading] = useState(false);
   const [usdPreviewError, setUsdPreviewError] = useState('');
@@ -64,6 +108,8 @@ const PaymentEditorPage: React.FC = () => {
 
         if (paymentResponse?.data) {
           const payment = paymentResponse.data as Payment;
+          const populatedPaymentRequest = typeof payment.paymentRequestId === 'object' ? payment.paymentRequestId as PaymentRequest : null;
+          if (populatedPaymentRequest) setSelectedPaymentRequest(populatedPaymentRequest);
           setFormData({
             paymentRequestId: resolveId(payment.paymentRequestId),
             clientId: resolveId(payment.clientId),
@@ -144,20 +190,49 @@ const PaymentEditorPage: React.FC = () => {
     };
   }, [formData.amount, formData.currency]);
 
-  const handlePaymentRequestSelect = (paymentRequestId: string, paymentRequest?: any) => {
-    const amount = paymentRequest?.fullPriceQuote ?? paymentRequest?.amountPaid ?? '';
+  const findBookingForPaymentRequest = (paymentRequestId: string, clientId?: string, retreatId?: string) => {
+    return bookings.find((booking) => resolveId(booking.paymentRequestId) === paymentRequestId)
+      || bookings.find((booking) => {
+        const bookingClientId = resolveId(booking.clientId);
+        const bookingRetreatId = resolveId(booking.retreatId);
+        return Boolean(clientId && retreatId && bookingClientId === clientId && bookingRetreatId === retreatId);
+      });
+  };
+
+  const handlePaymentRequestSelect = (paymentRequestId: string, paymentRequest?: PaymentRequest) => {
+    setSelectedPaymentRequest(paymentRequest || null);
+
+    if (!paymentRequestId || !paymentRequest) {
+      setFormData((prev) => ({
+        ...prev,
+        paymentRequestId: '',
+      }));
+      return;
+    }
+
+    const amount = getPaymentRequestAmount(paymentRequest);
     const currency = paymentRequest?.currency || formData.currency;
     const clientId = resolveId(paymentRequest?.clientId);
     const retreatId = resolveId(paymentRequest?.retreatId);
+    const booking = findBookingForPaymentRequest(paymentRequestId, clientId, retreatId);
+    const requestPaymentType = paymentTypeFromRequest(paymentRequest.requestType);
 
     setFormData((prev) => ({
       ...prev,
       paymentRequestId,
-      clientId: clientId || prev.clientId,
-      retreatId: retreatId || prev.retreatId,
-      amount: amount !== '' ? String(amount) : prev.amount,
+      clientId,
+      retreatId,
+      bookingId: booking?._id || prev.bookingId,
+      amount: amount !== '' && amount !== undefined ? String(amount) : prev.amount,
       currency,
-      description: prev.description || `Payment for invoice ${paymentRequest?.invoiceNumber || paymentRequest?.display_id || ''}`.trim(),
+      paymentMethod: paymentMethodFromRequest(paymentRequest.paymentType),
+      paymentType: requestPaymentType,
+      isDeposit: requestPaymentType === 'deposit_non_refundable' || requestPaymentType === 'deposit_refundable',
+      isFinalPayment: requestPaymentType === 'balance_payment' || paymentRequest.requestType === 'full_payment',
+      status: paymentRequest.status === 'paid' ? 'completed' : prev.status === 'pending' ? 'completed' : prev.status,
+      paymentDate: paymentRequest.paidDate ? new Date(paymentRequest.paidDate).toISOString().split('T')[0] : prev.paymentDate,
+      description: `Payment for invoice ${paymentRequest.invoiceNumber || paymentRequest.display_id || ''}`.trim(),
+      notes: prev.notes || paymentRequest.note || paymentRequest.notes || '',
     }));
   };
 
@@ -175,6 +250,11 @@ const PaymentEditorPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isEdit && !formData.paymentRequestId) {
+      alert('Please select a payment request first');
+      return;
+    }
 
     if (!formData.clientId || !formData.retreatId || !formData.amount) {
       alert('Please fill in all required fields');
@@ -246,10 +326,22 @@ const PaymentEditorPage: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">Payment Request</label>
               <SearchablePaymentRequestSelect
                 selectedPaymentRequestId={formData.paymentRequestId}
-                onPaymentRequestSelect={(paymentRequestId, paymentRequest) => handlePaymentRequestSelect(paymentRequestId, paymentRequest)}
+                onPaymentRequestSelect={(paymentRequestId, paymentRequest) => handlePaymentRequestSelect(paymentRequestId, paymentRequest as any)}
                 placeholder="Search invoice number, client, or retreat"
                 className="w-full"
               />
+              {selectedPaymentRequest && (
+                <div className="mt-3 rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950">
+                  <div className="font-semibold">
+                    Invoice {selectedPaymentRequest.invoiceNumber || `#${selectedPaymentRequest.display_id || 'n/a'}`}
+                  </div>
+                  <div className="mt-1 grid gap-2 sm:grid-cols-3">
+                    <div>Requested: {getPaymentRequestAmount(selectedPaymentRequest) || '—'} {selectedPaymentRequest.currency}</div>
+                    <div>Type: {selectedPaymentRequest.requestType || 'full payment'}</div>
+                    <div>Status: {selectedPaymentRequest.status}</div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="md:col-span-2">
