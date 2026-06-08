@@ -582,12 +582,12 @@ const UnifiedClientManager: React.FC = () => {
       {/* Table */}
       <div className="bg-white rounded-apple border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full divide-y divide-gray-200 max-sm:table-fixed">
             <thead className="bg-gray-50">
               <tr>
                 <th
                   onClick={() => handleSort('display_id')}
-                  className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 max-sm:w-16 max-sm:px-2"
                 >
                   <div className="flex items-center">
                     ID
@@ -598,7 +598,7 @@ const UnifiedClientManager: React.FC = () => {
                 </th>
                 <th
                   onClick={() => handleSort('lastName')}
-                  className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 max-sm:px-2"
                 >
                   <div className="flex items-center">
                     Name
@@ -607,12 +607,12 @@ const UnifiedClientManager: React.FC = () => {
                     }
                   </div>
                 </th>
-                <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="hidden px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:table-cell">
                   Contact
                 </th>
                 <th
                   onClick={() => handleSort('workflowStatus')}
-                  className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                  className="hidden px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 sm:table-cell"
                 >
                   <div className="flex items-center">
                     Status
@@ -621,16 +621,16 @@ const UnifiedClientManager: React.FC = () => {
                     }
                   </div>
                 </th>
-                <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="hidden px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:table-cell">
                   Retreat
                 </th>
-                <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="hidden px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:table-cell">
                   Signup Date
                 </th>
-                <th className="px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="hidden px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:table-cell">
                   Country
                 </th>
-                <th className="px-3 py-1.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-1.5 text-right text-xs font-medium text-gray-500 uppercase tracking-wider max-sm:w-28 max-sm:px-2">
                   Actions
                 </th>
               </tr>
@@ -638,19 +638,19 @@ const UnifiedClientManager: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredClients.map((client) => (
                 <tr key={client._id} className="hover:bg-gray-50">
-                  <td className="px-3 py-1.5 whitespace-nowrap">
+                  <td className="px-3 py-1.5 whitespace-nowrap max-sm:px-2">
                     <div className="text-sm font-semibold text-gray-900">
                       {client.display_id || '-'}
                     </div>
                   </td>
-                  <td className="px-3 py-1.5 whitespace-nowrap">
+                  <td className="px-3 py-1.5 whitespace-nowrap max-sm:px-2">
                     <div>
                       <button
                         onClick={() => handleClientClick(client)}
-                        className="!inline-flex !w-auto !items-center !justify-start gap-2 !rounded-none !border-0 !bg-transparent !p-0 !text-left !text-sm !font-medium !text-gray-900 !shadow-none hover:!bg-transparent hover:!text-blue-600"
+                        className="!inline-flex !w-auto !max-w-full !items-center !justify-start gap-2 !rounded-none !border-0 !bg-transparent !p-0 !text-left !text-sm !font-medium !text-gray-900 !shadow-none hover:!bg-transparent hover:!text-blue-600"
                       >
                         <ClientListAvatar client={client} name={`${client.firstName || ''} ${client.lastName || ''}`.trim()} />
-                        <span>{client.firstName} {client.lastName}</span>
+                        <span className="truncate">{client.firstName} {client.lastName}</span>
                       </button>
                       {client.preferredName && (
                         <span className="text-xs text-gray-400 ml-1">
@@ -659,7 +659,7 @@ const UnifiedClientManager: React.FC = () => {
                       )}
                     </div>
                   </td>
-                  <td className="px-3 py-1.5 whitespace-nowrap">
+                  <td className="hidden px-3 py-1.5 whitespace-nowrap sm:table-cell">
                     <div className="text-xs text-gray-700">
                       {client.email && (
                         <div>{client.email}</div>
@@ -667,10 +667,10 @@ const UnifiedClientManager: React.FC = () => {
                       <div>{client.phone}</div>
                     </div>
                   </td>
-                  <td className="px-3 py-1.5 whitespace-nowrap">
+                  <td className="hidden px-3 py-1.5 whitespace-nowrap sm:table-cell">
                     {getStatusBadge(client.workflowStatus || 'potential')}
                   </td>
-                  <td className="px-3 py-1.5 whitespace-nowrap">
+                  <td className="hidden px-3 py-1.5 whitespace-nowrap sm:table-cell">
                     {getClientRetreatCode(client) ? (
                       <span className="inline-flex rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-semibold text-indigo-700">
                         {getClientRetreatCode(client)}
@@ -679,14 +679,14 @@ const UnifiedClientManager: React.FC = () => {
                       <span className="text-sm text-gray-400">-</span>
                     )}
                   </td>
-                  <td className="px-3 py-1.5 whitespace-nowrap">
+                  <td className="hidden px-3 py-1.5 whitespace-nowrap sm:table-cell">
                     {getSignupDateBadge(typeof client.signupDate === 'string' ? client.signupDate : client.signupDate?.toISOString().split('T')[0])}
                   </td>
-                  <td className="px-3 py-1.5 whitespace-nowrap text-sm text-gray-500">
+                  <td className="hidden px-3 py-1.5 whitespace-nowrap text-sm text-gray-500 sm:table-cell">
                     {client.country || '-'}
                   </td>
-                  <td className="px-3 py-1.5 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex justify-end space-x-2">
+                  <td className="px-3 py-1.5 whitespace-nowrap text-right text-sm font-medium max-sm:px-2">
+                    <div className="flex justify-end space-x-2 max-sm:space-x-1">
                       <button
                         type="button"
                         onMouseDown={(event) => event.stopPropagation()}
@@ -695,11 +695,11 @@ const UnifiedClientManager: React.FC = () => {
                           event.stopPropagation();
                           handleEdit(client);
                         }}
-                        className="inline-flex items-center gap-1 rounded px-2 py-1 text-blue-700 hover:bg-blue-50 hover:text-blue-900"
+                        className="inline-flex items-center gap-1 rounded px-2 py-1 text-blue-700 hover:bg-blue-50 hover:text-blue-900 max-sm:px-1.5"
                         title="Edit"
                       >
                         <Icon icon={FiEdit2} className="w-3.5 h-3.5" />
-                        <span className="text-xs">Edit</span>
+                        <span className="text-xs max-sm:sr-only">Edit</span>
                       </button>
                       {client.workflowStatus === 'potential' && (
                         <button
