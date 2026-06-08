@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { bookingsApi, ceremoniesApi, fileUploadsApi } from '../services/api';
-import { Ceremony, CeremonyParticipant, RetreatClient } from '../types';
+import { Ceremony, CeremonyParticipant, FileUpload, RetreatClient } from '../types';
 import { Button, Card, Col, Form, Input, InputNumber, Modal, Row, Select, Statistic, TimePicker, message } from 'antd';
 import { Activity, ArrowLeft, Clock3, FileText, HeartPulse, Plus, Trash2 } from 'lucide-react';
 import moment from 'moment';
@@ -514,8 +514,8 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
     }
   };
 
-  const openFilePreview = async (fileUrl?: string, fileName?: string) => {
-    const fileHash = getFileHashFromUrl(fileUrl);
+  const openFilePreview = async (participant: CeremonyParticipant, fileUrl?: string, fileName?: string) => {
+    let fileHash = getFileHashFromUrl(fileUrl);
     if (!fileHash) {
       message.error('Unable to preview this file');
       return;
@@ -524,7 +524,23 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
     try {
       setPreviewLoading(true);
       if (previewUrl) URL.revokeObjectURL(previewUrl);
-      const response = await fileUploadsApi.getViewBlob(fileHash);
+      let response;
+      try {
+        response = await fileUploadsApi.getViewBlob(fileHash);
+      } catch (previewError) {
+        const uploadsResponse = await fileUploadsApi.getAll({
+          documentKind: 'client_medical',
+          foreignKey: getParticipantKey(participant),
+          isActive: true,
+        });
+        const matchingUpload = uploadsResponse.data.find((upload: FileUpload) => (
+          upload.originalFileName === fileName || upload.storedFileName === fileName
+        )) || uploadsResponse.data[0];
+
+        if (!matchingUpload?.fileHash || matchingUpload.fileHash === fileHash) throw previewError;
+        fileHash = matchingUpload.fileHash;
+        response = await fileUploadsApi.getViewBlob(fileHash);
+      }
       setPreviewUrl(URL.createObjectURL(response.data as Blob));
       setPreviewFileName(fileName || 'Pre-ceremony EKG');
     } catch (error) {
@@ -598,12 +614,12 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
         <table className="min-w-[1100px] w-full border-collapse">
           <thead>
             <tr className="bg-gray-50">
-              <th className="sticky left-0 z-10 w-28 border-b border-r border-gray-200 bg-gray-50 px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500">Time</th>
+              <th className="sticky left-0 top-0 z-30 w-28 border-b border-r border-gray-200 bg-gray-50 px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 shadow-sm">Time</th>
               {participants.map((participant) => {
                 const checks = getPreCeremonyChecks(participant);
                 const latestCheck = getLatestPreCeremonyCheck(participant);
                 return (
-                  <th key={participant._id} className="min-w-[240px] border-b border-r border-gray-200 px-3 py-3 text-left align-top">
+                  <th key={participant._id} className="sticky top-0 z-20 min-w-[240px] border-b border-r border-gray-200 bg-gray-50 px-3 py-3 text-left align-top shadow-sm">
                     <div className="text-sm font-semibold text-gray-900">{getClientName(participant)}</div>
                     <div className="mt-1 text-xs text-gray-500">
                       {participant.spoonsTaken || 0} spoons
@@ -650,7 +666,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                               {check.preCeremonyEkg?.fileUrl && (
                                 <button
                                   type="button"
-                                  onClick={() => openFilePreview(check.preCeremonyEkg?.fileUrl, check.preCeremonyEkg?.fileName)}
+                                  onClick={() => openFilePreview(participant, check.preCeremonyEkg?.fileUrl, check.preCeremonyEkg?.fileName)}
                                   className="mt-1 block truncate font-medium text-blue-700 hover:text-blue-900"
                                   title={check.preCeremonyEkg.fileName || 'Preview EKG file'}
                                 >
