@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ceremoniesApi } from '../services/api';
 import { Ceremony } from '../types';
 import { Button, Modal, Form, Input, DatePicker, TimePicker, Select, message, Popconfirm } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import moment from 'moment';
 import ParticipantTracker from './ParticipantTracker';
 
@@ -187,14 +187,16 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId }) => {
                     {ceremony.medicalChecksCompleted ? '✅ Complete' : '⏳ Pending'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div style={{ display: 'flex', gap: '4px' }}>
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                       <Button
-                        type="text"
-                        icon={<UserOutlined />}
+                        type="primary"
+                        icon={<ClockCircleOutlined />}
                         onClick={() => setTrackingCeremonyId(ceremony._id!)}
                         size="small"
-                        title="Track Participants"
-                      />
+                        title="Track spoons and time"
+                      >
+                        Track spoons & time
+                      </Button>
                       <Button
                         type="text"
                         icon={<EditOutlined />}

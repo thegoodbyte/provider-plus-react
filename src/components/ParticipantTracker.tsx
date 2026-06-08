@@ -225,9 +225,9 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
 
       <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Ceremony Medicine Grid</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Track Spoons & Time</h1>
           <p className="text-sm text-gray-600">
-            Ceremony #{ceremony?.ceremonyNumber || '-'} - medicine timing and dose form by participant.
+            Ceremony #{ceremony?.ceremonyNumber || '-'} - spoon counts, timing, purges, launch, abnormalities, and notes by participant.
             {ceremony?.date ? ` ${moment(ceremony.date).format('MMMM DD, YYYY')}` : ''}
           </p>
         </div>
@@ -254,11 +254,11 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                 <th key={participant._id} className="min-w-[220px] border-b border-r border-gray-200 px-3 py-3 text-left align-top">
                   <div className="text-sm font-semibold text-gray-900">{getClientName(participant)}</div>
                   <div className="mt-1 text-xs text-gray-500">
-                    {participant.spoonsTaken || 0} dose units
+                    {participant.spoonsTaken || 0} spoons
                     {participant.purged ? ` - purged ${participant.purgeTime || ''}` : ''}
                   </div>
                   <Button size="small" type="link" className="mt-1 p-0" onClick={() => openEventModal(participant)}>
-                    Add medicine
+                    Add spoon/time
                   </Button>
                 </th>
               ))}
@@ -292,7 +292,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
             {timeRows.length === 0 && (
               <tr>
                 <td colSpan={participants.length + 1} className="px-4 py-8 text-center text-sm text-gray-500">
-                  {loading ? 'Loading participants...' : 'No ceremony events recorded yet.'}
+                  {loading ? 'Loading participants...' : 'No spoon or time events recorded yet. Use Add spoon/time under a participant name.'}
                 </td>
               </tr>
             )}
@@ -303,7 +303,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                 <td className="sticky left-0 z-10 border-r border-gray-200 bg-gray-50 px-3 py-3 text-sm font-semibold text-gray-900">Totals</td>
                 {participants.map((participant) => (
                   <td key={`${participant._id}-total`} className="border-r border-gray-200 px-3 py-3 text-sm text-gray-700">
-                    <div>{participant.spoonsTaken || 0} dose units</div>
+                    <div>{participant.spoonsTaken || 0} spoons</div>
                     <div>{participant.purged ? `Purged ${participant.purgeTime || ''}` : 'No purge recorded'}</div>
                     {participant.purgeDetails && <div className="mt-1 whitespace-pre-wrap text-xs text-gray-500">{participant.purgeDetails}</div>}
                   </td>
@@ -318,7 +318,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
       </div>
 
       <Modal
-        title={editingEventId ? 'Edit Ceremony Event' : 'Add Ceremony Event'}
+        title={editingEventId ? 'Edit Spoon/Time Event' : 'Add Spoon/Time Event'}
         open={modalOpen}
         onCancel={() => setModalOpen(false)}
         onOk={() => form.submit()}
