@@ -130,6 +130,17 @@ const getBloodPressureLabel = (check?: PreCeremonyCheck) => {
   return `BP ${[bp.systolic, bp.diastolic].filter(Boolean).join('/')}${bp.pulse ? ` P${bp.pulse}` : ''}`;
 };
 
+const getCheckTimeLabel = (check: PreCeremonyCheck) => {
+  const time = check.recordedAt || check.preCeremonyBloodPressure?.recordedAt || check.preCeremonyEkg?.uploadedAt;
+  return time ? moment(time).format('MMM D, HH:mm') : 'No time';
+};
+
+const getMedicineValue = (event: CeremonyEvent) => {
+  if (event.doseAmount) return event.doseAmount;
+  if (event.spoonCount !== undefined && event.spoonCount !== null) return String(event.spoonCount);
+  return event.spoonAmount || 'Dose';
+};
+
 const participantFromBooking = (ceremony: Ceremony, booking: RetreatClient): CeremonyParticipant | null => {
   const clientId = getObjectId(booking.clientId);
   const retreatId = getObjectId(booking.retreatId);
@@ -540,16 +551,42 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                       </div>
                     )}
                     {checks.length > 0 && (
-                      <div className="mt-2 flex flex-wrap gap-1">
+                      <div className="mt-2 space-y-2">
                         {checks.map((check, index) => (
-                          <button
-                            key={check.id || index}
-                            type="button"
-                            onClick={() => openMedicalModal(participant, check)}
-                            className="rounded border border-gray-200 bg-gray-50 px-2 py-1 text-xs text-gray-700 hover:bg-gray-100"
-                          >
-                            Edit check {index + 1}
-                          </button>
+                          <div key={check.id || index} className="rounded-md border border-gray-200 bg-gray-50 px-2 py-2 text-xs text-gray-700">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="font-semibold text-gray-900">Check {index + 1}</div>
+                              <button
+                                type="button"
+                                onClick={() => openMedicalModal(participant, check)}
+                                className="rounded border border-gray-300 bg-white px-2 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
+                              >
+                                Edit
+                              </button>
+                            </div>
+                            <div className="mt-1">{getCheckTimeLabel(check)}</div>
+                            <div>{getBloodPressureLabel(check)} - {getApprovalLabel(check.preCeremonyBloodPressure?.approved)}</div>
+                            <div>
+                              EKG {getApprovalLabel(check.preCeremonyEkg?.approved)}
+                              {check.preCeremonyEkg?.fileUrl && (
+                                <>
+                                  {' - '}
+                                  <a
+                                    href={check.preCeremonyEkg.fileUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="font-medium text-blue-600 hover:text-blue-800"
+                                  >
+                                    {check.preCeremonyEkg.fileName || 'View file'}
+                                  </a>
+                                </>
+                              )}
+                            </div>
+                            <div>Clearance {check.medicalClearance || 'pending'}</div>
+                            {check.preCeremonyEkg?.notes && <div className="mt-1 whitespace-pre-wrap text-gray-600">EKG: {check.preCeremonyEkg.notes}</div>}
+                            {check.preCeremonyBloodPressure?.notes && <div className="whitespace-pre-wrap text-gray-600">BP: {check.preCeremonyBloodPressure.notes}</div>}
+                            {check.medicalClearanceNotes && <div className="whitespace-pre-wrap text-gray-600">Clearance: {check.medicalClearanceNotes}</div>}
+                          </div>
                         ))}
                       </div>
                     )}
@@ -602,14 +639,25 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                       {eventsAtTime(participant, time).map((event) => (
                         <div key={event.id || `${event.time}-${event.eventType}`} className={`rounded-md border px-2 py-2 text-xs ${eventTypeStyles[event.eventType]}`}>
                           <div className="flex items-start justify-between gap-2">
-                            <button type="button" onClick={() => openEventModal(participant, event)} className="text-left font-semibold">
-                              {eventTypeLabels[event.eventType]}
-                            </button>
-                            <button type="button" onClick={() => deleteEvent(participant, event.id)} className="text-gray-500 hover:text-red-600" title="Delete event">
-                              <Icon icon={Trash2} className="h-3.5 w-3.5" />
-                            </button>
+                            {event.eventType === 'medicine' ? (
+                              <div className="text-left text-lg font-bold leading-none text-gray-950">{getMedicineValue(event)}</div>
+                            ) : (
+                              <div className="text-left font-semibold">{eventTypeLabels[event.eventType]}</div>
+                            )}
+                            <div className="flex items-center gap-2">
+                              <button type="button" onClick={() => openEventModal(participant, event)} className="rounded border border-current px-2 py-0.5 text-xs font-medium hover:bg-white/60">
+                                Edit
+                              </button>
+                              <button type="button" onClick={() => deleteEvent(participant, event.id)} className="text-gray-500 hover:text-red-600" title="Delete event">
+                                <Icon icon={Trash2} className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                           </div>
-                          <div className="mt-1 whitespace-pre-wrap">{getEventSummary(event)}</div>
+                          {event.eventType === 'medicine' ? (
+                            event.note && event.note !== getMedicineValue(event) && <div className="mt-1 whitespace-pre-wrap">{event.note}</div>
+                          ) : (
+                            <div className="mt-1 whitespace-pre-wrap">{getEventSummary(event)}</div>
+                          )}
                         </div>
                       ))}
                     </div>
