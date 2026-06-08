@@ -1,7 +1,7 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
-import { MedicalArtifact, MedicalReviewRequest } from '../types';
+import { medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
+import { MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
 
 interface BookingConfirmationPDFProps {
   booking: any;
@@ -46,6 +46,73 @@ const isArtifactVerified = (artifact?: MedicalArtifact, review?: MedicalReviewRe
   const reviewStatus = getReviewStatus(review);
   if (negativeReviewStatuses.has(reviewStatus) || negativeReviewStatuses.has(artifactStatus)) return false;
   return positiveReviewStatuses.has(reviewStatus) || positiveReviewStatuses.has(artifactStatus);
+};
+
+const isValidDate = (date: Date) => !Number.isNaN(date.getTime());
+
+const parseDate = (value: any): Date | null => {
+  if (!value) return null;
+  const date = new Date(value);
+  return isValidDate(date) ? date : null;
+};
+
+const addDays = (date: Date, days: number) => {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+};
+
+const paymentDateFields = (source: any) => [
+  source?.paymentDate,
+  source?.paidDate,
+  source?.processedDate,
+  source?.createdAt,
+];
+
+const getFirstPaymentDateFromPayments = (payments: Payment[]) => {
+  const dateFrom = (paymentList: Payment[]) => paymentList
+    .map((payment) => paymentDateFields(payment).map(parseDate).find(Boolean))
+    .filter(Boolean) as Date[];
+
+  const paidPayments = dateFrom(payments.filter((payment) => payment.status === 'completed'));
+  if (paidPayments.length === 0) return null;
+  return paidPayments.sort((a, b) => a.getTime() - b.getTime())[0];
+};
+
+const resolveInitialPaymentDate = async (booking: any) => {
+  const bookingId = booking?._id || booking?.id;
+  const bookingHash = booking?.bookingHash;
+
+  try {
+    if (bookingHash) {
+      const response = await paymentsApi.getByBookingHash(bookingHash);
+      const paymentDate = getFirstPaymentDateFromPayments(response.data || []);
+      if (paymentDate) return paymentDate;
+    }
+  } catch (error) {
+    console.warn('Unable to load booking payments by hash for PDF deadlines:', error);
+  }
+
+  try {
+    if (bookingId) {
+      const response = await paymentsApi.getByBooking(bookingId);
+      const paymentDate = getFirstPaymentDateFromPayments(response.data || []);
+      if (paymentDate) return paymentDate;
+    }
+  } catch (error) {
+    console.warn('Unable to load booking payments by ID for PDF deadlines:', error);
+  }
+
+  const paymentRequest = booking?.paymentRequestId || booking?.paymentRequest;
+  const fallbackFields = [
+    ...paymentDateFields(paymentRequest),
+    booking?.paymentDate,
+    booking?.paidDate,
+    booking?.bookingDate,
+    booking?.registrationDate,
+    booking?.createdAt,
+  ];
+  return fallbackFields.map(parseDate).find(Boolean) || new Date();
 };
 
 const buildRequirementStatus = async (booking: any) => {
@@ -128,6 +195,11 @@ const translations = {
     verified: 'zweryfikowano',
     pending: 'wymagane',
     conditionalNotice: 'Ta rezerwacja pozostaje warunkowa do czasu spełnienia poniższych wymagań:',
+    initialPaymentDate: 'Data pierwszej płatności',
+    deadline: 'Termin',
+    medicalDeadline: 'EKG i panel wątroby należy dostarczyć w ciągu 21 dni od pierwszej płatności.',
+    contractDeadline: 'Umowę uczestnika należy podpisać w ciągu 3 dni od pierwszej płatności.',
+    deadlinePolicy: 'Jeśli terminy nie zostaną dotrzymane, rezerwacja może zostać przeniesiona na następny dostępny termin, aby miejsce mogło zostać zaoferowane osobom gotowym do kontynuowania.',
     retreatDescription: 'Pobyt uzdrawiający psychoduchowo z dwiema ceremoniami Missoko Bwiti Iboga, zakwaterowaniem (pokój Aleksism) i wyżywieniem.',
     location: 'Miejsce',
     dates: 'Data',
@@ -145,7 +217,7 @@ const translations = {
     footerNote1: 'Pozostałą kwotę najlepiej uregulować w USD.',
     footerNote2: 'Jeśli chcesz, śmiało skontaktuj się ze mną przed przysłaniem gotówki — z przyjemnością podam aktualny kurs wymiany. Dziękuję',
     footerNote3: 'Należy pamiętać, że żadna usługa nie będzie świadczona, dopóki nie zostanie ona w pełni opłacona. Dziękuję za zrozumienie',
-    footerNote4: 'Każdy uczestnik musi także przedłożyć zapis swojego EKG i panelu wątroby do wglądu przez mój personel medyczny na miesiąc przed pobytem.',
+    footerNote4: 'Aby potwierdzić rezerwację, każdy uczestnik musi dostarczyć EKG i panel wątroby w ciągu 21 dni od pierwszej płatności oraz podpisać umowę uczestnika w ciągu 3 dni od pierwszej płatności.',
     footerNote5: 'Jednocześnie każdy uczestnik musi być czysty od wszelkich leków i niektórych leków (takich jak leki przeciwdepresyjne itp.) przez co najmniej 30 dni przed leczeniem.',
     footerNote6: 'Dziękuję za zrozumienie, Martin Haila',
     polska: 'Polska'
@@ -169,6 +241,11 @@ const translations = {
     verified: 'ověřeno',
     pending: 'vyžadováno',
     conditionalNotice: 'Tato rezervace zůstává podmíněná, dokud nebudou splněny následující požadavky:',
+    initialPaymentDate: 'Datum první platby',
+    deadline: 'Termín',
+    medicalDeadline: 'EKG a jaterní panel musí být dodány do 21 dnů od první platby.',
+    contractDeadline: 'Smlouva účastníka musí být podepsána do 3 dnů od první platby.',
+    deadlinePolicy: 'Pokud termíny nebudou dodrženy, rezervace může být přesunuta na další dostupný termín, aby místo mohlo být nabídnuto lidem připraveným pokračovat.',
     retreatDescription: 'Psychospiritualní léčebný pobyt se dvěma ceremoniemi Missoko Bwiti Iboga, ubytováním (pokoj Aleksism) a stravováním.',
     location: 'Místo',
     dates: 'Datum',
@@ -186,7 +263,7 @@ const translations = {
     footerNote1: 'Zbývající částku je nejlepší uhradit v USD.',
     footerNote2: 'Pokud chcete, neváhejte mě kontaktovat před odesláním hotovosti — rád vám sdělím aktuální směnný kurz. Děkuji',
     footerNote3: 'Pamatujte, že žádná služba nebude poskytována, dokud nebude plně uhrazena. Děkuji za pochopení',
-    footerNote4: 'Každý účastník musí také předložit svůj EKG a jaterní panel k nahlédnutí mým lékařským personálem měsíc před pobytem.',
+    footerNote4: 'Pro potvrzení rezervace musí každý účastník dodat EKG a jaterní panel do 21 dnů od první platby a podepsat smlouvu účastníka do 3 dnů od první platby.',
     footerNote5: 'Současně musí být každý účastník čistý od všech léků a některých léků (jako jsou antidepresiva atd.) po dobu nejméně 30 dnů před léčbou.',
     footerNote6: 'Děkuji za pochopení, Martin Haila',
     polska: 'Česká republika'
@@ -210,6 +287,11 @@ const translations = {
     verified: 'verified',
     pending: 'required',
     conditionalNotice: 'This reservation remains conditional until the following requirements are completed:',
+    initialPaymentDate: 'Initial payment date',
+    deadline: 'Deadline',
+    medicalDeadline: 'EKG and liver panel must be provided within 21 days of the initial payment.',
+    contractDeadline: 'The participant agreement must be signed within 3 days of the initial payment.',
+    deadlinePolicy: 'If these deadlines are missed, the reservation may be moved to the next available retreat date so the spot can be offered to people who are ready to proceed.',
     retreatDescription: 'Psycho-spiritual healing retreat with two Missoko Bwiti Iboga ceremonies, accommodation (Aleksism room) and meals.',
     location: 'Location',
     dates: 'Dates',
@@ -227,7 +309,7 @@ const translations = {
     footerNote1: 'The remaining amount is best paid in USD.',
     footerNote2: 'If you wish, feel free to contact me before sending cash — I will be happy to provide the current exchange rate. Thank you',
     footerNote3: 'Please note that no service will be provided until it is fully paid. Thank you for understanding',
-    footerNote4: 'Each participant must also submit their EKG and liver panel for review by my medical staff one month before the retreat.',
+    footerNote4: 'To confirm the reservation, each participant must provide EKG and liver panel results within 21 days of the initial payment and sign the participant agreement within 3 days of the initial payment.',
     footerNote5: 'At the same time, each participant must be clean of all drugs and certain medications (such as antidepressants, etc.) for at least 30 days before treatment.',
     footerNote6: 'Thank you for understanding, Martin Haila',
     polska: 'USA'
@@ -238,16 +320,19 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   const client = booking.clientId || booking.clientDetails;
   const retreat = booking.retreatId || booking.retreatDetails;
   const requirementStatus = await buildRequirementStatus(booking);
+  const initialPaymentDate = await resolveInitialPaymentDate(booking);
 
   // Get translations for selected language
   const t = translations[language];
+  const medicalDeadlineDate = addDays(initialPaymentDate, 21);
+  const contractDeadlineDate = addDays(initialPaymentDate, 3);
   const bookingStatusText = requirementStatus.status === 'confirmed' ? t.confirmedStatus : t.conditionalStatus;
   const bookingStatusColor = requirementStatus.status === 'confirmed' ? '#047857' : '#92400e';
   const bookingStatusBg = requirementStatus.status === 'confirmed' ? '#d1fae5' : '#fef3c7';
   const requirementRows = [
-    { label: t.ekgStatus, complete: requirementStatus.ekgVerified },
-    { label: t.liverStatus, complete: requirementStatus.liverVerified },
-    { label: t.contractStatus, complete: requirementStatus.contractSigned },
+    { label: t.ekgStatus, complete: requirementStatus.ekgVerified, deadline: medicalDeadlineDate },
+    { label: t.liverStatus, complete: requirementStatus.liverVerified, deadline: medicalDeadlineDate },
+    { label: t.contractStatus, complete: requirementStatus.contractSigned, deadline: contractDeadlineDate },
   ];
 
   // Format currency amount based on language
@@ -265,6 +350,8 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
       default: return 'en-US';
     }
   };
+
+  const formatDate = (date: Date) => date.toLocaleDateString(getDateLocale());
 
   // Create a temporary div for PDF content
   const pdfContent = document.createElement('div');
@@ -357,21 +444,24 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
         <div style="padding: 9px 12px; font-size: 13px; font-weight: 600; color: #1f2937; background: ${bookingStatusBg};">
           ${t.requirementsTitle}: <span style="color: ${bookingStatusColor};">${bookingStatusText}</span>
         </div>
+        <div style="padding: 7px 12px; font-size: 11px; color: #4b5563; border-top: 1px solid rgba(31,41,55,0.10);">
+          ${t.initialPaymentDate}: <strong>${formatDate(initialPaymentDate)}</strong>
+        </div>
         <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
           <tbody>
             ${requirementRows.map((row) => `
               <tr>
                 <td style="border-top: 1px solid rgba(31,41,55,0.10); padding: 7px 12px; color: #4b5563;">${row.label}</td>
+                <td style="border-top: 1px solid rgba(31,41,55,0.10); padding: 7px 12px; color: #4b5563; text-align: center;">${t.deadline}: <strong>${formatDate(row.deadline)}</strong></td>
                 <td style="border-top: 1px solid rgba(31,41,55,0.10); padding: 7px 12px; text-align: right; color: ${row.complete ? '#047857' : '#92400e'}; font-weight: 600;">${row.complete ? t.verified : t.pending}</td>
               </tr>
             `).join('')}
           </tbody>
         </table>
-        ${requirementStatus.missingRequirements.length > 0 ? `
-          <div style="padding: 9px 12px; font-size: 11px; line-height: 1.45; color: #92400e; background: rgba(254,243,199,0.55);">
-            ${t.conditionalNotice} ${requirementStatus.missingRequirements.map(escapeHtml).join(', ')}.
-          </div>
-        ` : ''}
+        <div style="padding: 9px 12px; font-size: 11px; line-height: 1.45; color: ${requirementStatus.missingRequirements.length > 0 ? '#92400e' : '#047857'}; background: ${requirementStatus.missingRequirements.length > 0 ? 'rgba(254,243,199,0.55)' : 'rgba(209,250,229,0.48)'};">
+          ${requirementStatus.missingRequirements.length > 0 ? `${t.conditionalNotice} ${requirementStatus.missingRequirements.map(escapeHtml).join(', ')}. ` : ''}
+          ${t.medicalDeadline} ${t.contractDeadline} ${t.deadlinePolicy}
+        </div>
       </div>
 
       <!-- Location Details -->
@@ -415,7 +505,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
           </tr>
           <tr>
             <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">${t.deposit}</td>
-            <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">8/3/2026</td>
+            <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">${formatDate(initialPaymentDate)}</td>
             <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">Revolut</td>
             <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right;">${formatAmount(3000)}</td>
           </tr>
