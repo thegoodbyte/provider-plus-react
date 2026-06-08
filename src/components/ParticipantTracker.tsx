@@ -531,8 +531,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
         isActive: true,
       });
       let matchingUpload = participantUploadsResponse.data.find((upload: FileUpload) => (
-        upload.fileHash === savedFileHash
-        || upload.originalFileName === fileName
+        upload.originalFileName === fileName
         || upload.storedFileName === fileName
       ));
 
@@ -547,6 +546,11 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
       }
 
       if (!matchingUpload?.fileHash) {
+        message.error('This EKG file record is missing. Upload the EKG again to preview it.');
+        return;
+      }
+
+      if (matchingUpload.fileHash === savedFileHash && matchingUpload.originalFileName !== fileName && matchingUpload.storedFileName !== fileName) {
         message.error('This EKG file record is missing. Upload the EKG again to preview it.');
         return;
       }
@@ -625,7 +629,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
         <table className="min-w-[1100px] w-full border-collapse">
           <thead>
             <tr className="bg-gray-50">
-              <th className="sticky left-0 top-0 z-30 w-28 border-b border-r border-gray-200 bg-gray-50 px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 shadow-sm">Time</th>
+              <th className="sticky top-0 z-20 w-28 border-b border-r border-gray-200 bg-gray-50 px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 shadow-sm">Time</th>
               {participants.map((participant) => {
                 const checks = getPreCeremonyChecks(participant);
                 const latestCheck = getLatestPreCeremonyCheck(participant);
@@ -715,7 +719,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
           <tbody>
             {addingRow && (
               <tr className="bg-blue-50">
-                <td className="sticky left-0 z-10 border-b border-r border-blue-200 bg-blue-50 px-3 py-3 align-top">
+                <td className="border-b border-r border-blue-200 bg-blue-50 px-3 py-3 align-top">
                   <input
                     type="time"
                     value={rowTime}
@@ -743,7 +747,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
             )}
             {timeRows.map((time) => (
               <tr key={time} className="hover:bg-gray-50">
-                <td className="sticky left-0 z-10 border-b border-r border-gray-200 bg-white px-3 py-3 text-sm font-semibold text-gray-900">{time}</td>
+                <td className="border-b border-r border-gray-200 bg-white px-3 py-3 text-sm font-semibold text-gray-900">{time}</td>
                 {participants.map((participant) => (
                   <td key={`${participant._id}-${time}`} className="border-b border-r border-gray-200 p-2 align-top">
                     <div className="space-y-2">
@@ -787,7 +791,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
           {participants.length > 0 && (
             <tfoot>
               <tr className="bg-gray-50">
-                <td className="sticky left-0 z-10 border-r border-gray-200 bg-gray-50 px-3 py-3 text-sm font-semibold text-gray-900">Totals</td>
+                <td className="border-r border-gray-200 bg-gray-50 px-3 py-3 text-sm font-semibold text-gray-900">Totals</td>
                 {participants.map((participant) => (
                   <td key={`${participant._id}-total`} className="border-r border-gray-200 px-3 py-3 text-sm text-gray-700">
                     <div>{participant.spoonsTaken || 0} spoons</div>
