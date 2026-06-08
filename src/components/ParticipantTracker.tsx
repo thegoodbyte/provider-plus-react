@@ -515,8 +515,8 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
   };
 
   const openFilePreview = async (participant: CeremonyParticipant, fileUrl?: string, fileName?: string) => {
-    let fileHash = getFileHashFromUrl(fileUrl);
-    if (!fileHash) {
+    const savedFileHash = getFileHashFromUrl(fileUrl);
+    if (!savedFileHash && !fileName) {
       message.error('Unable to preview this file');
       return;
     }
@@ -524,25 +524,36 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
     try {
       setPreviewLoading(true);
       if (previewUrl) URL.revokeObjectURL(previewUrl);
-      let response;
-      try {
-        response = await fileUploadsApi.getViewBlob(fileHash);
-      } catch (previewError) {
-        const uploadsResponse = await fileUploadsApi.getAll({
+
+      const participantUploadsResponse = await fileUploadsApi.getAll({
+        documentKind: 'client_medical',
+        foreignKey: getParticipantKey(participant),
+        isActive: true,
+      });
+      let matchingUpload = participantUploadsResponse.data.find((upload: FileUpload) => (
+        upload.fileHash === savedFileHash
+        || upload.originalFileName === fileName
+        || upload.storedFileName === fileName
+      ));
+
+      if (!matchingUpload && fileName) {
+        const medicalUploadsResponse = await fileUploadsApi.getAll({
           documentKind: 'client_medical',
-          foreignKey: getParticipantKey(participant),
           isActive: true,
         });
-        const matchingUpload = uploadsResponse.data.find((upload: FileUpload) => (
+        matchingUpload = medicalUploadsResponse.data.find((upload: FileUpload) => (
           upload.originalFileName === fileName || upload.storedFileName === fileName
-        )) || uploadsResponse.data[0];
-
-        if (!matchingUpload?.fileHash || matchingUpload.fileHash === fileHash) throw previewError;
-        fileHash = matchingUpload.fileHash;
-        response = await fileUploadsApi.getViewBlob(fileHash);
+        ));
       }
+
+      if (!matchingUpload?.fileHash) {
+        message.error('This EKG file record is missing. Upload the EKG again to preview it.');
+        return;
+      }
+
+      const response = await fileUploadsApi.getViewBlob(matchingUpload.fileHash);
       setPreviewUrl(URL.createObjectURL(response.data as Blob));
-      setPreviewFileName(fileName || 'Pre-ceremony EKG');
+      setPreviewFileName(matchingUpload.originalFileName || fileName || 'Pre-ceremony EKG');
     } catch (error) {
       message.error('Failed to load file preview');
       console.error('Error loading EKG preview:', error);
