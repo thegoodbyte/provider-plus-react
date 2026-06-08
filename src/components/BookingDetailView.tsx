@@ -82,6 +82,14 @@ const getReadableTextColor = (background?: string, fallback = '#111827') => {
 const getArtifactTime = (artifact: MedicalArtifact) =>
   new Date(artifact.receivedAt || artifact.createdAt || 0).getTime();
 
+const hasArtifactFiles = (artifact: MedicalArtifact) => (artifact.files || []).length > 0;
+
+const compareArtifactsForDisplay = (a: MedicalArtifact, b: MedicalArtifact) => {
+  const fileScore = Number(hasArtifactFiles(b)) - Number(hasArtifactFiles(a));
+  if (fileScore !== 0) return fileScore;
+  return getArtifactTime(b) - getArtifactTime(a);
+};
+
 const getReviewTime = (review: MedicalReviewRequest) =>
   new Date(review.reviewedAt || review.requestedAt || review.createdAt || 0).getTime();
 
@@ -151,7 +159,7 @@ const BookingRequirementsPanel: React.FC<{
 
   useEffect(() => {
     loadRequirements();
-  }, [bookingId, refreshKey]);
+  }, [bookingId, clientId, retreatId, refreshKey]);
 
   const rows = requirementDefinitions.map((definition) => {
     const relatedItems = items.filter((item) => {
@@ -162,7 +170,7 @@ const BookingRequirementsPanel: React.FC<{
     });
     const relatedArtifacts = artifacts
       .filter((artifact) => definition.artifactTypes.includes(artifact.artifactType))
-      .sort((a, b) => getArtifactTime(b) - getArtifactTime(a));
+      .sort(compareArtifactsForDisplay);
     const latestArtifact = relatedArtifacts[0];
     const reviews = latestArtifact?._id ? (reviewsByArtifact[latestArtifact._id] || []) : [];
     const latestReview = [...reviews].sort((a, b) => getReviewTime(b) - getReviewTime(a))[0];

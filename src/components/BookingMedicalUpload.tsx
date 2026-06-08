@@ -61,6 +61,14 @@ const formatBytes = (size?: number) => {
 const artifactDate = (artifact: MedicalArtifact) =>
   new Date(artifact.receivedAt || artifact.createdAt || 0).getTime();
 
+const hasArtifactFiles = (artifact: MedicalArtifact) => (artifact.files || []).length > 0;
+
+const compareArtifactsForDisplay = (a: MedicalArtifact, b: MedicalArtifact) => {
+  const fileScore = Number(hasArtifactFiles(b)) - Number(hasArtifactFiles(a));
+  if (fileScore !== 0) return fileScore;
+  return artifactDate(b) - artifactDate(a);
+};
+
 const reviewDate = (review: MedicalReviewRequest) =>
   new Date(review.reviewedAt || review.requestedAt || review.createdAt || 0).getTime();
 
@@ -142,13 +150,13 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
 
   useEffect(() => {
     loadMedicalArtifacts();
-  }, [bookingId]);
+  }, [bookingId, clientId, retreatId]);
 
   const artifactsByType = useMemo(() => {
     return medicalTestSections.reduce<Record<BookingMedicalTestType, MedicalArtifact[]>>((acc, section) => {
       acc[section.type] = artifacts
         .filter((artifact) => artifact.artifactType === section.type)
-        .sort((a, b) => artifactDate(b) - artifactDate(a));
+        .sort(compareArtifactsForDisplay);
       return acc;
     }, {
       ekg: [],
@@ -193,13 +201,9 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
       });
 
       if (created.data._id) {
-        const review = await createReviewRequest(created.data, section.requestType);
-        if (!review?.display_id) {
-          throw new Error('Medical review request could not be created before upload.');
-        }
-        await medicalArtifactsApi.uploadFiles(created.data._id, fileArray, {
-          reviewRequestNumber: review.display_id,
-        });
+        const uploadResponse = await medicalArtifactsApi.uploadFiles(created.data._id, fileArray);
+        const uploadedArtifact = uploadResponse.data?.artifact || created.data;
+        await createReviewRequest(uploadedArtifact, section.requestType);
       }
 
       await loadMedicalArtifacts();
