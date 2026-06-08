@@ -349,7 +349,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Booking dates</label>
-            <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
+            <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600 max-sm:rounded-none max-sm:border-x-0 max-sm:px-0 max-sm:py-2">
               <div>Registration: {formatDate(booking?.registrationDate)}</div>
               <div>Check-in: {formatDate(booking?.checkInDate)}</div>
               <div>Check-out: {formatDate(booking?.checkOutDate)}</div>

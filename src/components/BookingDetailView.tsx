@@ -555,9 +555,9 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
             className="language-selector"
             disabled={isGeneratingPDF}
           >
-            <option value="pl">Polski (PL)</option>
-            <option value="cz">Čeština (CZ)</option>
-            <option value="en">English (EN)</option>
+            <option value="pl">PL</option>
+            <option value="cz">CZ</option>
+            <option value="en">EN</option>
           </select>
           <button
             onClick={() => navigate(`${routePrefix}/bookings/${bookingId}/edit`)}
