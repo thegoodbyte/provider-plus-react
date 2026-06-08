@@ -171,6 +171,18 @@ class TaskService {
     return response.json();
   }
 
+  async seedRetreatDayPlan(retreatId: string): Promise<Task[]> {
+    const response = await authFetch(`${this.baseUrl}/retreat/${retreatId}/day-plan/seed`, {
+      method: 'POST',
+    });
+
+    if (!response.ok) {
+      throw new Error(await this.getErrorMessage(response, 'Failed to add 8-day retreat plan'));
+    }
+
+    return response.json();
+  }
+
   async updateTask(id: string, updates: Partial<CreateTaskDto>): Promise<Task> {
     const response = await authFetch(`${this.baseUrl}/${id}`, {
       method: 'PATCH',

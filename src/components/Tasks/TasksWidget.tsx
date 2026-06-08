@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Task, CreateTaskDto, taskService } from '../../services/taskService';
 import { TaskList } from './TaskList';
 import { TaskForm } from './TaskForm';
+import './Tasks.css';
 
 interface TasksWidgetProps {
   retreatId?: string;
@@ -24,6 +25,7 @@ export const TasksWidget: React.FC<TasksWidgetProps> = ({
   const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [seedingDayPlan, setSeedingDayPlan] = useState(false);
 
   const loadTasks = async () => {
     try {
@@ -110,6 +112,21 @@ export const TasksWidget: React.FC<TasksWidgetProps> = ({
     }
   };
 
+  const handleSeedRetreatDayPlan = async () => {
+    if (!retreatId) return;
+
+    try {
+      setSeedingDayPlan(true);
+      setError(null);
+      await taskService.seedRetreatDayPlan(retreatId);
+      await loadTasks();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add 8-day retreat plan');
+    } finally {
+      setSeedingDayPlan(false);
+    }
+  };
+
   const getWidgetTitle = () => {
     if (title) return title;
     if (retreatId) return 'Retreat Tasks';
@@ -135,15 +152,27 @@ export const TasksWidget: React.FC<TasksWidgetProps> = ({
     <div className="tasks-widget">
       <div className="widget-header">
         <h3>{getWidgetTitle()} ({tasks.length})</h3>
-        {showCreateButton && (
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={handleCreateTask}
-            title="Create new task"
-          >
-            ➕ Add Task
-          </button>
-        )}
+        <div className="task-header-actions">
+          {retreatId && (
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={handleSeedRetreatDayPlan}
+              disabled={seedingDayPlan}
+              title="Add the standard 8-day retreat task plan"
+            >
+              {seedingDayPlan ? 'Adding...' : 'Add 8-day plan'}
+            </button>
+          )}
+          {showCreateButton && (
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={handleCreateTask}
+              title="Create new task"
+            >
+              ➕ Add Task
+            </button>
+          )}
+        </div>
       </div>
 
       {error && (

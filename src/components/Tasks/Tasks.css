@@ -170,6 +170,13 @@
   margin: 0;
 }
 
+.task-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .widget-content {
   min-height: 200px;
 }
