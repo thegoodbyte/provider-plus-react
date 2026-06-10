@@ -529,7 +529,7 @@ const ClientsGrid: React.FC = () => {
       const cleanData: any = {
         firstName: formData.firstName?.trim(),
         lastName: formData.lastName?.trim(),
-        email: formData.email?.trim(),
+        email: formData.email?.trim() || undefined,
         phone: formData.phone?.trim() || undefined,
         country: formData.country,
         status: formData.status || 'active',
@@ -801,14 +801,13 @@ const ClientsGrid: React.FC = () => {
                   </div>
 
                   <div className="form-group">
-                    <label htmlFor="email">Email *:</label>
+                    <label htmlFor="email">Email:</label>
                     <input
                       type="email"
                       id="email"
                       name="email"
                       value={formData.email || ''}
                       onChange={handleInputChange}
-                      required
                     />
                   </div>
 

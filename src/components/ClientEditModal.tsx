@@ -18,6 +18,11 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
   const [uploadingProfilePicture, setUploadingProfilePicture] = useState(false);
 
+  const getApiErrorMessage = (error: any, fallback: string) => {
+    const message = error?.response?.data?.message || error?.response?.data?.error || error?.message;
+    return Array.isArray(message) ? message.join(', ') : message || fallback;
+  };
+
   useEffect(() => {
     // Extract year from dateOfBirth if present
     let yearOfBirth;
@@ -103,8 +108,10 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
     const errors: string[] = [];
     if (!formData.firstName?.trim()) errors.push('First name is required');
     if (!formData.lastName?.trim()) errors.push('Last name is required');
-    if (!formData.email?.trim()) errors.push('Email is required');
     if (!formData.phone?.trim()) errors.push('Phone number is required');
+    if (formData.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      errors.push('Email must be a valid email address or left blank');
+    }
     if (formData.loginPin && !/^\d{4,6}$/.test(formData.loginPin)) {
       errors.push('Client portal PIN must be 4-6 digits');
     }
@@ -126,7 +133,7 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
       const clientData: Partial<Client> = {
         firstName: formData.firstName?.trim(),
         lastName: formData.lastName?.trim(),
-        email: formData.email?.trim(),
+        email: formData.email?.trim() || undefined,
         loginPin: normalizeOptionalValue(formData.loginPin),
         phone: formData.phone?.trim(),
         address: formData.address,
@@ -171,11 +178,7 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
       onClose();
     } catch (error: any) {
       console.error('Error updating client:', error);
-      if (error.response?.data?.message) {
-        setValidationErrors([error.response.data.message]);
-      } else {
-        setValidationErrors(['Failed to update client. Please try again.']);
-      }
+      setValidationErrors([getApiErrorMessage(error, 'Failed to update client. Please try again.')]);
     } finally {
       setIsSubmitting(false);
     }
@@ -243,14 +246,13 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
               </div>
 
               <div className="form-group">
-                <label htmlFor="email">Email *:</label>
+                <label htmlFor="email">Email:</label>
                 <input
                   type="email"
                   id="email"
                   name="email"
                   value={formData.email || ''}
                   onChange={handleInputChange}
-                  required
                 />
               </div>
 

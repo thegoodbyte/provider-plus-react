@@ -71,6 +71,11 @@ const ClientEditPage: React.FC = () => {
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
   const [uploadingProfilePicture, setUploadingProfilePicture] = useState(false);
 
+  const getApiErrorMessage = (error: any, fallback: string) => {
+    const message = error?.response?.data?.message || error?.response?.data?.error || error?.message;
+    return Array.isArray(message) ? message.join(', ') : message || fallback;
+  };
+
   useEffect(() => {
     if (clientId) {
       fetchClient();
@@ -175,8 +180,10 @@ const ClientEditPage: React.FC = () => {
     const errors: string[] = [];
     if (!formData.firstName?.trim()) errors.push('First name is required');
     if (!formData.lastName?.trim()) errors.push('Last name is required');
-    if (!formData.email?.trim()) errors.push('Email is required');
     if (!formData.phone?.trim()) errors.push('Phone number is required');
+    if (formData.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      errors.push('Email must be a valid email address or left blank');
+    }
     const displayIdValue = formData.display_id as unknown;
     if (displayIdValue !== undefined && displayIdValue !== null && Number.isNaN(Number(displayIdValue))) {
       errors.push('Client ID must be a number');
@@ -204,7 +211,7 @@ const ClientEditPage: React.FC = () => {
         display_id: displayIdValue !== undefined && displayIdValue !== null && displayIdValue !== '' ? Number(displayIdValue) : undefined,
         firstName: formData.firstName?.trim(),
         lastName: formData.lastName?.trim(),
-        email: formData.email?.trim(),
+        email: formData.email?.trim() || undefined,
         loginPin: normalizeOptionalValue(formData.loginPin),
         phone: formData.phone?.trim(),
         address: formData.address,
@@ -250,11 +257,7 @@ const ClientEditPage: React.FC = () => {
       navigate(`/admin/clients/${clientId}`);
     } catch (error: any) {
       console.error('Error updating client:', error);
-      if (error.response?.data?.message) {
-        setValidationErrors([error.response.data.message]);
-      } else {
-        setValidationErrors(['Failed to update client. Please try again.']);
-      }
+      setValidationErrors([getApiErrorMessage(error, 'Failed to update client. Please try again.')]);
     } finally {
       setIsSubmitting(false);
     }
@@ -404,14 +407,13 @@ const ClientEditPage: React.FC = () => {
             </div>
 
             <div className="form-group">
-              <label htmlFor="email">Email *:</label>
+              <label htmlFor="email">Email:</label>
               <input
                 type="email"
                 id="email"
                 name="email"
                 value={formData.email || ''}
                 onChange={handleInputChange}
-                required
                 className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
