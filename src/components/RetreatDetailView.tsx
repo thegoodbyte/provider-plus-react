@@ -44,6 +44,7 @@ interface QuickBookingFormData {
 interface RetreatClientData {
   _id: string;
   clientId: string;
+  clientDisplayId?: number;
   clientName: string;
   clientEmail: string;
   clientPhone: string;
@@ -158,6 +159,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       const transformedClients: RetreatClientData[] = clientsResponse.data.map((booking: any) => ({
         _id: booking._id,
         clientId: booking.clientId?._id || booking.clientId || '', // Store the actual client ID
+        clientDisplayId: booking.clientId?.display_id,
         clientName: booking.clientId
           ? `${booking.clientId.firstName || booking.clientId.fname || ''} ${booking.clientId.lastName || booking.clientId.lname || ''}`.trim()
           : 'Unknown Client',
@@ -683,7 +685,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                   {clients.map((client) => (
                     <tr key={client._id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        #{client._id?.slice(-6)}
+                        #{client.clientDisplayId || client.clientId?.slice(-6) || client._id?.slice(-6)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {client.clientName}
