@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Eye, FileText, RefreshCw, Send, Upload } from 'lucide-react';
+import { Eye, FileText, RefreshCw, Save, Send, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
-import { MedicalArtifact, MedicalReviewRequest } from '../types';
+import { clientMedicalApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { ClientMedical, MedicalArtifact, MedicalReviewRequest } from '../types';
 import './BookingMedicalUpload.css';
 
 interface BookingMedicalUploadProps {
@@ -85,6 +85,12 @@ const mergeArtifacts = (artifactGroups: MedicalArtifact[][]) => {
 const getLatestReview = (reviews: MedicalReviewRequest[] = []) =>
   [...reviews].sort((a, b) => reviewDate(b) - reviewDate(a))[0];
 
+const getArtifactResultText = (artifact?: MedicalArtifact) => {
+  const dataResult = artifact?.data?.resultText;
+  if (typeof dataResult === 'string' && dataResult.trim()) return dataResult;
+  return artifact?.textContent || artifact?.notes || '';
+};
+
 const getReviewBadgeClass = (review?: MedicalReviewRequest) => {
   if (!review) return 'badge-pending';
   if (review.status === 'approved' || review.status === 'completed') return 'badge-approved';
@@ -113,6 +119,11 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
   const [loading, setLoading] = useState(false);
   const [uploadingType, setUploadingType] = useState<BookingMedicalTestType | null>(null);
   const [creatingReviewFor, setCreatingReviewFor] = useState<string | null>(null);
+  const [savingResultType, setSavingResultType] = useState<BookingMedicalTestType | null>(null);
+  const [resultDrafts, setResultDrafts] = useState<Record<BookingMedicalTestType, string>>({
+    ekg: '',
+    liver_panel: '',
+  });
   const [error, setError] = useState<string | null>(null);
 
   const loadMedicalArtifacts = async () => {
@@ -163,6 +174,99 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
       liver_panel: [],
     });
   }, [artifacts]);
+
+  useEffect(() => {
+    setResultDrafts({
+      ekg: getArtifactResultText(artifactsByType.ekg[0]),
+      liver_panel: getArtifactResultText(artifactsByType.liver_panel[0]),
+    });
+  }, [artifactsByType]);
+
+  const upsertClientMedicalResult = async (sectionType: BookingMedicalTestType, resultText: string) => {
+    const now = new Date().toISOString();
+    const update: Partial<ClientMedical> = sectionType === 'ekg'
+      ? {
+          ekgResults: resultText,
+          ekgReceivedDate: now,
+          ekgStatus: 'received',
+        }
+      : {
+          liverPanelResults: resultText,
+          liverPanelReceivedDate: now,
+          liverPanelStatus: 'received',
+        };
+
+    try {
+      const existing = await clientMedicalApi.getByClientAndRetreat(clientId, retreatId);
+      if (existing.data?._id) {
+        await clientMedicalApi.update(existing.data._id, update);
+        return;
+      }
+    } catch (medicalLoadError: any) {
+      if (medicalLoadError?.response?.status && medicalLoadError.response.status !== 404) {
+        throw medicalLoadError;
+      }
+    }
+
+    await clientMedicalApi.create({
+      clientId,
+      retreatId,
+      liverPanelStatus: sectionType === 'liver_panel' ? 'received' : 'pending',
+      ekgStatus: sectionType === 'ekg' ? 'received' : 'pending',
+      finalMedicalClearance: false,
+      ...update,
+    } as any);
+  };
+
+  const saveResult = async (section: (typeof medicalTestSections)[number], latestArtifact?: MedicalArtifact) => {
+    const resultText = resultDrafts[section.type].trim();
+    if (!resultText) {
+      setError(`Enter ${section.title} results before saving.`);
+      return;
+    }
+
+    setSavingResultType(section.type);
+    setError(null);
+    try {
+      const now = new Date().toISOString();
+      const artifactPayload = {
+        textContent: resultText,
+        notes: resultText,
+        data: {
+          ...(latestArtifact?.data || {}),
+          resultText,
+          resultRecordedAt: now,
+          resultSource: 'booking',
+          bookingId,
+        },
+        receivedAt: latestArtifact?.receivedAt || now,
+        status: 'stored' as const,
+      };
+
+      if (latestArtifact?._id) {
+        await medicalArtifactsApi.update(latestArtifact._id, artifactPayload);
+      } else {
+        await medicalArtifactsApi.create({
+          clientId,
+          retreatId,
+          bookingId,
+          artifactType: section.type,
+          title: `${section.title} Results${bookingNumber ? ` - Booking ${bookingNumber}` : ''}`,
+          description: section.description,
+          source: 'manual',
+          ...artifactPayload,
+        });
+      }
+
+      await upsertClientMedicalResult(section.type, resultText);
+      await loadMedicalArtifacts();
+      onUploadComplete?.();
+    } catch (saveError: any) {
+      setError(saveError?.response?.data?.message || saveError?.message || `Unable to save ${section.title} results.`);
+    } finally {
+      setSavingResultType(null);
+    }
+  };
 
   const createReviewRequest = async (artifact: MedicalArtifact, requestType: MedicalReviewRequest['requestType']) => {
     if (!artifact._id) return undefined;
@@ -234,8 +338,10 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
           const sectionArtifacts = artifactsByType[section.type];
           const latestArtifact = sectionArtifacts[0];
           const latestReview = latestArtifact?._id ? getLatestReview(reviewsByArtifact[latestArtifact._id]) : undefined;
+          const latestResult = getArtifactResultText(latestArtifact);
           const inputId = `booking-medical-${section.type}`;
           const isUploading = uploadingType === section.type;
+          const isSavingResult = savingResultType === section.type;
           const isCreatingReview = latestArtifact?._id && creatingReviewFor === latestArtifact._id;
 
           return (
@@ -255,6 +361,29 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                 <span className={`status-badge ${getReviewBadgeClass(latestReview)}`}>
                   {getReviewLabel(latestReview)}
                 </span>
+                <span className={`status-badge ${latestResult ? 'badge-approved' : 'badge-pending'}`}>
+                  {latestResult ? 'results saved' : 'results missing'}
+                </span>
+              </div>
+
+              <div className="booking-medical-result-editor">
+                <label htmlFor={`booking-medical-result-${section.type}`}>{section.title} results</label>
+                <textarea
+                  id={`booking-medical-result-${section.type}`}
+                  rows={4}
+                  value={resultDrafts[section.type]}
+                  onChange={(event) => setResultDrafts((current) => ({ ...current, [section.type]: event.target.value }))}
+                  placeholder={`Enter ${section.title} results, values, interpretation, or notes`}
+                  disabled={isSavingResult}
+                />
+                <button
+                  className="btn btn-sm btn-secondary"
+                  type="button"
+                  disabled={isSavingResult}
+                  onClick={() => saveResult(section, latestArtifact)}
+                >
+                  <Save size={16} /> {isSavingResult ? 'Saving...' : 'Save Results'}
+                </button>
               </div>
 
               <div className="booking-document-files">

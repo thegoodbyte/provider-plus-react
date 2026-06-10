@@ -148,8 +148,14 @@ export const clientMedicalApi = {
   getByClient: (clientId: string) => cachedGet<ClientMedical[]>(`medical:client:${clientId}`, () => api.get<ClientMedical[]>(`/client-medical/client/${clientId}`)),
   getByRetreat: (retreatId: string) => api.get<ClientMedical[]>(`/client-medical/retreat/${retreatId}`),
   getByClientAndRetreat: (clientId: string, retreatId: string) => api.get<ClientMedical>(`/client-medical/client/${clientId}/retreat/${retreatId}`),
-  create: (data: Omit<ClientMedical, '_id'>) => api.post<ClientMedical>('/client-medical', data),
-  update: (id: string, data: Partial<ClientMedical>) => api.patch<ClientMedical>(`/client-medical/${id}`, data),
+  create: (data: Omit<ClientMedical, '_id'>) => {
+    cacheService.clearPattern('medical:');
+    return api.post<ClientMedical>('/client-medical', data);
+  },
+  update: (id: string, data: Partial<ClientMedical>) => {
+    cacheService.clearPattern('medical:');
+    return api.patch<ClientMedical>(`/client-medical/${id}`, data);
+  },
   delete: (id: string) => api.delete(`/client-medical/${id}`),
   uploadFile: (formData: FormData, type: 'liver-panel' | 'ekg') => api.post(`/client-medical/upload/${type}`, formData, {
     headers: { 'Content-Type': 'multipart/form-data' }

@@ -175,6 +175,46 @@
     align-items: center;
 }
 
+.booking-medical-result-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border: 1px solid #dbeafe;
+    border-radius: 6px;
+    background: #eff6ff;
+}
+
+.booking-medical-result-editor label {
+    margin: 0;
+    color: #1f2937;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.booking-medical-result-editor textarea {
+    width: 100%;
+    min-height: 88px;
+    resize: vertical;
+    border: 1px solid #bfdbfe;
+    border-radius: 6px;
+    padding: 8px 10px;
+    color: #111827;
+    font-size: 14px;
+    line-height: 1.4;
+    background: #fff;
+}
+
+.booking-medical-result-editor textarea:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+}
+
+.booking-medical-result-editor button {
+    align-self: flex-start;
+}
+
 .booking-medical-file-heading {
     display: flex;
     justify-content: space-between;

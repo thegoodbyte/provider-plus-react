@@ -272,12 +272,14 @@ const RetreatsGrid: React.FC = () => {
                 <tr key={retreat._id} className={getRetreatRowColor(retreat._id!, index)}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-2">
-                      <span
-                        className="text-sm font-medium text-gray-900 px-2 py-1 rounded"
+                      <button
+                        type="button"
+                        onClick={() => setViewingRetreatId(retreat._id!)}
+                        className="rounded px-2 py-1 text-left text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500"
                         style={retreatLabelStyle(retreat)}
                       >
                         {retreat.name}
-                      </span>
+                      </button>
                     </div>
                     {retreat.description && (
                       <div className="text-sm text-gray-500 truncate max-w-xs mt-1">
@@ -285,8 +287,18 @@ const RetreatsGrid: React.FC = () => {
                       </div>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                    {retreat.retreatCode || '-'}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold">
+                    {retreat._id ? (
+                      <button
+                        type="button"
+                        onClick={() => setViewingRetreatId(retreat._id!)}
+                        className="text-blue-700 hover:text-blue-900 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        {retreat.retreatCode || '-'}
+                      </button>
+                    ) : (
+                      <span className="text-gray-900">{retreat.retreatCode || '-'}</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center text-sm text-gray-900">

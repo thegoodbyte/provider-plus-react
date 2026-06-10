@@ -231,6 +231,34 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="grid gap-4 md:grid-cols-2">
           <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Booking number</label>
+            <input
+              type="number"
+              min={1001}
+              step={1}
+              value={formData.bookingNumber}
+              onChange={(e) => {
+                const value = e.target.value;
+                setFormData({ ...formData, bookingNumber: value });
+                void validateBookingNumber(value);
+              }}
+              className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${bookingNumberError ? 'border-red-500' : 'border-gray-300'}`}
+              placeholder="Optional"
+            />
+            {bookingNumberError && <p className="mt-1 text-sm text-red-600">{bookingNumberError}</p>}
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Booking dates</label>
+            <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600 max-sm:rounded-none max-sm:border-x-0 max-sm:px-0 max-sm:py-2">
+              <div>Registration: {formatDate(booking?.registrationDate)}</div>
+              <div>Check-in: {formatDate(booking?.checkInDate)}</div>
+              <div>Check-out: {formatDate(booking?.checkOutDate)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Client</label>
             <SearchableClientSelect
               clients={clients}
@@ -326,34 +354,6 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
               <option value="checked-out">Checked Out</option>
               <option value="cancelled">Cancelled</option>
             </select>
-          </div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Booking number</label>
-            <input
-              type="number"
-              min={1001}
-              step={1}
-              value={formData.bookingNumber}
-              onChange={(e) => {
-                const value = e.target.value;
-                setFormData({ ...formData, bookingNumber: value });
-                void validateBookingNumber(value);
-              }}
-              className={`w-full rounded-md border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 ${bookingNumberError ? 'border-red-500' : 'border-gray-300'}`}
-              placeholder="Optional"
-            />
-            {bookingNumberError && <p className="mt-1 text-sm text-red-600">{bookingNumberError}</p>}
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Booking dates</label>
-            <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600 max-sm:rounded-none max-sm:border-x-0 max-sm:px-0 max-sm:py-2">
-              <div>Registration: {formatDate(booking?.registrationDate)}</div>
-              <div>Check-in: {formatDate(booking?.checkInDate)}</div>
-              <div>Check-out: {formatDate(booking?.checkOutDate)}</div>
-            </div>
           </div>
         </div>
 
