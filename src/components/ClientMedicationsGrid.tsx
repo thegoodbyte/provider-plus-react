@@ -263,24 +263,24 @@ const ClientMedicationsGrid: React.FC = () => {
                     <div className="flex space-x-2">
                       <button
                         onClick={() => handleView(medication._id)}
-                        className="text-blue-600 hover:text-blue-800 p-1 rounded"
+                        className="icon-action-btn icon-action-btn-view"
                         title="View"
                       >
-                        <Icon icon={FiEye} className="w-4 h-4" />
+                        <Icon icon={FiEye} />
                       </button>
                       <button
                         onClick={() => handleEdit(medication._id)}
-                        className="text-yellow-600 hover:text-yellow-800 p-1 rounded"
+                        className="icon-action-btn icon-action-btn-edit"
                         title="Edit"
                       >
-                        <Icon icon={FiEdit2} className="w-4 h-4" />
+                        <Icon icon={FiEdit2} />
                       </button>
                       <button
                         onClick={() => handleDelete(medication._id, medication.display_id)}
-                        className="text-red-600 hover:text-red-800 p-1 rounded"
+                        className="icon-action-btn icon-action-btn-danger"
                         title="Delete"
                       >
-                        <Icon icon={FiTrash2} className="w-4 h-4" />
+                        <Icon icon={FiTrash2} />
                       </button>
                     </div>
                   </td>

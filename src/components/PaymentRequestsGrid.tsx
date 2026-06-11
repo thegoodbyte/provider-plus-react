@@ -243,31 +243,31 @@ const PaymentRequestsGrid: React.FC = () => {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => navigate(`/admin/payments/new?paymentRequestId=${request._id}`)}
-                          className="text-green-600 hover:text-green-900"
+                          className="icon-action-btn icon-action-btn-success"
                           title="Add payment"
                         >
-                          <Icon icon={FiDollarSign} className="w-4 h-4" />
+                          <Icon icon={FiDollarSign} />
                         </button>
                         <button
                           onClick={() => handleSendPaymentRequest(request)}
-                          className="text-blue-600 hover:text-blue-900 disabled:opacity-50"
+                          className="icon-action-btn icon-action-btn-view disabled:opacity-50"
                           title="Compose payment request email"
                         >
-                          <Icon icon={FiSend} className="w-4 h-4" />
+                          <Icon icon={FiSend} />
                         </button>
                         <button
                           onClick={() => navigate(`/admin/payment-requests/${request._id}/edit`)}
-                          className="text-indigo-600 hover:text-indigo-900"
+                          className="icon-action-btn icon-action-btn-edit"
                           title="Edit"
                         >
-                          <Icon icon={FiEdit2} className="w-4 h-4" />
+                          <Icon icon={FiEdit2} />
                         </button>
                         <button
                           onClick={() => handleDelete(request._id)}
-                          className="text-red-600 hover:text-red-900"
+                          className="icon-action-btn icon-action-btn-danger"
                           title="Delete"
                         >
-                          <Icon icon={FiTrash2} className="w-4 h-4" />
+                          <Icon icon={FiTrash2} />
                         </button>
                       </div>
                     </td>

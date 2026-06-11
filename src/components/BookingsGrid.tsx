@@ -460,10 +460,10 @@ const BookingsGrid: React.FC = () => {
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => navigate(`${routePrefix}/bookings/${booking._id}`)}
-                        className="text-blue-600 hover:text-blue-900"
+                        className="icon-action-btn icon-action-btn-view"
                         title="View Details"
                       >
-                        <Icon icon={FiEye} className="w-4 h-4" />
+                        <Icon icon={FiEye} />
                       </button>
                       <button
                         onClick={async () => {
@@ -482,18 +482,18 @@ const BookingsGrid: React.FC = () => {
                             setGeneratingPDF(null);
                           }
                         }}
-                        className="text-green-600 hover:text-green-900"
+                        className="icon-action-btn icon-action-btn-success"
                         title={generatingPDF === booking._id ? 'Generating...' : 'Generate PDF'}
                         disabled={generatingPDF === booking._id}
                       >
-                        <Icon icon={FiFileText} className={`w-4 h-4 ${generatingPDF === booking._id ? 'animate-pulse' : ''}`} />
+                        <Icon icon={FiFileText} className={generatingPDF === booking._id ? 'animate-pulse' : ''} />
                       </button>
                       <button
                         onClick={() => handleDelete(booking._id!)}
-                        className="text-red-600 hover:text-red-900"
+                        className="icon-action-btn icon-action-btn-danger"
                         title="Delete"
                       >
-                        <Icon icon={FiTrash2} className="w-4 h-4" />
+                        <Icon icon={FiTrash2} />
                       </button>
                       <button
                         onClick={() => {
@@ -513,10 +513,10 @@ const BookingsGrid: React.FC = () => {
                           setBookingNumberError('');
                           setShowEditModal(true);
                         }}
-                        className="text-indigo-600 hover:text-indigo-900 ml-2"
+                        className="icon-action-btn icon-action-btn-edit"
                         title="Edit"
                       >
-                        <Icon icon={FiEdit2} className="w-4 h-4" />
+                        <Icon icon={FiEdit2} />
                       </button>
                     </div>
                   </td>

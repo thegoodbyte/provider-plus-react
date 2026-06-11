@@ -455,17 +455,17 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleEditExpense(expense)}
-                        className="text-indigo-600 hover:text-indigo-900"
+                        className="icon-action-btn icon-action-btn-edit"
                         title="Edit"
                       >
-                        <Icon icon={FiEdit2} className="w-4 h-4" />
+                        <Icon icon={FiEdit2} />
                       </button>
                       <button
                         onClick={() => handleDeleteExpense(expense._id!)}
-                        className="text-red-600 hover:text-red-900"
+                        className="icon-action-btn icon-action-btn-danger"
                         title="Delete"
                       >
-                        <Icon icon={FiTrash2} className="w-4 h-4" />
+                        <Icon icon={FiTrash2} />
                       </button>
                     </div>
                   </td>

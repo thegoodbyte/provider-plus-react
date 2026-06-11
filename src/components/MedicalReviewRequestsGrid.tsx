@@ -179,25 +179,25 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => navigate(`${basePath}/${request._id}`)}
-                        className="text-green-600 hover:text-green-900"
+                        className="icon-action-btn icon-action-btn-view"
                         title="View"
                       >
-                        <Icon icon={FiEye} className="h-4 w-4" />
+                        <Icon icon={FiEye} />
                       </button>
                       <button
                         onClick={() => navigate(`${basePath}/${request._id}/edit`)}
-                        className="text-indigo-600 hover:text-indigo-900"
+                        className="icon-action-btn icon-action-btn-edit"
                         title="Edit"
                       >
-                        <Icon icon={FiEdit2} className="h-4 w-4" />
+                        <Icon icon={FiEdit2} />
                       </button>
                       {canManageRequests && (
                         <button
                           onClick={() => handleDelete(request._id!)}
-                          className="text-red-600 hover:text-red-900"
+                          className="icon-action-btn icon-action-btn-danger"
                           title="Delete"
                         >
-                          <Icon icon={FiTrash2} className="h-4 w-4" />
+                          <Icon icon={FiTrash2} />
                         </button>
                       )}
                     </div>

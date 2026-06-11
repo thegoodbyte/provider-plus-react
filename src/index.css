@@ -14,3 +14,31 @@
       monospace;
   }
 }
+
+@layer components {
+  .icon-action-btn {
+    @apply inline-flex h-10 w-10 items-center justify-center rounded-md border border-transparent bg-transparent transition focus:outline-none focus:ring-2;
+  }
+
+  .icon-action-btn svg {
+    width: 2rem;
+    height: 2rem;
+    stroke-width: 2.2;
+  }
+
+  .icon-action-btn-view {
+    @apply text-blue-700 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-900 focus:ring-blue-500;
+  }
+
+  .icon-action-btn-edit {
+    @apply text-gray-800 hover:border-gray-300 hover:bg-gray-100 hover:text-black focus:ring-gray-500;
+  }
+
+  .icon-action-btn-success {
+    @apply text-emerald-700 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-900 focus:ring-emerald-500;
+  }
+
+  .icon-action-btn-danger {
+    @apply text-red-700 hover:border-red-200 hover:bg-red-50 hover:text-red-900 focus:ring-red-500;
+  }
+}

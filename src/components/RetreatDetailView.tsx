@@ -12,7 +12,19 @@ import BookingStepsMatrix from './BookingStepsMatrix';
 import { TasksWidget } from './Tasks/TasksWidget';
 import { Modal, Form, Input, Select, Button, message, Collapse } from 'antd';
 import { Client } from '../types';
-import { FiPlus, FiEdit2, FiTrash2, FiEye, FiUser, FiRefreshCw } from 'react-icons/fi';
+import {
+  FiActivity,
+  FiBarChart2,
+  FiCheckCircle,
+  FiCheckSquare,
+  FiClipboard,
+  FiCreditCard,
+  FiDollarSign,
+  FiEdit2,
+  FiEye,
+  FiTrash2,
+  FiUsers
+} from 'react-icons/fi';
 import './ClientsGrid.css';
 
 // Simple wrapper to fix TypeScript icon issues
@@ -541,49 +553,57 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           className={`tab-btn ${activeTab === 'clients' ? 'active' : ''}`}
           onClick={() => setActiveTab('clients')}
         >
-          📋 Clients ({clients.length})
+          <Icon icon={FiUsers} className="retreat-tab-icon" />
+          <span>Clients ({clients.length})</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'bookingSteps' ? 'active' : ''}`}
           onClick={() => setActiveTab('bookingSteps')}
         >
-          ✅ Booking Steps
+          <Icon icon={FiCheckSquare} className="retreat-tab-icon" />
+          <span>Booking Steps</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'tracking' ? 'active' : ''}`}
           onClick={() => setActiveTab('tracking')}
         >
-          📊 Tracking Grid
+          <Icon icon={FiClipboard} className="retreat-tab-icon" />
+          <span>Tracking Grid</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'expenses' ? 'active' : ''}`}
           onClick={() => setActiveTab('expenses')}
         >
-          💰 Expenses
+          <Icon icon={FiDollarSign} className="retreat-tab-icon" />
+          <span>Expenses</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'payments' ? 'active' : ''}`}
           onClick={() => setActiveTab('payments')}
         >
-          💳 Payments
+          <Icon icon={FiCreditCard} className="retreat-tab-icon" />
+          <span>Payments</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'ceremonies' ? 'active' : ''}`}
           onClick={() => setActiveTab('ceremonies')}
         >
-          🔮 Ceremonies
+          <Icon icon={FiActivity} className="retreat-tab-icon" />
+          <span>Ceremonies</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'analytics' ? 'active' : ''}`}
           onClick={() => setActiveTab('analytics')}
         >
-          📊 Analytics
+          <Icon icon={FiBarChart2} className="retreat-tab-icon" />
+          <span>Analytics</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'tasks' ? 'active' : ''}`}
           onClick={() => setActiveTab('tasks')}
         >
-          ✅ Tasks
+          <Icon icon={FiCheckCircle} className="retreat-tab-icon" />
+          <span>Tasks</span>
         </button>
       </div>
 
@@ -689,24 +709,24 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => handleViewClient(client.clientId)}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent bg-transparent text-blue-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="icon-action-btn icon-action-btn-view"
                             title="View Client"
                           >
-                            <Icon icon={FiEye} className="h-5 w-5" />
+                            <Icon icon={FiEye} />
                           </button>
                           <button
                             onClick={() => handleEditBooking(client._id)}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent bg-transparent text-gray-800 transition hover:border-gray-300 hover:bg-gray-100 hover:text-black focus:outline-none focus:ring-2 focus:ring-gray-500"
+                            className="icon-action-btn icon-action-btn-edit"
                             title="Edit Booking"
                           >
-                            <Icon icon={FiEdit2} className="h-5 w-5" />
+                            <Icon icon={FiEdit2} />
                           </button>
                           <button
                             onClick={() => handleDeleteBooking(client._id)}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent bg-transparent text-red-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-500"
+                            className="icon-action-btn icon-action-btn-danger"
                             title="Delete Booking"
                           >
-                            <Icon icon={FiTrash2} className="h-5 w-5" />
+                            <Icon icon={FiTrash2} />
                           </button>
                         </div>
                       </td>
