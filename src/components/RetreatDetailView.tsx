@@ -426,44 +426,39 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   return (
     <div className="retreat-detail-container">
       <div className="retreat-detail-header">
-        <button onClick={onBack} className="back-btn">← Back to Retreats</button>
-        <button onClick={async () => {
-          // Fetch houses when edit modal is opened
-          if (houses.length === 0) {
-            try {
-              const housesResponse = await housesApi.getAll();
-              setHouses(housesResponse.data);
-            } catch (error) {
-              console.error('Error fetching houses:', error);
+        <div className="retreat-detail-actions">
+          <button onClick={onBack} className="back-btn">← Back to Retreats</button>
+          <button onClick={async () => {
+            // Fetch houses when edit modal is opened
+            if (houses.length === 0) {
+              try {
+                const housesResponse = await housesApi.getAll();
+                setHouses(housesResponse.data);
+              } catch (error) {
+                console.error('Error fetching houses:', error);
+              }
             }
-          }
 
-          setRetreatFormData({
-            ...retreat,
-            startDate: retreat?.startDate || '',
-            endDate: retreat?.endDate || '',
-            capacity: retreat?.capacity || 0
-          });
-          setShowRetreatEditModal(true);
-        }} className="edit-retreat-btn" style={{
-          background: 'white',
-          color: '#374151',
-          border: '1px solid #d1d5db',
-          padding: '8px 12px',
-          borderRadius: '6px',
-          cursor: 'pointer',
-          fontWeight: '500',
-          width: 'auto'
-        }}>✏️ Edit Retreat</button>
-          <div className="retreat-info">
-            <h1>
-              <span
+            setRetreatFormData({
+              ...retreat,
+              startDate: retreat?.startDate || '',
+              endDate: retreat?.endDate || '',
+              capacity: retreat?.capacity || 0
+            });
+            setShowRetreatEditModal(true);
+          }} className="edit-retreat-btn">
+            <Icon icon={FiEdit2} className="w-4 h-4" />
+            Edit Retreat
+          </button>
+        </div>
+        <div className="retreat-info">
+          <h1>
+            <span
+              className="retreat-name-badge"
               style={{
                 backgroundColor: retreat.backgroundColor || 'transparent',
                 color: retreat.textColor || (retreat.backgroundColor ? '#111827' : 'inherit'),
-                padding: retreat.backgroundColor ? '4px 12px' : '0',
-                borderRadius: retreat.backgroundColor ? '4px' : '0',
-                display: 'inline-block'
+                padding: retreat.backgroundColor ? '8px 16px' : '0'
               }}
             >
               {retreat.name}
