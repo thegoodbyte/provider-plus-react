@@ -5,7 +5,7 @@ import LoadingSpinner from './LoadingSpinner';
 import AppleButton from './AppleButton';
 import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
 import { PaymentRequest } from '../types';
-import { FiArrowLeft, FiCamera, FiEdit2, FiTrash2, FiUser, FiPhone, FiMail, FiMapPin, FiCalendar, FiDollarSign, FiActivity, FiFileText, FiAlertCircle, FiPlus, FiMessageSquare, FiCheckSquare, FiHeart, FiEye, FiEyeOff } from 'react-icons/fi';
+import { FiArrowLeft, FiCamera, FiEdit2, FiTrash2, FiUser, FiMapPin, FiCalendar, FiDollarSign, FiActivity, FiFileText, FiAlertCircle, FiPlus, FiMessageSquare, FiCheckSquare, FiHeart, FiEye, FiEyeOff } from 'react-icons/fi';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -22,10 +22,10 @@ interface TabProps {
 const Tab: React.FC<TabProps> = ({ label, icon, isActive, onClick }) => (
   <button
     onClick={onClick}
-    className={`flex items-center space-x-2 px-4 py-2 rounded-lg border-2 transition-colors ${
+    className={`flex items-center space-x-2 rounded-lg border px-3 py-2 transition-colors sm:px-4 ${
       isActive
-        ? 'bg-white border-blue-500 text-blue-600'
-        : 'bg-white border-gray-300 text-gray-600 hover:border-blue-300 hover:text-blue-500'
+        ? 'border-blue-200 bg-blue-50 text-blue-700'
+        : 'border-gray-200 bg-white text-gray-600 hover:border-blue-100 hover:bg-blue-50/40 hover:text-blue-700'
     }`}
   >
     <Icon icon={icon} className="w-4 h-4" />
@@ -775,13 +775,9 @@ const ClientDetailsPage: React.FC = () => {
     <div className="p-4 sm:p-6 h-full overflow-auto">
       {/* Header */}
       <div className="mb-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <AppleButton onClick={() => navigate(-1)} variant="ghost">
-              <Icon icon={FiArrowLeft} className="w-4 h-4 mr-2" />
-              Back
-            </AppleButton>
-            <div className="relative h-[96px] w-[96px] shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-100 shadow-sm sm:h-[200px] sm:w-[200px]">
+        <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="relative h-[96px] w-[96px] shrink-0 overflow-hidden rounded-full border border-gray-200 bg-gray-100 shadow-sm sm:h-[160px] sm:w-[160px]">
               {profilePictureUrl ? (
                 <img src={profilePictureUrl} alt={`${client.firstName} ${client.lastName}`} className="h-full w-full object-cover" />
               ) : (
@@ -795,60 +791,37 @@ const ClientDetailsPage: React.FC = () => {
                 <input type="file" accept="image/*" onChange={handleProfilePictureUpload} className="hidden" disabled={uploadingProfilePicture} />
               </label>
             </div>
-            <h1 className="text-2xl font-semibold text-gray-900 break-words">
-              {client.firstName} {client.lastName}
-            </h1>
-            {getStatusBadge(client.workflowStatus || client.status)}
-            <span className="inline-flex items-center rounded-full border border-gray-200 bg-gray-50 px-3 py-1 text-sm font-medium text-gray-700">
-              Client ID: {client.display_id || client._id?.substring(0, 8)}
-            </span>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-2 w-full lg:w-auto">
-            <AppleButton
-              onClick={() => navigate(`/admin/clients/${clientId}/screening`)}
-              className="apple-button-secondary px-4 py-2 w-full sm:w-auto whitespace-nowrap"
-            >
-              <Icon icon={FiFileText} className="w-4 h-4 mr-2" />
-              Add Screening
-            </AppleButton>
-            <AppleButton
-              onClick={() => navigate(`/admin/clients/${clientId}/edit`)}
-              className="apple-button-primary px-4 py-2 w-full sm:w-auto whitespace-nowrap"
-            >
-              <Icon icon={FiEdit2} className="w-4 h-4 mr-2" />
-              Edit Client
-            </AppleButton>
-          </div>
-        </div>
-
-        {/* Quick Info Bar */}
-        <div className="bg-white rounded-lg shadow-sm p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          <div className="flex items-start sm:items-center space-x-2">
-            <Icon icon={FiUser} className="w-5 h-5 text-gray-400" />
-            <div>
-              <p className="text-xs text-gray-500">Client ID</p>
-              <p className="text-sm font-medium">{client.display_id || client._id?.substring(0, 8)}</p>
-            </div>
-          </div>
-          <div className="flex items-start sm:items-center space-x-2">
-            <Icon icon={FiPhone} className="w-5 h-5 text-gray-400" />
-            <div>
-              <p className="text-xs text-gray-500">Phone</p>
-              <p className="text-sm font-medium">{client.phone || 'N/A'}</p>
-            </div>
-          </div>
-          <div className="flex items-start sm:items-center space-x-2">
-            <Icon icon={FiMail} className="w-5 h-5 text-gray-400" />
-            <div>
-              <p className="text-xs text-gray-500">Email</p>
-              <p className="text-sm font-medium">{client.email || 'N/A'}</p>
-            </div>
-          </div>
-          <div className="flex items-start sm:items-center space-x-2">
-            <Icon icon={FiMapPin} className="w-5 h-5 text-gray-400" />
-            <div>
-              <p className="text-xs text-gray-500">Country</p>
-              <p className="text-sm font-medium">{client.country || 'N/A'}</p>
+            <div className="min-w-0 flex-1 pt-1">
+              <button onClick={() => navigate(-1)} className="mb-2 inline-flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900">
+                <Icon icon={FiArrowLeft} className="h-4 w-4" />
+                Back
+              </button>
+              <div className="text-xl font-semibold leading-none text-gray-900 sm:text-2xl">
+                Client ID: {client.display_id || client._id?.substring(0, 8)}
+              </div>
+              <h1 className="mt-2 break-words text-2xl font-semibold leading-tight text-gray-900 sm:text-4xl">
+                {client.firstName} {client.lastName}
+              </h1>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                {getStatusBadge(client.workflowStatus || client.status)}
+              </div>
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => navigate(`/admin/clients/${clientId}/screening`)}
+                  className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  <Icon icon={FiPlus} className="h-4 w-4" />
+                  Screening
+                </button>
+                <button
+                  onClick={() => navigate(`/admin/clients/${clientId}/edit`)}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                  aria-label="Edit client"
+                  title="Edit client"
+                >
+                  <Icon icon={FiEdit2} className="h-5 w-5" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -961,7 +934,7 @@ const ClientDetailsPage: React.FC = () => {
                 </dl>
               </div>
 
-              <div>
+              <div className="hidden lg:block">
                 <h3 className="text-sm font-medium text-gray-500 mb-3">Status & Dates</h3>
                 <dl className="space-y-2">
                   <div className="flex justify-between">
@@ -992,6 +965,36 @@ const ClientDetailsPage: React.FC = () => {
               </div>
             </div>
 
+            <details className="mt-5 rounded-lg border border-gray-200 bg-gray-50 p-3 lg:hidden">
+              <summary className="cursor-pointer text-sm font-semibold text-gray-700">More details</summary>
+              <dl className="mt-3 space-y-2">
+                <div className="flex justify-between gap-3">
+                  <dt className="text-sm text-gray-600">Status:</dt>
+                  <dd>{getStatusBadge(client.status)}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-sm text-gray-600">Workflow:</dt>
+                  <dd>{getStatusBadge(client.workflowStatus)}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-sm text-gray-600">Priority:</dt>
+                  <dd className="text-sm font-medium">{client.priority || 'medium'}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-sm text-gray-600">Initial Contact:</dt>
+                  <dd className="text-sm font-medium">{formatDate(client.initialContactDate)}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-sm text-gray-600">Created:</dt>
+                  <dd className="text-sm font-medium">{formatDate(client.createdAt)}</dd>
+                </div>
+                <div className="flex justify-between gap-3">
+                  <dt className="text-sm text-gray-600">Last Updated:</dt>
+                  <dd className="text-sm font-medium">{formatDate(client.updatedAt)}</dd>
+                </div>
+              </dl>
+            </details>
+
             {client.notes && (
               <div className="mt-6">
                 <h3 className="text-sm font-medium text-gray-500 mb-2">Notes</h3>
@@ -1005,13 +1008,15 @@ const ClientDetailsPage: React.FC = () => {
           <div>
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-lg font-semibold">Screening Information</h2>
-              <AppleButton
+              <button
+                type="button"
                 onClick={() => navigate(`/admin/clients/${clientId}/screening`)}
-                className="apple-button-primary px-3 py-2 w-full sm:w-auto whitespace-nowrap"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-blue-600 text-white shadow-sm hover:bg-blue-700"
+                aria-label={hasScreeningDetails ? 'Edit screening' : 'Add screening'}
+                title={hasScreeningDetails ? 'Edit screening' : 'Add screening'}
               >
-                <Icon icon={FiEdit2} className="w-4 h-4 mr-2" />
-                {hasScreeningDetails ? 'Edit Screening' : 'Add Screening'}
-              </AppleButton>
+                <Icon icon={FiPlus} className="w-5 h-5" />
+              </button>
             </div>
             <div className="space-y-4">
               <div>
@@ -1635,15 +1640,17 @@ const ClientDetailsPage: React.FC = () => {
         {/* Notes Tab */}
         {activeTab === 'notes' && (
           <div>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">Client Notes</h2>
-              <AppleButton
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="truncate text-lg font-semibold">Client Notes</h2>
+              <button
+                type="button"
                 onClick={() => setShowAddNoteModal(true)}
-                className="apple-button-primary px-3 py-2"
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white shadow-sm hover:bg-blue-700"
+                aria-label="Add note"
+                title="Add note"
               >
-                <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
-                Add Note
-              </AppleButton>
+                <Icon icon={FiPlus} className="w-5 h-5" />
+              </button>
             </div>
 
             {notes.length > 0 ? (
@@ -1674,15 +1681,17 @@ const ClientDetailsPage: React.FC = () => {
         {/* Tasks Tab */}
         {activeTab === 'tasks' && (
           <div>
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-lg font-semibold">Client Tasks</h2>
-              <AppleButton
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <h2 className="truncate text-lg font-semibold">Client Tasks</h2>
+              <button
+                type="button"
                 onClick={() => setShowAddTaskModal(true)}
-                className="apple-button-primary px-3 py-2"
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white shadow-sm hover:bg-blue-700"
+                aria-label="Add task"
+                title="Add task"
               >
-                <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
-                Add Task
-              </AppleButton>
+                <Icon icon={FiPlus} className="w-5 h-5" />
+              </button>
             </div>
 
             {tasks.length > 0 ? (
