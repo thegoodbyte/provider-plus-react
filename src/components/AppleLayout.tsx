@@ -41,6 +41,7 @@ import PaymentEditorPage from './PaymentEditorPage';
 import PaymentRequestsGrid from './PaymentRequestsGrid';
 import PaymentRequestEditorPage from './PaymentRequestEditorPage';
 import CommunicationsPage from './CommunicationsPage';
+import ContactBookPage from './ContactBookPage';
 import RequirementsGrid from './RequirementsGrid';
 import CurrencySettings from './CurrencySettings';
 import MedicalAdvisorDashboard from './MedicalAdvisorDashboard';
@@ -107,6 +108,7 @@ const AppleLayout: React.FC = () => {
     if (route === 'houses') return 'houses';
     if (route === 'bookings') return 'bookings';
     if (route === 'reminders') return 'reminders';
+    if (route === 'contact-book') return 'contact-book';
     if (route === 'payments') return 'payments';
     if (route === 'payment-requests') return 'payment-requests';
     if (route === 'communications') return 'communications';
@@ -387,6 +389,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="payment-requests/new" element={<PaymentRequestEditorPage />} />
                       <Route path="payment-requests/:id/edit" element={<PaymentRequestEditorPage />} />
                       <Route path="communications" element={<CommunicationsPage />} />
+                      <Route path="contact-book" element={<ContactBookPage />} />
                       <Route path="requirements" element={<RequirementsGrid />} />
                       <Route path="permissions" element={<PermissionsMatrix />} />
                       <Route path="client-medications" element={<ClientMedicationsGrid />} />
@@ -470,6 +473,7 @@ const AppleLayout: React.FC = () => {
                         <Route path="retreats/:retreatId" element={<RetreatDetailView />} />
                         <Route path="ceremonies" element={<CeremoniesPage />} />
                         <Route path="reminders" element={<RemindersPage />} />
+                        <Route path="contact-book" element={<ContactBookPage />} />
                         <Route path="communications" element={<CommunicationsPage />} />
                       </Routes>
                     )}
@@ -491,6 +495,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="clients/add" element={<AddClient />} />
                       <Route path="potential-clients" element={<UnifiedClientManager />} />
                       <Route path="reminders" element={<RemindersPage />} />
+                      <Route path="contact-book" element={<ContactBookPage />} />
                       <Route path="communications" element={<CommunicationsPage />} />
                     </Routes>
                   </ProtectedRoute>
@@ -505,6 +510,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="clients" element={<UnifiedClientManager />} />
                       <Route path="clients/add" element={<AddClient />} />
                       <Route path="reminders" element={<RemindersPage />} />
+                      <Route path="contact-book" element={<ContactBookPage />} />
                       <Route path="communications" element={<CommunicationsPage />} />
                     </Routes>
                   </ProtectedRoute>
@@ -540,6 +546,11 @@ const AppleLayout: React.FC = () => {
                 <Route path="/communications" element={<ProtectedRoute><CommunicationsPage /></ProtectedRoute>} />
                 <Route path="/admin/communications" element={<ProtectedRoute><CommunicationsPage /></ProtectedRoute>} />
                 <Route path="/medical/communications" element={<ProtectedRoute><CommunicationsPage /></ProtectedRoute>} />
+                <Route path="/contact-book" element={<ProtectedRoute><ContactBookPage /></ProtectedRoute>} />
+                <Route path="/admin/contact-book" element={<ProtectedRoute><ContactBookPage /></ProtectedRoute>} />
+                <Route path="/medical/contact-book" element={<ProtectedRoute><ContactBookPage /></ProtectedRoute>} />
+                <Route path="/staff/contact-book" element={<ProtectedRoute><ContactBookPage /></ProtectedRoute>} />
+                <Route path="/user/contact-book" element={<ProtectedRoute><ContactBookPage /></ProtectedRoute>} />
                 <Route path="/admin/launcher" element={<ProtectedRoute><ModuleLauncherPage /></ProtectedRoute>} />
                 <Route path="/medical/launcher" element={<ProtectedRoute><ModuleLauncherPage /></ProtectedRoute>} />
                 <Route path="/staff/launcher" element={<ProtectedRoute><ModuleLauncherPage /></ProtectedRoute>} />

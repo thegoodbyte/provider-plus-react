@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Retreat, House, Client, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalReviewRequest, FileUpload, BookingFlowItem, BookingFlowTemplate, MailSettings, EmailTemplate, SentEmail } from '../types';
+import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalReviewRequest, FileUpload, BookingFlowItem, BookingFlowTemplate, MailSettings, EmailTemplate, SentEmail } from '../types';
 import { authService } from './authService';
 import { cacheService } from './cacheService';
 import { API_BASE_URL } from '../config/api.config';
@@ -140,6 +140,30 @@ export const clientsApi = {
   },
   getProfilePictureBlob: (id: string) =>
     api.get(`/clients/${id}/profile-picture`, { responseType: 'blob', suppressGlobalError: true } as any),
+};
+
+export const contactBookApi = {
+  getAll: (filters: { search?: string; role?: string; includeInactive?: boolean } = {}) => {
+    const params = new URLSearchParams();
+    if (filters.search) params.set('search', filters.search);
+    if (filters.role) params.set('role', filters.role);
+    if (filters.includeInactive) params.set('includeInactive', 'true');
+    const suffix = params.toString() ? `?${params.toString()}` : '';
+    return cachedGet<ContactBookEntry[]>(`contact-book:${suffix || 'all'}`, () => api.get<ContactBookEntry[]>(`/contact-book${suffix}`), 30000);
+  },
+  getOne: (id: string) => cachedGet<ContactBookEntry>(`contact-book:${id}`, () => api.get<ContactBookEntry>(`/contact-book/${id}`)),
+  create: (data: Omit<ContactBookEntry, '_id'>) => {
+    cacheService.clearPattern('contact-book:');
+    return api.post<ContactBookEntry>('/contact-book', data);
+  },
+  update: (id: string, data: Partial<ContactBookEntry>) => {
+    cacheService.clearPattern('contact-book:');
+    return api.patch<ContactBookEntry>(`/contact-book/${id}`, data);
+  },
+  delete: (id: string) => {
+    cacheService.clearPattern('contact-book:');
+    return api.delete(`/contact-book/${id}`);
+  },
 };
 
 export const clientMedicalApi = {

@@ -46,6 +46,23 @@ export interface House {
   guestCapacity?: number;
 }
 
+export interface ContactBookEntry {
+  _id?: string;
+  name: string;
+  role: string;
+  organization?: string;
+  phone?: string;
+  email?: string;
+  whatsapp?: string;
+  location?: string;
+  languages?: string[];
+  tags?: string[];
+  notes?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Client {
   _id?: string;
   firstName: string;
