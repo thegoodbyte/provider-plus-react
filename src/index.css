@@ -27,7 +27,7 @@
   }
 
   .icon-action-btn-view {
-    @apply text-blue-700 hover:border-blue-200 hover:bg-blue-50 hover:text-blue-900 focus:ring-blue-500;
+    @apply text-gray-700 hover:border-gray-300 hover:bg-gray-100 hover:text-black focus:ring-gray-500;
   }
 
   .icon-action-btn-edit {
@@ -35,7 +35,7 @@
   }
 
   .icon-action-btn-success {
-    @apply text-emerald-700 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-900 focus:ring-emerald-500;
+    @apply text-gray-700 hover:border-gray-300 hover:bg-gray-100 hover:text-black focus:ring-gray-500;
   }
 
   .icon-action-btn-danger {

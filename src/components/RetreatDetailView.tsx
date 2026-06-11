@@ -13,18 +13,18 @@ import { TasksWidget } from './Tasks/TasksWidget';
 import { Modal, Form, Input, Select, Button, message, Collapse } from 'antd';
 import { Client } from '../types';
 import {
-  FiActivity,
-  FiBarChart2,
-  FiCheckCircle,
-  FiCheckSquare,
-  FiClipboard,
-  FiCreditCard,
-  FiDollarSign,
   FiEdit2,
   FiEye,
   FiTrash2,
-  FiUsers
 } from 'react-icons/fi';
+import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
+import CreditCardRoundedIcon from '@mui/icons-material/CreditCardRounded';
+import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded';
+import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded';
+import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
+import SavingsRoundedIcon from '@mui/icons-material/SavingsRounded';
+import SpaRoundedIcon from '@mui/icons-material/SpaRounded';
+import TaskAltRoundedIcon from '@mui/icons-material/TaskAltRounded';
 import './ClientsGrid.css';
 
 // Simple wrapper to fix TypeScript icon issues
@@ -553,56 +553,56 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           className={`tab-btn ${activeTab === 'clients' ? 'active' : ''}`}
           onClick={() => setActiveTab('clients')}
         >
-          <Icon icon={FiUsers} className="retreat-tab-icon" />
+          <PeopleAltRoundedIcon className="retreat-tab-icon" />
           <span>Clients ({clients.length})</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'bookingSteps' ? 'active' : ''}`}
           onClick={() => setActiveTab('bookingSteps')}
         >
-          <Icon icon={FiCheckSquare} className="retreat-tab-icon" />
+          <AssignmentTurnedInRoundedIcon className="retreat-tab-icon" />
           <span>Booking Steps</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'tracking' ? 'active' : ''}`}
           onClick={() => setActiveTab('tracking')}
         >
-          <Icon icon={FiClipboard} className="retreat-tab-icon" />
+          <FactCheckRoundedIcon className="retreat-tab-icon" />
           <span>Tracking Grid</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'expenses' ? 'active' : ''}`}
           onClick={() => setActiveTab('expenses')}
         >
-          <Icon icon={FiDollarSign} className="retreat-tab-icon" />
+          <SavingsRoundedIcon className="retreat-tab-icon" />
           <span>Expenses</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'payments' ? 'active' : ''}`}
           onClick={() => setActiveTab('payments')}
         >
-          <Icon icon={FiCreditCard} className="retreat-tab-icon" />
+          <CreditCardRoundedIcon className="retreat-tab-icon" />
           <span>Payments</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'ceremonies' ? 'active' : ''}`}
           onClick={() => setActiveTab('ceremonies')}
         >
-          <Icon icon={FiActivity} className="retreat-tab-icon" />
+          <SpaRoundedIcon className="retreat-tab-icon" />
           <span>Ceremonies</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'analytics' ? 'active' : ''}`}
           onClick={() => setActiveTab('analytics')}
         >
-          <Icon icon={FiBarChart2} className="retreat-tab-icon" />
+          <InsightsRoundedIcon className="retreat-tab-icon" />
           <span>Analytics</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'tasks' ? 'active' : ''}`}
           onClick={() => setActiveTab('tasks')}
         >
-          <Icon icon={FiCheckCircle} className="retreat-tab-icon" />
+          <TaskAltRoundedIcon className="retreat-tab-icon" />
           <span>Tasks</span>
         </button>
       </div>

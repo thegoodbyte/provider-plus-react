@@ -695,45 +695,44 @@ const UnifiedClientManager: React.FC = () => {
                           event.stopPropagation();
                           handleEdit(client);
                         }}
-                        className="inline-flex items-center gap-1 rounded px-2 py-1 text-gray-700 hover:bg-transparent hover:text-gray-950 max-sm:px-1.5"
+                        className="icon-action-btn icon-action-btn-edit"
                         title="Edit"
                       >
-                        <Icon icon={FiEdit2} className="w-3.5 h-3.5" />
-                        <span className="text-xs max-sm:sr-only">Edit</span>
+                        <Icon icon={FiEdit2} />
                       </button>
                       {client.workflowStatus === 'potential' && (
                         <button
                           onClick={() => handleWorkflowStatusUpdate(client._id!, 'screening')}
-                          className="text-yellow-600 hover:text-yellow-900"
+                          className="icon-action-btn icon-action-btn-view"
                           title="Start Screening"
                         >
-                          <Icon icon={FiUserCheck} className="w-3.5 h-3.5" />
+                          <Icon icon={FiUserCheck} />
                         </button>
                       )}
                       {client.workflowStatus === 'screening' && (
                         <>
                           <button
                             onClick={() => handleWorkflowStatusUpdate(client._id!, 'approved')}
-                            className="text-green-600 hover:text-green-900"
+                            className="icon-action-btn icon-action-btn-success"
                             title="Approve"
                           >
-                            <Icon icon={FiCheck} className="w-3.5 h-3.5" />
+                            <Icon icon={FiCheck} />
                           </button>
                           <button
                             onClick={() => handleWorkflowStatusUpdate(client._id!, 'rejected', 'Not suitable')}
-                            className="text-red-600 hover:text-red-900"
+                            className="icon-action-btn icon-action-btn-danger"
                             title="Reject"
                           >
-                            <Icon icon={FiX} className="w-3.5 h-3.5" />
+                            <Icon icon={FiX} />
                           </button>
                         </>
                       )}
                       <button
                         onClick={() => handleDelete(client._id!)}
-                        className="text-red-600 hover:text-red-900"
+                        className="icon-action-btn icon-action-btn-danger"
                         title="Delete"
                       >
-                        <Icon icon={FiTrash2} className="w-3.5 h-3.5" />
+                        <Icon icon={FiTrash2} />
                       </button>
                     </div>
                   </td>

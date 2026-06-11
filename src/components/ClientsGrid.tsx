@@ -5,7 +5,7 @@ import { Client, Retreat, RetreatClient } from '../types';
 import ClientDetailView from './ClientDetailView';
 import QuickAddClient from './QuickAddClient';
 import SimpleTable, { Column } from './SimpleTable';
-import { IconButton, Chip } from '@mui/material';
+import { Chip } from '@mui/material';
 import { Edit as EditIcon, Delete as DeleteIcon, Visibility as VisibilityIcon, Link as LinkIcon } from '@mui/icons-material';
 import './ClientsGrid.css';
 
@@ -394,18 +394,18 @@ const ClientsGrid: React.FC = () => {
       sortable: false,
       renderCell: (_, row) => (
         <div style={{ display: 'flex', gap: '4px' }}>
-          <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleView(row); }} title="View">
-            <VisibilityIcon fontSize="small" />
-          </IconButton>
-          <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleEdit(row); }} title="Edit">
-            <EditIcon fontSize="small" />
-          </IconButton>
-          <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleGenerateDepositLink(row); }} title="Deposit Link">
-            <LinkIcon fontSize="small" />
-          </IconButton>
-          <IconButton size="small" onClick={(e) => { e.stopPropagation(); handleDelete(row._id!); }} color="error" title="Delete">
-            <DeleteIcon fontSize="small" />
-          </IconButton>
+          <button className="icon-action-btn icon-action-btn-view" onClick={(e) => { e.stopPropagation(); handleView(row); }} title="View">
+            <VisibilityIcon />
+          </button>
+          <button className="icon-action-btn icon-action-btn-edit" onClick={(e) => { e.stopPropagation(); handleEdit(row); }} title="Edit">
+            <EditIcon />
+          </button>
+          <button className="icon-action-btn icon-action-btn-view" onClick={(e) => { e.stopPropagation(); handleGenerateDepositLink(row); }} title="Deposit Link">
+            <LinkIcon />
+          </button>
+          <button className="icon-action-btn icon-action-btn-danger" onClick={(e) => { e.stopPropagation(); handleDelete(row._id!); }} title="Delete">
+            <DeleteIcon />
+          </button>
         </div>
       )
     }

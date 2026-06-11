@@ -955,10 +955,16 @@
 }
 
 .retreat-tab-icon {
-  width: 120px;
-  height: 120px;
+  width: 60px;
+  height: 60px;
+  font-size: 60px;
   color: currentColor;
-  stroke-width: 1.6;
+}
+
+.retreat-tab-icon.MuiSvgIcon-root {
+  width: 60px;
+  height: 60px;
+  font-size: 60px;
 }
 
 /* Expenses Tab Styles */

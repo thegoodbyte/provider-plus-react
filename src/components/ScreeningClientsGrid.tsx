@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { clientsApi } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
 import AppleButton from './AppleButton';
-import { FiPlus, FiEdit2, FiTrash2, FiUser, FiPhone, FiMail, FiEye } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiUser, FiPhone, FiMail, FiEye, FiUserCheck } from 'react-icons/fi';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -225,38 +225,38 @@ const ScreeningClientsGrid: React.FC = () => {
                   <td className="px-3 py-2 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex justify-end gap-2">
                       <div title="View Details">
-                        <AppleButton
+                        <button
                           onClick={() => {/* TODO: View details */}}
-                          className="apple-button-secondary p-1.5"
+                          className="icon-action-btn icon-action-btn-view"
                         >
-                          <Icon icon={FiEye} className="w-4 h-4" />
-                        </AppleButton>
+                          <Icon icon={FiEye} />
+                        </button>
                       </div>
                       <div title="Edit">
-                        <AppleButton
+                        <button
                           onClick={() => {/* TODO: Edit client */}}
-                          className="apple-button-secondary p-1.5"
+                          className="icon-action-btn icon-action-btn-edit"
                         >
-                          <Icon icon={FiEdit2} className="w-4 h-4" />
-                        </AppleButton>
+                          <Icon icon={FiEdit2} />
+                        </button>
                       </div>
                       {client.status === 'approved' && (
                         <div title="Promote to Client">
-                          <AppleButton
+                          <button
                             onClick={() => handlePromote(client._id!)}
-                            className="apple-button-primary p-1.5"
+                            className="icon-action-btn icon-action-btn-success"
                           >
-                            ↗
-                          </AppleButton>
+                            <Icon icon={FiUserCheck} />
+                          </button>
                         </div>
                       )}
                       <div title="Delete">
-                        <AppleButton
+                        <button
                           onClick={() => handleDelete(client._id!)}
-                          className="apple-button-danger p-1.5"
+                          className="icon-action-btn icon-action-btn-danger"
                         >
-                          <Icon icon={FiTrash2} className="w-4 h-4" />
-                        </AppleButton>
+                          <Icon icon={FiTrash2} />
+                        </button>
                       </div>
                     </div>
                   </td>
