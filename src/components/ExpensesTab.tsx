@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { retreatExpensesApi, expenseTypesApi } from '../services/api';
 import { RetreatExpense, ExpenseType, ExpenseSummary } from '../types';
-import { FiPlus, FiEdit2, FiTrash2, FiRefreshCw, FiHome } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiRefreshCw, FiHome, FiSettings, FiX, FiCheck } from 'react-icons/fi';
 import './ClientsGrid.css';
 
 // Simple wrapper to fix TypeScript icon issues
@@ -23,13 +23,35 @@ interface ExpenseFormData {
   status: 'pending' | 'approved' | 'paid' | 'rejected';
 }
 
+interface ExpenseTypeFormData {
+  name: string;
+  description: string;
+  category: ExpenseType['category'];
+  defaultCurrency: 'EUR' | 'USD' | 'CZK' | 'PLN';
+  defaultAmount: number;
+  isActive: boolean;
+}
+
+const EXPENSE_TYPE_CATEGORIES: ExpenseType['category'][] = [
+  'accommodation',
+  'transport',
+  'food',
+  'activities',
+  'staff',
+  'utilities',
+  'general'
+];
+
 const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
   const [expenses, setExpenses] = useState<RetreatExpense[]>([]);
   const [expenseTypes, setExpenseTypes] = useState<ExpenseType[]>([]);
+  const [allExpenseTypes, setAllExpenseTypes] = useState<ExpenseType[]>([]);
   const [summary, setSummary] = useState<ExpenseSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showTypeManager, setShowTypeManager] = useState(false);
   const [editingExpense, setEditingExpense] = useState<RetreatExpense | null>(null);
+  const [editingExpenseType, setEditingExpenseType] = useState<ExpenseType | null>(null);
   const [formData, setFormData] = useState<ExpenseFormData>({
     expenseTypeId: '',
     amount: 0,
@@ -38,6 +60,14 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
     vendor: '',
     expenseDate: new Date().toISOString().split('T')[0],
     status: 'pending'
+  });
+  const [typeFormData, setTypeFormData] = useState<ExpenseTypeFormData>({
+    name: '',
+    description: '',
+    category: 'general',
+    defaultCurrency: 'CZK',
+    defaultAmount: 0,
+    isActive: true
   });
 
   const getStatusColor = (status: string) => {
@@ -111,6 +141,7 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
       ]);
 
       setExpenses(expensesResponse.data);
+      setAllExpenseTypes(typesResponse.data);
       setExpenseTypes(typesResponse.data.filter(type => type.isActive !== false));
       setSummary(summaryResponse.data);
     } catch (error) {
@@ -123,6 +154,83 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  const resetExpenseTypeForm = () => {
+    setEditingExpenseType(null);
+    setTypeFormData({
+      name: '',
+      description: '',
+      category: 'general',
+      defaultCurrency: 'CZK',
+      defaultAmount: 0,
+      isActive: true
+    });
+  };
+
+  const handleEditExpenseType = (expenseType: ExpenseType) => {
+    setEditingExpenseType(expenseType);
+    setTypeFormData({
+      name: expenseType.name || '',
+      description: expenseType.description || '',
+      category: expenseType.category || 'general',
+      defaultCurrency: (expenseType.defaultCurrency as 'EUR' | 'USD' | 'CZK' | 'PLN') || 'CZK',
+      defaultAmount: expenseType.defaultAmount || 0,
+      isActive: expenseType.isActive !== false
+    });
+  };
+
+  const handleExpenseTypeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        name: typeFormData.name.trim(),
+        description: typeFormData.description.trim(),
+        category: typeFormData.category,
+        defaultCurrency: typeFormData.defaultCurrency,
+        defaultAmount: Number(typeFormData.defaultAmount || 0),
+        isActive: typeFormData.isActive
+      };
+
+      if (editingExpenseType?._id) {
+        await expenseTypesApi.update(editingExpenseType._id, payload);
+      } else {
+        await expenseTypesApi.create(payload as Omit<ExpenseType, '_id'>);
+      }
+
+      resetExpenseTypeForm();
+      await fetchData();
+    } catch (error) {
+      console.error('Error saving expense type:', error);
+      alert('Error saving expense type');
+    }
+  };
+
+  const handleToggleExpenseType = async (expenseType: ExpenseType) => {
+    if (!expenseType._id) return;
+    try {
+      if (expenseType.isActive === false) {
+        await expenseTypesApi.activate(expenseType._id);
+      } else {
+        await expenseTypesApi.deactivate(expenseType._id);
+      }
+      await fetchData();
+    } catch (error) {
+      console.error('Error updating expense type status:', error);
+      alert('Error updating expense type status');
+    }
+  };
+
+  const handleDeleteExpenseType = async (expenseType: ExpenseType) => {
+    if (!expenseType._id || !window.confirm(`Delete expense type "${expenseType.name}"? Existing expenses may still reference it.`)) return;
+    try {
+      await expenseTypesApi.delete(expenseType._id);
+      if (editingExpenseType?._id === expenseType._id) resetExpenseTypeForm();
+      await fetchData();
+    } catch (error) {
+      console.error('Error deleting expense type:', error);
+      alert('Error deleting expense type. If it is used by expenses, deactivate it instead.');
+    }
+  };
 
   const handleDeleteExpense = useCallback(async (expenseId: string) => {
     if (window.confirm('Are you sure you want to delete this expense?')) {
@@ -255,6 +363,13 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
           Add Expense
         </button>
         <button
+          onClick={() => setShowTypeManager(true)}
+          className="border border-gray-300 bg-white text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 flex items-center gap-2"
+        >
+          <Icon icon={FiSettings} className="w-4 h-4" />
+          Manage Expense Types
+        </button>
+        <button
           onClick={handleAutoGenerateHouseCost}
           className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
         >
@@ -269,6 +384,151 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
           Refresh
         </button>
       </div>
+
+      {showTypeManager && (
+        <div className="expense-form">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <h3>Manage Expense Types</h3>
+              <p className="mt-1 text-sm text-gray-500">Create, edit, deactivate, or delete expense categories used by retreat expenses.</p>
+            </div>
+            <button type="button" className="icon-action-btn icon-action-btn-edit" onClick={() => { setShowTypeManager(false); resetExpenseTypeForm(); }} title="Close">
+              <Icon icon={FiX} />
+            </button>
+          </div>
+
+          <form onSubmit={handleExpenseTypeSubmit} className="mb-6">
+            <div className="form-grid">
+              <div className="form-group">
+                <label>Name</label>
+                <input
+                  type="text"
+                  value={typeFormData.name}
+                  onChange={(e) => setTypeFormData({ ...typeFormData, name: e.target.value })}
+                  placeholder="e.g. Medicine supplies"
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Category</label>
+                <select
+                  value={typeFormData.category}
+                  onChange={(e) => setTypeFormData({ ...typeFormData, category: e.target.value as ExpenseType['category'] })}
+                  required
+                >
+                  {EXPENSE_TYPE_CATEGORIES.map(category => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Default Amount</label>
+                <input
+                  type="number"
+                  value={typeFormData.defaultAmount}
+                  onChange={(e) => setTypeFormData({ ...typeFormData, defaultAmount: Number(e.target.value) })}
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Default Currency</label>
+                <select
+                  value={typeFormData.defaultCurrency}
+                  onChange={(e) => setTypeFormData({ ...typeFormData, defaultCurrency: e.target.value as ExpenseTypeFormData['defaultCurrency'] })}
+                >
+                  <option value="EUR">EUR</option>
+                  <option value="USD">USD</option>
+                  <option value="CZK">CZK</option>
+                  <option value="PLN">PLN</option>
+                </select>
+              </div>
+
+              <div className="form-group full-width">
+                <label>Description</label>
+                <input
+                  type="text"
+                  value={typeFormData.description}
+                  onChange={(e) => setTypeFormData({ ...typeFormData, description: e.target.value })}
+                  placeholder="Optional details"
+                />
+              </div>
+
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={typeFormData.isActive}
+                  onChange={(e) => setTypeFormData({ ...typeFormData, isActive: e.target.checked })}
+                />
+                Active
+              </label>
+            </div>
+
+            <div className="form-actions">
+              {editingExpenseType && (
+                <button type="button" className="cancel-btn" onClick={resetExpenseTypeForm}>
+                  Clear
+                </button>
+              )}
+              <button type="submit" className="save-btn">
+                {editingExpenseType ? 'Update Type' : 'Add Type'}
+              </button>
+            </div>
+          </form>
+
+          <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Category</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Default</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 bg-white">
+                {allExpenseTypes.map(type => (
+                  <tr key={type._id || type.name} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                      <div>{type.name}</div>
+                      {type.description && <div className="mt-1 text-xs font-normal text-gray-500">{type.description}</div>}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{type.category}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700">
+                      {type.defaultAmount ? `${type.defaultAmount.toLocaleString()} ${type.defaultCurrency || ''}` : '-'}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${type.isActive === false ? 'bg-gray-100 text-gray-600' : 'bg-green-100 text-green-700'}`}>
+                        {type.isActive === false ? 'Inactive' : 'Active'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <div className="flex items-center gap-2">
+                        <button type="button" className="icon-action-btn icon-action-btn-edit" onClick={() => handleEditExpenseType(type)} title="Edit type">
+                          <Icon icon={FiEdit2} />
+                        </button>
+                        <button type="button" className="icon-action-btn icon-action-btn-view" onClick={() => handleToggleExpenseType(type)} title={type.isActive === false ? 'Activate type' : 'Deactivate type'}>
+                          <Icon icon={type.isActive === false ? FiCheck : FiX} />
+                        </button>
+                        <button type="button" className="icon-action-btn icon-action-btn-danger" onClick={() => handleDeleteExpenseType(type)} title="Delete type">
+                          <Icon icon={FiTrash2} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {allExpenseTypes.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">No expense types found.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Add/Edit Form */}
       {showAddForm && (
