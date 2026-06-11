@@ -13,6 +13,8 @@ interface ParticipantTrackerProps {
 type CeremonyEvent = NonNullable<CeremonyParticipant['eventLog']>[number];
 type EventType = CeremonyEvent['eventType'];
 type PreCeremonyCheck = NonNullable<CeremonyParticipant['preCeremonyChecks']>[number];
+type PostCeremonyCheck = NonNullable<CeremonyParticipant['postCeremonyChecks']>[number];
+type MedicalCheckPhase = 'pre' | 'post';
 
 const eventTypeLabels: Record<EventType, string> = {
   medicine: 'Medicine',
@@ -118,6 +120,17 @@ const getLatestPreCeremonyCheck = (participant: CeremonyParticipant) => {
   return checks.length ? checks[checks.length - 1] : undefined;
 };
 
+const getPostCeremonyChecks = (participant: CeremonyParticipant): PostCeremonyCheck[] => {
+  if (participant.postCeremonyChecks?.length) return participant.postCeremonyChecks;
+  if (!participant.postCeremonyEkg) return [];
+
+  return [{
+    id: 'legacy-post',
+    recordedAt: participant.postCeremonyEkg.uploadedAt,
+    postCeremonyEkg: participant.postCeremonyEkg,
+  }];
+};
+
 const getApprovalLabel = (value?: boolean) => {
   if (value === true) return 'Approved';
   if (value === false) return 'Not approved';
@@ -128,6 +141,14 @@ const getBloodPressureLabel = (check?: PreCeremonyCheck) => {
   const bp = check?.preCeremonyBloodPressure;
   if (!bp?.systolic && !bp?.diastolic) return 'BP not recorded';
   return `BP ${[bp.systolic, bp.diastolic].filter(Boolean).join('/')}${bp.pulse ? ` P${bp.pulse}` : ''}`;
+};
+
+const getPreCeremonyReadinessLabel = (check?: PreCeremonyCheck) => {
+  const hasEkg = Boolean(check?.preCeremonyEkg?.fileUrl || check?.preCeremonyEkg?.fileName || check?.preCeremonyEkg?.approved !== undefined);
+  const hasBp = Boolean(check?.preCeremonyBloodPressure?.systolic || check?.preCeremonyBloodPressure?.diastolic);
+  if (hasEkg && hasBp) return 'Pre-ceremony EKG and BP recorded';
+  if (!hasEkg && !hasBp) return 'Missing pre-ceremony EKG and BP';
+  return `Missing pre-ceremony ${hasEkg ? 'BP' : 'EKG'}`;
 };
 
 const getCheckTimeLabel = (check: PreCeremonyCheck) => {
@@ -199,6 +220,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
   const [selectedParticipant, setSelectedParticipant] = useState<CeremonyParticipant | null>(null);
   const [medicalParticipant, setMedicalParticipant] = useState<CeremonyParticipant | null>(null);
   const [editingMedicalCheckId, setEditingMedicalCheckId] = useState<string>('');
+  const [medicalCheckPhase, setMedicalCheckPhase] = useState<MedicalCheckPhase>('pre');
   const [ekgUploadFile, setEkgUploadFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [previewFileName, setPreviewFileName] = useState<string>('');
@@ -206,6 +228,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
   const [editingEventId, setEditingEventId] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [addingRow, setAddingRow] = useState(false);
+  const [trackerView, setTrackerView] = useState<'spoons' | 'pre' | 'post'>('spoons');
   const [rowTime, setRowTime] = useState(moment().format('HH:mm'));
   const [rowInputs, setRowInputs] = useState<Record<string, string>>({});
   const [form] = Form.useForm();
@@ -285,21 +308,29 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
     setModalOpen(true);
   };
 
-  const openMedicalModal = (participant: CeremonyParticipant, check?: PreCeremonyCheck) => {
+  const openMedicalModal = (participant: CeremonyParticipant, check?: PreCeremonyCheck | PostCeremonyCheck, phase: MedicalCheckPhase = 'pre') => {
     const selectedCheck = check;
+    const ekg = phase === 'pre'
+      ? (selectedCheck as PreCeremonyCheck | undefined)?.preCeremonyEkg
+      : (selectedCheck as PostCeremonyCheck | undefined)?.postCeremonyEkg;
     setMedicalParticipant(participant);
     setEditingMedicalCheckId(selectedCheck?.id || '');
+    setMedicalCheckPhase(phase);
     setEkgUploadFile(null);
     medicalForm.setFieldsValue({
-      ekgApproved: selectedCheck?.preCeremonyEkg?.approved === undefined ? 'pending' : selectedCheck.preCeremonyEkg.approved ? 'approved' : 'rejected',
-      ekgNotes: selectedCheck?.preCeremonyEkg?.notes || '',
-      systolic: selectedCheck?.preCeremonyBloodPressure?.systolic,
-      diastolic: selectedCheck?.preCeremonyBloodPressure?.diastolic,
-      pulse: selectedCheck?.preCeremonyBloodPressure?.pulse,
-      bpApproved: selectedCheck?.preCeremonyBloodPressure?.approved === undefined ? 'pending' : selectedCheck.preCeremonyBloodPressure.approved ? 'approved' : 'rejected',
-      bpNotes: selectedCheck?.preCeremonyBloodPressure?.notes || '',
-      medicalClearance: selectedCheck?.medicalClearance || 'pending',
-      medicalClearanceNotes: selectedCheck?.medicalClearanceNotes || '',
+      ekgApproved: ekg?.approved === undefined ? 'pending' : ekg.approved ? 'approved' : 'rejected',
+      ekgNotes: ekg?.notes || '',
+      systolic: phase === 'pre' ? (selectedCheck as PreCeremonyCheck | undefined)?.preCeremonyBloodPressure?.systolic : undefined,
+      diastolic: phase === 'pre' ? (selectedCheck as PreCeremonyCheck | undefined)?.preCeremonyBloodPressure?.diastolic : undefined,
+      pulse: phase === 'pre' ? (selectedCheck as PreCeremonyCheck | undefined)?.preCeremonyBloodPressure?.pulse : undefined,
+      bpApproved: phase === 'pre' && (selectedCheck as PreCeremonyCheck | undefined)?.preCeremonyBloodPressure?.approved !== undefined
+        ? ((selectedCheck as PreCeremonyCheck).preCeremonyBloodPressure?.approved ? 'approved' : 'rejected')
+        : 'pending',
+      bpNotes: phase === 'pre' ? (selectedCheck as PreCeremonyCheck | undefined)?.preCeremonyBloodPressure?.notes || '' : '',
+      medicalClearance: phase === 'pre' ? (selectedCheck as PreCeremonyCheck | undefined)?.medicalClearance || 'pending' : 'pending',
+      medicalClearanceNotes: phase === 'pre'
+        ? (selectedCheck as PreCeremonyCheck | undefined)?.medicalClearanceNotes || ''
+        : (selectedCheck as PostCeremonyCheck | undefined)?.notes || '',
     });
   };
 
@@ -423,18 +454,23 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
     try {
       setSaving(true);
       const participantToUpdate = await ensureSavedParticipant(medicalParticipant);
-      const existingChecks = getPreCeremonyChecks(participantToUpdate);
+      const existingChecks: Array<PreCeremonyCheck | PostCeremonyCheck> = medicalCheckPhase === 'pre'
+        ? getPreCeremonyChecks(participantToUpdate)
+        : getPostCeremonyChecks(participantToUpdate);
       const existingCheck = editingMedicalCheckId
         ? existingChecks.find((check) => check.id === editingMedicalCheckId)
         : undefined;
+      const existingPreCheck = existingCheck as PreCeremonyCheck | undefined;
 
-      let uploadedEkg = existingCheck?.preCeremonyEkg;
+      let uploadedEkg = medicalCheckPhase === 'pre'
+        ? (existingCheck as PreCeremonyCheck | undefined)?.preCeremonyEkg
+        : (existingCheck as PostCeremonyCheck | undefined)?.postCeremonyEkg;
       if (ekgUploadFile) {
         const formData = new FormData();
         formData.append('file', ekgUploadFile);
         formData.append('documentKind', 'client_medical');
         formData.append('foreignKey', participantToUpdate._id!);
-        formData.append('description', `Pre-ceremony EKG for ${getClientName(participantToUpdate)}`);
+        formData.append('description', `${medicalCheckPhase === 'pre' ? 'Pre' : 'Post'}-ceremony EKG for ${getClientName(participantToUpdate)}`);
         const uploadResponse = await fileUploadsApi.upload(formData);
         uploadedEkg = {
           ...uploadedEkg,
@@ -445,7 +481,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
       }
 
       const nextCheckId = editingMedicalCheckId || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-      const nextCheck: PreCeremonyCheck = {
+      const nextPreCheck: PreCeremonyCheck = {
         id: nextCheckId,
         recordedAt: existingCheck?.recordedAt || new Date().toISOString(),
         preCeremonyEkg: {
@@ -460,57 +496,83 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
           pulse: values.pulse ? Number(values.pulse) : undefined,
           approved: values.bpApproved === 'pending' ? undefined : values.bpApproved === 'approved',
           notes: values.bpNotes || '',
-          recordedAt: existingCheck?.preCeremonyBloodPressure?.recordedAt || new Date().toISOString(),
+          recordedAt: existingPreCheck?.preCeremonyBloodPressure?.recordedAt || new Date().toISOString(),
         },
         medicalClearance: values.medicalClearance || 'pending',
         medicalClearanceNotes: values.medicalClearanceNotes || '',
       };
+      const nextPostCheck: PostCeremonyCheck = {
+        id: nextCheckId,
+        recordedAt: existingCheck?.recordedAt || new Date().toISOString(),
+        postCeremonyEkg: {
+          ...uploadedEkg,
+          approved: values.ekgApproved === 'pending' ? undefined : values.ekgApproved === 'approved',
+          notes: values.ekgNotes || '',
+          reviewedAt: values.ekgApproved && values.ekgApproved !== 'pending' ? new Date().toISOString() : uploadedEkg?.reviewedAt,
+        },
+        notes: values.medicalClearanceNotes || '',
+      };
 
       const nextChecks = editingMedicalCheckId
-        ? existingChecks.map((check) => check.id === editingMedicalCheckId ? nextCheck : check)
-        : [...existingChecks, nextCheck];
+        ? existingChecks.map((check) => check.id === editingMedicalCheckId ? (medicalCheckPhase === 'pre' ? nextPreCheck : nextPostCheck) : check)
+        : [...existingChecks, medicalCheckPhase === 'pre' ? nextPreCheck : nextPostCheck];
 
-      await ceremoniesApi.updateMedicalCheck(participantToUpdate._id!, {
-        preCeremonyChecks: nextChecks,
-        preCeremonyEkg: nextCheck.preCeremonyEkg,
-        preCeremonyBloodPressure: nextCheck.preCeremonyBloodPressure,
-        medicalClearance: nextCheck.medicalClearance,
-        medicalClearanceNotes: nextCheck.medicalClearanceNotes,
-      });
-      message.success('Pre-ceremony medical check saved');
+      const payload = medicalCheckPhase === 'pre'
+        ? {
+            preCeremonyChecks: nextChecks,
+            preCeremonyEkg: nextPreCheck.preCeremonyEkg,
+            preCeremonyBloodPressure: nextPreCheck.preCeremonyBloodPressure,
+            medicalClearance: nextPreCheck.medicalClearance,
+            medicalClearanceNotes: nextPreCheck.medicalClearanceNotes,
+          }
+        : {
+            postCeremonyChecks: nextChecks,
+            postCeremonyEkg: nextPostCheck.postCeremonyEkg,
+          };
+
+      await ceremoniesApi.updateMedicalCheck(participantToUpdate._id!, payload);
+      message.success(`${medicalCheckPhase === 'pre' ? 'Pre' : 'Post'}-ceremony medical check saved`);
       setMedicalParticipant(null);
       setEditingMedicalCheckId('');
       setEkgUploadFile(null);
       await loadData();
     } catch (error) {
-      message.error('Failed to save pre-ceremony medical check');
-      console.error('Error saving pre-ceremony medical check:', error);
+      message.error(`Failed to save ${medicalCheckPhase === 'pre' ? 'pre' : 'post'}-ceremony medical check`);
+      console.error('Error saving ceremony medical check:', error);
     } finally {
       setSaving(false);
     }
   };
 
-  const deleteMedicalCheck = async (participant: CeremonyParticipant, checkId?: string) => {
-    if (!checkId || !window.confirm('Delete this pre-ceremony check?')) return;
+  const deleteMedicalCheck = async (participant: CeremonyParticipant, checkId?: string, phase: MedicalCheckPhase = 'pre') => {
+    if (!checkId || !window.confirm(`Delete this ${phase === 'pre' ? 'pre' : 'post'}-ceremony check?`)) return;
 
     try {
       const participantToUpdate = await ensureSavedParticipant(participant);
-      const nextChecks = getPreCeremonyChecks(participantToUpdate).filter((check) => check.id !== checkId);
+      const existingChecks: Array<PreCeremonyCheck | PostCeremonyCheck> = phase === 'pre'
+        ? getPreCeremonyChecks(participantToUpdate)
+        : getPostCeremonyChecks(participantToUpdate);
+      const nextChecks = existingChecks.filter((check) => check.id !== checkId);
       const latestCheck = nextChecks[nextChecks.length - 1];
 
-      await ceremoniesApi.updateMedicalCheck(participantToUpdate._id!, {
-        preCeremonyChecks: nextChecks,
-        preCeremonyEkg: latestCheck?.preCeremonyEkg,
-        preCeremonyBloodPressure: latestCheck?.preCeremonyBloodPressure,
-        medicalClearance: latestCheck?.medicalClearance || 'pending',
-        medicalClearanceNotes: latestCheck?.medicalClearanceNotes || '',
-      });
+      await ceremoniesApi.updateMedicalCheck(participantToUpdate._id!, phase === 'pre'
+        ? {
+            preCeremonyChecks: nextChecks,
+            preCeremonyEkg: (latestCheck as PreCeremonyCheck | undefined)?.preCeremonyEkg,
+            preCeremonyBloodPressure: (latestCheck as PreCeremonyCheck | undefined)?.preCeremonyBloodPressure,
+            medicalClearance: (latestCheck as PreCeremonyCheck | undefined)?.medicalClearance || 'pending',
+            medicalClearanceNotes: (latestCheck as PreCeremonyCheck | undefined)?.medicalClearanceNotes || '',
+          }
+        : {
+            postCeremonyChecks: nextChecks,
+            postCeremonyEkg: (latestCheck as PostCeremonyCheck | undefined)?.postCeremonyEkg,
+          });
 
-      message.success('Pre-ceremony check deleted');
+      message.success(`${phase === 'pre' ? 'Pre' : 'Post'}-ceremony check deleted`);
       await loadData();
     } catch (error) {
-      message.error('Failed to delete pre-ceremony check');
-      console.error('Error deleting pre-ceremony check:', error);
+      message.error(`Failed to delete ${phase === 'pre' ? 'pre' : 'post'}-ceremony check`);
+      console.error('Error deleting ceremony check:', error);
     }
   };
 
@@ -607,9 +669,11 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button type="primary" icon={<Icon icon={Plus} className="h-4 w-4" />} onClick={startRowAdd} disabled={addingRow || participants.length === 0}>
-            Add spoons
-          </Button>
+          {trackerView === 'spoons' && (
+            <Button type="primary" icon={<Icon icon={Plus} className="h-4 w-4" />} onClick={startRowAdd} disabled={addingRow || participants.length === 0}>
+              Add spoons
+            </Button>
+          )}
           <div className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700">
             <Icon icon={Clock3} className="h-4 w-4" />
             {moment().format('HH:mm')}
@@ -625,6 +689,23 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
         <Col xs={12} lg={5}><Card><Statistic title="Abnormalities" value={stats.abnormalities} valueStyle={{ color: stats.abnormalities ? '#b91c1c' : '#166534' }} /></Card></Col>
       </Row>
 
+      <div className="mb-4 flex flex-wrap gap-2">
+        {[
+          { key: 'spoons', label: 'Spoons & Time' },
+          { key: 'pre', label: 'Pre-ceremony checks' },
+          { key: 'post', label: 'Post-ceremony EKG' },
+        ].map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            onClick={() => setTrackerView(item.key as 'spoons' | 'pre' | 'post')}
+            className={`rounded-md border px-3 py-2 text-sm font-medium ${trackerView === item.key ? 'border-indigo-200 bg-indigo-50 text-indigo-700' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
       <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
         <table className="min-w-[1100px] w-full border-collapse">
           <thead>
@@ -633,6 +714,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
               {participants.map((participant) => {
                 const checks = getPreCeremonyChecks(participant);
                 const latestCheck = getLatestPreCeremonyCheck(participant);
+                const postChecks = getPostCeremonyChecks(participant);
                 return (
                   <th key={participant._id} className="sticky top-0 z-20 min-w-[240px] border-b border-r border-gray-200 bg-gray-50 px-3 py-3 text-left align-top shadow-sm">
                     <div className="text-sm font-semibold text-gray-900">{getClientName(participant)}</div>
@@ -643,12 +725,20 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                     {latestCheck && (
                       <div className="mt-2 rounded-md border border-gray-200 bg-white px-2 py-2 text-xs text-gray-700">
                         <div className="font-medium text-gray-900">Latest pre-ceremony</div>
+                        <div className={getPreCeremonyReadinessLabel(latestCheck).includes('Missing') ? 'font-semibold text-amber-700' : 'font-semibold text-emerald-700'}>
+                          {getPreCeremonyReadinessLabel(latestCheck)}
+                        </div>
                         <div>{getBloodPressureLabel(latestCheck)}</div>
                         <div>EKG {getApprovalLabel(latestCheck.preCeremonyEkg?.approved)}{latestCheck.preCeremonyEkg?.fileName ? ` - ${latestCheck.preCeremonyEkg.fileName}` : ''}</div>
                         <div>Clearance {latestCheck.medicalClearance || 'pending'}</div>
                       </div>
                     )}
-                    {checks.length > 0 && (
+                    {!latestCheck && (
+                      <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2 py-2 text-xs font-semibold text-amber-800">
+                        Missing pre-ceremony EKG and BP
+                      </div>
+                    )}
+                    {trackerView === 'pre' && checks.length > 0 && (
                       <div className="mt-2 space-y-2">
                         {checks.map((check, index) => (
                           <div key={check.id || index} className="rounded-md border border-gray-200 bg-gray-50 px-2 py-2 text-xs text-gray-700">
@@ -657,14 +747,14 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                               <div className="flex items-center gap-1">
                                 <button
                                   type="button"
-                                  onClick={() => openMedicalModal(participant, check)}
+                                  onClick={() => openMedicalModal(participant, check, 'pre')}
                                   className="rounded border border-gray-300 bg-white px-2 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
                                 >
                                   Edit
                                 </button>
                                 <button
                                   type="button"
-                                  onClick={() => deleteMedicalCheck(participant, check.id)}
+                                  onClick={() => deleteMedicalCheck(participant, check.id, 'pre')}
                                   className="rounded border border-red-200 bg-white px-2 py-0.5 text-xs font-medium text-red-600 hover:bg-red-50"
                                 >
                                   Delete
@@ -705,19 +795,80 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                         ))}
                       </div>
                     )}
-                    <Button size="small" type="link" className="mt-1 p-0" onClick={() => openMedicalModal(participant)}>
-                      <span className="inline-flex items-center gap-1">
-                        <Icon icon={Activity} className="h-3.5 w-3.5" />
-                        Add pre-ceremony
-                      </span>
-                    </Button>
+                    {trackerView === 'pre' && (
+                      <Button size="small" type="link" className="mt-1 p-0" onClick={() => openMedicalModal(participant, undefined, 'pre')}>
+                        <span className="inline-flex items-center gap-1">
+                          <Icon icon={Activity} className="h-3.5 w-3.5" />
+                          Add pre-ceremony
+                        </span>
+                      </Button>
+                    )}
+                    {trackerView === 'post' && <div className="mt-3 rounded-md border border-gray-200 bg-white px-2 py-2 text-xs text-gray-700">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <span className="font-semibold text-gray-900">Post-ceremony EKG</span>
+                        <Button size="small" type="link" className="p-0" onClick={() => openMedicalModal(participant, undefined, 'post')}>
+                          Add
+                        </Button>
+                      </div>
+                      {postChecks.length === 0 ? (
+                        <div className="text-gray-500">No post-ceremony EKG yet</div>
+                      ) : (
+                        <div className="space-y-2">
+                          {postChecks.map((check, index) => (
+                            <div key={check.id || index} className="rounded-md border border-gray-200 bg-gray-50 px-2 py-2">
+                              <div className="flex items-start justify-between gap-2">
+                                <div>
+                                  <div className="font-semibold text-gray-900">Post check {index + 1}</div>
+                                  <div>{getCheckTimeLabel(check as any)}</div>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => openMedicalModal(participant, check, 'post')}
+                                    className="rounded border border-gray-300 bg-white px-2 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => deleteMedicalCheck(participant, check.id, 'post')}
+                                    className="rounded border border-red-200 bg-white px-2 py-0.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="mt-2 rounded-md border border-blue-100 bg-blue-50 px-2 py-2 text-blue-950">
+                                <div className="flex items-center gap-2">
+                                  <Icon icon={FileText} className="h-4 w-4 text-blue-600" />
+                                  <span className="font-semibold">EKG</span>
+                                  <span className="rounded bg-white/80 px-1.5 py-0.5 text-[11px] text-blue-700">{getApprovalLabel(check.postCeremonyEkg?.approved)}</span>
+                                </div>
+                                {check.postCeremonyEkg?.fileUrl && (
+                                  <button
+                                    type="button"
+                                    onClick={() => openFilePreview(participant, check.postCeremonyEkg?.fileUrl, check.postCeremonyEkg?.fileName)}
+                                    className="mt-1 block truncate font-medium text-blue-700 hover:text-blue-900"
+                                    title={check.postCeremonyEkg.fileName || 'Preview post EKG file'}
+                                  >
+                                    {check.postCeremonyEkg.fileName || 'Preview post EKG file'}
+                                  </button>
+                                )}
+                                {check.postCeremonyEkg?.notes && <div className="mt-1 whitespace-pre-wrap text-blue-900">Notes: {check.postCeremonyEkg.notes}</div>}
+                              </div>
+                              {check.notes && <div className="mt-1 whitespace-pre-wrap text-gray-600">Notes: {check.notes}</div>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>}
                   </th>
                 );
               })}
             </tr>
           </thead>
           <tbody>
-            {addingRow && (
+            {trackerView === 'spoons' && addingRow && (
               <tr className="bg-blue-50">
                 <td className="border-b border-r border-blue-200 bg-blue-50 px-3 py-3 align-top">
                   <input
@@ -745,7 +896,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                 })}
               </tr>
             )}
-            {timeRows.map((time) => (
+            {trackerView === 'spoons' && timeRows.map((time) => (
               <tr key={time} className="hover:bg-gray-50">
                 <td className="border-b border-r border-gray-200 bg-white px-3 py-3 text-sm font-semibold text-gray-900">{time}</td>
                 {participants.map((participant) => (
@@ -780,10 +931,17 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                 ))}
               </tr>
             ))}
-            {timeRows.length === 0 && (
+            {trackerView === 'spoons' && timeRows.length === 0 && (
               <tr>
                 <td colSpan={participants.length + 1} className="px-4 py-8 text-center text-sm text-gray-500">
                   {loading ? 'Loading participants...' : 'No spoon rows recorded yet. Use Add spoons to create a row.'}
+                </td>
+              </tr>
+            )}
+            {trackerView !== 'spoons' && (
+              <tr>
+                <td colSpan={participants.length + 1} className="px-4 py-8 text-center text-sm text-gray-500">
+                  Use the controls under each participant name above to manage {trackerView === 'pre' ? 'pre-ceremony EKG and blood pressure checks' : 'post-ceremony EKG checks'}.
                 </td>
               </tr>
             )}
@@ -895,11 +1053,12 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
       </Modal>
 
       <Modal
-        title={`${editingMedicalCheckId ? 'Edit' : 'Add'} Pre-Ceremony Medical - ${medicalParticipant ? getClientName(medicalParticipant) : ''}`}
+        title={`${editingMedicalCheckId ? 'Edit' : 'Add'} ${medicalCheckPhase === 'pre' ? 'Pre' : 'Post'}-Ceremony Medical - ${medicalParticipant ? getClientName(medicalParticipant) : ''}`}
         open={Boolean(medicalParticipant)}
         onCancel={() => {
           setMedicalParticipant(null);
           setEditingMedicalCheckId('');
+          setMedicalCheckPhase('pre');
           setEkgUploadFile(null);
         }}
         onOk={() => medicalForm.submit()}
@@ -909,7 +1068,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
         <Form form={medicalForm} layout="vertical" onFinish={saveMedicalCheck}>
           <Row gutter={16}>
             <Col xs={24} md={12}>
-              <Form.Item name="ekgApproved" label="Pre-Ceremony EKG">
+              <Form.Item name="ekgApproved" label={`${medicalCheckPhase === 'pre' ? 'Pre' : 'Post'}-Ceremony EKG`}>
                 <Select>
                   <Select.Option value="pending">Pending</Select.Option>
                   <Select.Option value="approved">Approved</Select.Option>
@@ -917,22 +1076,29 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                 </Select>
               </Form.Item>
             </Col>
-            <Col xs={24} md={12}>
-              <Form.Item name="medicalClearance" label="Medical Clearance">
-                <Select>
-                  <Select.Option value="pending">Pending</Select.Option>
-                  <Select.Option value="approved">Approved</Select.Option>
-                  <Select.Option value="conditional">Conditional</Select.Option>
-                  <Select.Option value="not_approved">Not Approved</Select.Option>
-                </Select>
-              </Form.Item>
-            </Col>
+            {medicalCheckPhase === 'pre' && (
+              <Col xs={24} md={12}>
+                <Form.Item name="medicalClearance" label="Medical Clearance">
+                  <Select>
+                    <Select.Option value="pending">Pending</Select.Option>
+                    <Select.Option value="approved">Approved</Select.Option>
+                    <Select.Option value="conditional">Conditional</Select.Option>
+                    <Select.Option value="not_approved">Not Approved</Select.Option>
+                  </Select>
+                </Form.Item>
+              </Col>
+            )}
           </Row>
 
           <Form.Item label="Upload EKG">
-            {editingMedicalCheckId && getPreCeremonyChecks(medicalParticipant || {} as CeremonyParticipant).find((check) => check.id === editingMedicalCheckId)?.preCeremonyEkg?.fileName && (
+            {editingMedicalCheckId && medicalCheckPhase === 'pre' && getPreCeremonyChecks(medicalParticipant || {} as CeremonyParticipant).find((check) => check.id === editingMedicalCheckId)?.preCeremonyEkg?.fileName && (
               <div className="mb-2 text-xs text-gray-500">
                 Current file: {getPreCeremonyChecks(medicalParticipant || {} as CeremonyParticipant).find((check) => check.id === editingMedicalCheckId)?.preCeremonyEkg?.fileName}
+              </div>
+            )}
+            {editingMedicalCheckId && medicalCheckPhase === 'post' && getPostCeremonyChecks(medicalParticipant || {} as CeremonyParticipant).find((check) => check.id === editingMedicalCheckId)?.postCeremonyEkg?.fileName && (
+              <div className="mb-2 text-xs text-gray-500">
+                Current file: {getPostCeremonyChecks(medicalParticipant || {} as CeremonyParticipant).find((check) => check.id === editingMedicalCheckId)?.postCeremonyEkg?.fileName}
               </div>
             )}
             <input
@@ -948,38 +1114,42 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
             <Input.TextArea rows={2} placeholder="EKG observations or medical advisor notes" />
           </Form.Item>
 
-          <Row gutter={16}>
-            <Col xs={12} md={8}>
-              <Form.Item name="systolic" label="Systolic">
-                <InputNumber min={60} max={250} style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col xs={12} md={8}>
-              <Form.Item name="diastolic" label="Diastolic">
-                <InputNumber min={40} max={150} style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-            <Col xs={12} md={8}>
-              <Form.Item name="pulse" label="Pulse">
-                <InputNumber min={30} max={220} style={{ width: '100%' }} />
-              </Form.Item>
-            </Col>
-          </Row>
+          {medicalCheckPhase === 'pre' && (
+            <>
+              <Row gutter={16}>
+                <Col xs={12} md={8}>
+                  <Form.Item name="systolic" label="Systolic">
+                    <InputNumber min={60} max={250} style={{ width: '100%' }} />
+                  </Form.Item>
+                </Col>
+                <Col xs={12} md={8}>
+                  <Form.Item name="diastolic" label="Diastolic">
+                    <InputNumber min={40} max={150} style={{ width: '100%' }} />
+                  </Form.Item>
+                </Col>
+                <Col xs={12} md={8}>
+                  <Form.Item name="pulse" label="Pulse">
+                    <InputNumber min={30} max={220} style={{ width: '100%' }} />
+                  </Form.Item>
+                </Col>
+              </Row>
 
-          <Form.Item name="bpApproved" label="Blood Pressure Status">
-            <Select>
-              <Select.Option value="pending">Pending</Select.Option>
-              <Select.Option value="approved">Approved</Select.Option>
-              <Select.Option value="rejected">Not Approved</Select.Option>
-            </Select>
-          </Form.Item>
+              <Form.Item name="bpApproved" label="Blood Pressure Status">
+                <Select>
+                  <Select.Option value="pending">Pending</Select.Option>
+                  <Select.Option value="approved">Approved</Select.Option>
+                  <Select.Option value="rejected">Not Approved</Select.Option>
+                </Select>
+              </Form.Item>
 
-          <Form.Item name="bpNotes" label="Blood Pressure Notes">
-            <Input.TextArea rows={2} placeholder="Blood pressure context, concerns, or recheck notes" />
-          </Form.Item>
+              <Form.Item name="bpNotes" label="Blood Pressure Notes">
+                <Input.TextArea rows={2} placeholder="Blood pressure context, concerns, or recheck notes" />
+              </Form.Item>
+            </>
+          )}
 
-          <Form.Item name="medicalClearanceNotes" label="Clearance Notes">
-            <Input.TextArea rows={3} placeholder="Overall pre-ceremony medical clearance notes" />
+          <Form.Item name="medicalClearanceNotes" label={medicalCheckPhase === 'pre' ? 'Clearance Notes' : 'Post-Ceremony Notes'}>
+            <Input.TextArea rows={3} placeholder={medicalCheckPhase === 'pre' ? 'Overall pre-ceremony medical clearance notes' : 'Post-ceremony EKG notes or follow-up instructions'} />
           </Form.Item>
         </Form>
       </Modal>

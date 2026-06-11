@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Circle, RefreshCw } from 'lucide-react';
-import { bookingFlowApi } from '../services/api';
-import { BookingFlowItem, BookingFlowTemplate } from '../types';
+import { bookingFlowApi, clientsApi } from '../services/api';
+import { BookingFlowItem, BookingFlowTemplate, Client } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 
 const getObjectId = (value: any): string => {
@@ -17,6 +17,53 @@ const getClientName = (booking: any): string => {
     return name || client.email || `Client ${getObjectId(booking).slice(-6)}`;
   }
   return `Client ${String(client || getObjectId(booking)).slice(-6)}`;
+};
+
+const getBookingClient = (booking: any): Client | null => {
+  const client = booking.clientId || booking.client || null;
+  return client && typeof client === 'object' ? client : null;
+};
+
+const ClientAvatar: React.FC<{ client: Client | null; name: string }> = ({ client, name }) => {
+  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(client?.profilePictureUrl || null);
+  const hasProfilePicture = Boolean(client?.profilePictureUrl || client?.profilePictureS3Key || client?.profilePictureFileUploadId);
+
+  useEffect(() => {
+    if (!client?._id || client.profilePictureUrl || !hasProfilePicture) {
+      setProfilePictureUrl(client?.profilePictureUrl || null);
+      return;
+    }
+
+    let objectUrl: string | null = null;
+    let active = true;
+
+    clientsApi.getProfilePictureBlob(client._id)
+      .then((response) => {
+        if (!active) return;
+        objectUrl = URL.createObjectURL(response.data);
+        setProfilePictureUrl(objectUrl);
+      })
+      .catch(() => {
+        if (active) setProfilePictureUrl(null);
+      });
+
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [client?._id, client?.profilePictureFileUploadId, client?.profilePictureS3Key, client?.profilePictureUrl, hasProfilePicture]);
+
+  if (!hasProfilePicture) return null;
+
+  return (
+    <span className="mr-2 inline-flex h-10 w-10 flex-none items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-gray-100 text-sm font-semibold text-gray-600">
+      {profilePictureUrl ? (
+        <img src={profilePictureUrl} alt="" className="h-full w-full object-cover" />
+      ) : (
+        <span>{name.charAt(0).toUpperCase()}</span>
+      )}
+    </span>
+  );
 };
 
 const formatDate = (value?: Date | string | null) => {
@@ -136,8 +183,13 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
               <th className="sticky left-0 z-10 min-w-[260px] border-b border-r border-gray-200 bg-gray-50 px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Step</th>
               {bookings.map((booking) => (
                 <th key={getObjectId(booking)} className="min-w-[180px] border-b border-r border-gray-200 bg-gray-50 px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">
-                  <div>{getClientName(booking)}</div>
-                  <div className="mt-1 normal-case text-gray-400">#{booking.bookingNumber || getObjectId(booking).slice(-6)}</div>
+                  <div className="flex items-center">
+                    <ClientAvatar client={getBookingClient(booking)} name={getClientName(booking)} />
+                    <div>
+                      <div>{getClientName(booking)}</div>
+                      <div className="mt-1 normal-case text-gray-400">#{booking.bookingNumber || getObjectId(booking).slice(-6)}</div>
+                    </div>
+                  </div>
                 </th>
               ))}
             </tr>

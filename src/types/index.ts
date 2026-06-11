@@ -610,6 +610,31 @@ export interface CeremonyParticipant {
     medicalClearanceNotes?: string;
   }>;
 
+  postCeremonyEkg?: {
+    fileUrl?: string;
+    fileName?: string;
+    uploadedAt?: Date | string;
+    approved?: boolean;
+    notes?: string;
+    reviewedBy?: string;
+    reviewedAt?: Date | string;
+  };
+
+  postCeremonyChecks?: Array<{
+    id?: string;
+    recordedAt?: Date | string;
+    postCeremonyEkg?: {
+      fileUrl?: string;
+      fileName?: string;
+      uploadedAt?: Date | string;
+      approved?: boolean;
+      notes?: string;
+      reviewedBy?: string;
+      reviewedAt?: Date | string;
+    };
+    notes?: string;
+  }>;
+
   medicalClearance?: 'approved' | 'not_approved' | 'conditional' | 'pending';
   medicalClearanceNotes?: string;
 
