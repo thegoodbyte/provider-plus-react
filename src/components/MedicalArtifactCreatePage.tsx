@@ -19,6 +19,21 @@ const artifactTypeLabels: Record<MedicalArtifact['artifactType'], string> = {
   other: 'Other',
 };
 
+const contextTypeLabels: Record<NonNullable<MedicalArtifact['contextType']>, string> = {
+  client: 'Client profile',
+  booking: 'Booking',
+  ceremony: 'Ceremony',
+};
+
+const purposeLabels: Record<NonNullable<MedicalArtifact['purpose']>, string> = {
+  paid_review: 'Paid review',
+  booking_requirement: 'Booking requirement',
+  pre_ceremony: 'Pre-ceremony',
+  repeat_test: 'Repeat test',
+  correction: 'Correction',
+  general: 'General',
+};
+
 const MedicalArtifactCreatePage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -32,7 +47,13 @@ const MedicalArtifactCreatePage: React.FC = () => {
   const [form, setForm] = useState({
     clientId: '',
     artifactType: 'ekg' as MedicalArtifact['artifactType'],
+    contextType: 'client' as NonNullable<MedicalArtifact['contextType']>,
+    purpose: 'paid_review' as NonNullable<MedicalArtifact['purpose']>,
     title: '',
+    resultText: '',
+    reviewFeeAmount: '25',
+    reviewFeeCurrency: 'EUR' as NonNullable<MedicalArtifact['reviewFeeCurrency']>,
+    reviewFeePaid: false,
   });
 
   useEffect(() => {
@@ -69,12 +90,27 @@ const MedicalArtifactCreatePage: React.FC = () => {
     setError(null);
     try {
       const title = form.title.trim() || selectedFiles[0]?.name || artifactTypeLabels[form.artifactType];
+      const resultText = form.resultText.trim();
+      const reviewFeeAmount = Number(form.reviewFeeAmount);
       const created = await medicalArtifactsApi.create({
         clientId: form.clientId,
         artifactType: form.artifactType,
+        contextType: form.contextType,
+        purpose: form.purpose,
         title,
         source: 'manual',
         status: 'stored',
+        textContent: resultText || undefined,
+        notes: resultText || undefined,
+        reviewFeeAmount: Number.isFinite(reviewFeeAmount) ? reviewFeeAmount : undefined,
+        reviewFeeCurrency: form.reviewFeeCurrency,
+        reviewFeePaid: form.reviewFeePaid,
+        tags: [form.purpose, form.contextType].filter(Boolean),
+        data: resultText ? {
+          resultText,
+          resultRecordedAt: new Date().toISOString(),
+          resultSource: 'manual',
+        } : undefined,
       });
 
       if (created.data._id && selectedFiles.length > 0) {
@@ -128,6 +164,51 @@ const MedicalArtifactCreatePage: React.FC = () => {
           </select>
           <input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Title or short description" />
         </div>
+
+        <div className="grid gap-3 md:grid-cols-4">
+          <select value={form.contextType} onChange={(event) => setForm({ ...form, contextType: event.target.value as typeof form.contextType })} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+            {Object.entries(contextTypeLabels).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+          <select value={form.purpose} onChange={(event) => setForm({ ...form, purpose: event.target.value as typeof form.purpose })} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+            {Object.entries(purposeLabels).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={form.reviewFeeAmount}
+            onChange={(event) => setForm({ ...form, reviewFeeAmount: event.target.value })}
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+            placeholder="Review fee"
+          />
+          <div className="flex items-center gap-2">
+            <select value={form.reviewFeeCurrency} onChange={(event) => setForm({ ...form, reviewFeeCurrency: event.target.value as typeof form.reviewFeeCurrency })} className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm">
+              <option value="EUR">EUR</option>
+              <option value="USD">USD</option>
+              <option value="CZK">CZK</option>
+              <option value="PLN">PLN</option>
+            </select>
+            <label className="flex shrink-0 items-center gap-1 text-xs text-gray-700">
+              <input
+                type="checkbox"
+                checked={form.reviewFeePaid}
+                onChange={(event) => setForm({ ...form, reviewFeePaid: event.target.checked })}
+              />
+              Paid
+            </label>
+          </div>
+        </div>
+
+        <textarea
+          value={form.resultText}
+          onChange={(event) => setForm({ ...form, resultText: event.target.value })}
+          className="min-h-[100px] w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          placeholder="Results, interpretation, repeat/correction notes, or internal medical notes"
+        />
 
         <div className="rounded-md border border-dashed border-gray-300 bg-white p-3">
           <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">

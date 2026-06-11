@@ -19,7 +19,22 @@ const artifactTypeLabels: Record<MedicalArtifact['artifactType'], string> = {
   other: 'Other',
 };
 
-type ArtifactStatus = 'stored' | 'superseded' | 'voided';
+const contextTypeLabels: Record<NonNullable<MedicalArtifact['contextType']>, string> = {
+  client: 'Client profile',
+  booking: 'Booking',
+  ceremony: 'Ceremony',
+};
+
+const purposeLabels: Record<NonNullable<MedicalArtifact['purpose']>, string> = {
+  paid_review: 'Paid Review',
+  booking_requirement: 'Booking Requirement',
+  pre_ceremony: 'Pre-Ceremony',
+  repeat_test: 'Repeat Test',
+  correction: 'Correction',
+  general: 'General',
+};
+
+type ArtifactStatus = NonNullable<MedicalArtifact['status']>;
 
 const getClientLabel = (client?: string | Client) => {
   if (!client || typeof client === 'string') return client || 'Unknown client';
@@ -175,6 +190,8 @@ const MedicalArtifactDetailPage: React.FC = () => {
     description: '',
     notes: '',
     status: 'stored' as ArtifactStatus,
+    contextType: 'client' as NonNullable<MedicalArtifact['contextType']>,
+    purpose: 'general' as NonNullable<MedicalArtifact['purpose']>,
   });
 
   useEffect(() => {
@@ -192,6 +209,8 @@ const MedicalArtifactDetailPage: React.FC = () => {
           description: item.description || '',
           notes: item.notes || '',
           status: item.status || 'stored',
+          contextType: item.contextType || 'client',
+          purpose: item.purpose || 'general',
         });
       } finally {
         setLoading(false);
@@ -338,8 +357,28 @@ const MedicalArtifactDetailPage: React.FC = () => {
                 Status
                 <select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value as ArtifactStatus })} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
                   <option value="stored">Stored</option>
+                  <option value="pending_review">Pending Review</option>
+                  <option value="approved">Approved</option>
+                  <option value="rejected">Rejected</option>
+                  <option value="needs_resubmission">Needs Resubmission</option>
                   <option value="superseded">Superseded</option>
                   <option value="voided">Voided</option>
+                </select>
+              </label>
+              <label className="block text-sm font-medium text-gray-700">
+                Context
+                <select value={form.contextType} onChange={(event) => setForm({ ...form, contextType: event.target.value as typeof form.contextType })} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                  {Object.entries(contextTypeLabels).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block text-sm font-medium text-gray-700">
+                Purpose
+                <select value={form.purpose} onChange={(event) => setForm({ ...form, purpose: event.target.value as typeof form.purpose })} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                  {Object.entries(purposeLabels).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
                 </select>
               </label>
             </div>
@@ -406,6 +445,16 @@ const MedicalArtifactDetailPage: React.FC = () => {
             <dl className="space-y-2">
               <div><dt className="text-gray-500">Client</dt><dd className="font-medium text-gray-900">{getClientLabel(artifact.clientId)}</dd></div>
               <div><dt className="text-gray-500">Type</dt><dd className="font-medium text-gray-900">{artifactTypeLabels[artifact.artifactType]}</dd></div>
+              <div><dt className="text-gray-500">Context</dt><dd className="font-medium text-gray-900">{contextTypeLabels[artifact.contextType || 'client']}</dd></div>
+              <div><dt className="text-gray-500">Purpose</dt><dd className="font-medium text-gray-900">{purposeLabels[artifact.purpose || 'general']}</dd></div>
+              {artifact.reviewFeeAmount ? (
+                <div>
+                  <dt className="text-gray-500">Review Fee</dt>
+                  <dd className="font-medium text-gray-900">
+                    {artifact.reviewFeeAmount} {artifact.reviewFeeCurrency || 'EUR'} · {artifact.reviewFeePaid ? 'Paid' : 'Due'}
+                  </dd>
+                </div>
+              ) : null}
               <div><dt className="text-gray-500">Received</dt><dd className="font-medium text-gray-900">{artifact.receivedAt ? new Date(artifact.receivedAt).toLocaleString() : '-'}</dd></div>
               <div><dt className="text-gray-500">Source</dt><dd className="font-medium capitalize text-gray-900">{artifact.source || 'manual'}</dd></div>
               <div><dt className="text-gray-500">Version</dt><dd className="font-medium text-gray-900">{artifact.version || 1}</dd></div>

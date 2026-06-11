@@ -725,6 +725,8 @@ export interface MedicalArtifact {
     | 'contract'
     | 'question'
     | 'other';
+  contextType?: 'client' | 'booking' | 'ceremony';
+  purpose?: 'paid_review' | 'booking_requirement' | 'pre_ceremony' | 'repeat_test' | 'correction' | 'general';
   title: string;
   description?: string;
   textContent?: string;
@@ -748,7 +750,12 @@ export interface MedicalArtifact {
   source?: 'client_upload' | 'admin_upload' | 'email' | 'manual' | 'legacy';
   version?: number;
   replacesArtifactId?: string | MedicalArtifact;
-  status?: 'stored' | 'superseded' | 'voided';
+  relatedArtifactId?: string | MedicalArtifact;
+  status?: 'stored' | 'pending_review' | 'approved' | 'rejected' | 'needs_resubmission' | 'superseded' | 'voided';
+  reviewFeeAmount?: number;
+  reviewFeeCurrency?: 'EUR' | 'USD' | 'CZK' | 'PLN';
+  reviewFeePaid?: boolean;
+  tags?: string[];
   notes?: string;
   legacyMedicalTrackingId?: string;
   createdAt?: string;

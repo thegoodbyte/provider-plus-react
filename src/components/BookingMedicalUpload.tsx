@@ -239,6 +239,9 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
           resultSource: 'booking',
           bookingId,
         },
+        contextType: 'booking' as const,
+        purpose: 'booking_requirement' as const,
+        tags: Array.from(new Set([...(latestArtifact?.tags || []), 'booking-requirement'])),
         receivedAt: latestArtifact?.receivedAt || now,
         status: 'stored' as const,
       };
@@ -298,10 +301,13 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
         retreatId,
         bookingId,
         artifactType: section.type,
+        contextType: 'booking',
+        purpose: 'booking_requirement',
         title: `${section.title}${bookingNumber ? ` - Booking ${bookingNumber}` : ''}`,
         description: section.description,
         source: 'admin_upload',
         status: 'stored',
+        tags: ['booking-requirement'],
       });
 
       if (created.data._id) {

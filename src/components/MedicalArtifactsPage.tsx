@@ -19,6 +19,21 @@ const artifactTypeLabels: Record<MedicalArtifact['artifactType'], string> = {
   other: 'Other',
 };
 
+const contextTypeLabels: Record<NonNullable<MedicalArtifact['contextType']>, string> = {
+  client: 'Client',
+  booking: 'Booking',
+  ceremony: 'Ceremony',
+};
+
+const purposeLabels: Record<NonNullable<MedicalArtifact['purpose']>, string> = {
+  paid_review: 'Paid Review',
+  booking_requirement: 'Booking Requirement',
+  pre_ceremony: 'Pre-Ceremony',
+  repeat_test: 'Repeat Test',
+  correction: 'Correction',
+  general: 'General',
+};
+
 const getClientName = (client?: string | Client) => {
   if (!client || typeof client === 'string') return 'Unknown client';
   return [client.firstName || client.fname, client.lastName || client.lname].filter(Boolean).join(' ') || client.email || 'Unknown client';
@@ -29,6 +44,8 @@ const MedicalArtifactsPage: React.FC = () => {
   const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<'all' | MedicalArtifact['artifactType']>('all');
+  const [contextFilter, setContextFilter] = useState<'all' | NonNullable<MedicalArtifact['contextType']>>('all');
+  const [purposeFilter, setPurposeFilter] = useState<'all' | NonNullable<MedicalArtifact['purpose']>>('all');
 
   const loadData = async () => {
     setLoading(true);
@@ -45,9 +62,13 @@ const MedicalArtifactsPage: React.FC = () => {
   }, []);
 
   const filteredArtifacts = useMemo(() => {
-    if (typeFilter === 'all') return artifacts;
-    return artifacts.filter((artifact) => artifact.artifactType === typeFilter);
-  }, [artifacts, typeFilter]);
+    return artifacts.filter((artifact) => {
+      if (typeFilter !== 'all' && artifact.artifactType !== typeFilter) return false;
+      if (contextFilter !== 'all' && (artifact.contextType || 'client') !== contextFilter) return false;
+      if (purposeFilter !== 'all' && (artifact.purpose || 'general') !== purposeFilter) return false;
+      return true;
+    });
+  }, [artifacts, typeFilter, contextFilter, purposeFilter]);
 
   const handleRequestReview = async (artifact: MedicalArtifact) => {
     if (!artifact._id) return;
@@ -84,6 +105,18 @@ const MedicalArtifactsPage: React.FC = () => {
             <option key={value} value={value}>{label}</option>
           ))}
         </select>
+        <select value={contextFilter} onChange={(event) => setContextFilter(event.target.value as typeof contextFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+          <option value="all">All contexts</option>
+          {Object.entries(contextTypeLabels).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
+        <select value={purposeFilter} onChange={(event) => setPurposeFilter(event.target.value as typeof purposeFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+          <option value="all">All purposes</option>
+          {Object.entries(purposeLabels).map(([value, label]) => (
+            <option key={value} value={value}>{label}</option>
+          ))}
+        </select>
       </div>
 
       <div className="overflow-hidden rounded-md border border-gray-200">
@@ -93,6 +126,7 @@ const MedicalArtifactsPage: React.FC = () => {
               <th className="px-4 py-3">ID</th>
               <th className="px-4 py-3">Preview</th>
               <th className="px-4 py-3">Type</th>
+              <th className="px-4 py-3">Context</th>
               <th className="px-4 py-3">Title</th>
               <th className="px-4 py-3">Client</th>
               <th className="px-4 py-3">Received</th>
@@ -117,6 +151,21 @@ const MedicalArtifactsPage: React.FC = () => {
                   )}
                 </td>
                 <td className="px-4 py-3">{artifactTypeLabels[artifact.artifactType]}</td>
+                <td className="px-4 py-3">
+                  <div className="flex flex-col gap-1">
+                    <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
+                      {contextTypeLabels[artifact.contextType || 'client']}
+                    </span>
+                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700">
+                      {purposeLabels[artifact.purpose || 'general']}
+                    </span>
+                    {artifact.reviewFeeAmount ? (
+                      <span className="text-xs text-gray-500">
+                        {artifact.reviewFeeAmount} {artifact.reviewFeeCurrency || 'EUR'} {artifact.reviewFeePaid ? 'paid' : 'due'}
+                      </span>
+                    ) : null}
+                  </div>
+                </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-gray-400" />
@@ -143,7 +192,7 @@ const MedicalArtifactsPage: React.FC = () => {
             ))}
             {filteredArtifacts.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-gray-500">No medical artifacts yet.</td>
+                <td colSpan={10} className="px-4 py-8 text-center text-gray-500">No medical artifacts yet.</td>
               </tr>
             )}
           </tbody>
