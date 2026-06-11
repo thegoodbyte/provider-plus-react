@@ -43,10 +43,10 @@ interface QuickBookingFormData {
 
 interface RetreatClientData {
   _id: string;
+  bookingNumber?: number | string;
   clientId: string;
   clientDisplayId?: number;
   clientName: string;
-  clientEmail: string;
   clientPhone: string;
   registrationDate: string;
   checkInDate?: string;
@@ -119,17 +119,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     return `${month}/${day}/${year}`;
   };
 
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      pending: 'bg-yellow-100 text-yellow-800',
-      confirmed: 'bg-green-100 text-green-800',
-      checked_in: 'bg-blue-100 text-blue-800',
-      checked_out: 'bg-gray-100 text-gray-800',
-      cancelled: 'bg-red-100 text-red-800'
-    };
-    return colors[status] || 'bg-yellow-100 text-yellow-800';
-  };
-
   const formatAmount = (amount: number, currency: string) => {
     if (amount === null || amount === undefined) return '';
     return `${amount.toFixed(2)} ${currency}`;
@@ -158,12 +147,12 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       // Transform booking data to client data format
       const transformedClients: RetreatClientData[] = clientsResponse.data.map((booking: any) => ({
         _id: booking._id,
+        bookingNumber: booking.bookingNumber || booking.display_id || booking.displayId,
         clientId: booking.clientId?._id || booking.clientId || '', // Store the actual client ID
         clientDisplayId: booking.clientId?.display_id,
         clientName: booking.clientId
           ? `${booking.clientId.firstName || booking.clientId.fname || ''} ${booking.clientId.lastName || booking.clientId.lname || ''}`.trim()
           : 'Unknown Client',
-        clientEmail: booking.clientId?.email || '',
         clientPhone: booking.clientId?.phone || '',
         registrationDate: booking.registrationDate,
         checkInDate: booking.checkInDate,
@@ -659,16 +648,10 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                       Client Name
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Email
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Phone
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Registration Date
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Total Amount
@@ -685,24 +668,21 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                   {clients.map((client) => (
                     <tr key={client._id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        #{client.clientDisplayId || client.clientId?.slice(-6) || client._id?.slice(-6)}
+                        #{client.bookingNumber || client._id?.slice(-6)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {client.clientName}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {client.clientEmail}
+                        <div>{client.clientName}</div>
+                        {client.clientDisplayId && (
+                          <div className="mt-1 text-xs font-semibold text-gray-500">
+                            Client #{client.clientDisplayId}
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {client.clientPhone}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {formatDate(client.registrationDate)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(client.status)}`}>
-                          {client.status}
-                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {formatAmount(client.totalAmount, client.currency)}
@@ -714,24 +694,24 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => handleViewClient(client.clientId)}
-                            className="text-blue-600 hover:text-blue-900"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent bg-transparent text-blue-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             title="View Client"
                           >
-                            <Icon icon={FiEye} className="w-4 h-4" />
+                            <Icon icon={FiEye} className="h-5 w-5" />
                           </button>
                           <button
                             onClick={() => handleEditBooking(client._id)}
-                            className="text-indigo-600 hover:text-indigo-900"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent bg-transparent text-gray-800 transition hover:border-gray-300 hover:bg-gray-100 hover:text-black focus:outline-none focus:ring-2 focus:ring-gray-500"
                             title="Edit Booking"
                           >
-                            <Icon icon={FiEdit2} className="w-4 h-4" />
+                            <Icon icon={FiEdit2} className="h-5 w-5" />
                           </button>
                           <button
                             onClick={() => handleDeleteBooking(client._id)}
-                            className="text-red-600 hover:text-red-900"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent bg-transparent text-red-700 transition hover:border-red-200 hover:bg-red-50 hover:text-red-900 focus:outline-none focus:ring-2 focus:ring-red-500"
                             title="Delete Booking"
                           >
-                            <Icon icon={FiTrash2} className="w-4 h-4" />
+                            <Icon icon={FiTrash2} className="h-5 w-5" />
                           </button>
                         </div>
                       </td>
