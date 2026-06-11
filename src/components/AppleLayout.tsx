@@ -212,8 +212,32 @@ const AppleLayout: React.FC = () => {
 
       {/* Main Content */}
       <div className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
+        {/* Mobile floating controls keep navigation available without reserving header space. */}
+        <div className="fixed left-4 right-4 top-4 z-40 flex items-center justify-between lg:hidden pointer-events-none">
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-apple-gray-700 shadow-apple-sm backdrop-blur-apple transition-colors hover:bg-white"
+            aria-label="Toggle menu"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+          <button
+            onClick={() => setShowSettings(true)}
+            className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-apple-gray-700 shadow-apple-sm backdrop-blur-apple transition-colors hover:bg-white"
+            aria-label="Settings"
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+          </button>
+        </div>
+
         {/* Header with glass morphism */}
-        <header className="sticky top-0 z-30 bg-white/70 backdrop-blur-apple border-b border-apple-gray-200">
+        <header className="sticky top-0 z-30 hidden bg-white/70 backdrop-blur-apple border-b border-apple-gray-200 lg:block">
           <div className="px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-14">
               {/* Mobile menu button */}
@@ -296,7 +320,7 @@ const AppleLayout: React.FC = () => {
         )}
 
         {/* Page Content */}
-        <main className="px-4 sm:px-6 lg:px-8 py-6 overflow-y-auto" style={{ height: 'calc(100vh - 64px - 32px)' }}>
+        <main className="h-[calc(100vh-32px)] overflow-y-auto px-4 py-4 sm:px-6 lg:h-[calc(100vh-64px-32px)] lg:px-8 lg:py-6">
           <div className="max-w-7xl mx-auto">
             <div className="bg-white rounded-apple-lg shadow-apple-sm">
               <Routes>
