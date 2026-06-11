@@ -560,6 +560,77 @@ const ClientDetailsPage: React.FC = () => {
     return '';
   };
 
+  const renderInlineFormattedText = (text: string) => {
+    const parts = text.split(/(\*\*[^*]+\*\*|_[^_]+_)/g).filter(Boolean);
+    return parts.map((part, index) => {
+      if (part.startsWith('**') && part.endsWith('**')) {
+        return <strong key={index}>{part.slice(2, -2)}</strong>;
+      }
+      if (part.startsWith('_') && part.endsWith('_')) {
+        return <em key={index}>{part.slice(1, -1)}</em>;
+      }
+      return <React.Fragment key={index}>{part}</React.Fragment>;
+    });
+  };
+
+  const renderFormattedScreeningText = (value: string) => {
+    const lines = value.split('\n');
+    const elements: React.ReactNode[] = [];
+    let listItems: string[] = [];
+    let orderedItems: string[] = [];
+
+    const flushLists = () => {
+      if (listItems.length) {
+        elements.push(
+          <ul key={`ul-${elements.length}`} className="ml-5 list-disc space-y-1">
+            {listItems.map((item, index) => <li key={index}>{renderInlineFormattedText(item)}</li>)}
+          </ul>
+        );
+        listItems = [];
+      }
+      if (orderedItems.length) {
+        elements.push(
+          <ol key={`ol-${elements.length}`} className="ml-5 list-decimal space-y-1">
+            {orderedItems.map((item, index) => <li key={index}>{renderInlineFormattedText(item)}</li>)}
+          </ol>
+        );
+        orderedItems = [];
+      }
+    };
+
+    lines.forEach((line, index) => {
+      const trimmed = line.trim();
+      if (!trimmed) {
+        flushLists();
+        elements.push(<div key={`blank-${index}`} className="h-2" />);
+        return;
+      }
+      if (trimmed.startsWith('- ')) {
+        if (orderedItems.length) flushLists();
+        listItems.push(trimmed.slice(2));
+        return;
+      }
+      const numberedMatch = trimmed.match(/^\d+\.\s+(.*)$/);
+      if (numberedMatch) {
+        if (listItems.length) flushLists();
+        orderedItems.push(numberedMatch[1]);
+        return;
+      }
+
+      flushLists();
+      if (trimmed.startsWith('### ')) {
+        elements.push(<h4 key={index} className="font-semibold text-gray-800">{renderInlineFormattedText(trimmed.slice(4))}</h4>);
+      } else if (trimmed.startsWith('> ')) {
+        elements.push(<blockquote key={index} className="border-l-2 border-gray-300 pl-3 text-gray-600">{renderInlineFormattedText(trimmed.slice(2))}</blockquote>);
+      } else {
+        elements.push(<p key={index}>{renderInlineFormattedText(line)}</p>);
+      }
+    });
+
+    flushLists();
+    return <div className="space-y-2">{elements}</div>;
+  };
+
   const renderScreeningField = (label: string, value: any) => {
     const formattedValue = formatScreeningValue(value);
     if (!formattedValue) return null;
@@ -567,7 +638,9 @@ const ClientDetailsPage: React.FC = () => {
     return (
       <div>
         <h3 className="text-sm font-medium text-gray-500 mb-2">{label}</h3>
-        <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded whitespace-pre-wrap">{formattedValue}</p>
+        <div className="text-sm text-gray-700 bg-gray-50 p-3 rounded whitespace-pre-wrap">
+          {typeof formattedValue === 'string' ? renderFormattedScreeningText(formattedValue) : formattedValue}
+        </div>
       </div>
     );
   };

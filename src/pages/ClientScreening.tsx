@@ -1,4 +1,4 @@
-import React, { useState, useEffect, ChangeEvent } from 'react';
+import React, { useState, useEffect, ChangeEvent, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AppleButton from '../components/AppleButton';
@@ -149,6 +149,7 @@ const ClientScreening: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const mainIntentRef = useRef<HTMLTextAreaElement | null>(null);
   const [formData, setFormData] = useState<ScreeningData>({
     clientId: clientId || '',
     firstName: '',
@@ -370,6 +371,59 @@ const ClientScreening: React.FC = () => {
     }
   };
 
+  const applyTextFormat = (format: 'bold' | 'italic' | 'heading' | 'bullet' | 'numbered' | 'quote') => {
+    const textarea = mainIntentRef.current;
+    if (!textarea) return;
+
+    const value = formData.mainIntent || '';
+    const selectionStart = textarea.selectionStart;
+    const selectionEnd = textarea.selectionEnd;
+    const selectedText = value.slice(selectionStart, selectionEnd);
+    const lineStart = value.lastIndexOf('\n', selectionStart - 1) + 1;
+    const lineEndIndex = value.indexOf('\n', selectionEnd);
+    const lineEnd = lineEndIndex === -1 ? value.length : lineEndIndex;
+    const selectedLines = value.slice(lineStart, lineEnd);
+
+    let nextValue = value;
+    let nextSelectionStart = selectionStart;
+    let nextSelectionEnd = selectionEnd;
+
+    const wrapSelection = (prefix: string, suffix: string, placeholder: string) => {
+      const text = selectedText || placeholder;
+      nextValue = `${value.slice(0, selectionStart)}${prefix}${text}${suffix}${value.slice(selectionEnd)}`;
+      nextSelectionStart = selectionStart + prefix.length;
+      nextSelectionEnd = nextSelectionStart + text.length;
+    };
+
+    const prefixLines = (prefix: string, defaultText: string) => {
+      const text = selectedLines || defaultText;
+      const formatted = text
+        .split('\n')
+        .map((line, index) => {
+          if (format === 'numbered') return `${index + 1}. ${line.replace(/^\d+\.\s*/, '') || defaultText}`;
+          return `${prefix}${line.replace(/^([#>*-]\s*)/, '') || defaultText}`;
+        })
+        .join('\n');
+      nextValue = `${value.slice(0, lineStart)}${formatted}${value.slice(lineEnd)}`;
+      nextSelectionStart = lineStart;
+      nextSelectionEnd = lineStart + formatted.length;
+    };
+
+    if (format === 'bold') wrapSelection('**', '**', 'important text');
+    if (format === 'italic') wrapSelection('_', '_', 'emphasis');
+    if (format === 'heading') prefixLines('### ', 'Section title');
+    if (format === 'bullet') prefixLines('- ', 'List item');
+    if (format === 'numbered') prefixLines('', 'List item');
+    if (format === 'quote') prefixLines('> ', 'Quoted note');
+
+    setFormData(prev => ({ ...prev, mainIntent: nextValue }));
+
+    window.requestAnimationFrame(() => {
+      textarea.focus();
+      textarea.setSelectionRange(nextSelectionStart, nextSelectionEnd);
+    });
+  };
+
   const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -508,11 +562,32 @@ const ClientScreening: React.FC = () => {
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Main Intent</label>
+            <div className="mb-2 flex flex-wrap gap-1 rounded-md border border-gray-200 bg-gray-50 p-1">
+              <button type="button" onClick={() => applyTextFormat('bold')} className="rounded px-2 py-1 text-sm font-bold text-gray-700 hover:bg-white" title="Bold">
+                B
+              </button>
+              <button type="button" onClick={() => applyTextFormat('italic')} className="rounded px-2 py-1 text-sm italic text-gray-700 hover:bg-white" title="Italic">
+                I
+              </button>
+              <button type="button" onClick={() => applyTextFormat('heading')} className="rounded px-2 py-1 text-sm font-semibold text-gray-700 hover:bg-white" title="Heading">
+                H
+              </button>
+              <button type="button" onClick={() => applyTextFormat('bullet')} className="rounded px-2 py-1 text-sm text-gray-700 hover:bg-white" title="Bullet list">
+                - List
+              </button>
+              <button type="button" onClick={() => applyTextFormat('numbered')} className="rounded px-2 py-1 text-sm text-gray-700 hover:bg-white" title="Numbered list">
+                1. List
+              </button>
+              <button type="button" onClick={() => applyTextFormat('quote')} className="rounded px-2 py-1 text-sm text-gray-700 hover:bg-white" title="Quote">
+                Quote
+              </button>
+            </div>
             <textarea
+              ref={mainIntentRef}
               name="mainIntent"
               value={formData.mainIntent}
               onChange={handleInputChange}
-              rows={3}
+              rows={5}
               className="w-full px-3 py-2 border border-gray-200 rounded-md"
             />
           </div>
