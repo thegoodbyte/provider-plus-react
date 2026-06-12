@@ -32,7 +32,7 @@ const getPublicPaymentUrl = (request: any) => (
 );
 
 const getPublicPaymentApiUrl = (request: any) => (
-  request?.publicHash ? `${API_BASE_URL}/payment-requests/public/deposit/${request.publicHash}` : ''
+  request?.publicHash ? `${API_BASE_URL}/payment-requests/public/agreement/${request.publicHash}` : ''
 );
 
 const formatAmount = (amount: any, currency: string) => {
@@ -155,6 +155,7 @@ const PaymentRequestsGrid: React.FC = () => {
         retreat.toLowerCase().includes(term) ||
         (request.currency || '').toLowerCase().includes(term) ||
         (request.invoiceNumber || '').toLowerCase().includes(term) ||
+        (request.publicHash || '').toLowerCase().includes(term) ||
         (request.note || '').toLowerCase().includes(term)
       );
     });
@@ -197,6 +198,7 @@ const PaymentRequestsGrid: React.FC = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice #</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Public Hash</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Retreat</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
@@ -215,6 +217,41 @@ const PaymentRequestsGrid: React.FC = () => {
                   <tr key={request._id} className="hover:bg-gray-50">
                     <td className="px-4 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                       {request.invoiceNumber || (request.display_id ? `#${request.display_id}` : 'n/a')}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      {request.publicHash ? (
+                        <div className="flex items-center gap-2">
+                          <code className="rounded bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-800">
+                            {request.publicHash}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(request.publicHash)}
+                            className="icon-action-btn icon-action-btn-view"
+                            title="Copy hash"
+                          >
+                            <Icon icon={FiCopy} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(getPublicPaymentApiUrl(request))}
+                            className="icon-action-btn icon-action-btn-view"
+                            title="Copy agreement API URL"
+                          >
+                            API
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => window.open(getPublicPaymentUrl(request), '_blank', 'noopener,noreferrer')}
+                            className="icon-action-btn icon-action-btn-view"
+                            title="Open client payment form"
+                          >
+                            <Icon icon={FiExternalLink} />
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-amber-700">Save once to generate</span>
+                      )}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="font-medium text-gray-900">{client.name}</div>
@@ -276,7 +313,7 @@ const PaymentRequestsGrid: React.FC = () => {
               })}
               {filteredRequests.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center text-gray-500">
+                  <td colSpan={10} className="px-4 py-10 text-center text-gray-500">
                     {searchTerm ? 'No payment requests found matching your search' : 'No payment requests found'}
                   </td>
                 </tr>

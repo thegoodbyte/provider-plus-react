@@ -83,6 +83,8 @@ const HousesGrid: React.FC = () => {
 
       if (formData.name?.trim()) cleanData.name = formData.name.trim();
       if (formData.address?.trim()) cleanData.address = formData.address.trim();
+      if (formData.generalTown?.trim()) cleanData.generalTown = formData.generalTown.trim();
+      if (formData.googleMapLink?.trim()) cleanData.googleMapLink = formData.googleMapLink.trim();
       if (formData.capacity && formData.capacity > 0) cleanData.capacity = Number(formData.capacity);
       if (formData.numberOfRooms && formData.numberOfRooms > 0) cleanData.numberOfRooms = Number(formData.numberOfRooms);
       if (formData.numberOfBathrooms && formData.numberOfBathrooms > 0) cleanData.numberOfBathrooms = Number(formData.numberOfBathrooms);
@@ -156,6 +158,9 @@ const HousesGrid: React.FC = () => {
                   Address
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  General Town
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Capacity
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -188,6 +193,9 @@ const HousesGrid: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {house.address || 'No address'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {house.generalTown || house.city || 'N/A'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center text-sm text-gray-900">
@@ -277,6 +285,36 @@ const HousesGrid: React.FC = () => {
                   value={formData.address || ''}
                   onChange={handleInputChange}
                   required
+                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="generalTown" className="block text-sm font-medium text-gray-700">
+                  General Town
+                </label>
+                <input
+                  type="text"
+                  id="generalTown"
+                  name="generalTown"
+                  value={formData.generalTown || ''}
+                  onChange={handleInputChange}
+                  placeholder="Jablonne nad Orlici"
+                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="googleMapLink" className="block text-sm font-medium text-gray-700">
+                  Google map link
+                </label>
+                <input
+                  type="url"
+                  id="googleMapLink"
+                  name="googleMapLink"
+                  value={formData.googleMapLink || ''}
+                  onChange={handleInputChange}
+                  placeholder="https://maps.app.goo.gl/..."
                   className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                 />
               </div>

@@ -292,6 +292,10 @@ const ModuleLauncherPage: React.FC = () => {
   );
 
   const rows = useMemo(() => buildRows(tiles), [tiles]);
+  const maxRowLength = useMemo(
+    () => rows.reduce((max, row) => Math.max(max, row.tiles.length), 1),
+    [rows],
+  );
 
   const handleTileClick = (route: string) => {
     navigate(`${routePrefix}/${route}`);
@@ -313,14 +317,28 @@ const ModuleLauncherPage: React.FC = () => {
       </div>
 
       <div className="module-launcher-hive-shell">
-        <div className="module-launcher-hive">
+        <div
+          className="module-launcher-hive"
+          style={
+            {
+              '--launcher-row-count': rows.length,
+              '--launcher-max-row-length': maxRowLength,
+            } as React.CSSProperties
+          }
+        >
           {rows.map((row, rowIndex) => (
             <div
               key={`row-${rowIndex}`}
               className="module-launcher-row"
-              style={{ '--launcher-row-offset': row.offset } as React.CSSProperties}
+              style={
+                {
+                  '--launcher-row-index': rowIndex,
+                  '--launcher-row-length': row.tiles.length,
+                  '--launcher-row-offset': row.offset,
+                } as React.CSSProperties
+              }
             >
-              {row.tiles.map((tile) => {
+              {row.tiles.map((tile, tileIndex) => {
                 const Icon = tile.icon;
                 return (
                   <button
@@ -328,6 +346,12 @@ const ModuleLauncherPage: React.FC = () => {
                     type="button"
                     onClick={() => handleTileClick(tile.route)}
                     className={`launcher-hex ${tile.tone === 'blue' ? 'tone-blue' : ''} ${tile.tone === 'violet' ? 'tone-violet' : ''} ${tile.tone === 'emerald' ? 'tone-emerald' : ''} ${tile.tone === 'amber' ? 'tone-amber' : ''} ${tile.tone === 'rose' ? 'tone-rose' : ''} ${tile.tone === 'slate' ? 'tone-slate' : ''}`}
+                    style={
+                      {
+                        '--launcher-col-index': tileIndex,
+                        clipPath: 'polygon(50% 0%, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%)',
+                      } as React.CSSProperties
+                    }
                     title={`${tile.section} - ${tile.label}`}
                     aria-label={`${tile.section} - ${tile.label}`}
                   >

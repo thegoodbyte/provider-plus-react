@@ -28,6 +28,10 @@ export interface House {
   _id?: string;
   name?: string;
   address?: string;
+  generalTown?: string;
+  general_town?: string;
+  googleMapLink?: string;
+  google_map_link?: string;
   capacity?: number;
   numberOfRooms?: number;
   numberOfBathrooms?: number;

@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
+import { housesApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import { MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
 
 interface BookingConfirmationPDFProps {
@@ -60,6 +60,20 @@ const addDays = (date: Date, days: number) => {
   const next = new Date(date);
   next.setDate(next.getDate() + days);
   return next;
+};
+
+const resolveHouseForRetreat = async (retreat: any) => {
+  const houseValue = retreat?.houseId || retreat?.house;
+  if (!houseValue) return null;
+  if (typeof houseValue === 'object') return houseValue;
+
+  try {
+    const response = await housesApi.getOne(String(houseValue));
+    return response.data || null;
+  } catch (error) {
+    console.warn('Unable to load retreat house for booking PDF:', error);
+    return null;
+  }
 };
 
 const paymentDateFields = (source: any) => [
@@ -319,6 +333,7 @@ const translations = {
 export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }: BookingConfirmationPDFProps) => {
   const client = booking.clientId || booking.clientDetails;
   const retreat = booking.retreatId || booking.retreatDetails;
+  const house = await resolveHouseForRetreat(retreat);
   const requirementStatus = await buildRequirementStatus(booking);
   const initialPaymentDate = await resolveInitialPaymentDate(booking);
 
@@ -334,6 +349,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
     { label: t.liverStatus, complete: requirementStatus.liverVerified, deadline: medicalDeadlineDate },
     { label: t.contractStatus, complete: requirementStatus.contractSigned, deadline: contractDeadlineDate },
   ];
+  const missingRequirementsText = requirementStatus.missingRequirements.map(escapeHtml).join(', ');
 
   // Format currency amount based on language
   const formatAmount = (amount: number) => {
@@ -352,6 +368,20 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   };
 
   const formatDate = (date: Date) => date.toLocaleDateString(getDateLocale());
+  const retreatStartDate = parseDate(retreat?.startDate || retreat?.dates?.startDate);
+  const retreatEndDate = parseDate(retreat?.endDate || retreat?.dates?.endDate);
+  const locationTown = house?.generalTown || house?.city || retreat?.location || house?.name || 'N/A';
+  const locationAddress = house?.address || retreat?.address || 'N/A';
+  const googleMapLink = house?.googleMapLink || house?.google_map_link || retreat?.googleMapLink || retreat?.google_map_link || '';
+  const retreatDateRange = [
+    retreatStartDate ? formatDate(retreatStartDate) : null,
+    retreatEndDate ? formatDate(retreatEndDate) : null,
+  ].filter(Boolean).join(' - ') || 'N/A';
+  const retreatDateRangeCompact = [
+    retreatStartDate ? retreatStartDate.toLocaleDateString(getDateLocale(), { day: '2-digit', month: '2-digit' }) : null,
+    retreatEndDate ? retreatEndDate.toLocaleDateString(getDateLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' }) : null,
+  ].filter(Boolean).join('-') || retreatDateRange;
+  const paymentDescription = `${locationTown} retreat ${retreatDateRangeCompact}`;
 
   // Create a temporary div for PDF content
   const pdfContent = document.createElement('div');
@@ -440,48 +470,24 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
         <strong>${t.retreatDescription}</strong>
       </div>
 
-      <div style="margin: 18px 0 24px 0; border: 1px solid rgba(31,41,55,0.14); border-radius: 8px; overflow: hidden; background: rgba(255,255,255,0.86);">
-        <div style="padding: 9px 12px; font-size: 13px; font-weight: 600; color: #1f2937; background: ${bookingStatusBg};">
-          ${t.requirementsTitle}: <span style="color: ${bookingStatusColor};">${bookingStatusText}</span>
-        </div>
-        <div style="padding: 7px 12px; font-size: 11px; color: #4b5563; border-top: 1px solid rgba(31,41,55,0.10);">
-          ${t.initialPaymentDate}: <strong>${formatDate(initialPaymentDate)}</strong>
-        </div>
-        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
-          <tbody>
-            ${requirementRows.map((row) => `
-              <tr>
-                <td style="border-top: 1px solid rgba(31,41,55,0.10); padding: 7px 12px; color: #4b5563;">${row.label}</td>
-                <td style="border-top: 1px solid rgba(31,41,55,0.10); padding: 7px 12px; color: #4b5563; text-align: center;">${t.deadline}: <strong>${formatDate(row.deadline)}</strong></td>
-                <td style="border-top: 1px solid rgba(31,41,55,0.10); padding: 7px 12px; text-align: right; color: ${row.complete ? '#047857' : '#92400e'}; font-weight: 600;">${row.complete ? t.verified : t.pending}</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-        <div style="padding: 9px 12px; font-size: 11px; line-height: 1.45; color: ${requirementStatus.missingRequirements.length > 0 ? '#92400e' : '#047857'}; background: ${requirementStatus.missingRequirements.length > 0 ? 'rgba(254,243,199,0.55)' : 'rgba(209,250,229,0.48)'};">
-          ${requirementStatus.missingRequirements.length > 0 ? `${t.conditionalNotice} ${requirementStatus.missingRequirements.map(escapeHtml).join(', ')}. ` : ''}
-          ${t.medicalDeadline} ${t.contractDeadline} ${t.deadlinePolicy}
-        </div>
-      </div>
-
       <!-- Location Details -->
       <div style="margin: 20px 0 25px 0; font-size: 13px; line-height: 1.7;">
         <table style="border: none;">
           <tr>
             <td style="padding: 2px 10px 2px 0; vertical-align: top;">${t.location}:</td>
-            <td style="padding: 2px 0; font-weight: bold;">Jindrichuv Hradec</td>
+            <td style="padding: 2px 0; font-weight: bold;">${escapeHtml(locationTown)}</td>
           </tr>
           <tr>
             <td style="padding: 2px 10px 2px 0; vertical-align: top;">${t.dates}:</td>
-            <td style="padding: 2px 0; font-weight: bold;">${retreat?.startDate ? new Date(retreat.startDate).toLocaleDateString(getDateLocale()) : '28.03.2026'} - ${retreat?.endDate ? new Date(retreat.endDate).toLocaleDateString(getDateLocale()) : '04.04.2026'}</td>
+            <td style="padding: 2px 0; font-weight: bold;">${escapeHtml(retreatDateRange)}</td>
           </tr>
           <tr>
             <td style="padding: 2px 10px 2px 0; vertical-align: top;">${t.addressLabel}:</td>
-            <td style="padding: 2px 0; font-weight: bold;">Člunek 24, 378 61 Člunek, Czechia</td>
+            <td style="padding: 2px 0; font-weight: bold;">${escapeHtml(locationAddress)}</td>
           </tr>
           <tr>
             <td style="padding: 2px 10px 2px 0; vertical-align: top;">${t.googleMaps}:</td>
-            <td style="padding: 2px 0;"><a href="https://maps.app.goo.gl/c7E6vennGRUEPk9" style="color: #0066cc; text-decoration: underline;">https://maps.app.goo.gl/c7E6vennGRUEPk9</a></td>
+            <td style="padding: 2px 0;">${googleMapLink ? `<a href="${escapeHtml(googleMapLink)}" style="color: #0066cc; text-decoration: underline;">${escapeHtml(googleMapLink)}</a>` : 'N/A'}</td>
           </tr>
         </table>
       </div>
@@ -498,7 +504,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
         </thead>
         <tbody>
           <tr>
-            <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">Jindrichuv Hradec retreat 28.03-04.04 2026</td>
+            <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">${escapeHtml(paymentDescription)}</td>
             <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;"></td>
             <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;"></td>
             <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right;">${formatAmount(7500)}</td>
@@ -527,8 +533,32 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
           ${t.footerNote3}
         </div>
 
-        <div style="margin-top: 20px;">
-          ${t.footerNote4}<br>
+        <div style="margin-top: 16px; border: 1px solid rgba(31,41,55,0.16); border-radius: 6px; overflow: hidden; background: rgba(255,255,255,0.90);">
+          <div style="padding: 6px 8px; font-size: 10px; font-weight: 600; color: ${bookingStatusColor}; background: ${bookingStatusBg};">
+            ${t.requirementsTitle}: ${bookingStatusText}
+            <span style="font-weight: 400; color: #4b5563;"> &nbsp; ${t.initialPaymentDate}: ${formatDate(initialPaymentDate)}</span>
+          </div>
+          <table style="width: 100%; border-collapse: collapse; font-size: 9px; line-height: 1.25;">
+            <tbody>
+              <tr>
+                ${requirementRows.map((row) => `
+                  <td style="width: 33.33%; border-top: 1px solid rgba(31,41,55,0.10); border-right: 1px solid rgba(31,41,55,0.10); padding: 5px 6px; color: #4b5563; vertical-align: top;">
+                    <strong>${row.label}</strong><br>
+                    ${t.deadline}: ${formatDate(row.deadline)}<br>
+                    <span style="color: ${row.complete ? '#047857' : '#92400e'}; font-weight: 600;">${row.complete ? t.verified : t.pending}</span>
+                  </td>
+                `).join('')}
+              </tr>
+            </tbody>
+          </table>
+          ${missingRequirementsText ? `
+            <div style="padding: 5px 8px; border-top: 1px solid rgba(31,41,55,0.10); font-size: 9px; line-height: 1.25; color: #92400e;">
+              ${t.conditionalNotice} ${missingRequirementsText}. ${t.deadlinePolicy}
+            </div>
+          ` : ''}
+        </div>
+
+        <div style="margin-top: 14px;">
           ${t.footerNote5}<br>
           ${t.footerNote6}
         </div>
