@@ -54,6 +54,7 @@ const CommunicationsPage: React.FC = () => {
   const [templateForm, setTemplateForm] = useState<Partial<EmailTemplate>>(defaultTemplateForm);
   const [composeForm, setComposeForm] = useState(defaultComposeForm);
   const [savingTemplate, setSavingTemplate] = useState(false);
+  const [seedingTemplates, setSeedingTemplates] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
 
@@ -200,6 +201,20 @@ const CommunicationsPage: React.FC = () => {
     } catch (error) {
       console.error('Error deleting template:', error);
       alert('Error deleting template');
+    }
+  };
+
+  const handleSeedDefaultTemplates = async () => {
+    setSeedingTemplates(true);
+    try {
+      const response = await communicationsApi.seedDefaultTemplates();
+      await loadAll();
+      alert(`Default templates seeded. Created: ${response.data.created}. Updated: ${response.data.updated}.`);
+    } catch (error: any) {
+      console.error('Error seeding default templates:', error);
+      alert(error?.response?.data?.message || error?.message || 'Unable to seed default templates.');
+    } finally {
+      setSeedingTemplates(false);
     }
   };
 
@@ -461,14 +476,25 @@ const CommunicationsPage: React.FC = () => {
           <section className="rounded-lg border border-gray-200 bg-white p-4 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">Templates</h2>
-              <button
-                type="button"
-                onClick={handleNewTemplate}
-                className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-              >
-                <Icon icon={FiPlus} />
-                New
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleSeedDefaultTemplates}
+                  disabled={seedingTemplates}
+                  className="inline-flex items-center gap-2 rounded-md border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+                >
+                  <Icon icon={FiRefreshCw} />
+                  {seedingTemplates ? 'Seeding...' : 'Seed Defaults'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleNewTemplate}
+                  className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  <Icon icon={FiPlus} />
+                  New
+                </button>
+              </div>
             </div>
             <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-1">
               {templates.map((template) => (

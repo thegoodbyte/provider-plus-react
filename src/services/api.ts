@@ -355,6 +355,10 @@ export const communicationsApi = {
   getTemplates: () => cachedGet<EmailTemplate[]>('communications:templates', () => api.get<EmailTemplate[]>('/communications/templates')),
   getTemplate: (id: string) => cachedGet<EmailTemplate>(`communications:templates:${id}`, () => api.get<EmailTemplate>(`/communications/templates/${id}`)),
   getNextTemplateDisplayId: () => api.get<number>('/communications/templates/next-display-id'),
+  seedDefaultTemplates: () => {
+    cacheService.clearPattern('communications:templates');
+    return api.post<{ created: number; updated: number; templates: EmailTemplate[] }>('/communications/templates/seed-defaults', {});
+  },
   createTemplate: (data: Omit<EmailTemplate, '_id' | 'createdAt' | 'updatedAt'>) => {
     cacheService.clearPattern('communications:templates');
     return api.post<EmailTemplate>('/communications/templates', data);
@@ -819,6 +823,16 @@ export const bookingFlowApi = {
   completeItem: (id: string, notes?: string) => {
     cacheService.clearPattern('booking-flow:');
     return api.patch<BookingFlowItem>(`/booking-flow/items/${id}/complete`, { notes });
+  },
+  sendItemEmail: (id: string) => {
+    cacheService.clearPattern('booking-flow:');
+    cacheService.clearPattern('communications:sent-emails');
+    return api.post<{ item: BookingFlowItem; sentEmail: SentEmail }>(`/booking-flow/items/${id}/send-email`, {});
+  },
+  sendTemplateEmailToRetreat: (retreatId: string, templateId: string) => {
+    cacheService.clearPattern('booking-flow:');
+    cacheService.clearPattern('communications:sent-emails');
+    return api.post<{ sent: number; failed: number; skipped: number; results: any[] }>(`/booking-flow/retreat/${retreatId}/templates/${templateId}/send-email`, {});
   },
   deleteItem: (id: string) => {
     cacheService.clearPattern('booking-flow:');

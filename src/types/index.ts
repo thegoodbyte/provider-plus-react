@@ -935,6 +935,8 @@ export interface BookingFlowTemplate {
   reviewRequired?: boolean;
   readinessGroup?: string;
   expectedArtifact?: string;
+  emailEnabled?: boolean;
+  emailTemplateId?: string | EmailTemplate;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -946,6 +948,9 @@ export interface BookingFlowItem {
   clientId: string | Client;
   retreatId: string | Retreat;
   templateId?: string | BookingFlowTemplate;
+  emailEnabled?: boolean;
+  emailTemplateId?: string | EmailTemplate;
+  emailSentEmailId?: string | SentEmail;
   key: string;
   title: string;
   description?: string;
@@ -959,6 +964,7 @@ export interface BookingFlowItem {
   notes?: string;
   completedAt?: Date | string;
   sentAt?: Date | string;
+  emailSentAt?: Date | string;
   receivedAt?: Date | string;
   reviewedAt?: Date | string;
   reviewDecision?: 'OK' | 'caution' | 'NOT OK';

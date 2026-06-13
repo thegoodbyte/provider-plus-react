@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Circle, RefreshCw } from 'lucide-react';
+import { CheckCircle2, Circle, Mail, RefreshCw } from 'lucide-react';
 import { bookingFlowApi, clientsApi } from '../services/api';
 import { BookingFlowItem, BookingFlowTemplate, Client } from '../types';
 import LoadingSpinner from './LoadingSpinner';
@@ -154,6 +154,29 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     }
   };
 
+  const sendItemEmail = async (item: BookingFlowItem | undefined) => {
+    if (!item?._id) return;
+    setSaving(`email:${item._id}`);
+    try {
+      const response = await bookingFlowApi.sendItemEmail(item._id);
+      if (response.data.sentEmail?.status === 'failed') {
+        alert(`Email was logged but Gmail failed to send it: ${response.data.sentEmail.errorMessage || 'Unknown error'}`);
+      }
+      await loadData();
+    } catch (error: any) {
+      console.error('Error sending booking step email:', error);
+      alert(error?.response?.data?.message || error?.message || 'Unable to send booking step email.');
+    } finally {
+      setSaving('');
+    }
+  };
+
+  const itemCanSendEmail = (item?: BookingFlowItem) => {
+    if (!item) return false;
+    const template = typeof item.templateId === 'object' ? item.templateId : null;
+    return Boolean(item.emailEnabled && item.emailTemplateId) || Boolean(template?.emailEnabled && template?.emailTemplateId);
+  };
+
   if (loading) {
     return <LoadingSpinner message="Loading booking steps matrix..." />;
   }
@@ -204,19 +227,33 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                   return (
                     <td key={`${getObjectId(booking)}:${row.key}`} className="border-b border-r border-gray-200 px-4 py-3">
                       {item ? (
-                        <button
-                          type="button"
-                          disabled={saving === item._id}
-                          onClick={() => toggleItem(item, !done)}
-                          className={`flex w-full items-start gap-2 rounded-md border px-3 py-2 text-left ${done ? 'border-green-200 bg-green-50 text-green-800' : 'border-gray-200 bg-gray-50 text-gray-600'} disabled:opacity-50`}
-                        >
-                          {done ? <CheckCircle2 className="mt-0.5 h-4 w-4 flex-none" /> : <Circle className="mt-0.5 h-4 w-4 flex-none" />}
-                          <span>
-                            <span className="block font-medium capitalize">{item.status?.replace(/_/g, ' ') || 'pending'}</span>
-                            {item.completedAt && <span className="block text-xs">{formatDate(item.completedAt)}</span>}
-                            {item.notes && <span className="mt-1 block line-clamp-2 text-xs">{item.notes}</span>}
-                          </span>
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            disabled={saving === item._id}
+                            onClick={() => toggleItem(item, !done)}
+                            className={`flex w-full items-start gap-2 rounded-md border px-3 py-2 text-left ${done ? 'border-green-200 bg-green-50 text-green-800' : 'border-gray-200 bg-gray-50 text-gray-600'} disabled:opacity-50`}
+                          >
+                            {done ? <CheckCircle2 className="mt-0.5 h-4 w-4 flex-none" /> : <Circle className="mt-0.5 h-4 w-4 flex-none" />}
+                            <span>
+                              <span className="block font-medium capitalize">{item.status?.replace(/_/g, ' ') || 'pending'}</span>
+                              {item.completedAt && <span className="block text-xs">{formatDate(item.completedAt)}</span>}
+                              {item.emailSentAt && <span className="block text-xs">Email {formatDate(item.emailSentAt)}</span>}
+                              {item.notes && <span className="mt-1 block line-clamp-2 text-xs">{item.notes}</span>}
+                            </span>
+                          </button>
+                        {itemCanSendEmail(item) && (
+                          <button
+                            type="button"
+                            disabled={saving === `email:${item._id}`}
+                            onClick={() => sendItemEmail(item)}
+                            className="mt-2 inline-flex w-full items-center justify-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+                          >
+                            <Mail className="h-3.5 w-3.5" />
+                            {saving === `email:${item._id}` ? 'Sending...' : 'Send email'}
+                          </button>
+                        )}
+                        </>
                       ) : (
                         <span className="text-gray-300">-</span>
                       )}

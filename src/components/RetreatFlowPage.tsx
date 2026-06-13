@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { GripVertical, Plus, Save, Trash2 } from 'lucide-react';
+import { GripVertical, Mail, Plus, Save, Trash2 } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
-import { bookingFlowApi, retreatsApi } from '../services/api';
-import { BookingFlowTemplate, Retreat } from '../types';
+import { bookingFlowApi, communicationsApi, retreatsApi } from '../services/api';
+import { BookingFlowTemplate, EmailTemplate, Retreat } from '../types';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
@@ -24,6 +24,8 @@ type TemplateForm = {
   taskPriority: 'low' | 'medium' | 'high' | 'urgent';
   readinessGroup: string;
   expectedArtifact: string;
+  emailEnabled: boolean;
+  emailTemplateId: string;
 };
 
 const emptyForm = (): TemplateForm => ({
@@ -43,6 +45,8 @@ const emptyForm = (): TemplateForm => ({
   taskPriority: 'medium',
   readinessGroup: '',
   expectedArtifact: '',
+  emailEnabled: false,
+  emailTemplateId: '',
 });
 
 const formatDate = (value?: string | Date | null) => {
@@ -69,9 +73,11 @@ const RetreatFlowPage: React.FC = () => {
   const [templates, setTemplates] = useState<BookingFlowTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [sendingTemplateId, setSendingTemplateId] = useState('');
   const [draggedTemplateId, setDraggedTemplateId] = useState<string>('');
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [form, setForm] = useState<TemplateForm>(emptyForm());
+  const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([]);
 
   useEffect(() => {
     loadRetreats();
@@ -92,9 +98,13 @@ const RetreatFlowPage: React.FC = () => {
   const loadRetreats = async () => {
     try {
       setLoading(true);
-      const response = await retreatsApi.getAll();
+      const [response, emailTemplatesResponse] = await Promise.all([
+        retreatsApi.getAll(),
+        communicationsApi.getTemplates(),
+      ]);
       const list = response.data || [];
       setRetreats(list);
+      setEmailTemplates((emailTemplatesResponse.data || []).filter((template: EmailTemplate) => template.active !== false));
     } catch (error) {
       console.error('Error loading retreats:', error);
       setRetreats([]);
@@ -130,6 +140,8 @@ const RetreatFlowPage: React.FC = () => {
           taskPriority: firstTemplate.taskPriority || 'medium',
           readinessGroup: firstTemplate.readinessGroup || '',
           expectedArtifact: firstTemplate.expectedArtifact || '',
+          emailEnabled: !!firstTemplate.emailEnabled,
+          emailTemplateId: typeof firstTemplate.emailTemplateId === 'string' ? firstTemplate.emailTemplateId : firstTemplate.emailTemplateId?._id || '',
         });
       } else {
         setSelectedTemplateId('');
@@ -165,6 +177,8 @@ const RetreatFlowPage: React.FC = () => {
       taskPriority: template.taskPriority || 'medium',
       readinessGroup: template.readinessGroup || '',
       expectedArtifact: template.expectedArtifact || '',
+      emailEnabled: !!template.emailEnabled,
+      emailTemplateId: typeof template.emailTemplateId === 'string' ? template.emailTemplateId : template.emailTemplateId?._id || '',
     });
   };
 
@@ -183,6 +197,7 @@ const RetreatFlowPage: React.FC = () => {
       const payload = {
         retreatId: selectedRetreatId,
         ...form,
+        emailTemplateId: form.emailEnabled ? form.emailTemplateId : undefined,
       };
 
       if (selectedTemplateId) {
@@ -211,6 +226,23 @@ const RetreatFlowPage: React.FC = () => {
     if (!selectedRetreatId) return;
     await bookingFlowApi.seedTemplates(selectedRetreatId);
     await loadFlow(selectedRetreatId);
+  };
+
+  const handleSendTemplateEmail = async (template: BookingFlowTemplate) => {
+    if (!selectedRetreatId || !template._id || !template.emailEnabled || !template.emailTemplateId) return;
+    if (!window.confirm(`Send "${template.title}" email to all participants in this retreat?`)) return;
+    try {
+      setSendingTemplateId(template._id);
+      const response = await bookingFlowApi.sendTemplateEmailToRetreat(selectedRetreatId, template._id);
+      const { sent, failed, skipped } = response.data;
+      alert(`Email send finished. Sent: ${sent}. Failed: ${failed}. Skipped: ${skipped}.`);
+      await loadFlow(selectedRetreatId);
+    } catch (error: any) {
+      console.error('Error sending step email:', error);
+      alert(error?.response?.data?.message || error?.message || 'Unable to send email for this step.');
+    } finally {
+      setSendingTemplateId('');
+    }
   };
 
   const handleDropTemplate = async (targetTemplateId: string) => {
@@ -330,6 +362,28 @@ const RetreatFlowPage: React.FC = () => {
         />
       </div>
 
+      <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 p-3">
+        <label className="flex items-center gap-2 text-sm font-medium text-gray-800">
+          <input
+            type="checkbox"
+            checked={form.emailEnabled}
+            onChange={(e) => setForm({ ...form, emailEnabled: e.target.checked })}
+          />
+          Send email from this step
+        </label>
+        <select
+          value={form.emailTemplateId}
+          onChange={(e) => setForm({ ...form, emailTemplateId: e.target.value, emailEnabled: Boolean(e.target.value) })}
+          disabled={!form.emailEnabled}
+          className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-100"
+        >
+          <option value="">Select email template</option>
+          {emailTemplates.map((template) => (
+            <option key={template._id} value={template._id}>{template.name} ({template.category || 'general'})</option>
+          ))}
+        </select>
+      </div>
+
       <div className="mt-3 flex flex-wrap gap-3 text-sm">
         <label className="flex items-center gap-2"><input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} /> Active</label>
         <label className="flex items-center gap-2"><input type="checkbox" checked={form.isBlocking} onChange={(e) => setForm({ ...form, isBlocking: e.target.checked })} /> Blocking</label>
@@ -435,9 +489,22 @@ const RetreatFlowPage: React.FC = () => {
                         <div>{template.workflowStage || 'potential'}</div>
                         <div>{template.active === false ? 'Hidden' : 'Active'}</div>
                         <div>{template.isBlocking ? 'Blocking' : 'Non-blocking'}</div>
+                        {template.emailEnabled && <div>Email enabled</div>}
                       </div>
                     </div>
                   </button>
+                  {template.emailEnabled && template.emailTemplateId && (
+                    <button
+                      type="button"
+                      onClick={() => handleSendTemplateEmail(template)}
+                      disabled={sendingTemplateId === template._id}
+                      className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+                      title="Send this step email to all retreat participants"
+                    >
+                      <Icon icon={Mail} className="h-3.5 w-3.5" />
+                      {sendingTemplateId === template._id ? 'Sending...' : 'Send all'}
+                    </button>
+                  )}
                 </div>
                 {selectedTemplateId === template._id && renderStepForm()}
               </React.Fragment>
