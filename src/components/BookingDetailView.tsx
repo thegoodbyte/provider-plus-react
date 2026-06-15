@@ -8,7 +8,6 @@ import BookingDocumentsUpload from './BookingDocumentsUpload';
 import ClientBookingWorkflowTab from './ClientBookingWorkflowTab';
 import ClientEditModal from './ClientEditModal';
 import { createBookingConfirmationPdf, generateBookingPDF } from './BookingConfirmationPDF';
-import { formatBookingHashForDisplay } from '../utils/hashGenerator';
 import { BookingFlowItem, MedicalArtifact, MedicalReviewRequest } from '../types';
 import './BookingDetailView.css';
 
@@ -69,14 +68,6 @@ const getRetreatCode = (retreat: any) => {
   if (!date || Number.isNaN(date.getTime())) return initials;
   const two = (value: number) => String(value).padStart(2, '0');
   return `${initials}-${two(date.getUTCMonth() + 1)}-${two(date.getUTCDate())}-${two(date.getUTCFullYear() % 100)}`;
-};
-
-const getReadableTextColor = (background?: string, fallback = '#111827') => {
-  if (!background || !/^#[0-9a-f]{6}$/i.test(background)) return fallback;
-  const red = parseInt(background.slice(1, 3), 16);
-  const green = parseInt(background.slice(3, 5), 16);
-  const blue = parseInt(background.slice(5, 7), 16);
-  return ((red * 299 + green * 587 + blue * 114) / 1000) >= 150 ? '#111827' : '#ffffff';
 };
 
 const getArtifactTime = (artifact: MedicalArtifact) =>
@@ -266,6 +257,8 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [previewFileName, setPreviewFileName] = useState('');
   const [isPreviewingPDF, setIsPreviewingPDF] = useState(false);
   const [isSendingConfirmation, setIsSendingConfirmation] = useState(false);
+  const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'requirements' | 'medical' | 'documents' | 'workflow' | 'notes'>('overview');
+  const [showBookingDates, setShowBookingDates] = useState(false);
   const pdfRef = useRef<HTMLDivElement>(null);
   const routePrefix = useMemo(() => {
     const firstSegment = location.pathname.split('/').filter(Boolean)[0];
@@ -293,16 +286,6 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const formatCurrency = (amount: number, currency: string = 'EUR') => {
-    const symbols: { [key: string]: string } = {
-      EUR: '€',
-      USD: '$',
-      CZK: 'Kč',
-      PLN: 'zł'
-    };
-    return `${symbols[currency] || currency} ${amount.toFixed(2)}`;
   };
 
   const formatDate = (date: string | Date) => {
@@ -534,9 +517,15 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   // Extract client and retreat info
   const client = booking.clientId || booking.clientDetails;
   const retreat = booking.retreatId || booking.retreatDetails;
-  const retreatColor = retreat?.backgroundColor || (booking.bookingType === 'booster' ? '#1976d2' : '#7b1fa2');
-  const retreatTextColor = retreat?.textColor || getReadableTextColor(retreatColor);
-  const typeLetter = booking.bookingType === 'booster' ? 'B' : 'F';
+  const tabs = [
+    { key: 'overview', label: 'Overview' },
+    { key: 'payments', label: 'Payments' },
+    { key: 'requirements', label: 'Requirements' },
+    { key: 'medical', label: 'Medical' },
+    { key: 'documents', label: 'Documents' },
+    { key: 'workflow', label: 'Workflow' },
+    { key: 'notes', label: 'Notes' },
+  ] as const;
 
   return (
     <div className="booking-detail-container">
@@ -633,176 +622,185 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
           </div>
         )}
 
-        <div className="detail-section pdf-section">
-          <h3 className="pdf-section-title">Booking Information</h3>
-          <div className="info-grid">
-            <div className="info-item">
-              <label>Booking Number:</label>
-              <span className="booking-number">{booking.bookingNumber || 'N/A'}</span>
-            </div>
-            {booking.bookingHash && (
-              <div className="info-item">
-                <label>Booking Hash:</label>
-                <span className="booking-hash" title="Unique booking identifier">
-                  {formatBookingHashForDisplay(booking.bookingHash)}
-                </span>
-              </div>
-            )}
-            <div className="info-item">
-              <label>Booking Type:</label>
-              <span className="booking-type-display">
-                <span
-                  className="booking-type-dot"
-                  style={{
-                    backgroundColor: booking.bookingType === 'booster' ? '#1976d2' : '#7b1fa2',
-                  }}
-                  title={booking.bookingType === 'booster' ? 'Booster' : 'Full retreat'}
-                >
-                  {typeLetter}
-                </span>
-                <span
-                  className="retreat-code-pill"
-                  style={{
-                    backgroundColor: retreatColor,
-                    color: retreatTextColor,
-                  }}
-                  title={retreat?.name || 'Retreat'}
-                >
-                  {getRetreatCode(retreat)}
-                </span>
-              </span>
-            </div>
-            <div className="info-item">
-              <label>Status:</label>
-              <span className={`status-badge status-${booking.status}`}>
-                {booking.status || 'pending'}
-              </span>
-            </div>
-            <div className="info-item">
-              <label>Registration Date:</label>
-              <span>{formatDate(booking.registrationDate)}</span>
-            </div>
-            <div className="info-item">
-              <label>Check-in Date:</label>
-              <span>{formatDate(booking.checkInDate)}</span>
-            </div>
-            <div className="info-item">
-              <label>Check-out Date:</label>
-              <span>{formatDate(booking.checkOutDate)}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="detail-section pdf-section">
-          <div className="section-header">
-            <h3 className="pdf-section-title">Client Information</h3>
+        <div className="booking-detail-tabs" role="tablist" aria-label="Booking sections">
+          {tabs.map((tab) => (
             <button
-              className="edit-btn"
-              onClick={() => setIsEditingClient(true)}
-              title="Edit client information"
+              key={tab.key}
+              type="button"
+              className={`booking-detail-tab ${activeTab === tab.key ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab.key)}
+              role="tab"
+              aria-selected={activeTab === tab.key}
             >
-              Edit Client
+              {tab.label}
             </button>
-          </div>
-          <div className="info-grid">
-            <div className="info-item">
-              <label>Name:</label>
-              <span>{client ? `${client.firstName || client.fname} ${client.lastName || client.lname}` : 'N/A'}</span>
-            </div>
-            <div className="info-item">
-              <label>Email:</label>
-              <span>{client?.email || 'N/A'}</span>
-            </div>
-            <div className="info-item">
-              <label>Phone:</label>
-              <span>{client?.phone || 'N/A'}</span>
-            </div>
-            <div className="info-item">
-              <label>City:</label>
-              <span>{client?.city || 'N/A'}</span>
-            </div>
-            <div className="info-item">
-              <label>Country:</label>
-              <span>{client?.country || 'N/A'}</span>
-            </div>
-          </div>
+          ))}
         </div>
 
-        <div className="detail-section pdf-section">
-          <h3 className="pdf-section-title">Retreat Information</h3>
-          <div className="info-grid">
-            <div className="info-item">
-              <label>Retreat Name:</label>
-              <span>{retreat?.name || 'N/A'}</span>
+        {activeTab === 'overview' && (
+          <>
+            <div className="detail-section pdf-section">
+              <div className="section-header">
+                <h3 className="pdf-section-title">Client Information</h3>
+                <button
+                  className="edit-btn"
+                  onClick={() => setIsEditingClient(true)}
+                  title="Edit client information"
+                >
+                  Edit Client
+                </button>
+              </div>
+              <div className="info-grid">
+                <div className="info-item">
+                  <label>Name:</label>
+                  <span>{client ? `${client.firstName || client.fname} ${client.lastName || client.lname}` : 'N/A'}</span>
+                </div>
+                <div className="info-item">
+                  <label>Email:</label>
+                  <span>{client?.email || 'N/A'}</span>
+                </div>
+                <div className="info-item">
+                  <label>Phone:</label>
+                  <span>{client?.phone || 'N/A'}</span>
+                </div>
+                <div className="info-item">
+                  <label>City:</label>
+                  <span>{client?.city || 'N/A'}</span>
+                </div>
+                <div className="info-item">
+                  <label>Country:</label>
+                  <span>{client?.country || 'N/A'}</span>
+                </div>
+              </div>
             </div>
-            <div className="info-item">
-              <label>Location:</label>
-              <span>{retreat?.location || 'N/A'}</span>
+
+            <div className="detail-section pdf-section">
+              <h3 className="pdf-section-title">Retreat Information</h3>
+              <div className="info-grid">
+                <div className="info-item">
+                  <label>Retreat Name:</label>
+                  <span>{retreat?.name || 'N/A'}</span>
+                </div>
+                <div className="info-item">
+                  <label>Location:</label>
+                  <span>{retreat?.location || 'N/A'}</span>
+                </div>
+                <div className="info-item">
+                  <label>Type:</label>
+                  <span>{retreat?.type ? retreat.type.charAt(0).toUpperCase() + retreat.type.slice(1) : 'N/A'}</span>
+                </div>
+                <div className="info-item">
+                  <label>Start Date:</label>
+                  <span>{formatDate(retreat?.startDate || retreat?.dates?.startDate)}</span>
+                </div>
+                <div className="info-item">
+                  <label>End Date:</label>
+                  <span>{formatDate(retreat?.endDate || retreat?.dates?.endDate)}</span>
+                </div>
+              </div>
             </div>
-            <div className="info-item">
-              <label>Type:</label>
-              <span>{retreat?.type ? retreat.type.charAt(0).toUpperCase() + retreat.type.slice(1) : 'N/A'}</span>
+
+            <div className="booking-detail-accordion">
+              <button
+                type="button"
+                className="booking-detail-accordion-trigger"
+                onClick={() => setShowBookingDates((current) => !current)}
+                aria-expanded={showBookingDates}
+              >
+                <span>Booking Dates</span>
+                <span>{showBookingDates ? 'Hide' : 'Show'}</span>
+              </button>
+              {showBookingDates && (
+                <div className="booking-detail-accordion-body">
+                  <div className="info-grid">
+                    <div className="info-item">
+                      <label>Registration Date:</label>
+                      <span>{formatDate(booking.registrationDate)}</span>
+                    </div>
+                    <div className="info-item">
+                      <label>Check-in Date:</label>
+                      <span>{formatDate(booking.checkInDate)}</span>
+                    </div>
+                    <div className="info-item">
+                      <label>Check-out Date:</label>
+                      <span>{formatDate(booking.checkOutDate)}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-            <div className="info-item">
-              <label>Start Date:</label>
-              <span>{formatDate(retreat?.startDate || retreat?.dates?.startDate)}</span>
-            </div>
-            <div className="info-item">
-              <label>End Date:</label>
-              <span>{formatDate(retreat?.endDate || retreat?.dates?.endDate)}</span>
-            </div>
-          </div>
-        </div>
+          </>
+        )}
 
-        <BookingPaymentManagement
-          bookingId={bookingId}
-          bookingHash={booking.bookingHash}
-          clientId={typeof client === 'object' ? client._id : client}
-          retreatId={typeof retreat === 'object' ? retreat._id : retreat}
-          totalAmount={booking.totalAmount || 0}
-          currency={booking.currency || 'EUR'}
-          onPaymentUpdate={fetchBookingDetails}
-        />
+        {activeTab === 'payments' && (
+          <BookingPaymentManagement
+            bookingId={bookingId}
+            bookingHash={booking.bookingHash}
+            clientId={typeof client === 'object' ? client._id : client}
+            retreatId={typeof retreat === 'object' ? retreat._id : retreat}
+            totalAmount={booking.totalAmount || 0}
+            currency={booking.currency || 'EUR'}
+            onPaymentUpdate={fetchBookingDetails}
+          />
+        )}
 
-        <BookingRequirementsPanel
-          bookingId={bookingId}
-          clientId={getObjectId(client)}
-          retreatId={getObjectId(retreat)}
-          refreshKey={requirementsRefreshKey}
-        />
+        {activeTab === 'requirements' && (
+          <BookingRequirementsPanel
+            bookingId={bookingId}
+            clientId={getObjectId(client)}
+            retreatId={getObjectId(retreat)}
+            refreshKey={requirementsRefreshKey}
+          />
+        )}
 
-        <BookingMedicalUpload
-          bookingId={bookingId}
-          bookingNumber={booking.bookingNumber}
-          clientId={typeof client === 'object' ? client._id : client}
-          retreatId={typeof retreat === 'object' ? retreat._id : retreat}
-          onUploadComplete={handleBookingRelatedUpdate}
-        />
+        {activeTab === 'medical' && (
+          <BookingMedicalUpload
+            bookingId={bookingId}
+            bookingNumber={booking.bookingNumber}
+            clientId={typeof client === 'object' ? client._id : client}
+            retreatId={typeof retreat === 'object' ? retreat._id : retreat}
+            onUploadComplete={handleBookingRelatedUpdate}
+          />
+        )}
 
-        <BookingDocumentsUpload
-          bookingId={bookingId}
-          bookingNumber={booking.bookingNumber}
-          clientId={typeof client === 'object' ? client._id : client}
-          retreatId={typeof retreat === 'object' ? retreat._id : retreat}
-          onUploadComplete={handleBookingRelatedUpdate}
-        />
+        {activeTab === 'documents' && (
+          <BookingDocumentsUpload
+            bookingId={bookingId}
+            bookingNumber={booking.bookingNumber}
+            clientId={typeof client === 'object' ? client._id : client}
+            retreatId={typeof retreat === 'object' ? retreat._id : retreat}
+            onUploadComplete={handleBookingRelatedUpdate}
+          />
+        )}
 
-        <div className="detail-section">
-          <ClientBookingWorkflowTab bookings={[booking]} hideBookingSelector />
-        </div>
-
-        {booking.specialRequests && (
-          <div className="detail-section pdf-section">
-            <h3 className="pdf-section-title">Special Requests</h3>
-            <p className="special-requests">{booking.specialRequests}</p>
+        {activeTab === 'workflow' && (
+          <div className="detail-section">
+            <ClientBookingWorkflowTab bookings={[booking]} hideBookingSelector />
           </div>
         )}
 
-        {booking.notes && (
-          <div className="detail-section pdf-section">
-            <h3 className="pdf-section-title">Notes</h3>
-            <p className="notes">{booking.notes}</p>
-          </div>
+        {activeTab === 'notes' && (
+          <>
+            {booking.specialRequests && (
+              <div className="detail-section pdf-section">
+                <h3 className="pdf-section-title">Special Requests</h3>
+                <p className="special-requests">{booking.specialRequests}</p>
+              </div>
+            )}
+
+            {booking.notes && (
+              <div className="detail-section pdf-section">
+                <h3 className="pdf-section-title">Notes</h3>
+                <p className="notes">{booking.notes}</p>
+              </div>
+            )}
+
+            {!booking.specialRequests && !booking.notes && (
+              <div className="detail-section">
+                <p className="text-sm text-gray-500">No notes or special requests recorded.</p>
+              </div>
+            )}
+          </>
         )}
       </div>
 

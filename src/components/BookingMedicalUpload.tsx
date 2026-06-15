@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Eye, FileText, RefreshCw, Save, Send, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { clientMedicalApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
-import { ClientMedical, MedicalArtifact, MedicalReviewRequest } from '../types';
+import { bookingFlowApi, clientMedicalApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { BookingFlowItem, ClientMedical, MedicalArtifact, MedicalReviewRequest } from '../types';
 import './BookingMedicalUpload.css';
 
 interface BookingMedicalUploadProps {
@@ -85,6 +85,12 @@ const mergeArtifacts = (artifactGroups: MedicalArtifact[][]) => {
 const getLatestReview = (reviews: MedicalReviewRequest[] = []) =>
   [...reviews].sort((a, b) => reviewDate(b) - reviewDate(a))[0];
 
+const getFlowReceiptKey = (sectionType: BookingMedicalTestType) =>
+  sectionType === 'ekg' ? 'ekg_received' : 'liver_received';
+
+const getFlowReadinessGroup = (sectionType: BookingMedicalTestType) =>
+  sectionType === 'ekg' ? 'ekg' : 'liver';
+
 const getArtifactResultText = (artifact?: MedicalArtifact) => {
   const dataResult = artifact?.data?.resultText;
   if (typeof dataResult === 'string' && dataResult.trim()) return dataResult;
@@ -124,6 +130,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
     ekg: '',
     liver_panel: '',
   });
+  const [markedArtifactIds, setMarkedArtifactIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
   const loadMedicalArtifacts = async () => {
@@ -218,6 +225,76 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
     } as any);
   };
 
+  const markBookingFlowReceived = async (sectionType: BookingMedicalTestType, artifact?: MedicalArtifact) => {
+    const key = getFlowReceiptKey(sectionType);
+    const readinessGroup = getFlowReadinessGroup(sectionType);
+    const expectedArtifact = sectionType;
+
+    let items: BookingFlowItem[] = [];
+    try {
+      const response = await bookingFlowApi.getItems({ bookingId });
+      items = response.data || [];
+      if (!items.length) {
+        await bookingFlowApi.generateForBooking(bookingId);
+        const generatedResponse = await bookingFlowApi.getItems({ bookingId });
+        items = generatedResponse.data || [];
+      }
+    } catch (error) {
+      console.error('Unable to load booking flow items after medical upload:', error);
+      return;
+    }
+
+    const item = items.find((candidate) => {
+      const template = typeof candidate.templateId === 'object' ? candidate.templateId : undefined;
+      const itemReadinessGroup = candidate.metadata?.readinessGroup || template?.readinessGroup;
+      const itemExpectedArtifact = candidate.metadata?.expectedArtifact || template?.expectedArtifact;
+      return candidate.key === key ||
+        itemReadinessGroup === readinessGroup ||
+        itemExpectedArtifact === expectedArtifact;
+    });
+
+    if (!item?._id) return;
+
+    await bookingFlowApi.updateItem(item._id, {
+      status: 'received',
+      receivedAt: new Date().toISOString(),
+      notes: `${sectionType === 'ekg' ? 'EKG' : 'Liver panel'} received from booking upload${artifact?.display_id ? ` (artifact #${artifact.display_id})` : ''}.`,
+      metadata: {
+        ...(item.metadata || {}),
+        receivedArtifactId: artifact?._id,
+        receivedArtifactDisplayId: artifact?.display_id,
+        receivedFrom: 'booking-medical-upload',
+      },
+    } as Partial<BookingFlowItem>);
+  };
+
+  useEffect(() => {
+    const candidates = medicalTestSections
+      .map((section) => {
+        const artifact = artifactsByType[section.type][0];
+        return { section, artifact };
+      })
+      .filter(({ artifact }) => artifact?._id && ((artifact.files || []).length > 0 || getArtifactResultText(artifact)));
+
+    const unmarked = candidates.filter(({ artifact }) => artifact?._id && !markedArtifactIds.has(artifact._id));
+    if (!unmarked.length) return;
+
+    setMarkedArtifactIds((current) => {
+      const next = new Set(current);
+      unmarked.forEach(({ artifact }) => {
+        if (artifact?._id) next.add(artifact._id);
+      });
+      return next;
+    });
+
+    unmarked.forEach(({ section, artifact }) => {
+      if (!artifact) return;
+      markBookingFlowReceived(section.type, artifact)
+        .then(() => onUploadComplete?.())
+        .catch((error) => console.error(`Unable to mark ${section.title} as received:`, error));
+    });
+  }, [artifactsByType, markedArtifactIds, onUploadComplete]);
+
   const saveResult = async (section: (typeof medicalTestSections)[number], latestArtifact?: MedicalArtifact) => {
     const resultText = resultDrafts[section.type].trim();
     if (!resultText) {
@@ -262,6 +339,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
       }
 
       await upsertClientMedicalResult(section.type, resultText);
+      await markBookingFlowReceived(section.type, latestArtifact);
       await loadMedicalArtifacts();
       onUploadComplete?.();
     } catch (saveError: any) {
@@ -314,6 +392,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
         const uploadResponse = await medicalArtifactsApi.uploadFiles(created.data._id, fileArray);
         const uploadedArtifact = uploadResponse.data?.artifact || created.data;
         await createReviewRequest(uploadedArtifact, section.requestType);
+        await markBookingFlowReceived(section.type, uploadedArtifact);
       }
 
       await loadMedicalArtifacts();

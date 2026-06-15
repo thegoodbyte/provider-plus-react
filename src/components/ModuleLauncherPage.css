@@ -76,7 +76,7 @@
 
 .module-launcher-hive {
   --launcher-tile-width: 112px;
-  --launcher-tile-height: calc(var(--launcher-tile-width) / 0.8660254);
+  --launcher-tile-height: calc(var(--launcher-tile-width) * 0.8660254);
   --launcher-x-step: var(--launcher-tile-width);
   --launcher-y-step: calc(var(--launcher-tile-height) * 0.75);
   --launcher-hive-width: calc(var(--launcher-max-row-length) * var(--launcher-tile-width));
@@ -103,7 +103,7 @@
   padding: 12px 10px 14px;
   border: none;
   color: #fff;
-  clip-path: polygon(50% 0%, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%);
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
   box-shadow: 0 12px 22px rgba(15, 23, 42, 0.12);
   transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
 }

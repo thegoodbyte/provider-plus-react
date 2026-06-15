@@ -99,7 +99,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [expensesSummary, setExpensesSummary] = useState<ExpenseSummary | null>(null);
   const [paymentsSummary, setPaymentsSummary] = useState<PaymentSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'clients' | 'bookingSteps' | 'tracking' | 'expenses' | 'payments' | 'ceremonies' | 'analytics' | 'tasks'>('clients');
+  const [activeTab, setActiveTab] = useState<'clients' | 'holisticView' | 'tracking' | 'expenses' | 'payments' | 'ceremonies' | 'analytics' | 'tasks'>('clients');
   const [viewingClientId, setViewingClientId] = useState<string | null>(null);
   const [editingBookingId, setEditingBookingId] = useState<string | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -557,11 +557,11 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           <span>Clients ({clients.length})</span>
         </button>
         <button
-          className={`tab-btn ${activeTab === 'bookingSteps' ? 'active' : ''}`}
-          onClick={() => setActiveTab('bookingSteps')}
+          className={`tab-btn ${activeTab === 'holisticView' ? 'active' : ''}`}
+          onClick={() => setActiveTab('holisticView')}
         >
           <AssignmentTurnedInRoundedIcon className="retreat-tab-icon" />
-          <span>Booking Steps</span>
+          <span>Holistic View</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'tracking' ? 'active' : ''}`}
@@ -749,7 +749,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         </div>
       )}
 
-      {activeTab === 'bookingSteps' && (
+      {activeTab === 'holisticView' && (
         <div className="booking-steps-section">
           <BookingStepsMatrix retreatId={retreatId} />
         </div>
