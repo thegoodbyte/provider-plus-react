@@ -17,6 +17,7 @@ const NAVIGATION_PERMISSIONS_STORAGE_KEY = 'navigationPermissions:v1';
 // Define all available routes and their metadata
 const AVAILABLE_PERMISSIONS: Permission[] = [
   { route: 'launcher', name: 'Home / Launcher', description: 'Module launcher and home screen', category: 'Core' },
+  { route: 'current-retreat', name: 'Current Retreat Helper', description: 'Current retreat EKG upload and blood pressure entry', category: 'Core' },
 
   // Client Management
   { route: 'clients', name: 'Client Management', description: 'View and manage client information', category: 'Client Management' },
@@ -58,6 +59,7 @@ const AVAILABLE_PERMISSIONS: Permission[] = [
 const ROLES = [
   { key: 'user', name: 'User', description: 'Basic user access', color: 'bg-blue-50 text-blue-700' },
   { key: 'facilitator', name: 'Facilitator', description: 'Retreat and operations staff', color: 'bg-green-50 text-green-700' },
+  { key: 'helper', name: 'Helper', description: 'Current retreat EKG and blood pressure entry', color: 'bg-amber-50 text-amber-700' },
   { key: 'medical_staff', name: 'Medical Staff', description: 'Medical advisors and staff', color: 'bg-purple-50 text-purple-700' },
   { key: 'medical_advisor', name: 'Medical Advisor', description: 'External medical review access', color: 'bg-indigo-50 text-indigo-700' },
   { key: 'admin', name: 'Administrator', description: 'Full system access', color: 'bg-red-50 text-red-700' },
@@ -66,6 +68,7 @@ const ROLES = [
 // Default permission matrix - you can load this from backend later
 const DEFAULT_PERMISSIONS: RolePermissions = {
   'launcher': ['user', 'facilitator', 'medical_staff', 'admin'],
+  'current-retreat': ['helper', 'admin'],
   'clients': ['user', 'facilitator', 'medical_staff', 'admin'],
   'potential-clients': ['facilitator', 'medical_staff', 'admin'],
   'screening': ['facilitator', 'medical_staff', 'admin'],
@@ -293,7 +296,7 @@ const PermissionsMatrix: React.FC = () => {
                   .filter(p => hasPermission(p.route, role.key))
                   .map(p => (
                     <div key={p.route} className="text-xs">
-                      /{role.key === 'user' ? 'user' : role.key === 'facilitator' ? 'staff' : role.key === 'medical_staff' || role.key === 'medical_advisor' ? 'medical' : 'admin'}/{p.route}
+                      /{role.key === 'user' ? 'user' : role.key === 'facilitator' ? 'staff' : role.key === 'helper' ? 'helper' : role.key === 'medical_staff' || role.key === 'medical_advisor' ? 'medical' : 'admin'}/{p.route}
                     </div>
                   ))
                 }

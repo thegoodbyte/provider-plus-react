@@ -172,6 +172,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
         amountPaid: requestedAmount,
         currency: formData.currency as PaymentRequest['currency'],
         note: formData.note || '',
+        notes: formData.note || '',
         status: formData.status as PaymentRequest['status'],
         dueDate: formData.dueDate || undefined,
         paidDate: formData.paidDate || undefined,

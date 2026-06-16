@@ -4,7 +4,7 @@ export interface User {
   _id: string;
   username: string;
   email: string;
-  role: 'admin' | 'user' | 'facilitator' | 'medical_advisor';
+  role: 'admin' | 'user' | 'facilitator' | 'helper' | 'medical_staff' | 'medical_advisor';
   firstName?: string;
   lastName?: string;
   isActive: boolean;
@@ -17,7 +17,7 @@ export interface CreateUserData {
   username: string;
   email: string;
   password: string;
-  role: 'admin' | 'user' | 'facilitator' | 'medical_advisor';
+  role: 'admin' | 'user' | 'facilitator' | 'helper' | 'medical_staff' | 'medical_advisor';
   firstName?: string;
   lastName?: string;
 }
@@ -25,7 +25,7 @@ export interface CreateUserData {
 export interface UpdateUserData {
   username?: string;
   email?: string;
-  role?: 'admin' | 'user' | 'facilitator' | 'medical_advisor';
+  role?: 'admin' | 'user' | 'facilitator' | 'helper' | 'medical_staff' | 'medical_advisor';
   firstName?: string;
   lastName?: string;
   isActive?: boolean;

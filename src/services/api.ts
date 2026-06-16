@@ -316,6 +316,7 @@ export const paymentRequestsApi = {
   getAll: () => cachedGet<PaymentRequest[]>('payment-requests:all', () => api.get<PaymentRequest[]>('/payment-requests')),
   getOne: (id: string) => cachedGet<PaymentRequest>(`payment-requests:${id}`, () => api.get<PaymentRequest>(`/payment-requests/${id}`)),
   getPublicDeposit: (hash: string) => api.get(`/payment-requests/public/deposit/${hash}`),
+  getPublicInvoice: (hash: string) => api.get(`/public/invoices/${hash}`),
   getNextDisplayId: () => api.get<number>('/payment-requests/next-display-id'),
   getByRetreat: (retreatId: string) => cachedGet<PaymentRequest[]>(`payment-requests:retreat:${retreatId}`, () => api.get<PaymentRequest[]>(`/payment-requests?retreatId=${retreatId}`)),
   getByClient: (clientId: string) => cachedGet<PaymentRequest[]>(`payment-requests:client:${clientId}`, () => api.get<PaymentRequest[]>(`/payment-requests?clientId=${clientId}`)),
@@ -683,6 +684,43 @@ export const medicalArtifactsApi = {
   delete: (id: string) => {
     cacheService.clearPattern('medical-artifacts:');
     return api.delete(`/medical-artifacts/${id}`);
+  },
+};
+
+export const helperAccessApi = {
+  getCurrentRetreat: () => cachedGet<any>('helper-current-retreat', () => api.get('/helper/current-retreat'), 15000),
+  uploadEkg: (bookingId: string, files: File[], data: { notes?: string; receivedAt?: string } = {}) => {
+    const formData = new FormData();
+    formData.append('bookingId', bookingId);
+    if (data.notes !== undefined) formData.append('notes', data.notes);
+    if (data.receivedAt) formData.append('receivedAt', data.receivedAt);
+    files.forEach((file) => formData.append('files', file));
+    cacheService.clearPattern('helper-current-retreat');
+    cacheService.clearPattern('medical-artifacts:');
+    return api.post('/helper/current-retreat/ekg', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  createBloodPressure: (bookingId: string, data: {
+    systolic: number | string;
+    diastolic: number | string;
+    pulse?: number | string;
+    measuredAt?: string;
+    notes?: string;
+  }) => {
+    cacheService.clearPattern('helper-current-retreat');
+    cacheService.clearPattern('medical-artifacts:');
+    return api.post('/helper/current-retreat/blood-pressure', { bookingId, ...data });
+  },
+  updateRecord: (id: string, data: Record<string, any>) => {
+    cacheService.clearPattern('helper-current-retreat');
+    cacheService.clearPattern('medical-artifacts:');
+    return api.patch(`/helper/current-retreat/records/${id}`, data);
+  },
+  deleteRecord: (id: string) => {
+    cacheService.clearPattern('helper-current-retreat');
+    cacheService.clearPattern('medical-artifacts:');
+    return api.delete(`/helper/current-retreat/records/${id}`);
   },
 };
 

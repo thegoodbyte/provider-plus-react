@@ -42,6 +42,7 @@ import PaymentRequestsGrid from './PaymentRequestsGrid';
 import PaymentRequestEditorPage from './PaymentRequestEditorPage';
 import CommunicationsPage from './CommunicationsPage';
 import ContactBookPage from './ContactBookPage';
+import HelperCurrentRetreatPage from './HelperCurrentRetreatPage';
 import RequirementsGrid from './RequirementsGrid';
 import CurrencySettings from './CurrencySettings';
 import MedicalAdvisorDashboard from './MedicalAdvisorDashboard';
@@ -89,6 +90,7 @@ const AppleLayout: React.FC = () => {
     // Map routes to sidebar items
     if (route === 'clients' || route === 'potential-clients') return 'clients';
     if (route === 'launcher') return 'launcher';
+    if (route === 'current-retreat') return 'current-retreat';
     if (route === 'medical-dashboard') return 'medical-dashboard';
     if (route === 'medical-review') return 'medical-dashboard';
     if (route === 'medical-retreats') return 'medical-retreats';
@@ -131,6 +133,8 @@ const AppleLayout: React.FC = () => {
         return 'medical-dashboard';
       case 'facilitator':
         return 'launcher';
+      case 'helper':
+        return 'current-retreat';
       default:
         return 'launcher';
     }
@@ -146,6 +150,8 @@ const AppleLayout: React.FC = () => {
         return 'medical';
       case 'facilitator':
         return 'staff';
+      case 'helper':
+        return 'helper';
       case 'user':
         return 'user';
       default:
@@ -477,6 +483,16 @@ const AppleLayout: React.FC = () => {
                         <Route path="communications" element={<CommunicationsPage />} />
                       </Routes>
                     )}
+                  </ProtectedRoute>
+                } />
+
+                {/* Helper routes */}
+                <Route path="/helper/*" element={
+                  <ProtectedRoute requiredRole={['helper', 'admin']}>
+                    <Routes>
+                      <Route index element={<HelperCurrentRetreatPage />} />
+                      <Route path="current-retreat" element={<HelperCurrentRetreatPage />} />
+                    </Routes>
                   </ProtectedRoute>
                 } />
 

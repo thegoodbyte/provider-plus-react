@@ -28,11 +28,11 @@ const resolveRetreat = (retreatValue: any) => {
 };
 
 const getPublicPaymentUrl = (request: any) => (
-  request?.publicHash ? `https://ibogaspirit.com/clients/payments/deposit/v2/${request.publicHash}` : ''
+  request?.publicHash ? `https://ibogaspirit.com/clients/payment/request/${request.publicHash}` : ''
 );
 
 const getPublicPaymentApiUrl = (request: any) => (
-  request?.publicHash ? `${API_BASE_URL}/payment-requests/public/agreement/${request.publicHash}` : ''
+  request?.publicHash ? `${API_BASE_URL}/public/invoices/${request.publicHash}` : ''
 );
 
 const formatAmount = (amount: any, currency: string) => {
@@ -156,7 +156,7 @@ const PaymentRequestsGrid: React.FC = () => {
         (request.currency || '').toLowerCase().includes(term) ||
         (request.invoiceNumber || '').toLowerCase().includes(term) ||
         (request.publicHash || '').toLowerCase().includes(term) ||
-        (request.note || '').toLowerCase().includes(term)
+        (request.note || request.notes || '').toLowerCase().includes(term)
       );
     });
   }, [paymentRequests, searchTerm]);

@@ -297,6 +297,17 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
             { id: 'communications', label: 'Communications', Icon: Fi.FiMail },
           ] },
         ];
+      case 'helper':
+        return [
+          {
+            id: 'helper',
+            label: 'Current Retreat',
+            Icon: Fi.FiActivity,
+            items: [
+              { id: 'current-retreat', label: 'EKG & BP Entry', Icon: Fi.FiActivity },
+            ],
+          },
+        ];
       case 'user':
         return [
           { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: 'Home', Icon: Fi.FiGrid }] },
@@ -321,6 +332,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
     navigationRole === 'medical_staff' ? 'Medical Staff' :
     navigationRole === 'medical_advisor' ? 'Medical Advisor' :
     navigationRole === 'facilitator' ? 'Facilitator' :
+    navigationRole === 'helper' ? 'Helper' :
     navigationRole === 'user' ? 'User' : 'User';
 
   useEffect(() => {

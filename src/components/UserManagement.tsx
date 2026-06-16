@@ -12,7 +12,9 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
 const ROLES = [
   { key: 'user', name: 'User', description: 'Basic user access', color: 'bg-blue-50 text-blue-700' },
   { key: 'facilitator', name: 'Facilitator', description: 'Retreat and operations staff', color: 'bg-green-50 text-green-700' },
-  { key: 'medical_advisor', name: 'Medical Advisor', description: 'Medical staff access', color: 'bg-purple-50 text-purple-700' },
+  { key: 'helper', name: 'Helper', description: 'Current retreat EKG and blood pressure entry', color: 'bg-amber-50 text-amber-700' },
+  { key: 'medical_staff', name: 'Medical Staff', description: 'Medical staff access', color: 'bg-purple-50 text-purple-700' },
+  { key: 'medical_advisor', name: 'Medical Advisor', description: 'External medical review access', color: 'bg-indigo-50 text-indigo-700' },
   { key: 'admin', name: 'Administrator', description: 'Full system access', color: 'bg-red-50 text-red-700' },
 ] as const;
 

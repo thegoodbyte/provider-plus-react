@@ -18,6 +18,7 @@ const ROUTE_PERMISSIONS: Record<string, string[]> = {
   '/admin': ['admin'],
   '/medical': ['medical_staff', 'medical_advisor', 'admin'],
   '/staff': ['facilitator', 'medical_staff', 'admin'],
+  '/helper': ['helper', 'admin'],
   '/user': ['user', 'facilitator', 'medical_staff', 'admin'],
   // Default routes (backwards compatibility)
   '/medical-tracking': ['medical_staff', 'admin'],
@@ -92,6 +93,8 @@ function getRedirectPathForRole(userRole: string, currentPath: string): string {
       return `/medical/${basePath}`;
     case 'facilitator':
       return `/staff/${basePath}`;
+    case 'helper':
+      return `/helper/${basePath || 'current-retreat'}`;
     case 'user':
       return `/user/${basePath}`;
     default:
