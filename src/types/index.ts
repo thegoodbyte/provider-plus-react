@@ -1101,3 +1101,42 @@ export interface SentEmail {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export interface InboundEmail {
+  _id?: string;
+  gmailMessageId: string;
+  threadId: string;
+  historyId?: string;
+  status: 'received' | 'processed' | 'ignored' | 'task_created' | 'needs_review' | 'error';
+  accountEmail?: string;
+  fromName?: string;
+  fromEmail?: string;
+  to?: string[];
+  cc?: string[];
+  subject?: string;
+  snippet?: string;
+  bodyText?: string;
+  bodyHtml?: string;
+  receivedAt?: string | Date;
+  headers?: Record<string, string>;
+  aiClassification?: {
+    taskNeeded?: boolean;
+    needsReview?: boolean;
+    taskTitle?: string;
+    taskDescription?: string;
+    priority?: 'low' | 'medium' | 'high' | 'urgent';
+    dueDate?: string | null;
+    category?: string;
+    reason?: string;
+    tags?: string[];
+    manualOverride?: boolean;
+    [key: string]: any;
+  };
+  linkedClientId?: string | Client;
+  linkedContactId?: string | any;
+  createdTaskId?: string | any;
+  errorMessage?: string;
+  processedAt?: string | Date;
+  createdAt?: string;
+  updatedAt?: string;
+}

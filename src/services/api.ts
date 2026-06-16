@@ -377,6 +377,27 @@ export const communicationsApi = {
     cacheService.clearPattern('communications:sent-emails');
     return api.delete(`/communications/sent-emails/${id}`);
   },
+  setupGmailWatch: () => api.post('/communications/gmail/watch', {}),
+  getInboundEmails: (params: { status?: string; limit?: number } = {}) => {
+    const query = new URLSearchParams();
+    if (params.status) query.set('status', params.status);
+    if (params.limit) query.set('limit', String(params.limit));
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    return api.get(`/communications/inbound-emails${suffix}`);
+  },
+  getInboundEmailJobs: (limit = 100) => api.get(`/communications/inbound-email-jobs?limit=${limit}`),
+  processInboundEmails: (limit = 25) => {
+    cacheService.clearPattern('communications:');
+    return api.post('/communications/inbound-emails/process', { limit });
+  },
+  reprocessInboundEmail: (id: string) => {
+    cacheService.clearPattern('communications:');
+    return api.post(`/communications/inbound-emails/${id}/reprocess`, {});
+  },
+  updateInboundEmail: (id: string, data: any) => {
+    cacheService.clearPattern('communications:');
+    return api.patch(`/communications/inbound-emails/${id}`, data);
+  },
   sendEmail: (data: {
     to: string;
     cc?: string;

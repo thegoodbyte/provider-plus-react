@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FiAlertCircle, FiCheckCircle, FiMail, FiPlus, FiRefreshCw, FiSave, FiSend, FiTrash2 } from 'react-icons/fi';
+import { FiAlertCircle, FiCheckCircle, FiInbox, FiMail, FiPlus, FiRefreshCw, FiSave, FiSend, FiTrash2 } from 'react-icons/fi';
 import { useLocation } from 'react-router-dom';
 import { communicationsApi, clientsApi, retreatsApi } from '../services/api';
-import { Client, EmailTemplate, MailSettings, Retreat, SentEmail } from '../types';
+import { Client, EmailTemplate, InboundEmail, MailSettings, Retreat, SentEmail } from '../types';
 import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 
-type TabKey = 'settings' | 'templates' | 'compose' | 'sent';
+type TabKey = 'settings' | 'templates' | 'compose' | 'sent' | 'inbound';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
@@ -47,6 +47,7 @@ const CommunicationsPage: React.FC = () => {
   const [settings, setSettings] = useState<MailSettings | null>(null);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [sentEmails, setSentEmails] = useState<SentEmail[]>([]);
+  const [inboundEmails, setInboundEmails] = useState<InboundEmail[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
@@ -57,6 +58,7 @@ const CommunicationsPage: React.FC = () => {
   const [seedingTemplates, setSeedingTemplates] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [processingInbound, setProcessingInbound] = useState(false);
 
   const selectedTemplate = useMemo(
     () => templates.find((template) => template._id === selectedTemplateId) || null,
@@ -81,16 +83,18 @@ const CommunicationsPage: React.FC = () => {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [settingsRes, templatesRes, sentRes, clientsRes, retreatsRes] = await Promise.all([
+      const [settingsRes, templatesRes, sentRes, inboundRes, clientsRes, retreatsRes] = await Promise.all([
         communicationsApi.getSettings(),
         communicationsApi.getTemplates(),
         communicationsApi.getSentEmails(),
+        communicationsApi.getInboundEmails({ limit: 100 }),
         clientsApi.getAll(),
         retreatsApi.getAll(),
       ]);
       setSettings(settingsRes.data);
       setTemplates(Array.isArray(templatesRes.data) ? templatesRes.data : []);
       setSentEmails(Array.isArray(sentRes.data) ? sentRes.data : []);
+      setInboundEmails(Array.isArray(inboundRes.data) ? inboundRes.data : []);
       setClients(Array.isArray(clientsRes.data) ? clientsRes.data : []);
       setRetreats(Array.isArray(retreatsRes.data) ? retreatsRes.data : []);
     } catch (error) {
@@ -107,7 +111,7 @@ const CommunicationsPage: React.FC = () => {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const tab = params.get('tab') as TabKey | null;
-    if (tab && ['settings', 'templates', 'compose', 'sent'].includes(tab)) {
+    if (tab && ['settings', 'templates', 'compose', 'sent', 'inbound'].includes(tab)) {
       setActiveTab(tab);
     }
     if (location.search.length > 1) {
@@ -347,6 +351,63 @@ const CommunicationsPage: React.FC = () => {
     }
   };
 
+  const loadInboundEmails = async () => {
+    const response = await communicationsApi.getInboundEmails({ limit: 100 });
+    setInboundEmails(Array.isArray(response.data) ? response.data : []);
+  };
+
+  const handleSetupGmailWatch = async () => {
+    try {
+      const response = await communicationsApi.setupGmailWatch();
+      alert(`Gmail watch started. History ID: ${response.data?.gmailHistoryId || 'n/a'}`);
+      await loadAll();
+    } catch (error: any) {
+      console.error('Error starting Gmail watch:', error);
+      alert(error?.response?.data?.message || error?.message || 'Unable to start Gmail watch');
+    }
+  };
+
+  const handleProcessInbound = async () => {
+    setProcessingInbound(true);
+    try {
+      const response = await communicationsApi.processInboundEmails(25);
+      alert(`Processed ${response.data?.processed || 0} inbound emails.`);
+      await loadInboundEmails();
+    } catch (error: any) {
+      console.error('Error processing inbound emails:', error);
+      alert(error?.response?.data?.message || error?.message || 'Unable to process inbound emails');
+    } finally {
+      setProcessingInbound(false);
+    }
+  };
+
+  const handleReprocessInbound = async (email: InboundEmail) => {
+    if (!email._id) return;
+    await communicationsApi.reprocessInboundEmail(email._id);
+    await loadInboundEmails();
+  };
+
+  const handleIgnoreInbound = async (email: InboundEmail) => {
+    if (!email._id) return;
+    await communicationsApi.updateInboundEmail(email._id, { status: 'ignored', aiClassification: { manualOverride: true, reason: 'Ignored by admin' } });
+    await loadInboundEmails();
+  };
+
+  const handleCreateTaskFromInbound = async (email: InboundEmail) => {
+    if (!email._id) return;
+    const title = window.prompt('Task title', email.aiClassification?.taskTitle || email.subject || 'Follow up on inbound email');
+    if (!title) return;
+    const priority = window.prompt('Priority: low, medium, high, urgent', email.aiClassification?.priority || 'medium') || 'medium';
+    await communicationsApi.updateInboundEmail(email._id, {
+      createTask: true,
+      taskTitle: title,
+      priority,
+      taskDescription: email.aiClassification?.taskDescription || email.bodyText || email.snippet || '',
+      tags: ['inbound-email', 'manual'],
+    });
+    await loadInboundEmails();
+  };
+
   if (loading) {
     return <div className="p-6 text-gray-500">Loading communications...</div>;
   }
@@ -359,14 +420,14 @@ const CommunicationsPage: React.FC = () => {
           <p className="text-sm text-gray-500 mt-1">Gmail connection, templates, compose, and sent log.</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {(['settings', 'templates', 'compose', 'sent'] as TabKey[]).map((tab) => (
+          {(['settings', 'templates', 'compose', 'sent', 'inbound'] as TabKey[]).map((tab) => (
             <button
               key={tab}
               type="button"
               onClick={() => setActiveTab(tab)}
               className={`px-3 py-2 rounded-md text-sm font-medium border ${activeTab === tab ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}
             >
-              {tab === 'settings' ? 'Settings' : tab === 'templates' ? 'Templates' : tab === 'compose' ? 'Compose' : 'Sent Mail'}
+              {tab === 'settings' ? 'Settings' : tab === 'templates' ? 'Templates' : tab === 'compose' ? 'Compose' : tab === 'sent' ? 'Sent Mail' : 'Inbound'}
             </button>
           ))}
         </div>
@@ -764,6 +825,125 @@ const CommunicationsPage: React.FC = () => {
             </button>
           </div>
         </section>
+      )}
+
+      {activeTab === 'inbound' && (
+        <div className="space-y-4">
+          <section className="rounded-lg border border-gray-200 bg-white p-4">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Inbound Gmail</h2>
+                <p className="text-sm text-gray-500">Received Gmail messages, AI task classification, and manual overrides.</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleSetupGmailWatch}
+                  className="inline-flex items-center gap-2 rounded-md border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50"
+                >
+                  <Icon icon={FiInbox} />
+                  Start Gmail Watch
+                </button>
+                <button
+                  type="button"
+                  onClick={loadInboundEmails}
+                  className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  <Icon icon={FiRefreshCw} />
+                  Refresh
+                </button>
+                <button
+                  type="button"
+                  onClick={handleProcessInbound}
+                  disabled={processingInbound}
+                  className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  <Icon icon={FiCheckCircle} />
+                  {processingInbound ? 'Processing...' : 'Process Pending'}
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section className="overflow-auto rounded-lg border border-gray-200 bg-white">
+            <table className="min-w-full text-sm">
+              <thead className="text-left text-xs uppercase text-gray-500">
+                <tr className="border-b bg-gray-50">
+                  <th className="px-4 py-3">Received</th>
+                  <th className="px-4 py-3">From</th>
+                  <th className="px-4 py-3">Subject</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">AI</th>
+                  <th className="px-4 py-3">Task</th>
+                  <th className="px-4 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {inboundEmails.map((email) => {
+                  const task = typeof email.createdTaskId === 'object' ? email.createdTaskId : null;
+                  const client = typeof email.linkedClientId === 'object' ? email.linkedClientId : null;
+                  const contact = typeof email.linkedContactId === 'object' ? email.linkedContactId : null;
+                  return (
+                    <tr key={email._id || email.gmailMessageId} className="border-b align-top">
+                      <td className="px-4 py-3 text-gray-600">{email.receivedAt ? new Date(email.receivedAt).toLocaleString() : '-'}</td>
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-gray-900">{email.fromName || email.fromEmail || 'Unknown'}</div>
+                        <div className="text-xs text-gray-500">{email.fromEmail}</div>
+                        {client && <div className="mt-1 text-xs text-blue-700">Client: {client.firstName} {client.lastName}</div>}
+                        {contact && <div className="mt-1 text-xs text-blue-700">Contact: {contact.name}</div>}
+                      </td>
+                      <td className="max-w-md px-4 py-3">
+                        <div className="font-medium text-gray-900">{email.subject || '(no subject)'}</div>
+                        <div className="mt-1 line-clamp-2 text-xs text-gray-500">{email.snippet || email.bodyText}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`rounded-full px-2 py-1 text-xs font-medium ${
+                          email.status === 'task_created' ? 'bg-green-50 text-green-700' :
+                          email.status === 'needs_review' ? 'bg-amber-50 text-amber-700' :
+                          email.status === 'error' ? 'bg-red-50 text-red-700' :
+                          email.status === 'ignored' ? 'bg-gray-100 text-gray-600' :
+                          'bg-blue-50 text-blue-700'
+                        }`}>
+                          {email.status.replace(/_/g, ' ')}
+                        </span>
+                        {email.errorMessage && <div className="mt-1 text-xs text-red-600">{email.errorMessage}</div>}
+                      </td>
+                      <td className="max-w-sm px-4 py-3 text-xs text-gray-600">
+                        {email.aiClassification ? (
+                          <div className="space-y-1">
+                            <div>Task needed: <span className="font-medium">{email.aiClassification.taskNeeded ? 'Yes' : 'No'}</span></div>
+                            <div>Priority: <span className="font-medium">{email.aiClassification.priority || '-'}</span></div>
+                            <div className="line-clamp-3">{email.aiClassification.reason}</div>
+                          </div>
+                        ) : '-'}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        {task ? (
+                          <div>
+                            <div className="font-medium text-gray-900">{task.name}</div>
+                            <div className="text-xs text-gray-500">{task.status} · {task.urgency}</div>
+                          </div>
+                        ) : '-'}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-2">
+                          <button type="button" onClick={() => handleReprocessInbound(email)} className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:bg-gray-50">Reprocess</button>
+                          <button type="button" onClick={() => handleCreateTaskFromInbound(email)} className="rounded-md border border-blue-200 px-2 py-1 text-xs text-blue-700 hover:bg-blue-50">Create task</button>
+                          <button type="button" onClick={() => handleIgnoreInbound(email)} className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-500 hover:bg-gray-50">Ignore</button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {inboundEmails.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center text-gray-500">No inbound emails stored yet.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </section>
+        </div>
       )}
 
       {activeTab === 'sent' && (

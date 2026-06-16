@@ -561,7 +561,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           onClick={() => setActiveTab('holisticView')}
         >
           <AssignmentTurnedInRoundedIcon className="retreat-tab-icon" />
-          <span>Holistic View</span>
+          <span>Retreat Readiness</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'tracking' ? 'active' : ''}`}
