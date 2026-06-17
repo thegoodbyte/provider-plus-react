@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiDownload, FiEdit3, FiEye, FiMail, FiSend } from 'react-icons/fi';
+import { FiArrowLeft, FiChevronDown, FiDownload, FiEdit3, FiEye, FiMail, FiSend } from 'react-icons/fi';
 import { bookingsApi, bookingFlowApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import BookingPaymentManagement from './BookingPaymentManagement';
 import BookingMedicalUpload from './BookingMedicalUpload';
@@ -85,9 +85,9 @@ const compareArtifactsForDisplay = (a: MedicalArtifact, b: MedicalArtifact) => {
 const getReviewTime = (review: MedicalReviewRequest) =>
   new Date(review.reviewedAt || review.requestedAt || review.createdAt || 0).getTime();
 
-const BOOKING_CONFIRMATION_TEST_RECIPIENT = 'goodbyte@gmail.com';
-
 const getObjectId = (value: any) => typeof value === 'object' ? value?._id || value?.id : value;
+
+const getClientEmail = (client: any) => String(client?.email || '').trim();
 
 const mergeArtifacts = (artifactGroups: MedicalArtifact[][]) => {
   const seen = new Set<string>();
@@ -264,6 +264,8 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [confirmationEmailDraft, setConfirmationEmailDraft] = useState<EmailComposeInitialValues | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'requirements' | 'medical' | 'documents' | 'workflow' | 'notes'>('overview');
   const [showBookingDates, setShowBookingDates] = useState(false);
+  const [showClientDetails, setShowClientDetails] = useState(false);
+  const [showMobilePayments, setShowMobilePayments] = useState(true);
   const pdfRef = useRef<HTMLDivElement>(null);
   const routePrefix = useMemo(() => {
     const firstSegment = location.pathname.split('/').filter(Boolean)[0];
@@ -420,13 +422,18 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const emailBookingConfirmation = async () => {
     const client = booking?.clientId || booking?.clientDetails;
     const retreat = booking?.retreatId || booking?.retreatDetails;
+    const recipientEmail = getClientEmail(client);
+    if (!recipientEmail) {
+      alert('This client does not have an email address.');
+      return;
+    }
     setIsPreparingConfirmationEmail(true);
     try {
       const { blob, fileName } = await createBookingConfirmationPdf({ booking, language: pdfLanguage });
       const contentBase64 = await blobToBase64(blob);
       const email = buildBookingConfirmationEmail();
       setConfirmationEmailDraft({
-        to: BOOKING_CONFIRMATION_TEST_RECIPIENT,
+        to: recipientEmail,
         subject: email.subject,
         bodyText: email.bodyText,
         clientId: client?._id,
@@ -450,9 +457,13 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const sendBookingConfirmationEmail = async () => {
     const clientData = booking?.clientId || booking?.clientDetails;
     const retreatData = booking?.retreatId || booking?.retreatDetails;
+    const recipientEmail = getClientEmail(clientData);
     let pdfSize = 0;
     let payloadSize = 0;
-    if (!window.confirm(`Send booking confirmation email with PDF attachment to ${BOOKING_CONFIRMATION_TEST_RECIPIENT}?`)) return;
+    if (!recipientEmail) {
+      alert('This client does not have an email address.');
+      return;
+    }
 
     setIsSendingConfirmation(true);
     try {
@@ -461,7 +472,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
       const contentBase64 = await blobToBase64(blob);
       const email = buildBookingConfirmationEmail();
       const payload = {
-        to: BOOKING_CONFIRMATION_TEST_RECIPIENT,
+        to: recipientEmail,
         subject: email.subject,
         bodyText: email.bodyText,
         bodyHtml: email.bodyHtml,
@@ -522,6 +533,9 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   // Extract client and retreat info
   const client = booking.clientId || booking.clientDetails;
   const retreat = booking.retreatId || booking.retreatDetails;
+  const clientName = getClientName(client) || 'N/A';
+  const bookingTypeCode = booking.bookingType === 'booster' ? 'B' : 'F';
+  const retreatCode = getRetreatCode(retreat);
   const tabs = [
     { key: 'overview', label: 'Overview' },
     { key: 'payments', label: 'Payments' },
@@ -580,7 +594,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
             className="pdf-btn primary-action"
             title="Send email with PDF attachment"
             aria-label="Send email with PDF attachment"
-            data-tooltip="Send email + PDF"
+            data-tooltip="Quick send PDF"
           >
             <HeaderIcon icon={FiSend} />
             <span>{isSendingConfirmation ? 'Sending' : 'Send'}</span>
@@ -589,12 +603,12 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
             onClick={emailBookingConfirmation}
             disabled={isPreparingConfirmationEmail}
             className="pdf-btn"
-            title="Compose email with PDF attachment"
-            aria-label="Compose email"
-            data-tooltip="Compose email"
+            title="Review email with PDF attachment"
+            aria-label="Review email with PDF attachment"
+            data-tooltip="Review email"
           >
             <HeaderIcon icon={FiMail} />
-            <span>{isPreparingConfirmationEmail ? 'Preparing' : 'Compose'}</span>
+            <span>{isPreparingConfirmationEmail ? 'Preparing' : 'Review'}</span>
           </button>
           <button
             onClick={generatePDF}
@@ -646,22 +660,47 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         {activeTab === 'overview' && (
           <>
             <div className="detail-section pdf-section">
-              <div className="section-header">
+              <div className="section-header client-section-header">
                 <h3 className="pdf-section-title">Client Information</h3>
+                <div className="client-mobile-heading">
+                  <div>
+                    <span className="mobile-section-label">Client</span>
+                    <h2>{clientName}</h2>
+                  </div>
+                  <button
+                    className="edit-btn edit-client-btn"
+                    onClick={() => setIsEditingClient(true)}
+                    title="Edit client information"
+                    aria-label="Edit client information"
+                  >
+                    <HeaderIcon icon={FiEdit3} />
+                    <span>Edit Client</span>
+                  </button>
+                </div>
                 <button
-                  className="edit-btn"
+                  className="edit-btn edit-client-btn desktop-client-edit"
                   onClick={() => setIsEditingClient(true)}
                   title="Edit client information"
                 >
-                  Edit Client
+                  <HeaderIcon icon={FiEdit3} />
+                  <span>Edit Client</span>
                 </button>
               </div>
-              <div className="info-grid">
+              <button
+                type="button"
+                className="mobile-client-details-toggle"
+                onClick={() => setShowClientDetails((current) => !current)}
+                aria-expanded={showClientDetails}
+              >
+                <span>Client details</span>
+                <HeaderIcon icon={FiChevronDown} />
+              </button>
+              <div className={`info-grid client-info-grid ${showClientDetails ? 'mobile-expanded' : 'mobile-collapsed'}`}>
                 <div className="info-item">
                   <label>Name:</label>
-                  <span>{client ? `${client.firstName || client.fname} ${client.lastName || client.lname}` : 'N/A'}</span>
+                  <span>{clientName}</span>
                 </div>
-                <div className="info-item">
+                <div className="info-item mobile-hidden-client-field">
                   <label>Email:</label>
                   <span>{client?.email || 'N/A'}</span>
                 </div>
@@ -669,7 +708,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
                   <label>Phone:</label>
                   <span>{client?.phone || 'N/A'}</span>
                 </div>
-                <div className="info-item">
+                <div className="info-item mobile-hidden-client-field">
                   <label>City:</label>
                   <span>{client?.city || 'N/A'}</span>
                 </div>
@@ -680,7 +719,20 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
               </div>
             </div>
 
-            <div className="detail-section pdf-section">
+            <div className="detail-section pdf-section mobile-booking-summary">
+              <h3 className="pdf-section-title">Booking Information</h3>
+              <div className="mobile-booking-summary-row">
+                <div className="info-item">
+                  <label>Booking Type:</label>
+                  <span className="booking-type-display">
+                    <span className="booking-type-dot">{bookingTypeCode}</span>
+                    <span className="retreat-code-pill">{retreatCode}</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="detail-section pdf-section retreat-info-section">
               <h3 className="pdf-section-title">Retreat Information</h3>
               <div className="info-grid">
                 <div className="info-item">
@@ -732,6 +784,31 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
                       <span>{formatDate(booking.checkOutDate)}</span>
                     </div>
                   </div>
+                </div>
+              )}
+            </div>
+
+            <div className="booking-detail-accordion mobile-payment-accordion">
+              <button
+                type="button"
+                className="booking-detail-accordion-trigger"
+                onClick={() => setShowMobilePayments((current) => !current)}
+                aria-expanded={showMobilePayments}
+              >
+                <span>Payment</span>
+                <span>{showMobilePayments ? 'Hide' : 'Show'}</span>
+              </button>
+              {showMobilePayments && (
+                <div className="booking-detail-accordion-body">
+                  <BookingPaymentManagement
+                    bookingId={bookingId}
+                    bookingHash={booking.bookingHash}
+                    clientId={typeof client === 'object' ? client._id : client}
+                    retreatId={typeof retreat === 'object' ? retreat._id : retreat}
+                    totalAmount={booking.totalAmount || 0}
+                    currency={booking.currency || 'EUR'}
+                    onPaymentUpdate={fetchBookingDetails}
+                  />
                 </div>
               )}
             </div>
@@ -822,11 +899,6 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         <EmailComposeModal
           title="Booking Confirmation Email"
           initialValues={confirmationEmailDraft}
-          extraContent={(
-            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
-              Temporary recipient override: this booking confirmation will be sent to <strong>{BOOKING_CONFIRMATION_TEST_RECIPIENT}</strong>.
-            </div>
-          )}
           onClose={() => setConfirmationEmailDraft(null)}
           onSent={() => {
             setConfirmationEmailDraft(null);

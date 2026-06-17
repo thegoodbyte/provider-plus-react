@@ -271,6 +271,13 @@
   border-top: 1px solid #e5e7eb;
 }
 
+.client-mobile-heading,
+.mobile-client-details-toggle,
+.mobile-booking-summary,
+.mobile-payment-accordion {
+  display: none;
+}
+
 /* PDF-specific styles */
 .pdf-header {
   page-break-inside: avoid;
@@ -594,6 +601,144 @@
     border-radius: 8px;
     box-shadow: none;
   }
+
+  .client-section-header {
+    align-items: flex-start;
+    margin-bottom: 8px;
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+
+  .client-section-header > h3,
+  .desktop-client-edit {
+    display: none;
+  }
+
+  .client-mobile-heading {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .client-mobile-heading h2 {
+    margin: 2px 0 0;
+    color: #111827;
+    font-size: 20px;
+    font-weight: 800;
+    line-height: 1.15;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-section-label {
+    display: block;
+    color: #6b7280;
+    font-size: 11px;
+    font-weight: 750;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .edit-client-btn {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 8px;
+    background: #2563eb;
+  }
+
+  .edit-client-btn span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .edit-client-btn svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .mobile-client-details-toggle {
+    width: 100%;
+    min-height: 42px;
+    margin-top: 10px;
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    border: 1px solid #dbe3ef;
+    border-radius: 8px;
+    background: #f8fafc;
+    color: #111827;
+    font-size: 14px;
+    font-weight: 750;
+    cursor: pointer;
+  }
+
+  .mobile-client-details-toggle svg {
+    width: 18px;
+    height: 18px;
+    color: #2563eb;
+    transition: transform 0.16s ease;
+  }
+
+  .mobile-client-details-toggle[aria-expanded="true"] svg {
+    transform: rotate(180deg);
+  }
+
+  .client-info-grid.mobile-collapsed {
+    display: none;
+  }
+
+  .client-info-grid.mobile-expanded {
+    display: grid;
+    margin-top: 12px;
+  }
+
+  .mobile-hidden-client-field {
+    display: none;
+  }
+
+  .mobile-booking-summary {
+    display: block;
+  }
+
+  .mobile-booking-summary h3 {
+    margin-bottom: 12px;
+  }
+
+  .mobile-booking-summary-row {
+    display: grid;
+    gap: 12px;
+  }
+
+  .retreat-info-section {
+    display: none;
+  }
+
+  .mobile-payment-accordion {
+    display: block;
+  }
+
+  .mobile-payment-accordion .booking-detail-accordion-body {
+    padding: 0;
+  }
+
+  .mobile-payment-accordion .booking-payment-management {
+    margin-top: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
 }
 
 .detail-section {
@@ -733,6 +878,7 @@
   justify-content: center;
   border-radius: 999px;
   color: #ffffff;
+  background: #2563eb;
   font-size: 15px;
   font-weight: 800;
   line-height: 1;
@@ -751,6 +897,8 @@
   letter-spacing: 0.02em;
   line-height: 1;
   white-space: nowrap;
+  color: #1e3a8a;
+  background: #eff6ff;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.22), 0 2px 6px rgba(15, 23, 42, 0.10);
 }
 
@@ -876,4 +1024,91 @@
 
 .error-container button:hover {
   background: #1976D2;
+}
+
+@media (max-width: 980px) {
+  .detail-section {
+    padding: 14px;
+    border-radius: 8px;
+    box-shadow: none;
+  }
+
+  .client-section-header {
+    align-items: flex-start;
+    margin-bottom: 8px;
+    padding-bottom: 0;
+    border-bottom: 0;
+  }
+
+  .client-section-header > h3,
+  .desktop-client-edit {
+    display: none;
+  }
+
+  .client-mobile-heading {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .edit-client-btn {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 8px;
+    background: #2563eb;
+  }
+
+  .edit-client-btn span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .client-info-grid.mobile-collapsed {
+    display: none;
+  }
+
+  .client-info-grid.mobile-expanded {
+    display: grid;
+    margin-top: 12px;
+  }
+
+  .mobile-hidden-client-field,
+  .retreat-info-section {
+    display: none;
+  }
+
+  .mobile-client-details-toggle,
+  .mobile-payment-accordion {
+    display: flex;
+  }
+
+  .mobile-booking-summary {
+    display: block;
+  }
+
+  .mobile-payment-accordion {
+    flex-direction: column;
+  }
+
+  .mobile-payment-accordion .booking-detail-accordion-body {
+    padding: 0;
+  }
+
+  .mobile-payment-accordion .booking-payment-management {
+    margin-top: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
 }
