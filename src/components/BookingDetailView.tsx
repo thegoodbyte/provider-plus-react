@@ -57,6 +57,8 @@ const getClientName = (client: any) =>
   [client?.firstName || client?.fname, client?.lastName || client?.lname].filter(Boolean).join(' ').trim();
 
 const getRetreatCode = (retreat: any) => {
+  const explicitCode = String(retreat?.retreatCode || retreat?.code || '').trim();
+  if (explicitCode) return explicitCode;
   const rawName = String(retreat?.name || retreat?.location || 'Retreat').trim();
   const initials = rawName
     .split(/[\s_-]+/)
@@ -70,6 +72,9 @@ const getRetreatCode = (retreat: any) => {
   const two = (value: number) => String(value).padStart(2, '0');
   return `${initials}-${two(date.getUTCMonth() + 1)}-${two(date.getUTCDate())}-${two(date.getUTCFullYear() % 100)}`;
 };
+
+const getRetreatLocationTown = (retreat: any) =>
+  String(retreat?.location_town || retreat?.locationTown || retreat?.location || '').trim();
 
 const getArtifactTime = (artifact: MedicalArtifact) =>
   new Date(artifact.receivedAt || artifact.createdAt || 0).getTime();
@@ -319,7 +324,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     const clientData = booking?.clientId || booking?.clientDetails;
     const retreatData = booking?.retreatId || booking?.retreatDetails;
     const firstName = clientData?.firstName || clientData?.fname || 'there';
-    const locationText = retreatData?.location || 'our retreat center';
+    const locationText = getRetreatLocationTown(retreatData) || 'our retreat center';
     const dateText = getRetreatDateRange(retreatData);
     const contactEmail = 'info@ibogaspirit.cz';
     const rows = [
@@ -328,7 +333,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
       ['Status', booking?.status || 'pending'],
       ['Client', getClientName(clientData) || 'N/A'],
       ['Retreat', retreatData?.name || 'N/A'],
-      ['Location', retreatData?.location || 'N/A'],
+      ['Location town', getRetreatLocationTown(retreatData) || 'N/A'],
       ['Dates', dateText],
       ['Check-in', formatDate(booking?.checkInDate)],
       ['Check-out', formatDate(booking?.checkOutDate)],
@@ -740,8 +745,8 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
                   <span>{retreat?.name || 'N/A'}</span>
                 </div>
                 <div className="info-item">
-                  <label>Location:</label>
-                  <span>{retreat?.location || 'N/A'}</span>
+                  <label>Location town:</label>
+                  <span>{getRetreatLocationTown(retreat) || 'N/A'}</span>
                 </div>
                 <div className="info-item">
                   <label>Type:</label>

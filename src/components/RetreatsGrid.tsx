@@ -101,13 +101,22 @@ const RetreatsGrid: React.FC = () => {
     return new Date(date).toLocaleDateString();
   };
 
+  const getRetreatCodeValue = (retreat: Partial<Retreat>) =>
+    retreat.retreatCode || retreat.code || '';
+
+  const getRetreatTown = (retreat: Partial<Retreat>) =>
+    retreat.location_town || retreat.locationTown || retreat.location || '';
+
   const handleHouseSelection = (value: string) => {
     const selectedHouse = houses.find((house) => house.name === value || house._id === value);
     const houseCapacity = selectedHouse?.capacity || selectedHouse?.guestCapacity;
+    const town = selectedHouse?.generalTown || selectedHouse?.general_town || selectedHouse?.city || value;
 
     setFormData((prev) => ({
       ...prev,
-      location: value,
+      location: town,
+      location_town: town,
+      houseId: selectedHouse?._id || prev.houseId,
       capacity: houseCapacity ? Number(houseCapacity) : prev.capacity,
     }));
   };
@@ -171,10 +180,10 @@ const RetreatsGrid: React.FC = () => {
         <div className="grid grid-cols-3 items-center gap-3 rounded-md border border-gray-100 px-3 py-3 text-sm">
           <div className="font-medium text-gray-900">
             <span style={retreatLabelStyle(formData)}>
-              {formData.name || 'BEN-08-03-26'}
+              {formData.name || 'Retreat name'}
             </span>
           </div>
-          <div className="text-gray-600">{formData.location || 'House / location'}</div>
+          <div className="text-gray-600">{getRetreatTown(formData) || 'Location town'}</div>
           <div className="text-gray-600">{formData.status || 'upcoming'}</div>
         </div>
       </div>
@@ -222,6 +231,7 @@ const RetreatsGrid: React.FC = () => {
               name: '',
               retreatCode: '',
               location: '',
+              location_town: '',
               status: 'upcoming',
               capacity: 20,
               currentOccupancy: 0,
@@ -245,13 +255,13 @@ const RetreatsGrid: React.FC = () => {
                   Name
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Retreat Code
+                  Code
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Dates
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Location
+                  Location town
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Capacity
@@ -294,10 +304,10 @@ const RetreatsGrid: React.FC = () => {
                         onClick={() => setViewingRetreatId(retreat._id!)}
                         className="text-blue-700 hover:text-blue-900 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
-                        {retreat.retreatCode || '-'}
+                        {getRetreatCodeValue(retreat) || '-'}
                       </button>
                     ) : (
-                      <span className="text-gray-900">{retreat.retreatCode || '-'}</span>
+                      <span className="text-gray-900">{getRetreatCodeValue(retreat) || '-'}</span>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -312,7 +322,7 @@ const RetreatsGrid: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center text-sm text-gray-900">
                       <Icon icon={FiMapPin} className="w-4 h-4 mr-1 text-gray-400" />
-                      {retreat.location || 'N/A'}
+                      {getRetreatTown(retreat) || 'N/A'}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -338,7 +348,12 @@ const RetreatsGrid: React.FC = () => {
                       <button
                         onClick={() => {
                           setEditingRetreat(retreat);
-                          setFormData(retreat);
+                          setFormData({
+                            ...retreat,
+                            retreatCode: getRetreatCodeValue(retreat),
+                            location_town: getRetreatTown(retreat),
+                            location: getRetreatTown(retreat),
+                          });
                           setIsEditModalOpen(true);
                         }}
                         className="icon-action-btn icon-action-btn-edit"
@@ -407,11 +422,11 @@ const RetreatsGrid: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Retreat Code
+                  Code
                 </label>
                 <input
                   type="text"
-                  value={formData.retreatCode || ''}
+                  value={formData.retreatCode || formData.code || ''}
                   onChange={(e) => setFormData({ ...formData, retreatCode: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g. BEN-08-03-26"
@@ -420,17 +435,30 @@ const RetreatsGrid: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Location
+                  Location town
+                </label>
+                <input
+                  type="text"
+                  value={formData.location_town || formData.location || ''}
+                  onChange={(e) => setFormData({ ...formData, location_town: e.target.value, location: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g. Benesov"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  House
                 </label>
                 <select
-                  value={formData.location || ''}
+                  value={formData.houseId || ''}
                   onChange={(e) => handleHouseSelection(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
                 >
                   <option value="">Select a house</option>
                   {houses.map((house) => (
-                    <option key={house._id} value={house.name}>
+                    <option key={house._id} value={house._id || house.name}>
                       {house.name} - {house.address}
                     </option>
                   ))}
@@ -520,15 +548,18 @@ const RetreatsGrid: React.FC = () => {
                 variant="secondary"
                 onClick={async () => {
                   try {
-                    if (!formData.name || !formData.location) {
-                      alert('Please enter name and location');
+                    if (!formData.name || !getRetreatTown(formData)) {
+                      alert('Please enter name and location town');
                       return;
                     }
 
                     const retreatData = {
                       name: formData.name!,
                       retreatCode: formData.retreatCode?.trim() || undefined,
-                      location: formData.location!,
+                      code: formData.retreatCode?.trim() || undefined,
+                      location_town: getRetreatTown(formData),
+                      location: getRetreatTown(formData),
+                      houseId: formData.houseId,
                       status: formData.status || 'upcoming' as 'upcoming' | 'active' | 'completed' | 'cancelled',
                       capacity: formData.capacity ?? 20,
                       currentOccupancy: formData.currentOccupancy || 0,
@@ -579,11 +610,11 @@ const RetreatsGrid: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Retreat Code
+                  Code
                 </label>
                 <input
                   type="text"
-                  value={formData.retreatCode || ''}
+                  value={formData.retreatCode || formData.code || ''}
                   onChange={(e) => setFormData({ ...formData, retreatCode: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g. BEN-08-03-26"
@@ -592,17 +623,29 @@ const RetreatsGrid: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Location
+                  Location town
+                </label>
+                <input
+                  type="text"
+                  value={formData.location_town || formData.location || ''}
+                  onChange={(e) => setFormData({ ...formData, location_town: e.target.value, location: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g. Benesov"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  House
                 </label>
                 <select
-                  value={formData.location || ''}
+                  value={formData.houseId || ''}
                   onChange={(e) => handleHouseSelection(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
                 >
                   <option value="">Select a house</option>
                   {houses.map((house) => (
-                    <option key={house._id} value={house.name}>
+                    <option key={house._id} value={house._id || house.name}>
                       {house.name} - {house.address}
                     </option>
                   ))}
@@ -713,6 +756,9 @@ const RetreatsGrid: React.FC = () => {
                       const updateData = {
                         ...formData,
                         retreatCode: formData.retreatCode?.trim() || undefined,
+                        code: formData.retreatCode?.trim() || undefined,
+                        location_town: getRetreatTown(formData),
+                        location: getRetreatTown(formData),
                       };
                       await retreatsApi.update(editingRetreat._id, updateData);
                       fetchRetreats();

@@ -1,7 +1,10 @@
 export interface Retreat {
   _id?: string;
   name: string;
+  code?: string;
   retreatCode?: string;
+  location_town?: string;
+  locationTown?: string;
   location: string;
   startDate?: Date | string;
   endDate?: Date | string;
