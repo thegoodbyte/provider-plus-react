@@ -7,6 +7,7 @@ import BookingMedicalUpload from './BookingMedicalUpload';
 import BookingDocumentsUpload from './BookingDocumentsUpload';
 import ClientBookingWorkflowTab from './ClientBookingWorkflowTab';
 import ClientEditModal from './ClientEditModal';
+import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 import { createBookingConfirmationPdf, generateBookingPDF } from './BookingConfirmationPDF';
 import { BookingFlowItem, MedicalArtifact, MedicalReviewRequest } from '../types';
 import './BookingDetailView.css';
@@ -83,6 +84,8 @@ const compareArtifactsForDisplay = (a: MedicalArtifact, b: MedicalArtifact) => {
 
 const getReviewTime = (review: MedicalReviewRequest) =>
   new Date(review.reviewedAt || review.requestedAt || review.createdAt || 0).getTime();
+
+const BOOKING_CONFIRMATION_TEST_RECIPIENT = 'goodbyte@gmail.com';
 
 const getObjectId = (value: any) => typeof value === 'object' ? value?._id || value?.id : value;
 
@@ -257,6 +260,8 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [previewFileName, setPreviewFileName] = useState('');
   const [isPreviewingPDF, setIsPreviewingPDF] = useState(false);
   const [isSendingConfirmation, setIsSendingConfirmation] = useState(false);
+  const [isPreparingConfirmationEmail, setIsPreparingConfirmationEmail] = useState(false);
+  const [confirmationEmailDraft, setConfirmationEmailDraft] = useState<EmailComposeInitialValues | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'requirements' | 'medical' | 'documents' | 'workflow' | 'notes'>('overview');
   const [showBookingDates, setShowBookingDates] = useState(false);
   const pdfRef = useRef<HTMLDivElement>(null);
@@ -412,30 +417,34 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     }
   };
 
-  const emailBookingConfirmation = () => {
+  const emailBookingConfirmation = async () => {
     const client = booking?.clientId || booking?.clientDetails;
     const retreat = booking?.retreatId || booking?.retreatDetails;
-    const params = new URLSearchParams({
-      tab: 'compose',
-      relatedEntityType: 'booking',
-      relatedEntityId: bookingId,
-      subject: `Booking confirmation ${booking?.bookingNumber || ''}`.trim(),
-      bodyText: [
-        `Hello ${client?.firstName || ''},`,
-        '',
-        'Please find your booking confirmation details below. The PDF confirmation can be downloaded from the booking preview for now.',
-        '',
-        `Booking number: ${booking?.bookingNumber || ''}`,
-        retreat?.name ? `Retreat: ${retreat.name}` : '',
-        '',
-        'Thank you,',
-        'IbogaSpirit.cz',
-      ].filter(Boolean).join('\n'),
-    });
-    if (client?._id) params.set('clientId', client._id);
-    if (client?.email) params.set('to', client.email);
-    if (retreat?._id) params.set('retreatId', retreat._id);
-    navigate(`${routePrefix}/communications?${params.toString()}`);
+    setIsPreparingConfirmationEmail(true);
+    try {
+      const { blob, fileName } = await createBookingConfirmationPdf({ booking, language: pdfLanguage });
+      const contentBase64 = await blobToBase64(blob);
+      const email = buildBookingConfirmationEmail();
+      setConfirmationEmailDraft({
+        to: BOOKING_CONFIRMATION_TEST_RECIPIENT,
+        subject: email.subject,
+        bodyText: email.bodyText,
+        clientId: client?._id,
+        retreatId: retreat?._id,
+        relatedEntityType: 'booking',
+        relatedEntityId: bookingId,
+        attachments: [{
+          fileName,
+          mimeType: 'application/pdf',
+          contentBase64,
+        }],
+      });
+    } catch (error) {
+      console.error('Error preparing booking confirmation email:', error);
+      alert('Unable to prepare booking confirmation email.');
+    } finally {
+      setIsPreparingConfirmationEmail(false);
+    }
   };
 
   const sendBookingConfirmationEmail = async () => {
@@ -443,11 +452,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     const retreatData = booking?.retreatId || booking?.retreatDetails;
     let pdfSize = 0;
     let payloadSize = 0;
-    if (!clientData?.email) {
-      alert('This client does not have an email address on file.');
-      return;
-    }
-    if (!window.confirm(`Send booking confirmation email with PDF attachment to ${clientData.email}?`)) return;
+    if (!window.confirm(`Send booking confirmation email with PDF attachment to ${BOOKING_CONFIRMATION_TEST_RECIPIENT}?`)) return;
 
     setIsSendingConfirmation(true);
     try {
@@ -456,7 +461,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
       const contentBase64 = await blobToBase64(blob);
       const email = buildBookingConfirmationEmail();
       const payload = {
-        to: clientData.email,
+        to: BOOKING_CONFIRMATION_TEST_RECIPIENT,
         subject: email.subject,
         bodyText: email.bodyText,
         bodyHtml: email.bodyHtml,
@@ -582,13 +587,14 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
           </button>
           <button
             onClick={emailBookingConfirmation}
+            disabled={isPreparingConfirmationEmail}
             className="pdf-btn"
-            title="Compose email"
+            title="Compose email with PDF attachment"
             aria-label="Compose email"
             data-tooltip="Compose email"
           >
             <HeaderIcon icon={FiMail} />
-            <span>Compose</span>
+            <span>{isPreparingConfirmationEmail ? 'Preparing' : 'Compose'}</span>
           </button>
           <button
             onClick={generatePDF}
@@ -809,6 +815,23 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
           client={client}
           onClose={() => setIsEditingClient(false)}
           onSave={handleClientUpdate}
+        />
+      )}
+
+      {confirmationEmailDraft && (
+        <EmailComposeModal
+          title="Booking Confirmation Email"
+          initialValues={confirmationEmailDraft}
+          extraContent={(
+            <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              Temporary recipient override: this booking confirmation will be sent to <strong>{BOOKING_CONFIRMATION_TEST_RECIPIENT}</strong>.
+            </div>
+          )}
+          onClose={() => setConfirmationEmailDraft(null)}
+          onSent={() => {
+            setConfirmationEmailDraft(null);
+            fetchBookingDetails();
+          }}
         />
       )}
     </div>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { FiSend, FiX } from 'react-icons/fi';
 import { communicationsApi } from '../services/api';
-import { MailSettings } from '../types';
+import { EmailTemplate, MailSettings } from '../types';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
@@ -21,6 +21,11 @@ export interface EmailComposeInitialValues {
   relatedEntityType?: string;
   relatedEntityId?: string;
   variables?: Record<string, any>;
+  attachments?: Array<{
+    fileName: string;
+    mimeType?: string;
+    contentBase64: string;
+  }>;
 }
 
 interface EmailComposeModalProps {
@@ -39,6 +44,8 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
   onSent,
 }) => {
   const [settings, setSettings] = useState<MailSettings | null>(null);
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [sending, setSending] = useState(false);
   const [formData, setFormData] = useState({
     to: initialValues.to || '',
@@ -52,6 +59,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
   });
 
   useEffect(() => {
+    setSelectedTemplateId('');
     setFormData({
       to: initialValues.to || '',
       cc: initialValues.cc || '',
@@ -66,15 +74,19 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
 
   useEffect(() => {
     let active = true;
-    communicationsApi.getSettings()
-      .then((response) => {
+    Promise.all([
+      communicationsApi.getSettings(),
+      communicationsApi.getTemplates(),
+    ])
+      .then(([settingsResponse, templatesResponse]) => {
         if (!active) return;
-        setSettings(response.data);
+        setSettings(settingsResponse.data);
+        setTemplates((templatesResponse.data || []).filter((template: EmailTemplate) => template.active !== false));
         setFormData((prev) => ({
           ...prev,
-          fromName: prev.fromName || response.data?.senderName || '',
-          fromEmail: prev.fromEmail || response.data?.senderEmail || '',
-          replyTo: prev.replyTo || response.data?.replyTo || '',
+          fromName: prev.fromName || settingsResponse.data?.senderName || '',
+          fromEmail: prev.fromEmail || settingsResponse.data?.senderEmail || '',
+          replyTo: prev.replyTo || settingsResponse.data?.replyTo || '',
         }));
       })
       .catch((error) => {
@@ -87,6 +99,17 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
 
   const updateField = (field: keyof typeof formData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleTemplateChange = (templateId: string) => {
+    setSelectedTemplateId(templateId);
+    const template = templates.find((item) => item._id === templateId);
+    if (!template) return;
+    setFormData((prev) => ({
+      ...prev,
+      subject: template.subject || prev.subject,
+      bodyText: template.bodyText || prev.bodyText,
+    }));
   };
 
   const handleSend = async () => {
@@ -118,6 +141,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
         relatedEntityType: initialValues.relatedEntityType || undefined,
         relatedEntityId: initialValues.relatedEntityId || undefined,
         variables: initialValues.variables,
+        attachments: initialValues.attachments || undefined,
       });
       await onSent?.();
       alert('Email sent.');
@@ -150,6 +174,35 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
 
         <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
           {extraContent}
+
+          {templates.length > 0 && (
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Template</label>
+              <select
+                value={selectedTemplateId}
+                onChange={(event) => handleTemplateChange(event.target.value)}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              >
+                <option value="">No template</option>
+                {templates.map((template) => (
+                  <option key={template._id} value={template._id || ''}>
+                    {template.display_id ? `#${template.display_id} ` : ''}{template.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {(initialValues.attachments || []).length > 0 && (
+            <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
+              <div className="font-medium">Attached PDF</div>
+              {(initialValues.attachments || []).map((attachment) => (
+                <div key={attachment.fileName} className="mt-1 font-mono text-xs">
+                  {attachment.fileName}
+                </div>
+              ))}
+            </div>
+          )}
 
           <div className="grid gap-4 md:grid-cols-3">
             <div>

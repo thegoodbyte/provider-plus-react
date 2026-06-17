@@ -145,11 +145,13 @@ const ClientScreening: React.FC = () => {
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [client, setClient] = useState<Client | null>(null);
+  const [, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
   const mainIntentRef = useRef<HTMLTextAreaElement | null>(null);
+  const saveMessageTimeoutRef = useRef<number | null>(null);
   const [formData, setFormData] = useState<ScreeningData>({
     clientId: clientId || '',
     firstName: '',
@@ -238,6 +240,14 @@ const ClientScreening: React.FC = () => {
   useEffect(() => {
     fetchClient();
   }, [clientId]);
+
+  useEffect(() => {
+    return () => {
+      if (saveMessageTimeoutRef.current) {
+        window.clearTimeout(saveMessageTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const fetchClient = async () => {
     if (!clientId) return;
@@ -468,20 +478,50 @@ const ClientScreening: React.FC = () => {
     }));
   };
 
+  const persistScreening = async () => {
+    const bloodPressure = [
+      formData.bloodPressureStatus,
+      formData.bloodPressureValue,
+    ].filter(Boolean).join(' - ');
+
+    return screeningApi.create({
+      ...formData,
+      heartCondition: formData.heartConditionOk ? 'OK' : formData.heartCondition,
+      liverCondition: formData.liverConditionOk ? 'OK' : formData.liverCondition,
+      asthmaCondition: formData.asthmaConditionOk ? 'OK' : formData.asthmaCondition,
+      bloodPressure: bloodPressure || formData.bloodPressure,
+    });
+  };
+
+  const flashSaveMessage = (message: string) => {
+    setSaveMessage(message);
+    if (saveMessageTimeoutRef.current) {
+      window.clearTimeout(saveMessageTimeoutRef.current);
+    }
+    saveMessageTimeoutRef.current = window.setTimeout(() => {
+      setSaveMessage('');
+      saveMessageTimeoutRef.current = null;
+    }, 2400);
+  };
+
+  const handleFloatingSave = async () => {
+    setSaving(true);
+    try {
+      const response = await persistScreening();
+      setClient(response.data);
+      flashSaveMessage('Screening saved.');
+    } catch (error) {
+      console.error('Error saving screening:', error);
+      flashSaveMessage('Could not save screening.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
-      const bloodPressure = [
-        formData.bloodPressureStatus,
-        formData.bloodPressureValue,
-      ].filter(Boolean).join(' - ');
-      const response = await screeningApi.create({
-        ...formData,
-        heartCondition: formData.heartConditionOk ? 'OK' : formData.heartCondition,
-        liverCondition: formData.liverConditionOk ? 'OK' : formData.liverCondition,
-        asthmaCondition: formData.asthmaConditionOk ? 'OK' : formData.asthmaCondition,
-        bloodPressure: bloodPressure || formData.bloodPressure,
-      });
+      const response = await persistScreening();
       const rolePrefix = user?.role === 'admin' ? '/admin' : '';
       navigate(`${rolePrefix}/clients/${clientId}?tab=screening`, {
         replace: true,
@@ -492,6 +532,8 @@ const ClientScreening: React.FC = () => {
       setSaving(false);
     }
   };
+
+  const formatButtonClass = 'inline-flex h-8 w-8 flex-none items-center justify-center rounded border border-gray-200 bg-transparent p-0 text-sm text-gray-700 hover:bg-white hover:text-gray-950 focus:outline-none focus:ring-2 focus:ring-blue-500';
 
   if (loading) {
     return <div className="flex justify-center items-center h-screen">Loading...</div>;
@@ -562,24 +604,24 @@ const ClientScreening: React.FC = () => {
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Main Intent</label>
-            <div className="mb-2 flex flex-wrap gap-1 rounded-md border border-gray-200 bg-gray-50 p-1">
-              <button type="button" onClick={() => applyTextFormat('bold')} className="rounded px-2 py-1 text-sm font-bold text-gray-700 hover:bg-white" title="Bold">
+            <div className="mb-2 inline-flex w-auto flex-wrap gap-1 rounded-md border border-gray-200 bg-gray-50 p-1">
+              <button type="button" onClick={() => applyTextFormat('bold')} className={`${formatButtonClass} font-bold`} title="Bold">
                 B
               </button>
-              <button type="button" onClick={() => applyTextFormat('italic')} className="rounded px-2 py-1 text-sm italic text-gray-700 hover:bg-white" title="Italic">
+              <button type="button" onClick={() => applyTextFormat('italic')} className={`${formatButtonClass} italic`} title="Italic">
                 I
               </button>
-              <button type="button" onClick={() => applyTextFormat('heading')} className="rounded px-2 py-1 text-sm font-semibold text-gray-700 hover:bg-white" title="Heading">
+              <button type="button" onClick={() => applyTextFormat('heading')} className={`${formatButtonClass} font-semibold`} title="Heading">
                 H
               </button>
-              <button type="button" onClick={() => applyTextFormat('bullet')} className="rounded px-2 py-1 text-sm text-gray-700 hover:bg-white" title="Bullet list">
-                - List
+              <button type="button" onClick={() => applyTextFormat('bullet')} className={formatButtonClass} title="Bullet list">
+                •
               </button>
-              <button type="button" onClick={() => applyTextFormat('numbered')} className="rounded px-2 py-1 text-sm text-gray-700 hover:bg-white" title="Numbered list">
-                1. List
+              <button type="button" onClick={() => applyTextFormat('numbered')} className={formatButtonClass} title="Numbered list">
+                1.
               </button>
-              <button type="button" onClick={() => applyTextFormat('quote')} className="rounded px-2 py-1 text-sm text-gray-700 hover:bg-white" title="Quote">
-                Quote
+              <button type="button" onClick={() => applyTextFormat('quote')} className={formatButtonClass} title="Quote">
+                “
               </button>
             </div>
             <textarea
@@ -1088,6 +1130,28 @@ const ClientScreening: React.FC = () => {
         <AppleButton variant="primary" onClick={handleSave} disabled={saving}>
           {saving ? 'Saving...' : 'Save Screening'}
         </AppleButton>
+      </div>
+
+      <div className="fixed bottom-5 right-5 z-40 flex items-center gap-3">
+        {saveMessage && (
+          <div className={`rounded-md border px-3 py-2 text-sm shadow-lg ${
+            saveMessage.includes('Could not')
+              ? 'border-red-200 bg-red-50 text-red-700'
+              : 'border-green-200 bg-green-50 text-green-700'
+          }`}>
+            {saveMessage}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={handleFloatingSave}
+          disabled={saving}
+          className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-blue-200 bg-white text-blue-700 shadow-lg hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          title="Save screening without leaving this page"
+          aria-label="Save screening without leaving this page"
+        >
+          {saving ? '...' : 'Save'}
+        </button>
       </div>
     </div>
   );
