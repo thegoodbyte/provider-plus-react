@@ -440,8 +440,8 @@ const BookingsGrid: React.FC = () => {
                       <span
                         className="text-sm px-3 py-1 rounded-full font-medium"
                         style={{
-                          backgroundColor: booking.retreatBackgroundColor || '#f3f4f6',
-                          color: getContrastColor(booking.retreatBackgroundColor || '#f3f4f6')
+                          backgroundColor: booking.retreatBackgroundColor || 'transparent',
+                          color: booking.retreatBackgroundColor ? getContrastColor(booking.retreatBackgroundColor) : '#111827'
                         }}
                       >
                         {booking.retreatName}
