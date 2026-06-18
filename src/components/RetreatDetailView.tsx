@@ -120,6 +120,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [showRetreatEditModal, setShowRetreatEditModal] = useState(false);
   const [houses, setHouses] = useState<House[]>([]);
   const [retreatFormData, setRetreatFormData] = useState<Partial<Retreat>>({});
+  const [sortField, setSortField] = useState<'bookingNumber' | 'clientName' | null>(null);
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [editFormData, setEditFormData] = useState({
     checkInDate: '',
     checkOutDate: '',
@@ -444,6 +446,34 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     { label: 'PLN (Polish Złoty)', value: 'PLN' }
   ];
 
+  // Sort clients based on current sort field and direction
+  const sortedClients = React.useMemo(() => {
+    if (!sortField) return clients;
+
+    return [...clients].sort((a, b) => {
+      let compareValue = 0;
+
+      if (sortField === 'bookingNumber') {
+        const aNum = a.bookingNumber || a._id?.slice(-6) || '';
+        const bNum = b.bookingNumber || b._id?.slice(-6) || '';
+        compareValue = String(aNum).localeCompare(String(bNum), undefined, { numeric: true });
+      } else if (sortField === 'clientName') {
+        compareValue = a.clientName.localeCompare(b.clientName);
+      }
+
+      return sortDirection === 'asc' ? compareValue : -compareValue;
+    });
+  }, [clients, sortField, sortDirection]);
+
+  const handleSort = (field: 'bookingNumber' | 'clientName') => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="loading-container">
@@ -513,7 +543,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           </button>
         </div>
         <div className="retreat-info">
-          <h1>
+          <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>
             <span
               className="retreat-name-badge"
               style={{
@@ -525,9 +555,25 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
               {retreat.name}
             </span>
           </h1>
-          <div className="retreat-meta">
+          <div className="retreat-meta" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
+              <div className="meta-item" style={{ fontWeight: '600' }}>
+                {retreat.code || retreat.retreatCode || 'No Code'}
+              </div>
+              <div className="meta-item">
+                <strong>Town:</strong> {retreat.location_town || retreat.locationTown || retreat.location || 'N/A'}
+              </div>
+            </div>
             <div className="meta-item">
-              <strong>Location:</strong> {retreat.location}
+              <strong>Address:</strong> {retreat.address || retreat.location || 'Default Location'}
+            </div>
+            <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
+              <div className="meta-item">
+                <strong>Capacity:</strong> {retreat.capacity || 'N/A'}
+              </div>
+              <div className="meta-item">
+                <strong>Status:</strong> <span className={`status-badge status-${retreat.status}`} style={{ textTransform: 'uppercase' }}>{retreat.status}</span>
+              </div>
             </div>
             <div className="meta-item">
               <strong>Dates:</strong> {(() => {
@@ -535,12 +581,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                 const endDate = new Date(retreat.endDate!);
                 return `${formatDateUTC(startDate)} - ${formatDateUTC(endDate)}`;
               })()}
-            </div>
-            <div className="meta-item">
-              <strong>Capacity:</strong> {retreat.capacity || 'N/A'}
-            </div>
-            <div className="meta-item">
-              <strong>Status:</strong> <span className={`status-badge status-${retreat.status}`}>{retreat.status}</span>
             </div>
             {retreat.description && (
               <div className="meta-item">
@@ -577,10 +617,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             <div className="stat-card">
               <div className="stat-number">{clients.filter(c => c.status === 'confirmed').length}</div>
               <div className="stat-label">Confirmed</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-number">{clients.filter(c => c.status === 'checked-in').length}</div>
-              <div className="stat-label">Checked In</div>
             </div>
             <div className="stat-card">
               <div className="stat-number">{formatUSD(totalExpensesUSD)}</div>
@@ -711,11 +747,27 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Booking #
+                    <th
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('bookingNumber')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Booking #
+                        {sortField === 'bookingNumber' && (
+                          <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </div>
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Client Name
+                    <th
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                      onClick={() => handleSort('clientName')}
+                    >
+                      <div className="flex items-center gap-1">
+                        Client Name
+                        {sortField === 'clientName' && (
+                          <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </div>
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Phone
@@ -735,7 +787,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {clients.map((client) => (
+                  {sortedClients.map((client) => (
                     <tr key={client._id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         #{client.bookingNumber || client._id?.slice(-6)}

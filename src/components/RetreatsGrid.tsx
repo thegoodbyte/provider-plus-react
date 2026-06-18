@@ -293,7 +293,7 @@ const RetreatsGrid: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setViewingRetreatId(retreat._id!)}
-                        className="rounded px-2 py-1 text-left text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="rounded px-2 py-1 text-left text-sm font-medium text-gray-700 hover:text-gray-900 hover:underline focus:outline-none focus:ring-2 focus:ring-gray-500 bg-transparent"
                         style={retreatLabelStyle(retreat)}
                       >
                         {retreat.name}
@@ -310,7 +310,7 @@ const RetreatsGrid: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setViewingRetreatId(retreat._id!)}
-                        className="text-blue-700 hover:text-blue-900 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="text-gray-700 hover:text-gray-900 hover:underline focus:outline-none focus:ring-2 focus:ring-gray-500 bg-transparent"
                       >
                         {getRetreatCodeValue(retreat) || '-'}
                       </button>
