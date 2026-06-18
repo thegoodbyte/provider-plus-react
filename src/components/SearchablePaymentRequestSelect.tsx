@@ -17,6 +17,8 @@ interface Props {
   onPaymentRequestSelect: (paymentRequestId: string, paymentRequest?: PaymentRequestOption) => void;
   placeholder?: string;
   className?: string;
+  clientId?: string;
+  retreatId?: string;
 }
 
 const resolveClient = (clientValue: any) => {
@@ -31,11 +33,19 @@ const resolveRetreat = (retreatValue: any) => {
   return [retreatValue.name, retreatValue.location].filter(Boolean).join(' - ') || 'Unknown Retreat';
 };
 
+const resolveId = (value: any) => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  return value._id || value.id || '';
+};
+
 const SearchablePaymentRequestSelect: React.FC<Props> = ({
   selectedPaymentRequestId = '',
   onPaymentRequestSelect,
   placeholder = 'Search invoice, client, or retreat',
   className = '',
+  clientId,
+  retreatId,
 }) => {
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequestOption[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -62,9 +72,11 @@ const SearchablePaymentRequestSelect: React.FC<Props> = ({
 
   const filteredRequests = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    if (!term) return paymentRequests;
-
     return paymentRequests.filter((request) => {
+      if (clientId && resolveId(request.clientId) !== clientId) return false;
+      if (retreatId && resolveId(request.retreatId) !== retreatId) return false;
+      if (!term) return true;
+
       const invoice = String(request.invoiceNumber || request.display_id || '').toLowerCase();
       const client = resolveClient(request.clientId).toLowerCase();
       const retreat = resolveRetreat(request.retreatId).toLowerCase();
@@ -77,7 +89,7 @@ const SearchablePaymentRequestSelect: React.FC<Props> = ({
         String(request.fullPriceQuote || '').toLowerCase().includes(term)
       );
     });
-  }, [paymentRequests, searchTerm]);
+  }, [paymentRequests, searchTerm, clientId, retreatId]);
 
   const handleSelect = (request: PaymentRequestOption) => {
     onPaymentRequestSelect(request._id || '', request);

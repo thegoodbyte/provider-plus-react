@@ -83,6 +83,13 @@
   color: #333;
 }
 
+.card-subamount {
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
 .add-payment-form {
   background: #f8f9fa;
   border: 1px solid #e9ecef;
@@ -99,7 +106,7 @@
 
 .form-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 16px;
   margin-bottom: 16px;
 }
@@ -137,6 +144,12 @@
 .form-group input:disabled {
   background-color: #e9ecef;
   opacity: 1;
+}
+
+.usd-preview-error {
+  margin-top: 4px;
+  color: #dc3545;
+  font-size: 12px;
 }
 
 .form-buttons {
@@ -292,6 +305,22 @@
 
 .refund-btn:hover {
   background: #e0a800;
+}
+
+.edit-payment-btn {
+  padding: 6px 12px;
+  background: #e5e7eb;
+  color: #111827;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  transition: background 0.2s;
+}
+
+.edit-payment-btn:hover {
+  background: #d1d5db;
 }
 
 .booking-payments-loading {

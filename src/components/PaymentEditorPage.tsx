@@ -65,6 +65,10 @@ const PaymentEditorPage: React.FC = () => {
   const location = useLocation();
   const isEdit = Boolean(id);
   const paymentRequestIdFromQuery = new URLSearchParams(location.search).get('paymentRequestId') || '';
+  const returnTo = typeof (location.state as any)?.returnTo === 'string' && (location.state as any).returnTo.startsWith('/')
+    ? (location.state as any).returnTo
+    : null;
+  const defaultReturnPath = '/admin/payments';
 
   const [loading, setLoading] = useState(Boolean(id));
   const [clients, setClients] = useState<Client[]>([]);
@@ -294,7 +298,7 @@ const PaymentEditorPage: React.FC = () => {
       } else {
         await paymentsApi.create(submitData as any);
       }
-      navigate('/admin/payments');
+      navigate(returnTo || defaultReturnPath);
     } catch (error) {
       console.error('Error saving payment:', error);
       alert('Error saving payment');
@@ -311,11 +315,11 @@ const PaymentEditorPage: React.FC = () => {
         <div className="flex items-center gap-4 min-w-0">
           <button
             type="button"
-            onClick={() => navigate('/admin/payments')}
+            onClick={() => navigate(returnTo || defaultReturnPath)}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200"
           >
             <Icon icon={FiArrowLeft} className="w-4 h-4" />
-            Back
+            {returnTo ? 'Back to Booking' : 'Back'}
           </button>
           <div className="min-w-0">
             <h1 className="text-2xl font-semibold text-gray-900 whitespace-nowrap">
@@ -560,7 +564,7 @@ const PaymentEditorPage: React.FC = () => {
           <div className="flex justify-end gap-2 pt-4 border-t">
             <button
               type="button"
-              onClick={() => navigate('/admin/payments')}
+              onClick={() => navigate(returnTo || defaultReturnPath)}
               className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
             >
               Cancel

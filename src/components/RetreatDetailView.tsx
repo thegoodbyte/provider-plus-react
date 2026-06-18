@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { retreatsApi, bookingsApi, retreatExpensesApi, paymentsApi, clientsApi, housesApi } from '../services/api';
-import { Retreat, ExpenseSummary, PaymentSummary, House } from '../types';
+import { Retreat, ExpenseSummary, House, Payment } from '../types';
 import ExpensesTab from './ExpensesTab';
 import PaymentsTab from './PaymentsTab';
 import ClientDetailView from './ClientDetailView';
@@ -56,6 +56,7 @@ interface QuickBookingFormData {
 interface RetreatClientData {
   _id: string;
   bookingNumber?: number | string;
+  bookingHash?: string;
   clientId: string;
   clientDisplayId?: number;
   clientName: string;
@@ -66,6 +67,7 @@ interface RetreatClientData {
   status: string;
   totalAmount: number;
   amountPaid: number;
+  amountPaidUSD: number;
   currency: string;
   roomAssignment?: string;
   specialRequests?: string;
@@ -84,6 +86,16 @@ const convertAmountToUSD = (amount: number, currency?: string) => {
   return amount * rate;
 };
 
+const convertUSDToAmount = (amountUSD: number, currency?: string) => {
+  const rate = USD_FALLBACK_RATES[(currency || 'USD').toUpperCase()] || 1;
+  return rate ? amountUSD / rate : amountUSD;
+};
+
+const convertAmount = (amount: number, fromCurrency?: string, toCurrency?: string) => {
+  if ((fromCurrency || '').toUpperCase() === (toCurrency || '').toUpperCase()) return amount;
+  return convertUSDToAmount(convertAmountToUSD(amount, fromCurrency), toCurrency);
+};
+
 const formatUSD = (amount: number) => {
   return amount.toLocaleString('en-US', {
     style: 'currency',
@@ -97,7 +109,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [retreat, setRetreat] = useState<Retreat | null>(null);
   const [clients, setClients] = useState<RetreatClientData[]>([]);
   const [expensesSummary, setExpensesSummary] = useState<ExpenseSummary | null>(null);
-  const [paymentsSummary, setPaymentsSummary] = useState<PaymentSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'clients' | 'holisticView' | 'tracking' | 'expenses' | 'payments' | 'ceremonies' | 'analytics' | 'tasks'>('clients');
   const [viewingClientId, setViewingClientId] = useState<string | null>(null);
@@ -145,38 +156,74 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const fetchRetreatData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [retreatResponse, clientsResponse, expensesSummaryResponse, paymentsSummaryResponse] = await Promise.all([
+      const [retreatResponse, clientsResponse, expensesSummaryResponse, paymentsResponse] = await Promise.all([
         retreatsApi.getOne(retreatId),
         bookingsApi.getByRetreatWithDetails(retreatId),
         retreatExpensesApi.getRetreatSummary(retreatId),
-        paymentsApi.getRetreatSummary(retreatId)
+        paymentsApi.getByRetreat(retreatId)
       ]);
 
       setRetreat(retreatResponse.data);
       setExpensesSummary(expensesSummaryResponse.data);
-      setPaymentsSummary(paymentsSummaryResponse.data);
+
+      const payments = paymentsResponse.data || [];
+      const getObjectId = (value: any) => typeof value === 'object' ? value?._id || value?.id : value;
+      const getPaymentsForBooking = (booking: any) => {
+        const bookingId = getObjectId(booking);
+        const bookingHash = booking.bookingHash;
+        return payments.filter((payment: Payment) => (
+          getObjectId(payment.bookingId) === bookingId ||
+          (bookingHash && payment.bookingHash === bookingHash)
+        ));
+      };
+      const getPaymentNetAmount = (payment: Payment) => Math.max((payment.amount || 0) - (payment.refundedAmount || 0), 0);
+      const getPaymentNetUSD = (payment: Payment) => {
+        const netAmount = getPaymentNetAmount(payment);
+        if (typeof payment.usd_amount === 'number') {
+          const refundRatio = payment.amount ? netAmount / payment.amount : 1;
+          return payment.usd_amount * refundRatio;
+        }
+        return convertAmountToUSD(netAmount, payment.currency);
+      };
+      const getPaidAmountForBooking = (booking: any) => {
+        const targetCurrency = booking.currency || 'EUR';
+        const matchedPayments = getPaymentsForBooking(booking);
+        return matchedPayments
+          .filter((payment: Payment) => payment.status === 'completed')
+          .reduce((sum: number, payment: Payment) => {
+            return sum + convertAmount(getPaymentNetAmount(payment), payment.currency, targetCurrency);
+          }, 0);
+      };
+      const getPaidUsdForBooking = (booking: any) => getPaymentsForBooking(booking)
+        .filter((payment: Payment) => payment.status === 'completed')
+        .reduce((sum: number, payment: Payment) => sum + getPaymentNetUSD(payment), 0);
 
       // Transform booking data to client data format
-      const transformedClients: RetreatClientData[] = clientsResponse.data.map((booking: any) => ({
-        _id: booking._id,
-        bookingNumber: booking.bookingNumber || booking.display_id || booking.displayId,
-        clientId: booking.clientId?._id || booking.clientId || '', // Store the actual client ID
-        clientDisplayId: booking.clientId?.display_id,
-        clientName: booking.clientId
-          ? `${booking.clientId.firstName || booking.clientId.fname || ''} ${booking.clientId.lastName || booking.clientId.lname || ''}`.trim()
-          : 'Unknown Client',
-        clientPhone: booking.clientId?.phone || '',
-        registrationDate: booking.registrationDate,
-        checkInDate: booking.checkInDate,
-        checkOutDate: booking.checkOutDate,
-        status: booking.status || 'pending',
-        totalAmount: booking.totalAmount || 0,
-        amountPaid: booking.amountPaid || 0,
-        currency: booking.currency || 'EUR',
-        roomAssignment: booking.roomAssignment,
-        specialRequests: booking.specialRequests,
-        notes: booking.notes
-      }));
+      const transformedClients: RetreatClientData[] = clientsResponse.data.map((booking: any) => {
+        const currency = booking.currency || 'EUR';
+        return {
+          _id: booking._id,
+          bookingNumber: booking.bookingNumber || booking.display_id || booking.displayId,
+          bookingHash: booking.bookingHash,
+          clientId: booking.clientId?._id || booking.clientId || '', // Store the actual client ID
+          clientDisplayId: booking.clientId?.display_id,
+          clientName: booking.clientId
+            ? `${booking.clientId.firstName || booking.clientId.fname || ''} ${booking.clientId.lastName || booking.clientId.lname || ''}`.trim()
+            : 'Unknown Client',
+          clientPhone: booking.clientId?.phone || '',
+          registrationDate: booking.registrationDate,
+          checkInDate: booking.checkInDate,
+          checkOutDate: booking.checkOutDate,
+          status: booking.status || 'pending',
+          totalAmount: booking.totalAmount || 0,
+          amountPaid: getPaidAmountForBooking({ ...booking, currency }),
+          amountPaidUSD: getPaidUsdForBooking(booking),
+          currency,
+          roomAssignment: booking.roomAssignment,
+          specialRequests: booking.specialRequests,
+          notes: booking.notes
+        };
+      });
 
       setClients(transformedClients);
     } catch (error) {
@@ -184,7 +231,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       setRetreat(null);
       setClients([]);
       setExpensesSummary(null);
-      setPaymentsSummary(null);
     } finally {
       setIsLoading(false);
     }
@@ -330,6 +376,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         status: 'confirmed' as const,
         registrationDate: new Date().toISOString(),
         amountPaid: 0,
+        amountPaidUSD: 0,
         checkInDate: retreat?.startDate || new Date().toISOString(),
         checkOutDate: retreat?.endDate || new Date().toISOString()
       };
@@ -361,6 +408,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         status: 'confirmed' as const,
         registrationDate: new Date().toISOString(),
         amountPaid: 0,
+        amountPaidUSD: 0,
         checkInDate: retreat?.startDate || new Date().toISOString(),
         checkOutDate: retreat?.endDate || new Date().toISOString()
       };
@@ -416,13 +464,14 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     );
   }
 
-  const totalRevenueUSD = paymentsSummary?.completedPaymentsUSD || 0;
+  const totalRevenueUSD = clients.reduce((sum, client) => sum + (client.amountPaidUSD || 0), 0);
   const totalExpectedUSD = clients.reduce(
     (sum, client) => sum + convertAmountToUSD(client.totalAmount || 0, client.currency),
     0
   );
   const totalExpensesUSD = expensesSummary?.totalExpensesUSD || 0;
   const profitUSD = totalRevenueUSD - totalExpensesUSD;
+  const expectedProfitUSD = totalExpectedUSD - totalExpensesUSD;
   const occupancyRate = retreat.capacity ? Math.round((clients.length / retreat.capacity) * 100) : 0;
 
   // If viewing a specific client, show the client detail view
@@ -542,6 +591,12 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                 {formatUSD(profitUSD)}
               </div>
               <div className="stat-label">Profit</div>
+            </div>
+            <div className="stat-card">
+              <div className={`stat-number ${expectedProfitUSD >= 0 ? 'profit-positive' : 'profit-negative'}`}>
+                {formatUSD(expectedProfitUSD)}
+              </div>
+              <div className="stat-label">Expected Profit</div>
             </div>
           </div>
         </Panel>

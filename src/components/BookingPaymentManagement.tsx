@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Payment } from '../types';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Payment, PaymentRequest } from '../types';
 import { paymentsApi } from '../services/api';
 import CurrencyDisplay from './CurrencyDisplay';
+import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
 import './BookingPaymentManagement.css';
 
 interface BookingPaymentManagementProps {
@@ -23,11 +25,19 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   currency,
   onPaymentUpdate
 }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddPayment, setShowAddPayment] = useState(false);
+  const [usdPreview, setUsdPreview] = useState<number | null>(null);
+  const [usdPreviewLoading, setUsdPreviewLoading] = useState(false);
+  const [usdPreviewError, setUsdPreviewError] = useState('');
+  const [totalCostUsd, setTotalCostUsd] = useState<number | null>(null);
   const [newPayment, setNewPayment] = useState({
     amount: '',
+    currency: currency as 'EUR' | 'USD' | 'CZK' | 'PLN',
+    paymentRequestId: '',
     paymentMethod: 'bank_transfer',
     paymentType: 'regular_payment',
     description: '',
@@ -59,6 +69,69 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   useEffect(() => {
     fetchPayments();
   }, [bookingId]);
+
+  useEffect(() => {
+    setNewPayment((current) => ({
+      ...current,
+      currency: (current.currency || currency || 'EUR') as 'EUR' | 'USD' | 'CZK' | 'PLN',
+    }));
+  }, [currency]);
+
+  useEffect(() => {
+    const amount = Number(newPayment.amount);
+    if (!Number.isFinite(amount) || amount <= 0 || !newPayment.currency) {
+      setUsdPreview(null);
+      setUsdPreviewError('');
+      return;
+    }
+
+    let active = true;
+    const timeout = window.setTimeout(async () => {
+      try {
+        setUsdPreviewLoading(true);
+        setUsdPreviewError('');
+        const response = await paymentsApi.convertToUsd(amount, newPayment.currency);
+        if (active) setUsdPreview(response.data.usd_amount);
+      } catch (error) {
+        console.error('Error converting payment amount to USD:', error);
+        if (active) {
+          setUsdPreview(null);
+          setUsdPreviewError('USD conversion unavailable');
+        }
+      } finally {
+        if (active) setUsdPreviewLoading(false);
+      }
+    }, 350);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+    };
+  }, [newPayment.amount, newPayment.currency]);
+
+  useEffect(() => {
+    if (!Number.isFinite(Number(totalAmount)) || Number(totalAmount) <= 0 || !currency) {
+      setTotalCostUsd(null);
+      return;
+    }
+
+    let active = true;
+    const loadTotalCostUsd = async () => {
+      try {
+        const response = await paymentsApi.convertToUsd(Number(totalAmount), currency);
+        if (active) setTotalCostUsd(response.data.usd_amount);
+      } catch (error) {
+        console.error('Error converting booking total to USD:', error);
+        if (active) setTotalCostUsd(null);
+      }
+    };
+
+    loadTotalCostUsd();
+
+    return () => {
+      active = false;
+    };
+  }, [totalAmount, currency]);
 
   const fetchPayments = async () => {
     try {
@@ -107,8 +180,10 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
         retreatId,
         bookingId, // Keep for backward compatibility
         bookingHash, // New field - prioritize this for linking
+        paymentRequestId: newPayment.paymentRequestId || undefined,
         amount: parseFloat(newPayment.amount),
-        currency: currency as 'EUR' | 'CZK' | 'PLN' | 'USD',
+        currency: newPayment.currency as 'EUR' | 'CZK' | 'PLN' | 'USD',
+        usd_amount: usdPreview ?? undefined,
         paymentMethod: newPayment.paymentMethod as 'bank_transfer' | 'card' | 'cash' | 'paypal' | 'crypto' | 'stripe' | 'wise' | 'revolut' | 'other',
         paymentType: newPayment.paymentType as 'deposit_non_refundable' | 'deposit_refundable' | 'regular_payment' | 'balance_payment' | 'refund' | 'adjustment',
         description: newPayment.description || `${selectedPaymentType?.label} for booking ${bookingHash || bookingId}`,
@@ -128,6 +203,8 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       // Reset form
       setNewPayment({
         amount: '',
+        currency: currency as 'EUR' | 'USD' | 'CZK' | 'PLN',
+        paymentRequestId: '',
         paymentMethod: 'bank_transfer',
         paymentType: 'regular_payment',
         description: '',
@@ -146,6 +223,27 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       console.error('Error adding payment:', error);
       alert('Error adding payment. Please try again.');
     }
+  };
+
+  const getPaymentRequestAmount = (paymentRequest?: PaymentRequest | null) =>
+    paymentRequest?.requestedAmount || paymentRequest?.amountPaid || paymentRequest?.fullPriceQuote || paymentRequest?.fullPrice || 0;
+
+  const handlePaymentRequestSelect = (paymentRequestId: string, paymentRequest?: PaymentRequest) => {
+    const amount = getPaymentRequestAmount(paymentRequest);
+    setNewPayment((current) => ({
+      ...current,
+      paymentRequestId,
+      amount: amount ? String(amount) : current.amount,
+      currency: (paymentRequest?.currency || current.currency || currency || 'EUR') as 'EUR' | 'USD' | 'CZK' | 'PLN',
+      description: paymentRequest
+        ? `Payment for invoice ${paymentRequest.invoiceNumber || paymentRequest.display_id || paymentRequestId}`.trim()
+        : current.description,
+      paymentType: (paymentRequest?.requestType === 'deposit'
+        ? 'deposit_non_refundable'
+        : paymentRequest?.requestType === 'balance'
+          ? 'balance_payment'
+          : current.paymentType) as typeof current.paymentType,
+    }));
   };
 
   const handleRefundPayment = async (paymentId: string, amount: number) => {
@@ -189,14 +287,35 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
     }
   };
 
-  const totalPaid = payments
+  const getPaymentUsdAmount = (payment: Payment) => {
+    if (typeof payment.usd_amount === 'number') return payment.usd_amount;
+    return payment.currency === 'USD' ? payment.amount : 0;
+  };
+
+  const formatUsd = (amount?: number | null) => {
+    if (amount === null || amount === undefined || !Number.isFinite(amount)) return '-';
+    return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  const formatPaymentRequestLabel = (paymentRequest: Payment['paymentRequestId']) => {
+    if (!paymentRequest) return '-';
+    if (typeof paymentRequest === 'string') return paymentRequest.slice(-8);
+    return paymentRequest.invoiceNumber || (paymentRequest.display_id ? `#${paymentRequest.display_id}` : paymentRequest._id?.slice(-8)) || '-';
+  };
+
+  const routePrefix = (() => {
+    const firstSegment = location.pathname.split('/').filter(Boolean)[0];
+    return ['admin', 'medical', 'staff', 'user'].includes(firstSegment) ? `/${firstSegment}` : '';
+  })();
+
+  const totalPaidUsd = payments
     .filter(p => p.status === 'completed')
-    .reduce((sum, p) => sum + p.amount, 0);
+    .reduce((sum, p) => sum + getPaymentUsdAmount(p), 0);
 
-  const balance = totalAmount - totalPaid;
+  const balanceUsd = totalCostUsd !== null ? totalCostUsd - totalPaidUsd : null;
 
-  const totalRefunded = payments
-    .reduce((sum, p) => sum + (p.refundedAmount || 0), 0);
+  const totalRefundedUsd = payments
+    .reduce((sum, p) => sum + (p.refundedAmount ? (p.currency === 'USD' ? p.refundedAmount : 0) : 0), 0);
 
   if (isLoading) {
     return (
@@ -225,24 +344,25 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
           <div className="card-amount">
             <CurrencyDisplay amount={totalAmount} currency={currency as 'EUR' | 'USD' | 'CZK' | 'PLN'} />
           </div>
+          <div className="card-subamount">{formatUsd(totalCostUsd)}</div>
         </div>
         <div className="summary-card paid">
-          <div className="card-label">All Payments</div>
+          <div className="card-label">All Payments USD</div>
           <div className="card-amount">
-            <CurrencyDisplay amount={totalPaid} currency={currency as 'EUR' | 'USD' | 'CZK' | 'PLN'} />
+            {formatUsd(totalPaidUsd)}
           </div>
         </div>
-        <div className={`summary-card balance ${balance > 0 ? 'due' : 'overpaid'}`}>
-          <div className="card-label">Balance</div>
+        <div className={`summary-card balance ${balanceUsd !== null && balanceUsd > 0 ? 'due' : 'overpaid'}`}>
+          <div className="card-label">Balance USD</div>
           <div className="card-amount">
-            <CurrencyDisplay amount={balance} currency={currency as 'EUR' | 'USD' | 'CZK' | 'PLN'} />
+            {formatUsd(balanceUsd)}
           </div>
         </div>
-        {totalRefunded > 0 && (
+        {totalRefundedUsd > 0 && (
           <div className="summary-card refunded">
-            <div className="card-label">Refunded</div>
+            <div className="card-label">Refunded USD</div>
             <div className="card-amount">
-              <CurrencyDisplay amount={totalRefunded} currency={currency as 'EUR' | 'USD' | 'CZK' | 'PLN'} />
+              {formatUsd(totalRefundedUsd)}
             </div>
           </div>
         )}
@@ -252,6 +372,17 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
         <div className="add-payment-form">
           <h4>Add New Payment</h4>
           <form onSubmit={handleAddPayment}>
+            <div className="form-group">
+              <label>Payment Request</label>
+              <SearchablePaymentRequestSelect
+                selectedPaymentRequestId={newPayment.paymentRequestId}
+                onPaymentRequestSelect={(paymentRequestId, paymentRequest) => handlePaymentRequestSelect(paymentRequestId, paymentRequest as PaymentRequest)}
+                clientId={clientId}
+                retreatId={retreatId}
+                placeholder="Search payment request number"
+              />
+            </div>
+
             <div className="form-row">
               <div className="form-group">
                 <label>Amount *</label>
@@ -266,8 +397,27 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
                 />
               </div>
               <div className="form-group">
-                <label>Currency</label>
-                <input type="text" value={currency} disabled />
+                <label>Currency *</label>
+                <select
+                  value={newPayment.currency}
+                  onChange={(e) => setNewPayment({...newPayment, currency: e.target.value as 'EUR' | 'USD' | 'CZK' | 'PLN'})}
+                  required
+                >
+                  <option value="EUR">EUR</option>
+                  <option value="USD">USD</option>
+                  <option value="CZK">CZK</option>
+                  <option value="PLN">PLN</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>USD Amount</label>
+                <input
+                  type="text"
+                  value={usdPreviewLoading ? 'Calculating...' : usdPreview !== null ? formatUsd(usdPreview) : ''}
+                  readOnly
+                  placeholder="Calculated from payment currency"
+                />
+                {usdPreviewError && <p className="usd-preview-error">{usdPreviewError}</p>}
               </div>
             </div>
 
@@ -364,6 +514,8 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
                 <tr>
                   <th>Date</th>
                   <th>Amount</th>
+                  <th>USD</th>
+                  <th>Request</th>
                   <th>Type</th>
                   <th>Method</th>
                   <th>Status</th>
@@ -383,6 +535,8 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
                         </div>
                       )}
                     </td>
+                    <td className="amount-cell">{formatUsd(getPaymentUsdAmount(payment))}</td>
+                    <td>{formatPaymentRequestLabel(payment.paymentRequestId)}</td>
                     <td>
                       <span
                         className="payment-type-badge"
@@ -407,6 +561,16 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
                             title="Refund this payment"
                           >
                             🔄 Refund
+                          </button>
+                        )}
+                        {payment._id && (
+                          <button
+                            type="button"
+                            onClick={() => navigate(`${routePrefix}/payments/${payment._id}/edit`, { state: { returnTo: location.pathname } })}
+                            className="edit-payment-btn"
+                            title="Edit this payment"
+                          >
+                            Edit
                           </button>
                         )}
                       </div>
