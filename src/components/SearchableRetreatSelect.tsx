@@ -111,7 +111,7 @@ const SearchableRetreatSelect: React.FC<SearchableRetreatSelectProps> = ({
               >
                 <div className="font-medium text-gray-900">
                   {retreat.name}
-                  {(retreat.retreatCode || retreat.code) ? ` (${retreat.retreatCode || retreat.code})` : ''}
+                  {(retreat.code || retreat.retreatCode) ? ` (${retreat.code || retreat.retreatCode})` : ''}
                 </div>
                 <div className="text-sm text-gray-500">
                   {retreat.location_town || retreat.locationTown || retreat.location || 'No location town'}

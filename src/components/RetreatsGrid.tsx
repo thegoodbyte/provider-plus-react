@@ -102,7 +102,7 @@ const RetreatsGrid: React.FC = () => {
   };
 
   const getRetreatCodeValue = (retreat: Partial<Retreat>) =>
-    retreat.retreatCode || retreat.code || '';
+    retreat.code || retreat.retreatCode || '';
 
   const getRetreatTown = (retreat: Partial<Retreat>) =>
     retreat.location_town || retreat.locationTown || retreat.location || '';
@@ -229,6 +229,7 @@ const RetreatsGrid: React.FC = () => {
           onClick={() => {
             setFormData({
               name: '',
+              code: '',
               retreatCode: '',
               location: '',
               location_town: '',
@@ -350,6 +351,7 @@ const RetreatsGrid: React.FC = () => {
                           setEditingRetreat(retreat);
                           setFormData({
                             ...retreat,
+                            code: getRetreatCodeValue(retreat),
                             retreatCode: getRetreatCodeValue(retreat),
                             location_town: getRetreatTown(retreat),
                             location: getRetreatTown(retreat),
@@ -426,8 +428,8 @@ const RetreatsGrid: React.FC = () => {
                 </label>
                 <input
                   type="text"
-                  value={formData.retreatCode || formData.code || ''}
-                  onChange={(e) => setFormData({ ...formData, retreatCode: e.target.value })}
+                  value={formData.code || formData.retreatCode || ''}
+                  onChange={(e) => setFormData({ ...formData, code: e.target.value, retreatCode: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g. BEN-08-03-26"
                 />
@@ -555,8 +557,8 @@ const RetreatsGrid: React.FC = () => {
 
                     const retreatData = {
                       name: formData.name!,
-                      retreatCode: formData.retreatCode?.trim() || undefined,
-                      code: formData.retreatCode?.trim() || undefined,
+                      code: formData.code?.trim() || formData.retreatCode?.trim() || undefined,
+                      retreatCode: formData.code?.trim() || formData.retreatCode?.trim() || undefined,
                       location_town: getRetreatTown(formData),
                       location: getRetreatTown(formData),
                       houseId: formData.houseId,
@@ -614,8 +616,8 @@ const RetreatsGrid: React.FC = () => {
                 </label>
                 <input
                   type="text"
-                  value={formData.retreatCode || formData.code || ''}
-                  onChange={(e) => setFormData({ ...formData, retreatCode: e.target.value })}
+                  value={formData.code || formData.retreatCode || ''}
+                  onChange={(e) => setFormData({ ...formData, code: e.target.value, retreatCode: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g. BEN-08-03-26"
                 />
@@ -755,8 +757,8 @@ const RetreatsGrid: React.FC = () => {
                     if (editingRetreat?._id) {
                       const updateData = {
                         ...formData,
-                        retreatCode: formData.retreatCode?.trim() || undefined,
-                        code: formData.retreatCode?.trim() || undefined,
+                        code: formData.code?.trim() || formData.retreatCode?.trim() || undefined,
+                        retreatCode: formData.code?.trim() || formData.retreatCode?.trim() || undefined,
                         location_town: getRetreatTown(formData),
                         location: getRetreatTown(formData),
                       };

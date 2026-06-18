@@ -38,6 +38,7 @@ type HelperDashboard = {
   retreat?: {
     _id: string;
     name: string;
+    code?: string;
     retreatCode?: string;
     startDate?: string;
     endDate?: string;
@@ -208,7 +209,7 @@ const HelperCurrentRetreatPage: React.FC = () => {
           <p className="mt-1 text-sm text-apple-gray-600">
             {dashboard?.retreat ? (
               <>
-                {dashboard.retreat.retreatCode || dashboard.retreat.name} · {formatDate(dashboard.retreat.startDate)} - {formatDate(dashboard.retreat.endDate)}
+                {dashboard.retreat.code || dashboard.retreat.retreatCode || dashboard.retreat.name} · {formatDate(dashboard.retreat.startDate)} - {formatDate(dashboard.retreat.endDate)}
               </>
             ) : 'No current retreat found'}
           </p>

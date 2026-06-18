@@ -370,7 +370,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   const formatDate = (date: Date) => date.toLocaleDateString(getDateLocale());
   const retreatStartDate = parseDate(retreat?.startDate || retreat?.dates?.startDate);
   const retreatEndDate = parseDate(retreat?.endDate || retreat?.dates?.endDate);
-  const locationTown = house?.generalTown || house?.city || retreat?.location || house?.name || 'N/A';
+  const locationTown = house?.generalTown || house?.general_town || house?.city || retreat?.location_town || retreat?.locationTown || retreat?.location || house?.name || 'N/A';
   const locationAddress = house?.address || retreat?.address || 'N/A';
   const googleMapLink = house?.googleMapLink || house?.google_map_link || retreat?.googleMapLink || retreat?.google_map_link || '';
   const retreatDateRange = [

@@ -267,7 +267,7 @@ const ClientDetailsPage: React.FC = () => {
   const getRetreatLabel = (retreat: any) => {
     if (!retreat) return 'Unknown retreat';
     return [
-      retreat.retreatCode || retreat.code || retreat.name || retreat.title,
+      retreat.code || retreat.retreatCode || retreat.name || retreat.title,
       retreat.location,
       retreat.startDate ? formatDate(retreat.startDate) : '',
     ].filter(Boolean).join(' - ') || getId(retreat);

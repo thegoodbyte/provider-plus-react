@@ -94,7 +94,7 @@ const getObjectId = (value: any): string => {
 };
 
 const getRetreatCode = (retreat: any) => {
-  const explicitCode = String(retreat?.retreatCode || retreat?.code || '').trim();
+  const explicitCode = String(retreat?.code || retreat?.retreatCode || '').trim();
   if (explicitCode) return explicitCode;
   const rawName = String(retreat?.name || retreat?.location || 'Retreat').trim();
   const initials = rawName
