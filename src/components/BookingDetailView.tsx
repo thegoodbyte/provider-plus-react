@@ -677,9 +677,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
 
         {activeTab === 'overview' && (
           <>
-            <div className="booking-overview-hero">
-              <span className="booking-overview-label">Booking</span>
-              <div className="booking-overview-number">#{booking.bookingNumber || 'N/A'}</div>
+            <div className="booking-overview-summary">
               <div className="booking-overview-retreat">
                 <span className="booking-type-dot">{bookingTypeCode}</span>
                 <span className="retreat-code-pill">{retreatCode}</span>

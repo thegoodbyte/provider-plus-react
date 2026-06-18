@@ -271,9 +271,35 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
     return typeInfo?.label || type.replace('_', ' ').toUpperCase();
   };
 
+  const formatPaymentTypeShort = (type: string) => {
+    switch (type) {
+      case 'deposit_non_refundable': return 'Deposit NR';
+      case 'deposit_refundable': return 'Deposit R';
+      case 'regular_payment': return 'Regular';
+      case 'balance_payment': return 'Balance';
+      case 'adjustment': return 'Adjust';
+      case 'refund': return 'Refund';
+      default: return type.replace(/_/g, ' ');
+    }
+  };
+
   const formatPaymentMethod = (method: string) => {
     const methodInfo = paymentMethods.find(pm => pm.value === method);
     return methodInfo?.label || method.replace('_', ' ').toUpperCase();
+  };
+
+  const formatPaymentMethodShort = (method: string) => {
+    switch (method) {
+      case 'bank_transfer': return 'Bank';
+      case 'cash': return 'Cash';
+      case 'card': return 'Card';
+      case 'stripe': return 'Stripe';
+      case 'paypal': return 'PayPal';
+      case 'wise': return 'Wise';
+      case 'revolut': return 'Revolut';
+      case 'crypto': return 'Crypto';
+      default: return 'Other';
+    }
   };
 
   const getPaymentTypeColor = (type: string) => {
@@ -333,8 +359,10 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
         <button
           onClick={() => setShowAddPayment(!showAddPayment)}
           className="add-payment-btn"
+          title={showAddPayment ? 'Cancel adding payment' : 'Add payment'}
+          aria-label={showAddPayment ? 'Cancel adding payment' : 'Add payment'}
         >
-          {showAddPayment ? 'Cancel' : 'Add Payment'}
+          {showAddPayment ? 'Cancel' : '+'}
         </button>
       </div>
 
@@ -514,7 +542,6 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
                 <tr>
                   <th>Date</th>
                   <th>Amount</th>
-                  <th>USD</th>
                   <th>Request</th>
                   <th>Type</th>
                   <th>Method</th>
@@ -524,59 +551,68 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
                 </tr>
               </thead>
               <tbody>
-                {payments.map((payment) => (
-                  <tr key={payment._id}>
-                    <td>{new Date(payment.paymentDate).toLocaleDateString()}</td>
-                    <td className="amount-cell">
-                      <CurrencyDisplay amount={payment.amount} currency={payment.currency} />
-                      {payment.refundedAmount && payment.refundedAmount > 0 && (
-                        <div className="refunded-amount">
-                          Refunded: <CurrencyDisplay amount={payment.refundedAmount} currency={payment.currency} />
+                {payments.map((payment) => {
+                  const paymentType = payment.paymentType || 'regular_payment';
+                  const usdAmount = formatUsd(getPaymentUsdAmount(payment));
+                  return (
+                    <tr
+                      key={payment._id}
+                      title={`USD equivalent: ${usdAmount}`}
+                    >
+                      <td>{new Date(payment.paymentDate).toLocaleDateString()}</td>
+                      <td className="amount-cell">
+                        <CurrencyDisplay amount={payment.amount} currency={payment.currency} />
+                        {payment.refundedAmount && payment.refundedAmount > 0 && (
+                          <div className="refunded-amount">
+                            Refunded: <CurrencyDisplay amount={payment.refundedAmount} currency={payment.currency} />
+                          </div>
+                        )}
+                      </td>
+                      <td>{formatPaymentRequestLabel(payment.paymentRequestId)}</td>
+                      <td>
+                        <span
+                          className="payment-type-badge"
+                          style={{ backgroundColor: getPaymentTypeColor(paymentType) }}
+                          title={formatPaymentType(paymentType)}
+                        >
+                          {formatPaymentTypeShort(paymentType)}
+                        </span>
+                      </td>
+                      <td title={formatPaymentMethod(payment.paymentMethod)}>
+                        {formatPaymentMethodShort(payment.paymentMethod)}
+                      </td>
+                      <td>
+                        <span className={`status-badge status-${payment.status}`}>
+                          {payment.status.toUpperCase()}
+                        </span>
+                      </td>
+                      <td>{payment.transactionReference || '-'}</td>
+                      <td>
+                        <div className="payment-actions">
+                          {payment.isRefundable && payment.status === 'completed' && !payment.refundedAmount && (
+                            <button
+                              onClick={() => handleRefundPayment(payment._id!, payment.amount)}
+                              className="refund-btn"
+                              title="Refund this payment"
+                            >
+                              Refund
+                            </button>
+                          )}
+                          {payment._id && (
+                            <button
+                              type="button"
+                              onClick={() => navigate(`${routePrefix}/payments/${payment._id}/edit`, { state: { returnTo: location.pathname } })}
+                              className="edit-payment-btn"
+                              title="Edit this payment"
+                            >
+                              Edit
+                            </button>
+                          )}
                         </div>
-                      )}
-                    </td>
-                    <td className="amount-cell">{formatUsd(getPaymentUsdAmount(payment))}</td>
-                    <td>{formatPaymentRequestLabel(payment.paymentRequestId)}</td>
-                    <td>
-                      <span
-                        className="payment-type-badge"
-                        style={{ backgroundColor: getPaymentTypeColor(payment.paymentType || 'regular_payment') }}
-                      >
-                        {formatPaymentType(payment.paymentType || 'regular_payment')}
-                      </span>
-                    </td>
-                    <td>{formatPaymentMethod(payment.paymentMethod)}</td>
-                    <td>
-                      <span className={`status-badge status-${payment.status}`}>
-                        {payment.status.toUpperCase()}
-                      </span>
-                    </td>
-                    <td>{payment.transactionReference || '-'}</td>
-                    <td>
-                      <div className="payment-actions">
-                        {payment.isRefundable && payment.status === 'completed' && !payment.refundedAmount && (
-                          <button
-                            onClick={() => handleRefundPayment(payment._id!, payment.amount)}
-                            className="refund-btn"
-                            title="Refund this payment"
-                          >
-                            🔄 Refund
-                          </button>
-                        )}
-                        {payment._id && (
-                          <button
-                            type="button"
-                            onClick={() => navigate(`${routePrefix}/payments/${payment._id}/edit`, { state: { returnTo: location.pathname } })}
-                            className="edit-payment-btn"
-                            title="Edit this payment"
-                          >
-                            Edit
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

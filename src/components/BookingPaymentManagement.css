@@ -10,6 +10,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
   margin-bottom: 20px;
 }
 
@@ -20,13 +21,18 @@
 }
 
 .add-payment-btn {
-  padding: 10px 20px;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  padding: 0;
   background: #28a745;
   color: white;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
   transition: background 0.2s;
 }
 
@@ -217,7 +223,7 @@
 
 .payments-table th {
   background: #f8f9fa;
-  padding: 12px;
+  padding: 10px;
   text-align: left;
   font-weight: 600;
   color: #495057;
@@ -227,9 +233,10 @@
 }
 
 .payments-table td {
-  padding: 12px;
+  padding: 10px;
   border-bottom: 1px solid #e9ecef;
-  vertical-align: top;
+  vertical-align: middle;
+  white-space: nowrap;
 }
 
 .payments-table tr:hover {
@@ -249,12 +256,14 @@
 
 .payment-type-badge {
   display: inline-block;
-  padding: 4px 8px;
-  border-radius: 12px;
+  min-width: 68px;
+  padding: 4px 7px;
+  border-radius: 999px;
   font-size: 11px;
   font-weight: 600;
   color: white;
-  text-transform: uppercase;
+  text-align: center;
+  text-transform: none;
 }
 
 .status-badge {
@@ -289,10 +298,11 @@
 .payment-actions {
   display: flex;
   gap: 8px;
+  align-items: center;
 }
 
 .refund-btn {
-  padding: 6px 12px;
+  padding: 6px 10px;
   background: #ffc107;
   color: #333;
   border: none;
@@ -308,7 +318,7 @@
 }
 
 .edit-payment-btn {
-  padding: 6px 12px;
+  padding: 6px 10px;
   background: #e5e7eb;
   color: #111827;
   border: none;
@@ -354,9 +364,7 @@
   }
 
   .payment-summary-header {
-    flex-direction: column;
-    gap: 16px;
-    text-align: center;
+    align-items: center;
   }
 
   .payments-table {
