@@ -273,9 +273,18 @@
 
 .client-mobile-heading,
 .mobile-client-details-toggle,
-.mobile-booking-summary,
-.mobile-payment-accordion {
+.mobile-booking-summary {
   display: none;
+}
+
+.booking-payment-accordion .booking-detail-accordion-body {
+  padding: 0;
+}
+
+.booking-payment-accordion .booking-payment-management {
+  margin-top: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 /* PDF-specific styles */
@@ -726,15 +735,11 @@
     display: none;
   }
 
-  .mobile-payment-accordion {
-    display: block;
-  }
-
-  .mobile-payment-accordion .booking-detail-accordion-body {
+  .booking-payment-accordion .booking-detail-accordion-body {
     padding: 0;
   }
 
-  .mobile-payment-accordion .booking-payment-management {
+  .booking-payment-accordion .booking-payment-management {
     margin-top: 0;
     border-radius: 0;
     box-shadow: none;
@@ -1089,8 +1094,7 @@
     display: none;
   }
 
-  .mobile-client-details-toggle,
-  .mobile-payment-accordion {
+  .mobile-client-details-toggle {
     display: flex;
   }
 
@@ -1098,15 +1102,11 @@
     display: block;
   }
 
-  .mobile-payment-accordion {
-    flex-direction: column;
-  }
-
-  .mobile-payment-accordion .booking-detail-accordion-body {
+  .booking-payment-accordion .booking-detail-accordion-body {
     padding: 0;
   }
 
-  .mobile-payment-accordion .booking-payment-management {
+  .booking-payment-accordion .booking-payment-management {
     margin-top: 0;
     border-radius: 0;
     box-shadow: none;

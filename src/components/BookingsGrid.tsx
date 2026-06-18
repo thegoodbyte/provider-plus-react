@@ -422,7 +422,7 @@ const BookingsGrid: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => navigate(`${routePrefix}/bookings/${booking._id}`)}
-                      className="text-sm font-semibold text-gray-900 hover:text-gray-950 hover:underline"
+                      className="booking-number-link !border-0 !bg-transparent !p-0 text-sm font-semibold text-gray-900 !shadow-none hover:!bg-transparent hover:text-gray-950 hover:underline"
                       title="View booking"
                     >
                       #{booking.bookingNumber || booking._id?.slice(-6)}

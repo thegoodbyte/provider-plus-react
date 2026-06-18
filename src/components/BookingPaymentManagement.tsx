@@ -210,24 +210,24 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   return (
     <div className="booking-payment-management">
       <div className="payment-summary-header">
-        <h3>💰 Payment Management</h3>
+        <h3>Payments</h3>
         <button
           onClick={() => setShowAddPayment(!showAddPayment)}
           className="add-payment-btn"
         >
-          {showAddPayment ? '❌ Cancel' : '💰 Add Payment'}
+          {showAddPayment ? 'Cancel' : 'Add Payment'}
         </button>
       </div>
 
       <div className="payment-summary-cards">
         <div className="summary-card total">
-          <div className="card-label">Total Amount</div>
+          <div className="card-label">Total Cost</div>
           <div className="card-amount">
             <CurrencyDisplay amount={totalAmount} currency={currency as 'EUR' | 'USD' | 'CZK' | 'PLN'} />
           </div>
         </div>
         <div className="summary-card paid">
-          <div className="card-label">Total Paid</div>
+          <div className="card-label">All Payments</div>
           <div className="card-amount">
             <CurrencyDisplay amount={totalPaid} currency={currency as 'EUR' | 'USD' | 'CZK' | 'PLN'} />
           </div>
@@ -344,8 +344,8 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
             </div>
 
             <div className="form-buttons">
-              <button type="submit" className="save-btn">💾 Add Payment</button>
-              <button type="button" onClick={() => setShowAddPayment(false)} className="cancel-btn">❌ Cancel</button>
+              <button type="submit" className="save-btn">Add Payment</button>
+              <button type="button" onClick={() => setShowAddPayment(false)} className="cancel-btn">Cancel</button>
             </div>
           </form>
         </div>

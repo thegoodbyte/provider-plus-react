@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { clientsApi } from '../services/api';
 import { Client } from '../types';
 import LoadingSpinner from './LoadingSpinner';
@@ -57,6 +57,11 @@ const cropImageToProfileSquare = (file: File, size = 200): Promise<File> => {
 const ClientEditPage: React.FC = () => {
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const returnTo = typeof (location.state as any)?.returnTo === 'string' && (location.state as any).returnTo.startsWith('/')
+    ? (location.state as any).returnTo
+    : null;
+  const clientDetailPath = `/admin/clients/${clientId}`;
   const [isLoading, setIsLoading] = useState(true);
   const [client, setClient] = useState<Client | null>(null);
   const [formData, setFormData] = useState<Client & {
@@ -253,8 +258,7 @@ const ClientEditPage: React.FC = () => {
       // Update the client
       await clientsApi.update(clientId!, clientData);
 
-      // Navigate back to client details page
-      navigate(`/admin/clients/${clientId}`);
+      navigate(returnTo || clientDetailPath);
     } catch (error: any) {
       console.error('Error updating client:', error);
       setValidationErrors([getApiErrorMessage(error, 'Failed to update client. Please try again.')]);
@@ -286,9 +290,9 @@ const ClientEditPage: React.FC = () => {
       <div className="mx-auto max-w-7xl">
       <div className="mb-6 rounded-lg border border-slate-200 bg-white px-4 py-4 shadow-sm sm:px-6">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-start">
-          <AppleButton onClick={() => navigate(`/admin/clients/${clientId}`)} variant="ghost">
+          <AppleButton onClick={() => navigate(returnTo || clientDetailPath)} variant="ghost">
             <Icon icon={FiArrowLeft} className="w-4 h-4 mr-2" />
-            Back to Client
+            {returnTo ? 'Back to Booking' : 'Back to Client'}
           </AppleButton>
         </div>
 
@@ -651,7 +655,7 @@ const ClientEditPage: React.FC = () => {
         <div className="flex justify-end gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm lg:col-start-2">
           <AppleButton
             type="button"
-            onClick={() => navigate(`/admin/clients/${clientId}`)}
+            onClick={() => navigate(returnTo || clientDetailPath)}
             variant="ghost"
             disabled={isSubmitting}
           >

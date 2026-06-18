@@ -6,7 +6,6 @@ import BookingPaymentManagement from './BookingPaymentManagement';
 import BookingMedicalUpload from './BookingMedicalUpload';
 import BookingDocumentsUpload from './BookingDocumentsUpload';
 import ClientBookingWorkflowTab from './ClientBookingWorkflowTab';
-import ClientEditModal from './ClientEditModal';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 import { createBookingConfirmationPdf, generateBookingPDF } from './BookingConfirmationPDF';
 import { BookingFlowItem, MedicalArtifact, MedicalReviewRequest } from '../types';
@@ -258,7 +257,6 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [booking, setBooking] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const [isEditingClient, setIsEditingClient] = useState(false);
   const [pdfLanguage, setPdfLanguage] = useState<'pl' | 'cz' | 'en'>('pl');
   const [requirementsRefreshKey, setRequirementsRefreshKey] = useState(0);
   const [previewUrl, setPreviewUrl] = useState('');
@@ -270,7 +268,8 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'requirements' | 'medical' | 'documents' | 'workflow' | 'notes'>('overview');
   const [showBookingDates, setShowBookingDates] = useState(false);
   const [showClientDetails, setShowClientDetails] = useState(false);
-  const [showMobilePayments, setShowMobilePayments] = useState(true);
+  const [showRetreatInfo, setShowRetreatInfo] = useState(false);
+  const [showPayments, setShowPayments] = useState(true);
   const pdfRef = useRef<HTMLDivElement>(null);
   const routePrefix = useMemo(() => {
     const firstSegment = location.pathname.split('/').filter(Boolean)[0];
@@ -380,14 +379,18 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     };
   };
 
-  const handleClientUpdate = async (updatedClient: any) => {
-    // Update the booking with the new client info
-    fetchBookingDetails();
-  };
-
   const handleBookingRelatedUpdate = () => {
     fetchBookingDetails();
     setRequirementsRefreshKey((current) => current + 1);
+  };
+
+  const navigateToClientEdit = () => {
+    const clientId = getObjectId(booking?.clientId || booking?.clientDetails);
+    if (!clientId) return;
+
+    navigate(`${routePrefix}/clients/${clientId}/edit`, {
+      state: { returnTo: location.pathname },
+    });
   };
 
   const generatePDF = async () => {
@@ -664,6 +667,31 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
 
         {activeTab === 'overview' && (
           <>
+            <div className="booking-detail-accordion booking-payment-accordion">
+              <button
+                type="button"
+                className="booking-detail-accordion-trigger"
+                onClick={() => setShowPayments((current) => !current)}
+                aria-expanded={showPayments}
+              >
+                <span>Payments</span>
+                <span>{showPayments ? 'Hide' : 'Show'}</span>
+              </button>
+              {showPayments && (
+                <div className="booking-detail-accordion-body">
+                  <BookingPaymentManagement
+                    bookingId={bookingId}
+                    bookingHash={booking.bookingHash}
+                    clientId={typeof client === 'object' ? client._id : client}
+                    retreatId={typeof retreat === 'object' ? retreat._id : retreat}
+                    totalAmount={booking.totalAmount || 0}
+                    currency={booking.currency || 'EUR'}
+                    onPaymentUpdate={fetchBookingDetails}
+                  />
+                </div>
+              )}
+            </div>
+
             <div className="detail-section pdf-section">
               <div className="section-header client-section-header">
                 <h3 className="pdf-section-title">Client Information</h3>
@@ -674,7 +702,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
                   </div>
                   <button
                     className="edit-btn edit-client-btn"
-                    onClick={() => setIsEditingClient(true)}
+                    onClick={navigateToClientEdit}
                     title="Edit client information"
                     aria-label="Edit client information"
                   >
@@ -684,7 +712,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
                 </div>
                 <button
                   className="edit-btn edit-client-btn desktop-client-edit"
-                  onClick={() => setIsEditingClient(true)}
+                  onClick={navigateToClientEdit}
                   title="Edit client information"
                 >
                   <HeaderIcon icon={FiEdit3} />
@@ -737,30 +765,42 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
               </div>
             </div>
 
-            <div className="detail-section pdf-section retreat-info-section">
-              <h3 className="pdf-section-title">Retreat Information</h3>
-              <div className="info-grid">
-                <div className="info-item">
-                  <label>Retreat Name:</label>
-                  <span>{retreat?.name || 'N/A'}</span>
+            <div className="booking-detail-accordion retreat-info-accordion">
+              <button
+                type="button"
+                className="booking-detail-accordion-trigger"
+                onClick={() => setShowRetreatInfo((current) => !current)}
+                aria-expanded={showRetreatInfo}
+              >
+                <span>Retreat Information</span>
+                <span>{showRetreatInfo ? 'Hide' : 'Show'}</span>
+              </button>
+              {showRetreatInfo && (
+                <div className="booking-detail-accordion-body">
+                  <div className="info-grid">
+                    <div className="info-item">
+                      <label>Retreat Name:</label>
+                      <span>{retreat?.name || 'N/A'}</span>
+                    </div>
+                    <div className="info-item">
+                      <label>Location town:</label>
+                      <span>{getRetreatLocationTown(retreat) || 'N/A'}</span>
+                    </div>
+                    <div className="info-item">
+                      <label>Type:</label>
+                      <span>{retreat?.type ? retreat.type.charAt(0).toUpperCase() + retreat.type.slice(1) : 'N/A'}</span>
+                    </div>
+                    <div className="info-item">
+                      <label>Start Date:</label>
+                      <span>{formatDate(retreat?.startDate || retreat?.dates?.startDate)}</span>
+                    </div>
+                    <div className="info-item">
+                      <label>End Date:</label>
+                      <span>{formatDate(retreat?.endDate || retreat?.dates?.endDate)}</span>
+                    </div>
+                  </div>
                 </div>
-                <div className="info-item">
-                  <label>Location town:</label>
-                  <span>{getRetreatLocationTown(retreat) || 'N/A'}</span>
-                </div>
-                <div className="info-item">
-                  <label>Type:</label>
-                  <span>{retreat?.type ? retreat.type.charAt(0).toUpperCase() + retreat.type.slice(1) : 'N/A'}</span>
-                </div>
-                <div className="info-item">
-                  <label>Start Date:</label>
-                  <span>{formatDate(retreat?.startDate || retreat?.dates?.startDate)}</span>
-                </div>
-                <div className="info-item">
-                  <label>End Date:</label>
-                  <span>{formatDate(retreat?.endDate || retreat?.dates?.endDate)}</span>
-                </div>
-              </div>
+              )}
             </div>
 
             <div className="booking-detail-accordion">
@@ -793,30 +833,6 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
               )}
             </div>
 
-            <div className="booking-detail-accordion mobile-payment-accordion">
-              <button
-                type="button"
-                className="booking-detail-accordion-trigger"
-                onClick={() => setShowMobilePayments((current) => !current)}
-                aria-expanded={showMobilePayments}
-              >
-                <span>Payment</span>
-                <span>{showMobilePayments ? 'Hide' : 'Show'}</span>
-              </button>
-              {showMobilePayments && (
-                <div className="booking-detail-accordion-body">
-                  <BookingPaymentManagement
-                    bookingId={bookingId}
-                    bookingHash={booking.bookingHash}
-                    clientId={typeof client === 'object' ? client._id : client}
-                    retreatId={typeof retreat === 'object' ? retreat._id : retreat}
-                    totalAmount={booking.totalAmount || 0}
-                    currency={booking.currency || 'EUR'}
-                    onPaymentUpdate={fetchBookingDetails}
-                  />
-                </div>
-              )}
-            </div>
           </>
         )}
 
@@ -891,14 +907,6 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
           </>
         )}
       </div>
-
-      {isEditingClient && client && typeof client === 'object' && (
-        <ClientEditModal
-          client={client}
-          onClose={() => setIsEditingClient(false)}
-          onSave={handleClientUpdate}
-        />
-      )}
 
       {confirmationEmailDraft && (
         <EmailComposeModal

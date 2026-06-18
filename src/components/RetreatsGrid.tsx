@@ -108,14 +108,21 @@ const RetreatsGrid: React.FC = () => {
     retreat.location_town || retreat.locationTown || retreat.location || '';
 
   const handleHouseSelection = (value: string) => {
+    if (!value) {
+      setFormData((prev) => ({
+        ...prev,
+        houseId: '',
+      }));
+      return;
+    }
+
     const selectedHouse = houses.find((house) => house.name === value || house._id === value);
     const houseCapacity = selectedHouse?.capacity || selectedHouse?.guestCapacity;
-    const town = selectedHouse?.generalTown || selectedHouse?.general_town || selectedHouse?.city || value;
+    const town = selectedHouse?.generalTown || selectedHouse?.general_town || selectedHouse?.city || selectedHouse?.name;
 
     setFormData((prev) => ({
       ...prev,
-      location: town,
-      location_town: town,
+      ...(town ? { location: town, location_town: town } : {}),
       houseId: selectedHouse?._id || prev.houseId,
       capacity: houseCapacity ? Number(houseCapacity) : prev.capacity,
     }));
