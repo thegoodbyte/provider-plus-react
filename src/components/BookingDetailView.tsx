@@ -75,6 +75,15 @@ const getRetreatCode = (retreat: any) => {
 const getRetreatLocationTown = (retreat: any) =>
   String(retreat?.location_town || retreat?.locationTown || retreat?.location || '').trim();
 
+const getRetreatAddress = (retreat: any) =>
+  String(
+    retreat?.address ||
+    retreat?.house?.address ||
+    retreat?.houseId?.address ||
+    getRetreatLocationTown(retreat) ||
+    ''
+  ).trim();
+
 const getArtifactTime = (artifact: MedicalArtifact) =>
   new Date(artifact.receivedAt || artifact.createdAt || 0).getTime();
 
@@ -544,6 +553,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const clientName = getClientName(client) || 'N/A';
   const bookingTypeCode = booking.bookingType === 'booster' ? 'B' : 'F';
   const retreatCode = getRetreatCode(retreat);
+  const retreatAddress = getRetreatAddress(retreat);
   const tabs = [
     { key: 'overview', label: 'Overview' },
     { key: 'payments', label: 'Payments' },
@@ -667,29 +677,16 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
 
         {activeTab === 'overview' && (
           <>
-            <div className="booking-detail-accordion booking-payment-accordion">
-              <button
-                type="button"
-                className="booking-detail-accordion-trigger"
-                onClick={() => setShowPayments((current) => !current)}
-                aria-expanded={showPayments}
-              >
-                <span>Payments</span>
-                <span>{showPayments ? 'Hide' : 'Show'}</span>
-              </button>
-              {showPayments && (
-                <div className="booking-detail-accordion-body">
-                  <BookingPaymentManagement
-                    bookingId={bookingId}
-                    bookingHash={booking.bookingHash}
-                    clientId={typeof client === 'object' ? client._id : client}
-                    retreatId={typeof retreat === 'object' ? retreat._id : retreat}
-                    totalAmount={booking.totalAmount || 0}
-                    currency={booking.currency || 'EUR'}
-                    onPaymentUpdate={fetchBookingDetails}
-                  />
-                </div>
-              )}
+            <div className="booking-overview-hero">
+              <span className="booking-overview-label">Booking</span>
+              <div className="booking-overview-number">#{booking.bookingNumber || 'N/A'}</div>
+              <div className="booking-overview-retreat">
+                <span className="booking-type-dot">{bookingTypeCode}</span>
+                <span className="retreat-code-pill">{retreatCode}</span>
+              </div>
+              <div className="booking-overview-address">
+                {retreatAddress || 'No retreat address recorded'}
+              </div>
             </div>
 
             <div className="detail-section pdf-section">
@@ -752,17 +749,29 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
               </div>
             </div>
 
-            <div className="detail-section pdf-section mobile-booking-summary">
-              <h3 className="pdf-section-title">Booking Information</h3>
-              <div className="mobile-booking-summary-row">
-                <div className="info-item">
-                  <label>Booking Type:</label>
-                  <span className="booking-type-display">
-                    <span className="booking-type-dot">{bookingTypeCode}</span>
-                    <span className="retreat-code-pill">{retreatCode}</span>
-                  </span>
+            <div className="booking-detail-accordion booking-payment-accordion">
+              <button
+                type="button"
+                className="booking-detail-accordion-trigger"
+                onClick={() => setShowPayments((current) => !current)}
+                aria-expanded={showPayments}
+              >
+                <span>Payment Information</span>
+                <span>{showPayments ? 'Hide' : 'Show'}</span>
+              </button>
+              {showPayments && (
+                <div className="booking-detail-accordion-body">
+                  <BookingPaymentManagement
+                    bookingId={bookingId}
+                    bookingHash={booking.bookingHash}
+                    clientId={typeof client === 'object' ? client._id : client}
+                    retreatId={typeof retreat === 'object' ? retreat._id : retreat}
+                    totalAmount={booking.totalAmount || 0}
+                    currency={booking.currency || 'EUR'}
+                    onPaymentUpdate={fetchBookingDetails}
+                  />
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="booking-detail-accordion retreat-info-accordion">

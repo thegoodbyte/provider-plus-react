@@ -33,6 +33,14 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId }) => {
     return moment(date).format('MM/DD/YYYY');
   };
 
+  const formatOrdinal = (value?: number) => {
+    if (!value) return 'N/A';
+    const suffix = value % 100 >= 11 && value % 100 <= 13
+      ? 'th'
+      : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[value % 10] || 'th';
+    return `${value}${suffix}`;
+  };
+
   useEffect(() => {
     loadCeremonies();
   }, [retreatId]);
@@ -53,6 +61,8 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId }) => {
   const handleAdd = () => {
     form.resetFields();
     setEditingCeremony(null);
+    const nextCeremonyNumber = ceremonies.reduce((max, ceremony) => Math.max(max, Number(ceremony.ceremonyNumber) || 0), 0) + 1;
+    form.setFieldsValue({ ceremonyNumber: nextCeremonyNumber });
     setModalVisible(true);
   };
 
@@ -162,7 +172,7 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId }) => {
               {ceremonies.map((ceremony) => (
                 <tr key={ceremony._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {ceremony.ceremonyNumber}
+                    {formatOrdinal(ceremony.ceremonyNumber)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {formatDate(ceremony.date)}
@@ -251,10 +261,10 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId }) => {
         >
           <Form.Item
             name="ceremonyNumber"
-            label="Ceremony Number"
+            label="Internal Ceremony Number"
             rules={[{ required: true, message: 'Please enter ceremony number' }]}
           >
-            <Input type="number" placeholder="Enter ceremony number" />
+            <Input type="number" min={1} placeholder="1st, 2nd, 3rd..." />
           </Form.Item>
 
           <Form.Item

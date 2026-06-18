@@ -31,6 +31,14 @@ const ClientCeremoniesTab: React.FC<ClientCeremoniesTabProps> = ({ clientId }) =
     return time ? moment(time, 'HH:mm').format('HH:mm') : 'N/A';
   };
 
+  const formatOrdinal = (value?: number) => {
+    if (!value) return 'N/A';
+    const suffix = value % 100 >= 11 && value % 100 <= 13
+      ? 'th'
+      : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[value % 10] || 'th';
+    return `${value}${suffix}`;
+  };
+
   const getMedicalClearanceColor = (clearance: string | undefined) => {
     switch (clearance) {
       case 'approved': return '#28a745';
@@ -70,7 +78,7 @@ const ClientCeremoniesTab: React.FC<ClientCeremoniesTabProps> = ({ clientId }) =
             <div key={index} className="ceremony-card">
               <div className="ceremony-header">
                 <h3>
-                  🔮 Ceremony #{ceremony?.ceremonyNumber || 'N/A'}
+                  🔮 {formatOrdinal(ceremony?.ceremonyNumber)} Ceremony
                 </h3>
                 <span className="ceremony-date">
                   {ceremony?.date ? moment(ceremony.date).format('MMM DD, YYYY') : 'Date TBD'}
