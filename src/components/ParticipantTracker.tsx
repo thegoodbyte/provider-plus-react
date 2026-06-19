@@ -156,12 +156,6 @@ const getCheckTimeLabel = (check: PreCeremonyCheck) => {
   return time ? moment(time).format('MMM D, HH:mm') : 'No time';
 };
 
-const getMedicineValue = (event: CeremonyEvent) => {
-  if (event.doseAmount) return event.doseAmount;
-  if (event.spoonCount !== undefined && event.spoonCount !== null) return String(event.spoonCount);
-  return event.spoonAmount || 'Dose';
-};
-
 const getFileHashFromUrl = (fileUrl?: string) => {
   if (!fileUrl) return '';
   const match = fileUrl.match(/\/file-uploads\/view\/([^/?#]+)/);
@@ -227,10 +221,9 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
   const [previewLoading, setPreviewLoading] = useState(false);
   const [editingEventId, setEditingEventId] = useState<string>('');
   const [saving, setSaving] = useState(false);
-  const [addingRow, setAddingRow] = useState(false);
   const [trackerView, setTrackerView] = useState<'spoons' | 'pre' | 'post'>('spoons');
-  const [rowTime, setRowTime] = useState(moment().format('HH:mm'));
-  const [rowInputs, setRowInputs] = useState<Record<string, string>>({});
+  const [gridEdits, setGridEdits] = useState<Record<string, string>>({});
+  const [newRows, setNewRows] = useState<Array<{ id: string; time: string }>>([]);
   const [form] = Form.useForm();
   const [medicalForm] = Form.useForm();
 
@@ -292,11 +285,11 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
     return { total, tookMedicine, purged, abnormalities, totalSpoons };
   }, [participants]);
 
-  const openEventModal = (participant: CeremonyParticipant, event?: CeremonyEvent) => {
+  const openEventModal = (participant: CeremonyParticipant, event?: CeremonyEvent, defaultTime?: string) => {
     setSelectedParticipant(participant);
     setEditingEventId(event?.id || '');
     form.setFieldsValue({
-      time: event?.time ? moment(event.time, 'HH:mm') : moment(),
+      time: event?.time ? moment(event.time, 'HH:mm') : defaultTime ? moment(defaultTime, 'HH:mm') : moment(),
       eventType: event?.eventType || 'medicine',
       spoonCount: event?.spoonCount || 1,
       spoonAmount: event?.spoonAmount || 'full',
@@ -351,60 +344,121 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
     return createdParticipant.data;
   };
 
-  const startRowAdd = () => {
-    setRowTime(moment().format('HH:mm'));
-    setRowInputs({});
-    setAddingRow(true);
+  const existingCellKey = (participant: CeremonyParticipant, time: string) => `${getParticipantKey(participant)}__t__${time}`;
+  const newCellKey = (participant: CeremonyParticipant, rowId: string) => `${getParticipantKey(participant)}__n__${rowId}`;
+
+  const getSpoonCellValue = (participant: CeremonyParticipant, time: string) => {
+    const medicineEvents = (participant.eventLog || []).filter((event) => event.time === time && event.eventType === 'medicine');
+    if (!medicineEvents.length) return '';
+    const total = medicineEvents.reduce((sum, event) => sum + Number(event.spoonCount || 0), 0);
+    return Number.isFinite(total) && total !== 0 ? String(total) : '';
   };
 
-  const cancelRowAdd = () => {
-    setAddingRow(false);
-    setRowInputs({});
+  const getCellDisplayValue = (key: string, fallback: string) => (key in gridEdits ? gridEdits[key] : fallback);
+
+  const setCellValue = (key: string, value: string) => {
+    setGridEdits((prev) => ({ ...prev, [key]: value }));
   };
 
-  const saveRow = async () => {
-    const filledEntries = participants
-      .map((participant) => ({
-        participant,
-        value: (rowInputs[getParticipantKey(participant)] || '').trim(),
-      }))
-      .filter(({ value }) => value.length > 0);
+  const hasGridChanges = Object.keys(gridEdits).length > 0 || newRows.length > 0;
 
-    if (filledEntries.length === 0) {
-      message.warning('Enter a spoon amount or note for at least one client');
+  const addGridRow = () => {
+    setNewRows((prev) => [...prev, { id: `${Date.now()}-${Math.random().toString(16).slice(2)}`, time: moment().format('HH:mm') }]);
+  };
+
+  const updateNewRowTime = (rowId: string, time: string) => {
+    setNewRows((prev) => prev.map((row) => (row.id === rowId ? { ...row, time } : row)));
+  };
+
+  const removeNewRow = (rowId: string) => {
+    setNewRows((prev) => prev.filter((row) => row.id !== rowId));
+    setGridEdits((prev) => {
+      const next = { ...prev };
+      Object.keys(next).forEach((key) => {
+        if (key.endsWith(`__n__${rowId}`)) delete next[key];
+      });
+      return next;
+    });
+  };
+
+  const discardGridChanges = () => {
+    setGridEdits({});
+    setNewRows([]);
+  };
+
+  const deriveSpoonAmount = (value: number): 'full' | 'half' | 'quarter' => {
+    if (value <= 0.25) return 'quarter';
+    if (value <= 0.5) return 'half';
+    return 'full';
+  };
+
+  const applyMedicineValue = (eventLog: CeremonyEvent[], time: string, rawValue: string): CeremonyEvent[] => {
+    const withoutMedicineAtTime = eventLog.filter((event) => !(event.time === time && event.eventType === 'medicine'));
+    const numericMatch = rawValue.trim().replace(',', '.').match(/\d+(?:\.\d+)?/);
+    const numeric = numericMatch ? Number(numericMatch[0]) : NaN;
+    if (!Number.isFinite(numeric) || numeric <= 0) return withoutMedicineAtTime;
+    const medicineEvent: CeremonyEvent = {
+      id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+      time,
+      eventType: 'medicine',
+      spoonCount: numeric,
+      medicineForm: 'spoon',
+      spoonAmount: deriveSpoonAmount(numeric),
+      doseAmount: `${numeric}`,
+      recordedAt: new Date().toISOString(),
+    };
+    return [...withoutMedicineAtTime, medicineEvent];
+  };
+
+  const saveGrid = async () => {
+    if (!hasGridChanges || !ceremony) return;
+
+    const changesByParticipantKey = new Map<string, { participant: CeremonyParticipant; updates: Array<{ time: string; value: string }> }>();
+    const registerChange = (participant: CeremonyParticipant, time: string, value: string) => {
+      if (!time) return;
+      const key = getParticipantKey(participant);
+      if (!changesByParticipantKey.has(key)) changesByParticipantKey.set(key, { participant, updates: [] });
+      changesByParticipantKey.get(key)!.updates.push({ time, value });
+    };
+
+    participants.forEach((participant) => {
+      timeRows.forEach((time) => {
+        const key = existingCellKey(participant, time);
+        if (key in gridEdits) registerChange(participant, time, gridEdits[key]);
+      });
+      newRows.forEach((row) => {
+        const key = newCellKey(participant, row.id);
+        if (key in gridEdits) registerChange(participant, row.time, gridEdits[key]);
+      });
+    });
+
+    if (changesByParticipantKey.size === 0) {
+      discardGridChanges();
       return;
     }
 
     try {
       setSaving(true);
-      const time = rowTime || moment().format('HH:mm');
+      for (const { participant, updates } of Array.from(changesByParticipantKey.values())) {
+        // Only touch participants whose edits add a number or clear an existing value, so we never
+        // create empty participant records from blank or non-numeric cells.
+        const meaningful = updates.some(({ time, value }) => /\d/.test(value) || getSpoonCellValue(participant, time) !== '');
+        if (!meaningful) continue;
 
-      for (const { participant, value } of filledEntries) {
         const participantToUpdate = await ensureSavedParticipant(participant);
-        const spoonMatch = value.match(/(\d+(?:\.\d+)?)/);
-        const spoonCount = spoonMatch ? Number(spoonMatch[1]) : 1;
-        const nextEvent: CeremonyEvent = {
-          id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
-          time,
-          eventType: 'medicine',
-          spoonCount,
-          medicineForm: 'spoon',
-          spoonAmount: value.toLowerCase().includes('half') ? 'half' : value.toLowerCase().includes('quarter') ? 'quarter' : 'full',
-          doseAmount: value,
-          note: value,
-          recordedAt: new Date().toISOString(),
-        };
-        const eventLog = [...(participantToUpdate.eventLog || []), nextEvent];
+        let eventLog = [...(participantToUpdate.eventLog || [])];
+        updates.forEach(({ time, value }) => {
+          eventLog = applyMedicineValue(eventLog, time, value);
+        });
         await ceremoniesApi.updateParticipant(participantToUpdate._id!, buildParticipantUpdate(participantToUpdate, eventLog));
       }
 
-      message.success('Ceremony row saved');
-      setAddingRow(false);
-      setRowInputs({});
+      message.success('Spoon matrix saved');
+      discardGridChanges();
       await loadData();
     } catch (error) {
-      message.error('Failed to save ceremony row');
-      console.error('Error saving ceremony row:', error);
+      message.error('Failed to save spoon matrix');
+      console.error('Error saving spoon matrix:', error);
     } finally {
       setSaving(false);
     }
@@ -664,15 +718,23 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Track Spoons & Time</h1>
           <p className="text-sm text-gray-600">
-            Ceremony #{ceremony?.ceremonyNumber || '-'} - spoon counts, timing, purges, launch, abnormalities, and notes by participant.
+            Ceremony #{ceremony?.ceremonyNumber || '-'} - type a spoon amount (e.g. 1, 0.5, 0.75) into each client cell, add time rows, then Save.
             {ceremony?.date ? ` ${moment(ceremony.date).format('MMMM DD, YYYY')}` : ''}
           </p>
         </div>
         <div className="flex items-center gap-2">
           {trackerView === 'spoons' && (
-            <Button type="primary" icon={<Icon icon={Plus} className="h-4 w-4" />} onClick={startRowAdd} disabled={addingRow || participants.length === 0}>
-              Add spoons
-            </Button>
+            <>
+              <Button icon={<Icon icon={Plus} className="h-4 w-4" />} onClick={addGridRow} disabled={participants.length === 0}>
+                Add row
+              </Button>
+              {hasGridChanges && (
+                <>
+                  <Button type="primary" onClick={saveGrid} loading={saving}>Save</Button>
+                  <Button onClick={discardGridChanges} disabled={saving}>Discard</Button>
+                </>
+              )}
+            </>
           )}
           <div className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700">
             <Icon icon={Clock3} className="h-4 w-4" />
@@ -868,73 +930,82 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
             </tr>
           </thead>
           <tbody>
-            {trackerView === 'spoons' && addingRow && (
-              <tr className="bg-blue-50">
-                <td className="border-b border-r border-blue-200 bg-blue-50 px-3 py-3 align-top">
+            {trackerView === 'spoons' && timeRows.map((time) => (
+              <tr key={time} className="hover:bg-gray-50">
+                <td className="border-b border-r border-gray-200 bg-white px-3 py-3 align-top text-sm font-semibold text-gray-900">{time}</td>
+                {participants.map((participant) => {
+                  const key = existingCellKey(participant, time);
+                  const otherEvents = eventsAtTime(participant, time).filter((event) => event.eventType !== 'medicine');
+                  return (
+                    <td key={`${participant._id}-${time}`} className="border-b border-r border-gray-200 p-2 align-top">
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={getCellDisplayValue(key, getSpoonCellValue(participant, time))}
+                        onChange={(event) => setCellValue(key, event.target.value)}
+                        placeholder="-"
+                        className="w-full rounded-md border border-gray-200 px-2 py-1 text-center text-base font-semibold text-gray-900 focus:border-indigo-400 focus:outline-none"
+                      />
+                      <div className="mt-1 space-y-1">
+                        {otherEvents.map((event) => (
+                          <div key={event.id || `${event.time}-${event.eventType}`} className={`rounded-md border px-2 py-1 text-xs ${eventTypeStyles[event.eventType]}`}>
+                            <div className="flex items-start justify-between gap-2">
+                              <span className="font-semibold">{eventTypeLabels[event.eventType]}</span>
+                              <span className="flex items-center gap-1">
+                                <button type="button" onClick={() => openEventModal(participant, event)} className="rounded border border-current px-1.5 py-0.5 text-[11px] font-medium hover:bg-white/60">
+                                  Edit
+                                </button>
+                                <button type="button" onClick={() => deleteEvent(participant, event.id)} className="text-gray-500 hover:text-red-600" title="Delete event">
+                                  <Icon icon={Trash2} className="h-3 w-3" />
+                                </button>
+                              </span>
+                            </div>
+                            <div className="mt-0.5 whitespace-pre-wrap">{getEventSummary(event)}</div>
+                          </div>
+                        ))}
+                        <button type="button" onClick={() => openEventModal(participant, undefined, time)} className="text-[11px] font-medium text-indigo-600 hover:text-indigo-800">
+                          + event
+                        </button>
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+            {trackerView === 'spoons' && newRows.map((row) => (
+              <tr key={row.id} className="bg-blue-50/40">
+                <td className="border-b border-r border-blue-200 bg-blue-50/40 px-3 py-3 align-top">
                   <input
                     type="time"
-                    value={rowTime}
-                    onChange={(event) => setRowTime(event.target.value)}
+                    value={row.time}
+                    onChange={(event) => updateNewRowTime(row.id, event.target.value)}
                     className="w-full rounded-md border border-gray-200 px-2 py-1 text-sm"
                   />
-                  <div className="mt-2 flex gap-2">
-                    <Button size="small" type="primary" onClick={saveRow} loading={saving}>Save</Button>
-                    <Button size="small" onClick={cancelRowAdd} disabled={saving}>Cancel</Button>
-                  </div>
+                  <button type="button" onClick={() => removeNewRow(row.id)} className="mt-1 text-[11px] font-medium text-red-600 hover:text-red-800">
+                    Remove row
+                  </button>
                 </td>
                 {participants.map((participant) => {
-                  const key = getParticipantKey(participant);
+                  const key = newCellKey(participant, row.id);
                   return (
-                    <td key={`${key}-add`} className="border-b border-r border-blue-200 p-2 align-top">
-                      <Input
-                        value={rowInputs[key] || ''}
-                        onChange={(event) => setRowInputs(prev => ({ ...prev, [key]: event.target.value }))}
-                        placeholder="Spoons"
+                    <td key={`${participant._id}-${row.id}`} className="border-b border-r border-blue-200 p-2 align-top">
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={getCellDisplayValue(key, '')}
+                        onChange={(event) => setCellValue(key, event.target.value)}
+                        placeholder="-"
+                        className="w-full rounded-md border border-gray-200 px-2 py-1 text-center text-base font-semibold text-gray-900 focus:border-indigo-400 focus:outline-none"
                       />
                     </td>
                   );
                 })}
               </tr>
-            )}
-            {trackerView === 'spoons' && timeRows.map((time) => (
-              <tr key={time} className="hover:bg-gray-50">
-                <td className="border-b border-r border-gray-200 bg-white px-3 py-3 text-sm font-semibold text-gray-900">{time}</td>
-                {participants.map((participant) => (
-                  <td key={`${participant._id}-${time}`} className="border-b border-r border-gray-200 p-2 align-top">
-                    <div className="space-y-2">
-                      {eventsAtTime(participant, time).map((event) => (
-                        <div key={event.id || `${event.time}-${event.eventType}`} className={`rounded-md border px-2 py-2 text-xs ${eventTypeStyles[event.eventType]}`}>
-                          <div className="flex items-start justify-between gap-2">
-                            {event.eventType === 'medicine' ? (
-                              <div className="text-left text-lg font-bold leading-none text-gray-950">{getMedicineValue(event)}</div>
-                            ) : (
-                              <div className="text-left font-semibold">{eventTypeLabels[event.eventType]}</div>
-                            )}
-                            <div className="flex items-center gap-2">
-                              <button type="button" onClick={() => openEventModal(participant, event)} className="rounded border border-current px-2 py-0.5 text-xs font-medium hover:bg-white/60">
-                                Edit
-                              </button>
-                              <button type="button" onClick={() => deleteEvent(participant, event.id)} className="text-gray-500 hover:text-red-600" title="Delete event">
-                                <Icon icon={Trash2} className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                          {event.eventType === 'medicine' ? (
-                            event.note && event.note !== getMedicineValue(event) && <div className="mt-1 whitespace-pre-wrap">{event.note}</div>
-                          ) : (
-                            <div className="mt-1 whitespace-pre-wrap">{getEventSummary(event)}</div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </td>
-                ))}
-              </tr>
             ))}
-            {trackerView === 'spoons' && timeRows.length === 0 && (
+            {trackerView === 'spoons' && timeRows.length === 0 && newRows.length === 0 && (
               <tr>
                 <td colSpan={participants.length + 1} className="px-4 py-8 text-center text-sm text-gray-500">
-                  {loading ? 'Loading participants...' : 'No spoon rows recorded yet. Use Add spoons to create a row.'}
+                  {loading ? 'Loading participants...' : 'No spoon rows yet. Use Add row to start the matrix.'}
                 </td>
               </tr>
             )}
