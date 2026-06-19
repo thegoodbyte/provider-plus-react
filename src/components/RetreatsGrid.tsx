@@ -310,7 +310,8 @@ const RetreatsGrid: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setViewingRetreatId(retreat._id!)}
-                        className="text-gray-700 hover:text-gray-900 hover:underline focus:outline-none focus:ring-2 focus:ring-gray-500 bg-transparent"
+                        className="text-gray-700 hover:text-gray-900 hover:underline focus:outline-none focus:ring-2 focus:ring-gray-500"
+                        style={{ backgroundColor: 'transparent', border: 'none', padding: '0' }}
                       >
                         {getRetreatCodeValue(retreat) || '-'}
                       </button>

@@ -46,6 +46,9 @@ interface ScreeningData {
   bloodPressure: string;
   bloodPressureStatus: string;
   bloodPressureValue: string;
+  ekgRequested: boolean;
+  liverPanelRequested: boolean;
+  medicalTestsDetails: string;
   vitaminsSupplements: {
     vitaminD: boolean;
     vitaminB12: boolean;
@@ -150,8 +153,10 @@ const ClientScreening: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [hasChanges, setHasChanges] = useState(false);
   const mainIntentRef = useRef<HTMLTextAreaElement | null>(null);
   const saveMessageTimeoutRef = useRef<number | null>(null);
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [formData, setFormData] = useState<ScreeningData>({
     clientId: clientId || '',
     firstName: '',
@@ -193,6 +198,9 @@ const ClientScreening: React.FC = () => {
     bloodPressure: '',
     bloodPressureStatus: '',
     bloodPressureValue: '',
+    ekgRequested: false,
+    liverPanelRequested: false,
+    medicalTestsDetails: '',
     vitaminsSupplements: {
       vitaminD: false,
       vitaminB12: false,
@@ -246,8 +254,31 @@ const ClientScreening: React.FC = () => {
       if (saveMessageTimeoutRef.current) {
         window.clearTimeout(saveMessageTimeoutRef.current);
       }
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
     };
   }, []);
+
+  // Auto-save when form changes
+  useEffect(() => {
+    if (hasChanges && !loading && formData.clientId) {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+
+      autoSaveTimeoutRef.current = setTimeout(() => {
+        handleSave();
+        setHasChanges(false);
+      }, 2000); // Auto-save after 2 seconds of inactivity
+    }
+
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [formData, hasChanges]);
 
   const fetchClient = async () => {
     if (!clientId) return;
@@ -332,6 +363,7 @@ const ClientScreening: React.FC = () => {
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
+    setHasChanges(true);
 
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked;
@@ -864,6 +896,7 @@ const ClientScreening: React.FC = () => {
                 <option value="higher">Higher</option>
                 <option value="normal">Normal</option>
                 <option value="lower">Lower</option>
+                <option value="unknown">Unknown</option>
               </select>
               <input
                 type="text"
@@ -884,6 +917,39 @@ const ClientScreening: React.FC = () => {
               rows={2}
               className="w-full px-3 py-2 border border-gray-200 rounded-md"
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Medical Tests Requested</label>
+            <div className="space-y-2">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  name="ekgRequested"
+                  checked={formData.ekgRequested}
+                  onChange={handleInputChange}
+                  className="mr-2"
+                />
+                <span>EKG Requested</span>
+              </label>
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  name="liverPanelRequested"
+                  checked={formData.liverPanelRequested}
+                  onChange={handleInputChange}
+                  className="mr-2"
+                />
+                <span>Liver Panel Requested</span>
+              </label>
+              <textarea
+                name="medicalTestsDetails"
+                value={formData.medicalTestsDetails}
+                onChange={handleInputChange}
+                placeholder="Additional details about medical tests..."
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-200 rounded-md mt-2"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -1130,6 +1196,25 @@ const ClientScreening: React.FC = () => {
         <AppleButton variant="primary" onClick={handleSave} disabled={saving}>
           {saving ? 'Saving...' : 'Save Screening'}
         </AppleButton>
+      </div>
+
+      {/* Floating Save Button */}
+      <div className="fixed bottom-20 right-5 z-50">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-lg transition-all duration-200 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Save Screening (Auto-saves while typing)"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V2" />
+          </svg>
+        </button>
+        {saving && (
+          <div className="absolute -top-8 right-0 bg-gray-800 text-white text-sm px-2 py-1 rounded">
+            Saving...
+          </div>
+        )}
       </div>
 
       <div className="fixed bottom-5 right-5 z-40 flex items-center gap-3">

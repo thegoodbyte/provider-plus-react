@@ -1081,15 +1081,31 @@ const ClientDetailsPage: React.FC = () => {
           <div>
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <h2 className="text-lg font-semibold">Screening Information</h2>
-              <button
-                type="button"
-                onClick={() => navigate(`/admin/clients/${clientId}/screening`)}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-blue-600 text-white shadow-sm hover:bg-blue-700"
-                aria-label={hasScreeningDetails ? 'Edit screening' : 'Add screening'}
-                title={hasScreeningDetails ? 'Edit screening' : 'Add screening'}
-              >
-                <Icon icon={FiPlus} className="w-5 h-5" />
-              </button>
+              <div className="flex gap-2">
+                {hasScreeningDetails && (
+                  <button
+                    type="button"
+                    onClick={() => window.open(`/api/screening/${clientId}/download-pdf`, '_blank')}
+                    className="inline-flex h-10 px-3 items-center justify-center rounded-md bg-green-600 text-white shadow-sm hover:bg-green-700"
+                    aria-label="Download screening PDF"
+                    title="Download screening PDF"
+                  >
+                    <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    PDF
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => navigate(`/admin/clients/${clientId}/screening`)}
+                  className="inline-flex h-10 w-10 items-center justify-center rounded-md bg-blue-600 text-white shadow-sm hover:bg-blue-700"
+                  aria-label={hasScreeningDetails ? 'Edit screening' : 'Add screening'}
+                  title={hasScreeningDetails ? 'Edit screening' : 'Add screening'}
+                >
+                  <Icon icon={hasScreeningDetails ? FiEdit2 : FiPlus} className="w-5 h-5" />
+                </button>
+              </div>
             </div>
             <div className="space-y-4">
               <div>
@@ -1142,6 +1158,9 @@ const ClientDetailsPage: React.FC = () => {
                 { label: 'Blood Pressure Details', value: [getScreeningValue('bloodPressureStatus'), getScreeningValue('bloodPressureValue')].filter(Boolean).join(' - ') },
                 { label: 'Alcohol History', value: getScreeningValue('alcoholHistory') },
                 { label: 'Health Complications', value: getScreeningValue('healthComplications') },
+                { label: 'EKG Requested', value: getScreeningValue('ekgRequested') ? 'Yes' : 'No' },
+                { label: 'Liver Panel Requested', value: getScreeningValue('liverPanelRequested') ? 'Yes' : 'No' },
+                { label: 'Medical Tests Details', value: getScreeningValue('medicalTestsDetails') },
                 { label: 'Vitamins & Supplements', value: getScreeningValue('vitaminsSupplements') },
               ])}
 
