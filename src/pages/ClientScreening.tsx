@@ -1199,21 +1199,68 @@ const ClientScreening: React.FC = () => {
       </div>
 
       {/* Floating Save Button */}
-      <div className="fixed bottom-20 right-5 z-50">
+      <div style={{ position: 'fixed', bottom: '80px', right: '20px', zIndex: 9999 }}>
         <button
           onClick={handleSave}
           disabled={saving}
-          className="bg-blue-600 hover:bg-blue-700 text-white rounded-full p-4 shadow-lg transition-all duration-200 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed"
+          style={{
+            backgroundColor: saving ? '#9CA3AF' : '#2563EB',
+            color: 'white',
+            borderRadius: '50%',
+            width: '60px',
+            height: '60px',
+            border: 'none',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+            cursor: saving ? 'not-allowed' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.2s'
+          }}
+          onMouseEnter={(e) => {
+            if (!saving) {
+              e.currentTarget.style.backgroundColor = '#1D4ED8';
+              e.currentTarget.style.transform = 'scale(1.1)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (!saving) {
+              e.currentTarget.style.backgroundColor = '#2563EB';
+              e.currentTarget.style.transform = 'scale(1)';
+            }
+          }}
           title="Save Screening (Auto-saves while typing)"
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg style={{ width: '24px', height: '24px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V2" />
           </svg>
         </button>
         {saving && (
-          <div className="absolute -top-8 right-0 bg-gray-800 text-white text-sm px-2 py-1 rounded">
+          <div style={{
+            position: 'absolute',
+            top: '-32px',
+            right: '0',
+            backgroundColor: '#1F2937',
+            color: 'white',
+            fontSize: '14px',
+            padding: '4px 8px',
+            borderRadius: '4px',
+            whiteSpace: 'nowrap'
+          }}>
             Saving...
           </div>
+        )}
+        {hasChanges && !saving && (
+          <div style={{
+            position: 'absolute',
+            top: '0',
+            right: '0',
+            width: '12px',
+            height: '12px',
+            backgroundColor: '#EF4444',
+            borderRadius: '50%',
+            border: '2px solid white'
+          }} />
         )}
       </div>
 

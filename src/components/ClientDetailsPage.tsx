@@ -1500,7 +1500,7 @@ const ClientDetailsPage: React.FC = () => {
         {activeTab === 'medicalRecords' && (
           <div>
             <MedicalRecordsManager
-              clientId={clientId}
+              clientId={clientId || ''}
               clientName={`${client.firstName} ${client.lastName}`}
               retreatId={bookings[0]?.retreatId}
             />

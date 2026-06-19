@@ -310,13 +310,24 @@ const RetreatsGrid: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => setViewingRetreatId(retreat._id!)}
-                        className="text-gray-700 hover:text-gray-900 hover:underline focus:outline-none focus:ring-2 focus:ring-gray-500"
-                        style={{ backgroundColor: 'transparent', border: 'none', padding: '0' }}
+                        className="text-gray-700 hover:text-gray-900 hover:underline focus:outline-none"
+                        style={{
+                          backgroundColor: 'transparent !important',
+                          border: 'none',
+                          padding: '0',
+                          background: 'none !important',
+                          boxShadow: 'none',
+                          borderRadius: '0'
+                        }}
                       >
-                        {getRetreatCodeValue(retreat) || '-'}
+                        <span style={{ backgroundColor: 'transparent !important', background: 'none !important' }}>
+                          {getRetreatCodeValue(retreat) || '-'}
+                        </span>
                       </button>
                     ) : (
-                      <span className="text-gray-900">{getRetreatCodeValue(retreat) || '-'}</span>
+                      <span className="text-gray-900" style={{ backgroundColor: 'transparent !important', background: 'none !important' }}>
+                        {getRetreatCodeValue(retreat) || '-'}
+                      </span>
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
