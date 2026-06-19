@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { bookingsApi, ceremoniesApi, fileUploadsApi } from '../services/api';
 import { Ceremony, CeremonyParticipant, FileUpload, RetreatClient } from '../types';
 import { Button, Card, Col, Form, Input, InputNumber, Modal, Row, Select, Statistic, TimePicker, message } from 'antd';
-import { Activity, ArrowLeft, Clock3, FileText, HeartPulse, Plus, Trash2 } from 'lucide-react';
+import { Activity, ArrowLeft, Clock3, FileText, HeartPulse, Plus, Trash2, GripVertical, Save } from 'lucide-react';
 import moment from 'moment';
 
 interface ParticipantTrackerProps {
@@ -221,6 +221,11 @@ const mergeParticipantsWithBookings = (
 const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onBack }) => {
   const [ceremony, setCeremony] = useState<Ceremony | null>(null);
   const [participants, setParticipants] = useState<CeremonyParticipant[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [hasPositionChanges, setHasPositionChanges] = useState(false);
+  const dragCounter = useRef(0);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedParticipant, setSelectedParticipant] = useState<CeremonyParticipant | null>(null);
@@ -242,6 +247,96 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
   useEffect(() => {
     loadData();
   }, [ceremonyId]);
+
+  // Drag and Drop Handlers
+  const handleDragStart = (e: React.DragEvent, index: number) => {
+    setIsDragging(true);
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    // Add a slight transparency to the dragged element
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = '0.5';
+    }
+  };
+
+  const handleDragEnd = (e: React.DragEvent) => {
+    setIsDragging(false);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+    dragCounter.current = 0;
+    // Reset opacity
+    if (e.currentTarget instanceof HTMLElement) {
+      e.currentTarget.style.opacity = '1';
+    }
+  };
+
+  const handleDragEnter = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    dragCounter.current++;
+    if (draggedIndex !== null && draggedIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    dragCounter.current--;
+    if (dragCounter.current === 0) {
+      setDragOverIndex(null);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault();
+    dragCounter.current = 0;
+
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      return;
+    }
+
+    const draggedItem = participants[draggedIndex];
+    const newParticipants = [...participants];
+
+    // Remove the dragged item
+    newParticipants.splice(draggedIndex, 1);
+
+    // Insert it at the new position
+    const adjustedDropIndex = draggedIndex < dropIndex ? dropIndex - 1 : dropIndex;
+    newParticipants.splice(adjustedDropIndex, 0, draggedItem);
+
+    // Update positions
+    const updatedParticipants = newParticipants.map((p, idx) => ({
+      ...p,
+      position: idx
+    }));
+
+    setParticipants(updatedParticipants);
+    setHasPositionChanges(true);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const savePositions = async () => {
+    try {
+      // Update each participant's position in the database
+      const updates = participants.map((participant, index) =>
+        ceremoniesApi.updateParticipant(participant._id!, {
+          position: index
+        })
+      );
+
+      await Promise.all(updates);
+      message.success('Seating positions saved successfully');
+      setHasPositionChanges(false);
+    } catch (error) {
+      console.error('Error saving positions:', error);
+      message.error('Failed to save seating positions');
+    }
+  };
 
   useEffect(() => () => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -267,7 +362,14 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
       }
 
       setCeremony(ceremonyResponse.data);
-      setParticipants(nextParticipants);
+      // Sort participants by position if it exists, otherwise keep original order
+      const sortedParticipants = nextParticipants.sort((a: any, b: any) => {
+        if (a.position !== undefined && b.position !== undefined) {
+          return a.position - b.position;
+        }
+        return 0;
+      });
+      setParticipants(sortedParticipants);
     } catch (error) {
       message.error('Failed to load ceremony tracking data');
       console.error('Error loading ceremony tracker:', error);
@@ -425,7 +527,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
   const saveGrid = async () => {
     if (!hasGridChanges || !ceremony) return;
 
-    const changesByParticipantKey = new Map<string, { participant: CeremonyParticipant; updates: Array<{ time: string; value: string }> }>();
+    const changesByParticipantKey = new Map<string, { participant: CeremonyParticipant; updates: Array<{ time: string; value: string }>; position?: number }>();
     const registerChange = (participant: CeremonyParticipant, time: string, value: string) => {
       if (!time) return;
       const key = getParticipantKey(participant);
@@ -433,7 +535,14 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
       changesByParticipantKey.get(key)!.updates.push({ time, value });
     };
 
-    participants.forEach((participant) => {
+    participants.forEach((participant, index) => {
+      // Add position if it's been set
+      if (participant.position !== undefined) {
+        const key = getParticipantKey(participant);
+        if (!changesByParticipantKey.has(key)) changesByParticipantKey.set(key, { participant, updates: [], position: participant.position });
+        else changesByParticipantKey.get(key)!.position = participant.position;
+      }
+
       timeRows.forEach((time) => {
         const key = existingCellKey(participant, time);
         if (key in gridEdits) registerChange(participant, time, gridEdits[key]);
@@ -451,10 +560,9 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
 
     try {
       setSaving(true);
-      for (const { participant, updates } of Array.from(changesByParticipantKey.values())) {
-        // Only touch participants whose edits add a number or clear an existing value, so we never
-        // create empty participant records from blank or non-numeric cells.
-        const meaningful = updates.some(({ time, value }) => /\d/.test(value) || getSpoonCellValue(participant, time) !== '');
+      for (const { participant, updates, position } of Array.from(changesByParticipantKey.values())) {
+        // Only touch participants whose edits add a number or clear an existing value, or if position has changed
+        const meaningful = updates.some(({ time, value }) => /\d/.test(value) || getSpoonCellValue(participant, time) !== '') || position !== undefined;
         if (!meaningful) continue;
 
         const participantToUpdate = await ensureSavedParticipant(participant);
@@ -462,7 +570,14 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
         updates.forEach(({ time, value }) => {
           eventLog = applyMedicineValue(eventLog, time, value);
         });
-        await ceremoniesApi.updateParticipant(participantToUpdate._id!, buildParticipantUpdate(participantToUpdate, eventLog));
+
+        // Include position in the update if it's been set
+        const updateData: any = buildParticipantUpdate(participantToUpdate, eventLog);
+        if (position !== undefined) {
+          updateData.position = position;
+        }
+
+        await ceremoniesApi.updateParticipant(participantToUpdate._id!, updateData);
       }
 
       message.success('Spoon matrix saved');
@@ -785,15 +900,35 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
           <thead>
             <tr className="bg-gray-50">
               <th className="sticky top-0 z-20 w-28 border-b border-r border-gray-200 bg-gray-50 px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 shadow-sm">Time</th>
-              {participants.map((participant) => {
+              {participants.map((participant, index) => {
                 const checks = getPreCeremonyChecks(participant);
                 const latestCheck = getLatestPreCeremonyCheck(participant);
                 const postChecks = getPostCeremonyChecks(participant);
+                const isDraggedOver = dragOverIndex === index && draggedIndex !== index;
                 return (
-                  <th key={participant._id} className="sticky top-0 z-20 min-w-[140px] border-b border-r border-gray-200 bg-gray-50 px-2 py-3 text-left align-top shadow-sm">
-                    <div className="space-y-0.5">
-                      <div className="text-base font-bold text-gray-900">{getClientFirstName(participant)}</div>
-                      <div className="text-xs font-normal text-gray-600">{getClientLastName(participant)}</div>
+                  <th
+                    key={participant._id}
+                    className={`sticky top-0 z-20 min-w-[140px] border-b border-r border-gray-200 bg-gray-50 px-2 py-3 text-left align-top shadow-sm cursor-move transition-all duration-200 ${
+                      isDraggedOver ? 'border-l-4 border-l-blue-500' : ''
+                    } ${isDragging && draggedIndex === index ? 'opacity-50' : ''}`}
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, index)}
+                    onDragEnd={handleDragEnd}
+                    onDragEnter={(e) => handleDragEnter(e, index)}
+                    onDragLeave={handleDragLeave}
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, index)}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-0.5">
+                        <div className="text-base font-bold text-gray-900">{getClientFirstName(participant)}</div>
+                        <div className="text-xs font-normal text-gray-600">{getClientLastName(participant)}</div>
+                      </div>
+                      <div className="text-gray-400 hover:text-gray-600">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                        </svg>
+                      </div>
                     </div>
                     <div className="mt-2 text-xs text-gray-500">
                       {participant.spoonsTaken || 0} spoons

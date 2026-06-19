@@ -585,6 +585,7 @@ export interface CeremonyParticipant {
   ceremonyId: string;
   clientId: string;
   retreatId: string;
+  position?: number;  // Seating position for ceremony
 
   // Pre-ceremony medical checks
   preCeremonyEkg?: {

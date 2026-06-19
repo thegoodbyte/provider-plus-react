@@ -6,12 +6,12 @@ import {
 } from 'react-icons/fi';
 import {
   MedicalRecord,
-  MedicalRecordTiming,
-  MedicalTestType,
+  MedicalEventType,
+  MedicalType,
   MedicalRecordStatus,
   VersionStatus,
-  getMedicalTimingLabel,
-  getMedicalTestTypeLabel,
+  getMedicalEventTypeLabel,
+  getMedicalTypeLabel,
   ClientMedicalProfile
 } from '../types/medical-enhanced';
 import MedicalReviewTypeSelector from './MedicalReviewTypeSelector';

@@ -7,7 +7,7 @@ import {
   MedicalRecordGroup,
   ClientMedicalSummary
 } from '../types/medical';
-import { FiUpload, FiDownload, FiEye, FiEdit2, FiCheck, FiX, FiAlertCircle, FiClock, FiPlus } from 'react-icons/fi';
+import { Eye as FiEye, Upload as FiUpload, Download as FiDownload, Edit2 as FiEdit2, Check as FiCheck, X as FiX, AlertCircle as FiAlertCircle, Clock as FiClock, Plus as FiPlus } from 'lucide-react';
 import { message, Modal, Upload, Select, Input, DatePicker, InputNumber, Tabs, Badge, Collapse, Button, Tag } from 'antd';
 import moment from 'moment';
 

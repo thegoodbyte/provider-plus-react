@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import {
-  MedicalRecordTiming,
-  MedicalTestType,
+  MedicalEventType,
+  MedicalType,
   MedicalReviewType,
-  getMedicalTimingLabel,
-  getMedicalTestTypeLabel,
+  getMedicalEventTypeLabel,
+  getMedicalTypeLabel,
   getMedicalReviewTypeLabel,
-  getReviewTypesByTiming
+  getReviewTypesByEventType
 } from '../types/medical-enhanced';
 import { Select, Tag, Divider, Space } from 'antd';
 
@@ -29,37 +29,37 @@ const MedicalReviewTypeSelector: React.FC<MedicalReviewTypeSelectorProps> = ({
   className,
   showQuickOptions = true
 }) => {
-  const [selectedTiming, setSelectedTiming] = useState<MedicalRecordTiming | null>(null);
+  const [selectedTiming, setSelectedTiming] = useState<MedicalEventType | null>(null);
 
   // Quick access options matching your screenshot
   const quickOptions = [
-    { value: 'ekg_only', label: 'EKG', timing: MedicalRecordTiming.ENTRY, test: MedicalTestType.EKG },
-    { value: 'liver_only', label: 'Liver', timing: MedicalRecordTiming.ENTRY, test: MedicalTestType.LIVER_PANEL },
-    { value: 'both_entry', label: 'Both', timing: MedicalRecordTiming.ENTRY, tests: [MedicalTestType.EKG, MedicalTestType.LIVER_PANEL] }
+    { value: 'ekg_only', label: 'EKG', timing: MedicalEventType.ENTRY, test: MedicalType.EKG },
+    { value: 'liver_only', label: 'Liver', timing: MedicalEventType.ENTRY, test: MedicalType.LIVER_PANEL },
+    { value: 'both_entry', label: 'Both', timing: MedicalEventType.ENTRY, tests: [MedicalType.EKG, MedicalType.LIVER_PANEL] }
   ];
 
   // Organized review types by timing
   const reviewTypesByTiming = {
-    [MedicalRecordTiming.ENTRY]: [
+    [MedicalEventType.ENTRY]: [
       MedicalReviewType.ENTRY_EKG_REVIEW,
       MedicalReviewType.ENTRY_LIVER_REVIEW,
       MedicalReviewType.ENTRY_COMBINED_REVIEW
     ],
-    [MedicalRecordTiming.PRE_CEREMONY]: [
+    [MedicalEventType.PRE_CEREMONY]: [
       MedicalReviewType.PRE_CEREMONY_EKG_REVIEW,
       MedicalReviewType.PRE_CEREMONY_BP_REVIEW,
       MedicalReviewType.PRE_CEREMONY_VITALS_REVIEW
     ],
-    [MedicalRecordTiming.IN_CEREMONY]: [
+    [MedicalEventType.IN_CEREMONY]: [
       MedicalReviewType.IN_CEREMONY_BP_MONITORING,
       MedicalReviewType.IN_CEREMONY_VITALS_MONITORING
     ],
-    [MedicalRecordTiming.POST_CEREMONY]: [
+    [MedicalEventType.POST_CEREMONY]: [
       MedicalReviewType.POST_CEREMONY_EKG_REVIEW,
       MedicalReviewType.POST_CEREMONY_BP_REVIEW,
       MedicalReviewType.POST_CEREMONY_COMPLETE_REVIEW
     ],
-    [MedicalRecordTiming.ADDITIONAL]: [
+    [MedicalEventType.ADDITIONAL]: [
       MedicalReviewType.MEDICATIONS_REVIEW,
       MedicalReviewType.QUESTIONNAIRE_REVIEW,
       MedicalReviewType.FOOD_INTAKE_REVIEW,
@@ -124,7 +124,7 @@ const MedicalReviewTypeSelector: React.FC<MedicalReviewTypeSelectorProps> = ({
               fontWeight: 'bold',
               backgroundColor: '#fafafa'
             }}>
-              {getMedicalTimingLabel(timing as MedicalRecordTiming).toUpperCase()}
+              {getMedicalEventTypeLabel(timing as MedicalEventType).toUpperCase()}
             </div>
             {types.map(type => (
               <div
@@ -177,7 +177,7 @@ const MedicalReviewTypeSelector: React.FC<MedicalReviewTypeSelectorProps> = ({
 
       {/* Organized by timing */}
       {Object.entries(reviewTypesByTiming).map(([timing, types]) => (
-        <OptGroup key={timing} label={getMedicalTimingLabel(timing as MedicalRecordTiming)}>
+        <OptGroup key={timing} label={getMedicalEventTypeLabel(timing as MedicalEventType)}>
           {types.map(type => (
             <Option key={type} value={type}>
               {getMedicalReviewTypeLabel(type)}

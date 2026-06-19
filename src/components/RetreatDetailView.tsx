@@ -565,7 +565,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
               </div>
             </div>
             <div className="meta-item">
-              <strong>Address:</strong> {retreat.address || retreat.location || 'Default Location'}
+              <strong>Address:</strong> {retreat.location || 'Default Location'}
             </div>
             <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
               <div className="meta-item">
