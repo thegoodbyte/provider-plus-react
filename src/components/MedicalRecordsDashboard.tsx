@@ -1,0 +1,475 @@
+import React, { useState, useEffect } from 'react';
+import { Tabs, Badge, Button, Tag, Card, Timeline, Empty, Spin, message, Modal, Form, Select, DatePicker, Input, Upload } from 'antd';
+import {
+  FiPlus, FiUpload, FiDownload, FiEye, FiEdit2, FiCheck, FiX,
+  FiAlertCircle, FiClock, FiActivity, FiFileText, FiRefreshCw
+} from 'react-icons/fi';
+import {
+  MedicalRecord,
+  MedicalRecordTiming,
+  MedicalTestType,
+  MedicalRecordStatus,
+  VersionStatus,
+  getMedicalTimingLabel,
+  getMedicalTestTypeLabel,
+  ClientMedicalProfile
+} from '../types/medical-enhanced';
+import MedicalReviewTypeSelector from './MedicalReviewTypeSelector';
+import moment from 'moment';
+
+const { TextArea } = Input;
+
+interface MedicalRecordsDashboardProps {
+  clientId: string;
+  retreatId?: string;
+  ceremonyId?: string;
+  clientName?: string;
+}
+
+const MedicalRecordsDashboard: React.FC<MedicalRecordsDashboardProps> = ({
+  clientId,
+  retreatId,
+  ceremonyId,
+  clientName = 'Client'
+}) => {
+  const [activeTab, setActiveTab] = useState<MedicalRecordTiming>(MedicalRecordTiming.ENTRY);
+  const [records, setRecords] = useState<MedicalRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<MedicalRecord | null>(null);
+  const [selectedTestType, setSelectedTestType] = useState<MedicalTestType>(MedicalTestType.EKG);
+
+  // Group records by timing and test type
+  const groupRecordsByTimingAndType = (records: MedicalRecord[]) => {
+    const grouped: Record<MedicalRecordTiming, Record<MedicalTestType, MedicalRecord[]>> = {
+      [MedicalRecordTiming.ENTRY]: {},
+      [MedicalRecordTiming.PRE_CEREMONY]: {},
+      [MedicalRecordTiming.IN_CEREMONY]: {},
+      [MedicalRecordTiming.POST_CEREMONY]: {},
+      [MedicalRecordTiming.ADDITIONAL]: {}
+    };
+
+    records.forEach(record => {
+      if (!grouped[record.timing][record.testType]) {
+        grouped[record.timing][record.testType] = [];
+      }
+      grouped[record.timing][record.testType].push(record);
+    });
+
+    // Sort by version within each group
+    Object.values(grouped).forEach(timingGroup => {
+      Object.values(timingGroup).forEach(typeRecords => {
+        typeRecords.sort((a, b) => b.version - a.version);
+      });
+    });
+
+    return grouped;
+  };
+
+  const groupedRecords = groupRecordsByTimingAndType(records);
+
+  // Get status badge
+  const getStatusBadge = (status: MedicalRecordStatus) => {
+    const statusConfig = {
+      [MedicalRecordStatus.PENDING_REVIEW]: { color: 'orange', text: 'Pending Review' },
+      [MedicalRecordStatus.UNDER_REVIEW]: { color: 'blue', text: 'Under Review' },
+      [MedicalRecordStatus.APPROVED]: { color: 'green', text: 'Approved' },
+      [MedicalRecordStatus.NEEDS_CORRECTION]: { color: 'red', text: 'Needs Correction' },
+      [MedicalRecordStatus.REJECTED]: { color: 'red', text: 'Rejected' },
+      [MedicalRecordStatus.EXPIRED]: { color: 'gray', text: 'Expired' }
+    };
+
+    const config = statusConfig[status];
+    return <Tag color={config.color}>{config.text}</Tag>;
+  };
+
+  // Render record card
+  const renderRecordCard = (record: MedicalRecord) => {
+    const isLatest = record.isLatestVersion;
+    const needsCorrection = record.status === MedicalRecordStatus.NEEDS_CORRECTION;
+
+    return (
+      <Card
+        key={record._id}
+        className={`mb-3 ${isLatest ? 'border-blue-500' : 'border-gray-300'}`}
+        style={{ borderWidth: isLatest ? 2 : 1 }}
+        size="small"
+      >
+        <div className="flex justify-between items-start">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="font-semibold text-lg">
+                {getMedicalTestTypeLabel(record.testType)}
+              </span>
+              {isLatest && <Badge status="processing" text="Latest" />}
+              <Tag color={record.version === 1 ? 'blue' : 'purple'}>
+                v{record.version}
+              </Tag>
+              {getStatusBadge(record.status)}
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-sm text-gray-600 mb-2">
+              <div>Test Date: {moment(record.testDate).format('MM/DD/YYYY')}</div>
+              <div>Uploaded: {moment(record.uploadDate).format('MM/DD/YYYY')}</div>
+              {record.ceremonyNumber && (
+                <div>Ceremony: #{record.ceremonyNumber}</div>
+              )}
+              {record.measurementTime && (
+                <div>Time: {record.measurementTime}</div>
+              )}
+            </div>
+
+            {/* Results display */}
+            {record.results && (
+              <div className="bg-gray-50 p-2 rounded mb-2">
+                {record.testType === MedicalTestType.BLOOD_PRESSURE && (
+                  <div className="flex gap-4">
+                    <span>BP: {record.results.systolic}/{record.results.diastolic}</span>
+                    {record.results.heartRate && <span>HR: {record.results.heartRate}</span>}
+                  </div>
+                )}
+                {record.results.interpretation && (
+                  <Tag color={
+                    record.results.interpretation === 'normal' ? 'green' :
+                    record.results.interpretation === 'abnormal' ? 'red' : 'orange'
+                  }>
+                    {record.results.interpretation.toUpperCase()}
+                  </Tag>
+                )}
+                {record.results.abnormalities && record.results.abnormalities.length > 0 && (
+                  <div className="text-red-600 mt-1">
+                    <FiAlertCircle className="inline mr-1" />
+                    {record.results.abnormalities.join(', ')}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Notes */}
+            {(record.notes || record.correctionReason) && (
+              <div className="text-sm">
+                {record.correctionReason && (
+                  <div className="text-red-600 mb-1">
+                    <FiAlertCircle className="inline mr-1" />
+                    Correction Required: {record.correctionReason}
+                  </div>
+                )}
+                {record.notes && <div className="text-gray-700">{record.notes}</div>}
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-2">
+            {record.attachments && record.attachments.length > 0 && (
+              <Button size="small" icon={<FiEye />} onClick={() => {/* View file */}}>
+                View
+              </Button>
+            )}
+            {needsCorrection && isLatest && (
+              <Button
+                size="small"
+                type="primary"
+                icon={<FiUpload />}
+                onClick={() => handleUploadCorrection(record)}
+              >
+                Upload Correction
+              </Button>
+            )}
+          </div>
+        </div>
+      </Card>
+    );
+  };
+
+  // Handle upload correction
+  const handleUploadCorrection = (record: MedicalRecord) => {
+    setEditingRecord({
+      ...record,
+      version: record.version + 1,
+      versionStatus: VersionStatus.CORRECTION_SUBMITTED,
+      status: MedicalRecordStatus.PENDING_REVIEW,
+      previousVersionId: record._id
+    });
+    setIsModalOpen(true);
+  };
+
+  // Render timing tab content
+  const renderTimingContent = (timing: MedicalRecordTiming) => {
+    const timingRecords = groupedRecords[timing];
+    const hasRecords = Object.keys(timingRecords).length > 0;
+
+    if (!hasRecords) {
+      return (
+        <Empty
+          description={`No ${getMedicalTimingLabel(timing).toLowerCase()} medical records`}
+          className="py-8"
+        >
+          <Button type="primary" icon={<FiPlus />} onClick={() => handleAddRecord(timing)}>
+            Add {getMedicalTimingLabel(timing)} Record
+          </Button>
+        </Empty>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        <div className="flex justify-between mb-4">
+          <h3 className="text-lg font-semibold">{getMedicalTimingLabel(timing)} Records</h3>
+          <Button type="primary" icon={<FiPlus />} onClick={() => handleAddRecord(timing)}>
+            Add Record
+          </Button>
+        </div>
+
+        {Object.entries(timingRecords).map(([testType, typeRecords]) => (
+          <div key={testType} className="mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <FiActivity className="text-blue-500" />
+              <h4 className="text-md font-semibold">
+                {getMedicalTestTypeLabel(testType as MedicalTestType)}
+              </h4>
+              <Badge count={typeRecords.length} style={{ backgroundColor: '#52c41a' }} />
+            </div>
+
+            {/* Show version timeline if multiple versions */}
+            {typeRecords.length > 1 ? (
+              <Timeline>
+                {typeRecords.map((record, index) => (
+                  <Timeline.Item
+                    key={record._id}
+                    color={index === 0 && record.isLatestVersion ? 'blue' : 'gray'}
+                    dot={index === 0 && record.isLatestVersion ? <FiCheck /> : undefined}
+                  >
+                    {renderRecordCard(record)}
+                  </Timeline.Item>
+                ))}
+              </Timeline>
+            ) : (
+              typeRecords.map(record => renderRecordCard(record))
+            )}
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // Handle add record
+  const handleAddRecord = (timing: MedicalRecordTiming) => {
+    setActiveTab(timing);
+    setEditingRecord({
+      timing,
+      testType: MedicalTestType.EKG,
+      version: 1,
+      versionStatus: VersionStatus.INITIAL,
+      status: MedicalRecordStatus.PENDING_REVIEW,
+      isLatestVersion: true,
+      testDate: new Date(),
+      uploadDate: new Date(),
+      results: {},
+      attachments: []
+    } as MedicalRecord);
+    setIsModalOpen(true);
+  };
+
+  // Calculate badge counts
+  const getTabBadgeCount = (timing: MedicalRecordTiming) => {
+    const timingRecords = groupedRecords[timing];
+    let needsActionCount = 0;
+
+    Object.values(timingRecords).forEach(typeRecords => {
+      typeRecords.forEach(record => {
+        if (record.isLatestVersion &&
+            (record.status === MedicalRecordStatus.NEEDS_CORRECTION ||
+             record.status === MedicalRecordStatus.PENDING_REVIEW)) {
+          needsActionCount++;
+        }
+      });
+    });
+
+    return needsActionCount;
+  };
+
+  return (
+    <div className="medical-records-dashboard">
+      <div className="mb-6 bg-white p-4 rounded-lg shadow-sm">
+        <div className="flex justify-between items-center">
+          <div>
+            <h2 className="text-xl font-bold">Medical Records Management</h2>
+            <p className="text-gray-600">{clientName} - ID: {clientId}</p>
+          </div>
+          <div className="flex gap-2">
+            <Button icon={<FiRefreshCw />} onClick={() => {/* Refresh */}}>
+              Refresh
+            </Button>
+            <Button type="primary" icon={<FiFileText />}>
+              Generate Report
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <Tabs
+        activeKey={activeTab}
+        onChange={(key) => setActiveTab(key as MedicalRecordTiming)}
+        type="card"
+      >
+        {Object.values(MedicalRecordTiming).map(timing => {
+          const badgeCount = getTabBadgeCount(timing);
+          return (
+            <Tabs.TabPane
+              key={timing}
+              tab={
+                <span>
+                  {getMedicalTimingLabel(timing)}
+                  {badgeCount > 0 && (
+                    <Badge
+                      count={badgeCount}
+                      className="ml-2"
+                      style={{ backgroundColor: '#ff4d4f' }}
+                    />
+                  )}
+                </span>
+              }
+            >
+              {loading ? (
+                <div className="flex justify-center py-8">
+                  <Spin size="large" />
+                </div>
+              ) : (
+                renderTimingContent(timing)
+              )}
+            </Tabs.TabPane>
+          );
+        })}
+      </Tabs>
+
+      {/* Add/Edit Modal */}
+      <Modal
+        title={editingRecord?._id ? 'Edit Medical Record' : 'Add Medical Record'}
+        open={isModalOpen}
+        onCancel={() => {
+          setIsModalOpen(false);
+          setEditingRecord(null);
+        }}
+        onOk={() => {
+          // Handle save
+          message.success('Medical record saved');
+          setIsModalOpen(false);
+        }}
+        width={700}
+      >
+        {editingRecord && (
+          <Form layout="vertical">
+            <div className="grid grid-cols-2 gap-4">
+              <Form.Item label="Timing">
+                <Select
+                  value={editingRecord.timing}
+                  onChange={(value) => setEditingRecord({ ...editingRecord, timing: value })}
+                >
+                  {Object.values(MedicalRecordTiming).map(timing => (
+                    <Select.Option key={timing} value={timing}>
+                      {getMedicalTimingLabel(timing)}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+
+              <Form.Item label="Test Type">
+                <Select
+                  value={editingRecord.testType}
+                  onChange={(value) => setEditingRecord({ ...editingRecord, testType: value })}
+                >
+                  {Object.values(MedicalTestType).map(type => (
+                    <Select.Option key={type} value={type}>
+                      {getMedicalTestTypeLabel(type)}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+
+              <Form.Item label="Test Date">
+                <DatePicker
+                  value={editingRecord.testDate ? moment(editingRecord.testDate) : null}
+                  onChange={(date) => setEditingRecord({
+                    ...editingRecord,
+                    testDate: date?.toDate() || new Date()
+                  })}
+                  className="w-full"
+                />
+              </Form.Item>
+
+              <Form.Item label="Status">
+                <Select
+                  value={editingRecord.status}
+                  onChange={(value) => setEditingRecord({ ...editingRecord, status: value })}
+                >
+                  {Object.values(MedicalRecordStatus).map(status => (
+                    <Select.Option key={status} value={status}>
+                      {status.replace(/_/g, ' ').toUpperCase()}
+                    </Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </div>
+
+            {editingRecord.testType === MedicalTestType.BLOOD_PRESSURE && (
+              <div className="grid grid-cols-3 gap-4">
+                <Form.Item label="Systolic">
+                  <Input
+                    type="number"
+                    value={editingRecord.results.systolic}
+                    onChange={(e) => setEditingRecord({
+                      ...editingRecord,
+                      results: { ...editingRecord.results, systolic: parseInt(e.target.value) }
+                    })}
+                  />
+                </Form.Item>
+                <Form.Item label="Diastolic">
+                  <Input
+                    type="number"
+                    value={editingRecord.results.diastolic}
+                    onChange={(e) => setEditingRecord({
+                      ...editingRecord,
+                      results: { ...editingRecord.results, diastolic: parseInt(e.target.value) }
+                    })}
+                  />
+                </Form.Item>
+                <Form.Item label="Heart Rate">
+                  <Input
+                    type="number"
+                    value={editingRecord.results.heartRate}
+                    onChange={(e) => setEditingRecord({
+                      ...editingRecord,
+                      results: { ...editingRecord.results, heartRate: parseInt(e.target.value) }
+                    })}
+                  />
+                </Form.Item>
+              </div>
+            )}
+
+            <Form.Item label="Notes">
+              <TextArea
+                rows={4}
+                value={editingRecord.notes}
+                onChange={(e) => setEditingRecord({ ...editingRecord, notes: e.target.value })}
+              />
+            </Form.Item>
+
+            <Form.Item label="Upload Files">
+              <Upload.Dragger
+                multiple
+                beforeUpload={() => false}
+              >
+                <p className="ant-upload-drag-icon">
+                  <FiUpload className="text-3xl mx-auto" />
+                </p>
+                <p className="ant-upload-text">Click or drag files to upload</p>
+              </Upload.Dragger>
+            </Form.Item>
+          </Form>
+        )}
+      </Modal>
+    </div>
+  );
+};
+
+export default MedicalRecordsDashboard;
