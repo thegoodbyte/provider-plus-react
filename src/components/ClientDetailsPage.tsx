@@ -6,6 +6,7 @@ import AppleButton from './AppleButton';
 import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
 import { PaymentRequest } from '../types';
 import { FiArrowLeft, FiCamera, FiEdit2, FiTrash2, FiUser, FiMapPin, FiCalendar, FiDollarSign, FiActivity, FiFileText, FiAlertCircle, FiPlus, FiMessageSquare, FiCheckSquare, FiHeart, FiEye, FiEyeOff } from 'react-icons/fi';
+import MedicalRecordsManager from './MedicalRecordsManager';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -922,6 +923,12 @@ const ClientDetailsPage: React.FC = () => {
             onClick={() => setActiveTab('medical')}
           />
           <Tab
+            label="Medical Records"
+            icon={FiActivity}
+            isActive={activeTab === 'medicalRecords'}
+            onClick={() => setActiveTab('medicalRecords')}
+          />
+          <Tab
             label="Bookings"
             icon={FiCalendar}
             isActive={activeTab === 'bookings'}
@@ -1487,6 +1494,16 @@ const ClientDetailsPage: React.FC = () => {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {activeTab === 'medicalRecords' && (
+          <div>
+            <MedicalRecordsManager
+              clientId={clientId}
+              clientName={`${client.firstName} ${client.lastName}`}
+              retreatId={bookings[0]?.retreatId}
+            />
           </div>
         )}
 
