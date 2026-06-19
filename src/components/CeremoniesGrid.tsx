@@ -128,13 +128,33 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId }) => {
     <div style={{ height: 500 }}>
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3>Ceremonies</h3>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
+        <button
           onClick={handleAdd}
+          style={{
+            background: 'transparent',
+            border: '1px solid #d9d9d9',
+            borderRadius: '4px',
+            padding: '4px 12px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minWidth: '32px',
+            height: '32px',
+            transition: 'all 0.3s'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = '#40a9ff';
+            e.currentTarget.style.color = '#40a9ff';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = '#d9d9d9';
+            e.currentTarget.style.color = 'inherit';
+          }}
+          title="Add Ceremony"
         >
-          Add Ceremony
-        </Button>
+          <PlusOutlined />
+        </button>
       </div>
 
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
