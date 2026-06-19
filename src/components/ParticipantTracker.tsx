@@ -51,6 +51,18 @@ const getClientName = (participant: CeremonyParticipant) => {
   return name || client.email || `Client ${getObjectId(client).slice(-6)}`;
 };
 
+const getClientFirstName = (participant: CeremonyParticipant) => {
+  const client = participant.clientId as any;
+  if (!client || typeof client === 'string') return 'Client';
+  return client.firstName || client.fname || 'Unknown';
+};
+
+const getClientLastName = (participant: CeremonyParticipant) => {
+  const client = participant.clientId as any;
+  if (!client || typeof client === 'string') return getObjectId(client).slice(-6) || '';
+  return client.lastName || client.lname || '';
+};
+
 const getEventSummary = (event: CeremonyEvent) => {
   if (event.eventType === 'medicine') {
     const form = event.medicineForm || 'spoon';
@@ -778,11 +790,14 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                 const latestCheck = getLatestPreCeremonyCheck(participant);
                 const postChecks = getPostCeremonyChecks(participant);
                 return (
-                  <th key={participant._id} className="sticky top-0 z-20 min-w-[240px] border-b border-r border-gray-200 bg-gray-50 px-3 py-3 text-left align-top shadow-sm">
-                    <div className="text-sm font-semibold text-gray-900">{getClientName(participant)}</div>
-                    <div className="mt-1 text-xs text-gray-500">
+                  <th key={participant._id} className="sticky top-0 z-20 min-w-[140px] border-b border-r border-gray-200 bg-gray-50 px-2 py-3 text-left align-top shadow-sm">
+                    <div className="space-y-0.5">
+                      <div className="text-base font-bold text-gray-900">{getClientFirstName(participant)}</div>
+                      <div className="text-xs font-normal text-gray-600">{getClientLastName(participant)}</div>
+                    </div>
+                    <div className="mt-2 text-xs text-gray-500">
                       {participant.spoonsTaken || 0} spoons
-                      {participant.purged ? ` - purged ${participant.purgeTime || ''}` : ''}
+                      {participant.purged && <div className="text-xs">Purged {participant.purgeTime || ''}</div>}
                     </div>
                     {latestCheck && (
                       <div className="mt-2 rounded-md border border-gray-200 bg-white px-2 py-2 text-xs text-gray-700">
