@@ -222,23 +222,28 @@ const MedicalArtifactCreatePage: React.FC = () => {
             {showClientDropdown && (
               <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white shadow-lg">
                 {filteredClients.length > 0 ? (
-                  filteredClients.slice(0, 20).map((client) => (
-                    <button
-                      key={client._id}
-                      type="button"
-                      onClick={() => {
-                        setForm({ ...form, clientId: client._id });
-                        setShowClientDropdown(false);
-                        setClientSearch('');
-                      }}
-                      className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
-                    >
-                      <div className="font-medium">
-                        #{client.display_id || '-'} {client.firstName || client.fname} {client.lastName || client.lname}
-                      </div>
-                      {client.email && <div className="text-xs text-gray-500">{client.email}</div>}
-                    </button>
-                  ))
+                  filteredClients.slice(0, 20).map((client) => {
+                    const clientId = client._id;
+                    if (!clientId) return null;
+
+                    return (
+                      <button
+                        key={clientId}
+                        type="button"
+                        onClick={() => {
+                          setForm({ ...form, clientId });
+                          setShowClientDropdown(false);
+                          setClientSearch('');
+                        }}
+                        className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
+                      >
+                        <div className="font-medium">
+                          #{client.display_id || '-'} {client.firstName || client.fname} {client.lastName || client.lname}
+                        </div>
+                        {client.email && <div className="text-xs text-gray-500">{client.email}</div>}
+                      </button>
+                    );
+                  })
                 ) : (
                   <div className="px-3 py-2 text-sm text-gray-500">No clients found</div>
                 )}
