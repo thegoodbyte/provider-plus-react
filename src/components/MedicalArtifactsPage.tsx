@@ -22,20 +22,29 @@ const artifactTypeLabels: Record<NonNullable<MedicalArtifact['artifactType']>, s
 const getArtifactTypeLabel = (artifactType?: MedicalArtifact['artifactType']) =>
   artifactType ? artifactTypeLabels[artifactType] : 'Medical Artifact';
 
-const contextTypeLabels: Record<NonNullable<MedicalArtifact['contextType']>, string> = {
-  client: 'Client',
-  booking: 'Booking',
-  ceremony: 'Ceremony',
+const documentStageLabels: Record<NonNullable<MedicalArtifact['documentStage']>, string> = {
+  entry: 'Entry',
+  pre_ceremony: 'Pre-Ceremony',
+  in_ceremony: 'In-Ceremony',
+  post_ceremony: 'Post-Ceremony',
+  additional: 'Additional',
 };
 
-const purposeLabels: Record<NonNullable<MedicalArtifact['purpose']>, string> = {
-  paid_review: 'Paid Review',
-  booking_requirement: 'Booking Requirement',
-  pre_ceremony: 'Pre-Ceremony',
-  repeat_test: 'Repeat Test',
-  correction: 'Correction',
-  general: 'General',
+const documentTypeLabels: Record<NonNullable<MedicalArtifact['documentType']>, string> = {
+  BP: 'Blood Pressure',
+  EKG: 'EKG',
+  Liver: 'Liver panel tests',
+  Medications: 'Medications',
+  other: 'Other',
 };
+
+const getDocumentStageLabel = (stage?: MedicalArtifact['documentStage']) =>
+  stage ? documentStageLabels[stage] : 'Entry';
+
+const getDocumentTypeLabel = (type?: MedicalArtifact['documentType'], artifactType?: MedicalArtifact['artifactType']) =>
+  type ? documentTypeLabels[type] : getArtifactTypeLabel(artifactType);
+
+const getObjectId = (value: any) => typeof value === 'object' ? value?._id || value?.id : value;
 
 const getClientName = (client?: string | Client) => {
   if (!client || typeof client === 'string') return 'Unknown client';
@@ -46,9 +55,8 @@ const MedicalArtifactsPage: React.FC = () => {
   const navigate = useNavigate();
   const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
   const [loading, setLoading] = useState(true);
-  const [typeFilter, setTypeFilter] = useState<'all' | MedicalArtifact['artifactType']>('all');
-  const [contextFilter, setContextFilter] = useState<'all' | NonNullable<MedicalArtifact['contextType']>>('all');
-  const [purposeFilter, setPurposeFilter] = useState<'all' | NonNullable<MedicalArtifact['purpose']>>('all');
+  const [stageFilter, setStageFilter] = useState<'all' | NonNullable<MedicalArtifact['documentStage']>>('all');
+  const [documentTypeFilter, setDocumentTypeFilter] = useState<'all' | NonNullable<MedicalArtifact['documentType']>>('all');
 
   const loadData = async () => {
     setLoading(true);
@@ -66,12 +74,11 @@ const MedicalArtifactsPage: React.FC = () => {
 
   const filteredArtifacts = useMemo(() => {
     return artifacts.filter((artifact) => {
-      if (typeFilter !== 'all' && artifact.artifactType !== typeFilter) return false;
-      if (contextFilter !== 'all' && (artifact.contextType || 'client') !== contextFilter) return false;
-      if (purposeFilter !== 'all' && (artifact.purpose || 'general') !== purposeFilter) return false;
+      if (stageFilter !== 'all' && (artifact.documentStage || 'entry') !== stageFilter) return false;
+      if (documentTypeFilter !== 'all' && (artifact.documentType || 'other') !== documentTypeFilter) return false;
       return true;
     });
-  }, [artifacts, typeFilter, contextFilter, purposeFilter]);
+  }, [artifacts, stageFilter, documentTypeFilter]);
 
   const handleRequestReview = async (artifact: MedicalArtifact) => {
     if (!artifact._id) return;
@@ -102,21 +109,15 @@ const MedicalArtifactsPage: React.FC = () => {
       </div>
 
       <div className="mb-4 flex items-center gap-2">
-        <select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as typeof typeFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-          <option value="all">All artifact types</option>
-          {Object.entries(artifactTypeLabels).map(([value, label]) => (
+        <select value={stageFilter} onChange={(event) => setStageFilter(event.target.value as typeof stageFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+          <option value="all">All document stages</option>
+          {Object.entries(documentStageLabels).map(([value, label]) => (
             <option key={value} value={value}>{label}</option>
           ))}
         </select>
-        <select value={contextFilter} onChange={(event) => setContextFilter(event.target.value as typeof contextFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-          <option value="all">All contexts</option>
-          {Object.entries(contextTypeLabels).map(([value, label]) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </select>
-        <select value={purposeFilter} onChange={(event) => setPurposeFilter(event.target.value as typeof purposeFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-          <option value="all">All purposes</option>
-          {Object.entries(purposeLabels).map(([value, label]) => (
+        <select value={documentTypeFilter} onChange={(event) => setDocumentTypeFilter(event.target.value as typeof documentTypeFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+          <option value="all">All document types</option>
+          {Object.entries(documentTypeLabels).map(([value, label]) => (
             <option key={value} value={value}>{label}</option>
           ))}
         </select>
@@ -128,10 +129,11 @@ const MedicalArtifactsPage: React.FC = () => {
             <tr>
               <th className="px-4 py-3">ID</th>
               <th className="px-4 py-3">Preview</th>
-              <th className="px-4 py-3">Type</th>
-              <th className="px-4 py-3">Context</th>
+              <th className="px-4 py-3">Stage</th>
+              <th className="px-4 py-3">Document Type</th>
               <th className="px-4 py-3">Title</th>
               <th className="px-4 py-3">Client</th>
+              <th className="px-4 py-3">Booking / Ceremony</th>
               <th className="px-4 py-3">Received</th>
               <th className="px-4 py-3">Files</th>
               <th className="px-4 py-3">Status</th>
@@ -153,21 +155,15 @@ const MedicalArtifactsPage: React.FC = () => {
                     <div className="flex h-[60px] w-[80px] items-center justify-center rounded border border-dashed border-gray-200 text-xs text-gray-400">No thumb</div>
                   )}
                 </td>
-                <td className="px-4 py-3">{getArtifactTypeLabel(artifact.artifactType)}</td>
                 <td className="px-4 py-3">
-                  <div className="flex flex-col gap-1">
-                    <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
-                      {contextTypeLabels[artifact.contextType || 'client']}
-                    </span>
-                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700">
-                      {purposeLabels[artifact.purpose || 'general']}
-                    </span>
-                    {artifact.reviewFeeAmount ? (
-                      <span className="text-xs text-gray-500">
-                        {artifact.reviewFeeAmount} {artifact.reviewFeeCurrency || 'EUR'} {artifact.reviewFeePaid ? 'paid' : 'due'}
-                      </span>
-                    ) : null}
-                  </div>
+                  <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
+                    {getDocumentStageLabel(artifact.documentStage)}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700">
+                    {getDocumentTypeLabel(artifact.documentType, artifact.artifactType)}
+                  </span>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
@@ -176,6 +172,12 @@ const MedicalArtifactsPage: React.FC = () => {
                   </div>
                 </td>
                 <td className="px-4 py-3">{getClientName(artifact.clientId)}</td>
+                <td className="px-4 py-3">
+                  <div className="flex flex-col gap-1 text-xs text-gray-600">
+                    <span>{getObjectId(artifact.bookingId) ? `Booking ${String(getObjectId(artifact.bookingId)).slice(-6)}` : '-'}</span>
+                    {artifact.ceremonyNumber ? <span>Ceremony #{artifact.ceremonyNumber}</span> : null}
+                  </div>
+                </td>
                 <td className="px-4 py-3">{artifact.receivedAt ? new Date(artifact.receivedAt).toLocaleDateString() : '-'}</td>
                 <td className="px-4 py-3">{artifact.files?.length || 0}</td>
                 <td className="px-4 py-3 capitalize">{artifact.status || 'stored'}</td>
@@ -195,7 +197,7 @@ const MedicalArtifactsPage: React.FC = () => {
             ))}
             {filteredArtifacts.length === 0 && (
               <tr>
-                <td colSpan={10} className="px-4 py-8 text-center text-gray-500">No medical artifacts yet.</td>
+                <td colSpan={11} className="px-4 py-8 text-center text-gray-500">No medical artifacts yet.</td>
               </tr>
             )}
           </tbody>

@@ -609,6 +609,8 @@ export const medicalArtifactsApi = {
     status?: MedicalArtifact['status'];
     contextType?: MedicalArtifact['contextType'];
     purpose?: MedicalArtifact['purpose'];
+    documentStage?: MedicalArtifact['documentStage'];
+    documentType?: MedicalArtifact['documentType'];
   } = {}) => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {

@@ -14,21 +14,25 @@ interface BookingMedicalUploadProps {
 }
 
 type BookingMedicalTestType = 'ekg' | 'liver_panel';
+type BookingDocumentType = Extract<MedicalArtifact['documentType'], 'EKG' | 'Liver'>;
 
 const medicalTestSections: Array<{
   type: BookingMedicalTestType;
+  documentType: BookingDocumentType;
   title: string;
   requestType: MedicalReviewRequest['requestType'];
   description: string;
 }> = [
   {
     type: 'ekg',
+    documentType: 'EKG',
     title: 'EKG',
     requestType: 'ekg_review',
     description: 'Required EKG result for this booking.',
   },
   {
     type: 'liver_panel',
+    documentType: 'Liver',
     title: 'Liver Panel',
     requestType: 'liver_panel_review',
     description: 'Required liver panel test result for this booking.',
@@ -91,6 +95,10 @@ const getFlowReceiptKey = (sectionType: BookingMedicalTestType) =>
 const getFlowReadinessGroup = (sectionType: BookingMedicalTestType) =>
   sectionType === 'ekg' ? 'ekg' : 'liver';
 
+const artifactMatchesSection = (artifact: MedicalArtifact, section: (typeof medicalTestSections)[number]) =>
+  artifact.artifactType === section.type ||
+  (artifact.documentStage === 'entry' && artifact.documentType === section.documentType);
+
 const getArtifactResultText = (artifact?: MedicalArtifact) => {
   const dataResult = artifact?.data?.resultText;
   if (typeof dataResult === 'string' && dataResult.trim()) return dataResult;
@@ -142,7 +150,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
         clientId && retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId }) : Promise.resolve({ data: [] }),
       ]);
       const medicalArtifacts: MedicalArtifact[] = mergeArtifacts(responses.map((response) => response.data || [])).filter((artifact) =>
-        medicalTestSections.some((section) => section.type === artifact.artifactType)
+        medicalTestSections.some((section) => artifactMatchesSection(artifact, section))
       );
       setArtifacts(medicalArtifacts);
 
@@ -173,7 +181,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
   const artifactsByType = useMemo(() => {
     return medicalTestSections.reduce<Record<BookingMedicalTestType, MedicalArtifact[]>>((acc, section) => {
       acc[section.type] = artifacts
-        .filter((artifact) => artifact.artifactType === section.type)
+        .filter((artifact) => artifactMatchesSection(artifact, section))
         .sort(compareArtifactsForDisplay);
       return acc;
     }, {
@@ -317,6 +325,8 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
           bookingId,
         },
         contextType: 'booking' as const,
+        documentStage: 'entry' as const,
+        documentType: section.documentType,
         purpose: 'booking_requirement' as const,
         tags: Array.from(new Set([...(latestArtifact?.tags || []), 'booking-requirement'])),
         receivedAt: latestArtifact?.receivedAt || now,
@@ -380,6 +390,8 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
         bookingId,
         artifactType: section.type,
         contextType: 'booking',
+        documentStage: 'entry',
+        documentType: section.documentType,
         purpose: 'booking_requirement',
         title: `${section.title}${bookingNumber ? ` - Booking ${bookingNumber}` : ''}`,
         description: section.description,

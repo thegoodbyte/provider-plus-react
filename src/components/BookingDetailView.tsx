@@ -16,6 +16,7 @@ type RequirementDefinition = {
   key: string;
   label: string;
   artifactTypes: RequirementArtifactType[];
+  documentTypes?: MedicalArtifact['documentType'][];
   readinessGroups: string[];
 };
 
@@ -27,9 +28,9 @@ interface BookingDetailViewProps {
 const HeaderIcon: React.FC<{ icon: any }> = ({ icon: IconComponent }) => <IconComponent />;
 
 const requirementDefinitions: RequirementDefinition[] = [
-  { key: 'ekg', label: 'EKG', artifactTypes: ['ekg'], readinessGroups: ['ekg'] },
-  { key: 'liver', label: 'Liver Panel', artifactTypes: ['liver_panel'], readinessGroups: ['liver'] },
-  { key: 'medications', label: 'Medications Form', artifactTypes: ['medications_form', 'medication_list'], readinessGroups: ['medications'] },
+  { key: 'ekg', label: 'Entry EKG', artifactTypes: ['ekg'], documentTypes: ['EKG'], readinessGroups: ['ekg'] },
+  { key: 'liver', label: 'Entry Liver Panel', artifactTypes: ['liver_panel'], documentTypes: ['Liver'], readinessGroups: ['liver'] },
+  { key: 'medications', label: 'Medications Form', artifactTypes: ['medications_form', 'medication_list'], documentTypes: ['Medications'], readinessGroups: ['medications'] },
   { key: 'questionnaire', label: 'Questionnaire', artifactTypes: ['questionnaire'], readinessGroups: ['questionnaire'] },
   { key: 'food', label: 'Food Form', artifactTypes: ['food_intake'], readinessGroups: ['food'] },
 ];
@@ -184,7 +185,11 @@ const BookingRequirementsPanel: React.FC<{
       return definition.readinessGroups.includes(readinessGroup) || definition.artifactTypes.includes(expectedArtifact);
     });
     const relatedArtifacts = artifacts
-      .filter((artifact) => artifact.artifactType && definition.artifactTypes.includes(artifact.artifactType))
+      .filter((artifact) => {
+        const matchesLegacyType = artifact.artifactType && definition.artifactTypes.includes(artifact.artifactType);
+        const matchesDocumentType = artifact.documentStage === 'entry' && definition.documentTypes?.includes(artifact.documentType);
+        return matchesLegacyType || matchesDocumentType;
+      })
       .sort(compareArtifactsForDisplay);
     const latestArtifact = relatedArtifacts[0];
     const reviews = latestArtifact?._id ? (reviewsByArtifact[latestArtifact._id] || []) : [];

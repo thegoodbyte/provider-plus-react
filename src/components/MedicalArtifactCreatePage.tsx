@@ -1,40 +1,12 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Upload, Search } from 'lucide-react';
-import { clientsApi, medicalArtifactsApi } from '../services/api';
-import { Client, MedicalArtifact } from '../types';
+import { bookingsApi, clientsApi, medicalArtifactsApi } from '../services/api';
+import { Client, MedicalArtifact, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 
-type ArtifactType = NonNullable<MedicalArtifact['artifactType']>;
-
-const artifactTypeLabels: Record<ArtifactType, string> = {
-  ekg: 'EKG',
-  ceremony_ekg: 'Ceremony EKG',
-  blood_pressure: 'Blood Pressure',
-  liver_panel: 'Liver Panel',
-  medications_form: 'Medications Form',
-  medication_list: 'Medication List',
-  questionnaire: 'Questionnaire',
-  food_intake: 'Food Intake',
-  contract: 'Contract',
-  question: 'Question',
-  other: 'Other',
-};
-
-const contextTypeLabels: Record<NonNullable<MedicalArtifact['contextType']>, string> = {
-  client: 'Client profile',
-  booking: 'Booking',
-  ceremony: 'Ceremony',
-};
-
-const purposeLabels: Record<NonNullable<MedicalArtifact['purpose']>, string> = {
-  paid_review: 'Paid review',
-  booking_requirement: 'Booking requirement',
-  pre_ceremony: 'Pre-ceremony',
-  repeat_test: 'Repeat test',
-  correction: 'Correction',
-  general: 'General',
-};
+type DocumentStage = NonNullable<MedicalArtifact['documentStage']>;
+type DocumentType = NonNullable<MedicalArtifact['documentType']>;
 
 const documentStageLabels: Record<NonNullable<MedicalArtifact['documentStage']>, string> = {
   entry: 'Entry',
@@ -47,8 +19,37 @@ const documentStageLabels: Record<NonNullable<MedicalArtifact['documentStage']>,
 const documentTypeLabels: Record<NonNullable<MedicalArtifact['documentType']>, string> = {
   BP: 'Blood Pressure',
   EKG: 'EKG',
-  Liver: 'Liver Panel',
+  Liver: 'Liver panel tests',
+  Medications: 'Medications',
   other: 'Other',
+};
+
+const ceremonyStages = new Set<DocumentStage>(['pre_ceremony', 'in_ceremony', 'post_ceremony']);
+
+const getObjectId = (value: any) => typeof value === 'object' ? value?._id || value?.id : value;
+
+const getArtifactTypeForDocument = (stage: DocumentStage, type: DocumentType): NonNullable<MedicalArtifact['artifactType']> => {
+  if (type === 'EKG') return ceremonyStages.has(stage) ? 'ceremony_ekg' : 'ekg';
+  if (type === 'BP') return 'blood_pressure';
+  if (type === 'Liver') return 'liver_panel';
+  if (type === 'Medications') return 'medications_form';
+  return 'other';
+};
+
+const getPurposeForStage = (stage: DocumentStage): NonNullable<MedicalArtifact['purpose']> => {
+  if (stage === 'entry') return 'booking_requirement';
+  if (stage === 'pre_ceremony') return 'pre_ceremony';
+  if (stage === 'in_ceremony' || stage === 'post_ceremony') return 'repeat_test';
+  return 'general';
+};
+
+const getBookingLabel = (booking: RetreatClient) => {
+  const parts = [
+    booking.bookingNumber ? `Booking #${booking.bookingNumber}` : 'Booking',
+    booking.status,
+    booking.checkInDate ? new Date(booking.checkInDate).toLocaleDateString() : '',
+  ].filter(Boolean);
+  return parts.join(' - ');
 };
 
 const MedicalArtifactCreatePage: React.FC = () => {
@@ -57,6 +58,8 @@ const MedicalArtifactCreatePage: React.FC = () => {
   const routePrefix = location.pathname.startsWith('/medical/') ? '/medical' : '/admin';
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [clients, setClients] = useState<Client[]>([]);
+  const [bookings, setBookings] = useState<RetreatClient[]>([]);
+  const [loadingBookings, setLoadingBookings] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,11 +69,9 @@ const MedicalArtifactCreatePage: React.FC = () => {
   const [showClientDropdown, setShowClientDropdown] = useState(false);
   const [form, setForm] = useState({
     clientId: '',
-    artifactType: 'ekg' as ArtifactType,
-    contextType: 'client' as NonNullable<MedicalArtifact['contextType']>,
-    purpose: 'paid_review' as NonNullable<MedicalArtifact['purpose']>,
     documentStage: 'entry' as NonNullable<MedicalArtifact['documentStage']>,
     documentType: 'other' as NonNullable<MedicalArtifact['documentType']>,
+    bookingId: '',
     ceremonyNumber: undefined as number | undefined,
     title: '',
     resultText: '',
@@ -107,9 +108,10 @@ const MedicalArtifactCreatePage: React.FC = () => {
     if (!clientSearch) return clients;
     const search = clientSearch.toLowerCase();
     return clients.filter((client) => {
-      const fullName = `${client.firstName} ${client.lastName}`.toLowerCase();
+      const fullName = `${client.firstName || client.fname || ''} ${client.lastName || client.lname || ''}`.toLowerCase();
       const email = client.email?.toLowerCase() || '';
-      return fullName.includes(search) || email.includes(search);
+      const displayId = String(client.display_id || '');
+      return fullName.includes(search) || email.includes(search) || displayId.includes(search);
     });
   }, [clients, clientSearch]);
 
@@ -117,11 +119,48 @@ const MedicalArtifactCreatePage: React.FC = () => {
     return clients.find((c) => c._id === form.clientId);
   }, [clients, form.clientId]);
 
+  const selectedBooking = useMemo(() => {
+    return bookings.find((booking) => booking._id === form.bookingId);
+  }, [bookings, form.bookingId]);
+
+  const inferredArtifactType = useMemo(
+    () => getArtifactTypeForDocument(form.documentStage, form.documentType),
+    [form.documentStage, form.documentType]
+  );
+
+  const isCeremonyStage = ceremonyStages.has(form.documentStage);
+
+  useEffect(() => {
+    if (!form.clientId) {
+      setBookings([]);
+      return;
+    }
+
+    let isMounted = true;
+    setLoadingBookings(true);
+    bookingsApi.getByClient(form.clientId)
+      .then((response) => {
+        if (!isMounted) return;
+        setBookings(response.data || []);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setBookings([]);
+      })
+      .finally(() => {
+        if (isMounted) setLoadingBookings(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [form.clientId]);
+
   useEffect(() => {
     const loadUploadTarget = async () => {
-      const firstFileName = selectedFiles[0]?.name || `${form.artifactType}.pdf`;
+      const firstFileName = selectedFiles[0]?.name || `${inferredArtifactType}.pdf`;
       try {
-        const response = await medicalArtifactsApi.getUploadTargetPreview(form.artifactType, firstFileName);
+        const response = await medicalArtifactsApi.getUploadTargetPreview(inferredArtifactType, firstFileName);
         setUploadTarget(response.data);
       } catch (error) {
         console.error('Error loading upload target preview:', error);
@@ -129,26 +168,40 @@ const MedicalArtifactCreatePage: React.FC = () => {
       }
     };
     loadUploadTarget();
-  }, [form.artifactType, selectedFiles]);
+  }, [inferredArtifactType, selectedFiles]);
 
   const handleCreate = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!form.clientId) return;
+    if (isCeremonyStage && !form.bookingId) {
+      setError('Select a booking for pre-, in-, or post-ceremony records.');
+      return;
+    }
+    if (isCeremonyStage && !form.ceremonyNumber) {
+      setError('Enter the ceremony number for pre-, in-, or post-ceremony records.');
+      return;
+    }
 
     setSaving(true);
     setError(null);
     try {
-      const title = form.title.trim() || selectedFiles[0]?.name || artifactTypeLabels[form.artifactType];
+      const artifactType = inferredArtifactType;
+      const contextType: NonNullable<MedicalArtifact['contextType']> = isCeremonyStage ? 'ceremony' : (form.bookingId ? 'booking' : 'client');
+      const purpose = getPurposeForStage(form.documentStage);
+      const retreatId = getObjectId(selectedBooking?.retreatId);
+      const title = form.title.trim() || selectedFiles[0]?.name || `${documentStageLabels[form.documentStage]} ${documentTypeLabels[form.documentType]}`;
       const resultText = form.resultText.trim();
       const reviewFeeAmount = Number(form.reviewFeeAmount);
       const created = await medicalArtifactsApi.create({
         clientId: form.clientId,
-        artifactType: form.artifactType,
-        contextType: form.contextType,
+        retreatId: retreatId || undefined,
+        bookingId: form.bookingId || undefined,
+        artifactType,
+        contextType,
         documentStage: form.documentStage,
         documentType: form.documentType,
-        ceremonyNumber: form.ceremonyNumber,
-        purpose: form.purpose,
+        ceremonyNumber: isCeremonyStage ? form.ceremonyNumber : undefined,
+        purpose,
         title,
         source: 'manual',
         status: 'stored',
@@ -157,11 +210,13 @@ const MedicalArtifactCreatePage: React.FC = () => {
         reviewFeeAmount: Number.isFinite(reviewFeeAmount) ? reviewFeeAmount : undefined,
         reviewFeeCurrency: form.reviewFeeCurrency,
         reviewFeePaid: form.reviewFeePaid,
-        tags: [form.purpose, form.contextType].filter(Boolean),
+        tags: [form.documentStage, form.documentType, purpose, contextType].filter(Boolean),
         data: resultText ? {
           resultText,
           resultRecordedAt: new Date().toISOString(),
           resultSource: 'manual',
+          bookingId: form.bookingId || undefined,
+          ceremonyNumber: isCeremonyStage ? form.ceremonyNumber : undefined,
         } : undefined,
       });
 
@@ -202,6 +257,7 @@ const MedicalArtifactCreatePage: React.FC = () => {
         )}
         <div className="grid gap-3 md:grid-cols-3">
           <div className="relative" ref={dropdownRef}>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-600">Client</label>
             <div className="relative">
               <input
                 type="text"
@@ -231,7 +287,7 @@ const MedicalArtifactCreatePage: React.FC = () => {
                         key={clientId}
                         type="button"
                         onClick={() => {
-                          setForm({ ...form, clientId });
+                          setForm({ ...form, clientId, bookingId: '' });
                           setShowClientDropdown(false);
                           setClientSearch('');
                         }}
@@ -250,63 +306,75 @@ const MedicalArtifactCreatePage: React.FC = () => {
               </div>
             )}
           </div>
-          <select value={form.artifactType} onChange={(event) => setForm({ ...form, artifactType: event.target.value as ArtifactType })} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-            {Object.entries(artifactTypeLabels).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-          <input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Title or short description" />
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-600">Booking</label>
+            <select
+              value={form.bookingId}
+              onChange={(event) => setForm({ ...form, bookingId: event.target.value })}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              disabled={!form.clientId || loadingBookings}
+              required={isCeremonyStage}
+            >
+              <option value="">{loadingBookings ? 'Loading bookings...' : isCeremonyStage ? 'Select booking' : 'No booking link'}</option>
+              {bookings.map((booking) => (
+                <option key={booking._id} value={booking._id}>{getBookingLabel(booking)}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-600">Title</label>
+            <input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Title or short description" />
+          </div>
         </div>
 
         <div className="grid gap-3 md:grid-cols-2">
-          <select
-            value={form.documentStage}
-            onChange={(event) => setForm({ ...form, documentStage: event.target.value as typeof form.documentStage })}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-          >
-            {Object.entries(documentStageLabels).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-          <select
-            value={form.documentType}
-            onChange={(event) => setForm({ ...form, documentType: event.target.value as typeof form.documentType })}
-            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-          >
-            {Object.entries(documentTypeLabels).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-600">Document stage</label>
+            <select
+              value={form.documentStage}
+              onChange={(event) => setForm({ ...form, documentStage: event.target.value as typeof form.documentStage, ceremonyNumber: ceremonyStages.has(event.target.value as DocumentStage) ? form.ceremonyNumber : undefined })}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            >
+              {Object.entries(documentStageLabels).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-600">Document type</label>
+            <select
+              value={form.documentType}
+              onChange={(event) => setForm({ ...form, documentType: event.target.value as typeof form.documentType })}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            >
+              {Object.entries(documentTypeLabels).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        {(form.documentStage === 'pre_ceremony' || form.documentStage === 'in_ceremony' || form.documentStage === 'post_ceremony') && (
+        {isCeremonyStage && (
           <div className="grid gap-3 md:grid-cols-3">
-            <input
-              type="number"
-              min="1"
-              value={form.ceremonyNumber || ''}
-              onChange={(event) => setForm({ ...form, ceremonyNumber: event.target.value ? parseInt(event.target.value) : undefined })}
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-              placeholder="Ceremony number (e.g., 1, 2, 3)"
-              required
-            />
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-600">Ceremony #</label>
+              <input
+                type="number"
+                min="1"
+                value={form.ceremonyNumber || ''}
+                onChange={(event) => setForm({ ...form, ceremonyNumber: event.target.value ? parseInt(event.target.value) : undefined })}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                placeholder="1, 2, 3"
+                required
+              />
+            </div>
             <div className="col-span-2 flex items-center text-sm text-gray-600">
-              <span>Ceremony number is required for {documentStageLabels[form.documentStage]} stage</span>
+              <span>Booking and ceremony number are required for {documentStageLabels[form.documentStage]} records.</span>
             </div>
           </div>
         )}
 
-        <div className="grid gap-3 md:grid-cols-4">
-          <select value={form.contextType} onChange={(event) => setForm({ ...form, contextType: event.target.value as typeof form.contextType })} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-            {Object.entries(contextTypeLabels).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
-          <select value={form.purpose} onChange={(event) => setForm({ ...form, purpose: event.target.value as typeof form.purpose })} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-            {Object.entries(purposeLabels).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </select>
+        <div className="grid gap-3 md:grid-cols-2">
           <input
             type="number"
             min="0"
