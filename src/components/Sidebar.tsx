@@ -8,6 +8,7 @@ import {
   FiHome,
   FiBell,
   FiCreditCard,
+  FiDollarSign,
   FiClipboard,
   FiBarChart2,
   FiMail,
@@ -116,6 +117,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed,
       label: 'Payments',
       icon: FiCreditCard,
       description: 'Manage retreat payments'
+    },
+    {
+      id: 'expenses',
+      label: 'Expenses',
+      icon: FiDollarSign,
+      description: 'Manage expenses (retreat and general)'
     },
     {
       id: 'communications',

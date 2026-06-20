@@ -40,6 +40,7 @@ import PaymentsPage from './PaymentsPage';
 import PaymentEditorPage from './PaymentEditorPage';
 import PaymentRequestsGrid from './PaymentRequestsGrid';
 import PaymentRequestEditorPage from './PaymentRequestEditorPage';
+import ExpensesPage from './ExpensesPage';
 import CommunicationsPage from './CommunicationsPage';
 import ContactBookPage from './ContactBookPage';
 import HelperCurrentRetreatPage from './HelperCurrentRetreatPage';
@@ -391,6 +392,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="payments" element={<PaymentsPage />} />
                       <Route path="payments/new" element={<PaymentEditorPage />} />
                       <Route path="payments/:id/edit" element={<PaymentEditorPage />} />
+                      <Route path="expenses" element={<ExpensesPage />} />
                       <Route path="payment-requests" element={<PaymentRequestsGrid />} />
                       <Route path="payment-requests/new" element={<PaymentRequestEditorPage />} />
                       <Route path="payment-requests/:id/edit" element={<PaymentRequestEditorPage />} />
@@ -592,6 +594,7 @@ const AppleLayout: React.FC = () => {
                 <Route path="/bookings/:bookingId/edit" element={<ProtectedRoute><BookingEditorPage mode="edit" /></ProtectedRoute>} />
                 <Route path="/reminders" element={<ProtectedRoute><RemindersPage /></ProtectedRoute>} />
                 <Route path="/payments" element={<ProtectedRoute><PaymentsPage /></ProtectedRoute>} />
+                <Route path="/expenses" element={<ProtectedRoute><ExpensesPage /></ProtectedRoute>} />
                 <Route path="/requirements" element={<ProtectedRoute><RequirementsGrid /></ProtectedRoute>} />
               </Routes>
             </div>
