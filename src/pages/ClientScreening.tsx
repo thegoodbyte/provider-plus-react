@@ -171,7 +171,7 @@ const ClientScreening: React.FC = () => {
     physicalAbuseDetails: '',
     psychologicalAbuse: false,
     psychologicalAbuseDetails: '',
-    age: 0,
+    age: undefined as any,
     screeningDate: new Date().toISOString().split('T')[0],
     riskLevel: 1,
     heartConditionOk: false,
@@ -754,8 +754,9 @@ const ClientScreening: React.FC = () => {
               <input
                 type="number"
                 name="age"
-                value={formData.age}
+                value={formData.age || ''}
                 onChange={handleInputChange}
+                placeholder="Enter age"
                 className="w-full px-3 py-2 border border-gray-200 rounded-md"
               />
             </div>
@@ -1265,6 +1266,11 @@ const ClientScreening: React.FC = () => {
       </div>
 
       <div className="fixed bottom-5 right-5 z-40 flex items-center gap-3">
+        {hasChanges && !saveMessage && (
+          <div className="rounded-md border border-amber-200 bg-amber-50 text-amber-700 px-3 py-2 text-sm shadow-lg animate-pulse">
+            Auto-save pending...
+          </div>
+        )}
         {saveMessage && (
           <div className={`rounded-md border px-3 py-2 text-sm shadow-lg ${
             saveMessage.includes('Could not')
@@ -1278,11 +1284,14 @@ const ClientScreening: React.FC = () => {
           type="button"
           onClick={handleFloatingSave}
           disabled={saving}
-          className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-blue-200 bg-white text-blue-700 shadow-lg hover:bg-blue-50 disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="inline-flex items-center px-6 py-3 rounded-full bg-blue-600 text-white font-medium shadow-lg hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all transform hover:scale-105"
           title="Save screening without leaving this page"
           aria-label="Save screening without leaving this page"
         >
-          {saving ? '...' : 'Save'}
+          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V2" />
+          </svg>
+          {saving ? 'Saving...' : 'Save Progress'}
         </button>
       </div>
     </div>
