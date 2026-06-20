@@ -763,7 +763,14 @@ export interface MedicalArtifact {
   retreatId?: string | Retreat;
   bookingId?: string;
   ceremonyId?: string;
-  artifactType:
+
+  // New document categorization
+  documentStage: 'entry' | 'pre_ceremony' | 'in_ceremony' | 'post_ceremony' | 'additional';
+  documentType: 'BP' | 'EKG' | 'Liver' | 'other';
+  ceremonyNumber?: number; // Required for pre/in/post ceremony stages
+
+  // Legacy fields (kept for backward compatibility)
+  artifactType?:
     | 'ekg'
     | 'ceremony_ekg'
     | 'blood_pressure'
@@ -777,6 +784,7 @@ export interface MedicalArtifact {
     | 'other';
   contextType?: 'client' | 'booking' | 'ceremony';
   purpose?: 'paid_review' | 'booking_requirement' | 'pre_ceremony' | 'repeat_test' | 'correction' | 'general';
+
   title: string;
   description?: string;
   textContent?: string;
@@ -801,12 +809,27 @@ export interface MedicalArtifact {
   version?: number;
   replacesArtifactId?: string | MedicalArtifact;
   relatedArtifactId?: string | MedicalArtifact;
+
+  // Review status and tracking
+  reviewStatus?: 'pending' | 'under_review' | 'reviewed';
+  latestReviewId?: string | MedicalReviewRequest;
+  reviewHistory?: Array<{
+    reviewId: string;
+    reviewerId: string;
+    reviewerName: string;
+    decision: string;
+    decisionDate: Date | string;
+  }>;
+
+  // Legacy status field
   status?: 'stored' | 'pending_review' | 'approved' | 'rejected' | 'needs_resubmission' | 'superseded' | 'voided';
+
   reviewFeeAmount?: number;
   reviewFeeCurrency?: 'EUR' | 'USD' | 'CZK' | 'PLN';
   reviewFeePaid?: boolean;
   tags?: string[];
   notes?: string;
+  uploadedBy?: string;
   legacyMedicalTrackingId?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -846,13 +869,55 @@ export interface FileUpload {
 export interface MedicalReviewRequest {
   _id?: string;
   display_id?: number;
-  clientId: string | Client;
+
+  // Medical artifact reference (NEW required field)
+  medicalArtifactId: string | MedicalArtifact;
+
+  // Artifact snapshot for context
+  artifactSnapshot?: {
+    clientId: string;
+    clientName: string;
+    retreatId?: string;
+    retreatName?: string;
+    documentStage: string;
+    documentType: string;
+    ceremonyNumber?: number;
+    fileUrl?: string;
+    fileName?: string;
+    uploadDate?: Date | string;
+    notes?: string;
+  };
+
+  // Review assignment
+  medicalReviewerId: string;
+  medicalReviewerName?: string;
+  assignedBy: string;
+  assignedByName?: string;
+  assignedDate: Date | string;
+
+  // Review decision (NEW structure)
+  decision?: 'approved' | 'declined' | 'caution' | 'need_more_info' | 'other';
+  decisionDate?: Date | string;
+
+  // Review notes (REQUIRED field)
+  reviewNotes: string;
+
+  // Status tracking
+  status: 'assigned' | 'in_progress' | 'completed';
+
+  // Additional metadata
+  priority?: 'low' | 'normal' | 'high' | 'urgent';
+  dueDate?: Date | string;
+  timeToComplete?: number; // In hours
+
+  // Legacy fields (kept for backward compatibility)
+  clientId?: string | Client;
   clientDisplayId?: number;
-  retreatId: string | Retreat;
+  retreatId?: string | Retreat;
   medicalTrackingId?: string | MedicalItem | ClientMedical;
   artifactIds?: Array<string | MedicalArtifact>;
   attemptNumber?: number;
-  requestType:
+  requestType?:
     | 'ekg'
     | 'liver'
     | 'both'
@@ -865,7 +930,6 @@ export interface MedicalReviewRequest {
     | 'food_review'
     | 'medical_question'
     | 'general_clearance';
-  status: 'pending' | 'in_review' | 'approved' | 'rejected' | 'caution' | 'needs_resubmission' | 'completed';
   requestedAt?: Date | string;
   requestedBy?: string;
   requestedByUserId?: string | any;
@@ -877,7 +941,6 @@ export interface MedicalReviewRequest {
   reviewedAt?: Date | string;
   reviewedBy?: string;
   reviewDecision?: 'OK' | 'caution' | 'NOT OK';
-  reviewNotes?: string;
   overallNotes?: string;
   medicalStaffNotes?: string;
   fileReviews?: Array<{
