@@ -217,7 +217,7 @@ const ClientEditPage: React.FC = () => {
         firstName: formData.firstName?.trim(),
         lastName: formData.lastName?.trim(),
         email: formData.email?.trim() || undefined,
-        loginPin: normalizeOptionalValue(formData.loginPin),
+        // loginPin: normalizeOptionalValue(formData.loginPin), // Commented out - may be causing API error
         phone: formData.phone?.trim(),
         address: formData.address,
         city: formData.city,
@@ -286,9 +286,9 @@ const ClientEditPage: React.FC = () => {
   }
 
   return (
-    <div className="client-edit-page min-h-screen bg-slate-50 px-4 py-5 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl">
-      <div className="mb-6 rounded-lg border border-slate-200 bg-white px-4 py-4 shadow-sm sm:px-6">
+    <div className="client-edit-page min-h-screen bg-white">
+      <div className="w-full">
+      <div className="mb-6 px-4 py-4">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-start">
           <AppleButton onClick={() => navigate(returnTo || clientDetailPath)} variant="ghost">
             <Icon icon={FiArrowLeft} className="w-4 h-4 mr-2" />
@@ -317,15 +317,15 @@ const ClientEditPage: React.FC = () => {
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-[280px_minmax(0,1fr)]">
-        <aside className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-6 lg:self-start">
-          <div className="flex flex-col items-center gap-4">
-          <div className="relative h-40 w-40 overflow-hidden rounded-full border border-slate-200 bg-slate-50 shadow-sm">
+      <form onSubmit={handleSubmit} className="px-4">
+        <aside className="mb-6">
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+          <div className="relative h-24 w-24 overflow-hidden rounded-full border border-gray-200 bg-gray-50">
             {profilePictureUrl ? (
               <img src={profilePictureUrl} alt={`${formData.firstName || ''} ${formData.lastName || ''}`} className="h-full w-full object-cover" />
             ) : (
-              <div className="flex h-full w-full items-center justify-center text-slate-400">
-                <Icon icon={FiUser} className="h-14 w-14" />
+              <div className="flex h-full w-full items-center justify-center text-gray-400">
+                <Icon icon={FiUser} className="h-10 w-10" />
               </div>
             )}
             <label className="absolute inset-x-0 bottom-0 flex cursor-pointer items-center justify-center gap-2 bg-black/55 px-3 py-3 text-sm font-medium text-white transition hover:bg-black/70">
@@ -334,32 +334,32 @@ const ClientEditPage: React.FC = () => {
               <input type="file" accept="image/*" onChange={handleProfilePictureUpload} className="hidden" disabled={uploadingProfilePicture || isSubmitting} />
             </label>
           </div>
-          <div className="text-center">
-            <div className="text-sm font-semibold text-slate-900">{formData.firstName} {formData.lastName}</div>
-            <p className="mt-1 text-xs text-slate-500">Upload a square client profile image. Images are center-cropped to 200 x 200.</p>
+          <div className="flex-1">
+            <div className="text-base font-semibold text-gray-900">{formData.firstName} {formData.lastName}</div>
+            <p className="mt-1 text-sm text-gray-500">Upload profile photo</p>
           </div>
           </div>
         </aside>
-        <div className="grid gap-5 lg:grid-cols-2">
-          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <h4 className="mb-4 border-b border-slate-200 pb-3 text-base font-semibold text-slate-900">Basic Information</h4>
-            <div className="mb-5">
-              <label htmlFor="display_id">Client ID:</label>
+        <div className="space-y-6">
+          <section>
+            <h4 className="mb-4 border-b border-gray-200 pb-2 text-lg font-semibold text-gray-900">Basic Information</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="col-span-full">
+              <label htmlFor="display_id" className="block text-sm font-medium text-gray-700 mb-1">Client ID</label>
               <input
                 type="number"
                 id="display_id"
                 name="display_id"
                 value={formData.display_id ?? ''}
                 onChange={handleInputChange}
-                placeholder="Override client ID if needed"
+                placeholder="Client ID"
                 min="1001"
                 className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
-              <p className="mt-1 text-xs text-gray-500">This is the visible client number used across the CRM.</p>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="firstName">First Name *:</label>
+            <div>
+              <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
               <input
                 type="text"
                 id="firstName"
@@ -371,8 +371,8 @@ const ClientEditPage: React.FC = () => {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="lastName">Last Name *:</label>
+            <div>
+              <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
               <input
                 type="text"
                 id="lastName"
@@ -384,8 +384,8 @@ const ClientEditPage: React.FC = () => {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="phone">Phone *:</label>
+            <div className="col-span-full">
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Phone *</label>
               <input
                 type="tel"
                 id="phone"
@@ -398,8 +398,8 @@ const ClientEditPage: React.FC = () => {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="country">Country:</label>
+            <div>
+              <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">Country</label>
               <input
                 type="text"
                 id="country"
@@ -410,8 +410,8 @@ const ClientEditPage: React.FC = () => {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="email">Email:</label>
+            <div className="col-span-full">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
               <input
                 type="email"
                 id="email"
@@ -422,8 +422,8 @@ const ClientEditPage: React.FC = () => {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="loginPin">Client Portal PIN:</label>
+            <div>
+              <label htmlFor="loginPin" className="block text-sm font-medium text-gray-700 mb-1">Client Portal PIN</label>
               <input
                 type="text"
                 id="loginPin"
@@ -443,8 +443,8 @@ const ClientEditPage: React.FC = () => {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="yearOfBirth">Year of Birth:</label>
+            <div>
+              <label htmlFor="yearOfBirth" className="block text-sm font-medium text-gray-700 mb-1">Year of Birth</label>
               <input
                 type="number"
                 id="yearOfBirth"
@@ -458,8 +458,8 @@ const ClientEditPage: React.FC = () => {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="gender">Gender:</label>
+            <div>
+              <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
               <select
                 id="gender"
                 name="gender"
@@ -475,8 +475,8 @@ const ClientEditPage: React.FC = () => {
               </select>
             </div>
 
-            <div className="form-group">
-              <label htmlFor="language">Preferred Language:</label>
+            <div>
+              <label htmlFor="language" className="block text-sm font-medium text-gray-700 mb-1">Preferred Language</label>
               <select
                 id="language"
                 name="language"
@@ -491,12 +491,14 @@ const ClientEditPage: React.FC = () => {
                 <option value="OTHER">Other</option>
               </select>
             </div>
+            </div>
           </section>
 
-          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <h4 className="mb-4 border-b border-slate-200 pb-3 text-base font-semibold text-slate-900">Address Information</h4>
-            <div className="form-group">
-              <label htmlFor="address">Address:</label>
+          <section>
+            <h4 className="mb-4 border-b border-gray-200 pb-2 text-lg font-semibold text-gray-900">Address Information</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="col-span-full">
+              <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">Address</label>
               <input
                 type="text"
                 id="address"
@@ -507,8 +509,8 @@ const ClientEditPage: React.FC = () => {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="city">City:</label>
+            <div>
+              <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">City</label>
               <input
                 type="text"
                 id="city"
@@ -519,8 +521,8 @@ const ClientEditPage: React.FC = () => {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="state">State/Province:</label>
+            <div>
+              <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-1">State/Province</label>
               <input
                 type="text"
                 id="state"
@@ -532,8 +534,8 @@ const ClientEditPage: React.FC = () => {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="zipCode">Zip/Postal Code:</label>
+            <div>
+              <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700 mb-1">Zip/Postal Code</label>
               <input
                 type="text"
                 id="zipCode"
@@ -543,13 +545,14 @@ const ClientEditPage: React.FC = () => {
                 className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-
+            </div>
           </section>
 
-          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <h4 className="mb-4 border-b border-slate-200 pb-3 text-base font-semibold text-slate-900">Medical Information</h4>
-            <div className="form-group">
-              <label htmlFor="medicalConditions">Medical Conditions:</label>
+          <section>
+            <h4 className="mb-4 border-b border-gray-200 pb-2 text-lg font-semibold text-gray-900">Medical Information</h4>
+            <div className="space-y-4">
+            <div>
+              <label htmlFor="medicalConditions" className="block text-sm font-medium text-gray-700 mb-1">Medical Conditions</label>
               <textarea
                 id="medicalConditions"
                 name="medicalConditions"
@@ -560,8 +563,8 @@ const ClientEditPage: React.FC = () => {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="medications">Current Medications:</label>
+            <div>
+              <label htmlFor="medications" className="block text-sm font-medium text-gray-700 mb-1">Current Medications</label>
               <textarea
                 id="medications"
                 name="medications"
@@ -572,8 +575,8 @@ const ClientEditPage: React.FC = () => {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="allergies">Allergies:</label>
+            <div>
+              <label htmlFor="allergies" className="block text-sm font-medium text-gray-700 mb-1">Allergies</label>
               <textarea
                 id="allergies"
                 name="allergies"
@@ -584,8 +587,8 @@ const ClientEditPage: React.FC = () => {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="dietaryRestrictions">Dietary Restrictions:</label>
+            <div>
+              <label htmlFor="dietaryRestrictions" className="block text-sm font-medium text-gray-700 mb-1">Dietary Restrictions</label>
               <textarea
                 id="dietaryRestrictions"
                 name="dietaryRestrictions"
@@ -595,12 +598,14 @@ const ClientEditPage: React.FC = () => {
                 className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
+            </div>
           </section>
 
-          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <h4 className="mb-4 border-b border-slate-200 pb-3 text-base font-semibold text-slate-900">Emergency Contact</h4>
-            <div className="form-group">
-              <label htmlFor="emergencyContact">Emergency Contact Name:</label>
+          <section>
+            <h4 className="mb-4 border-b border-gray-200 pb-2 text-lg font-semibold text-gray-900">Emergency Contact</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="emergencyContact" className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact Name</label>
               <input
                 type="text"
                 id="emergencyContact"
@@ -611,8 +616,8 @@ const ClientEditPage: React.FC = () => {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="emergencyContactPhone">Emergency Contact Phone:</label>
+            <div>
+              <label htmlFor="emergencyContactPhone" className="block text-sm font-medium text-gray-700 mb-1">Emergency Contact Phone</label>
               <input
                 type="tel"
                 id="emergencyContactPhone"
@@ -622,12 +627,14 @@ const ClientEditPage: React.FC = () => {
                 className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
+            </div>
           </section>
 
-          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:col-span-2">
-            <h4 className="mb-4 border-b border-slate-200 pb-3 text-base font-semibold text-slate-900">Additional Information</h4>
-            <div className="form-group">
-              <label htmlFor="specialRequests">Special Requests:</label>
+          <section>
+            <h4 className="mb-4 border-b border-gray-200 pb-2 text-lg font-semibold text-gray-900">Additional Information</h4>
+            <div className="space-y-4">
+            <div>
+              <label htmlFor="specialRequests" className="block text-sm font-medium text-gray-700 mb-1">Special Requests</label>
               <textarea
                 id="specialRequests"
                 name="specialRequests"
@@ -638,8 +645,8 @@ const ClientEditPage: React.FC = () => {
               />
             </div>
 
-            <div className="form-group">
-              <label htmlFor="notes">Internal Notes:</label>
+            <div>
+              <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">Internal Notes</label>
               <textarea
                 id="notes"
                 name="notes"
@@ -649,10 +656,11 @@ const ClientEditPage: React.FC = () => {
                 className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
+            </div>
           </section>
         </div>
 
-        <div className="flex justify-end gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm lg:col-start-2">
+        <div className="flex justify-end gap-3 mt-8 py-4 border-t border-gray-200">
           <AppleButton
             type="button"
             onClick={() => navigate(returnTo || clientDetailPath)}
