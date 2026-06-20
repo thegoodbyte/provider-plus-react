@@ -53,6 +53,22 @@ const artifactTypeLabels: Record<string, string> = {
 const getArtifactTypeLabel = (artifactType?: MedicalArtifact['artifactType']) =>
   artifactType ? artifactTypeLabels[artifactType] || artifactType : 'Medical Artifact';
 
+const documentStageLabels: Record<NonNullable<MedicalArtifact['documentStage']>, string> = {
+  entry: 'Entry',
+  pre_ceremony: 'Pre-Ceremony',
+  in_ceremony: 'In-Ceremony',
+  post_ceremony: 'Post-Ceremony',
+  additional: 'Additional',
+};
+
+const documentTypeLabels: Record<NonNullable<MedicalArtifact['documentType']>, string> = {
+  BP: 'Blood Pressure',
+  EKG: 'EKG',
+  Liver: 'Liver panel tests',
+  Medications: 'Medications',
+  other: 'Other',
+};
+
 const getId = (value: any): string | undefined => {
   if (!value) return undefined;
   if (typeof value === 'string') return value;
@@ -90,6 +106,31 @@ const isImageFile = (file: ArtifactFile) => Boolean(file.mimeType?.startsWith('i
 const isPdfFile = (file: ArtifactFile) => file.mimeType === 'application/pdf' || /\.pdf($|\?)/i.test(file.fileName || '');
 const getPopulatedArtifacts = (request: MedicalReviewRequest) =>
   (request.artifactIds || []).filter((artifact): artifact is MedicalArtifact => typeof artifact !== 'string');
+const getRequestDocumentMeta = (request: MedicalReviewRequest) => {
+  const artifact = getPopulatedArtifacts(request)[0];
+  return {
+    documentStage: request.documentStage || request.artifactSnapshot?.documentStage as MedicalArtifact['documentStage'] | undefined || artifact?.documentStage,
+    documentType: request.documentType || request.artifactSnapshot?.documentType as MedicalArtifact['documentType'] | undefined || artifact?.documentType,
+    ceremonyNumber: request.ceremonyNumber || request.artifactSnapshot?.ceremonyNumber || artifact?.ceremonyNumber,
+  };
+};
+const formatDocumentMeta = (request: MedicalReviewRequest) => {
+  const { documentStage, documentType, ceremonyNumber } = getRequestDocumentMeta(request);
+  const parts = [
+    documentStage ? documentStageLabels[documentStage] : '',
+    documentType ? documentTypeLabels[documentType] : '',
+    ceremonyNumber ? `Ceremony #${ceremonyNumber}` : '',
+  ].filter(Boolean);
+  return parts.join(' • ');
+};
+const formatArtifactDocumentMeta = (artifact: MedicalArtifact) => {
+  const parts = [
+    artifact.documentStage ? documentStageLabels[artifact.documentStage] : '',
+    artifact.documentType ? documentTypeLabels[artifact.documentType] : '',
+    artifact.ceremonyNumber ? `Ceremony #${artifact.ceremonyNumber}` : '',
+  ].filter(Boolean);
+  return parts.join(' • ');
+};
 const formatDateTime = (value?: string | Date | null) => {
   if (!value) return 'Not set';
   const date = new Date(value);
@@ -444,6 +485,9 @@ const MedicalReviewRequestsPage: React.FC = () => {
                         <div className="text-xs text-gray-500">
                           {getRequestTypeLabel(request.requestType)} • Attempt {request.attemptNumber || 1} • {request.source || 'Provider Plus CRM'}
                         </div>
+                        {formatDocumentMeta(request) && (
+                          <div className="mt-1 text-xs font-medium text-blue-700">{formatDocumentMeta(request)}</div>
+                        )}
                       </div>
                       <span className={`rounded-full px-2 py-1 text-xs font-semibold ${reviewStatusStyle[request.status] || 'bg-gray-100 text-gray-700'}`}>
                         {request.status}
@@ -469,6 +513,9 @@ const MedicalReviewRequestsPage: React.FC = () => {
                     {' '}• {typeof selected.retreatId === 'string' ? selected.retreatId : selected.retreatId?.name || 'Unknown retreat'}
                   </div>
                   <div className="mt-1 text-sm font-medium text-gray-900">{getRequestTypeLabel(selected.requestType)}</div>
+                  {formatDocumentMeta(selected) && (
+                    <div className="mt-1 text-sm font-medium text-blue-700">{formatDocumentMeta(selected)}</div>
+                  )}
                 </div>
                 <span className={`rounded-full px-2 py-1 text-xs font-semibold ${reviewStatusStyle[selected.status] || 'bg-gray-100 text-gray-700'}`}>
                   {selected.status}
@@ -621,6 +668,9 @@ const MedicalReviewRequestsPage: React.FC = () => {
                               <div className="text-xs text-gray-500">
                                 {client ? `${client.firstName} ${client.lastName}` : 'Client record'} • {artifact.receivedAt ? new Date(artifact.receivedAt).toLocaleString() : 'No received date'}
                               </div>
+                              {formatArtifactDocumentMeta(artifact) && (
+                                <div className="mt-1 text-xs font-medium text-blue-700">{formatArtifactDocumentMeta(artifact)}</div>
+                              )}
                             </div>
                             <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">This request</span>
                           </div>
@@ -687,7 +737,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                     relatedArtifacts.filter((artifact) => !artifact._id || !selectedArtifactIds.has(artifact._id)).map((artifact) => (
                       <div key={artifact._id} className="rounded-md border border-gray-200 p-3 text-sm">
                         <div className="font-semibold text-gray-900">#{artifact.display_id || '—'} {getArtifactTypeLabel(artifact.artifactType)}: {artifact.title}</div>
-                        <div className="text-xs text-gray-500">{artifact.files?.length || 0} file(s)</div>
+                        <div className="text-xs text-gray-500">{[formatArtifactDocumentMeta(artifact), `${artifact.files?.length || 0} file(s)`].filter(Boolean).join(' • ')}</div>
                       </div>
                     ))
                   )}

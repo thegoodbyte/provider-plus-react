@@ -12,7 +12,10 @@ type FormState = {
   clientId: string;
   retreatId: string;
   artifactIds: string[];
-  requestType: MedicalReviewRequest['requestType'];
+  documentStage: NonNullable<MedicalArtifact['documentStage']> | '';
+  documentType: NonNullable<MedicalArtifact['documentType']> | '';
+  ceremonyNumber: number | '';
+  requestType: NonNullable<MedicalReviewRequest['requestType']>;
   status: MedicalReviewRequest['status'];
   requestedBy: string;
   assignedTo: string;
@@ -23,7 +26,7 @@ type FormState = {
   medicalStaffNotes: string;
 };
 
-const reviewTypeByArtifact = (artifactType: MedicalArtifact['artifactType']): MedicalReviewRequest['requestType'] => {
+const reviewTypeByArtifact = (artifactType: MedicalArtifact['artifactType']): NonNullable<MedicalReviewRequest['requestType']> => {
   if (artifactType === 'ekg') return 'ekg_review';
   if (artifactType === 'ceremony_ekg') return 'ceremony_ekg_review';
   if (artifactType === 'blood_pressure') return 'blood_pressure_review';
@@ -37,6 +40,37 @@ const reviewTypeByArtifact = (artifactType: MedicalArtifact['artifactType']): Me
 
 const formatArtifactType = (artifactType?: MedicalArtifact['artifactType']) =>
   artifactType ? artifactType.replace(/_/g, ' ') : 'medical artifact';
+
+const documentStageLabels: Record<NonNullable<MedicalArtifact['documentStage']>, string> = {
+  entry: 'Entry',
+  pre_ceremony: 'Pre-Ceremony',
+  in_ceremony: 'In-Ceremony',
+  post_ceremony: 'Post-Ceremony',
+  additional: 'Additional',
+};
+
+const documentTypeLabels: Record<NonNullable<MedicalArtifact['documentType']>, string> = {
+  BP: 'Blood Pressure',
+  EKG: 'EKG',
+  Liver: 'Liver panel tests',
+  Medications: 'Medications',
+  other: 'Other',
+};
+
+const getArtifactDocumentMeta = (artifact?: MedicalArtifact | null) => ({
+  documentStage: (artifact?.documentStage || '') as FormState['documentStage'],
+  documentType: (artifact?.documentType || '') as FormState['documentType'],
+  ceremonyNumber: (artifact?.ceremonyNumber || '') as FormState['ceremonyNumber'],
+});
+
+const formatDocumentMeta = (stage?: MedicalArtifact['documentStage'] | '', type?: MedicalArtifact['documentType'] | '', ceremonyNumber?: number | '') => {
+  const parts = [
+    stage ? documentStageLabels[stage] : '',
+    type ? documentTypeLabels[type] : '',
+    ceremonyNumber ? `Ceremony #${ceremonyNumber}` : '',
+  ].filter(Boolean);
+  return parts.length ? parts.join(' · ') : 'No document stage/type recorded';
+};
 
 const getArtifactFileUrl = (file: NonNullable<MedicalArtifact['files']>[number]) => {
   const storedPath = file.url || file.filePath || file.s3Key || '';
@@ -69,6 +103,9 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
     clientId: '',
     retreatId: '',
     artifactIds: [],
+    documentStage: '',
+    documentType: '',
+    ceremonyNumber: '',
     requestType: 'both',
     status: 'pending',
     requestedBy: 'Provider Plus CRM',
@@ -111,6 +148,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           clientId: typeof artifact.clientId === 'string' ? artifact.clientId : artifact.clientId?._id || prev.clientId,
           retreatId: typeof artifact.retreatId === 'string' ? artifact.retreatId : artifact.retreatId?._id || prev.retreatId,
           artifactIds: artifact._id ? Array.from(new Set([...prev.artifactIds, artifact._id])) : prev.artifactIds,
+          ...getArtifactDocumentMeta(artifact),
           requestType: reviewTypeByArtifact(artifact.artifactType),
         }));
       }
@@ -123,6 +161,9 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           clientId: typeof record.clientId === 'string' ? record.clientId : record.clientId?._id || '',
           retreatId: typeof record.retreatId === 'string' ? record.retreatId : record.retreatId?._id || '',
           artifactIds: (record.artifactIds || []).map((artifact: string | MedicalArtifact) => getRecordId(artifact)).filter(Boolean),
+          documentStage: record.documentStage || record.artifactSnapshot?.documentStage as FormState['documentStage'] || '',
+          documentType: record.documentType || record.artifactSnapshot?.documentType as FormState['documentType'] || '',
+          ceremonyNumber: (record.ceremonyNumber || record.artifactSnapshot?.ceremonyNumber || '') as FormState['ceremonyNumber'],
           requestType: record.requestType,
           status: record.status,
           requestedBy: record.requestedBy || '',
@@ -198,6 +239,9 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           retreatId: form.retreatId,
           medicalTrackingId: form.medicalTrackingId,
           artifactIds: form.artifactIds,
+          documentStage: form.documentStage || undefined,
+          documentType: form.documentType || undefined,
+          ceremonyNumber: form.ceremonyNumber || undefined,
           requestType: form.requestType,
           status: form.status,
           requestedBy: form.requestedBy,
@@ -213,6 +257,9 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           clientId: form.clientId,
           retreatId: form.retreatId || undefined,
           artifactIds: form.artifactIds,
+          documentStage: form.documentStage || undefined,
+          documentType: form.documentType || undefined,
+          ceremonyNumber: form.ceremonyNumber || undefined,
           requestType: form.requestType,
           status: form.status,
           assignedTo: form.assignedTo,
@@ -267,6 +314,9 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
               <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm">
                 <div className="font-semibold text-blue-950">#{selectedArtifact.display_id || '—'} {selectedArtifact.title}</div>
                 <div className="mt-1 capitalize text-blue-800">{formatArtifactType(selectedArtifact.artifactType)}</div>
+                <div className="mt-1 text-xs font-medium text-blue-700">
+                  {formatDocumentMeta(selectedArtifact.documentStage, selectedArtifact.documentType, selectedArtifact.ceremonyNumber)}
+                </div>
               </div>
             ) : (
               <SearchableMedicalTrackingSelect
@@ -287,6 +337,9 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
             <div className="mt-3 grid gap-3 text-sm text-gray-600 sm:grid-cols-2">
               <div>Client ID: {form.clientId || '—'}</div>
               <div>Retreat ID: {form.retreatId || '—'}</div>
+              <div>Document stage: {form.documentStage ? documentStageLabels[form.documentStage] : '—'}</div>
+              <div>Document type: {form.documentType ? documentTypeLabels[form.documentType] : '—'}</div>
+              {form.ceremonyNumber ? <div>Ceremony #: {form.ceremonyNumber}</div> : null}
               {!selectedArtifact && (
                 <>
                   <div>EKG: {selectedTracking?.ekgFileName || 'No file'}</div>
@@ -310,7 +363,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
                     {selectedArtifacts.map((artifact) => (
                       <div key={artifact._id} className="rounded-md border border-gray-200 bg-gray-50 p-3">
                         <div className="font-semibold text-gray-900">#{artifact.display_id || '—'} {artifact.title || 'Medical artifact'}</div>
-                        <div className="mt-1 text-xs capitalize text-gray-500">{artifact.artifactType?.replace(/_/g, ' ')} · {artifact.files?.length || 0} file(s)</div>
+                        <div className="mt-1 text-xs capitalize text-gray-500">{artifact.artifactType?.replace(/_/g, ' ')} · {formatDocumentMeta(artifact.documentStage, artifact.documentType, artifact.ceremonyNumber)} · {artifact.files?.length || 0} file(s)</div>
                         {artifact.files?.length ? (
                           <div className="mt-2 space-y-2">
                             {artifact.files.map((file, index) => {
@@ -464,18 +517,23 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
                           checked={checked}
                           disabled={!artifactRecordId}
                           onChange={(event) => {
+                            const nextArtifactIds = event.target.checked
+                              ? Array.from(new Set([...form.artifactIds, artifactRecordId]))
+                              : form.artifactIds.filter((item) => item !== artifactRecordId);
+                            const primaryArtifact = event.target.checked
+                              ? artifact
+                              : clientArtifacts.find((candidate) => candidate._id && nextArtifactIds.includes(candidate._id));
                             setForm((prev) => ({
                               ...prev,
-                              artifactIds: event.target.checked
-                                ? Array.from(new Set([...prev.artifactIds, artifactRecordId]))
-                                : prev.artifactIds.filter((item) => item !== artifactRecordId),
+                              artifactIds: nextArtifactIds,
+                              ...getArtifactDocumentMeta(primaryArtifact),
                             }));
                           }}
                           className="mt-1 h-4 w-4"
                         />
                         <div className="min-w-0 flex-1">
                           <div className="font-semibold text-gray-900">#{artifact.display_id || '—'} {artifact.title || 'Medical artifact'}</div>
-                          <div className="mt-1 text-xs capitalize text-gray-500">{artifact.artifactType?.replace(/_/g, ' ')} · {artifact.receivedAt ? new Date(artifact.receivedAt).toLocaleString() : 'No received date'}</div>
+                          <div className="mt-1 text-xs capitalize text-gray-500">{artifact.artifactType?.replace(/_/g, ' ')} · {formatDocumentMeta(artifact.documentStage, artifact.documentType, artifact.ceremonyNumber)} · {artifact.receivedAt ? new Date(artifact.receivedAt).toLocaleString() : 'No received date'}</div>
                           {artifact.files?.length ? (
                             <div className="mt-2 space-y-1">
                               {artifact.files.map((file, index) => (

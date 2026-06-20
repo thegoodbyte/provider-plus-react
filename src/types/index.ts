@@ -937,6 +937,9 @@ export interface MedicalReviewRequest {
   retreatId?: string | Retreat;
   medicalTrackingId?: string | MedicalItem | ClientMedical;
   artifactIds?: Array<string | MedicalArtifact>;
+  documentStage?: MedicalArtifact['documentStage'];
+  documentType?: MedicalArtifact['documentType'];
+  ceremonyNumber?: number;
   attemptNumber?: number;
   requestType?:
     | 'ekg'

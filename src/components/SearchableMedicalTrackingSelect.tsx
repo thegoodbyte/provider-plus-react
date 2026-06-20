@@ -69,15 +69,23 @@ const SearchableMedicalTrackingSelect: React.FC<Props> = ({
           }}
           onFocus={() => setIsOpen(true)}
           placeholder={placeholder}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 pr-10 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 pr-10 text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
         />
         <div className="absolute inset-y-0 right-0 flex items-center gap-1 pr-2">
           {selectedItem && (
-            <button type="button" onClick={() => { onChange(''); setSearchTerm(''); }} className="text-gray-400 hover:text-gray-600">
+            <button
+              type="button"
+              onClick={() => { onChange(''); setSearchTerm(''); }}
+              className="inline-flex h-7 w-7 items-center justify-center rounded bg-transparent p-0 text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            >
               <Icon icon={FiX} className="h-4 w-4" />
             </button>
           )}
-          <button type="button" onClick={() => setIsOpen((prev) => !prev)} className="text-gray-400 hover:text-gray-600">
+          <button
+            type="button"
+            onClick={() => setIsOpen((prev) => !prev)}
+            className="inline-flex h-7 w-7 items-center justify-center rounded bg-transparent p-0 text-gray-400 hover:bg-gray-100 hover:text-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+          >
             <Icon icon={isOpen ? FiSearch : FiChevronDown} className="h-4 w-4" />
           </button>
         </div>
@@ -97,7 +105,7 @@ const SearchableMedicalTrackingSelect: React.FC<Props> = ({
                   setIsOpen(false);
                   setSearchTerm('');
                 }}
-                className="block w-full border-b border-gray-100 px-3 py-2 text-left hover:bg-blue-50 last:border-b-0"
+                className="block w-full border-b border-gray-100 bg-white px-3 py-2 text-left text-gray-900 hover:bg-blue-50 focus:bg-blue-50 focus:outline-none last:border-b-0"
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
