@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Upload } from 'lucide-react';
+import { ArrowLeft, Plus, Upload, Search } from 'lucide-react';
 import { clientsApi, medicalArtifactsApi } from '../services/api';
 import { Client, MedicalArtifact } from '../types';
 import LoadingSpinner from './LoadingSpinner';
@@ -36,21 +36,42 @@ const purposeLabels: Record<NonNullable<MedicalArtifact['purpose']>, string> = {
   general: 'General',
 };
 
+const documentStageLabels: Record<NonNullable<MedicalArtifact['documentStage']>, string> = {
+  entry: 'Entry',
+  pre_ceremony: 'Pre-Ceremony',
+  in_ceremony: 'In-Ceremony',
+  post_ceremony: 'Post-Ceremony',
+  additional: 'Additional',
+};
+
+const documentTypeLabels: Record<NonNullable<MedicalArtifact['documentType']>, string> = {
+  BP: 'Blood Pressure',
+  EKG: 'EKG',
+  Liver: 'Liver Panel',
+  other: 'Other',
+};
+
 const MedicalArtifactCreatePage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const routePrefix = location.pathname.startsWith('/medical/') ? '/medical' : '/admin';
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadTarget, setUploadTarget] = useState<{ storage: string; bucket: string | null; keyPattern: string; note: string; requiredEnvironment?: string[] } | null>(null);
+  const [clientSearch, setClientSearch] = useState('');
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
   const [form, setForm] = useState({
     clientId: '',
     artifactType: 'ekg' as ArtifactType,
     contextType: 'client' as NonNullable<MedicalArtifact['contextType']>,
     purpose: 'paid_review' as NonNullable<MedicalArtifact['purpose']>,
+    documentStage: 'entry' as NonNullable<MedicalArtifact['documentStage']>,
+    documentType: 'other' as NonNullable<MedicalArtifact['documentType']>,
+    ceremonyNumber: undefined as number | undefined,
     title: '',
     resultText: '',
     reviewFeeAmount: '25',
@@ -69,6 +90,32 @@ const MedicalArtifactCreatePage: React.FC = () => {
     };
     loadClients();
   }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowClientDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  const filteredClients = useMemo(() => {
+    if (!clientSearch) return clients;
+    const search = clientSearch.toLowerCase();
+    return clients.filter((client) => {
+      const fullName = `${client.firstName} ${client.lastName}`.toLowerCase();
+      const email = client.email?.toLowerCase() || '';
+      return fullName.includes(search) || email.includes(search);
+    });
+  }, [clients, clientSearch]);
+
+  const selectedClient = useMemo(() => {
+    return clients.find((c) => c._id === form.clientId);
+  }, [clients, form.clientId]);
 
   useEffect(() => {
     const loadUploadTarget = async () => {
@@ -98,6 +145,9 @@ const MedicalArtifactCreatePage: React.FC = () => {
         clientId: form.clientId,
         artifactType: form.artifactType,
         contextType: form.contextType,
+        documentStage: form.documentStage,
+        documentType: form.documentType,
+        ceremonyNumber: form.ceremonyNumber,
         purpose: form.purpose,
         title,
         source: 'manual',
@@ -151,14 +201,50 @@ const MedicalArtifactCreatePage: React.FC = () => {
           </div>
         )}
         <div className="grid gap-3 md:grid-cols-3">
-          <select value={form.clientId} onChange={(event) => setForm({ ...form, clientId: event.target.value })} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-            <option value="">Select client</option>
-            {clients.map((client) => (
-              <option key={client._id} value={client._id}>
-                #{client.display_id || '-'} {client.firstName || client.fname} {client.lastName || client.lname}
-              </option>
-            ))}
-          </select>
+          <div className="relative" ref={dropdownRef}>
+            <div className="relative">
+              <input
+                type="text"
+                value={showClientDropdown ? clientSearch : (selectedClient ? `#${selectedClient.display_id || '-'} ${selectedClient.firstName || selectedClient.fname} ${selectedClient.lastName || selectedClient.lname}` : '')}
+                onChange={(e) => {
+                  setClientSearch(e.target.value);
+                  setShowClientDropdown(true);
+                }}
+                onFocus={() => {
+                  setShowClientDropdown(true);
+                  setClientSearch('');
+                }}
+                placeholder="Search client by name or email"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 pr-8 text-sm"
+              />
+              <Search className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            </div>
+            {showClientDropdown && (
+              <div className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md bg-white shadow-lg">
+                {filteredClients.length > 0 ? (
+                  filteredClients.slice(0, 20).map((client) => (
+                    <button
+                      key={client._id}
+                      type="button"
+                      onClick={() => {
+                        setForm({ ...form, clientId: client._id });
+                        setShowClientDropdown(false);
+                        setClientSearch('');
+                      }}
+                      className="block w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
+                    >
+                      <div className="font-medium">
+                        #{client.display_id || '-'} {client.firstName || client.fname} {client.lastName || client.lname}
+                      </div>
+                      {client.email && <div className="text-xs text-gray-500">{client.email}</div>}
+                    </button>
+                  ))
+                ) : (
+                  <div className="px-3 py-2 text-sm text-gray-500">No clients found</div>
+                )}
+              </div>
+            )}
+          </div>
           <select value={form.artifactType} onChange={(event) => setForm({ ...form, artifactType: event.target.value as ArtifactType })} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
             {Object.entries(artifactTypeLabels).map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
@@ -166,6 +252,44 @@ const MedicalArtifactCreatePage: React.FC = () => {
           </select>
           <input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Title or short description" />
         </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <select
+            value={form.documentStage}
+            onChange={(event) => setForm({ ...form, documentStage: event.target.value as typeof form.documentStage })}
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+          >
+            {Object.entries(documentStageLabels).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+          <select
+            value={form.documentType}
+            onChange={(event) => setForm({ ...form, documentType: event.target.value as typeof form.documentType })}
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+          >
+            {Object.entries(documentTypeLabels).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+        </div>
+
+        {(form.documentStage === 'pre_ceremony' || form.documentStage === 'in_ceremony' || form.documentStage === 'post_ceremony') && (
+          <div className="grid gap-3 md:grid-cols-3">
+            <input
+              type="number"
+              min="1"
+              value={form.ceremonyNumber || ''}
+              onChange={(event) => setForm({ ...form, ceremonyNumber: event.target.value ? parseInt(event.target.value) : undefined })}
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+              placeholder="Ceremony number (e.g., 1, 2, 3)"
+              required
+            />
+            <div className="col-span-2 flex items-center text-sm text-gray-600">
+              <span>Ceremony number is required for {documentStageLabels[form.documentStage]} stage</span>
+            </div>
+          </div>
+        )}
 
         <div className="grid gap-3 md:grid-cols-4">
           <select value={form.contextType} onChange={(event) => setForm({ ...form, contextType: event.target.value as typeof form.contextType })} className="rounded-md border border-gray-300 px-3 py-2 text-sm">

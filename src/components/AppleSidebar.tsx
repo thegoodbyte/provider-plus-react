@@ -92,6 +92,7 @@ const FULL_MENU_SECTIONS: MenuSection[] = [
     items: [
       { id: 'payments', label: 'Payments', Icon: Fi.FiCreditCard },
       { id: 'payment-requests', label: 'Payment Requests', Icon: Fi.FiFileText },
+      { id: 'expenses', label: 'Expenses', Icon: Fi.FiDollarSign },
     ],
   },
   {
