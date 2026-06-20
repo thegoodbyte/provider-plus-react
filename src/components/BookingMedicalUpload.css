@@ -175,6 +175,49 @@
     align-items: center;
 }
 
+.booking-medical-required-item {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    padding: 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    background: #f9fafb;
+    font-size: 13px;
+}
+
+.booking-medical-required-item > div {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.booking-medical-required-label {
+    color: #6b7280;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0;
+    text-transform: uppercase;
+}
+
+.booking-medical-inline-link {
+    display: inline;
+    width: fit-content;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: #1d4ed8;
+    font: inherit;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+
+.booking-medical-inline-link:hover {
+    text-decoration: underline;
+}
+
 .booking-medical-result-editor {
     display: flex;
     flex-direction: column;
@@ -227,11 +270,36 @@
     font-size: 12px;
 }
 
+.booking-medical-file-title {
+    margin-top: 4px;
+    color: #374151;
+    font-weight: 600;
+}
+
+.booking-medical-review-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+    padding: 8px;
+    border-radius: 6px;
+    background: #fff;
+    color: #374151;
+}
+
 .booking-medical-actions {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
     margin-top: 10px;
+}
+
+@media (max-width: 720px) {
+    .booking-medical-required-item {
+        grid-template-columns: 1fr;
+    }
 }
 
 .file-info {

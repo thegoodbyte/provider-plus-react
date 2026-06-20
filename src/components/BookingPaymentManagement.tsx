@@ -8,6 +8,7 @@ import './BookingPaymentManagement.css';
 
 interface BookingPaymentManagementProps {
   bookingId: string;
+  bookingNumber?: string | number;
   bookingHash?: string; // New prop for booking hash
   clientId: string;
   retreatId: string;
@@ -18,6 +19,7 @@ interface BookingPaymentManagementProps {
 
 const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   bookingId,
+  bookingNumber,
   bookingHash,
   clientId,
   retreatId,
@@ -356,14 +358,6 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
     <div className="booking-payment-management">
       <div className="payment-summary-header">
         <h3>Payments</h3>
-        <button
-          onClick={() => setShowAddPayment(!showAddPayment)}
-          className="add-payment-btn"
-          title={showAddPayment ? 'Cancel adding payment' : 'Add payment'}
-          aria-label={showAddPayment ? 'Cancel adding payment' : 'Add payment'}
-        >
-          {showAddPayment ? 'Cancel' : '+'}
-        </button>
       </div>
 
       <div className="payment-summary-cards">
@@ -396,100 +390,133 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
         )}
       </div>
 
-      {showAddPayment && (
-        <div className="add-payment-form">
-          <h4>Add New Payment</h4>
-          <form onSubmit={handleAddPayment}>
-            <div className="form-group">
-              <label>Payment Request</label>
-              <SearchablePaymentRequestSelect
-                selectedPaymentRequestId={newPayment.paymentRequestId}
-                onPaymentRequestSelect={(paymentRequestId, paymentRequest) => handlePaymentRequestSelect(paymentRequestId, paymentRequest as PaymentRequest)}
-                clientId={clientId}
-                retreatId={retreatId}
-                placeholder="Search payment request number"
-              />
-            </div>
+      <div className="payments-list">
+        <div className="payment-history-header">
+          <h4>Payment History ({payments.length})</h4>
+          <button
+            onClick={() => setShowAddPayment(!showAddPayment)}
+            className="add-payment-btn"
+            title={showAddPayment ? 'Cancel adding payment' : 'Add new payment'}
+            aria-label={showAddPayment ? 'Cancel adding payment' : 'Add new payment'}
+          >
+            {showAddPayment ? '×' : '+'}
+          </button>
+        </div>
 
-            <div className="form-row">
+        {showAddPayment && (
+          <div className="add-payment-form">
+            <h4>Add New Payment</h4>
+            <form onSubmit={handleAddPayment}>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Client ID</label>
+                  <input type="text" value={clientId || ''} disabled />
+                </div>
+                <div className="form-group">
+                  <label>Booking Number</label>
+                  <input type="text" value={bookingNumber || bookingHash || bookingId} disabled />
+                </div>
+              </div>
+
               <div className="form-group">
-                <label>Amount *</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={newPayment.amount}
-                  onChange={(e) => setNewPayment({...newPayment, amount: e.target.value})}
-                  required
-                  placeholder="0.00"
+                <label>Payment Request</label>
+                <SearchablePaymentRequestSelect
+                  selectedPaymentRequestId={newPayment.paymentRequestId}
+                  onPaymentRequestSelect={(paymentRequestId, paymentRequest) => handlePaymentRequestSelect(paymentRequestId, paymentRequest as PaymentRequest)}
+                  clientId={clientId}
+                  retreatId={retreatId}
+                  placeholder="Search payment request number"
                 />
               </div>
-              <div className="form-group">
-                <label>Currency *</label>
-                <select
-                  value={newPayment.currency}
-                  onChange={(e) => setNewPayment({...newPayment, currency: e.target.value as 'EUR' | 'USD' | 'CZK' | 'PLN'})}
-                  required
-                >
-                  <option value="EUR">EUR</option>
-                  <option value="USD">USD</option>
-                  <option value="CZK">CZK</option>
-                  <option value="PLN">PLN</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label>USD Amount</label>
-                <input
-                  type="text"
-                  value={usdPreviewLoading ? 'Calculating...' : usdPreview !== null ? formatUsd(usdPreview) : ''}
-                  readOnly
-                  placeholder="Calculated from payment currency"
-                />
-                {usdPreviewError && <p className="usd-preview-error">{usdPreviewError}</p>}
-              </div>
-            </div>
 
-            <div className="form-row">
-              <div className="form-group">
-                <label>Payment Type *</label>
-                <select
-                  value={newPayment.paymentType}
-                  onChange={(e) => setNewPayment({...newPayment, paymentType: e.target.value})}
-                  required
-                >
-                  {paymentTypes.map(type => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Amount *</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={newPayment.amount}
+                    onChange={(e) => setNewPayment({...newPayment, amount: e.target.value})}
+                    required
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Currency *</label>
+                  <select
+                    value={newPayment.currency}
+                    onChange={(e) => setNewPayment({...newPayment, currency: e.target.value as 'EUR' | 'USD' | 'CZK' | 'PLN'})}
+                    required
+                  >
+                    <option value="EUR">EUR</option>
+                    <option value="USD">USD</option>
+                    <option value="CZK">CZK</option>
+                    <option value="PLN">PLN</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>USD Amount</label>
+                  <input
+                    type="text"
+                    value={usdPreviewLoading ? 'Calculating...' : usdPreview !== null ? formatUsd(usdPreview) : ''}
+                    disabled
+                    placeholder="Calculated from payment currency"
+                  />
+                  {usdPreviewError && <p className="usd-preview-error">{usdPreviewError}</p>}
+                </div>
               </div>
-              <div className="form-group">
-                <label>Payment Method *</label>
-                <select
-                  value={newPayment.paymentMethod}
-                  onChange={(e) => setNewPayment({...newPayment, paymentMethod: e.target.value})}
-                  required
-                >
-                  {paymentMethods.map(method => (
-                    <option key={method.value} value={method.value}>
-                      {method.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
 
-            <div className="form-row">
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Payment Method *</label>
+                  <select
+                    value={newPayment.paymentMethod}
+                    onChange={(e) => setNewPayment({...newPayment, paymentMethod: e.target.value})}
+                    required
+                  >
+                    {paymentMethods.map(method => (
+                      <option key={method.value} value={method.value}>
+                        {method.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Payment Type *</label>
+                  <select
+                    value={newPayment.paymentType}
+                    onChange={(e) => setNewPayment({...newPayment, paymentType: e.target.value})}
+                    required
+                  >
+                    {paymentTypes.map(type => (
+                      <option key={type.value} value={type.value}>
+                        {type.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Payment Date *</label>
+                  <input
+                    type="date"
+                    value={newPayment.paymentDate}
+                    onChange={(e) => setNewPayment({...newPayment, paymentDate: e.target.value})}
+                    required
+                  />
+                </div>
+              </div>
+
               <div className="form-group">
-                <label>Payment Date *</label>
-                <input
-                  type="date"
-                  value={newPayment.paymentDate}
-                  onChange={(e) => setNewPayment({...newPayment, paymentDate: e.target.value})}
-                  required
+                <label>Note</label>
+                <textarea
+                  value={newPayment.notes}
+                  onChange={(e) => setNewPayment({...newPayment, notes: e.target.value})}
+                  rows={2}
+                  placeholder="Payment note"
                 />
               </div>
+
               <div className="form-group">
                 <label>Transaction Reference</label>
                 <input
@@ -499,38 +526,15 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
                   placeholder="e.g., TXN123456"
                 />
               </div>
-            </div>
 
-            <div className="form-group">
-              <label>Description</label>
-              <input
-                type="text"
-                value={newPayment.description}
-                onChange={(e) => setNewPayment({...newPayment, description: e.target.value})}
-                placeholder="Payment description (optional)"
-              />
-            </div>
+              <div className="form-buttons">
+                <button type="submit" className="save-btn">Add Payment</button>
+                <button type="button" onClick={() => setShowAddPayment(false)} className="cancel-btn">Cancel</button>
+              </div>
+            </form>
+          </div>
+        )}
 
-            <div className="form-group">
-              <label>Notes</label>
-              <textarea
-                value={newPayment.notes}
-                onChange={(e) => setNewPayment({...newPayment, notes: e.target.value})}
-                rows={2}
-                placeholder="Additional notes (optional)"
-              />
-            </div>
-
-            <div className="form-buttons">
-              <button type="submit" className="save-btn">Add Payment</button>
-              <button type="button" onClick={() => setShowAddPayment(false)} className="cancel-btn">Cancel</button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      <div className="payments-list">
-        <h4>Payment History ({payments.length})</h4>
         {payments.length === 0 ? (
           <div className="no-payments">
             <p>No payments recorded yet.</p>

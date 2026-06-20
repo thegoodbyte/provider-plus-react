@@ -7,7 +7,7 @@ import './BookingMedicalUpload.css';
 
 interface BookingMedicalUploadProps {
   bookingId: string;
-  bookingNumber?: string;
+  bookingNumber?: string | number;
   clientId: string;
   retreatId: string;
   onUploadComplete?: () => void;
@@ -89,6 +89,43 @@ const mergeArtifacts = (artifactGroups: MedicalArtifact[][]) => {
 const getLatestReview = (reviews: MedicalReviewRequest[] = []) =>
   [...reviews].sort((a, b) => reviewDate(b) - reviewDate(a))[0];
 
+const getObjectId = (value: any) => typeof value === 'object' ? value?._id || value?.id : value;
+
+const normalizeText = (value: any) => String(value || '').trim().toLowerCase();
+
+const artifactMatchesBookingNumber = (artifact: MedicalArtifact, bookingNumber?: string | number) => {
+  const normalizedBookingNumber = normalizeText(bookingNumber);
+  if (!normalizedBookingNumber) return false;
+
+  const searchableValues = [
+    artifact.title,
+    artifact.description,
+    artifact.notes,
+    artifact.textContent,
+    artifact.data?.bookingNumber,
+    artifact.data?.booking_number,
+    artifact.data?.bookingNo,
+    ...(artifact.tags || []),
+  ];
+
+  return searchableValues.some((value) => normalizeText(value).includes(normalizedBookingNumber));
+};
+
+const artifactBelongsToBooking = (artifact: MedicalArtifact, bookingId: string, bookingNumber?: string | number) => {
+  const artifactBookingId = getObjectId(artifact.bookingId);
+  return artifactBookingId === bookingId || artifactMatchesBookingNumber(artifact, bookingNumber);
+};
+
+const getReviewDecisionInfo = (review?: MedicalReviewRequest) => {
+  const rawDecision = review?.reviewDecision || review?.decision;
+  if (!review) return { label: 'No medical review', className: 'badge-pending' };
+  if (!rawDecision) return { label: 'No decision', className: 'badge-pending' };
+  if (rawDecision === 'OK' || rawDecision === 'approved') return { label: 'OK', className: 'badge-approved' };
+  if (rawDecision === 'NOT OK' || rawDecision === 'declined') return { label: 'Declined', className: 'badge-rejected' };
+  if (rawDecision === 'caution') return { label: 'Caution', className: 'badge-caution' };
+  return { label: String(rawDecision).replace(/_/g, ' '), className: 'badge-default' };
+};
+
 const getFlowReceiptKey = (sectionType: BookingMedicalTestType) =>
   sectionType === 'ekg' ? 'ekg_received' : 'liver_received';
 
@@ -149,8 +186,13 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
         medicalArtifactsApi.getAll({ bookingId }),
         clientId && retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId }) : Promise.resolve({ data: [] }),
       ]);
-      const medicalArtifacts: MedicalArtifact[] = mergeArtifacts(responses.map((response) => response.data || [])).filter((artifact) =>
-        medicalTestSections.some((section) => artifactMatchesSection(artifact, section))
+      const directBookingArtifacts: MedicalArtifact[] = responses[0].data || [];
+      const clientRetreatArtifacts: MedicalArtifact[] = responses[1].data || [];
+      const bookingNumberFallbackArtifacts = clientRetreatArtifacts.filter((artifact) =>
+        artifactBelongsToBooking(artifact, bookingId, bookingNumber)
+      );
+      const medicalArtifacts: MedicalArtifact[] = mergeArtifacts([directBookingArtifacts, bookingNumberFallbackArtifacts]).filter((artifact) =>
+        medicalTestSections.some((section) => artifactMatchesSection(artifact, section) && artifactBelongsToBooking(artifact, bookingId, bookingNumber))
       );
       setArtifacts(medicalArtifacts);
 
@@ -176,7 +218,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
 
   useEffect(() => {
     loadMedicalArtifacts();
-  }, [bookingId, clientId, retreatId]);
+  }, [bookingId, bookingNumber, clientId, retreatId]);
 
   const artifactsByType = useMemo(() => {
     return medicalTestSections.reduce<Record<BookingMedicalTestType, MedicalArtifact[]>>((acc, section) => {
@@ -323,6 +365,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
           resultRecordedAt: now,
           resultSource: 'booking',
           bookingId,
+          bookingNumber,
         },
         contextType: 'booking' as const,
         documentStage: 'entry' as const,
@@ -397,7 +440,11 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
         description: section.description,
         source: 'admin_upload',
         status: 'stored',
-        tags: ['booking-requirement'],
+        data: {
+          bookingId,
+          bookingNumber,
+        },
+        tags: ['booking-requirement', bookingNumber ? `booking-${bookingNumber}` : ''].filter(Boolean),
       });
 
       if (created.data._id) {
@@ -436,6 +483,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
           const latestArtifact = sectionArtifacts[0];
           const latestReview = latestArtifact?._id ? getLatestReview(reviewsByArtifact[latestArtifact._id]) : undefined;
           const latestResult = getArtifactResultText(latestArtifact);
+          const latestDecision = getReviewDecisionInfo(latestReview);
           const inputId = `booking-medical-${section.type}`;
           const isUploading = uploadingType === section.type;
           const isSavingResult = savingResultType === section.type;
@@ -461,6 +509,31 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                 <span className={`status-badge ${latestResult ? 'badge-approved' : 'badge-pending'}`}>
                   {latestResult ? 'results saved' : 'results missing'}
                 </span>
+              </div>
+
+              <div className="booking-medical-required-item">
+                <div>
+                  <span className="booking-medical-required-label">Required entry document</span>
+                  <strong>{section.title}</strong>
+                </div>
+                <div>
+                  <span className="booking-medical-required-label">Medical review</span>
+                  {latestReview?._id ? (
+                    <button
+                      type="button"
+                      className="booking-medical-inline-link"
+                      onClick={() => navigate(`/medical-review-requests/${latestReview._id}`)}
+                    >
+                      Review #{latestReview.display_id || latestReview._id}
+                    </button>
+                  ) : (
+                    <span>No review</span>
+                  )}
+                </div>
+                <div>
+                  <span className="booking-medical-required-label">Decision</span>
+                  <span className={`status-badge ${latestDecision.className}`}>{latestDecision.label}</span>
+                </div>
               </div>
 
               <div className="booking-medical-result-editor">
@@ -489,11 +562,36 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                 ) : (
                   sectionArtifacts.map((artifact) => {
                     const review = artifact._id ? getLatestReview(reviewsByArtifact[artifact._id]) : undefined;
+                    const decision = getReviewDecisionInfo(review);
                     return (
                       <div key={artifact._id} className="booking-document-file-row">
                         <div className="booking-medical-file-heading">
-                          <strong>{artifact.title}</strong>
+                          <button
+                            type="button"
+                            className="booking-medical-inline-link"
+                            onClick={() => artifact._id && navigate(`/medical-artifacts/${artifact._id}`)}
+                          >
+                            Artifact #{artifact.display_id || artifact._id}
+                          </button>
                           <span>Received: {formatDate(artifact.receivedAt || artifact.createdAt)}</span>
+                        </div>
+                        <div className="booking-medical-file-title">{artifact.title}</div>
+                        <div className="booking-medical-review-line">
+                          <span>
+                            Medical review:{' '}
+                            {review?._id ? (
+                              <button
+                                type="button"
+                                className="booking-medical-inline-link"
+                                onClick={() => navigate(`/medical-review-requests/${review._id}`)}
+                              >
+                                Review #{review.display_id || review._id}
+                              </button>
+                            ) : (
+                              'No review'
+                            )}
+                          </span>
+                          <span className={`status-badge ${decision.className}`}>{decision.label}</span>
                         </div>
                         <div className="booking-document-file-list">
                           {(artifact.files || []).length === 0 ? (

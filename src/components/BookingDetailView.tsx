@@ -774,6 +774,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
                 <div className="booking-detail-accordion-body">
                   <BookingPaymentManagement
                     bookingId={bookingId}
+                    bookingNumber={booking.bookingNumber}
                     bookingHash={booking.bookingHash}
                     clientId={typeof client === 'object' ? client._id : client}
                     retreatId={typeof retreat === 'object' ? retreat._id : retreat}
@@ -859,6 +860,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         {activeTab === 'payments' && (
           <BookingPaymentManagement
             bookingId={bookingId}
+            bookingNumber={booking.bookingNumber}
             bookingHash={booking.bookingHash}
             clientId={typeof client === 'object' ? client._id : client}
             retreatId={typeof retreat === 'object' ? retreat._id : retreat}
