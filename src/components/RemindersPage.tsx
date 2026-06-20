@@ -40,7 +40,8 @@ const RemindersPage: React.FC = () => {
     actionType: 'general' as 'ask_for_document' | 'review_document' | 'follow_up' | 'medical_clearance' | 'general' | 'payment',
     notes: '',
     clientId: '',
-    retreatId: ''
+    retreatId: '',
+    reminderType: 'client' as 'client' | 'retreat'  // New field to determine type
   });
   const [clients, setClients] = useState<Client[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
@@ -49,6 +50,8 @@ const RemindersPage: React.FC = () => {
   const [selectedClientFilter, setSelectedClientFilter] = useState<string>('');
   const [selectedRetreatFilter, setSelectedRetreatFilter] = useState<string>('');
   const [activeTab, setActiveTab] = useState<'reminders' | 'templates'>('reminders');
+  const [clientSearchTerm, setClientSearchTerm] = useState<string>('');
+  const [showClientDropdown, setShowClientDropdown] = useState<boolean>(false);
 
   const fetchReminders = useCallback(async () => {
     try {
@@ -114,6 +117,9 @@ const RemindersPage: React.FC = () => {
         new Date(editingReminder.dueDate + 'T00:00:00').toLocaleDateString('en-CA') :
         new Date().toLocaleDateString('en-CA');
 
+      // Determine reminder type based on which ID is present
+      const reminderType = editingReminder.clientId ? 'client' : 'retreat';
+
       setFormData({
         title: editingReminder.title || '',
         description: editingReminder.description || '',
@@ -122,7 +128,8 @@ const RemindersPage: React.FC = () => {
         actionType: (editingReminder.actionType as any) || 'general',
         notes: editingReminder.notes || '',
         clientId: editingReminder.clientId || '',
-        retreatId: editingReminder.retreatId || ''
+        retreatId: editingReminder.retreatId || '',
+        reminderType: reminderType
       });
     } else {
       // Reset form for new reminder
@@ -134,7 +141,8 @@ const RemindersPage: React.FC = () => {
         actionType: 'general',
         notes: '',
         clientId: '',
-        retreatId: ''
+        retreatId: '',
+        reminderType: 'client'
       });
     }
   }, [editingReminder]);
@@ -186,6 +194,9 @@ const RemindersPage: React.FC = () => {
       new Date(reminder.dueDate + 'T00:00:00').toLocaleDateString('en-CA') :
       new Date().toLocaleDateString('en-CA');
 
+    // Determine reminder type based on which ID is present
+    const reminderType = reminder.clientId ? 'client' : 'retreat';
+
     setFormData({
       title: reminder.title || '',
       description: reminder.description || '',
@@ -194,7 +205,8 @@ const RemindersPage: React.FC = () => {
       actionType: (reminder.actionType as any) || 'general',
       notes: reminder.notes || '',
       clientId: reminder.clientId || '',
-      retreatId: reminder.retreatId || ''
+      retreatId: reminder.retreatId || '',
+      reminderType: reminderType
     });
     setShowAddForm(true);
   };
@@ -224,10 +236,18 @@ const RemindersPage: React.FC = () => {
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const submitData = {
-        ...formData,
+      // Prepare submit data based on reminder type
+      const submitData: any = {
+        title: formData.title,
+        description: formData.description,
         dueDate: new Date(formData.dueDate),
-        status: 'pending' as const
+        priority: formData.priority,
+        actionType: formData.actionType,
+        notes: formData.notes,
+        status: 'pending' as const,
+        // Set either clientId OR retreatId based on type
+        clientId: formData.reminderType === 'client' ? formData.clientId : '',
+        retreatId: formData.reminderType === 'retreat' ? formData.retreatId : ''
       };
 
       if (editingReminder && editingReminder._id) {
@@ -246,8 +266,10 @@ const RemindersPage: React.FC = () => {
         actionType: 'general',
         notes: '',
         clientId: '',
-        retreatId: ''
+        retreatId: '',
+        reminderType: 'client'
       });
+      setClientSearchTerm('');
       await fetchReminders();
     } catch (error) {
       console.error('Error saving reminder:', error);
@@ -368,6 +390,35 @@ const RemindersPage: React.FC = () => {
             <h3>{editingReminder ? 'Edit Reminder' : 'Create New Reminder'}</h3>
             <form onSubmit={handleFormSubmit}>
               <div className="reminder-form-grid">
+                {/* Reminder Type Selection */}
+                <div className="form-group full-width">
+                  <label>Reminder Type *</label>
+                  <div style={{ display: 'flex', gap: '20px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        value="client"
+                        checked={formData.reminderType === 'client'}
+                        onChange={(e) => setFormData({...formData, reminderType: 'client', retreatId: ''})}
+                        style={{ marginRight: '8px' }}
+                      />
+                      <Icon icon={FiUser} className="w-4 h-4 mr-1" />
+                      Client-based
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                      <input
+                        type="radio"
+                        value="retreat"
+                        checked={formData.reminderType === 'retreat'}
+                        onChange={(e) => setFormData({...formData, reminderType: 'retreat', clientId: ''})}
+                        style={{ marginRight: '8px' }}
+                      />
+                      <Icon icon={FiCalendar} className="w-4 h-4 mr-1" />
+                      Retreat-based
+                    </label>
+                  </div>
+                </div>
+
                 <div className="form-group">
                   <label htmlFor="reminder-title">Title *</label>
                   <input
@@ -421,45 +472,107 @@ const RemindersPage: React.FC = () => {
                   </select>
                 </div>
 
-                <div className="form-group">
-                  <label htmlFor="reminder-retreat">Retreat *</label>
-                  <select
-                    id="reminder-retreat"
-                    value={formData.retreatId}
-                    onChange={(e) => setFormData({...formData, retreatId: e.target.value, clientId: ''})}
-                    required
-                  >
-                    <option value="">Select a retreat first...</option>
-                    {retreats.map((retreat) => (
-                      <option key={retreat._id} value={retreat._id}>
-                        {retreat.name} - {retreat.location}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {/* Show Retreat field only if retreat-based */}
+                {formData.reminderType === 'retreat' && (
+                  <div className="form-group">
+                    <label htmlFor="reminder-retreat">Retreat *</label>
+                    <select
+                      id="reminder-retreat"
+                      value={formData.retreatId}
+                      onChange={(e) => setFormData({...formData, retreatId: e.target.value})}
+                      required
+                    >
+                      <option value="">Select a retreat...</option>
+                      {retreats.map((retreat) => (
+                        <option key={retreat._id} value={retreat._id}>
+                          {retreat.name} - {retreat.location}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
-                <div className="form-group">
-                  <label htmlFor="reminder-client">Client *</label>
-                  <select
-                    id="reminder-client"
-                    value={formData.clientId}
-                    onChange={(e) => setFormData({...formData, clientId: e.target.value})}
-                    required
-                    disabled={!formData.retreatId}
-                  >
-                    <option value="">{!formData.retreatId ? 'Select a retreat first...' : 'Select a client...'}</option>
-                    {filteredClientsForForm.map((client) => (
-                      <option key={client._id} value={client._id}>
-                        {client.firstName} {client.lastName} ({client.email})
-                      </option>
-                    ))}
-                  </select>
-                  {formData.retreatId && filteredClientsForForm.length === 0 && (
-                    <small style={{color: '#ff6b6b', fontSize: '12px', marginTop: '4px', display: 'block'}}>
-                      No clients found for this retreat. Make sure clients have bookings for this retreat.
-                    </small>
-                  )}
-                </div>
+                {/* Show Client field only if client-based */}
+                {formData.reminderType === 'client' && (
+                  <div className="form-group">
+                    <label htmlFor="reminder-client">Client * (searchable)</label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="text"
+                        id="client-search"
+                        value={clientSearchTerm}
+                        onChange={(e) => {
+                          setClientSearchTerm(e.target.value);
+                          setShowClientDropdown(true);
+                        }}
+                        onFocus={() => setShowClientDropdown(true)}
+                        placeholder="Search by name or email..."
+                        className="w-full"
+                      />
+                      {showClientDropdown && (
+                        <div style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: 0,
+                          right: 0,
+                          maxHeight: '200px',
+                          overflowY: 'auto',
+                          backgroundColor: 'white',
+                          border: '1px solid #ddd',
+                          borderRadius: '4px',
+                          zIndex: 1000,
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                        }}>
+                          {clients
+                            .filter(client => {
+                              const search = clientSearchTerm.toLowerCase();
+                              return (
+                                client.firstName?.toLowerCase().includes(search) ||
+                                client.lastName?.toLowerCase().includes(search) ||
+                                client.email?.toLowerCase().includes(search)
+                              );
+                            })
+                            .slice(0, 10)
+                            .map(client => (
+                              <div
+                                key={client._id}
+                                onClick={() => {
+                                  setFormData({...formData, clientId: client._id!});
+                                  setClientSearchTerm(`${client.firstName} ${client.lastName} (${client.email})`);
+                                  setShowClientDropdown(false);
+                                }}
+                                style={{
+                                  padding: '8px 12px',
+                                  cursor: 'pointer',
+                                  borderBottom: '1px solid #f0f0f0'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
+                              >
+                                {client.firstName} {client.lastName}
+                                <span style={{ color: '#666', fontSize: '12px', marginLeft: '8px' }}>
+                                  {client.email}
+                                </span>
+                              </div>
+                            ))}
+                          {clients.filter(client => {
+                            const search = clientSearchTerm.toLowerCase();
+                            return (
+                              client.firstName?.toLowerCase().includes(search) ||
+                              client.lastName?.toLowerCase().includes(search) ||
+                              client.email?.toLowerCase().includes(search)
+                            );
+                          }).length === 0 && (
+                            <div style={{ padding: '12px', color: '#666', textAlign: 'center' }}>
+                              No clients found
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <input type="hidden" value={formData.clientId} required />
+                  </div>
+                )}
 
                 <div className="form-group full-width">
                   <label htmlFor="reminder-description">Description *</label>
@@ -547,16 +660,24 @@ const RemindersPage: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center text-sm text-gray-900">
-                      <Icon icon={FiUser} className="w-4 h-4 mr-2 text-gray-400" />
-                      {reminder.clientName}
-                    </div>
+                    {reminder.clientName ? (
+                      <div className="flex items-center text-sm text-gray-900">
+                        <Icon icon={FiUser} className="w-4 h-4 mr-2 text-gray-400" />
+                        {reminder.clientName}
+                      </div>
+                    ) : (
+                      <span className="text-sm text-gray-400">-</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center text-sm text-gray-900">
-                      <Icon icon={FiCalendar} className="w-4 h-4 mr-2 text-gray-400" />
-                      {reminder.retreatName}
-                    </div>
+                    {reminder.retreatName ? (
+                      <div className="flex items-center text-sm text-gray-900">
+                        <Icon icon={FiCalendar} className="w-4 h-4 mr-2 text-gray-400" />
+                        {reminder.retreatName}
+                      </div>
+                    ) : (
+                      <span className="text-sm text-gray-400">-</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getPriorityColor(reminder.priority || 'medium')}`}>
