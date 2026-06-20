@@ -835,6 +835,18 @@ export interface MedicalArtifact {
   updatedAt?: string;
 }
 
+export type MedicalArtifactCreateInput = Partial<Omit<MedicalArtifact, '_id' | 'clientId' | 'artifactType' | 'title'>> & {
+  clientId: string;
+  artifactType: NonNullable<MedicalArtifact['artifactType']>;
+  title: string;
+  retreatId?: string;
+  bookingId?: string;
+  ceremonyId?: string;
+  replacesArtifactId?: string;
+  relatedArtifactId?: string;
+  legacyMedicalTrackingId?: string;
+};
+
 export interface FileUpload {
   _id?: string;
   fileHash: string;
@@ -903,7 +915,16 @@ export interface MedicalReviewRequest {
   reviewNotes: string;
 
   // Status tracking
-  status: 'assigned' | 'in_progress' | 'completed';
+  status:
+    | 'assigned'
+    | 'in_progress'
+    | 'pending'
+    | 'in_review'
+    | 'approved'
+    | 'rejected'
+    | 'caution'
+    | 'needs_resubmission'
+    | 'completed';
 
   // Additional metadata
   priority?: 'low' | 'normal' | 'high' | 'urgent';

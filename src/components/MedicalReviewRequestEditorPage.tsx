@@ -35,6 +35,9 @@ const reviewTypeByArtifact = (artifactType: MedicalArtifact['artifactType']): Me
   return 'general_clearance';
 };
 
+const formatArtifactType = (artifactType?: MedicalArtifact['artifactType']) =>
+  artifactType ? artifactType.replace(/_/g, ' ') : 'medical artifact';
+
 const getArtifactFileUrl = (file: NonNullable<MedicalArtifact['files']>[number]) => {
   const storedPath = file.url || file.filePath || file.s3Key || '';
   return /^https?:\/\//i.test(storedPath) ? storedPath : '';
@@ -263,7 +266,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
             {selectedArtifact ? (
               <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm">
                 <div className="font-semibold text-blue-950">#{selectedArtifact.display_id || '—'} {selectedArtifact.title}</div>
-                <div className="mt-1 capitalize text-blue-800">{selectedArtifact.artifactType.replace(/_/g, ' ')}</div>
+                <div className="mt-1 capitalize text-blue-800">{formatArtifactType(selectedArtifact.artifactType)}</div>
               </div>
             ) : (
               <SearchableMedicalTrackingSelect

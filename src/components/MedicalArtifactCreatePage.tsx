@@ -5,7 +5,9 @@ import { clientsApi, medicalArtifactsApi } from '../services/api';
 import { Client, MedicalArtifact } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 
-const artifactTypeLabels: Record<MedicalArtifact['artifactType'], string> = {
+type ArtifactType = NonNullable<MedicalArtifact['artifactType']>;
+
+const artifactTypeLabels: Record<ArtifactType, string> = {
   ekg: 'EKG',
   ceremony_ekg: 'Ceremony EKG',
   blood_pressure: 'Blood Pressure',
@@ -46,7 +48,7 @@ const MedicalArtifactCreatePage: React.FC = () => {
   const [uploadTarget, setUploadTarget] = useState<{ storage: string; bucket: string | null; keyPattern: string; note: string; requiredEnvironment?: string[] } | null>(null);
   const [form, setForm] = useState({
     clientId: '',
-    artifactType: 'ekg' as MedicalArtifact['artifactType'],
+    artifactType: 'ekg' as ArtifactType,
     contextType: 'client' as NonNullable<MedicalArtifact['contextType']>,
     purpose: 'paid_review' as NonNullable<MedicalArtifact['purpose']>,
     title: '',
@@ -157,7 +159,7 @@ const MedicalArtifactCreatePage: React.FC = () => {
               </option>
             ))}
           </select>
-          <select value={form.artifactType} onChange={(event) => setForm({ ...form, artifactType: event.target.value as MedicalArtifact['artifactType'] })} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+          <select value={form.artifactType} onChange={(event) => setForm({ ...form, artifactType: event.target.value as ArtifactType })} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
             {Object.entries(artifactTypeLabels).map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
             ))}

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalReviewRequest, FileUpload, BookingFlowItem, BookingFlowTemplate, MailSettings, EmailTemplate, SentEmail } from '../types';
+import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, FileUpload, BookingFlowItem, BookingFlowTemplate, MailSettings, EmailTemplate, SentEmail } from '../types';
 import { authService } from './authService';
 import { cacheService } from './cacheService';
 import { API_BASE_URL } from '../config/api.config';
@@ -619,14 +619,14 @@ export const medicalArtifactsApi = {
   },
   getOne: (id: string) => cachedGet<MedicalArtifact>(`medical-artifacts:${id}`, () => api.get<MedicalArtifact>(`/medical-artifacts/${id}`)),
   getNextDisplayId: () => api.get<number>('/medical-artifacts/next-display-id'),
-  getUploadTargetPreview: (artifactType: MedicalArtifact['artifactType'], fileName?: string) => api.get<{
+  getUploadTargetPreview: (artifactType: NonNullable<MedicalArtifact['artifactType']>, fileName?: string) => api.get<{
     storage: string;
     bucket: string | null;
     keyPattern: string;
     note: string;
     requiredEnvironment?: string[];
   }>(`/medical-artifacts/upload-target/preview?artifactType=${encodeURIComponent(artifactType)}&fileName=${encodeURIComponent(fileName || 'medical-record.pdf')}`),
-  create: (data: Omit<MedicalArtifact, '_id'>) => {
+  create: (data: MedicalArtifactCreateInput) => {
     cacheService.clearPattern('medical-artifacts:');
     return api.post<MedicalArtifact>('/medical-artifacts', data);
   },

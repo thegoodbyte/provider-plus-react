@@ -5,7 +5,7 @@ import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { Client, MedicalArtifact, MedicalReviewRequest } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 
-const artifactTypeLabels: Record<MedicalArtifact['artifactType'], string> = {
+const artifactTypeLabels: Record<NonNullable<MedicalArtifact['artifactType']>, string> = {
   ekg: 'EKG',
   ceremony_ekg: 'Ceremony EKG',
   blood_pressure: 'Blood Pressure',
@@ -18,6 +18,9 @@ const artifactTypeLabels: Record<MedicalArtifact['artifactType'], string> = {
   question: 'Question',
   other: 'Other',
 };
+
+const getArtifactTypeLabel = (artifactType?: MedicalArtifact['artifactType']) =>
+  artifactType ? artifactTypeLabels[artifactType] : 'Medical Artifact';
 
 const contextTypeLabels: Record<NonNullable<MedicalArtifact['contextType']>, string> = {
   client: 'Client profile',
@@ -320,7 +323,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
       <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Medical Artifact #{artifact.display_id || '-'}</h1>
-          <p className="text-sm text-gray-600">{artifactTypeLabels[artifact.artifactType]} for {getClientLabel(artifact.clientId)}</p>
+          <p className="text-sm text-gray-600">{getArtifactTypeLabel(artifact.artifactType)} for {getClientLabel(artifact.clientId)}</p>
         </div>
         <div className="flex items-center gap-2">
           {!isEditMode && (
@@ -444,7 +447,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Record</h2>
             <dl className="space-y-2">
               <div><dt className="text-gray-500">Client</dt><dd className="font-medium text-gray-900">{getClientLabel(artifact.clientId)}</dd></div>
-              <div><dt className="text-gray-500">Type</dt><dd className="font-medium text-gray-900">{artifactTypeLabels[artifact.artifactType]}</dd></div>
+              <div><dt className="text-gray-500">Type</dt><dd className="font-medium text-gray-900">{getArtifactTypeLabel(artifact.artifactType)}</dd></div>
               <div><dt className="text-gray-500">Context</dt><dd className="font-medium text-gray-900">{contextTypeLabels[artifact.contextType || 'client']}</dd></div>
               <div><dt className="text-gray-500">Purpose</dt><dd className="font-medium text-gray-900">{purposeLabels[artifact.purpose || 'general']}</dd></div>
               {artifact.reviewFeeAmount ? (

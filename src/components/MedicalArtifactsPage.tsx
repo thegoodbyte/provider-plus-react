@@ -5,7 +5,7 @@ import { medicalArtifactsApi } from '../services/api';
 import { Client, MedicalArtifact } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 
-const artifactTypeLabels: Record<MedicalArtifact['artifactType'], string> = {
+const artifactTypeLabels: Record<NonNullable<MedicalArtifact['artifactType']>, string> = {
   ekg: 'EKG',
   ceremony_ekg: 'Ceremony EKG',
   blood_pressure: 'Blood Pressure',
@@ -18,6 +18,9 @@ const artifactTypeLabels: Record<MedicalArtifact['artifactType'], string> = {
   question: 'Question',
   other: 'Other',
 };
+
+const getArtifactTypeLabel = (artifactType?: MedicalArtifact['artifactType']) =>
+  artifactType ? artifactTypeLabels[artifactType] : 'Medical Artifact';
 
 const contextTypeLabels: Record<NonNullable<MedicalArtifact['contextType']>, string> = {
   client: 'Client',
@@ -150,7 +153,7 @@ const MedicalArtifactsPage: React.FC = () => {
                     <div className="flex h-[60px] w-[80px] items-center justify-center rounded border border-dashed border-gray-200 text-xs text-gray-400">No thumb</div>
                   )}
                 </td>
-                <td className="px-4 py-3">{artifactTypeLabels[artifact.artifactType]}</td>
+                <td className="px-4 py-3">{getArtifactTypeLabel(artifact.artifactType)}</td>
                 <td className="px-4 py-3">
                   <div className="flex flex-col gap-1">
                     <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">

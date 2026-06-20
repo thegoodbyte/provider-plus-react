@@ -33,6 +33,9 @@ const requestTypeLabels: Record<string, string> = {
   general_clearance: 'General Clearance',
 };
 
+const getRequestTypeLabel = (requestType?: MedicalReviewRequest['requestType']) =>
+  requestType ? requestTypeLabels[requestType] || requestType : 'Medical Review';
+
 const artifactTypeLabels: Record<string, string> = {
   ekg: 'Entry EKG',
   ceremony_ekg: 'Ceremony EKG',
@@ -46,6 +49,9 @@ const artifactTypeLabels: Record<string, string> = {
   question: 'Question',
   other: 'Other',
 };
+
+const getArtifactTypeLabel = (artifactType?: MedicalArtifact['artifactType']) =>
+  artifactType ? artifactTypeLabels[artifactType] || artifactType : 'Medical Artifact';
 
 const getId = (value: any): string | undefined => {
   if (!value) return undefined;
@@ -348,7 +354,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
       <div className="space-y-2">
         {artifacts.map((artifact) => (
           <div key={artifact._id || `${artifact.artifactType}-${artifact.title}`} className="rounded-md border border-gray-200 bg-white p-3 text-sm">
-            <div className="font-semibold text-gray-900">#{artifact.display_id || '—'} {artifactTypeLabels[artifact.artifactType] || artifact.artifactType}: {artifact.title}</div>
+            <div className="font-semibold text-gray-900">#{artifact.display_id || '—'} {getArtifactTypeLabel(artifact.artifactType)}: {artifact.title}</div>
             <div className="text-xs text-gray-500">{formatDateTime(artifact.receivedAt)} • {artifact.files?.length || 0} file(s)</div>
             {artifact.textContent && <div className="mt-2 whitespace-pre-wrap text-gray-700">{artifact.textContent}</div>}
             {artifact.notes && <div className="mt-2 text-gray-600">Notes: {artifact.notes}</div>}
@@ -436,7 +442,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                           #{request.display_id || '—'} {typeof request.clientId === 'string' ? request.clientId : request.clientId?.display_id ? `#${request.clientId.display_id}` : 'Client'}
                         </div>
                         <div className="text-xs text-gray-500">
-                          {requestTypeLabels[request.requestType] || request.requestType} • Attempt {request.attemptNumber || 1} • {request.source || 'Provider Plus CRM'}
+                          {getRequestTypeLabel(request.requestType)} • Attempt {request.attemptNumber || 1} • {request.source || 'Provider Plus CRM'}
                         </div>
                       </div>
                       <span className={`rounded-full px-2 py-1 text-xs font-semibold ${reviewStatusStyle[request.status] || 'bg-gray-100 text-gray-700'}`}>
@@ -462,7 +468,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                     {typeof selected.clientId === 'string' ? selected.clientId : selected.clientId?.firstName ? `${selected.clientId.firstName} ${selected.clientId.lastName}` : 'Unknown client'}
                     {' '}• {typeof selected.retreatId === 'string' ? selected.retreatId : selected.retreatId?.name || 'Unknown retreat'}
                   </div>
-                  <div className="mt-1 text-sm font-medium text-gray-900">{requestTypeLabels[selected.requestType] || selected.requestType}</div>
+                  <div className="mt-1 text-sm font-medium text-gray-900">{getRequestTypeLabel(selected.requestType)}</div>
                 </div>
                 <span className={`rounded-full px-2 py-1 text-xs font-semibold ${reviewStatusStyle[selected.status] || 'bg-gray-100 text-gray-700'}`}>
                   {selected.status}
@@ -610,7 +616,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                           <div className="flex items-start justify-between gap-3">
                             <div>
                               <div className="font-semibold text-gray-900">
-                                #{artifact.display_id || '—'} {artifactTypeLabels[artifact.artifactType] || artifact.artifactType}: {artifact.title}
+                                #{artifact.display_id || '—'} {getArtifactTypeLabel(artifact.artifactType)}: {artifact.title}
                               </div>
                               <div className="text-xs text-gray-500">
                                 {client ? `${client.firstName} ${client.lastName}` : 'Client record'} • {artifact.receivedAt ? new Date(artifact.receivedAt).toLocaleString() : 'No received date'}
@@ -680,7 +686,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   ) : (
                     relatedArtifacts.filter((artifact) => !artifact._id || !selectedArtifactIds.has(artifact._id)).map((artifact) => (
                       <div key={artifact._id} className="rounded-md border border-gray-200 p-3 text-sm">
-                        <div className="font-semibold text-gray-900">#{artifact.display_id || '—'} {artifactTypeLabels[artifact.artifactType] || artifact.artifactType}: {artifact.title}</div>
+                        <div className="font-semibold text-gray-900">#{artifact.display_id || '—'} {getArtifactTypeLabel(artifact.artifactType)}: {artifact.title}</div>
                         <div className="text-xs text-gray-500">{artifact.files?.length || 0} file(s)</div>
                       </div>
                     ))

@@ -11,6 +11,14 @@ import { createBookingConfirmationPdf, generateBookingPDF } from './BookingConfi
 import { BookingFlowItem, MedicalArtifact, MedicalReviewRequest } from '../types';
 import './BookingDetailView.css';
 
+type RequirementArtifactType = NonNullable<MedicalArtifact['artifactType']>;
+type RequirementDefinition = {
+  key: string;
+  label: string;
+  artifactTypes: RequirementArtifactType[];
+  readinessGroups: string[];
+};
+
 interface BookingDetailViewProps {
   bookingId: string;
   onBack: () => void;
@@ -18,7 +26,7 @@ interface BookingDetailViewProps {
 
 const HeaderIcon: React.FC<{ icon: any }> = ({ icon: IconComponent }) => <IconComponent />;
 
-const requirementDefinitions = [
+const requirementDefinitions: RequirementDefinition[] = [
   { key: 'ekg', label: 'EKG', artifactTypes: ['ekg'], readinessGroups: ['ekg'] },
   { key: 'liver', label: 'Liver Panel', artifactTypes: ['liver_panel'], readinessGroups: ['liver'] },
   { key: 'medications', label: 'Medications Form', artifactTypes: ['medications_form', 'medication_list'], readinessGroups: ['medications'] },
@@ -176,7 +184,7 @@ const BookingRequirementsPanel: React.FC<{
       return definition.readinessGroups.includes(readinessGroup) || definition.artifactTypes.includes(expectedArtifact);
     });
     const relatedArtifacts = artifacts
-      .filter((artifact) => definition.artifactTypes.includes(artifact.artifactType))
+      .filter((artifact) => artifact.artifactType && definition.artifactTypes.includes(artifact.artifactType))
       .sort(compareArtifactsForDisplay);
     const latestArtifact = relatedArtifacts[0];
     const reviews = latestArtifact?._id ? (reviewsByArtifact[latestArtifact._id] || []) : [];
