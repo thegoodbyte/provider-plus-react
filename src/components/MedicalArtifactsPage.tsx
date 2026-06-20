@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, FileText, Inbox, Plus, RefreshCw } from 'lucide-react';
-import { medicalArtifactsApi } from '../services/api';
-import { Client, MedicalArtifact } from '../types';
+import { AlertTriangle, CheckCircle2, Eye, FileText, Plus, RefreshCw, Send, XCircle } from 'lucide-react';
+import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { Client, MedicalArtifact, MedicalReviewRequest } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 
 const artifactTypeLabels: Record<NonNullable<MedicalArtifact['artifactType']>, string> = {
@@ -51,9 +51,62 @@ const getClientName = (client?: string | Client) => {
   return [client.firstName || client.fname, client.lastName || client.lname].filter(Boolean).join(' ') || client.email || 'Unknown client';
 };
 
+const getReviewTime = (review: MedicalReviewRequest) =>
+  new Date(review.reviewedAt || review.requestedAt || review.createdAt || 0).getTime();
+
+const getReviewDecision = (review?: MedicalReviewRequest) => {
+  const decision = review?.reviewDecision;
+  if (decision === 'OK') return 'OK';
+  if (decision === 'NOT OK') return 'NOT OK';
+  if (decision === 'caution') return 'caution';
+  if (review?.status === 'approved' || review?.status === 'completed') return 'OK';
+  if (review?.status === 'rejected' || review?.status === 'needs_resubmission') return 'NOT OK';
+  if (review?.status === 'caution') return 'caution';
+  return '';
+};
+
+const ReviewResultBadge: React.FC<{ review?: MedicalReviewRequest }> = ({ review }) => {
+  if (!review) {
+    return <span className="text-xs text-gray-400">No review</span>;
+  }
+
+  const decision = getReviewDecision(review);
+  if (decision === 'OK') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800">
+        <CheckCircle2 className="h-3.5 w-3.5" />
+        OK
+      </span>
+    );
+  }
+  if (decision === 'NOT OK') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-800">
+        <XCircle className="h-3.5 w-3.5" />
+        Declined
+      </span>
+    );
+  }
+  if (decision === 'caution') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2 py-1 text-xs font-semibold text-orange-800">
+        <AlertTriangle className="h-3.5 w-3.5" />
+        Caution
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700">
+      {review.status || 'pending'}
+    </span>
+  );
+};
+
 const MedicalArtifactsPage: React.FC = () => {
   const navigate = useNavigate();
   const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
+  const [reviewRequests, setReviewRequests] = useState<MedicalReviewRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [stageFilter, setStageFilter] = useState<'all' | NonNullable<MedicalArtifact['documentStage']>>('all');
   const [documentTypeFilter, setDocumentTypeFilter] = useState<'all' | NonNullable<MedicalArtifact['documentType']>>('all');
@@ -61,8 +114,12 @@ const MedicalArtifactsPage: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const artifactsResponse = await medicalArtifactsApi.getAll();
+      const [artifactsResponse, reviewsResponse] = await Promise.all([
+        medicalArtifactsApi.getAll(),
+        medicalReviewRequestsApi.getAll(),
+      ]);
       setArtifacts(artifactsResponse.data || []);
+      setReviewRequests(reviewsResponse.data || []);
     } finally {
       setLoading(false);
     }
@@ -79,6 +136,25 @@ const MedicalArtifactsPage: React.FC = () => {
       return true;
     });
   }, [artifacts, stageFilter, documentTypeFilter]);
+
+  const latestReviewByArtifactId = useMemo(() => {
+    const grouped = new Map<string, MedicalReviewRequest[]>();
+    reviewRequests.forEach((review) => {
+      (review.artifactIds || []).forEach((artifactRef) => {
+        const artifactId = getObjectId(artifactRef);
+        if (!artifactId) return;
+        const existing = grouped.get(artifactId) || [];
+        existing.push(review);
+        grouped.set(artifactId, existing);
+      });
+    });
+
+    const latest = new Map<string, MedicalReviewRequest>();
+    grouped.forEach((reviews, artifactId) => {
+      latest.set(artifactId, [...reviews].sort((a, b) => getReviewTime(b) - getReviewTime(a))[0]);
+    });
+    return latest;
+  }, [reviewRequests]);
 
   const handleRequestReview = async (artifact: MedicalArtifact) => {
     if (!artifact._id) return;
@@ -128,6 +204,7 @@ const MedicalArtifactsPage: React.FC = () => {
           <thead className="bg-gray-50 text-left text-xs font-semibold uppercase text-gray-500">
             <tr>
               <th className="px-4 py-3">ID</th>
+              <th className="px-4 py-3">Actions</th>
               <th className="px-4 py-3">Preview</th>
               <th className="px-4 py-3">Stage</th>
               <th className="px-4 py-3">Document Type</th>
@@ -137,13 +214,47 @@ const MedicalArtifactsPage: React.FC = () => {
               <th className="px-4 py-3">Received</th>
               <th className="px-4 py-3">Files</th>
               <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3"></th>
+              <th className="px-4 py-3">Medical Review</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 bg-white">
-            {filteredArtifacts.map((artifact) => (
+            {filteredArtifacts.map((artifact) => {
+              const latestReview = artifact._id ? latestReviewByArtifactId.get(artifact._id) : undefined;
+              return (
               <tr key={artifact._id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 font-medium text-gray-900">#{artifact.display_id}</td>
+                <td className="px-4 py-3 font-medium text-gray-900">
+                  {artifact._id ? (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`${artifact._id}`)}
+                      className="font-semibold text-blue-700 hover:text-blue-900 hover:underline"
+                    >
+                      #{artifact.display_id}
+                    </button>
+                  ) : (
+                    `#${artifact.display_id}`
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex justify-start gap-2">
+                    <button
+                      type="button"
+                      title="View artifact"
+                      onClick={() => navigate(`${artifact._id}`)}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      title="Send for medical review"
+                      onClick={() => handleRequestReview(artifact)}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-200 bg-white text-blue-700 hover:bg-blue-50"
+                    >
+                      <Send className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </td>
                 <td className="px-4 py-3">
                   {artifact.files?.find((file) => file.thumbnailUrl)?.thumbnailUrl ? (
                     <img
@@ -181,23 +292,28 @@ const MedicalArtifactsPage: React.FC = () => {
                 <td className="px-4 py-3">{artifact.receivedAt ? new Date(artifact.receivedAt).toLocaleDateString() : '-'}</td>
                 <td className="px-4 py-3">{artifact.files?.length || 0}</td>
                 <td className="px-4 py-3 capitalize">{artifact.status || 'stored'}</td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex justify-end gap-2">
-                    <button onClick={() => navigate(`${artifact._id}`)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
-                      <Eye className="h-3.5 w-3.5" />
-                      View/Edit
-                    </button>
-                    <button onClick={() => handleRequestReview(artifact)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
-                      <Inbox className="h-3.5 w-3.5" />
-                      Request Review
-                    </button>
+                <td className="px-4 py-3">
+                  <div className="flex flex-col gap-1">
+                    {latestReview?._id ? (
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/admin/medical-review-requests/${latestReview._id}`)}
+                        className="w-fit text-xs font-semibold text-blue-700 hover:text-blue-900"
+                      >
+                        Review #{latestReview.display_id || latestReview._id.slice(-6)}
+                      </button>
+                    ) : (
+                      <span className="text-xs text-gray-400">-</span>
+                    )}
+                    <ReviewResultBadge review={latestReview} />
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
             {filteredArtifacts.length === 0 && (
               <tr>
-                <td colSpan={11} className="px-4 py-8 text-center text-gray-500">No medical artifacts yet.</td>
+                <td colSpan={12} className="px-4 py-8 text-center text-gray-500">No medical artifacts yet.</td>
               </tr>
             )}
           </tbody>
