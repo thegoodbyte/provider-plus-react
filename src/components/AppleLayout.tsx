@@ -195,7 +195,7 @@ const AppleLayout: React.FC = () => {
 
   const activeItem = getActiveItemFromPath();
   const isImpersonating = Boolean(user?.impersonatedBy || user?.originalRole);
-  const userEmail = user?.email || user?.username || '';
+  const userEmail = user?.email || '';
 
   useEffect(() => {
     if (location.pathname === '/') {

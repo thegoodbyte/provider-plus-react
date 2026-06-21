@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ceremoniesApi } from '../services/api';
 import { Ceremony, Retreat } from '../types';
 import { Button, Modal, Form, Input, DatePicker, TimePicker, Select, message } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import moment from 'moment';
 import ParticipantTracker from './ParticipantTracker';
 
@@ -343,7 +343,14 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
               {ceremonies.map((ceremony) => (
                 <tr key={ceremony._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {formatOrdinal(ceremony.ceremonyNumber)}
+                    <button
+                      type="button"
+                      onClick={() => openFullView(ceremony, 'med_prep')}
+                      className="font-semibold text-blue-700 hover:text-blue-900 hover:underline"
+                      title="Open ceremony view"
+                    >
+                      {formatOrdinal(ceremony.ceremonyNumber)}
+                    </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {formatDate(ceremony.date)}
@@ -376,13 +383,12 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                       <Button
                         type="primary"
-                        icon={<ClockCircleOutlined />}
+                        icon={<EyeOutlined />}
                         onClick={() => openFullView(ceremony, 'spoons')}
                         size="small"
                         title="Open ceremony full view"
-                      >
-                        Ceremony view
-                      </Button>
+                        aria-label="Open ceremony full view"
+                      />
                       <Button
                         type="text"
                         icon={<EditOutlined />}

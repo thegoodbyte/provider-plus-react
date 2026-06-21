@@ -453,7 +453,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           <div className="rounded-lg border border-gray-200 bg-white p-4">
             <label className="mb-2 block text-sm font-medium text-gray-700">Requested By</label>
             <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800">
-              {[user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || user?.username || form.requestedBy}
+              {[user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || form.requestedBy}
             </div>
             <label className="mb-2 mt-4 block text-sm font-medium text-gray-700">Review Decision</label>
             <select value={form.reviewDecision} onChange={(e) => setForm({ ...form, reviewDecision: e.target.value as FormState['reviewDecision'] })} className="w-full rounded-md border border-gray-300 px-3 py-2">

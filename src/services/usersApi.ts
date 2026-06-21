@@ -2,7 +2,6 @@ import { api } from './api';
 
 export interface User {
   _id: string;
-  username: string;
   email: string;
   role: 'admin' | 'user' | 'facilitator' | 'helper' | 'medical_staff' | 'medical_advisor';
   firstName?: string;
@@ -14,7 +13,6 @@ export interface User {
 }
 
 export interface CreateUserData {
-  username: string;
   email: string;
   password: string;
   role: 'admin' | 'user' | 'facilitator' | 'helper' | 'medical_staff' | 'medical_advisor';
@@ -23,7 +21,6 @@ export interface CreateUserData {
 }
 
 export interface UpdateUserData {
-  username?: string;
   email?: string;
   role?: 'admin' | 'user' | 'facilitator' | 'helper' | 'medical_staff' | 'medical_advisor';
   firstName?: string;

@@ -30,7 +30,6 @@ const UserManagement: React.FC = () => {
   const [showErrorModal, setShowErrorModal] = useState(false);
 
   const [formData, setFormData] = useState<Partial<CreateUserData & { confirmPassword: string; isActive: boolean }>>({
-    username: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -62,7 +61,7 @@ const UserManagement: React.FC = () => {
 
   const handleCreateUser = async () => {
     try {
-      if (!formData.username || !formData.email || !formData.password) {
+      if (!formData.email || !formData.password) {
         showError('Please fill in all required fields');
         return;
       }
@@ -79,7 +78,6 @@ const UserManagement: React.FC = () => {
       }
 
       const userData: CreateUserData = {
-        username: formData.username,
         email: formData.email,
         password: formData.password,
         role: formData.role as any,
@@ -102,7 +100,6 @@ const UserManagement: React.FC = () => {
 
     try {
       const updateData: UpdateUserData = {
-        username: formData.username,
         email: formData.email,
         role: formData.role as any,
         firstName: formData.firstName,
@@ -126,7 +123,7 @@ const UserManagement: React.FC = () => {
       return;
     }
 
-    if (!window.confirm(`Are you sure you want to delete user "${user.username}"?`)) {
+    if (!window.confirm(`Are you sure you want to delete user "${user.email}"?`)) {
       return;
     }
 
@@ -142,7 +139,6 @@ const UserManagement: React.FC = () => {
   const handleEditUser = (user: User) => {
     setEditingUser(user);
     setFormData({
-      username: user.username,
       email: user.email,
       role: user.role,
       firstName: user.firstName || '',
@@ -207,7 +203,6 @@ const UserManagement: React.FC = () => {
 
   const resetForm = () => {
     setFormData({
-      username: '',
       email: '',
       password: '',
       confirmPassword: '',
@@ -228,8 +223,7 @@ const UserManagement: React.FC = () => {
   };
 
   const filteredUsers = users.filter(user => {
-    const matchesSearch = (user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = (user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           (user.firstName && user.firstName.toLowerCase().includes(searchTerm.toLowerCase())) ||
                           (user.lastName && user.lastName.toLowerCase().includes(searchTerm.toLowerCase())));
 
@@ -348,14 +342,14 @@ const UserManagement: React.FC = () => {
                     <div className="flex items-center">
                       <div className="h-8 w-8 bg-blue-500 rounded-full flex items-center justify-center">
                         <span className="text-white text-sm font-medium">
-                          {(user.firstName?.[0] || user.username[0]).toUpperCase()}
+                          {(user.firstName?.[0] || user.email[0] || 'U').toUpperCase()}
                         </span>
                       </div>
                       <div className="ml-3">
                         <div className="text-sm font-medium text-gray-900">
                           {user.firstName && user.lastName ?
                             `${user.firstName} ${user.lastName}` :
-                            user.username}
+                            user.email}
                         </div>
                         <div className="text-sm text-gray-500 flex items-center">
                           <Icon icon={FiMail} className="w-3 h-3 mr-1" />
@@ -422,13 +416,6 @@ const UserManagement: React.FC = () => {
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h2 className="text-lg font-semibold mb-4">Add New User</h2>
             <div className="space-y-4">
-              <AppleInput
-                label="Username *"
-                type="text"
-                value={formData.username || ''}
-                onChange={(value) => setFormData({ ...formData, username: value })}
-                placeholder="Enter username"
-              />
               <AppleInput
                 label="Email *"
                 type="email"
@@ -508,7 +495,7 @@ const UserManagement: React.FC = () => {
             <h2 className="text-lg font-semibold mb-4">Reset Password</h2>
             <div className="mb-4 p-3 bg-blue-50 rounded-lg">
               <p className="text-sm text-blue-800">
-                Resetting password for: <strong>{resettingPasswordUser.username}</strong>
+                Resetting password for: <strong>{resettingPasswordUser.email}</strong>
               </p>
               <p className="text-xs text-blue-600 mt-1">
                 {resettingPasswordUser.email}
@@ -566,13 +553,6 @@ const UserManagement: React.FC = () => {
           <div className="bg-white rounded-lg p-6 w-full max-w-md">
             <h2 className="text-lg font-semibold mb-4">Edit User</h2>
             <div className="space-y-4">
-              <AppleInput
-                label="Username *"
-                type="text"
-                value={formData.username || ''}
-                onChange={(value) => setFormData({ ...formData, username: value })}
-                placeholder="Enter username"
-              />
               <AppleInput
                 label="Email *"
                 type="email"

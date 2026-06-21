@@ -11,7 +11,6 @@ interface AppleSidebarProps {
   userRole?: string;
   user?: {
     email?: string;
-    username?: string;
     firstName?: string;
     lastName?: string;
     role?: string;
@@ -327,7 +326,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
 
   const isExpanded = !isCollapsed || isHovered;
   const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
-  const displayEmail = user?.email || user?.username || '';
+  const displayEmail = user?.email || '';
   const displayRole =
     navigationRole === 'admin' ? 'Administrator' :
     navigationRole === 'medical_staff' ? 'Medical Staff' :

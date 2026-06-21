@@ -249,7 +249,7 @@ const ClientScreening: React.FC = () => {
     generalNotes: '',
     desiredRetreat: '',
     quotedPrice: '',
-    screenedBy: user?.username || '',
+    screenedBy: user?.email || '',
     status: 'pending'
   });
 

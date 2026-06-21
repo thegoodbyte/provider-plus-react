@@ -850,7 +850,14 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
             postCeremonyEkg: nextPostCheck.postCeremonyEkg,
           };
 
-      await ceremoniesApi.updateMedicalCheck(participantToUpdate._id!, payload);
+      const updatedParticipantResponse = await ceremoniesApi.updateMedicalCheck(participantToUpdate._id!, payload);
+      const updatedParticipant = updatedParticipantResponse.data;
+      setParticipants((prev) => prev.map((participant) => (
+        getParticipantKey(participant) === getParticipantKey(participantToUpdate)
+          || getObjectId(participant.clientId) === getObjectId(participantToUpdate.clientId)
+          ? { ...participant, ...updatedParticipant }
+          : participant
+      )));
       const savedLabel = medicalCheckPhase === 'post'
         ? 'Post-ceremony EKG'
         : preMedicalFormKind === 'bp'
