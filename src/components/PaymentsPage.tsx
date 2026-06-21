@@ -17,6 +17,11 @@ interface PaymentWithDetails extends Payment {
   bookingNumber?: number;
 }
 
+const getRetreatCode = (retreat?: Retreat) => {
+  if (!retreat) return 'Unknown Retreat';
+  return retreat.retreatCode || retreat.code || retreat.name || 'Unknown Retreat';
+};
+
 const PaymentsPage: React.FC = () => {
   const navigate = useNavigate();
   const [payments, setPayments] = useState<PaymentWithDetails[]>([]);
@@ -65,7 +70,7 @@ const PaymentsPage: React.FC = () => {
           bookingId,
           clientName: client ? `${client.firstName} ${client.lastName}` : 'Unknown Client',
           clientDisplayId: client?.display_id,
-          retreatName: retreat ? retreat.name : 'Unknown Retreat',
+          retreatName: getRetreatCode(retreat),
           bookingNumber: (typeof payment.bookingId === 'object' ? payment.bookingId?.bookingNumber : undefined) || booking?.bookingNumber,
         };
       });

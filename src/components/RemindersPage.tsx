@@ -22,9 +22,15 @@ interface ReminderWithDetails {
   clientId: string;
   retreatId: string;
   clientName?: string;
+  clientDisplayId?: number;
   retreatName?: string;
   createdAt?: string;
 }
+
+const getRetreatCode = (retreat?: Retreat) => {
+  if (!retreat) return 'Unknown Retreat';
+  return retreat.retreatCode || retreat.code || retreat.name || 'Unknown Retreat';
+};
 
 const RemindersPage: React.FC = () => {
   const [reminders, setReminders] = useState<ReminderWithDetails[]>([]);
@@ -73,7 +79,8 @@ const RemindersPage: React.FC = () => {
         return {
           ...reminder,
           clientName: client ? `${client.firstName} ${client.lastName}` : 'Unknown Client',
-          retreatName: retreat ? retreat.name : 'Unknown Retreat'
+          clientDisplayId: client?.display_id,
+          retreatName: getRetreatCode(retreat)
         };
       });
 
@@ -663,7 +670,10 @@ const RemindersPage: React.FC = () => {
                     {reminder.clientName ? (
                       <div className="flex items-center text-sm text-gray-900">
                         <Icon icon={FiUser} className="w-4 h-4 mr-2 text-gray-400" />
-                        {reminder.clientName}
+                        <span className="font-semibold text-blue-700">
+                          {reminder.clientDisplayId ? `#${reminder.clientDisplayId}` : ''}
+                        </span>
+                        <span className="ml-1">{reminder.clientName}</span>
                       </div>
                     ) : (
                       <span className="text-sm text-gray-400">-</span>

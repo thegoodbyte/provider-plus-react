@@ -24,7 +24,7 @@ const resolveClient = (clientValue: any) => {
 const resolveRetreat = (retreatValue: any) => {
   if (!retreatValue) return 'Unknown Retreat';
   if (typeof retreatValue === 'string') return retreatValue;
-  return [retreatValue.name, retreatValue.location].filter(Boolean).join(' - ') || 'Unknown Retreat';
+  return retreatValue.retreatCode || retreatValue.code || retreatValue.name || 'Unknown Retreat';
 };
 
 const getPublicPaymentUrl = (request: any) => (
@@ -199,6 +199,7 @@ const PaymentRequestsGrid: React.FC = () => {
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice #</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Public Hash</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client ID</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Retreat</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
@@ -260,9 +261,11 @@ const PaymentRequestsGrid: React.FC = () => {
                         <span className="text-xs text-amber-700">Save once to generate</span>
                       )}
                     </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm font-semibold text-blue-700">
+                      {client.displayId || '—'}
+                    </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="font-medium text-gray-900">{client.name}</div>
-                      {client.displayId && <div className="text-xs text-blue-600">{client.displayId}</div>}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{retreat}</td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
@@ -320,7 +323,7 @@ const PaymentRequestsGrid: React.FC = () => {
               })}
               {filteredRequests.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-4 py-10 text-center text-gray-500">
+                  <td colSpan={11} className="px-4 py-10 text-center text-gray-500">
                     {searchTerm ? 'No payment requests found matching your search' : 'No payment requests found'}
                   </td>
                 </tr>
