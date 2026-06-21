@@ -27,7 +27,7 @@ const CeremoniesPage: React.FC = () => {
       const response = await retreatsApi.getAll();
       const list = response.data || [];
       setRetreats(list);
-      setSelectedRetreatId((current) => current || list[0]?._id || '');
+      setSelectedRetreatId((current) => current);
     } catch (err) {
       console.error('Error loading retreats for ceremonies:', err);
       setError('Unable to load retreats.');
@@ -56,7 +56,7 @@ const CeremoniesPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Ceremonies</h1>
           <p className="mt-1 text-sm text-gray-600">
-            Manage ceremony dates, times, medical approval, and participant tracking by retreat.
+            Manage ceremony dates, times, retreat links, medical approval, and participant tracking.
           </p>
         </div>
         <button
@@ -82,8 +82,21 @@ const CeremoniesPage: React.FC = () => {
             retreats={retreats}
             selectedRetreatId={selectedRetreatId}
             onRetreatSelect={setSelectedRetreatId}
-            placeholder="Search and select a retreat"
+            placeholder="All ceremonies, or search a retreat"
           />
+          <div className="mt-2 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setSelectedRetreatId('')}
+              className={`rounded-md border px-3 py-1.5 text-xs font-medium ${
+                !selectedRetreatId
+                  ? 'border-blue-200 bg-blue-50 text-blue-700'
+                  : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              All ceremonies
+            </button>
+          </div>
         </div>
 
         {selectedRetreat && (
@@ -101,13 +114,7 @@ const CeremoniesPage: React.FC = () => {
         )}
       </div>
 
-      {selectedRetreatId ? (
-        <CeremoniesGrid retreatId={selectedRetreatId} />
-      ) : (
-        <div className="rounded-md border border-gray-200 px-6 py-10 text-center text-gray-600">
-          Select a retreat to manage ceremonies.
-        </div>
-      )}
+      <CeremoniesGrid retreatId={selectedRetreatId || undefined} retreats={retreats} />
     </div>
   );
 };

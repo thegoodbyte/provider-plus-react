@@ -559,7 +559,7 @@ export interface ScreeningClient {
 
 export interface Ceremony {
   _id?: string;
-  retreatId: string;
+  retreatId?: string | Retreat | null;
   ceremonyNumber: number; // 1st, 2nd, 3rd ceremony etc.
   date: Date | string;
   startTime: string; // HH:MM format
@@ -584,7 +584,7 @@ export interface CeremonyParticipant {
   _id?: string;
   ceremonyId: string;
   clientId: string;
-  retreatId: string;
+  retreatId?: string | Retreat | null;
   position?: number;  // Seating position for ceremony
 
   // Pre-ceremony medical checks
