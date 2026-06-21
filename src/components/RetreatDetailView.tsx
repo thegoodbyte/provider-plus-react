@@ -882,7 +882,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
 
       {activeTab === 'ceremonies' && (
         <div className="ceremonies-section">
-          <CeremoniesGrid retreatId={retreatId} />
+          <CeremoniesGrid retreatId={retreatId} retreats={retreat ? [retreat] : []} />
         </div>
       )}
 

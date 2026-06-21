@@ -1,18 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { ceremoniesApi } from '../services/api';
-import { Ceremony } from '../types';
+import { Ceremony, Retreat } from '../types';
 import { Button, Modal, Form, Input, DatePicker, TimePicker, Select, message, Popconfirm } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import moment from 'moment';
 import ParticipantTracker from './ParticipantTracker';
 
 interface CeremoniesGridProps {
-  retreatId: string;
+  retreatId?: string;
+  retreats?: Retreat[];
 }
 
 type CeremonyFullTab = 'med_prep' | 'spiritual' | 'spoons' | 'post';
 
-const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId }) => {
+const getRetreatCode = (retreat?: Retreat | null) => {
+  if (!retreat) return 'No retreat linked';
+  return retreat.code || retreat.retreatCode || retreat.name || 'Retreat';
+};
+
+const getObjectId = (value: unknown): string => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object' && value !== null && '_id' in value) {
+    return String((value as { _id?: string })._id || '');
+  }
+  return '';
+};
+
+const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [] }) => {
   const [ceremonies, setCeremonies] = useState<Ceremony[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -53,7 +68,9 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId }) => {
   const loadCeremonies = async () => {
     try {
       setLoading(true);
-      const response = await ceremoniesApi.getByRetreat(retreatId);
+      const response = retreatId
+        ? await ceremoniesApi.getByRetreat(retreatId)
+        : await ceremoniesApi.getAll();
       setCeremonies(response.data);
     } catch (error) {
       message.error('Failed to load ceremonies');
@@ -67,7 +84,7 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId }) => {
     form.resetFields();
     setEditingCeremony(null);
     const nextCeremonyNumber = ceremonies.reduce((max, ceremony) => Math.max(max, Number(ceremony.ceremonyNumber) || 0), 0) + 1;
-    form.setFieldsValue({ ceremonyNumber: nextCeremonyNumber });
+    form.setFieldsValue({ ceremonyNumber: nextCeremonyNumber, retreatId: retreatId || undefined });
     setModalVisible(true);
   };
 
@@ -81,6 +98,7 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId }) => {
     setEditingCeremony(ceremony);
     form.setFieldsValue({
       ...ceremony,
+      retreatId: getObjectId(ceremony.retreatId),
       date: ceremony.date ? moment(ceremony.date) : null,
       startTime: ceremony.startTime ? moment(ceremony.startTime, 'HH:mm') : null,
       endTime: ceremony.endTime ? moment(ceremony.endTime, 'HH:mm') : null
@@ -103,7 +121,7 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId }) => {
     try {
       const ceremonyData = {
         ...values,
-        retreatId,
+        retreatId: values.retreatId || null,
         date: values.date?.format('YYYY-MM-DD'),
         startTime: values.startTime?.format('HH:mm'),
         endTime: values.endTime?.format('HH:mm')
@@ -289,6 +307,11 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId }) => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Date
                 </th>
+                {!retreatId && (
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Retreat
+                  </th>
+                )}
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Start Time
                 </th>
@@ -318,6 +341,11 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId }) => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {formatDate(ceremony.date)}
                   </td>
+                  {!retreatId && (
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {getRetreatCode(retreats.find((retreat) => retreat._id === getObjectId(ceremony.retreatId)) || (typeof ceremony.retreatId === 'object' ? ceremony.retreatId as Retreat : null))}
+                    </td>
+                  )}
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {ceremony.startTime}
                   </td>
@@ -406,6 +434,22 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId }) => {
             rules={[{ required: true, message: 'Please enter ceremony number' }]}
           >
             <Input type="number" min={1} placeholder="1st, 2nd, 3rd..." />
+          </Form.Item>
+
+          <Form.Item
+            name="retreatId"
+            label="Retreat"
+          >
+            <Select
+              allowClear
+              showSearch
+              placeholder="Link this ceremony to a retreat"
+              optionFilterProp="label"
+              options={retreats.map((retreat) => ({
+                value: retreat._id!,
+                label: `${getRetreatCode(retreat)}${retreat.location_town || retreat.locationTown || retreat.location ? ` - ${retreat.location_town || retreat.locationTown || retreat.location}` : ''}`,
+              }))}
+            />
           </Form.Item>
 
           <Form.Item
