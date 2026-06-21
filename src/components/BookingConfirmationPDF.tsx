@@ -566,7 +566,6 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
             <div>
               <h3 style="font-size: 16px; margin: 0 0 10px 0; font-weight: 500; color: #1f2937;">${t.participant}</h3>
               <div style="font-size: 13px; line-height: 1.5; text-align: right;">
-                <div style="margin-bottom: 2px;"><strong style="font-size: 14px;">${client ? `${client.firstName || client.fname} ${client.lastName || client.lname}` : 'N/A'}</strong></div>
                 <div style="margin-bottom: 2px;">${t.name}: <strong>${client ? `${client.firstName || client.fname} ${client.lastName || client.lname}` : 'N/A'}</strong></div>
                 <div style="margin-bottom: 8px;">${t.address}: ${client?.city || ''} ${client?.country || t.polska}</div>
                 <div>
