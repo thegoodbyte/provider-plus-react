@@ -982,6 +982,11 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                       <div className="space-y-0.5">
                         <div className="text-base font-bold text-gray-900">{getClientFirstName(participant)}</div>
                         <div className="text-xs font-normal text-gray-600">{getClientLastName(participant)}</div>
+                        {trackerView === 'spoons' && (
+                          <div className="text-xs font-semibold text-indigo-700">
+                            Previous ceremonies: {participant.previousSpoonsTotal || 0} spoons
+                          </div>
+                        )}
                       </div>
                       <div className="text-gray-400 hover:text-gray-600">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1253,6 +1258,20 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
           <div className="px-4 py-8 text-center text-sm text-gray-500">No participants found for this ceremony.</div>
         )}
       </div>
+
+      {trackerView === 'spoons' && participants.length > 0 && (
+        <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+          <Button icon={<Icon icon={Plus} className="h-4 w-4" />} onClick={addGridRow}>
+            Add spoon row
+          </Button>
+          <Button type="primary" onClick={saveGrid} loading={saving} disabled={!hasGridChanges}>
+            Save
+          </Button>
+          {hasGridChanges && (
+            <Button onClick={discardGridChanges} disabled={saving}>Discard</Button>
+          )}
+        </div>
+      )}
 
       <Modal
         title={editingEventId ? 'Edit Spoon/Time Event' : 'Add Spoon/Time Event'}

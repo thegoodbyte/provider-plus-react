@@ -669,6 +669,7 @@ export interface CeremonyParticipant {
 
   // Medicine intake
   spoonsTaken?: number;
+  previousSpoonsTotal?: number;
   firstSpoonTime?: string; // HH:MM
   additionalSpoons?: Array<{
     spoonNumber: number;
