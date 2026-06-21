@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { currencyService, ExchangeRates } from '../services/currencyService';
-import { configSummaryApi } from '../services/api';
+import { configSummaryApi, paymentsApi } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
 import './CurrencySettings.css';
 
@@ -16,6 +16,12 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [converterAmount, setConverterAmount] = useState('1000');
+  const [converterCurrency, setConverterCurrency] = useState<'USD' | 'EUR' | 'CZK' | 'PLN'>('PLN');
+  const [converterResult, setConverterResult] = useState<number | null>(null);
+  const [converterSource, setConverterSource] = useState<string>('');
+  const [converterError, setConverterError] = useState<string | null>(null);
+  const [isConverting, setIsConverting] = useState(false);
 
   useEffect(() => {
     loadExchangeRates();
@@ -56,6 +62,35 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
       console.error('Error refreshing exchange rates:', err);
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  const convertAmountToUsd = async () => {
+    const amount = Number(converterAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setConverterResult(null);
+      setConverterError('Enter an amount greater than zero.');
+      return;
+    }
+
+    try {
+      setIsConverting(true);
+      setConverterError(null);
+      const response = await paymentsApi.convertToUsd(amount, converterCurrency);
+      setConverterResult(response.data.usd_amount);
+      setConverterSource('API rate');
+    } catch (err) {
+      try {
+        const usdAmount = await currencyService.convertToUSD(amount, converterCurrency);
+        setConverterResult(usdAmount);
+        setConverterSource('cached browser rate');
+      } catch (fallbackErr) {
+        setConverterResult(null);
+        setConverterSource('');
+        setConverterError('Failed to convert currency.');
+      }
+    } finally {
+      setIsConverting(false);
     }
   };
 
@@ -100,6 +135,52 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
           <p><strong>Base Currency:</strong> USD (US Dollar)</p>
           <p><strong>Last Updated:</strong> {lastUpdated}</p>
           <p><strong>Next Auto Update:</strong> {nextUpdate}</p>
+        </div>
+
+        <div className="currency-converter">
+          <h3>Convert to USD</h3>
+          <div className="converter-controls">
+            <label>
+              <span>Amount</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={converterAmount}
+                onChange={(event) => setConverterAmount(event.target.value)}
+                placeholder="1000"
+              />
+            </label>
+            <label>
+              <span>Currency</span>
+              <select
+                value={converterCurrency}
+                onChange={(event) => setConverterCurrency(event.target.value as 'USD' | 'EUR' | 'CZK' | 'PLN')}
+              >
+                <option value="PLN">PLN</option>
+                <option value="CZK">CZK</option>
+                <option value="EUR">EUR</option>
+                <option value="USD">USD</option>
+              </select>
+            </label>
+            <button
+              type="button"
+              onClick={convertAmountToUsd}
+              disabled={isConverting}
+              className="convert-btn"
+            >
+              {isConverting ? 'Converting...' : 'Convert'}
+            </button>
+          </div>
+          {converterResult !== null && (
+            <div className="converter-result">
+              <strong>{Number(converterAmount).toLocaleString(undefined, { maximumFractionDigits: 2 })} {converterCurrency}</strong>
+              <span>=</span>
+              <strong>{converterResult.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</strong>
+              {converterSource && <small>{converterSource}</small>}
+            </div>
+          )}
+          {converterError && <div className="converter-error">{converterError}</div>}
         </div>
 
         <div className="currency-info">
