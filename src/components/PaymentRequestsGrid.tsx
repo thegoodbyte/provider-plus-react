@@ -216,7 +216,14 @@ const PaymentRequestsGrid: React.FC = () => {
                 return (
                   <tr key={request._id} className="hover:bg-gray-50">
                     <td className="px-4 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                      {request.invoiceNumber || (request.display_id ? `#${request.display_id}` : 'n/a')}
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/admin/payment-requests/${request._id}`)}
+                        className="font-semibold text-blue-700 hover:underline"
+                        title="View payment request"
+                      >
+                        {request.invoiceNumber || (request.display_id ? `#${request.display_id}` : 'n/a')}
+                      </button>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       {request.publicHash ? (
@@ -279,9 +286,9 @@ const PaymentRequestsGrid: React.FC = () => {
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => navigate(`/admin/payments/new?paymentRequestId=${request._id}`)}
+                          onClick={() => navigate(`/admin/payments/new?paymentRequestId=${request._id}`, { state: { returnTo: '/admin/payment-requests' } })}
                           className="icon-action-btn icon-action-btn-success"
-                          title="Add payment"
+                          title="Add payment from this request"
                         >
                           <Icon icon={FiDollarSign} />
                         </button>

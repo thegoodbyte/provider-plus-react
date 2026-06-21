@@ -395,6 +395,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="expenses" element={<ExpensesPage />} />
                       <Route path="payment-requests" element={<PaymentRequestsGrid />} />
                       <Route path="payment-requests/new" element={<PaymentRequestEditorPage />} />
+                      <Route path="payment-requests/:id" element={<PaymentRequestEditorPage />} />
                       <Route path="payment-requests/:id/edit" element={<PaymentRequestEditorPage />} />
                       <Route path="communications" element={<CommunicationsPage />} />
                       <Route path="contact-book" element={<ContactBookPage />} />
