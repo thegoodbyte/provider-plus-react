@@ -556,17 +556,34 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
     if (!ceremony) throw new Error('Ceremony is not loaded');
     if (participant._id && !participant._id.startsWith('pending-')) return participant;
 
-    const createdParticipant = await ceremoniesApi.addParticipant({
-      ceremonyId: ceremony._id!,
-      clientId: getObjectId(participant.clientId),
-      retreatId: getObjectId(participant.retreatId),
-      medicalClearance: participant.medicalClearance || 'pending',
-      participated: false,
-      spoonsTaken: 0,
-      purged: false,
-      eventLog: [],
-    });
-    return createdParticipant.data;
+    const clientId = getObjectId(participant.clientId);
+    const findExistingParticipant = async () => {
+      const response = await ceremoniesApi.getParticipants(ceremony._id!);
+      return (response.data || []).find((existing) => getObjectId(existing.clientId) === clientId);
+    };
+
+    const existingParticipant = await findExistingParticipant();
+    if (existingParticipant) return existingParticipant;
+
+    try {
+      const createdParticipant = await ceremoniesApi.addParticipant({
+        ceremonyId: ceremony._id!,
+        clientId,
+        retreatId: getObjectId(participant.retreatId),
+        medicalClearance: participant.medicalClearance || 'pending',
+        participated: false,
+        spoonsTaken: 0,
+        purged: false,
+        eventLog: [],
+      });
+      return createdParticipant.data;
+    } catch (error: any) {
+      if (error?.response?.status === 409) {
+        const participantCreatedBySync = await findExistingParticipant();
+        if (participantCreatedBySync) return participantCreatedBySync;
+      }
+      throw error;
+    }
   };
 
   const existingCellKey = (participant: CeremonyParticipant, time: string) => `${getParticipantKey(participant)}__t__${time}`;
