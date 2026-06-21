@@ -10,12 +10,17 @@ interface CeremoniesGridProps {
   retreatId: string;
 }
 
+type CeremonyFullTab = 'med_prep' | 'spiritual' | 'spoons' | 'post';
+
 const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId }) => {
   const [ceremonies, setCeremonies] = useState<Ceremony[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingCeremony, setEditingCeremony] = useState<Ceremony | null>(null);
   const [trackingCeremonyId, setTrackingCeremonyId] = useState<string | null>(null);
+  const [activeFullTab, setActiveFullTab] = useState<CeremonyFullTab>('med_prep');
+  const [spiritualNotes, setSpiritualNotes] = useState('');
+  const [savingSpiritualNotes, setSavingSpiritualNotes] = useState(false);
   const [form] = Form.useForm();
 
   const getStatusColor = (status: string) => {
@@ -66,6 +71,12 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId }) => {
     setModalVisible(true);
   };
 
+  const openFullView = (ceremony: Ceremony, tab: CeremonyFullTab = 'med_prep') => {
+    setTrackingCeremonyId(ceremony._id!);
+    setActiveFullTab(tab);
+    setSpiritualNotes(ceremony.spiritualVerificationNotes || '');
+  };
+
   const handleEdit = (ceremony: Ceremony) => {
     setEditingCeremony(ceremony);
     form.setFieldsValue({
@@ -114,13 +125,123 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId }) => {
     }
   };
 
-  // If tracking a ceremony, show the tracker
+  const selectedCeremony = trackingCeremonyId
+    ? ceremonies.find((ceremony) => ceremony._id === trackingCeremonyId) || null
+    : null;
+
+  const handleSaveSpiritualVerification = async () => {
+    if (!selectedCeremony?._id) return;
+
+    try {
+      setSavingSpiritualNotes(true);
+      const response = await ceremoniesApi.update(selectedCeremony._id, {
+        spiritualVerificationNotes: spiritualNotes,
+      });
+      setCeremonies((prev) => prev.map((ceremony) => (
+        ceremony._id === selectedCeremony._id ? { ...ceremony, ...response.data } : ceremony
+      )));
+      message.success('Spiritual verification saved');
+    } catch (error) {
+      message.error('Failed to save spiritual verification');
+      console.error('Error saving spiritual verification:', error);
+    } finally {
+      setSavingSpiritualNotes(false);
+    }
+  };
+
+  const fullViewTabs: Array<{ key: CeremonyFullTab; label: string }> = [
+    { key: 'med_prep', label: 'Med prep' },
+    { key: 'spiritual', label: 'Spiritual verification' },
+    { key: 'spoons', label: 'Spoons taken' },
+    { key: 'post', label: 'Post ceremony data' },
+  ];
+
+  // If viewing a ceremony, show the full ceremony workspace
   if (trackingCeremonyId) {
+    if (!selectedCeremony) {
+      return (
+        <div className="p-6">
+          <button onClick={() => setTrackingCeremonyId(null)} className="mb-4 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+            Back to Ceremonies
+          </button>
+          <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-500">
+            Ceremony not found.
+          </div>
+        </div>
+      );
+    }
+
     return (
-      <ParticipantTracker
-        ceremonyId={trackingCeremonyId}
-        onBack={() => setTrackingCeremonyId(null)}
-      />
+      <div className="p-6">
+        <button onClick={() => setTrackingCeremonyId(null)} className="mb-4 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+          Back to Ceremonies
+        </button>
+
+        <div className="mb-5 rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+          <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold text-gray-900">Ceremony #{selectedCeremony.ceremonyNumber}</h2>
+              <p className="text-sm text-gray-600">
+                {formatDate(selectedCeremony.date)}
+                {selectedCeremony.startTime ? `, ${selectedCeremony.startTime}` : ''}
+                {selectedCeremony.endTime ? ` - ${selectedCeremony.endTime}` : ''}
+              </p>
+            </div>
+            <span className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold ${getStatusColor(selectedCeremony.status || 'scheduled')}`}>
+              {(selectedCeremony.status || 'scheduled').replace('_', ' ').toUpperCase()}
+            </span>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {fullViewTabs.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveFullTab(tab.key)}
+                className={`rounded-md border px-3 py-2 text-sm font-medium ${
+                  activeFullTab === tab.key
+                    ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
+                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {activeFullTab === 'med_prep' && (
+          <ParticipantTracker ceremonyId={trackingCeremonyId} initialView="pre" lockedView showHeader={false} />
+        )}
+
+        {activeFullTab === 'spiritual' && (
+          <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Spiritual verification</h3>
+              <p className="text-sm text-gray-500">Record ceremony-level spiritual verification notes.</p>
+            </div>
+            <Input.TextArea
+              rows={8}
+              value={spiritualNotes}
+              onChange={(event) => setSpiritualNotes(event.target.value)}
+              placeholder="Spiritual verification notes"
+            />
+            <div className="mt-4 flex justify-end">
+              <Button type="primary" onClick={handleSaveSpiritualVerification} loading={savingSpiritualNotes}>
+                Save spiritual verification
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {activeFullTab === 'spoons' && (
+          <ParticipantTracker ceremonyId={trackingCeremonyId} initialView="spoons" lockedView showHeader={false} />
+        )}
+
+        {activeFullTab === 'post' && (
+          <ParticipantTracker ceremonyId={trackingCeremonyId} initialView="post" lockedView showHeader={false} />
+        )}
+      </div>
     );
   }
 
@@ -221,11 +342,11 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId }) => {
                       <Button
                         type="primary"
                         icon={<ClockCircleOutlined />}
-                        onClick={() => setTrackingCeremonyId(ceremony._id!)}
+                        onClick={() => openFullView(ceremony, 'spoons')}
                         size="small"
-                        title="Track spoons and time"
+                        title="Open ceremony full view"
                       >
-                        Track spoons & time
+                        Ceremony view
                       </Button>
                       <Button
                         type="text"
