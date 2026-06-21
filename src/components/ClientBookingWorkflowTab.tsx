@@ -83,10 +83,13 @@ type StepDraft = {
   notes: string;
 };
 
+type StepFilter = 'all' | 'past_due' | 'due_soon' | 'open' | 'completed';
+
 const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ bookings, hideBookingSelector = false }) => {
   const [selectedBookingId, setSelectedBookingId] = useState('');
   const [items, setItems] = useState<BookingFlowItem[]>([]);
   const [drafts, setDrafts] = useState<Record<string, StepDraft>>({});
+  const [stepFilter, setStepFilter] = useState<StepFilter>('all');
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -106,6 +109,32 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
 
   const completedCount = items.filter((item) => fulfilledStatuses.has(item.status)).length;
   const progressPercent = items.length > 0 ? Math.round((completedCount / items.length) * 100) : 0;
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const soonLimit = todayStart + 7 * 24 * 60 * 60 * 1000;
+  const isComplete = (item: BookingFlowItem) => fulfilledStatuses.has(item.status);
+  const getDueTime = (item: BookingFlowItem) => {
+    if (!item.dueDate) return null;
+    const time = new Date(item.dueDate).getTime();
+    return Number.isNaN(time) ? null : time;
+  };
+  const isPastDue = (item: BookingFlowItem) => {
+    const dueTime = getDueTime(item);
+    return dueTime !== null && dueTime < todayStart && !isComplete(item);
+  };
+  const isDueSoon = (item: BookingFlowItem) => {
+    const dueTime = getDueTime(item);
+    return dueTime !== null && dueTime >= todayStart && dueTime <= soonLimit && !isComplete(item);
+  };
+  const pastDueCount = items.filter(isPastDue).length;
+  const dueSoonCount = items.filter(isDueSoon).length;
+  const filteredItems = items.filter((item) => {
+    if (stepFilter === 'past_due') return isPastDue(item);
+    if (stepFilter === 'due_soon') return isDueSoon(item);
+    if (stepFilter === 'open') return !isComplete(item);
+    if (stepFilter === 'completed') return isComplete(item);
+    return true;
+  });
 
   const getItemId = (item: BookingFlowItem) => item._id || item.key;
 
@@ -346,10 +375,35 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
           <div className="h-2 rounded-full bg-blue-600 transition-all" style={{ width: `${progressPercent}%` }} />
         </div>
         {selectedBooking && (
-          <p className="mt-2 text-xs text-gray-500">
-            {getRetreatName(selectedBooking)} {selectedBooking?.status ? `- ${selectedBooking.status}` : ''}
-          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+            <span>{getRetreatName(selectedBooking)} {selectedBooking?.status ? `- ${selectedBooking.status}` : ''}</span>
+            {pastDueCount > 0 && <span className="rounded-full bg-red-100 px-2 py-1 font-semibold text-red-700">{pastDueCount} past due</span>}
+            {dueSoonCount > 0 && <span className="rounded-full bg-amber-100 px-2 py-1 font-semibold text-amber-700">{dueSoonCount} due soon</span>}
+          </div>
         )}
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {([
+          ['all', `All (${items.length})`],
+          ['past_due', `Past due (${pastDueCount})`],
+          ['due_soon', `Due soon (${dueSoonCount})`],
+          ['open', `Open (${items.length - completedCount})`],
+          ['completed', `Completed (${completedCount})`],
+        ] as Array<[StepFilter, string]>).map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setStepFilter(key)}
+            className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${
+              stepFilter === key
+                ? 'border-blue-600 bg-blue-600 text-white'
+                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {error && (
@@ -366,16 +420,22 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
             <div className="bg-gray-50 p-8 text-center text-sm text-gray-500">
               No booking steps were generated for this booking.
             </div>
+          ) : filteredItems.length === 0 ? (
+            <div className="bg-gray-50 p-8 text-center text-sm text-gray-500">
+              No booking steps match this filter.
+            </div>
           ) : (
             <div className="divide-y divide-gray-200">
-              {items.map((item) => {
+              {filteredItems.map((item) => {
                 const id = item._id || item.key;
                 const draft = drafts[id] || makeDraft(item);
                 const isChecked = draft.checked;
                 const uploadConfig = artifactUploadsByStep[item.key];
+                const overdue = isPastDue(item);
+                const dueSoon = isDueSoon(item);
 
                 return (
-                  <div key={id} className={`grid gap-3 p-4 lg:grid-cols-[minmax(220px,1.1fr)_220px_minmax(220px,1fr)_auto] lg:items-start ${isChecked ? 'bg-green-50/60' : 'bg-white'}`}>
+                  <div key={id} className={`grid gap-3 p-4 lg:grid-cols-[minmax(220px,1.1fr)_220px_minmax(220px,1fr)_auto] lg:items-start ${isChecked ? 'bg-green-50/60' : overdue ? 'bg-red-50/70' : dueSoon ? 'bg-amber-50/70' : 'bg-white'}`}>
                     <label className="flex min-w-0 items-start gap-3">
                       <input
                         type="checkbox"
@@ -391,6 +451,8 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                         <span className="mt-1 block text-xs text-gray-500">
                           {item.dueDate ? `Due ${formatDisplayDate(item.dueDate)}` : item.category}
                         </span>
+                        {overdue && <span className="mt-1 inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">Past due</span>}
+                        {dueSoon && <span className="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">Due soon</span>}
                         {item.metadata?.latestFileName && (
                           <span className="mt-1 block text-xs text-gray-500">
                             Latest upload: {item.metadata.latestFileName}
