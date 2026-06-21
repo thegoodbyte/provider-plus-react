@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FiCheckCircle, FiChevronDown, FiRefreshCw, FiUpload } from 'react-icons/fi';
+import { FiCheckCircle, FiRefreshCw, FiUpload } from 'react-icons/fi';
 import { bookingFlowApi, medicalArtifactsApi } from '../services/api';
 import { BookingFlowItem, MedicalArtifact } from '../types';
 import AppleButton from './AppleButton';
@@ -9,31 +9,7 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
   <IconComponent className={className} />
 );
 
-const REVIEW_LABELS: Record<string, string> = {
-  OK: 'Good to go',
-  caution: 'Fixes needed',
-  'NOT OK': 'No good',
-};
-
-const statusOptions: BookingFlowItem['status'][] = [
-  'pending',
-  'sent',
-  'received',
-  'sent_for_review',
-  'in_review',
-  'reviewed',
-  'approved',
-  'caution',
-  'rejected',
-  'needs_resubmission',
-  'completed',
-  'blocked',
-  'waived',
-  'scheduled',
-];
-
 const fulfilledStatuses = new Set<BookingFlowItem['status']>(['received', 'reviewed', 'approved', 'caution', 'completed']);
-const problemStatuses = new Set<BookingFlowItem['status']>(['rejected', 'needs_resubmission', 'blocked']);
 
 const artifactUploadsByStep: Record<string, {
   artifactType: NonNullable<MedicalArtifact['artifactType']>;
@@ -80,18 +56,20 @@ const formatDisplayDate = (date?: Date | string | null): string => {
 
 const toIsoFromDateTimeInput = (value: string) => value ? new Date(value).toISOString() : null;
 
-const getStatusClass = (status: BookingFlowItem['status']) => {
-  if (fulfilledStatuses.has(status)) return 'border-green-200 bg-green-50 text-green-800';
-  if (problemStatuses.has(status)) return 'border-red-200 bg-red-50 text-red-800';
-  if (status === 'sent' || status === 'sent_for_review' || status === 'in_review') return 'border-blue-200 bg-blue-50 text-blue-800';
-  return 'border-gray-200 bg-white text-gray-800';
+const getActionDateField = (item: BookingFlowItem): keyof BookingFlowItem => {
+  const text = `${item.key || ''} ${item.title || ''}`.toLowerCase();
+  if (text.includes('received') || text.includes('payment_received') || text.includes('contract_signed')) return 'receivedAt';
+  if (text.includes('reviewed') || text.includes('review_result')) return 'reviewedAt';
+  if (text.includes('sent') || text.includes('requested')) return 'sentAt';
+  return 'completedAt';
 };
 
-const getStatusPillClass = (status: BookingFlowItem['status']) => {
-  if (fulfilledStatuses.has(status)) return 'bg-green-100 text-green-800';
-  if (problemStatuses.has(status)) return 'bg-red-100 text-red-800';
-  if (status === 'sent' || status === 'sent_for_review' || status === 'in_review') return 'bg-blue-100 text-blue-800';
-  return 'bg-gray-100 text-gray-700';
+const getCompletedStatus = (item: BookingFlowItem): BookingFlowItem['status'] => {
+  const field = getActionDateField(item);
+  if (field === 'sentAt') return item.key.includes('review') ? 'sent_for_review' : 'sent';
+  if (field === 'receivedAt') return 'received';
+  if (field === 'reviewedAt') return 'reviewed';
+  return 'completed';
 };
 
 interface ClientBookingWorkflowTabProps {
@@ -103,8 +81,6 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
   const [selectedBookingId, setSelectedBookingId] = useState('');
   const [items, setItems] = useState<BookingFlowItem[]>([]);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
-  const [reviewNoteDrafts, setReviewNoteDrafts] = useState<Record<string, string>>({});
-  const [openItemIds, setOpenItemIds] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
@@ -126,11 +102,6 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
 
   const hydrateDrafts = (nextItems: BookingFlowItem[]) => {
     setNoteDrafts(Object.fromEntries(nextItems.map((item) => [item._id || item.key, item.notes || ''])));
-    setReviewNoteDrafts(Object.fromEntries(nextItems.map((item) => [item._id || item.key, item.reviewNotes || ''])));
-    setOpenItemIds((current) => {
-      if (Object.keys(current).length > 0) return current;
-      return Object.fromEntries(nextItems.slice(0, 4).map((item) => [item._id || item.key, true]));
-    });
   };
 
   const loadItems = async (bookingId = selectedBookingId) => {
@@ -176,24 +147,40 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
     }
   };
 
-  const updateStatus = async (item: BookingFlowItem, status: BookingFlowItem['status']) => {
+  const setActionChecked = async (item: BookingFlowItem, checked: boolean) => {
+    const dateField = getActionDateField(item);
+    const currentNote = noteDrafts[item._id || item.key] || item.notes || '';
+    const patch = checked
+      ? {
+          status: getCompletedStatus(item),
+          [dateField]: (item[dateField] as any) || new Date().toISOString(),
+          completedAt: item.completedAt || new Date().toISOString(),
+          notes: currentNote,
+        }
+      : {
+          status: 'pending',
+          [dateField]: null,
+          completedAt: null,
+          notes: currentNote,
+        };
+    await updateItem(item, patch as Partial<BookingFlowItem>);
+  };
+
+  const updateActionDate = async (item: BookingFlowItem, value: string) => {
+    const dateField = getActionDateField(item);
+    const isoValue = toIsoFromDateTimeInput(value);
     await updateItem(item, {
-      status,
+      [dateField]: isoValue,
+      completedAt: isoValue,
+      status: isoValue ? getCompletedStatus(item) : 'pending',
       notes: noteDrafts[item._id || item.key] || item.notes || '',
-      reviewNotes: reviewNoteDrafts[item._id || item.key] || item.reviewNotes || '',
     } as Partial<BookingFlowItem>);
   };
 
   const saveNotes = async (item: BookingFlowItem) => {
     await updateItem(item, {
       notes: noteDrafts[item._id || item.key] || '',
-      reviewNotes: reviewNoteDrafts[item._id || item.key] || '',
     });
-  };
-
-  const toggleOpen = (item: BookingFlowItem) => {
-    const id = item._id || item.key;
-    setOpenItemIds((current) => ({ ...current, [id]: !current[id] }));
   };
 
   const uploadStepArtifact = async (item: BookingFlowItem, files: FileList | null) => {
@@ -263,7 +250,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Booking Steps</h2>
-          <p className="mt-1 text-sm text-gray-500">Track this booking with completion dates, notes, and review outcomes.</p>
+          <p className="mt-1 text-sm text-gray-500">Track each booking action with a checkbox, timestamp, and notes.</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           {!hideBookingSelector && (
@@ -313,201 +300,95 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
       {loading ? (
         <LoadingSpinner />
       ) : (
-        <div className="overflow-hidden rounded-lg border border-gray-200">
+        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
           {items.length === 0 ? (
             <div className="bg-gray-50 p-8 text-center text-sm text-gray-500">
               No booking steps were generated for this booking.
             </div>
           ) : (
-            <div className="divide-y divide-gray-200 bg-white">
+            <div className="divide-y divide-gray-200">
               {items.map((item) => {
                 const id = item._id || item.key;
-                const showReview = item.category === 'approval' || item.metadata?.reviewRequired || item.key.includes('result') || item.key.includes('screening_completed');
-                const isOpen = openItemIds[id] ?? false;
+                const dateField = getActionDateField(item);
+                const actionDate = item[dateField] as Date | string | null | undefined;
+                const isChecked = Boolean(actionDate) || fulfilledStatuses.has(item.status) || ['sent', 'sent_for_review'].includes(item.status);
                 const uploadConfig = artifactUploadsByStep[item.key];
 
                 return (
-                  <div key={id} className={`border-l-4 ${getStatusClass(item.status)}`}>
-                    <button
-                      type="button"
-                      className="flex w-full items-center justify-between gap-4 p-4 text-left"
-                      onClick={() => toggleOpen(item)}
-                      aria-expanded={isOpen}
-                    >
+                  <div key={id} className={`grid gap-3 p-4 lg:grid-cols-[minmax(220px,1.1fr)_220px_minmax(220px,1fr)_auto] lg:items-start ${isChecked ? 'bg-green-50/60' : 'bg-white'}`}>
+                    <label className="flex min-w-0 items-start gap-3">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        disabled={savingId === item._id}
+                        onChange={(event) => setActionChecked(item, event.target.checked)}
+                        className="mt-1 h-5 w-5 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                      />
                       <span className="min-w-0">
-                        <span className="block truncate font-medium text-gray-950">{item.order ? `${item.order}. ` : ''}{item.title}</span>
-                        <span className="mt-1 block text-sm text-gray-600">{item.description || item.category}</span>
-                        <span className="mt-2 flex flex-wrap gap-2">
-                          <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getStatusPillClass(item.status)}`}>
-                            {item.status.replace(/_/g, ' ')}
-                          </span>
-                          {item.dueDate && (
-                            <span className="inline-flex rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
-                              Due {formatDisplayDate(item.dueDate)}
-                            </span>
-                          )}
-                          {item.reviewDecision && (
-                            <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${item.reviewDecision === 'OK' ? 'bg-green-100 text-green-800' : item.reviewDecision === 'caution' ? 'bg-orange-100 text-orange-800' : 'bg-red-100 text-red-800'}`}>
-                              {REVIEW_LABELS[item.reviewDecision] || item.reviewDecision}
-                            </span>
-                          )}
+                        <span className={`block font-medium ${isChecked ? 'text-green-900' : 'text-gray-950'}`}>
+                          {item.title}
                         </span>
+                        <span className="mt-1 block text-xs text-gray-500">
+                          {item.dueDate ? `Due ${formatDisplayDate(item.dueDate)}` : item.category}
+                        </span>
+                        {item.metadata?.latestFileName && (
+                          <span className="mt-1 block text-xs text-gray-500">
+                            Latest upload: {item.metadata.latestFileName}
+                          </span>
+                        )}
                       </span>
-                      <Icon icon={FiChevronDown} className={`h-5 w-5 flex-none transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-                    </button>
+                    </label>
 
-                    {isOpen && (
-                      <div className="space-y-4 border-t border-gray-200 bg-white p-4">
-                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
-                          <div>
-                            <label className="block text-xs font-medium uppercase text-gray-500">Status</label>
-                            <select
-                              value={item.status}
-                              disabled={savingId === item._id}
-                              onChange={(event) => updateStatus(item, event.target.value as BookingFlowItem['status'])}
-                              className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            >
-                              {statusOptions.map((status) => (
-                                <option key={status} value={status}>{status.replace(/_/g, ' ')}</option>
-                              ))}
-                            </select>
-                          </div>
-
-                          <div>
-                            <label className="block text-xs font-medium uppercase text-gray-500">Sent at</label>
-                            <input
-                              type="datetime-local"
-                              value={formatDateTimeInput(item.sentAt)}
-                              disabled={savingId === item._id}
-                              onChange={(event) => updateItem(item, { sentAt: toIsoFromDateTimeInput(event.target.value) } as Partial<BookingFlowItem>)}
-                              className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-xs font-medium uppercase text-gray-500">Received at</label>
-                            <input
-                              type="datetime-local"
-                              value={formatDateTimeInput(item.receivedAt)}
-                              disabled={savingId === item._id}
-                              onChange={(event) => updateItem(item, { receivedAt: toIsoFromDateTimeInput(event.target.value) } as Partial<BookingFlowItem>)}
-                              className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          </div>
-
-                          <div>
-                            <label className="block text-xs font-medium uppercase text-gray-500">Completed at</label>
-                            <input
-                              type="datetime-local"
-                              value={formatDateTimeInput(item.completedAt)}
-                              disabled={savingId === item._id}
-                              onChange={(event) => updateItem(item, { completedAt: toIsoFromDateTimeInput(event.target.value) } as Partial<BookingFlowItem>)}
-                              className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                          </div>
+                    <div>
+                      <label className="block text-xs font-medium uppercase text-gray-500">Date / time</label>
+                      {isChecked ? (
+                        <input
+                          type="datetime-local"
+                          value={formatDateTimeInput(actionDate || item.completedAt)}
+                          disabled={savingId === item._id}
+                          onChange={(event) => updateActionDate(item, event.target.value)}
+                          className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      ) : (
+                        <div className="mt-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-400">
+                          Not done
                         </div>
-
-                        {showReview && (
-                          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-                            <div>
-                              <label className="block text-xs font-medium uppercase text-gray-500">Review result</label>
-                              <select
-                                value={item.reviewDecision || ''}
-                                disabled={savingId === item._id}
-                                onChange={(event) => updateItem(item, { reviewDecision: event.target.value as any })}
-                                className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              >
-                                <option value="">Select result</option>
-                                {Object.entries(REVIEW_LABELS).map(([value, label]) => (
-                                  <option key={value} value={value}>{label}</option>
-                                ))}
-                              </select>
-                            </div>
-
-                            <div>
-                              <label className="block text-xs font-medium uppercase text-gray-500">Reviewed at</label>
-                              <input
-                                type="datetime-local"
-                                value={formatDateTimeInput(item.reviewedAt)}
-                                disabled={savingId === item._id}
-                                onChange={(event) => updateItem(item, { reviewedAt: toIsoFromDateTimeInput(event.target.value) } as Partial<BookingFlowItem>)}
-                                className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="block text-xs font-medium uppercase text-gray-500">Approved at</label>
-                              <input
-                                type="datetime-local"
-                                value={formatDateTimeInput(item.approvedAt)}
-                                disabled={savingId === item._id}
-                                onChange={(event) => updateItem(item, { approvedAt: toIsoFromDateTimeInput(event.target.value) } as Partial<BookingFlowItem>)}
-                                className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              />
-                            </div>
-                          </div>
-                        )}
-
-                        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(260px,1fr)_minmax(260px,1fr)]">
-                          <div className="space-y-2">
-                            <label className="block text-xs font-medium uppercase text-gray-500">Notes</label>
-                            <textarea
-                              value={noteDrafts[id] || ''}
-                              onChange={(event) => setNoteDrafts((current) => ({ ...current, [id]: event.target.value }))}
-                              onBlur={() => saveNotes(item)}
-                              rows={3}
-                              className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                              placeholder="Date, MRR number, document link, or internal note"
-                            />
-                          </div>
-
-                          {showReview ? (
-                            <div className="space-y-2">
-                              <label className="block text-xs font-medium uppercase text-gray-500">Review notes</label>
-                              <textarea
-                                value={reviewNoteDrafts[id] || ''}
-                                onChange={(event) => setReviewNoteDrafts((current) => ({ ...current, [id]: event.target.value }))}
-                                onBlur={() => saveNotes(item)}
-                                rows={3}
-                                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="Medical review notes, status reason, or follow-up needed"
-                              />
-                            </div>
-                          ) : (
-                            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
-                              <div><strong>Category:</strong> {item.category}</div>
-                              <div><strong>Key:</strong> {item.key}</div>
-                              {item.metadata?.latestFileName && <div><strong>Latest upload:</strong> {item.metadata.latestFileName}</div>}
-                              {savingId === item._id && <div className="mt-2 text-blue-700">Saving...</div>}
-                            </div>
-                          )}
-                        </div>
-
-                        {uploadConfig && (
-                          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-dashed border-gray-300 bg-gray-50 p-3">
-                            <div className="text-sm text-gray-700">
-                              Upload {uploadConfig.title}. Uploading marks this step as received.
-                            </div>
-                            <label className="inline-flex cursor-pointer items-center rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700">
-                              <Icon icon={FiUpload} className="mr-2 h-4 w-4" />
-                              {uploadingId === item._id ? 'Uploading...' : 'Upload file'}
-                              <input
-                                type="file"
-                                className="hidden"
-                                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.heic,.heif"
-                                multiple
-                                disabled={Boolean(uploadingId)}
-                                onChange={(event) => {
-                                  uploadStepArtifact(item, event.target.files);
-                                  event.target.value = '';
-                                }}
-                              />
-                            </label>
-                          </div>
-                        )}
-                      </div>
                       )}
                     </div>
+
+                    <div>
+                      <label className="block text-xs font-medium uppercase text-gray-500">Notes</label>
+                      <textarea
+                        value={noteDrafts[id] || ''}
+                        onChange={(event) => setNoteDrafts((current) => ({ ...current, [id]: event.target.value }))}
+                        onBlur={() => saveNotes(item)}
+                        rows={2}
+                        className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="Internal note"
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-2 lg:justify-end lg:pt-5">
+                      {uploadConfig && (
+                        <label className="inline-flex cursor-pointer items-center rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50">
+                          <Icon icon={FiUpload} className="mr-2 h-4 w-4" />
+                          {uploadingId === item._id ? 'Uploading...' : 'Upload'}
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.heic,.heif"
+                            multiple
+                            disabled={Boolean(uploadingId)}
+                            onChange={(event) => {
+                              uploadStepArtifact(item, event.target.files);
+                              event.target.value = '';
+                            }}
+                          />
+                        </label>
+                      )}
+                      {savingId === item._id && <span className="text-xs text-blue-700">Saving...</span>}
+                    </div>
+                  </div>
                 );
               })}
             </div>
