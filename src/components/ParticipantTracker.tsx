@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { bookingsApi, ceremoniesApi, fileUploadsApi } from '../services/api';
-import { Ceremony, CeremonyParticipant, FileUpload, RetreatClient } from '../types';
+import { bookingsApi, ceremoniesApi, fileUploadsApi, medicalArtifactsApi } from '../services/api';
+import { Ceremony, CeremonyParticipant, FileUpload, MedicalArtifact, RetreatClient } from '../types';
 import { Button, Card, Col, Form, Input, InputNumber, Modal, Row, Select, Statistic, TimePicker, message } from 'antd';
 import { Activity, ArrowLeft, Clock3, FileText, HeartPulse, Plus, Trash2, GripVertical, Save } from 'lucide-react';
 import moment from 'moment';
@@ -124,6 +124,81 @@ const buildParticipantUpdate = (participant: CeremonyParticipant, eventLog: Cere
 const getParticipantKey = (participant: CeremonyParticipant) => (
   participant._id || getObjectId(participant.clientId)
 );
+
+const getParticipantBookingId = (participant: CeremonyParticipant) => (
+  getObjectId((participant as any).bookingId)
+);
+
+const parseBloodPressureText = (artifact: MedicalArtifact) => {
+  const text = [artifact.textContent, artifact.notes, artifact.description].filter(Boolean).join('\n');
+  const match = text.match(/(\d{2,3})\s*\/\s*(\d{2,3})(?:\D+(?:HR|P|Pulse)\s*(\d{2,3}))?/i);
+  if (!match) return {};
+  return {
+    systolic: Number(match[1]),
+    diastolic: Number(match[2]),
+    pulse: match[3] ? Number(match[3]) : undefined,
+  };
+};
+
+const buildPreCeremonyCheckFromArtifacts = (artifacts: MedicalArtifact[] = []): PreCeremonyCheck | undefined => {
+  const bpArtifact = [...artifacts].reverse().find((artifact) => (
+    artifact.documentStage === 'pre_ceremony' &&
+    (artifact.documentType === 'BP' || artifact.artifactType === 'blood_pressure')
+  ));
+  const ekgArtifact = [...artifacts].reverse().find((artifact) => (
+    artifact.documentStage === 'pre_ceremony' &&
+    (artifact.documentType === 'EKG' || artifact.artifactType === 'ceremony_ekg' || artifact.artifactType === 'ekg')
+  ));
+
+  if (!bpArtifact && !ekgArtifact) return undefined;
+
+  const bpData = bpArtifact?.data || {};
+  const parsedBp = bpArtifact ? parseBloodPressureText(bpArtifact) : {};
+  const firstEkgFile = ekgArtifact?.files?.[0];
+  return {
+    id: `artifact-${bpArtifact?._id || ekgArtifact?._id || 'pre-ceremony'}`,
+    recordedAt: bpArtifact?.receivedAt || ekgArtifact?.receivedAt,
+    preCeremonyEkg: ekgArtifact ? {
+      fileUrl: firstEkgFile?.url || firstEkgFile?.filePath,
+      fileName: firstEkgFile?.fileName,
+      uploadedAt: firstEkgFile?.uploadedAt || ekgArtifact.receivedAt,
+      notes: ekgArtifact.notes || ekgArtifact.textContent || '',
+    } : undefined,
+    preCeremonyBloodPressure: bpArtifact ? {
+      systolic: Number(bpData.systolic || parsedBp.systolic) || undefined,
+      diastolic: Number(bpData.diastolic || parsedBp.diastolic) || undefined,
+      pulse: Number(bpData.pulse || bpData.heartRate || parsedBp.pulse) || undefined,
+      recordedAt: bpData.measuredAt || bpData.resultRecordedAt || bpArtifact.receivedAt,
+      notes: bpArtifact.notes || bpArtifact.textContent || '',
+    } : undefined,
+  };
+};
+
+const enrichParticipantsWithPreCeremonyArtifacts = (
+  participants: CeremonyParticipant[],
+  artifacts: MedicalArtifact[] = [],
+  ceremonyNumber?: number,
+) => participants.map((participant) => {
+  const clientId = getObjectId(participant.clientId);
+  const bookingId = getParticipantBookingId(participant);
+  const participantArtifacts = artifacts.filter((artifact) => (
+    (!artifact.ceremonyNumber || !ceremonyNumber || Number(artifact.ceremonyNumber) === Number(ceremonyNumber)) &&
+    (
+      Boolean(clientId && getObjectId(artifact.clientId) === clientId) ||
+      Boolean(bookingId && getObjectId(artifact.bookingId) === bookingId)
+    )
+  ));
+  const artifactCheck = buildPreCeremonyCheckFromArtifacts(participantArtifacts);
+  if (!artifactCheck) return participant;
+
+  const existingChecks = getPreCeremonyChecks(participant);
+  return {
+    ...participant,
+    preCeremonyChecks: [...existingChecks, artifactCheck],
+    preCeremonyEkg: participant.preCeremonyEkg || artifactCheck.preCeremonyEkg,
+    preCeremonyBloodPressure: participant.preCeremonyBloodPressure || artifactCheck.preCeremonyBloodPressure,
+  };
+});
 
 const getPreCeremonyChecks = (participant: CeremonyParticipant): PreCeremonyCheck[] => {
   if (participant.preCeremonyChecks?.length) return participant.preCeremonyChecks;
@@ -372,11 +447,22 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
 
       const retreatId = getObjectId(ceremonyResponse.data.retreatId);
       if (retreatId) {
-        const bookingsResponse = await bookingsApi.getByRetreatWithDetails(retreatId);
+        const [bookingsResponse, preCeremonyArtifactsResponse] = await Promise.all([
+          bookingsApi.getByRetreatWithDetails(retreatId),
+          medicalArtifactsApi.getAll({
+            retreatId,
+            documentStage: 'pre_ceremony',
+          }).catch(() => ({ data: [] as MedicalArtifact[] })),
+        ]);
         nextParticipants = mergeParticipantsWithBookings(
           ceremonyResponse.data,
           nextParticipants,
           (bookingsResponse.data || []) as RetreatClient[],
+        );
+        nextParticipants = enrichParticipantsWithPreCeremonyArtifacts(
+          nextParticipants,
+          preCeremonyArtifactsResponse.data || [],
+          ceremonyResponse.data.ceremonyNumber,
         );
       }
 
