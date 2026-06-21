@@ -138,22 +138,17 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
     try {
       setLoading(true);
       setError(null);
-      let response = await bookingFlowApi.getItems({ bookingId });
-      let nextItems = response.data || [];
-
+      const booking = bookings.find((current) => getObjectId(current) === bookingId);
+      const retreatId = getRetreatId(booking);
+      await bookingFlowApi.seedLibraryTemplates();
+      if (retreatId) {
+        await bookingFlowApi.seedTemplates(retreatId);
+      }
+      const generated = await bookingFlowApi.generateForBooking(bookingId);
+      let nextItems = generated.data || [];
       if (nextItems.length === 0) {
-        const booking = bookings.find((current) => getObjectId(current) === bookingId);
-        const retreatId = getRetreatId(booking);
-        if (retreatId) {
-          await bookingFlowApi.seedLibraryTemplates();
-          await bookingFlowApi.seedTemplates(retreatId);
-        }
-        const generated = await bookingFlowApi.generateForBooking(bookingId);
-        nextItems = generated.data || [];
-        if (nextItems.length === 0) {
-          response = await bookingFlowApi.getItems({ bookingId });
-          nextItems = response.data || [];
-        }
+        const response = await bookingFlowApi.getItems({ bookingId });
+        nextItems = response.data || [];
       }
 
       setItems(nextItems);
