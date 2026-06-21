@@ -461,18 +461,22 @@ const ExpensesPage: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center gap-2">
                       <button
+                        type="button"
                         onClick={() => handleEdit(expense)}
-                        className="text-indigo-600 hover:text-indigo-900"
-                        title="Edit"
+                        className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700 hover:bg-blue-100"
+                        title="Edit expense"
                       >
                         <Icon icon={FiEdit2} className="w-4 h-4" />
+                        <span>Edit</span>
                       </button>
                       <button
+                        type="button"
                         onClick={() => handleDelete(expense._id!)}
-                        className="text-red-600 hover:text-red-900"
-                        title="Delete"
+                        className="inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-semibold text-red-700 hover:bg-red-100"
+                        title="Delete expense"
                       >
                         <Icon icon={FiTrash2} className="w-4 h-4" />
+                        <span>Delete</span>
                       </button>
                     </div>
                   </td>

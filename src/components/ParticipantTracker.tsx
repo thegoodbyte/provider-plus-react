@@ -8,8 +8,12 @@ import moment from 'moment';
 interface ParticipantTrackerProps {
   ceremonyId: string;
   onBack?: () => void;
+  initialView?: TrackerView;
+  lockedView?: boolean;
+  showHeader?: boolean;
 }
 
+type TrackerView = 'spoons' | 'pre' | 'post';
 type CeremonyEvent = NonNullable<CeremonyParticipant['eventLog']>[number];
 type EventType = CeremonyEvent['eventType'];
 type PreCeremonyCheck = NonNullable<CeremonyParticipant['preCeremonyChecks']>[number];
@@ -218,7 +222,7 @@ const mergeParticipantsWithBookings = (
   return Array.from(participantsByClientId.values());
 };
 
-const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onBack }) => {
+const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onBack, initialView = 'spoons', lockedView = false, showHeader = true }) => {
   const [ceremony, setCeremony] = useState<Ceremony | null>(null);
   const [participants, setParticipants] = useState<CeremonyParticipant[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -238,7 +242,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
   const [previewLoading, setPreviewLoading] = useState(false);
   const [editingEventId, setEditingEventId] = useState<string>('');
   const [saving, setSaving] = useState(false);
-  const [trackerView, setTrackerView] = useState<'spoons' | 'pre' | 'post'>('spoons');
+  const [trackerView, setTrackerView] = useState<TrackerView>(initialView);
   const [gridEdits, setGridEdits] = useState<Record<string, string>>({});
   const [newRows, setNewRows] = useState<Array<{ id: string; time: string }>>([]);
   const [form] = Form.useForm();
@@ -247,6 +251,10 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
   useEffect(() => {
     loadData();
   }, [ceremonyId]);
+
+  useEffect(() => {
+    setTrackerView(initialView);
+  }, [initialView]);
 
   // Drag and Drop Handlers
   const handleDragStart = (e: React.DragEvent, index: number) => {
@@ -833,7 +841,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
   );
 
   return (
-    <div className="p-6">
+    <div className={showHeader ? 'p-6' : 'p-0'}>
       {onBack && (
         <button onClick={onBack} className="mb-4 inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
           <Icon icon={ArrowLeft} className="h-4 w-4" />
@@ -841,11 +849,12 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
         </button>
       )}
 
-      <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+      <div className={`${showHeader ? 'mb-5' : 'mb-4'} flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between`}>
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Track Spoons & Time</h1>
+          {showHeader && <h1 className="text-2xl font-semibold text-gray-900">Track Spoons & Time</h1>}
           <p className="text-sm text-gray-600">
-            Ceremony #{ceremony?.ceremonyNumber || '-'} - type a spoon amount (e.g. 1, 0.5, 0.75) into each client cell, add time rows, then Save.
+            Ceremony #{ceremony?.ceremonyNumber || '-'}
+            {trackerView === 'spoons' ? ' - type a spoon amount (e.g. 1, 0.5, 0.75) into each client cell, add time rows, then Save.' : ''}
             {ceremony?.date ? ` ${moment(ceremony.date).format('MMMM DD, YYYY')}` : ''}
           </p>
         </div>
@@ -878,7 +887,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
         <Col xs={12} lg={5}><Card><Statistic title="Abnormalities" value={stats.abnormalities} valueStyle={{ color: stats.abnormalities ? '#b91c1c' : '#166534' }} /></Card></Col>
       </Row>
 
-      <div className="mb-4 flex flex-wrap gap-2">
+      {!lockedView && <div className="mb-4 flex flex-wrap gap-2">
         {[
           { key: 'spoons', label: 'Spoons & Time' },
           { key: 'pre', label: 'Pre-ceremony checks' },
@@ -887,13 +896,13 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
           <button
             key={item.key}
             type="button"
-            onClick={() => setTrackerView(item.key as 'spoons' | 'pre' | 'post')}
+            onClick={() => setTrackerView(item.key as TrackerView)}
             className={`rounded-md border px-3 py-2 text-sm font-medium ${trackerView === item.key ? 'border-indigo-200 bg-indigo-50 text-indigo-700' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}`}
           >
             {item.label}
           </button>
         ))}
-      </div>
+      </div>}
 
       <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
         <table className="min-w-[1100px] w-full border-collapse">
