@@ -295,6 +295,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [showClientDetails, setShowClientDetails] = useState(false);
   const [showRetreatInfo, setShowRetreatInfo] = useState(false);
   const [showPayments, setShowPayments] = useState(true);
+  const [showBookingSteps, setShowBookingSteps] = useState(true);
   const pdfRef = useRef<HTMLDivElement>(null);
   const routePrefix = useMemo(() => {
     const firstSegment = location.pathname.split('/').filter(Boolean)[0];
@@ -577,7 +578,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     { key: 'requirements', label: 'Requirements' },
     { key: 'medical', label: 'Medical' },
     { key: 'documents', label: 'Documents' },
-    { key: 'workflow', label: 'Workflow' },
+    { key: 'workflow', label: 'Booking Steps' },
     { key: 'notes', label: 'Notes' },
   ] as const;
 
@@ -792,6 +793,23 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
                     currency={booking.currency || 'EUR'}
                     onPaymentUpdate={fetchBookingDetails}
                   />
+                </div>
+              )}
+            </div>
+
+            <div className="booking-detail-accordion booking-steps-accordion">
+              <button
+                type="button"
+                className="booking-detail-accordion-trigger"
+                onClick={() => setShowBookingSteps((current) => !current)}
+                aria-expanded={showBookingSteps}
+              >
+                <span>Booking Steps</span>
+                <span>{showBookingSteps ? 'Hide' : 'Show'}</span>
+              </button>
+              {showBookingSteps && (
+                <div className="booking-detail-accordion-body">
+                  <ClientBookingWorkflowTab bookings={[booking]} hideBookingSelector />
                 </div>
               )}
             </div>
