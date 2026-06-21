@@ -28,6 +28,10 @@ interface ScreeningData {
   liverCondition: string;
   asthmaConditionOk: boolean;
   asthmaCondition: string;
+  depression: boolean;
+  depressionDetails: string;
+  anxiety: boolean;
+  anxietyDetails: string;
   medications: string;
   ssris: string;
   drugsHistory: string;
@@ -180,6 +184,10 @@ const ClientScreening: React.FC = () => {
     liverCondition: '',
     asthmaConditionOk: false,
     asthmaCondition: '',
+    depression: false,
+    depressionDetails: '',
+    anxiety: false,
+    anxietyDetails: '',
     medications: '',
     ssris: '',
     drugsHistory: '',
@@ -268,8 +276,7 @@ const ClientScreening: React.FC = () => {
       }
 
       autoSaveTimeoutRef.current = setTimeout(() => {
-        handleSave();
-        setHasChanges(false);
+        handleAutoSave();
       }, 2000); // Auto-save after 2 seconds of inactivity
     }
 
@@ -333,6 +340,10 @@ const ClientScreening: React.FC = () => {
         liverCondition,
         asthmaConditionOk: existingScreening.asthmaConditionOk === true || asthmaCondition === 'OK',
         asthmaCondition,
+        depression: existingScreening.depression === true,
+        depressionDetails: existingValue('depressionDetails') ?? prev.depressionDetails,
+        anxiety: existingScreening.anxiety === true,
+        anxietyDetails: existingValue('anxietyDetails') ?? prev.anxietyDetails,
         medications: existingValue('medications', 'currentMedications') ?? prev.medications,
         drugsHistory: existingValue('drugsHistory', 'recreationalDrugs', 'addictionHistory') ?? prev.drugsHistory,
         alcoholHistory: existingValue('alcoholHistory', 'alcoholConsumption') ?? prev.alcoholHistory,
@@ -515,6 +526,10 @@ const ClientScreening: React.FC = () => {
       formData.bloodPressureStatus,
       formData.bloodPressureValue,
     ].filter(Boolean).join(' - ');
+    const mentalHealthParts = [
+      formData.depression ? `Depression: ${formData.depressionDetails || 'yes'}` : '',
+      formData.anxiety ? `Anxiety: ${formData.anxietyDetails || 'yes'}` : '',
+    ].filter(Boolean);
 
     return screeningApi.create({
       ...formData,
@@ -522,6 +537,7 @@ const ClientScreening: React.FC = () => {
       liverCondition: formData.liverConditionOk ? 'OK' : formData.liverCondition,
       asthmaCondition: formData.asthmaConditionOk ? 'OK' : formData.asthmaCondition,
       bloodPressure: bloodPressure || formData.bloodPressure,
+      mentalHealthHistory: mentalHealthParts.join('\n'),
     });
   };
 
@@ -541,6 +557,7 @@ const ClientScreening: React.FC = () => {
     try {
       const response = await persistScreening();
       setClient(response.data);
+      setHasChanges(false);
       flashSaveMessage('Screening saved.');
     } catch (error) {
       console.error('Error saving screening:', error);
@@ -550,17 +567,17 @@ const ClientScreening: React.FC = () => {
     }
   };
 
-  const handleSave = async () => {
+  const handleAutoSave = async () => {
     setSaving(true);
     try {
       const response = await persistScreening();
-      const rolePrefix = user?.role === 'admin' ? '/admin' : '';
-      navigate(`${rolePrefix}/clients/${clientId}?tab=screening`, {
-        replace: true,
-        state: { refreshClient: true, client: response.data },
-      });
+      setClient(response.data);
+      setHasChanges(false);
+      flashSaveMessage('Auto-saved.');
     } catch (error) {
-      console.error('Error saving screening:', error);
+      console.error('Error auto-saving screening:', error);
+      flashSaveMessage('Could not auto-save screening.');
+    } finally {
       setSaving(false);
     }
   };
@@ -580,7 +597,7 @@ const ClientScreening: React.FC = () => {
           <AppleButton variant="secondary" onClick={() => navigate(-1)}>
             Cancel
           </AppleButton>
-          <AppleButton variant="primary" onClick={handleSave} disabled={saving}>
+          <AppleButton variant="primary" onClick={handleFloatingSave} disabled={saving}>
             {saving ? 'Saving...' : 'Save Screening'}
           </AppleButton>
         </div>
@@ -860,6 +877,50 @@ const ClientScreening: React.FC = () => {
                 onChange={handleInputChange}
                 rows={2}
                 className="w-full px-3 py-2 border border-gray-200 rounded-md"
+              />
+            )}
+          </div>
+          <div>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                name="depression"
+                checked={formData.depression}
+                onChange={handleInputChange}
+                className="rounded"
+              />
+              <span className="text-sm font-medium text-gray-700">Depression</span>
+            </label>
+            {formData.depression && (
+              <textarea
+                name="depressionDetails"
+                value={formData.depressionDetails}
+                onChange={handleInputChange}
+                rows={2}
+                className="w-full mt-2 px-3 py-2 border border-gray-200 rounded-md"
+                placeholder="Current or past depression, treatment, severity, dates, hospitalizations, or notes"
+              />
+            )}
+          </div>
+          <div>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                name="anxiety"
+                checked={formData.anxiety}
+                onChange={handleInputChange}
+                className="rounded"
+              />
+              <span className="text-sm font-medium text-gray-700">Anxiety</span>
+            </label>
+            {formData.anxiety && (
+              <textarea
+                name="anxietyDetails"
+                value={formData.anxietyDetails}
+                onChange={handleInputChange}
+                rows={2}
+                className="w-full mt-2 px-3 py-2 border border-gray-200 rounded-md"
+                placeholder="Current or past anxiety, panic attacks, treatment, severity, dates, or notes"
               />
             )}
           </div>
@@ -1194,7 +1255,7 @@ const ClientScreening: React.FC = () => {
         <AppleButton variant="secondary" onClick={() => navigate(-1)}>
           Cancel
         </AppleButton>
-        <AppleButton variant="primary" onClick={handleSave} disabled={saving}>
+        <AppleButton variant="primary" onClick={handleFloatingSave} disabled={saving}>
           {saving ? 'Saving...' : 'Save Screening'}
         </AppleButton>
       </div>
@@ -1202,7 +1263,7 @@ const ClientScreening: React.FC = () => {
       {/* Floating Save Button */}
       <div style={{ position: 'fixed', bottom: '80px', right: '20px', zIndex: 9999 }}>
         <button
-          onClick={handleSave}
+          onClick={handleFloatingSave}
           disabled={saving}
           style={{
             backgroundColor: saving ? '#9CA3AF' : '#2563EB',
@@ -1230,7 +1291,7 @@ const ClientScreening: React.FC = () => {
               e.currentTarget.style.transform = 'scale(1)';
             }
           }}
-          title="Save Screening (Auto-saves while typing)"
+          title="Save screening without leaving this page"
         >
           <svg style={{ width: '24px', height: '24px' }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V2" />
