@@ -80,10 +80,17 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
     }
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     form.resetFields();
     setEditingCeremony(null);
-    const nextCeremonyNumber = ceremonies.reduce((max, ceremony) => Math.max(max, Number(ceremony.ceremonyNumber) || 0), 0) + 1;
+    let allCeremonies = ceremonies;
+    try {
+      const response = await ceremoniesApi.getAll();
+      allCeremonies = response.data;
+    } catch (error) {
+      console.error('Error loading all ceremonies for next ceremony number:', error);
+    }
+    const nextCeremonyNumber = allCeremonies.reduce((max, ceremony) => Math.max(max, Number(ceremony.ceremonyNumber) || 0), 0) + 1;
     form.setFieldsValue({ ceremonyNumber: nextCeremonyNumber, retreatId: retreatId || undefined });
     setModalVisible(true);
   };

@@ -114,6 +114,11 @@ const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
     }
   };
 
+  const handleGoHome = () => {
+    clearError();
+    window.location.href = '/';
+  };
+
   if (!error) {
     return (
       <ApiErrorContext.Provider value={{ error, clearError }}>
@@ -159,6 +164,9 @@ const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
           <div className="api-error-actions">
             <button onClick={handleRetry} className="api-error-retry">
               🔄 Retry {retryCount > 0 && `(${retryCount})`}
+            </button>
+            <button onClick={handleGoHome} className="api-error-home">
+              Home
             </button>
             <button onClick={clearError} className="api-error-dismiss">
               Dismiss
