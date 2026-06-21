@@ -10,6 +10,11 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
   return <IconComponent className={className} />;
 };
 
+const getRetreatCode = (retreat?: Retreat | null) => {
+  if (!retreat) return '';
+  return String(retreat.code || retreat.retreatCode || retreat.name || 'Unknown Retreat').trim();
+};
+
 const ExpensesPage: React.FC = () => {
   const [expenses, setExpenses] = useState<RetreatExpense[]>([]);
   const [expenseTypes, setExpenseTypes] = useState<ExpenseType[]>([]);
@@ -125,7 +130,7 @@ const ExpensesPage: React.FC = () => {
   const getRetreatName = (retreatId: string) => {
     if (!retreatId) return 'General Company Expense';
     const retreat = retreats.find(r => r._id === retreatId);
-    return retreat?.name || 'Unknown Retreat';
+    return getRetreatCode(retreat);
   };
 
   const formatCurrency = (amount: number, currency: string) => {
@@ -224,7 +229,7 @@ const ExpensesPage: React.FC = () => {
                 <option value="">All Retreats</option>
                 {retreats.map(retreat => (
                   <option key={retreat._id} value={retreat._id}>
-                    {retreat.name}
+                    {getRetreatCode(retreat)}
                   </option>
                 ))}
               </select>
@@ -279,7 +284,7 @@ const ExpensesPage: React.FC = () => {
                 <option value="">General Company Expense</option>
                 {retreats.map(retreat => (
                   <option key={retreat._id} value={retreat._id}>
-                    {retreat.name}
+                    {getRetreatCode(retreat)}
                   </option>
                 ))}
               </select>
