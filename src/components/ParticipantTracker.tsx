@@ -84,8 +84,17 @@ const getEventSummary = (event: CeremonyEvent) => {
   return event.note || eventTypeLabels[event.eventType];
 };
 
+const getCeremonyNightTimeSortValue = (time?: string) => {
+  const match = String(time || '').match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return Number.MAX_SAFE_INTEGER;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  const minutes = hour * 60 + minute;
+  return hour < 12 ? minutes + 24 * 60 : minutes;
+};
+
 const sortEvents = (events: CeremonyEvent[] = []) => (
-  [...events].sort((a, b) => String(a.time || '').localeCompare(String(b.time || '')))
+  [...events].sort((a, b) => getCeremonyNightTimeSortValue(a.time) - getCeremonyNightTimeSortValue(b.time))
 );
 
 const buildParticipantUpdate = (participant: CeremonyParticipant, eventLog: CeremonyEvent[]) => {
@@ -393,7 +402,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
         if (event.time) times.add(event.time);
       });
     });
-    return Array.from(times).sort();
+    return Array.from(times).sort((a, b) => getCeremonyNightTimeSortValue(a) - getCeremonyNightTimeSortValue(b));
   }, [participants]);
 
   const stats = useMemo(() => {
