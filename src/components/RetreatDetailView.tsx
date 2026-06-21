@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { retreatsApi, bookingsApi, retreatExpensesApi, paymentsApi, clientsApi, housesApi } from '../services/api';
 import { Retreat, ExpenseSummary, House, Payment } from '../types';
 import ExpensesTab from './ExpensesTab';
@@ -110,6 +111,7 @@ const formatUSD = (amount: number) => {
 };
 
 const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack, initialTab = 'clients', onTabChange }) => {
+  const location = useLocation();
   const [retreat, setRetreat] = useState<Retreat | null>(null);
   const [clients, setClients] = useState<RetreatClientData[]>([]);
   const [expensesSummary, setExpensesSummary] = useState<ExpenseSummary | null>(null);
@@ -140,6 +142,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [quickBookingForm] = Form.useForm();
   const [quickBookingLoading, setQuickBookingLoading] = useState(false);
   const [existingClientBookingLoading, setExistingClientBookingLoading] = useState(false);
+  const firstRouteSegment = location.pathname.split('/').filter(Boolean)[0];
+  const routePrefix = ['admin', 'medical', 'staff', 'user', 'helper'].includes(firstRouteSegment) ? firstRouteSegment : 'admin';
 
   const formatDateUTC = (date: Date) => {
     const year = date.getUTCFullYear();
@@ -803,7 +807,13 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                   {sortedClients.map((client) => (
                     <tr key={client._id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        #{client.bookingNumber || client._id?.slice(-6)}
+                        <Link
+                          to={`/${routePrefix}/bookings/${client._id}`}
+                          className="font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+                          title="View booking"
+                        >
+                          #{client.bookingNumber || client._id?.slice(-6)}
+                        </Link>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         <div>{client.clientName}</div>
