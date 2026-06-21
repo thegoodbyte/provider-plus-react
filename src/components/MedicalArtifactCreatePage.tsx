@@ -75,6 +75,9 @@ const MedicalArtifactCreatePage: React.FC = () => {
     ceremonyNumber: undefined as number | undefined,
     title: '',
     resultText: '',
+    systolic: '',
+    diastolic: '',
+    heartRate: '',
     reviewFeeAmount: '25',
     reviewFeeCurrency: 'EUR' as NonNullable<MedicalArtifact['reviewFeeCurrency']>,
     reviewFeePaid: false,
@@ -129,6 +132,7 @@ const MedicalArtifactCreatePage: React.FC = () => {
   );
 
   const isCeremonyStage = ceremonyStages.has(form.documentStage);
+  const isBloodPressure = form.documentType === 'BP';
 
   useEffect(() => {
     if (!form.clientId) {
@@ -181,6 +185,21 @@ const MedicalArtifactCreatePage: React.FC = () => {
       setError('Enter the ceremony number for pre-, in-, or post-ceremony records.');
       return;
     }
+    const systolic = Number(form.systolic);
+    const diastolic = Number(form.diastolic);
+    const heartRate = Number(form.heartRate);
+    if (isBloodPressure && (!Number.isFinite(systolic) || !Number.isFinite(diastolic))) {
+      setError('Enter systolic and diastolic blood pressure values.');
+      return;
+    }
+    if (isBloodPressure && (systolic < 40 || systolic > 260 || diastolic < 20 || diastolic > 180)) {
+      setError('Blood pressure values are outside the expected range.');
+      return;
+    }
+    if (isBloodPressure && form.heartRate && (!Number.isFinite(heartRate) || heartRate < 20 || heartRate > 240)) {
+      setError('Heart rate is outside the expected range.');
+      return;
+    }
 
     setSaving(true);
     setError(null);
@@ -191,6 +210,12 @@ const MedicalArtifactCreatePage: React.FC = () => {
       const retreatId = getObjectId(selectedBooking?.retreatId);
       const title = form.title.trim() || selectedFiles[0]?.name || `${documentStageLabels[form.documentStage]} ${documentTypeLabels[form.documentType]}`;
       const resultText = form.resultText.trim();
+      const bpText = isBloodPressure
+        ? `${systolic}/${diastolic}${form.heartRate ? ` HR ${heartRate}` : ''}`
+        : '';
+      const textContent = isBloodPressure
+        ? [bpText, resultText].filter(Boolean).join('\n')
+        : resultText;
       const reviewFeeAmount = Number(form.reviewFeeAmount);
       const created = await medicalArtifactsApi.create({
         clientId: form.clientId,
@@ -205,14 +230,18 @@ const MedicalArtifactCreatePage: React.FC = () => {
         title,
         source: 'manual',
         status: 'stored',
-        textContent: resultText || undefined,
-        notes: resultText || undefined,
+        textContent: textContent || undefined,
+        notes: textContent || undefined,
         reviewFeeAmount: Number.isFinite(reviewFeeAmount) ? reviewFeeAmount : undefined,
         reviewFeeCurrency: form.reviewFeeCurrency,
         reviewFeePaid: form.reviewFeePaid,
         tags: [form.documentStage, form.documentType, purpose, contextType].filter(Boolean),
-        data: resultText ? {
-          resultText,
+        data: (textContent || isBloodPressure) ? {
+          resultText: textContent || undefined,
+          systolic: isBloodPressure ? systolic : undefined,
+          diastolic: isBloodPressure ? diastolic : undefined,
+          heartRate: isBloodPressure && form.heartRate ? heartRate : undefined,
+          pulse: isBloodPressure && form.heartRate ? heartRate : undefined,
           resultRecordedAt: new Date().toISOString(),
           resultSource: 'manual',
           bookingId: form.bookingId || undefined,
@@ -353,6 +382,53 @@ const MedicalArtifactCreatePage: React.FC = () => {
             </select>
           </div>
         </div>
+
+        {isBloodPressure && (
+          <div className="rounded-md border border-blue-200 bg-blue-50 p-3">
+            <div className="mb-3 text-sm font-semibold text-blue-900">Blood pressure values</div>
+            <div className="grid gap-3 md:grid-cols-3">
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-600">Systolic</label>
+                <input
+                  type="number"
+                  min="40"
+                  max="260"
+                  value={form.systolic}
+                  onChange={(event) => setForm({ ...form, systolic: event.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  placeholder="120"
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-600">Diastolic</label>
+                <input
+                  type="number"
+                  min="20"
+                  max="180"
+                  value={form.diastolic}
+                  onChange={(event) => setForm({ ...form, diastolic: event.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  placeholder="80"
+                  required
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-600">Heart rate</label>
+                <input
+                  type="number"
+                  min="20"
+                  max="240"
+                  value={form.heartRate}
+                  onChange={(event) => setForm({ ...form, heartRate: event.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  placeholder="72"
+                />
+              </div>
+            </div>
+            <p className="mt-2 text-xs text-blue-800">You can still upload a BP photo below.</p>
+          </div>
+        )}
 
         {isCeremonyStage && (
           <div className="grid gap-3 md:grid-cols-3">
