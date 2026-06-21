@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ceremoniesApi } from '../services/api';
 import { Ceremony, Retreat } from '../types';
-import { Button, Modal, Form, Input, DatePicker, TimePicker, Select, message, Popconfirm } from 'antd';
+import { Button, Modal, Form, Input, DatePicker, TimePicker, Select, message } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import moment from 'moment';
 import ParticipantTracker from './ParticipantTracker';
@@ -390,20 +390,23 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
                         size="small"
                         title="Edit Ceremony"
                       />
-                      <Popconfirm
-                        title="Are you sure you want to delete this ceremony?"
-                        onConfirm={() => handleDelete(ceremony._id!)}
-                        okText="Yes"
-                        cancelText="No"
-                      >
-                        <Button
-                          type="text"
-                          icon={<DeleteOutlined />}
-                          danger
-                          size="small"
-                          title="Delete Ceremony"
-                        />
-                      </Popconfirm>
+                      <Button
+                        type="text"
+                        icon={<DeleteOutlined />}
+                        danger
+                        size="small"
+                        title="Delete Ceremony"
+                        onClick={() => {
+                          Modal.confirm({
+                            title: 'Delete ceremony?',
+                            content: 'Are you sure you want to delete this ceremony?',
+                            okText: 'Yes, delete',
+                            cancelText: 'No',
+                            okButtonProps: { danger: true },
+                            onOk: () => handleDelete(ceremony._id!),
+                          });
+                        }}
+                      />
                     </div>
                   </td>
                 </tr>
