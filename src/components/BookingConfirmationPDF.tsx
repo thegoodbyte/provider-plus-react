@@ -279,8 +279,7 @@ const translations = {
     balance: 'Balans',
     currency: 'zł',
     // Footer notes
-    footerNote1: 'Pozostałą kwotę najlepiej uregulować w USD.',
-    footerNote2: 'Jeśli chcesz, śmiało skontaktuj się ze mną przed przysłaniem gotówki — z przyjemnością podam aktualny kurs wymiany. Dziękuję',
+    balanceDueNote: (date: string) => `Pozostałe saldo należy uregulować najpóźniej 30 dni przed rozpoczęciem pobytu, czyli do ${date}.`,
     footerNote3: 'Należy pamiętać, że żadna usługa nie będzie świadczona, dopóki nie zostanie ona w pełni opłacona. Dziękuję za zrozumienie',
     footerNote4: 'Aby potwierdzić rezerwację, każdy uczestnik musi dostarczyć EKG i panel wątroby w ciągu 21 dni od pierwszej płatności oraz podpisać umowę uczestnika w ciągu 3 dni od pierwszej płatności.',
     footerNote5: 'Jednocześnie każdy uczestnik musi być czysty od wszelkich leków i niektórych leków (takich jak leki przeciwdepresyjne itp.) przez co najmniej 30 dni przed leczeniem.',
@@ -325,8 +324,7 @@ const translations = {
     balance: 'Zůstatek',
     currency: 'Kč',
     // Footer notes
-    footerNote1: 'Zbývající částku je nejlepší uhradit v USD.',
-    footerNote2: 'Pokud chcete, neváhejte mě kontaktovat před odesláním hotovosti — rád vám sdělím aktuální směnný kurz. Děkuji',
+    balanceDueNote: (date: string) => `Zbývající částka je splatná nejpozději 30 dní před začátkem pobytu, tedy do ${date}.`,
     footerNote3: 'Pamatujte, že žádná služba nebude poskytována, dokud nebude plně uhrazena. Děkuji za pochopení',
     footerNote4: 'Pro potvrzení rezervace musí každý účastník dodat EKG a jaterní panel do 21 dnů od první platby a podepsat smlouvu účastníka do 3 dnů od první platby.',
     footerNote5: 'Současně musí být každý účastník čistý od všech léků a některých léků (jako jsou antidepresiva atd.) po dobu nejméně 30 dnů před léčbou.',
@@ -371,8 +369,7 @@ const translations = {
     balance: 'Balance',
     currency: '€',
     // Footer notes
-    footerNote1: 'The remaining amount is best paid in USD.',
-    footerNote2: 'If you wish, feel free to contact me before sending cash — I will be happy to provide the current exchange rate. Thank you',
+    balanceDueNote: (date: string) => `The remaining balance is due no later than 30 days before the retreat begins, by ${date}.`,
     footerNote3: 'Please note that no service will be provided until it is fully paid. Thank you for understanding',
     footerNote4: 'To confirm the reservation, each participant must provide EKG and liver panel results within 21 days of the initial payment and sign the participant agreement within 3 days of the initial payment.',
     footerNote5: 'At the same time, each participant must be clean of all drugs and certain medications (such as antidepressants, etc.) for at least 30 days before treatment.',
@@ -439,6 +436,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   const formatDate = (date: Date) => date.toLocaleDateString(getDateLocale());
   const retreatStartDate = parseDate(retreat?.startDate || retreat?.dates?.startDate);
   const retreatEndDate = parseDate(retreat?.endDate || retreat?.dates?.endDate);
+  const balanceDueDate = retreatStartDate ? addDays(retreatStartDate, -30) : null;
   const locationTown = house?.generalTown || house?.general_town || house?.city || retreat?.location_town || retreat?.locationTown || retreat?.location || house?.name || 'N/A';
   const locationAddress = house?.address || retreat?.address || 'N/A';
   const googleMapLink = house?.googleMapLink || house?.google_map_link || retreat?.googleMapLink || retreat?.google_map_link || '';
@@ -637,8 +635,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
       <!-- Footer notes -->
       <div style="margin-top: 30px; font-size: 11px; line-height: 1.6; color: #4b5563;">
         <div style="font-style: italic; margin-bottom: 15px;">
-          ${t.footerNote1}<br>
-          ${t.footerNote2}
+          ${t.balanceDueNote(balanceDueDate ? formatDate(balanceDueDate) : retreatDateRange)}
         </div>
 
         <div style="margin: 20px 0;">
