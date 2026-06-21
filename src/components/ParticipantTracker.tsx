@@ -19,7 +19,7 @@ type EventType = CeremonyEvent['eventType'];
 type PreCeremonyCheck = NonNullable<CeremonyParticipant['preCeremonyChecks']>[number];
 type PostCeremonyCheck = NonNullable<CeremonyParticipant['postCeremonyChecks']>[number];
 type MedicalCheckPhase = 'pre' | 'post';
-type PreMedicalFormKind = 'combined' | 'ekg' | 'bp';
+type PreMedicalFormKind = 'ekg' | 'bp';
 
 const eventTypeLabels: Record<EventType, string> = {
   medicine: 'Medicine',
@@ -246,7 +246,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
   const [medicalParticipant, setMedicalParticipant] = useState<CeremonyParticipant | null>(null);
   const [editingMedicalCheckId, setEditingMedicalCheckId] = useState<string>('');
   const [medicalCheckPhase, setMedicalCheckPhase] = useState<MedicalCheckPhase>('pre');
-  const [preMedicalFormKind, setPreMedicalFormKind] = useState<PreMedicalFormKind>('combined');
+  const [preMedicalFormKind, setPreMedicalFormKind] = useState<PreMedicalFormKind>('ekg');
   const [ekgUploadFile, setEkgUploadFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [previewFileName, setPreviewFileName] = useState<string>('');
@@ -438,7 +438,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
     participant: CeremonyParticipant,
     check?: PreCeremonyCheck | PostCeremonyCheck,
     phase: MedicalCheckPhase = 'pre',
-    formKind: PreMedicalFormKind = phase === 'pre' ? 'combined' : 'combined',
+    formKind: PreMedicalFormKind = 'ekg',
   ) => {
     const selectedCheck = check;
     const ekg = phase === 'pre'
@@ -659,8 +659,8 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
 
     try {
       setSaving(true);
-      const shouldSavePreEkg = medicalCheckPhase === 'pre' && preMedicalFormKind !== 'bp';
-      const shouldSavePreBp = medicalCheckPhase === 'pre' && preMedicalFormKind !== 'ekg';
+      const shouldSavePreEkg = medicalCheckPhase === 'pre' && preMedicalFormKind === 'ekg';
+      const shouldSavePreBp = medicalCheckPhase === 'pre' && preMedicalFormKind === 'bp';
       const participantToUpdate = await ensureSavedParticipant(medicalParticipant);
       const existingChecks: Array<PreCeremonyCheck | PostCeremonyCheck> = medicalCheckPhase === 'pre'
         ? getPreCeremonyChecks(participantToUpdate)
@@ -752,13 +752,11 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
         ? 'Post-ceremony EKG'
         : preMedicalFormKind === 'bp'
           ? 'Pre-ceremony BP'
-          : preMedicalFormKind === 'ekg'
-            ? 'Pre-ceremony EKG'
-            : 'Pre-ceremony medical check';
+          : 'Pre-ceremony EKG';
       message.success(`${savedLabel} saved`);
       setMedicalParticipant(null);
       setEditingMedicalCheckId('');
-      setPreMedicalFormKind('combined');
+      setPreMedicalFormKind('ekg');
       setEkgUploadFile(null);
       await loadData();
     } catch (error) {
@@ -853,17 +851,16 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
     }
   };
 
-  const showEkgFields = medicalCheckPhase === 'post' || preMedicalFormKind !== 'bp';
-  const showBpFields = medicalCheckPhase === 'pre' && preMedicalFormKind !== 'ekg';
+  const showEkgFields = medicalCheckPhase === 'post' || preMedicalFormKind === 'ekg';
+  const showBpFields = medicalCheckPhase === 'pre' && preMedicalFormKind === 'bp';
+  const showMedicalClearanceFields = false;
   const medicalModalTitle = [
     editingMedicalCheckId ? 'Edit' : 'Add',
     medicalCheckPhase === 'post'
       ? 'Post-Ceremony EKG'
-      : preMedicalFormKind === 'bp'
-        ? 'Pre-Ceremony BP'
-        : preMedicalFormKind === 'ekg'
-          ? 'Pre-Ceremony EKG'
-          : 'Pre-Ceremony Medical',
+        : preMedicalFormKind === 'bp'
+          ? 'Pre-Ceremony BP'
+          : 'Pre-Ceremony EKG',
     medicalParticipant ? `- ${getClientName(medicalParticipant)}` : '',
   ].filter(Boolean).join(' ');
 
@@ -1023,13 +1020,6 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                               <div className="flex items-center gap-1">
                                 <button
                                   type="button"
-                                  onClick={() => openMedicalModal(participant, check, 'pre')}
-                                  className="rounded border border-gray-300 bg-white px-2 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-100"
-                                >
-                                  Edit
-                                </button>
-                                <button
-                                  type="button"
                                   onClick={() => deleteMedicalCheck(participant, check.id, 'pre')}
                                   className="rounded border border-red-200 bg-white px-2 py-0.5 text-xs font-medium text-red-600 hover:bg-red-50"
                                 >
@@ -1039,10 +1029,19 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                             </div>
                             <div className="mt-1">{getCheckTimeLabel(check)}</div>
                             <div className="mt-2 rounded-md border border-blue-100 bg-blue-50 px-2 py-2 text-blue-950">
-                              <div className="flex items-center gap-2">
-                                <Icon icon={FileText} className="h-4 w-4 text-blue-600" />
-                                <span className="font-semibold">EKG</span>
-                                <span className="rounded bg-white/80 px-1.5 py-0.5 text-[11px] text-blue-700">{getApprovalLabel(check.preCeremonyEkg?.approved)}</span>
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  <Icon icon={FileText} className="h-4 w-4 text-blue-600" />
+                                  <span className="font-semibold">EKG</span>
+                                  <span className="rounded bg-white/80 px-1.5 py-0.5 text-[11px] text-blue-700">{getApprovalLabel(check.preCeremonyEkg?.approved)}</span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => openMedicalModal(participant, check, 'pre', 'ekg')}
+                                  className="rounded border border-blue-200 bg-white px-2 py-0.5 text-xs font-medium text-blue-700 hover:bg-blue-50"
+                                >
+                                  Edit EKG
+                                </button>
                               </div>
                               {check.preCeremonyEkg?.fileUrl && (
                                 <button
@@ -1057,10 +1056,19 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                               {check.preCeremonyEkg?.notes && <div className="mt-1 whitespace-pre-wrap text-blue-900">Notes: {check.preCeremonyEkg.notes}</div>}
                             </div>
                             <div className="mt-2 rounded-md border border-rose-100 bg-rose-50 px-2 py-2 text-rose-950">
-                              <div className="flex items-center gap-2">
-                                <Icon icon={HeartPulse} className="h-4 w-4 text-rose-600" />
-                                <span className="font-semibold">Blood pressure</span>
-                                <span className="rounded bg-white/80 px-1.5 py-0.5 text-[11px] text-rose-700">{getApprovalLabel(check.preCeremonyBloodPressure?.approved)}</span>
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                  <Icon icon={HeartPulse} className="h-4 w-4 text-rose-600" />
+                                  <span className="font-semibold">Blood pressure</span>
+                                  <span className="rounded bg-white/80 px-1.5 py-0.5 text-[11px] text-rose-700">{getApprovalLabel(check.preCeremonyBloodPressure?.approved)}</span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => openMedicalModal(participant, check, 'pre', 'bp')}
+                                  className="rounded border border-rose-200 bg-white px-2 py-0.5 text-xs font-medium text-rose-700 hover:bg-rose-50"
+                                >
+                                  Edit BP
+                                </button>
                               </div>
                               <div className="mt-1 font-medium">{getBloodPressureLabel(check)}</div>
                               {check.preCeremonyBloodPressure?.notes && <div className="mt-1 whitespace-pre-wrap text-rose-900">Notes: {check.preCeremonyBloodPressure.notes}</div>}
@@ -1366,7 +1374,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
           setMedicalParticipant(null);
           setEditingMedicalCheckId('');
           setMedicalCheckPhase('pre');
-          setPreMedicalFormKind('combined');
+          setPreMedicalFormKind('ekg');
           setEkgUploadFile(null);
         }}
         onOk={() => medicalForm.submit()}
@@ -1386,7 +1394,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                 </Form.Item>
               </Col>
             )}
-            {medicalCheckPhase === 'pre' && (
+            {medicalCheckPhase === 'pre' && showMedicalClearanceFields && (
               <Col xs={24} md={12}>
                 <Form.Item name="medicalClearance" label="Medical Clearance">
                   <Select>
@@ -1462,9 +1470,11 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
             </>
           )}
 
-          <Form.Item name="medicalClearanceNotes" label={medicalCheckPhase === 'pre' ? 'Clearance Notes' : 'Post-Ceremony Notes'}>
-            <Input.TextArea rows={3} placeholder={medicalCheckPhase === 'pre' ? 'Overall pre-ceremony medical clearance notes' : 'Post-ceremony EKG notes or follow-up instructions'} />
-          </Form.Item>
+          {medicalCheckPhase === 'post' && (
+            <Form.Item name="medicalClearanceNotes" label="Post-Ceremony Notes">
+              <Input.TextArea rows={3} placeholder="Post-ceremony EKG notes or follow-up instructions" />
+            </Form.Item>
+          )}
         </Form>
       </Modal>
 
