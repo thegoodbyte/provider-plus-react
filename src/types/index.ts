@@ -1065,6 +1065,8 @@ export interface BookingFlowItem {
   reviewedBy?: string;
   approvedAt?: Date | string;
   assignedTo?: string;
+  createdByUserId?: string | any;
+  updatedByUserId?: string | any;
   metadata?: Record<string, any>;
   createdAt?: string;
   updatedAt?: string;
