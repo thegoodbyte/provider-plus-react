@@ -227,7 +227,7 @@ const MedicalArtifactsPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => navigate(`${artifact._id}`)}
-                      className="font-semibold text-blue-700 hover:text-blue-900 hover:underline"
+                      className="bg-transparent p-0 font-semibold text-gray-900 hover:text-blue-700 hover:underline"
                     >
                       #{artifact.display_id}
                     </button>
