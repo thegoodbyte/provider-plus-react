@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FiCheckCircle, FiRefreshCw, FiUpload } from 'react-icons/fi';
+import { FiCheckCircle, FiEdit2, FiRefreshCw, FiSave, FiUpload } from 'react-icons/fi';
 import { bookingFlowApi, medicalArtifactsApi } from '../services/api';
 import { BookingFlowItem, MedicalArtifact } from '../types';
 import AppleButton from './AppleButton';
@@ -77,10 +77,17 @@ interface ClientBookingWorkflowTabProps {
   hideBookingSelector?: boolean;
 }
 
+type StepDraft = {
+  checked: boolean;
+  dateTime: string;
+  notes: string;
+};
+
 const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ bookings, hideBookingSelector = false }) => {
   const [selectedBookingId, setSelectedBookingId] = useState('');
   const [items, setItems] = useState<BookingFlowItem[]>([]);
-  const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
+  const [drafts, setDrafts] = useState<Record<string, StepDraft>>({});
+  const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
@@ -100,8 +107,21 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
   const completedCount = items.filter((item) => fulfilledStatuses.has(item.status)).length;
   const progressPercent = items.length > 0 ? Math.round((completedCount / items.length) * 100) : 0;
 
+  const getItemId = (item: BookingFlowItem) => item._id || item.key;
+
+  const makeDraft = (item: BookingFlowItem): StepDraft => {
+    const dateField = getActionDateField(item);
+    const actionDate = item[dateField] as Date | string | null | undefined;
+    const checked = Boolean(actionDate) || fulfilledStatuses.has(item.status) || ['sent', 'sent_for_review'].includes(item.status);
+    return {
+      checked,
+      dateTime: checked ? formatDateTimeInput(actionDate || item.completedAt) : '',
+      notes: item.notes || '',
+    };
+  };
+
   const hydrateDrafts = (nextItems: BookingFlowItem[]) => {
-    setNoteDrafts(Object.fromEntries(nextItems.map((item) => [item._id || item.key, item.notes || ''])));
+    setDrafts(Object.fromEntries(nextItems.map((item) => [getItemId(item), makeDraft(item)])));
   };
 
   const loadItems = async (bookingId = selectedBookingId) => {
@@ -124,6 +144,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
 
       setItems(nextItems);
       hydrateDrafts(nextItems);
+      setIsEditing(false);
     } catch (err: any) {
       console.error('Failed to load booking workflow', err);
       setError(err?.response?.data?.message || 'Failed to load booking progress');
@@ -147,40 +168,64 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
     }
   };
 
-  const setActionChecked = async (item: BookingFlowItem, checked: boolean) => {
-    const dateField = getActionDateField(item);
-    const currentNote = noteDrafts[item._id || item.key] || item.notes || '';
-    const patch = checked
-      ? {
-          status: getCompletedStatus(item),
-          [dateField]: (item[dateField] as any) || new Date().toISOString(),
-          completedAt: item.completedAt || new Date().toISOString(),
-          notes: currentNote,
-        }
-      : {
-          status: 'pending',
-          [dateField]: null,
-          completedAt: null,
-          notes: currentNote,
-        };
-    await updateItem(item, patch as Partial<BookingFlowItem>);
+  const setDraft = (item: BookingFlowItem, patch: Partial<StepDraft>) => {
+    const id = getItemId(item);
+    setDrafts((current) => ({
+      ...current,
+      [id]: {
+        ...(current[id] || makeDraft(item)),
+        ...patch,
+      },
+    }));
   };
 
-  const updateActionDate = async (item: BookingFlowItem, value: string) => {
-    const dateField = getActionDateField(item);
-    const isoValue = toIsoFromDateTimeInput(value);
-    await updateItem(item, {
-      [dateField]: isoValue,
-      completedAt: isoValue,
-      status: isoValue ? getCompletedStatus(item) : 'pending',
-      notes: noteDrafts[item._id || item.key] || item.notes || '',
-    } as Partial<BookingFlowItem>);
-  };
-
-  const saveNotes = async (item: BookingFlowItem) => {
-    await updateItem(item, {
-      notes: noteDrafts[item._id || item.key] || '',
+  const setActionChecked = (item: BookingFlowItem, checked: boolean) => {
+    const current = drafts[getItemId(item)] || makeDraft(item);
+    setDraft(item, {
+      checked,
+      dateTime: checked ? current.dateTime || formatDateTimeInput(new Date()) : '',
     });
+  };
+
+  const saveDrafts = async () => {
+    try {
+      setSavingId('all');
+      setError(null);
+      const updatedItems: BookingFlowItem[] = [];
+      for (const item of items) {
+        if (!item._id) continue;
+        const draft = drafts[getItemId(item)] || makeDraft(item);
+        const dateField = getActionDateField(item);
+        const isoValue = draft.checked ? toIsoFromDateTimeInput(draft.dateTime) || new Date().toISOString() : null;
+        const patch = draft.checked
+          ? {
+              status: getCompletedStatus(item),
+              [dateField]: isoValue,
+              completedAt: isoValue,
+              notes: draft.notes,
+            }
+          : {
+              status: 'pending',
+              [dateField]: null,
+              completedAt: null,
+              notes: draft.notes,
+            };
+        const response = await bookingFlowApi.updateItem(item._id, patch as Partial<BookingFlowItem>);
+        updatedItems.push(response.data);
+      }
+      setItems((current) => current.map((item) => updatedItems.find((updated) => updated._id === item._id) || item));
+      hydrateDrafts(updatedItems.length === items.length ? updatedItems : items);
+      setIsEditing(false);
+    } catch (saveError: any) {
+      setError(saveError?.response?.data?.message || saveError?.message || 'Unable to save booking steps.');
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const cancelEditing = () => {
+    hydrateDrafts(items);
+    setIsEditing(false);
   };
 
   const uploadStepArtifact = async (item: BookingFlowItem, files: FileList | null) => {
@@ -273,6 +318,22 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
             <Icon icon={FiRefreshCw} className="mr-2 h-4 w-4" />
             Refresh
           </AppleButton>
+          {isEditing ? (
+            <>
+              <AppleButton onClick={cancelEditing} variant="ghost" className="px-3 py-2" disabled={savingId === 'all'}>
+                Cancel
+              </AppleButton>
+              <AppleButton onClick={saveDrafts} variant="primary" className="px-3 py-2" disabled={savingId === 'all'}>
+                <Icon icon={FiSave} className="mr-2 h-4 w-4" />
+                {savingId === 'all' ? 'Saving...' : 'Save'}
+              </AppleButton>
+            </>
+          ) : (
+            <AppleButton onClick={() => setIsEditing(true)} variant="secondary" className="px-3 py-2">
+              <Icon icon={FiEdit2} className="mr-2 h-4 w-4" />
+              Edit
+            </AppleButton>
+          )}
         </div>
       </div>
 
@@ -309,9 +370,8 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
             <div className="divide-y divide-gray-200">
               {items.map((item) => {
                 const id = item._id || item.key;
-                const dateField = getActionDateField(item);
-                const actionDate = item[dateField] as Date | string | null | undefined;
-                const isChecked = Boolean(actionDate) || fulfilledStatuses.has(item.status) || ['sent', 'sent_for_review'].includes(item.status);
+                const draft = drafts[id] || makeDraft(item);
+                const isChecked = draft.checked;
                 const uploadConfig = artifactUploadsByStep[item.key];
 
                 return (
@@ -320,7 +380,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                       <input
                         type="checkbox"
                         checked={isChecked}
-                        disabled={savingId === item._id}
+                        disabled={!isEditing || savingId === 'all'}
                         onChange={(event) => setActionChecked(item, event.target.checked)}
                         className="mt-1 h-5 w-5 rounded border-gray-300 text-green-600 focus:ring-green-500"
                       />
@@ -344,10 +404,10 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                       {isChecked ? (
                         <input
                           type="datetime-local"
-                          value={formatDateTimeInput(actionDate || item.completedAt)}
-                          disabled={savingId === item._id}
-                          onChange={(event) => updateActionDate(item, event.target.value)}
-                          className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          value={draft.dateTime}
+                          disabled={!isEditing || savingId === 'all'}
+                          onChange={(event) => setDraft(item, { dateTime: event.target.value })}
+                          className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
                       ) : (
                         <div className="mt-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-400">
@@ -359,18 +419,18 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                     <div>
                       <label className="block text-xs font-medium uppercase text-gray-500">Notes</label>
                       <textarea
-                        value={noteDrafts[id] || ''}
-                        onChange={(event) => setNoteDrafts((current) => ({ ...current, [id]: event.target.value }))}
-                        onBlur={() => saveNotes(item)}
+                        value={draft.notes}
+                        disabled={!isEditing || savingId === 'all'}
+                        onChange={(event) => setDraft(item, { notes: event.target.value })}
                         rows={2}
-                        className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="Internal note"
                       />
                     </div>
 
                     <div className="flex items-center gap-2 lg:justify-end lg:pt-5">
                       {uploadConfig && (
-                        <label className="inline-flex cursor-pointer items-center rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50">
+                        <label className={`inline-flex items-center rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-medium ${isEditing ? 'cursor-pointer text-blue-700 hover:bg-blue-50' : 'cursor-not-allowed text-gray-400'}`}>
                           <Icon icon={FiUpload} className="mr-2 h-4 w-4" />
                           {uploadingId === item._id ? 'Uploading...' : 'Upload'}
                           <input
@@ -378,7 +438,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                             className="hidden"
                             accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.heic,.heif"
                             multiple
-                            disabled={Boolean(uploadingId)}
+                            disabled={!isEditing || Boolean(uploadingId)}
                             onChange={(event) => {
                               uploadStepArtifact(item, event.target.files);
                               event.target.value = '';

@@ -21,6 +21,8 @@ type TemplateForm = {
   order: number;
   createsTask: boolean;
   reviewRequired: boolean;
+  isRequirement: boolean;
+  requirementType: string;
   taskTitle: string;
   taskPriority: 'low' | 'medium' | 'high' | 'urgent';
   readinessGroup: string;
@@ -42,6 +44,8 @@ const emptyForm = (): TemplateForm => ({
   order: 0,
   createsTask: false,
   reviewRequired: false,
+  isRequirement: false,
+  requirementType: '',
   taskTitle: '',
   taskPriority: 'medium',
   readinessGroup: '',
@@ -54,6 +58,7 @@ const formatDeadlineLabel = (template: BookingFlowTemplate) => {
   const basis = template.deadlineBasis || template.triggerType || 'before_retreat_start';
   if (basis === 'after_signup') return `${template.offsetDays} days after signup`;
   if (basis === 'after_booking') return `${template.offsetDays} days after booking`;
+  if (basis === 'after_initial_payment') return `${template.offsetDays} days after initial payment`;
   if (basis === 'manual') return 'Manual due date';
   return `${template.offsetDays} days before retreat`;
 };
@@ -121,6 +126,8 @@ const RetreatFlowLibraryPage: React.FC = () => {
       order: template.order || 0,
       createsTask: !!template.createsTask,
       reviewRequired: !!template.reviewRequired,
+      isRequirement: !!template.isRequirement,
+      requirementType: template.requirementType || '',
       taskTitle: template.taskTitle || '',
       taskPriority: template.taskPriority || 'medium',
       readinessGroup: template.readinessGroup || '',
@@ -147,6 +154,8 @@ const RetreatFlowLibraryPage: React.FC = () => {
         order: form.order,
         createsTask: form.createsTask,
         reviewRequired: form.reviewRequired,
+        isRequirement: form.isRequirement,
+        requirementType: form.isRequirement ? form.requirementType : undefined,
         taskTitle: form.taskTitle,
         taskPriority: form.taskPriority,
         triggerType: form.deadlineBasis,
@@ -289,6 +298,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
               <option value="before_retreat_start">Before retreat start</option>
               <option value="after_signup">After signup</option>
               <option value="after_booking">After booking</option>
+              <option value="after_initial_payment">After initial payment</option>
               <option value="manual">Manual due date</option>
             </select>
             <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value as TemplateForm['category'] })} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
@@ -320,6 +330,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
             <input value={form.order} type="number" onChange={(e) => setForm({ ...form, order: Number(e.target.value) })} className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Order" />
             <input value={form.readinessGroup} onChange={(e) => setForm({ ...form, readinessGroup: e.target.value })} className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Readiness group (ekg, liver...)" />
             <input value={form.expectedArtifact} onChange={(e) => setForm({ ...form, expectedArtifact: e.target.value })} className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Expected artifact" />
+            <input value={form.requirementType} onChange={(e) => setForm({ ...form, requirementType: e.target.value, isRequirement: Boolean(e.target.value) || form.isRequirement })} className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Requirement type (entry_ekg...)" />
           </div>
 
           <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 p-3">
@@ -349,6 +360,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
             <label className="flex items-center gap-2"><input type="checkbox" checked={form.isBlocking} onChange={(e) => setForm({ ...form, isBlocking: e.target.checked })} /> Blocking</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={form.createsTask} onChange={(e) => setForm({ ...form, createsTask: e.target.checked })} /> Creates task</label>
             <label className="flex items-center gap-2"><input type="checkbox" checked={form.reviewRequired} onChange={(e) => setForm({ ...form, reviewRequired: e.target.checked })} /> Review required</label>
+            <label className="flex items-center gap-2"><input type="checkbox" checked={form.isRequirement} onChange={(e) => setForm({ ...form, isRequirement: e.target.checked })} /> Booking requirement</label>
           </div>
 
           <div className="mt-4 flex items-center justify-between">

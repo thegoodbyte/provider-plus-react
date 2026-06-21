@@ -1015,7 +1015,7 @@ export interface BookingFlowTemplate {
   description?: string;
   category: 'screening' | 'booking' | 'payment' | 'contract' | 'questionnaire' | 'medical' | 'dietary' | 'message' | 'access' | 'approval' | 'reminder' | 'other';
   offsetDays: number;
-  deadlineBasis?: 'after_signup' | 'after_booking' | 'before_retreat_start' | 'manual';
+  deadlineBasis?: 'after_signup' | 'after_booking' | 'after_initial_payment' | 'before_retreat_start' | 'manual';
   active?: boolean;
   isBlocking?: boolean;
   order?: number;
@@ -1026,6 +1026,8 @@ export interface BookingFlowTemplate {
   reviewRequired?: boolean;
   readinessGroup?: string;
   expectedArtifact?: string;
+  isRequirement?: boolean;
+  requirementType?: string;
   emailEnabled?: boolean;
   emailTemplateId?: string | EmailTemplate;
   createdAt?: string;
