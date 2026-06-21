@@ -9,7 +9,7 @@ import ClientDetailsPage from './ClientDetailsPage';
 import ClientEditPage from './ClientEditPage';
 import AddClient from '../pages/AddClient';
 import ClientScreening from '../pages/ClientScreening';
-import RetreatDetailView from '../pages/RetreatDetailView';
+import RetreatDetailView, { RetreatDetailTab } from './RetreatDetailView';
 // import ClientsGrid from './ClientsGrid'; // Now using UnifiedClientManager
 import BookingsGrid from './BookingsGrid';
 import BookingEditorPage from './BookingEditorPage';
@@ -68,6 +68,32 @@ const BookingDetailRoute: React.FC = () => {
   return <BookingDetailView bookingId={bookingId || ''} onBack={() => navigate(-1)} />;
 };
 
+const RETREAT_DETAIL_TABS: RetreatDetailTab[] = ['clients', 'holisticView', 'tracking', 'expenses', 'payments', 'ceremonies', 'analytics', 'tasks'];
+
+const getRetreatTabFromRoute = (tab?: string): RetreatDetailTab => (
+  RETREAT_DETAIL_TABS.includes(tab as RetreatDetailTab) ? tab as RetreatDetailTab : 'clients'
+);
+
+const RetreatDetailRoute: React.FC = () => {
+  const { retreatId, tab } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const routePrefix = location.pathname.split('/').filter(Boolean)[0] || 'admin';
+  const activeTab = getRetreatTabFromRoute(tab);
+
+  return (
+    <RetreatDetailView
+      retreatId={retreatId || ''}
+      initialTab={activeTab}
+      onBack={() => navigate(`/${routePrefix}/retreats`)}
+      onTabChange={(nextTab) => {
+        const basePath = `/${routePrefix}/retreats/${retreatId}`;
+        navigate(nextTab === 'clients' ? basePath : `${basePath}/${nextTab}`);
+      }}
+    />
+  );
+};
+
 const AppleLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
@@ -89,6 +115,13 @@ const AppleLayout: React.FC = () => {
     const route = pathSegments.length > 1 ? pathSegments[1] : pathSegments[0];
 
     // Map routes to sidebar items
+    if (route === 'retreat') {
+      const retreatSubRoute = pathSegments[3] || pathSegments[2];
+      if (retreatSubRoute === 'ceremonies') return 'ceremonies';
+      if (retreatSubRoute === 'bookings') return 'bookings';
+      if (retreatSubRoute === 'houses') return 'houses';
+      return 'retreats';
+    }
     if (route === 'clients' || route === 'potential-clients') return 'clients';
     if (route === 'launcher') return 'launcher';
     if (route === 'current-retreat') return 'current-retreat';
@@ -174,7 +207,12 @@ const AppleLayout: React.FC = () => {
 
   const handleItemClick = (item: string) => {
     const prefix = getRoutePrefix();
-    navigate(`/${prefix}/${item}`);
+    const retreatSectionRoutes: Record<string, string> = {
+      ceremonies: 'retreat/ceremonies',
+      bookings: 'retreat/bookings',
+      houses: 'retreat/houses',
+    };
+    navigate(`/${prefix}/${retreatSectionRoutes[item] || item}`);
     setSidebarOpen(false);
   };
 
@@ -351,7 +389,13 @@ const AppleLayout: React.FC = () => {
                       <Route path="screening" element={<ScreeningClientsGrid />} />
                       <Route path="potential-clients" element={<UnifiedClientManager />} />
                       <Route path="retreats" element={<RetreatsGrid />} />
-                      <Route path="retreats/:retreatId" element={<RetreatDetailView />} />
+                      <Route path="retreats/:retreatId" element={<RetreatDetailRoute />} />
+                      <Route path="retreats/:retreatId/:tab" element={<RetreatDetailRoute />} />
+                      <Route path="retreat/:retreatId" element={<RetreatDetailRoute />} />
+                      <Route path="retreat/:retreatId/:tab" element={<RetreatDetailRoute />} />
+                      <Route path="retreat/ceremonies" element={<CeremoniesPage />} />
+                      <Route path="retreat/bookings" element={<BookingsGrid />} />
+                      <Route path="retreat/houses" element={<HousesGrid />} />
                       <Route path="ceremonies" element={<CeremoniesPage />} />
                       <Route path="houses" element={<HousesGrid />} />
                       <Route path="bookings" element={<BookingsGrid />} />
@@ -479,7 +523,12 @@ const AppleLayout: React.FC = () => {
                         <Route path="bookings/:bookingId" element={<BookingDetailRoute />} />
                         <Route path="bookings/:bookingId/edit" element={<BookingEditorPage mode="edit" />} />
                         <Route path="retreats" element={<RetreatsGrid />} />
-                        <Route path="retreats/:retreatId" element={<RetreatDetailView />} />
+                        <Route path="retreats/:retreatId" element={<RetreatDetailRoute />} />
+                        <Route path="retreats/:retreatId/:tab" element={<RetreatDetailRoute />} />
+                        <Route path="retreat/:retreatId" element={<RetreatDetailRoute />} />
+                        <Route path="retreat/:retreatId/:tab" element={<RetreatDetailRoute />} />
+                        <Route path="retreat/ceremonies" element={<CeremoniesPage />} />
+                        <Route path="retreat/bookings" element={<BookingsGrid />} />
                         <Route path="ceremonies" element={<CeremoniesPage />} />
                         <Route path="reminders" element={<RemindersPage />} />
                         <Route path="contact-book" element={<ContactBookPage />} />
@@ -507,7 +556,13 @@ const AppleLayout: React.FC = () => {
                       <Route path="launcher" element={<ModuleLauncherPage />} />
                       <Route path="bookings" element={<BookingsGrid />} />
                       <Route path="retreats" element={<RetreatsGrid />} />
-                      <Route path="retreats/:retreatId" element={<RetreatDetailView />} />
+                      <Route path="retreats/:retreatId" element={<RetreatDetailRoute />} />
+                      <Route path="retreats/:retreatId/:tab" element={<RetreatDetailRoute />} />
+                      <Route path="retreat/:retreatId" element={<RetreatDetailRoute />} />
+                      <Route path="retreat/:retreatId/:tab" element={<RetreatDetailRoute />} />
+                      <Route path="retreat/ceremonies" element={<CeremoniesPage />} />
+                      <Route path="retreat/bookings" element={<BookingsGrid />} />
+                      <Route path="retreat/houses" element={<HousesGrid />} />
                       <Route path="ceremonies" element={<CeremoniesPage />} />
                       <Route path="houses" element={<HousesGrid />} />
                       <Route path="clients" element={<UnifiedClientManager />} />

@@ -39,7 +39,11 @@ const { Panel } = Collapse;
 interface RetreatDetailViewProps {
   retreatId: string;
   onBack: () => void;
+  initialTab?: RetreatDetailTab;
+  onTabChange?: (tab: RetreatDetailTab) => void;
 }
+
+export type RetreatDetailTab = 'clients' | 'holisticView' | 'tracking' | 'expenses' | 'payments' | 'ceremonies' | 'analytics' | 'tasks';
 
 interface QuickBookingFormData {
   firstName: string;
@@ -105,12 +109,12 @@ const formatUSD = (amount: number) => {
   });
 };
 
-const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack }) => {
+const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack, initialTab = 'clients', onTabChange }) => {
   const [retreat, setRetreat] = useState<Retreat | null>(null);
   const [clients, setClients] = useState<RetreatClientData[]>([]);
   const [expensesSummary, setExpensesSummary] = useState<ExpenseSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'clients' | 'holisticView' | 'tracking' | 'expenses' | 'payments' | 'ceremonies' | 'analytics' | 'tasks'>('clients');
+  const [activeTab, setActiveTab] = useState<RetreatDetailTab>(initialTab);
   const [viewingClientId, setViewingClientId] = useState<string | null>(null);
   const [editingBookingId, setEditingBookingId] = useState<string | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -241,6 +245,15 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   useEffect(() => {
     fetchRetreatData();
   }, [fetchRetreatData]);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
+
+  const handleTabChange = useCallback((tab: RetreatDetailTab) => {
+    setActiveTab(tab);
+    onTabChange?.(tab);
+  }, [onTabChange]);
 
   const handleDeleteBooking = useCallback(async (bookingId: string) => {
     if (window.confirm('Are you sure you want to delete this booking? This action cannot be undone.')) {
@@ -642,56 +655,56 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       <div className="tab-navigation">
         <button
           className={`tab-btn ${activeTab === 'clients' ? 'active' : ''}`}
-          onClick={() => setActiveTab('clients')}
+          onClick={() => handleTabChange('clients')}
         >
           <PeopleAltRoundedIcon className="retreat-tab-icon" />
           <span>Clients ({clients.length})</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'holisticView' ? 'active' : ''}`}
-          onClick={() => setActiveTab('holisticView')}
+          onClick={() => handleTabChange('holisticView')}
         >
           <AssignmentTurnedInRoundedIcon className="retreat-tab-icon" />
           <span>Retreat Readiness</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'tracking' ? 'active' : ''}`}
-          onClick={() => setActiveTab('tracking')}
+          onClick={() => handleTabChange('tracking')}
         >
           <FactCheckRoundedIcon className="retreat-tab-icon" />
           <span>Tracking Grid</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'expenses' ? 'active' : ''}`}
-          onClick={() => setActiveTab('expenses')}
+          onClick={() => handleTabChange('expenses')}
         >
           <SavingsRoundedIcon className="retreat-tab-icon" />
           <span>Expenses</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'payments' ? 'active' : ''}`}
-          onClick={() => setActiveTab('payments')}
+          onClick={() => handleTabChange('payments')}
         >
           <CreditCardRoundedIcon className="retreat-tab-icon" />
           <span>Payments</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'ceremonies' ? 'active' : ''}`}
-          onClick={() => setActiveTab('ceremonies')}
+          onClick={() => handleTabChange('ceremonies')}
         >
           <SpaRoundedIcon className="retreat-tab-icon" />
           <span>Ceremonies</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'analytics' ? 'active' : ''}`}
-          onClick={() => setActiveTab('analytics')}
+          onClick={() => handleTabChange('analytics')}
         >
           <InsightsRoundedIcon className="retreat-tab-icon" />
           <span>Analytics</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'tasks' ? 'active' : ''}`}
-          onClick={() => setActiveTab('tasks')}
+          onClick={() => handleTabChange('tasks')}
         >
           <TaskAltRoundedIcon className="retreat-tab-icon" />
           <span>Tasks</span>
