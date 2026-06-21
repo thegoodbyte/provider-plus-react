@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { FiArrowLeft, FiChevronDown, FiDownload, FiEdit3, FiEye, FiMail, FiSend } from 'react-icons/fi';
-import { bookingsApi, bookingFlowApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { bookingsApi, bookingFlowApi, ceremoniesApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import BookingPaymentManagement from './BookingPaymentManagement';
 import BookingMedicalUpload from './BookingMedicalUpload';
 import BookingDocumentsUpload from './BookingDocumentsUpload';
 import ClientBookingWorkflowTab from './ClientBookingWorkflowTab';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 import { createBookingConfirmationPdf, generateBookingPDF } from './BookingConfirmationPDF';
-import { BookingFlowItem, MedicalArtifact, MedicalReviewRequest } from '../types';
+import { BookingFlowItem, CeremonyParticipant, MedicalArtifact, MedicalReviewRequest } from '../types';
 import './BookingDetailView.css';
 
 type RequirementArtifactType = NonNullable<MedicalArtifact['artifactType']>;
@@ -37,6 +37,16 @@ const requirementDefinitions: RequirementDefinition[] = [
 
 const completedStatuses = new Set(['received', 'reviewed', 'approved', 'completed', 'caution']);
 const reviewedStatuses = new Set(['reviewed', 'approved', 'completed', 'caution', 'rejected', 'needs_resubmission']);
+const medicalStageLabels: Record<MedicalArtifact['documentStage'], string> = {
+  entry: 'Entry',
+  pre_ceremony: 'Pre-ceremony',
+  in_ceremony: 'In-ceremony',
+  post_ceremony: 'Post-ceremony',
+  additional: 'Additional',
+};
+
+const medicalStageOrder: MedicalArtifact['documentStage'][] = ['entry', 'pre_ceremony', 'in_ceremony', 'post_ceremony', 'additional'];
+const requiredEntryDocumentTypes: MedicalArtifact['documentType'][] = ['EKG', 'Liver'];
 
 const escapeHtml = (value: any) =>
   String(value ?? '').replace(/[&<>"']/g, (char) => ({
@@ -113,6 +123,41 @@ const getReviewTime = (review: MedicalReviewRequest) =>
 const getObjectId = (value: any) => typeof value === 'object' ? value?._id || value?.id : value;
 
 const getClientEmail = (client: any) => String(client?.email || '').trim();
+
+const formatShortDateTime = (value?: Date | string) => {
+  if (!value) return 'N/A';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'N/A';
+  return date.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
+const getReviewDecisionText = (review?: MedicalReviewRequest) =>
+  review?.reviewDecision || review?.decision || (review?.status && reviewedStatuses.has(review.status) ? review.status : 'No decision');
+
+const getReviewDecisionClass = (review?: MedicalReviewRequest) => {
+  const decision = String(getReviewDecisionText(review)).toLowerCase();
+  if (decision.includes('ok') || decision.includes('approved') || decision.includes('completed')) return 'medical-decision-ok';
+  if (decision.includes('caution') || decision.includes('need')) return 'medical-decision-caution';
+  if (decision.includes('not') || decision.includes('declined') || decision.includes('reject')) return 'medical-decision-declined';
+  return 'medical-decision-pending';
+};
+
+const getArtifactDisplayTitle = (artifact: MedicalArtifact) => {
+  const title = artifact.title || artifact.documentType || artifact.artifactType || 'Medical record';
+  const ceremony = artifact.ceremonyNumber ? `Ceremony #${artifact.ceremonyNumber}` : '';
+  return [title, ceremony].filter(Boolean).join(' - ');
+};
+
+const getLatestReviewForArtifact = (artifact: MedicalArtifact, reviewsByArtifact: Record<string, MedicalReviewRequest[]>) => {
+  if (!artifact._id) return undefined;
+  return [...(reviewsByArtifact[artifact._id] || [])].sort((a, b) => getReviewTime(b) - getReviewTime(a))[0];
+};
 
 const mergeArtifacts = (artifactGroups: MedicalArtifact[][]) => {
   const seen = new Set<string>();
@@ -276,6 +321,350 @@ const BookingRequirementsPanel: React.FC<{
   );
 };
 
+const MedicalReviewLine: React.FC<{
+  review?: MedicalReviewRequest;
+  routePrefix: string;
+  navigate: ReturnType<typeof useNavigate>;
+}> = ({ review, routePrefix, navigate }) => (
+  <div className="booking-medical-review-line">
+    <span className={`booking-medical-decision ${getReviewDecisionClass(review)}`}>
+      {getReviewDecisionText(review)}
+    </span>
+    {review?._id ? (
+      <button
+        type="button"
+        className="booking-medical-link"
+        onClick={() => navigate(`${routePrefix}/medical-review-requests/${review._id}`)}
+      >
+        Review #{review.display_id || review._id}
+      </button>
+    ) : (
+      <span className="booking-medical-muted">No medical review linked yet</span>
+    )}
+    {review?.reviewedAt && <span className="booking-medical-muted">{formatShortDateTime(review.reviewedAt)}</span>}
+    {(review?.reviewNotes || review?.overallNotes || review?.medicalStaffNotes) && (
+      <span className="booking-medical-notes">{review.reviewNotes || review.overallNotes || review.medicalStaffNotes}</span>
+    )}
+  </div>
+);
+
+const BookingMedicalOverviewPanel: React.FC<{
+  bookingId: string;
+  clientId?: string;
+  retreatId?: string;
+  refreshKey: number;
+  onUploadComplete: () => void;
+  bookingNumber?: number | string;
+}> = ({ bookingId, clientId, retreatId, refreshKey, onUploadComplete, bookingNumber }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const routePrefix = useMemo(() => {
+    const firstSegment = location.pathname.split('/').filter(Boolean)[0];
+    return ['admin', 'medical', 'staff', 'user'].includes(firstSegment) ? `/${firstSegment}` : '';
+  }, [location.pathname]);
+  const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
+  const [reviewsByArtifact, setReviewsByArtifact] = useState<Record<string, MedicalReviewRequest[]>>({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const loadMedicalOverview = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const artifactResponses = await Promise.all([
+        medicalArtifactsApi.getAll({ bookingId }),
+        clientId && retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId }) : Promise.resolve({ data: [] }),
+      ]);
+      const loadedArtifacts = mergeArtifacts(artifactResponses.map((response) => response.data || []))
+        .sort(compareArtifactsForDisplay);
+      const reviewEntries = await Promise.all(
+        loadedArtifacts
+          .filter((artifact) => artifact._id)
+          .map(async (artifact) => {
+            try {
+              const reviewsResponse = await medicalReviewRequestsApi.getByArtifact(artifact._id!);
+              return [artifact._id!, reviewsResponse.data || []] as const;
+            } catch {
+              return [artifact._id!, []] as const;
+            }
+          })
+      );
+      setArtifacts(loadedArtifacts);
+      setReviewsByArtifact(Object.fromEntries(reviewEntries));
+    } catch (loadError: any) {
+      setError(loadError?.response?.data?.message || loadError?.message || 'Unable to load booking medical records.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadMedicalOverview();
+  }, [bookingId, clientId, retreatId, refreshKey]);
+
+  const artifactsByStage = medicalStageOrder.reduce((acc, stage) => {
+    acc[stage] = artifacts.filter((artifact) => (artifact.documentStage || 'entry') === stage);
+    return acc;
+  }, {} as Record<MedicalArtifact['documentStage'], MedicalArtifact[]>);
+
+  const entryArtifacts = artifactsByStage.entry || [];
+  const requiredRows = requiredEntryDocumentTypes.map((documentType) => {
+    const match = entryArtifacts.find((artifact) => artifact.documentType === documentType);
+    return { documentType, artifact: match, review: match ? getLatestReviewForArtifact(match, reviewsByArtifact) : undefined };
+  });
+
+  return (
+    <div className="booking-medical-panel">
+      <div className="detail-section">
+        <div className="section-header">
+          <h3 className="pdf-section-title">Required Entry Medical Items</h3>
+          <button className="edit-btn" type="button" onClick={loadMedicalOverview} disabled={loading}>
+            {loading ? 'Refreshing...' : 'Refresh'}
+          </button>
+        </div>
+        {error && <div className="alert alert-danger">{error}</div>}
+        <div className="booking-medical-required-grid">
+          {requiredRows.map(({ documentType, artifact, review }) => (
+            <div key={documentType} className={`booking-medical-required-card ${artifact ? 'is-present' : 'is-missing'}`}>
+              <div>
+                <div className="booking-medical-required-title">Entry {documentType}</div>
+                <div className="booking-medical-muted">
+                  Lookup: entry document + booking #{bookingNumber || bookingId}
+                </div>
+              </div>
+              {artifact ? (
+                <>
+                  <button
+                    type="button"
+                    className="booking-medical-link"
+                    onClick={() => navigate(`${routePrefix}/medical-artifacts/${artifact._id}`)}
+                  >
+                    Artifact #{artifact.display_id || artifact._id}
+                  </button>
+                  <MedicalReviewLine review={review} routePrefix={routePrefix} navigate={navigate} />
+                </>
+              ) : (
+                <span className="booking-medical-decision medical-decision-declined">Missing</span>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="detail-section">
+        <h3 className="pdf-section-title">Medical Records by Stage</h3>
+        <div className="booking-medical-stage-list">
+          {medicalStageOrder.map((stage) => {
+            const stageArtifacts = artifactsByStage[stage] || [];
+            return (
+              <details key={stage} className="booking-medical-stage" open={stage === 'entry'}>
+                <summary>
+                  <span>{medicalStageLabels[stage]}</span>
+                  <span>{stageArtifacts.length}</span>
+                </summary>
+                {stageArtifacts.length === 0 ? (
+                  <div className="booking-medical-empty">No {medicalStageLabels[stage].toLowerCase()} records found.</div>
+                ) : (
+                  <div className="booking-medical-record-list">
+                    {stageArtifacts.map((artifact) => {
+                      const review = getLatestReviewForArtifact(artifact, reviewsByArtifact);
+                      return (
+                        <div key={artifact._id || `${artifact.documentType}-${artifact.receivedAt}`} className="booking-medical-record">
+                          <div className="booking-medical-record-main">
+                            <button
+                              type="button"
+                              className="booking-medical-link booking-medical-title-link"
+                              onClick={() => artifact._id && navigate(`${routePrefix}/medical-artifacts/${artifact._id}`)}
+                              disabled={!artifact._id}
+                            >
+                              #{artifact.display_id || artifact._id || 'New'} {getArtifactDisplayTitle(artifact)}
+                            </button>
+                            <div className="booking-medical-meta">
+                              <span>{artifact.documentType}</span>
+                              <span>{artifact.artifactType || 'artifact'}</span>
+                              <span>{formatShortDateTime(artifact.receivedAt || artifact.createdAt)}</span>
+                              <span>{(artifact.files || []).length} file(s)</span>
+                            </div>
+                          </div>
+                          <MedicalReviewLine review={review} routePrefix={routePrefix} navigate={navigate} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </details>
+            );
+          })}
+        </div>
+      </div>
+
+      {clientId && retreatId ? (
+        <BookingMedicalUpload
+          bookingId={bookingId}
+          bookingNumber={bookingNumber}
+          clientId={clientId}
+          retreatId={retreatId}
+          onUploadComplete={() => {
+            onUploadComplete();
+            loadMedicalOverview();
+          }}
+        />
+      ) : (
+        <div className="detail-section">
+          <p className="text-sm text-gray-500">Medical upload needs a linked client and retreat on this booking.</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const BookingCeremoniesPanel: React.FC<{
+  bookingId: string;
+  clientId?: string;
+  retreatId?: string;
+  refreshKey: number;
+}> = ({ bookingId, clientId, retreatId, refreshKey }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const routePrefix = useMemo(() => {
+    const firstSegment = location.pathname.split('/').filter(Boolean)[0];
+    return ['admin', 'medical', 'staff', 'user'].includes(firstSegment) ? `/${firstSegment}` : '';
+  }, [location.pathname]);
+  const [participations, setParticipations] = useState<CeremonyParticipant[]>([]);
+  const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
+  const [reviewsByArtifact, setReviewsByArtifact] = useState<Record<string, MedicalReviewRequest[]>>({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const loadCeremonies = async () => {
+    if (!clientId) return;
+    setLoading(true);
+    setError('');
+    try {
+      const [participationResponse, artifactResponses] = await Promise.all([
+        ceremoniesApi.getClientParticipations(clientId),
+        Promise.all([
+          medicalArtifactsApi.getAll({ bookingId }),
+          retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId }) : Promise.resolve({ data: [] }),
+        ]),
+      ]);
+      const allParticipations = participationResponse.data || [];
+      const loadedArtifacts = mergeArtifacts(artifactResponses.map((response) => response.data || []))
+        .sort(compareArtifactsForDisplay);
+      const reviewEntries = await Promise.all(
+        loadedArtifacts
+          .filter((artifact) => artifact._id)
+          .map(async (artifact) => {
+            try {
+              const reviewsResponse = await medicalReviewRequestsApi.getByArtifact(artifact._id!);
+              return [artifact._id!, reviewsResponse.data || []] as const;
+            } catch {
+              return [artifact._id!, []] as const;
+            }
+          })
+      );
+      setParticipations(retreatId
+        ? allParticipations.filter((participation: any) => getObjectId(participation.retreatId) === retreatId)
+        : allParticipations);
+      setArtifacts(loadedArtifacts);
+      setReviewsByArtifact(Object.fromEntries(reviewEntries));
+    } catch (loadError: any) {
+      setError(loadError?.response?.data?.message || loadError?.message || 'Unable to load ceremony information.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCeremonies();
+  }, [bookingId, clientId, retreatId, refreshKey]);
+
+  const getStageArtifactsForCeremony = (ceremonyNumber: number | undefined, stage: MedicalArtifact['documentStage']) =>
+    artifacts.filter((artifact) => artifact.documentStage === stage && (!ceremonyNumber || artifact.ceremonyNumber === ceremonyNumber));
+
+  const renderArtifactChips = (ceremonyNumber: number | undefined, stage: MedicalArtifact['documentStage']) => {
+    const matches = getStageArtifactsForCeremony(ceremonyNumber, stage);
+    if (matches.length === 0) return <span className="booking-medical-muted">None</span>;
+    return (
+      <div className="booking-ceremony-artifact-list">
+        {matches.map((artifact) => {
+          const review = getLatestReviewForArtifact(artifact, reviewsByArtifact);
+          return (
+            <button
+              key={artifact._id || `${stage}-${artifact.documentType}-${artifact.receivedAt}`}
+              type="button"
+              className={`booking-ceremony-artifact-chip ${getReviewDecisionClass(review)}`}
+              onClick={() => artifact._id && navigate(`${routePrefix}/medical-artifacts/${artifact._id}`)}
+            >
+              {artifact.documentType} #{artifact.display_id || artifact._id}
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
+
+  return (
+    <div className="detail-section">
+      <div className="section-header">
+        <h3 className="pdf-section-title">Ceremonies</h3>
+        <button className="edit-btn" type="button" onClick={loadCeremonies} disabled={loading}>
+          {loading ? 'Refreshing...' : 'Refresh'}
+        </button>
+      </div>
+      {error && <div className="alert alert-danger">{error}</div>}
+      {participations.length === 0 ? (
+        <p className="text-sm text-gray-500">No ceremony participation records found for this booking retreat.</p>
+      ) : (
+        <div className="booking-ceremony-list">
+          {participations.map((participation: any) => {
+            const ceremony = participation.ceremonyId || {};
+            return (
+              <div key={participation._id || getObjectId(ceremony)} className="booking-ceremony-card">
+                <div className="booking-ceremony-card-header">
+                  <div>
+                    <div className="booking-medical-required-title">Ceremony #{ceremony.ceremonyNumber || participation.ceremonyNumber || 'N/A'}</div>
+                    <div className="booking-medical-muted">
+                      {formatShortDateTime(ceremony.date)} {ceremony.startTime ? ` - ${ceremony.startTime}` : ''}
+                    </div>
+                  </div>
+                  <span className={`booking-medical-decision ${participation.medicalClearance === 'approved' ? 'medical-decision-ok' : participation.medicalClearance === 'not_approved' ? 'medical-decision-declined' : participation.medicalClearance === 'conditional' ? 'medical-decision-caution' : 'medical-decision-pending'}`}>
+                    {participation.medicalClearance || 'pending'}
+                  </span>
+                </div>
+                <div className="booking-ceremony-grid">
+                  <div>
+                    <label>Spoons</label>
+                    <strong>{participation.spoonsTaken || 0}</strong>
+                    <span>{participation.firstSpoonTime || 'No time recorded'}</span>
+                  </div>
+                  <div>
+                    <label>Pre-ceremony labs</label>
+                    {renderArtifactChips(ceremony.ceremonyNumber, 'pre_ceremony')}
+                  </div>
+                  <div>
+                    <label>In-ceremony labs</label>
+                    {renderArtifactChips(ceremony.ceremonyNumber, 'in_ceremony')}
+                  </div>
+                  <div>
+                    <label>Post-ceremony labs</label>
+                    {renderArtifactChips(ceremony.ceremonyNumber, 'post_ceremony')}
+                  </div>
+                </div>
+                {(participation.medicalClearanceNotes || participation.individualNotes || participation.postCeremonyNotes) && (
+                  <p className="booking-medical-notes">
+                    {participation.medicalClearanceNotes || participation.individualNotes || participation.postCeremonyNotes}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
+
 const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack }) => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -290,7 +679,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [isSendingConfirmation, setIsSendingConfirmation] = useState(false);
   const [isPreparingConfirmationEmail, setIsPreparingConfirmationEmail] = useState(false);
   const [confirmationEmailDraft, setConfirmationEmailDraft] = useState<EmailComposeInitialValues | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'requirements' | 'medical' | 'documents' | 'workflow' | 'notes'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'requirements' | 'medical' | 'ceremonies' | 'documents' | 'workflow' | 'notes'>('overview');
   const [showBookingDates, setShowBookingDates] = useState(false);
   const [showClientDetails, setShowClientDetails] = useState(false);
   const [showRetreatInfo, setShowRetreatInfo] = useState(false);
@@ -577,6 +966,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     { key: 'payments', label: 'Payments' },
     { key: 'requirements', label: 'Requirements' },
     { key: 'medical', label: 'Medical' },
+    { key: 'ceremonies', label: 'Ceremonies' },
     { key: 'documents', label: 'Documents' },
     { key: 'workflow', label: 'Booking Steps' },
     { key: 'notes', label: 'Notes' },
@@ -908,12 +1298,22 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         )}
 
         {activeTab === 'medical' && (
-          <BookingMedicalUpload
+          <BookingMedicalOverviewPanel
             bookingId={bookingId}
             bookingNumber={booking.bookingNumber}
             clientId={typeof client === 'object' ? client._id : client}
             retreatId={typeof retreat === 'object' ? retreat._id : retreat}
+            refreshKey={requirementsRefreshKey}
             onUploadComplete={handleBookingRelatedUpdate}
+          />
+        )}
+
+        {activeTab === 'ceremonies' && (
+          <BookingCeremoniesPanel
+            bookingId={bookingId}
+            clientId={getObjectId(client)}
+            retreatId={getObjectId(retreat)}
+            refreshKey={requirementsRefreshKey}
           />
         )}
 
