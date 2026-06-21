@@ -64,6 +64,9 @@ const formatFileSize = (bytes: number) => {
 const getClientName = (client: any) =>
   [client?.firstName || client?.fname, client?.lastName || client?.lname].filter(Boolean).join(' ').trim();
 
+const getClientDisplayId = (client: any, booking?: any) =>
+  client?.display_id || client?.displayId || client?.clientNumber || booking?.clientDisplayId || booking?.clientDetails?.display_id || '';
+
 const getRetreatCode = (retreat: any) => {
   const explicitCode = String(retreat?.code || retreat?.retreatCode || '').trim();
   if (explicitCode) return explicitCode;
@@ -564,6 +567,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const client = booking.clientId || booking.clientDetails;
   const retreat = booking.retreatId || booking.retreatDetails;
   const clientName = getClientName(client) || 'N/A';
+  const clientDisplayId = getClientDisplayId(client, booking);
   const bookingTypeCode = booking.bookingType === 'booster' ? 'B' : 'F';
   const retreatCode = getRetreatCode(retreat);
   const retreatAddress = getRetreatAddress(retreat);
@@ -678,12 +682,18 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
             <button
               key={tab.key}
               type="button"
-              className={`booking-detail-tab ${activeTab === tab.key ? 'active' : ''}`}
+              className={`booking-detail-tab ${tab.key === 'overview' ? 'booking-detail-tab-overview' : ''} ${activeTab === tab.key ? 'active' : ''}`}
               onClick={() => setActiveTab(tab.key)}
               role="tab"
               aria-selected={activeTab === tab.key}
             >
-              {tab.label}
+              {tab.key === 'overview' ? (
+                <span className="booking-overview-tab-label">
+                  <strong>{clientName}</strong>
+                  {clientDisplayId && <strong>Client #{clientDisplayId}</strong>}
+                  <span>{retreatCode}</span>
+                </span>
+              ) : tab.label}
             </button>
           ))}
         </div>

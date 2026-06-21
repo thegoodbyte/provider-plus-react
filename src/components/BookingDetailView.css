@@ -239,6 +239,28 @@
   color: #ffffff;
 }
 
+.booking-detail-tab-overview.active {
+  flex: 1 1 320px;
+}
+
+.booking-overview-tab-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  max-width: 100%;
+  line-height: 1.2;
+  white-space: normal;
+}
+
+.booking-overview-tab-label strong {
+  font-weight: 850;
+}
+
+.booking-overview-tab-label span {
+  font-weight: 750;
+}
+
 .booking-overview-summary {
   display: flex;
   align-items: center;
