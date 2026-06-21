@@ -92,15 +92,18 @@ export const clientsApi = {
   getOne: (id: string) => cachedGet<Client>(`clients:${id}`, () => api.get<Client>(`/clients/${id}`)),
   create: (data: Omit<Client, '_id'>) => {
     cacheService.clearPattern('clients:');
-    return api.post<Client>('/clients', data);
+    const { loginPin: _loginPin, ...safeData } = data as Partial<Client> & { loginPin?: string };
+    return api.post<Client>('/clients', safeData);
   },
   quickAdd: (data: Partial<Client>) => {
     cacheService.clearPattern('clients:');
-    return api.post<Client>('/clients/quick-add', data);
+    const { loginPin: _loginPin, ...safeData } = data as Partial<Client> & { loginPin?: string };
+    return api.post<Client>('/clients/quick-add', safeData);
   },
   update: (id: string, data: Partial<Client>) => {
     cacheService.clearPattern('clients:');
-    return api.patch<Client>(`/clients/${id}`, data);
+    const { loginPin: _loginPin, ...safeData } = data as Partial<Client> & { loginPin?: string };
+    return api.patch<Client>(`/clients/${id}`, safeData);
   },
   delete: (id: string) => {
     cacheService.clearPattern('clients:');
