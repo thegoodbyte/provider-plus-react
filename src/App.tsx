@@ -10,7 +10,6 @@ import { installNativeDialogReplacement } from './utils/nativeDialogReplacement'
 import './App.css';
 import './styles/apple.css';
 import './styles/animations.css';
-import './styles/noBlueTheme.css';
 
 installNativeDialogReplacement();
 

@@ -394,7 +394,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
 
       <div className="mt-4 flex items-center justify-between">
         <div className="flex gap-2">
-          <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-2 rounded-md bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-900 disabled:opacity-50">
+          <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
             <Icon icon={Save} className="h-4 w-4" />
             {saving ? 'Saving...' : selectedTemplateId ? 'Save Step' : 'Add Step'}
           </button>
@@ -527,7 +527,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
             <button
               disabled={!selectedRetreatId || applying}
               onClick={handleApplyAll}
-              className="inline-flex w-full items-center justify-between rounded-md bg-gray-800 px-3 py-2 text-sm font-medium text-white hover:bg-gray-900 disabled:opacity-50"
+              className="inline-flex w-full items-center justify-between rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
             >
               <span className="inline-flex items-center gap-2">
                 <Icon icon={CheckCircle2} className="h-4 w-4" />
