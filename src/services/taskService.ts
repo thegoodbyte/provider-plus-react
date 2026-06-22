@@ -12,7 +12,10 @@ export interface Task {
   clientId?: string | {
     firstName: string;
     lastName: string;
+    fname?: string;
+    lname?: string;
     email: string;
+    display_id?: number | string;
   };
   retreatId?: string | {
     name: string;
