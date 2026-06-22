@@ -258,6 +258,160 @@ const RetreatFlowLibraryPage: React.FC = () => {
 
   const sortedTemplates = useMemo(() => templates.slice().sort((a, b) => (a.order || 0) - (b.order || 0)), [templates]);
 
+  const renderTemplateEditor = () => (
+    <div className="rounded-md border border-gray-200 bg-white p-4 shadow-sm">
+      <div className="border-b border-gray-200 pb-3">
+        <h3 className="text-sm font-semibold text-gray-900">{selectedTemplateId ? 'Edit Selected Step' : 'Add New Step'}</h3>
+        <p className="text-xs text-gray-500">These fields define what gets generated onto each booking requirement row.</p>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Step key</span>
+          <input value={form.key} onChange={(e) => setForm({ ...form, key: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="ekg_received" />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Display title</span>
+          <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Entry EKG received" />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Workflow stage</span>
+          <select value={form.workflowStage} onChange={(e) => setForm({ ...form, workflowStage: e.target.value as TemplateForm['workflowStage'] })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+            <option value="potential">Potential</option>
+            <option value="screening">Screening</option>
+            <option value="payment">Payment</option>
+            <option value="conditional_booking">Conditional booking</option>
+            <option value="contract">Contract</option>
+            <option value="questionnaire">Questionnaire</option>
+            <option value="medical">Medical</option>
+            <option value="prep">Prep</option>
+            <option value="approved">Approved</option>
+            <option value="cancelled">Cancelled</option>
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Deadline basis</span>
+          <select value={form.deadlineBasis} onChange={(e) => setForm({ ...form, deadlineBasis: e.target.value as TemplateForm['deadlineBasis'] })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+            <option value="before_retreat_start">Before retreat start</option>
+            <option value="after_signup">After signup</option>
+            <option value="after_booking">After booking</option>
+            <option value="after_initial_payment">After initial payment</option>
+            <option value="manual">Manual due date</option>
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Offset days</span>
+          <input value={form.offsetDays} type="number" onChange={(e) => setForm({ ...form, offsetDays: Number(e.target.value) })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="21" />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Category</span>
+          <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value as TemplateForm['category'] })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+            <option value="screening">Screening</option>
+            <option value="booking">Booking</option>
+            <option value="contract">Contract</option>
+            <option value="questionnaire">Questionnaire</option>
+            <option value="medical">Medical</option>
+            <option value="payment">Payment</option>
+            <option value="dietary">Dietary</option>
+            <option value="message">Message</option>
+            <option value="access">Access</option>
+            <option value="approval">Approval</option>
+            <option value="reminder">Reminder</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+      </div>
+
+      <label className="mt-3 block">
+        <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Description</span>
+        <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Description" />
+      </label>
+
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Task title</span>
+          <input value={form.taskTitle} onChange={(e) => setForm({ ...form, taskTitle: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Check EKG received" />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Task priority</span>
+          <select value={form.taskPriority} onChange={(e) => setForm({ ...form, taskPriority: e.target.value as TemplateForm['taskPriority'] })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Display order</span>
+          <input value={form.order} type="number" onChange={(e) => setForm({ ...form, order: Number(e.target.value) })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="60" />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Readiness group</span>
+          <input value={form.readinessGroup} onChange={(e) => setForm({ ...form, readinessGroup: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="ekg" />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Expected artifact</span>
+          <input value={form.expectedArtifact} onChange={(e) => setForm({ ...form, expectedArtifact: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="ekg" />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Requirement type</span>
+          <input value={form.requirementType} onChange={(e) => setForm({ ...form, requirementType: e.target.value, isRequirement: Boolean(e.target.value) || form.isRequirement })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="entry_ekg" />
+        </label>
+      </div>
+
+      <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 p-3">
+        <label className="flex items-center gap-2 text-sm font-medium text-gray-800">
+          <input
+            type="checkbox"
+            checked={form.emailEnabled}
+            onChange={(e) => setForm({ ...form, emailEnabled: e.target.checked })}
+          />
+          Send email from this step
+        </label>
+        <select
+          value={form.emailTemplateId}
+          onChange={(e) => setForm({ ...form, emailTemplateId: e.target.value, emailEnabled: Boolean(e.target.value) })}
+          disabled={!form.emailEnabled}
+          className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-100"
+        >
+          <option value="">Select email template</option>
+          {emailTemplates.map((template) => (
+            <option key={template._id} value={template._id}>{template.name} ({template.category || 'general'})</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="mt-3 rounded-md border border-gray-200 bg-white p-3">
+        <div className="mb-2 text-xs font-semibold uppercase text-gray-500">Step flags</div>
+        <div className="grid gap-2 text-sm sm:grid-cols-2">
+          <label className="flex items-center gap-2"><input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} /> Active</label>
+          <label className="flex items-center gap-2"><input type="checkbox" checked={form.isBlocking} onChange={(e) => setForm({ ...form, isBlocking: e.target.checked })} /> Blocking requirement</label>
+          <label className="flex items-center gap-2"><input type="checkbox" checked={form.createsTask} onChange={(e) => setForm({ ...form, createsTask: e.target.checked })} /> Creates task</label>
+          <label className="flex items-center gap-2"><input type="checkbox" checked={form.reviewRequired} onChange={(e) => setForm({ ...form, reviewRequired: e.target.checked })} /> Review required</label>
+          <label className="flex items-center gap-2"><input type="checkbox" checked={form.isRequirement} onChange={(e) => setForm({ ...form, isRequirement: e.target.checked })} /> Booking requirement</label>
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between">
+        <div className="flex gap-2">
+          <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-2 rounded-md bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-900 disabled:opacity-50">
+            <Icon icon={Save} className="h-4 w-4" />
+            {saving ? 'Saving...' : selectedTemplateId ? 'Save Step' : 'Add Step'}
+          </button>
+          <button onClick={handleNewStep} className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+            New
+          </button>
+        </div>
+        {selectedTemplateId && (
+          <button onClick={handleDelete} className="inline-flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 hover:bg-red-100">
+            <Icon icon={Trash2} className="h-4 w-4" />
+            Delete
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
   if (loading && templates.length === 0) {
     return <LoadingSpinner message="Loading booking step setup..." />;
   }
@@ -297,184 +451,56 @@ const RetreatFlowLibraryPage: React.FC = () => {
             <span className="text-xs text-gray-500">{sortedTemplates.length} steps</span>
           </div>
           <div className="space-y-2">
-            {sortedTemplates.map((template) => (
-              <button
-                key={template._id}
-                draggable
-                onDragStart={() => setDraggedTemplateId(template._id || '')}
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={() => handleTemplateDrop(template._id)}
-                onClick={() => selectTemplate(template)}
-                className={`block w-full rounded-md border px-3 py-2 text-left ${selectedTemplateId === template._id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'} ${draggedTemplateId === template._id ? 'opacity-60' : ''}`}
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <Icon icon={GripVertical} className="h-4 w-4 shrink-0 text-gray-400" />
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-gray-900">{template.title}</div>
-                      <div className="truncate text-xs text-gray-500">{template.key} • {template.category} • {formatDeadlineLabel(template)}</div>
+            {sortedTemplates.map((template) => {
+              const isSelected = selectedTemplateId === template._id;
+
+              return (
+                <React.Fragment key={template._id}>
+                  <button
+                    draggable
+                    onDragStart={() => setDraggedTemplateId(template._id || '')}
+                    onDragOver={(event) => event.preventDefault()}
+                    onDrop={() => handleTemplateDrop(template._id)}
+                    onClick={() => selectTemplate(template)}
+                    className={`block w-full rounded-md border bg-white px-3 py-2 text-left ${
+                      isSelected
+                        ? 'border-gray-400 ring-1 ring-gray-300'
+                        : 'border-gray-200 hover:bg-gray-50'
+                    } ${draggedTemplateId === template._id ? 'opacity-60' : ''}`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <Icon icon={GripVertical} className="h-4 w-4 shrink-0 text-gray-400" />
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold text-gray-900">{template.title}</div>
+                          <div className="truncate text-xs text-gray-500">{template.key} • {template.category} • {formatDeadlineLabel(template)}</div>
+                        </div>
+                      </div>
+                      <div className="text-right text-xs text-gray-500">
+                        <div>#{template.order || 0}</div>
+                        <div>{template.workflowStage || 'potential'}</div>
+                        <div>{template.active === false ? 'Hidden' : 'Active'}</div>
+                        <div>{template.isBlocking ? 'Blocking' : 'Non-blocking'}</div>
+                        {template.emailEnabled && <div>Email enabled</div>}
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-right text-xs text-gray-500">
-                    <div>#{template.order || 0}</div>
-                    <div>{template.workflowStage || 'potential'}</div>
-                    <div>{template.active === false ? 'Hidden' : 'Active'}</div>
-                    <div>{template.isBlocking ? 'Blocking' : 'Non-blocking'}</div>
-                    {template.emailEnabled && <div>Email enabled</div>}
-                  </div>
-                </div>
-              </button>
-            ))}
+                  </button>
+                  {isSelected && (
+                    <div className="mb-4 mt-2">
+                      {renderTemplateEditor()}
+                    </div>
+                  )}
+                </React.Fragment>
+              );
+            })}
             {sortedTemplates.length === 0 && <div className="rounded-md border border-dashed border-gray-300 p-4 text-sm text-gray-500">No booking step definitions yet. Seed defaults to create the standard booking flow.</div>}
           </div>
 
-          <div className="mt-5 border-t border-gray-200 pt-4">
-            <h3 className="text-sm font-semibold text-gray-900">{selectedTemplateId ? 'Edit Selected Step' : 'Add New Step'}</h3>
-            <p className="text-xs text-gray-500">These fields define what gets generated onto each booking requirement row.</p>
-          </div>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Step key</span>
-              <input value={form.key} onChange={(e) => setForm({ ...form, key: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="ekg_received" />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Display title</span>
-              <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Entry EKG received" />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Workflow stage</span>
-              <select value={form.workflowStage} onChange={(e) => setForm({ ...form, workflowStage: e.target.value as TemplateForm['workflowStage'] })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
-                <option value="potential">Potential</option>
-                <option value="screening">Screening</option>
-                <option value="payment">Payment</option>
-                <option value="conditional_booking">Conditional booking</option>
-                <option value="contract">Contract</option>
-                <option value="questionnaire">Questionnaire</option>
-                <option value="medical">Medical</option>
-                <option value="prep">Prep</option>
-                <option value="approved">Approved</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Deadline basis</span>
-              <select value={form.deadlineBasis} onChange={(e) => setForm({ ...form, deadlineBasis: e.target.value as TemplateForm['deadlineBasis'] })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
-                <option value="before_retreat_start">Before retreat start</option>
-                <option value="after_signup">After signup</option>
-                <option value="after_booking">After booking</option>
-                <option value="after_initial_payment">After initial payment</option>
-                <option value="manual">Manual due date</option>
-              </select>
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Offset days</span>
-              <input value={form.offsetDays} type="number" onChange={(e) => setForm({ ...form, offsetDays: Number(e.target.value) })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="21" />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Category</span>
-              <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value as TemplateForm['category'] })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
-                <option value="screening">Screening</option>
-                <option value="booking">Booking</option>
-                <option value="contract">Contract</option>
-                <option value="questionnaire">Questionnaire</option>
-                <option value="medical">Medical</option>
-                <option value="payment">Payment</option>
-                <option value="dietary">Dietary</option>
-                <option value="message">Message</option>
-                <option value="access">Access</option>
-                <option value="approval">Approval</option>
-                <option value="reminder">Reminder</option>
-                <option value="other">Other</option>
-              </select>
-            </label>
-          </div>
-
-          <label className="mt-3 block">
-            <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Description</span>
-            <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Description" />
-          </label>
-
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <label className="block">
-              <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Task title</span>
-              <input value={form.taskTitle} onChange={(e) => setForm({ ...form, taskTitle: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Check EKG received" />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Task priority</span>
-              <select value={form.taskPriority} onChange={(e) => setForm({ ...form, taskPriority: e.target.value as TemplateForm['taskPriority'] })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </select>
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Display order</span>
-              <input value={form.order} type="number" onChange={(e) => setForm({ ...form, order: Number(e.target.value) })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="60" />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Readiness group</span>
-              <input value={form.readinessGroup} onChange={(e) => setForm({ ...form, readinessGroup: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="ekg" />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Expected artifact</span>
-              <input value={form.expectedArtifact} onChange={(e) => setForm({ ...form, expectedArtifact: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="ekg" />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Requirement type</span>
-              <input value={form.requirementType} onChange={(e) => setForm({ ...form, requirementType: e.target.value, isRequirement: Boolean(e.target.value) || form.isRequirement })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="entry_ekg" />
-            </label>
-          </div>
-
-          <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 p-3">
-            <label className="flex items-center gap-2 text-sm font-medium text-gray-800">
-              <input
-                type="checkbox"
-                checked={form.emailEnabled}
-                onChange={(e) => setForm({ ...form, emailEnabled: e.target.checked })}
-              />
-              Send email from this step
-            </label>
-            <select
-              value={form.emailTemplateId}
-              onChange={(e) => setForm({ ...form, emailTemplateId: e.target.value, emailEnabled: Boolean(e.target.value) })}
-              disabled={!form.emailEnabled}
-              className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-100"
-            >
-              <option value="">Select email template</option>
-              {emailTemplates.map((template) => (
-                <option key={template._id} value={template._id}>{template.name} ({template.category || 'general'})</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="mt-3 rounded-md border border-gray-200 bg-white p-3">
-            <div className="mb-2 text-xs font-semibold uppercase text-gray-500">Step flags</div>
-            <div className="grid gap-2 text-sm sm:grid-cols-2">
-              <label className="flex items-center gap-2"><input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} /> Active</label>
-              <label className="flex items-center gap-2"><input type="checkbox" checked={form.isBlocking} onChange={(e) => setForm({ ...form, isBlocking: e.target.checked })} /> Blocking requirement</label>
-              <label className="flex items-center gap-2"><input type="checkbox" checked={form.createsTask} onChange={(e) => setForm({ ...form, createsTask: e.target.checked })} /> Creates task</label>
-              <label className="flex items-center gap-2"><input type="checkbox" checked={form.reviewRequired} onChange={(e) => setForm({ ...form, reviewRequired: e.target.checked })} /> Review required</label>
-              <label className="flex items-center gap-2"><input type="checkbox" checked={form.isRequirement} onChange={(e) => setForm({ ...form, isRequirement: e.target.checked })} /> Booking requirement</label>
+          {!selectedTemplateId && (
+            <div className="mt-4">
+              {renderTemplateEditor()}
             </div>
-          </div>
-
-          <div className="mt-4 flex items-center justify-between">
-            <div className="flex gap-2">
-              <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
-                <Icon icon={Save} className="h-4 w-4" />
-                {saving ? 'Saving...' : selectedTemplateId ? 'Save Step' : 'Add Step'}
-              </button>
-              <button onClick={handleNewStep} className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-                New
-              </button>
-            </div>
-            <button onClick={handleDelete} className="inline-flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 hover:bg-red-100">
-              <Icon icon={Trash2} className="h-4 w-4" />
-              Delete
-            </button>
-          </div>
+          )}
         </div>
 
         <div className="rounded-lg border border-gray-200 bg-white p-4">
@@ -489,19 +515,19 @@ const RetreatFlowLibraryPage: React.FC = () => {
             <button
               disabled={!selectedRetreatId || applying}
               onClick={handleApplySelected}
-              className="inline-flex w-full items-center justify-between rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+              className="inline-flex w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
             >
               <span className="inline-flex items-center gap-2">
                 <Icon icon={Copy} className="h-4 w-4" />
                 Apply selected step
               </span>
-              <span className="text-xs text-blue-600">{selectedRetreatId ? 'to retreat' : 'select retreat'}</span>
+              <span className="text-xs text-gray-500">{selectedRetreatId ? 'to retreat' : 'select retreat'}</span>
             </button>
 
             <button
               disabled={!selectedRetreatId || applying}
               onClick={handleApplyAll}
-              className="inline-flex w-full items-center justify-between rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+              className="inline-flex w-full items-center justify-between rounded-md bg-gray-800 px-3 py-2 text-sm font-medium text-white hover:bg-gray-900 disabled:opacity-50"
             >
               <span className="inline-flex items-center gap-2">
                 <Icon icon={CheckCircle2} className="h-4 w-4" />
