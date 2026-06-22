@@ -69,7 +69,7 @@ const FULL_MENU_SECTIONS: MenuSection[] = [
     Icon: Fi.FiLayers,
     items: [
       { id: 'retreat-flow', label: 'Retreat Readiness', Icon: Fi.FiCalendar },
-      { id: 'booking-flow', label: 'Booking Steps', Icon: Fi.FiLayers },
+      { id: 'retreat-flow-library', label: 'Booking Step Setup', Icon: Fi.FiLayers },
     ],
   },
   {
@@ -260,7 +260,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
             Icon: Fi.FiLayers,
             items: [
               { id: 'retreat-flow', label: 'Retreat Readiness', Icon: Fi.FiCalendar },
-              { id: 'booking-flow', label: 'Booking Steps', Icon: Fi.FiLayers },
+              { id: 'retreat-flow-library', label: 'Booking Step Setup', Icon: Fi.FiLayers },
             ],
           },
           { id: 'operations', label: 'Operations', Icon: Fi.FiBriefcase, items: [

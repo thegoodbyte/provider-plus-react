@@ -41,8 +41,9 @@ const AVAILABLE_PERMISSIONS: Permission[] = [
   { route: 'reminders', name: 'Reminders', description: 'Task reminders and notifications', category: 'Operations' },
   { route: 'communications', name: 'Communications', description: 'Client communications and templates', category: 'Operations' },
   { route: 'tasks', name: 'General Tasks', description: 'General task queue', category: 'Operations' },
-  { route: 'retreat-flow', name: 'Retreat Readiness', description: 'Retreat readiness workflow', category: 'Operations' },
-  { route: 'booking-flow', name: 'Booking Steps', description: 'Booking readiness workflow', category: 'Operations' },
+  { route: 'retreat-flow', name: 'Retreat Readiness', description: 'Retreat-specific readiness workflow', category: 'Operations' },
+  { route: 'retreat-flow-library', name: 'Booking Step Setup', description: 'Master booking step configuration', category: 'Operations' },
+  { route: 'booking-flow', name: 'Booking Requirements', description: 'Per-booking requirement deadlines and status', category: 'Operations' },
   { route: 'file-uploads', name: 'File Uploads', description: 'File upload inventory', category: 'Operations' },
 
   // Financial
@@ -87,6 +88,7 @@ const DEFAULT_PERMISSIONS: RolePermissions = {
   'communications': ['user', 'facilitator', 'medical_staff', 'admin'],
   'tasks': ['admin'],
   'retreat-flow': ['medical_staff', 'admin'],
+  'retreat-flow-library': ['medical_staff', 'admin'],
   'booking-flow': ['medical_staff', 'admin'],
   'file-uploads': ['medical_staff', 'admin'],
   'payments': ['admin'],

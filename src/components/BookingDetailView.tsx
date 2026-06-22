@@ -1071,7 +1071,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     { key: 'medical', label: 'Medical' },
     { key: 'ceremonies', label: 'Ceremonies' },
     { key: 'documents', label: 'Documents' },
-    { key: 'workflow', label: 'Booking Steps' },
+    { key: 'workflow', label: 'Booking Requirements' },
     { key: 'notes', label: 'Notes' },
   ] as const;
 
@@ -1297,7 +1297,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
                 onClick={() => setShowBookingSteps((current) => !current)}
                 aria-expanded={showBookingSteps}
               >
-                <span>Booking Steps</span>
+                <span>Booking Requirements</span>
                 <span>{showBookingSteps ? 'Hide' : 'Show'}</span>
               </button>
               {showBookingSteps && (

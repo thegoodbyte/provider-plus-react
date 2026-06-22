@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircle2, Copy, Plus, RefreshCw, Save, Trash2 } from 'lucide-react';
+import { CheckCircle2, Copy, GripVertical, Plus, RefreshCw, Save, Trash2 } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 import { bookingFlowApi, communicationsApi, retreatsApi } from '../services/api';
@@ -76,6 +76,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [applying, setApplying] = useState(false);
   const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([]);
+  const [draggedTemplateId, setDraggedTemplateId] = useState<string>('');
 
   useEffect(() => {
     void loadData();
@@ -187,6 +188,47 @@ const RetreatFlowLibraryPage: React.FC = () => {
     await loadData();
   };
 
+  const handleNewStep = () => {
+    setSelectedTemplateId('');
+    setForm({
+      ...emptyForm(),
+      order: (sortedTemplates.at(-1)?.order || 0) + 10,
+    });
+  };
+
+  const handleTemplateDrop = async (targetTemplateId?: string) => {
+    if (!draggedTemplateId || !targetTemplateId || draggedTemplateId === targetTemplateId) {
+      setDraggedTemplateId('');
+      return;
+    }
+
+    const currentList = sortedTemplates;
+    const fromIndex = currentList.findIndex((template) => template._id === draggedTemplateId);
+    const toIndex = currentList.findIndex((template) => template._id === targetTemplateId);
+    if (fromIndex < 0 || toIndex < 0) {
+      setDraggedTemplateId('');
+      return;
+    }
+
+    const nextList = [...currentList];
+    const [movedTemplate] = nextList.splice(fromIndex, 1);
+    nextList.splice(toIndex, 0, movedTemplate);
+    const reordered = nextList.map((template, index) => ({ ...template, order: (index + 1) * 10 }));
+    setTemplates(reordered);
+    setDraggedTemplateId('');
+
+    try {
+      await Promise.all(reordered.map((template) => (
+        template._id ? bookingFlowApi.updateLibraryTemplate(template._id, { order: template.order }) : Promise.resolve()
+      )));
+      await loadData();
+    } catch (error) {
+      console.error('Error reordering library templates:', error);
+      alert('Error reordering booking steps');
+      await loadData();
+    }
+  };
+
   const handleSeed = async () => {
     await bookingFlowApi.seedLibraryTemplates();
     await loadData();
@@ -217,15 +259,15 @@ const RetreatFlowLibraryPage: React.FC = () => {
   const sortedTemplates = useMemo(() => templates.slice().sort((a, b) => (a.order || 0) - (b.order || 0)), [templates]);
 
   if (loading && templates.length === 0) {
-    return <LoadingSpinner message="Loading retreat flow library..." />;
+    return <LoadingSpinner message="Loading booking step setup..." />;
   }
 
   return (
     <div className="p-6">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Retreat Flow Library</h1>
-          <p className="text-sm text-gray-600">Define the generic flow once, then apply it to any retreat.</p>
+          <h1 className="text-2xl font-semibold text-gray-900">Booking Step Setup</h1>
+          <p className="text-sm text-gray-600">Configure the master booking steps, deadlines, artifact matching, and order used when bookings are created.</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={handleSeed} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
@@ -234,7 +276,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
           </button>
           <button onClick={() => navigate(`${routePrefix}/retreat-flow`)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
             <Icon icon={RefreshCw} className="h-4 w-4" />
-            Open Retreat Flow
+            Open Retreat Readiness
           </button>
         </div>
       </div>
@@ -251,22 +293,30 @@ const RetreatFlowLibraryPage: React.FC = () => {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
         <div className="rounded-lg border border-gray-200 bg-white p-4">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Library Steps</h2>
-            <span className="text-xs text-gray-500">{sortedTemplates.length} templates</span>
+            <h2 className="text-lg font-semibold text-gray-900">Step Definitions</h2>
+            <span className="text-xs text-gray-500">{sortedTemplates.length} steps</span>
           </div>
           <div className="space-y-2">
             {sortedTemplates.map((template) => (
               <button
                 key={template._id}
+                draggable
+                onDragStart={() => setDraggedTemplateId(template._id || '')}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={() => handleTemplateDrop(template._id)}
                 onClick={() => selectTemplate(template)}
-                className={`block w-full rounded-md border px-3 py-2 text-left ${selectedTemplateId === template._id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}
+                className={`block w-full rounded-md border px-3 py-2 text-left ${selectedTemplateId === template._id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'} ${draggedTemplateId === template._id ? 'opacity-60' : ''}`}
               >
                 <div className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold text-gray-900">{template.title}</div>
-                    <div className="truncate text-xs text-gray-500">{template.category} • {formatDeadlineLabel(template)}</div>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <Icon icon={GripVertical} className="h-4 w-4 shrink-0 text-gray-400" />
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-gray-900">{template.title}</div>
+                      <div className="truncate text-xs text-gray-500">{template.category} • {formatDeadlineLabel(template)}</div>
+                    </div>
                   </div>
                   <div className="text-right text-xs text-gray-500">
+                    <div>#{template.order || 0}</div>
                     <div>{template.workflowStage || 'potential'}</div>
                     <div>{template.active === false ? 'Hidden' : 'Active'}</div>
                     <div>{template.isBlocking ? 'Blocking' : 'Non-blocking'}</div>
@@ -275,7 +325,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
                 </div>
               </button>
             ))}
-            {sortedTemplates.length === 0 && <div className="rounded-md border border-dashed border-gray-300 p-4 text-sm text-gray-500">No library steps yet. Seed defaults to create the generic retreat flow.</div>}
+            {sortedTemplates.length === 0 && <div className="rounded-md border border-dashed border-gray-300 p-4 text-sm text-gray-500">No booking step definitions yet. Seed defaults to create the standard booking flow.</div>}
           </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -369,7 +419,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
                 <Icon icon={Save} className="h-4 w-4" />
                 {saving ? 'Saving...' : selectedTemplateId ? 'Save Step' : 'Add Step'}
               </button>
-              <button onClick={() => setForm(emptyForm())} className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+              <button onClick={handleNewStep} className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
                 New
               </button>
             </div>
@@ -385,7 +435,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900">Apply to Retreat</h2>
           </div>
           <p className="text-sm text-gray-600">
-            Apply the selected step or the full library to a retreat. This copies the generic flow into the retreat-specific flow.
+            Apply the selected step or the full setup to a retreat. This copies the global booking step definitions into the retreat-specific readiness setup.
           </p>
 
           <div className="mt-4 space-y-3">
@@ -408,14 +458,14 @@ const RetreatFlowLibraryPage: React.FC = () => {
             >
               <span className="inline-flex items-center gap-2">
                 <Icon icon={CheckCircle2} className="h-4 w-4" />
-                Apply full library
+                Apply full setup
               </span>
               <span className="text-xs text-white/80">{selectedRetreatId ? 'sync retreat' : 'select retreat'}</span>
             </button>
           </div>
 
           <div className="mt-6 rounded-md border border-dashed border-gray-300 p-4 text-sm text-gray-600">
-            Use this page to build the generic retreat flow once. Then apply it from here into one retreat or keep it as your master template.
+            Use this page as the master booking step configuration. Generated booking requirement rows keep their own due dates, statuses, notes, and update history.
           </div>
         </div>
       </div>

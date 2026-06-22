@@ -323,7 +323,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
     <div className="space-y-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">Booking Steps</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Booking Requirements</h2>
           <p className="mt-1 text-sm text-gray-500">Track each booking action with a checkbox, timestamp, and notes.</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
