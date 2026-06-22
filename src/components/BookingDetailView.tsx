@@ -12,6 +12,7 @@ import { BookingFlowItem, CeremonyParticipant, MedicalArtifact, MedicalReviewReq
 import './BookingDetailView.css';
 
 type RequirementArtifactType = NonNullable<MedicalArtifact['artifactType']>;
+type BookingConfirmationLanguage = 'pl' | 'cz' | 'en';
 type RequirementDefinition = {
   key: string;
   label: string;
@@ -123,6 +124,93 @@ const getReviewTime = (review: MedicalReviewRequest) =>
 const getObjectId = (value: any) => typeof value === 'object' ? value?._id || value?.id : value;
 
 const getClientEmail = (client: any) => String(client?.email || '').trim();
+
+const getBookingConfirmationLanguage = (client: any): BookingConfirmationLanguage => {
+  const language = String(client?.language || client?.preferredLanguage || '').trim().toUpperCase();
+  if (['CZ', 'CS', 'CZECH'].includes(language)) return 'cz';
+  if (['PL', 'POLISH'].includes(language)) return 'pl';
+  if (['EN', 'ENG', 'ENGLISH'].includes(language)) return 'en';
+  return 'en';
+};
+
+const bookingConfirmationEmailCopy: Record<BookingConfirmationLanguage, {
+  subject: (bookingNumber?: string) => string;
+  greeting: (firstName: string) => string;
+  intro: (location: string, dates: string) => string;
+  attached: string;
+  moreInfo: string;
+  questions: (email: string) => string;
+  closing: string;
+  none: string;
+  rows: Record<string, string>;
+}> = {
+  en: {
+    subject: (bookingNumber) => `Booking confirmation ${bookingNumber || ''}`.trim(),
+    greeting: (firstName) => `Hello ${firstName},`,
+    intro: (location, dates) => `We are excited to welcome you to our retreat in ${location} on ${dates}.`,
+    attached: 'Below is your booking information. A PDF copy of your booking confirmation is attached to this email.',
+    moreInfo: 'We will email more information as we get closer to the retreat.',
+    questions: (email) => `If you have any questions, please do not hesitate to reach out to ${email}.`,
+    closing: 'Warmly,',
+    none: 'None',
+    rows: {
+      bookingNumber: 'Booking number',
+      bookingType: 'Booking type',
+      status: 'Status',
+      client: 'Client',
+      retreat: 'Retreat',
+      locationTown: 'Location town',
+      dates: 'Dates',
+      checkIn: 'Check-in',
+      checkOut: 'Check-out',
+      specialRequests: 'Special requests',
+    },
+  },
+  cz: {
+    subject: (bookingNumber) => `Potvrzení rezervace ${bookingNumber || ''}`.trim(),
+    greeting: (firstName) => `Dobrý den ${firstName},`,
+    intro: (location, dates) => `Těšíme se, že vás přivítáme na našem pobytu v ${location} v termínu ${dates}.`,
+    attached: 'Níže najdete informace k vaší rezervaci. PDF potvrzení rezervace je přiloženo k tomuto e-mailu.',
+    moreInfo: 'Další informace vám pošleme e-mailem, až se bude termín pobytu blížit.',
+    questions: (email) => `Pokud máte jakékoli otázky, napište nám prosím na ${email}.`,
+    closing: 'S pozdravem,',
+    none: 'Žádné',
+    rows: {
+      bookingNumber: 'Číslo rezervace',
+      bookingType: 'Typ rezervace',
+      status: 'Stav',
+      client: 'Klient',
+      retreat: 'Pobyt',
+      locationTown: 'Místo',
+      dates: 'Termín',
+      checkIn: 'Příjezd',
+      checkOut: 'Odjezd',
+      specialRequests: 'Speciální požadavky',
+    },
+  },
+  pl: {
+    subject: (bookingNumber) => `Potwierdzenie rezerwacji ${bookingNumber || ''}`.trim(),
+    greeting: (firstName) => `Dzień dobry ${firstName},`,
+    intro: (location, dates) => `Cieszymy się, że będziemy mogli powitać Cię na naszym pobycie w ${location} w terminie ${dates}.`,
+    attached: 'Poniżej znajdziesz informacje dotyczące rezerwacji. Potwierdzenie rezerwacji w PDF jest załączone do tej wiadomości.',
+    moreInfo: 'Prześlemy więcej informacji e-mailem bliżej terminu pobytu.',
+    questions: (email) => `Jeśli masz pytania, napisz do nas na ${email}.`,
+    closing: 'Serdecznie,',
+    none: 'Brak',
+    rows: {
+      bookingNumber: 'Numer rezerwacji',
+      bookingType: 'Typ rezerwacji',
+      status: 'Status',
+      client: 'Klient',
+      retreat: 'Pobyt',
+      locationTown: 'Miejscowość',
+      dates: 'Termin',
+      checkIn: 'Przyjazd',
+      checkOut: 'Wyjazd',
+      specialRequests: 'Specjalne prośby',
+    },
+  },
+};
 
 const formatShortDateTime = (value?: Date | string) => {
   if (!value) return 'N/A';
@@ -671,7 +759,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [booking, setBooking] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
-  const [pdfLanguage, setPdfLanguage] = useState<'pl' | 'cz' | 'en'>('pl');
+  const [pdfLanguage, setPdfLanguage] = useState<BookingConfirmationLanguage>('en');
   const [requirementsRefreshKey, setRequirementsRefreshKey] = useState(0);
   const [previewUrl, setPreviewUrl] = useState('');
   const [previewFileName, setPreviewFileName] = useState('');
@@ -707,6 +795,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
       // Fetch booking details
       const bookingResponse = await bookingsApi.getOne(bookingId);
       setBooking(bookingResponse.data);
+      setPdfLanguage(getBookingConfirmationLanguage(bookingResponse.data?.clientId || bookingResponse.data?.clientDetails));
     } catch (error) {
       console.error('Error fetching booking details:', error);
     } finally {
@@ -727,45 +816,57 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     });
   };
 
-  const getRetreatDateRange = (retreatData: any) => {
-    const startDate = retreatData?.startDate || retreatData?.dates?.startDate;
-    const endDate = retreatData?.endDate || retreatData?.dates?.endDate;
-    if (startDate && endDate) return `${formatDate(startDate)} - ${formatDate(endDate)}`;
-    return formatDate(startDate || endDate);
-  };
-
-  const buildBookingConfirmationEmail = () => {
+  const buildBookingConfirmationEmail = (language: BookingConfirmationLanguage) => {
     const clientData = booking?.clientId || booking?.clientDetails;
     const retreatData = booking?.retreatId || booking?.retreatDetails;
+    const copy = bookingConfirmationEmailCopy[language];
     const firstName = clientData?.firstName || clientData?.fname || 'there';
     const locationText = getRetreatLocationTown(retreatData) || 'our retreat center';
-    const dateText = getRetreatDateRange(retreatData);
+    const dateLocale = language === 'cz' ? 'cs-CZ' : language === 'pl' ? 'pl-PL' : 'en-US';
+    const formatLocalizedDate = (date?: string | Date) => {
+      if (!date) return 'N/A';
+      const dateObj = new Date(date);
+      if (Number.isNaN(dateObj.getTime())) return 'N/A';
+      return dateObj.toLocaleDateString(dateLocale, {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        timeZone: 'UTC',
+      });
+    };
+    const getLocalizedRetreatDateRange = (retreat: any) => {
+      const startDate = retreat?.startDate || retreat?.dates?.startDate;
+      const endDate = retreat?.endDate || retreat?.dates?.endDate;
+      if (startDate && endDate) return `${formatLocalizedDate(startDate)} - ${formatLocalizedDate(endDate)}`;
+      return formatLocalizedDate(startDate || endDate);
+    };
+    const dateText = getLocalizedRetreatDateRange(retreatData);
     const contactEmail = 'info@ibogaspirit.cz';
     const rows = [
-      ['Booking number', booking?.bookingNumber || 'N/A'],
-      ['Booking type', `${booking?.bookingType === 'booster' ? 'B' : 'F'} / ${getRetreatCode(retreatData)}`],
-      ['Status', booking?.status || 'pending'],
-      ['Client', getClientName(clientData) || 'N/A'],
-      ['Retreat', retreatData?.name || 'N/A'],
-      ['Location town', getRetreatLocationTown(retreatData) || 'N/A'],
-      ['Dates', dateText],
-      ['Check-in', formatDate(booking?.checkInDate)],
-      ['Check-out', formatDate(booking?.checkOutDate)],
-      ['Special requests', booking?.specialRequests || 'None'],
+      [copy.rows.bookingNumber, booking?.bookingNumber || 'N/A'],
+      [copy.rows.bookingType, `${booking?.bookingType === 'booster' ? 'B' : 'F'} / ${getRetreatCode(retreatData)}`],
+      [copy.rows.status, booking?.status || 'pending'],
+      [copy.rows.client, getClientName(clientData) || 'N/A'],
+      [copy.rows.retreat, retreatData?.name || 'N/A'],
+      [copy.rows.locationTown, getRetreatLocationTown(retreatData) || 'N/A'],
+      [copy.rows.dates, dateText],
+      [copy.rows.checkIn, formatLocalizedDate(booking?.checkInDate)],
+      [copy.rows.checkOut, formatLocalizedDate(booking?.checkOutDate)],
+      [copy.rows.specialRequests, booking?.specialRequests || copy.none],
     ];
     const bodyText = [
-      `Hello ${firstName},`,
+      copy.greeting(firstName),
       '',
-      `We are excited to welcome you to our retreat in ${locationText} on ${dateText}.`,
+      copy.intro(locationText, dateText),
       '',
-      'Below is your booking information. A PDF copy of your booking confirmation is attached to this email.',
+      copy.attached,
       '',
       ...rows.map(([label, value]) => `${label}: ${value}`),
       '',
-      'We will email more information as we get closer to the retreat.',
-      `If you have any questions, please do not hesitate to reach out to ${contactEmail}.`,
+      copy.moreInfo,
+      copy.questions(contactEmail),
       '',
-      'Warmly,',
+      copy.closing,
       'IbogaSpirit.cz',
     ].join('\n');
     const rowHtml = rows.map(([label, value]) => `
@@ -776,19 +877,19 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     `).join('');
     const bodyHtml = `
       <div style="font-family:Arial,Helvetica,sans-serif;color:#111827;line-height:1.55;max-width:720px;margin:0 auto;">
-        <p>Hello ${escapeHtml(firstName)},</p>
-        <p>We are excited to welcome you to our retreat in <strong>${escapeHtml(locationText)}</strong> on <strong>${escapeHtml(dateText)}</strong>.</p>
-        <p>Below is your booking information. A PDF copy of your booking confirmation is attached to this email.</p>
+        <p>${escapeHtml(copy.greeting(firstName))}</p>
+        <p>${escapeHtml(copy.intro(locationText, dateText))}</p>
+        <p>${escapeHtml(copy.attached)}</p>
         <table style="border-collapse:collapse;width:100%;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;margin:22px 0;">
           <tbody>${rowHtml}</tbody>
         </table>
-        <p>We will email more information as we get closer to the retreat.</p>
-        <p>If you have any questions, please do not hesitate to reach out to <a href="mailto:${escapeHtml(contactEmail)}">${escapeHtml(contactEmail)}</a>.</p>
-        <p>Warmly,<br/>IbogaSpirit.cz</p>
+        <p>${escapeHtml(copy.moreInfo)}</p>
+        <p>${escapeHtml(copy.questions(contactEmail))}</p>
+        <p>${escapeHtml(copy.closing)}<br/>IbogaSpirit.cz</p>
       </div>
     `;
     return {
-      subject: `Booking confirmation ${booking?.bookingNumber || ''}`.trim(),
+      subject: copy.subject(booking?.bookingNumber),
       bodyText,
       bodyHtml,
     };
@@ -852,9 +953,10 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     }
     setIsPreparingConfirmationEmail(true);
     try {
-      const { blob, fileName } = await createBookingConfirmationPdf({ booking, language: pdfLanguage });
+      const language = pdfLanguage;
+      const { blob, fileName } = await createBookingConfirmationPdf({ booking, language });
       const contentBase64 = await blobToBase64(blob);
-      const email = buildBookingConfirmationEmail();
+      const email = buildBookingConfirmationEmail(language);
       setConfirmationEmailDraft({
         to: recipientEmail,
         subject: email.subject,
@@ -890,10 +992,11 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
 
     setIsSendingConfirmation(true);
     try {
-      const { blob, fileName } = await createBookingConfirmationPdf({ booking, language: pdfLanguage });
+      const language = pdfLanguage;
+      const { blob, fileName } = await createBookingConfirmationPdf({ booking, language });
       pdfSize = blob.size;
       const contentBase64 = await blobToBase64(blob);
-      const email = buildBookingConfirmationEmail();
+      const email = buildBookingConfirmationEmail(language);
       const payload = {
         to: recipientEmail,
         subject: email.subject,
@@ -985,7 +1088,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         <div className="header-actions">
           <select
             value={pdfLanguage}
-            onChange={(e) => setPdfLanguage(e.target.value as 'pl' | 'cz' | 'en')}
+            onChange={(e) => setPdfLanguage(e.target.value as BookingConfirmationLanguage)}
             className="language-selector"
             disabled={isGeneratingPDF}
           >
