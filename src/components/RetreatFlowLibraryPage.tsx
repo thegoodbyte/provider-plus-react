@@ -312,7 +312,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
                     <Icon icon={GripVertical} className="h-4 w-4 shrink-0 text-gray-400" />
                     <div className="min-w-0">
                       <div className="truncate text-sm font-semibold text-gray-900">{template.title}</div>
-                      <div className="truncate text-xs text-gray-500">{template.category} • {formatDeadlineLabel(template)}</div>
+                      <div className="truncate text-xs text-gray-500">{template.key} • {template.category} • {formatDeadlineLabel(template)}</div>
                     </div>
                   </div>
                   <div className="text-right text-xs text-gray-500">
@@ -328,59 +328,103 @@ const RetreatFlowLibraryPage: React.FC = () => {
             {sortedTemplates.length === 0 && <div className="rounded-md border border-dashed border-gray-300 p-4 text-sm text-gray-500">No booking step definitions yet. Seed defaults to create the standard booking flow.</div>}
           </div>
 
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <input value={form.key} onChange={(e) => setForm({ ...form, key: e.target.value })} className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Key" />
-            <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Title" />
-            <select value={form.workflowStage} onChange={(e) => setForm({ ...form, workflowStage: e.target.value as TemplateForm['workflowStage'] })} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-              <option value="potential">Potential</option>
-              <option value="screening">Screening</option>
-              <option value="payment">Payment</option>
-              <option value="conditional_booking">Conditional booking</option>
-              <option value="contract">Contract</option>
-              <option value="questionnaire">Questionnaire</option>
-              <option value="medical">Medical</option>
-              <option value="prep">Prep</option>
-              <option value="approved">Approved</option>
-              <option value="cancelled">Cancelled</option>
-            </select>
-            <input value={form.offsetDays} type="number" onChange={(e) => setForm({ ...form, offsetDays: Number(e.target.value) })} className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Offset days" />
-            <select value={form.deadlineBasis} onChange={(e) => setForm({ ...form, deadlineBasis: e.target.value as TemplateForm['deadlineBasis'] })} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-              <option value="before_retreat_start">Before retreat start</option>
-              <option value="after_signup">After signup</option>
-              <option value="after_booking">After booking</option>
-              <option value="after_initial_payment">After initial payment</option>
-              <option value="manual">Manual due date</option>
-            </select>
-            <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value as TemplateForm['category'] })} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-              <option value="screening">Screening</option>
-              <option value="booking">Booking</option>
-              <option value="contract">Contract</option>
-              <option value="questionnaire">Questionnaire</option>
-              <option value="medical">Medical</option>
-              <option value="payment">Payment</option>
-              <option value="dietary">Dietary</option>
-              <option value="message">Message</option>
-              <option value="access">Access</option>
-              <option value="approval">Approval</option>
-              <option value="reminder">Reminder</option>
-              <option value="other">Other</option>
-            </select>
+          <div className="mt-5 border-t border-gray-200 pt-4">
+            <h3 className="text-sm font-semibold text-gray-900">{selectedTemplateId ? 'Edit Selected Step' : 'Add New Step'}</h3>
+            <p className="text-xs text-gray-500">These fields define what gets generated onto each booking requirement row.</p>
           </div>
 
-          <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} className="mt-3 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Description" />
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Step key</span>
+              <input value={form.key} onChange={(e) => setForm({ ...form, key: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="ekg_received" />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Display title</span>
+              <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Entry EKG received" />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Workflow stage</span>
+              <select value={form.workflowStage} onChange={(e) => setForm({ ...form, workflowStage: e.target.value as TemplateForm['workflowStage'] })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                <option value="potential">Potential</option>
+                <option value="screening">Screening</option>
+                <option value="payment">Payment</option>
+                <option value="conditional_booking">Conditional booking</option>
+                <option value="contract">Contract</option>
+                <option value="questionnaire">Questionnaire</option>
+                <option value="medical">Medical</option>
+                <option value="prep">Prep</option>
+                <option value="approved">Approved</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Deadline basis</span>
+              <select value={form.deadlineBasis} onChange={(e) => setForm({ ...form, deadlineBasis: e.target.value as TemplateForm['deadlineBasis'] })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                <option value="before_retreat_start">Before retreat start</option>
+                <option value="after_signup">After signup</option>
+                <option value="after_booking">After booking</option>
+                <option value="after_initial_payment">After initial payment</option>
+                <option value="manual">Manual due date</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Offset days</span>
+              <input value={form.offsetDays} type="number" onChange={(e) => setForm({ ...form, offsetDays: Number(e.target.value) })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="21" />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Category</span>
+              <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value as TemplateForm['category'] })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                <option value="screening">Screening</option>
+                <option value="booking">Booking</option>
+                <option value="contract">Contract</option>
+                <option value="questionnaire">Questionnaire</option>
+                <option value="medical">Medical</option>
+                <option value="payment">Payment</option>
+                <option value="dietary">Dietary</option>
+                <option value="message">Message</option>
+                <option value="access">Access</option>
+                <option value="approval">Approval</option>
+                <option value="reminder">Reminder</option>
+                <option value="other">Other</option>
+              </select>
+            </label>
+          </div>
+
+          <label className="mt-3 block">
+            <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Description</span>
+            <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Description" />
+          </label>
 
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <input value={form.taskTitle} onChange={(e) => setForm({ ...form, taskTitle: e.target.value })} className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Task title" />
-            <select value={form.taskPriority} onChange={(e) => setForm({ ...form, taskPriority: e.target.value as TemplateForm['taskPriority'] })} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="urgent">Urgent</option>
-            </select>
-            <input value={form.order} type="number" onChange={(e) => setForm({ ...form, order: Number(e.target.value) })} className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Order" />
-            <input value={form.readinessGroup} onChange={(e) => setForm({ ...form, readinessGroup: e.target.value })} className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Readiness group (ekg, liver...)" />
-            <input value={form.expectedArtifact} onChange={(e) => setForm({ ...form, expectedArtifact: e.target.value })} className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Expected artifact" />
-            <input value={form.requirementType} onChange={(e) => setForm({ ...form, requirementType: e.target.value, isRequirement: Boolean(e.target.value) || form.isRequirement })} className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Requirement type (entry_ekg...)" />
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Task title</span>
+              <input value={form.taskTitle} onChange={(e) => setForm({ ...form, taskTitle: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Check EKG received" />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Task priority</span>
+              <select value={form.taskPriority} onChange={(e) => setForm({ ...form, taskPriority: e.target.value as TemplateForm['taskPriority'] })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Display order</span>
+              <input value={form.order} type="number" onChange={(e) => setForm({ ...form, order: Number(e.target.value) })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="60" />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Readiness group</span>
+              <input value={form.readinessGroup} onChange={(e) => setForm({ ...form, readinessGroup: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="ekg" />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Expected artifact</span>
+              <input value={form.expectedArtifact} onChange={(e) => setForm({ ...form, expectedArtifact: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="ekg" />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Requirement type</span>
+              <input value={form.requirementType} onChange={(e) => setForm({ ...form, requirementType: e.target.value, isRequirement: Boolean(e.target.value) || form.isRequirement })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="entry_ekg" />
+            </label>
           </div>
 
           <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 p-3">
@@ -405,12 +449,15 @@ const RetreatFlowLibraryPage: React.FC = () => {
             </select>
           </div>
 
-          <div className="mt-3 flex flex-wrap gap-3 text-sm">
-            <label className="flex items-center gap-2"><input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} /> Active</label>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={form.isBlocking} onChange={(e) => setForm({ ...form, isBlocking: e.target.checked })} /> Blocking</label>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={form.createsTask} onChange={(e) => setForm({ ...form, createsTask: e.target.checked })} /> Creates task</label>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={form.reviewRequired} onChange={(e) => setForm({ ...form, reviewRequired: e.target.checked })} /> Review required</label>
-            <label className="flex items-center gap-2"><input type="checkbox" checked={form.isRequirement} onChange={(e) => setForm({ ...form, isRequirement: e.target.checked })} /> Booking requirement</label>
+          <div className="mt-3 rounded-md border border-gray-200 bg-white p-3">
+            <div className="mb-2 text-xs font-semibold uppercase text-gray-500">Step flags</div>
+            <div className="grid gap-2 text-sm sm:grid-cols-2">
+              <label className="flex items-center gap-2"><input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} /> Active</label>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={form.isBlocking} onChange={(e) => setForm({ ...form, isBlocking: e.target.checked })} /> Blocking requirement</label>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={form.createsTask} onChange={(e) => setForm({ ...form, createsTask: e.target.checked })} /> Creates task</label>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={form.reviewRequired} onChange={(e) => setForm({ ...form, reviewRequired: e.target.checked })} /> Review required</label>
+              <label className="flex items-center gap-2"><input type="checkbox" checked={form.isRequirement} onChange={(e) => setForm({ ...form, isRequirement: e.target.checked })} /> Booking requirement</label>
+            </div>
           </div>
 
           <div className="mt-4 flex items-center justify-between">
