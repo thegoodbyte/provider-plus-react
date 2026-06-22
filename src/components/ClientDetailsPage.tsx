@@ -1004,6 +1004,10 @@ const ClientDetailsPage: React.FC = () => {
                     <dd className="text-sm font-medium">{getLanguageLabel(client.language)}</dd>
                   </div>
                   <div className="flex flex-wrap justify-between gap-2">
+                    <dt className="text-sm text-gray-600">Referral:</dt>
+                    <dd className="text-sm font-medium">{client.source || 'N/A'}</dd>
+                  </div>
+                  <div className="flex flex-wrap justify-between gap-2">
                     <dt className="text-sm text-gray-600">City:</dt>
                     <dd className="text-sm font-medium">{client.city || 'N/A'}</dd>
                   </div>

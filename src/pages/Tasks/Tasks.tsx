@@ -1,17 +1,22 @@
 import React, { useState, useEffect } from 'react';
+import { BookingFlowItem } from '../../types';
+import { bookingFlowApi } from '../../services/api';
 import { Task, TaskFilters, taskService } from '../../services/taskService';
 import { TaskList } from '../../components/Tasks/TaskList';
 import { TaskForm } from '../../components/Tasks/TaskForm';
 import { TaskFiltersPanel } from '../../components/Tasks/TaskFiltersPanel';
+import TasksCalendarView from '../../components/Tasks/TasksCalendarView';
 import './Tasks.css';
 
 export const Tasks: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [deadlines, setDeadlines] = useState<BookingFlowItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [filters, setFilters] = useState<TaskFilters>({
     sortBy: 'dueDate',
     sortOrder: 'asc'
@@ -21,8 +26,12 @@ export const Tasks: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const tasksData = await taskService.getTasks(filters);
+      const [tasksData, deadlinesResponse] = await Promise.all([
+        taskService.getTasks(filters),
+        bookingFlowApi.getItems({}).catch(() => ({ data: [] as BookingFlowItem[] })),
+      ]);
       setTasks(tasksData);
+      setDeadlines(deadlinesResponse.data || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load tasks');
     } finally {
@@ -123,12 +132,18 @@ export const Tasks: React.FC = () => {
       <div className="tasks-header">
         <div className="header-content">
           <h1>Tasks</h1>
-          <button
-            className="btn btn-primary"
-            onClick={handleCreateTask}
-          >
-            Create Task
-          </button>
+          <div className="task-header-actions">
+            <div className="tasks-view-toggle" aria-label="Task view">
+              <button type="button" className={viewMode === 'list' ? 'active' : ''} onClick={() => setViewMode('list')}>List</button>
+              <button type="button" className={viewMode === 'calendar' ? 'active' : ''} onClick={() => setViewMode('calendar')}>Calendar</button>
+            </div>
+            <button
+              className="btn btn-primary"
+              onClick={handleCreateTask}
+            >
+              Create Task
+            </button>
+          </div>
         </div>
       </div>
 
@@ -145,12 +160,16 @@ export const Tasks: React.FC = () => {
       />
 
       <div className="tasks-main-content">
-        <TaskList
-          tasks={tasks}
-          onEditTask={handleEditTask}
-          onDeleteTask={handleDeleteTask}
-          onCompleteTask={handleCompleteTask}
-        />
+        {viewMode === 'list' ? (
+          <TaskList
+            tasks={tasks}
+            onEditTask={handleEditTask}
+            onDeleteTask={handleDeleteTask}
+            onCompleteTask={handleCompleteTask}
+          />
+        ) : (
+          <TasksCalendarView tasks={tasks} deadlines={deadlines} />
+        )}
       </div>
 
       <div className="task-stats-footer">
