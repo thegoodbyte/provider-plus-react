@@ -23,8 +23,8 @@ module.exports = {
             800: '#242426',     // Darker text
             900: '#1c1c1e',     // Almost black
           },
-          blue: '#374151',      // Neutralized legacy primary
-          teal: '#6b7280',      // Neutralized legacy accent
+          blue: '#007AFF',      // Apple system blue
+          teal: '#5AC8FA',      // Apple system teal
           green: '#34C759',     // Success green
           yellow: '#FFCC00',    // Warning yellow
           orange: '#FF9500',    // Orange accent
@@ -33,8 +33,8 @@ module.exports = {
           pink: '#FF2D55',      // Pink accent
         },
         // Semantic colors
-        primary: '#374151',
-        secondary: '#6b7280',
+        primary: '#007AFF',
+        secondary: '#5AC8FA',
         success: '#34C759',
         warning: '#FFCC00',
         danger: '#FF3B30',
