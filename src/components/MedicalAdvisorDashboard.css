@@ -82,14 +82,14 @@
 }
 
 .filter-controls button:hover {
-  border-color: #3498db;
-  background: #f0f8ff;
+  border-color: #374151;
+  background: #f9fafb;
 }
 
 .filter-controls button.active {
-  background: #3498db;
+  background: #374151;
   color: white;
-  border-color: #3498db;
+  border-color: #374151;
 }
 
 .sort-controls {
@@ -156,8 +156,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f0f8ff;
-  color: #3498db;
+  background: #f9fafb;
+  color: #374151;
   flex-shrink: 0;
 }
 

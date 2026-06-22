@@ -133,7 +133,7 @@ const SearchableClientSelector: React.FC<SearchableClientSelectorProps> = ({
                     background: '#fff'
                   }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#f0f8ff';
+                    e.currentTarget.style.background = '#f9fafb';
                     e.currentTarget.style.borderColor = '#1890ff';
                   }}
                   onMouseLeave={(e) => {

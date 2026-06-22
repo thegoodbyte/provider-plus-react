@@ -43,7 +43,7 @@
 
 /* Apple-style focus rings */
 *:focus-visible {
-  outline: 2px solid #007AFF;
+  outline: 2px solid #374151;
   outline-offset: 2px;
   border-radius: 4px;
 }
@@ -136,12 +136,12 @@
 
 /* Apple-style selection */
 ::selection {
-  background-color: rgba(0, 122, 255, 0.3);
+  background-color: rgba(55, 65, 81, 0.24);
   color: inherit;
 }
 
 ::-moz-selection {
-  background-color: rgba(0, 122, 255, 0.3);
+  background-color: rgba(55, 65, 81, 0.24);
   color: inherit;
 }
 

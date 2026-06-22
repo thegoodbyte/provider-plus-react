@@ -27,9 +27,9 @@
 }
 
 .back-button:hover {
-  background: #f0f8ff;
-  border-color: #3498db;
-  color: #3498db;
+  background: #f9fafb;
+  border-color: #374151;
+  color: #374151;
 }
 
 .header-actions {
@@ -93,9 +93,9 @@
   align-items: center;
   gap: 8px;
   padding: 12px 20px;
-  background: #f0f8ff;
+  background: #f9fafb;
   border-radius: 8px;
-  color: #3498db;
+  color: #374151;
 }
 
 .retreat-date {
@@ -149,7 +149,7 @@
 }
 
 .record-header svg {
-  color: #3498db;
+  color: #374151;
 }
 
 .record-header h3 {
@@ -220,7 +220,7 @@
   align-items: center;
   gap: 8px;
   padding: 10px 20px;
-  background: #3498db;
+  background: #374151;
   color: white;
   border-radius: 8px;
   text-decoration: none;
@@ -230,7 +230,7 @@
 }
 
 .view-document-btn:hover {
-  background: #2980b9;
+  background: #111827;
   transform: translateY(-1px);
 }
 
@@ -357,8 +357,8 @@
 }
 
 .decision-option:hover {
-  border-color: #3498db;
-  background: #f0f8ff;
+  border-color: #374151;
+  background: #f9fafb;
 }
 
 .decision-option input[type="radio"] {
@@ -368,7 +368,7 @@
 }
 
 .decision-option input[type="radio"]:checked + svg {
-  color: #3498db;
+  color: #374151;
 }
 
 .decision-option span {
@@ -402,7 +402,7 @@
 
 .review-notes textarea:focus {
   outline: none;
-  border-color: #3498db;
+  border-color: #374151;
 }
 
 .review-actions {
@@ -434,12 +434,12 @@
 }
 
 .submit-review-btn {
-  background: #3498db;
+  background: #374151;
   color: white;
 }
 
 .submit-review-btn:hover:not(:disabled) {
-  background: #2980b9;
+  background: #111827;
   transform: translateY(-1px);
 }
 

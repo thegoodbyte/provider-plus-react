@@ -64,7 +64,7 @@ const ComprehensiveMedicalTrackingTab: React.FC<ComprehensiveMedicalTrackingTabP
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'approved': return '#28a745';
-      case 'received': return '#007bff';
+      case 'received': return '#374151';
       case 'reviewed': return '#6f42c1';
       case 'pending': return '#ffc107';
       case 'rejected': return '#dc3545';

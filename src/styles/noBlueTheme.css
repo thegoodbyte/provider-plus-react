@@ -1,0 +1,118 @@
+/*
+ * Site-wide no-blue guard.
+ * Older screens mix Tailwind blue utilities, custom apple-blue utilities,
+ * and page-specific CSS. Keep this import last so blue classes render neutral.
+ */
+:root {
+  --neutral-primary: #374151;
+  --neutral-primary-dark: #111827;
+  --neutral-primary-soft: #f3f4f6;
+  --neutral-primary-border: #d1d5db;
+  --neutral-primary-ring: rgba(55, 65, 81, 0.24);
+}
+
+*,
+::before,
+::after {
+  --tw-ring-color: var(--neutral-primary-ring) !important;
+}
+
+[class*="bg-blue-"],
+[class*="bg-apple-blue"],
+.tone-blue {
+  background: var(--neutral-primary) !important;
+  background-color: var(--neutral-primary) !important;
+}
+
+[class*="hover:bg-blue-"]:hover,
+[class*="hover:bg-apple-blue"]:hover,
+[class*="active:bg-blue-"]:active {
+  background: var(--neutral-primary-dark) !important;
+  background-color: var(--neutral-primary-dark) !important;
+}
+
+[class*="text-blue-"],
+[class*="text-apple-blue"] {
+  color: var(--neutral-primary) !important;
+}
+
+[class*="hover:text-blue-"]:hover,
+[class*="hover:text-apple-blue"]:hover {
+  color: var(--neutral-primary-dark) !important;
+}
+
+[class*="border-blue-"],
+[class*="border-apple-blue"] {
+  border-color: var(--neutral-primary-border) !important;
+}
+
+[class*="hover:border-blue-"]:hover,
+[class*="focus:border-blue-"]:focus,
+[class*="focus:border-apple-blue"]:focus {
+  border-color: var(--neutral-primary) !important;
+}
+
+[class*="ring-blue-"],
+[class*="focus:ring-blue-"]:focus,
+[class*="focus:ring-apple-blue"]:focus {
+  --tw-ring-color: var(--neutral-primary-ring) !important;
+}
+
+[class*="file:bg-blue-"]::file-selector-button {
+  background: var(--neutral-primary-soft) !important;
+  color: var(--neutral-primary) !important;
+}
+
+[class*="hover:file:bg-blue-"]:hover::file-selector-button {
+  background: #e5e7eb !important;
+}
+
+.workflow-button,
+.workflow-tab.active,
+.api-error-retry,
+.api-error-home,
+.client-edit-save-btn,
+.primary-button,
+.btn-primary {
+  background: var(--neutral-primary) !important;
+  background-color: var(--neutral-primary) !important;
+  border-color: var(--neutral-primary) !important;
+  color: #fff !important;
+}
+
+.workflow-button:hover,
+.workflow-tab.active:hover,
+.api-error-retry:hover,
+.api-error-home:hover,
+.client-edit-save-btn:hover,
+.primary-button:hover,
+.btn-primary:hover {
+  background: var(--neutral-primary-dark) !important;
+  background-color: var(--neutral-primary-dark) !important;
+  border-color: var(--neutral-primary-dark) !important;
+}
+
+.workflow-booking-row.active,
+.selected,
+.active-row {
+  border-color: var(--neutral-primary-border) !important;
+  box-shadow: 0 0 0 1px rgba(55, 65, 81, 0.12) !important;
+}
+
+.workflow-booking-number {
+  color: var(--neutral-primary) !important;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+*:focus-visible {
+  outline-color: var(--neutral-primary) !important;
+}
+
+::selection,
+::-moz-selection {
+  background-color: var(--neutral-primary-ring) !important;
+}

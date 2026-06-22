@@ -63,7 +63,7 @@
 }
 
 .client-search-input:focus {
-  border-color: #3b82f6;
+  border-color: #4b5563;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
@@ -108,7 +108,7 @@
 
 .client-email {
   font-size: 14px;
-  color: #3b82f6;
+  color: #4b5563;
 }
 
 .client-phone {
@@ -121,7 +121,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px;
-  background: #f0f9ff;
+  background: #f9fafb;
   border: 1px solid #bae6fd;
   border-radius: 8px;
   margin-top: 16px;
@@ -141,7 +141,7 @@
 }
 
 .change-client-btn {
-  background: #3b82f6;
+  background: #4b5563;
   color: white;
   border: none;
   padding: 8px 16px;
@@ -153,7 +153,7 @@
 }
 
 .change-client-btn:hover {
-  background: #2563eb;
+  background: #374151;
 }
 
 /* Retreat Options Section */

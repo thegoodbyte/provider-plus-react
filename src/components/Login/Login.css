@@ -3,7 +3,7 @@
   justify-content: center;
   align-items: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
 }
 
 .login-box {
@@ -43,7 +43,7 @@
 
 .form-group input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #374151;
 }
 
 .connection-warning {
@@ -76,7 +76,7 @@
 button {
   width: 100%;
   padding: 0.75rem;
-  background: #667eea;
+  background: #374151;
   color: white;
   border: none;
   border-radius: 5px;
@@ -87,7 +87,7 @@ button {
 }
 
 button:hover:not(:disabled) {
-  background: #5a67d8;
+  background: #111827;
 }
 
 button:disabled {

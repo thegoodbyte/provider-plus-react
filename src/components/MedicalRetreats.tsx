@@ -240,7 +240,7 @@ const MedicalRetreats: React.FC = () => {
                                 <span
                                   className="client-name-link"
                                   onClick={() => navigate(`/medical/client/${client._id}`)}
-                                  style={{ cursor: 'pointer', color: '#667eea', textDecoration: 'underline' }}
+                                  style={{ cursor: 'pointer', color: '#374151', textDecoration: 'underline' }}
                                 >
                                   {client.firstName} {client.lastName}
                                 </span>

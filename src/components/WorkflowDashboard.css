@@ -71,7 +71,7 @@
   padding: 10px 14px;
   border: 0;
   border-radius: 10px;
-  background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+  background: linear-gradient(135deg, #374151 0%, #7c3aed 100%);
   color: #fff;
   font-size: 14px;
   font-weight: 600;
@@ -202,13 +202,13 @@
 }
 
 .workflow-booking-row.active {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.15);
+  border-color: #374151;
+  box-shadow: 0 0 0 1px rgba(55, 65, 81, 0.15);
 }
 
 .workflow-booking-number {
   font-weight: 700;
-  color: #2563eb;
+  color: #374151;
 }
 
 .workflow-booking-client {
@@ -298,9 +298,9 @@
 }
 
 .workflow-tab.active {
-  background: #2563eb;
+  background: #374151;
   color: #fff;
-  border-color: #2563eb;
+  border-color: #374151;
 }
 
 .workflow-detail-grid {

@@ -22,7 +22,7 @@
 }
 
 .add-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
   color: white;
   padding: 12px 24px;
   border: none;
@@ -58,7 +58,7 @@
 }
 
 .edit-btn {
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  background: linear-gradient(135deg, #6b7280 0%, #d1d5db 100%);
   color: white;
 }
 
@@ -152,7 +152,7 @@
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #374151;
   background: white;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
@@ -183,7 +183,7 @@
 }
 
 .save-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
   color: white;
 }
 
@@ -211,7 +211,7 @@
 }
 
 .ag-theme-alpine .ag-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
   color: white;
   font-weight: 600;
 }
@@ -221,11 +221,11 @@
 }
 
 .ag-theme-alpine .ag-row:hover {
-  background-color: #f8f9ff;
+  background-color: #f9fafb;
 }
 
 .ag-theme-alpine .ag-row-even {
-  background-color: #fafbff;
+  background-color: #f9fafb;
 }
 
 /* Responsive Design */

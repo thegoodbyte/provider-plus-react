@@ -151,7 +151,7 @@
 }
 
 .type-badge.type-client {
-  background: #007bff;
+  background: #374151;
   color: white;
 }
 
@@ -186,7 +186,7 @@
 }
 
 .status-badge.status-in-progress {
-  background: #007bff;
+  background: #374151;
 }
 
 .status-badge.status-completed {

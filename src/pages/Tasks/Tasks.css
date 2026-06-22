@@ -43,12 +43,12 @@
 }
 
 .header-content .btn.btn-primary {
-  background-color: #007bff;
+  background-color: #374151;
   color: white;
 }
 
 .header-content .btn.btn-primary:hover {
-  background-color: #0056b3;
+  background-color: #111827;
 }
 
 .tasks-main-content {
@@ -99,7 +99,7 @@
 }
 
 .task-stats-footer .stat-item .stat-value.in-progress {
-  color: #007bff;
+  color: #374151;
 }
 
 .task-stats-footer .stat-item .stat-value.completed {

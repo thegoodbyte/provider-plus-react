@@ -6,9 +6,13 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { preloaderService } from './services/preloader';
 import ApiErrorHandler from './components/ApiErrorHandler';
 import DebugOverlay from './components/DebugOverlay';
+import { installNativeDialogReplacement } from './utils/nativeDialogReplacement';
 import './App.css';
 import './styles/apple.css';
 import './styles/animations.css';
+import './styles/noBlueTheme.css';
+
+installNativeDialogReplacement();
 
 function AppContent() {
   const { isAuthenticated, loading } = useAuth();

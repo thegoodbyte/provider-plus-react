@@ -336,7 +336,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'approved': case 'completed': return '#28a745';
-      case 'received': case 'reviewed': return '#007bff';
+      case 'received': case 'reviewed': return '#374151';
       case 'pending': case 'sent': return '#ffc107';
       case 'overdue': case 'rejected': return '#dc3545';
       default: return '#6c757d';
@@ -350,7 +350,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
 
     if (overdueRequirements > 0) return { status: 'Overdue Items', color: '#dc3545' };
     if (completedRequirements === totalRequirements && totalRequirements > 0) return { status: 'All Complete', color: '#28a745' };
-    if (completedRequirements > 0) return { status: 'In Progress', color: '#007bff' };
+    if (completedRequirements > 0) return { status: 'In Progress', color: '#374151' };
     return { status: 'Not Started', color: '#6c757d' };
   };
 
@@ -580,7 +580,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                         }}
                         style={{
                           padding: '8px 12px',
-                          backgroundColor: '#007bff',
+                          backgroundColor: '#374151',
                           color: 'white',
                           border: 'none',
                           borderRadius: '4px',
@@ -986,7 +986,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                   onClick={handleCreateDepositPaymentRequest}
                   style={{
                     padding: '10px 16px',
-                    backgroundColor: '#2563eb',
+                    backgroundColor: '#374151',
                     color: 'white',
                     border: 'none',
                     borderRadius: '6px',
@@ -1036,7 +1036,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                                 navigator.clipboard.writeText(paymentUrl);
                                 alert('Payment link copied to clipboard.');
                               }}
-                              style={{ padding: '8px 12px', backgroundColor: '#007bff', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                              style={{ padding: '8px 12px', backgroundColor: '#374151', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                             >
                               Copy
                             </button>
@@ -1271,7 +1271,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                       disabled={generatingPDF === booking._id}
                       style={{
                         padding: '8px 16px',
-                        backgroundColor: generatingPDF === booking._id ? '#ccc' : '#007bff',
+                        backgroundColor: generatingPDF === booking._id ? '#ccc' : '#374151',
                         color: 'white',
                         border: 'none',
                         borderRadius: '6px',

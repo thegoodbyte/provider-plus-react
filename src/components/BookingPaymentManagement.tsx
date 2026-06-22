@@ -309,7 +309,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       case 'deposit_non_refundable': return '#dc3545';
       case 'deposit_refundable': return '#ffc107';
       case 'regular_payment': return '#28a745';
-      case 'balance_payment': return '#007bff';
+      case 'balance_payment': return '#374151';
       case 'adjustment': return '#6c757d';
       default: return '#6c757d';
     }

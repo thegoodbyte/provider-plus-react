@@ -38,9 +38,9 @@
 }
 
 .filter-btn.active {
-  background: #007bff;
+  background: #374151;
   color: white;
-  border-color: #007bff;
+  border-color: #374151;
 }
 
 .retreats-list {
@@ -67,7 +67,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
   color: white;
 }
 
@@ -177,7 +177,7 @@
 }
 
 .status-indicator.received {
-  background: #cce5ff;
+  background: #e5e7eb;
   color: #004085;
 }
 
@@ -207,7 +207,7 @@
 }
 
 .clearance-status.review {
-  background: #cce5ff;
+  background: #e5e7eb;
   color: #004085;
 }
 
