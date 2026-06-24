@@ -295,6 +295,15 @@ const AddClient: React.FC = () => {
                     placeholder="Enter country"
                   />
                 </div>
+
+                <div>
+                  <AppleInput
+                    label="Referral"
+                    value={formData.source || ''}
+                    onChange={(value) => setFormData({ ...formData, source: value })}
+                    placeholder="Who referred them or how they found us"
+                  />
+                </div>
               </div>
             </div>
 

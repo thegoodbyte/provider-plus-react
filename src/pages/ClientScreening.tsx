@@ -20,6 +20,7 @@ interface ScreeningData {
   psychologicalAbuse: boolean;
   psychologicalAbuseDetails: string;
   age: number;
+  year_of_birth: number;
   screeningDate: string;
   riskLevel: number;
   heartConditionOk: boolean;
@@ -64,6 +65,8 @@ interface ScreeningData {
     probiotics: boolean;
     multivitamin: boolean;
     creatine: boolean;
+    ashwagandha: boolean;
+    potassium: boolean;
     other: boolean;
     details: string;
   };
@@ -88,6 +91,8 @@ interface ScreeningData {
   ketamineDetails: string;
   mdma: boolean;
   mdmaDetails: string;
+  sassafras: boolean;
+  sassafrasDetails: string;
   handwritingImageUrl: string;
   riskNotes: string;
   generalNotes: string;
@@ -130,6 +135,13 @@ const sectionStyles = {
     container: 'bg-yellow-50 rounded-lg border border-yellow-200 p-6 mb-6 shadow-sm',
     heading: 'text-lg font-semibold mb-4 text-yellow-900',
   },
+};
+
+const getCurrentYear = () => new Date().getFullYear();
+
+const getYearOfBirthFromAge = (age?: number) => {
+  if (!Number.isFinite(age) || !age || age <= 0) return undefined;
+  return getCurrentYear() - Math.floor(age);
 };
 
 const compressScreeningImage = (file: File, maxDimension = 1800, quality = 0.82): Promise<File> => {
@@ -211,6 +223,7 @@ const ClientScreening: React.FC = () => {
     psychologicalAbuse: false,
     psychologicalAbuseDetails: '',
     age: undefined as any,
+    year_of_birth: undefined as any,
     screeningDate: new Date().toISOString().split('T')[0],
     riskLevel: 1,
     heartConditionOk: false,
@@ -255,6 +268,8 @@ const ClientScreening: React.FC = () => {
       probiotics: false,
       multivitamin: false,
       creatine: false,
+      ashwagandha: false,
+      potassium: false,
       other: false,
       details: '',
     },
@@ -279,12 +294,14 @@ const ClientScreening: React.FC = () => {
     ketamineDetails: '',
     mdma: false,
     mdmaDetails: '',
+    sassafras: false,
+    sassafrasDetails: '',
     handwritingImageUrl: '',
     riskNotes: '',
     generalNotes: '',
     desiredRetreat: '',
     quotedPrice: '',
-    screenedBy: user?.username || '',
+    screenedBy: user?.email || '',
     status: 'pending'
   });
 
@@ -353,9 +370,15 @@ const ClientScreening: React.FC = () => {
         'dmt',
         'ketamine',
         'mdma',
+        'sassafras',
       ];
       const hasPlantMedicineExperience = existingScreening.plantMedicineExperience === true
         || plantMedicineFields.some((field) => Boolean(existingScreening[field] || existingScreening[`${field}Details`]));
+      const existingAge = existingValue('age') as number | undefined;
+      const existingYearOfBirth = existingValue('year_of_birth', 'yearOfBirth') as number | undefined;
+      const dateOfBirthYear = (clientData as any).dateOfBirth
+        ? new Date((clientData as any).dateOfBirth).getFullYear()
+        : undefined;
 
       // Pre-populate client info
       setFormData(prev => ({
@@ -366,6 +389,11 @@ const ClientScreening: React.FC = () => {
         lastName: clientData.lastName || '',
         displayId: clientData.display_id || 0,
         phoneNumber: clientData.phone || '',
+        age: existingAge ?? prev.age,
+        year_of_birth: existingYearOfBirth
+          ?? dateOfBirthYear
+          ?? getYearOfBirthFromAge(existingAge)
+          ?? prev.year_of_birth,
         mainIntent: existingValue('mainIntent', 'whySeekingIboga') ?? prev.mainIntent,
         riskNotes: existingValue('riskNotes', 'whatToChange') ?? prev.riskNotes,
         childhood: existingValue('childhood', 'childhood') ?? prev.childhood,
@@ -447,13 +475,24 @@ const ClientScreening: React.FC = () => {
             ketamineDetails: '',
             mdma: false,
             mdmaDetails: '',
+            sassafras: false,
+            sassafrasDetails: '',
           } : {}),
         }));
         return;
       }
       setFormData(prev => ({ ...prev, [name]: checked }));
     } else if (type === 'number') {
-      setFormData(prev => ({ ...prev, [name]: parseFloat(value) || 0 }));
+      const numericValue = value === '' ? undefined : parseFloat(value) || 0;
+      if (name === 'age') {
+        setFormData(prev => ({
+          ...prev,
+          age: numericValue as any,
+          year_of_birth: getYearOfBirthFromAge(numericValue) as any,
+        }));
+        return;
+      }
+      setFormData(prev => ({ ...prev, [name]: numericValue }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -800,7 +839,7 @@ const ClientScreening: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
               <input
@@ -810,6 +849,17 @@ const ClientScreening: React.FC = () => {
                 onChange={handleInputChange}
                 placeholder="Enter age"
                 className="w-full px-3 py-2 border border-gray-200 rounded-md"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Year of Birth</label>
+              <input
+                type="number"
+                name="year_of_birth"
+                value={formData.year_of_birth || ''}
+                readOnly
+                placeholder="Auto-filled"
+                className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-700"
               />
             </div>
             <div>
@@ -970,6 +1020,50 @@ const ClientScreening: React.FC = () => {
             />
           </div>
           <div>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                name="depression"
+                checked={formData.depression}
+                onChange={handleInputChange}
+                className="rounded"
+              />
+              <span className="text-sm font-medium text-gray-700">Depression</span>
+            </label>
+            {formData.depression && (
+              <textarea
+                name="depressionDetails"
+                value={formData.depressionDetails}
+                onChange={handleInputChange}
+                rows={2}
+                className="w-full mt-2 px-3 py-2 border border-gray-200 rounded-md"
+                placeholder="Current or past depression, treatment, severity, dates, hospitalizations, or notes"
+              />
+            )}
+          </div>
+          <div>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                name="anxiety"
+                checked={formData.anxiety}
+                onChange={handleInputChange}
+                className="rounded"
+              />
+              <span className="text-sm font-medium text-gray-700">Anxiety</span>
+            </label>
+            {formData.anxiety && (
+              <textarea
+                name="anxietyDetails"
+                value={formData.anxietyDetails}
+                onChange={handleInputChange}
+                rows={2}
+                className="w-full mt-2 px-3 py-2 border border-gray-200 rounded-md"
+                placeholder="Current or past anxiety, panic attacks, treatment, severity, dates, or notes"
+              />
+            )}
+          </div>
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">SSRIs</label>
             <textarea
               name="ssris"
@@ -1067,6 +1161,8 @@ const ClientScreening: React.FC = () => {
             { name: 'probiotics', label: 'Probiotics' },
             { name: 'multivitamin', label: 'Multivitamin' },
             { name: 'creatine', label: 'Creatine' },
+            { name: 'ashwagandha', label: 'Ashwagandha' },
+            { name: 'potassium', label: 'Potassium' },
             { name: 'other', label: 'Other' },
           ].map(vitamin => (
             <label key={vitamin.name} className="flex items-center space-x-2">
@@ -1180,7 +1276,8 @@ const ClientScreening: React.FC = () => {
               { name: 'mescaline', label: 'Mescaline' },
               { name: 'dmt', label: 'DMT' },
               { name: 'ketamine', label: 'Ketamine' },
-              { name: 'mdma', label: 'MDMA' }
+              { name: 'mdma', label: 'MDMA' },
+              { name: 'sassafras', label: 'Sassafras' }
             ].map(medicine => (
               <div key={medicine.name}>
                 <label className="flex items-center space-x-2">

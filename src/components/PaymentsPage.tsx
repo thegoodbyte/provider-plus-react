@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiPlus, FiEdit2, FiTrash2, FiDollarSign } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiDollarSign, FiChevronDown } from 'react-icons/fi';
 import { paymentsApi, clientsApi, retreatsApi, bookingsApi } from '../services/api';
 import { Payment, Client, Retreat, RetreatClient } from '../types';
 import CurrencyDisplay from './CurrencyDisplay';
@@ -17,10 +17,20 @@ interface PaymentWithDetails extends Payment {
   bookingNumber?: number;
 }
 
+type PaymentSortKey = 'display' | 'date' | 'client' | 'retreat' | 'booking' | 'amount' | 'usd' | 'method' | 'status' | 'type';
+type SortDirection = 'asc' | 'desc';
+
+const getRetreatCode = (retreat?: Retreat) => {
+  if (!retreat) return 'Unknown Retreat';
+  return retreat.retreatCode || retreat.code || retreat.name || 'Unknown Retreat';
+};
+
 const PaymentsPage: React.FC = () => {
   const navigate = useNavigate();
   const [payments, setPayments] = useState<PaymentWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [sortKey, setSortKey] = useState<PaymentSortKey>('display');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   const fetchPayments = useCallback(async () => {
     try {
@@ -65,7 +75,7 @@ const PaymentsPage: React.FC = () => {
           bookingId,
           clientName: client ? `${client.firstName} ${client.lastName}` : 'Unknown Client',
           clientDisplayId: client?.display_id,
-          retreatName: retreat ? retreat.name : 'Unknown Retreat',
+          retreatName: getRetreatCode(retreat),
           bookingNumber: (typeof payment.bookingId === 'object' ? payment.bookingId?.bookingNumber : undefined) || booking?.bookingNumber,
         };
       });
@@ -118,6 +128,71 @@ const PaymentsPage: React.FC = () => {
     [payments],
   );
 
+  const getSortValue = (payment: PaymentWithDetails, key: PaymentSortKey) => {
+    switch (key) {
+      case 'display':
+        return Number(payment.display_id || 0);
+      case 'date':
+        return payment.paymentDate ? new Date(payment.paymentDate).getTime() : 0;
+      case 'client':
+        return `${payment.clientDisplayId || ''} ${payment.clientName || ''}`.toLowerCase();
+      case 'retreat':
+        return String(payment.retreatName || '').toLowerCase();
+      case 'booking':
+        return Number(payment.bookingNumber || 0);
+      case 'amount':
+        return Number(payment.amount || 0);
+      case 'usd':
+        return Number(payment.usd_amount || 0);
+      case 'method':
+        return String(payment.paymentMethod || '').toLowerCase();
+      case 'status':
+        return String(payment.status || '').toLowerCase();
+      case 'type':
+        return String(payment.paymentType || 'regular').toLowerCase();
+      default:
+        return '';
+    }
+  };
+
+  const sortedPayments = useMemo(() => {
+    return [...payments].sort((a, b) => {
+      const aValue = getSortValue(a, sortKey);
+      const bValue = getSortValue(b, sortKey);
+      const direction = sortDirection === 'asc' ? 1 : -1;
+
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return (aValue - bValue) * direction;
+      }
+
+      return String(aValue).localeCompare(String(bValue), undefined, { numeric: true, sensitivity: 'base' }) * direction;
+    });
+  }, [payments, sortDirection, sortKey]);
+
+  const handleSort = (key: PaymentSortKey) => {
+    if (sortKey === key) {
+      setSortDirection((direction) => direction === 'asc' ? 'desc' : 'asc');
+      return;
+    }
+
+    setSortKey(key);
+    setSortDirection(key === 'display' || key === 'date' || key === 'booking' || key === 'amount' || key === 'usd' ? 'desc' : 'asc');
+  };
+
+  const renderSortableHeader = (key: PaymentSortKey, label: string) => (
+    <button
+      type="button"
+      onClick={() => handleSort(key)}
+      className="inline-flex items-center gap-1 text-xs font-medium uppercase tracking-wider text-gray-500 hover:text-gray-900"
+    >
+      {label}
+      <Icon
+        icon={FiChevronDown}
+        className={`h-3 w-3 transition-transform ${sortKey === key && sortDirection === 'asc' ? 'rotate-180' : ''} ${sortKey === key ? 'opacity-100' : 'opacity-35'}`}
+      />
+    </button>
+  );
+
   if (isLoading) {
     return <LoadingSpinner message="Loading payments..." />;
   }
@@ -143,21 +218,25 @@ const PaymentsPage: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Client</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Retreat</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Booking #</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">USD</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Method</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                <th className="px-6 py-3 text-left">{renderSortableHeader('display', 'Payment #')}</th>
+                <th className="px-6 py-3 text-left">{renderSortableHeader('date', 'Date')}</th>
+                <th className="px-6 py-3 text-left">{renderSortableHeader('client', 'Client')}</th>
+                <th className="px-6 py-3 text-left">{renderSortableHeader('retreat', 'Retreat')}</th>
+                <th className="px-6 py-3 text-left">{renderSortableHeader('booking', 'Booking #')}</th>
+                <th className="px-6 py-3 text-left">{renderSortableHeader('amount', 'Amount')}</th>
+                <th className="px-6 py-3 text-left">{renderSortableHeader('usd', 'USD')}</th>
+                <th className="px-6 py-3 text-left">{renderSortableHeader('method', 'Method')}</th>
+                <th className="px-6 py-3 text-left">{renderSortableHeader('status', 'Status')}</th>
+                <th className="px-6 py-3 text-left">{renderSortableHeader('type', 'Type')}</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {payments.map((payment) => (
+              {sortedPayments.map((payment) => (
                 <tr key={payment._id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                    {payment.display_id ? `#${payment.display_id}` : '-'}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {new Date(payment.paymentDate).toLocaleDateString()}
                   </td>
@@ -171,7 +250,18 @@ const PaymentsPage: React.FC = () => {
                     {payment.retreatName}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {payment.bookingNumber ? `#${payment.bookingNumber}` : '-'}
+                    {payment.bookingNumber && payment.bookingId ? (
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/admin/bookings/${payment.bookingId}`)}
+                        className="font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+                        title="Open booking"
+                      >
+                        #{payment.bookingNumber}
+                      </button>
+                    ) : (
+                      '-'
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <CurrencyDisplay amount={payment.amount} currency={payment.currency} />

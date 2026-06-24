@@ -126,15 +126,27 @@
 }
 
 .api-error-retry {
-  background: #3498db;
+  background: #374151;
   color: white;
   flex: 1;
 }
 
 .api-error-retry:hover {
-  background: #2980b9;
+  background: #111827;
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+  box-shadow: 0 4px 12px rgba(55, 65, 81, 0.22);
+}
+
+.api-error-home {
+  background: #374151;
+  color: white;
+  flex: 1;
+}
+
+.api-error-home:hover {
+  background: #111827;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(55, 65, 81, 0.22);
 }
 
 .api-error-dismiss {

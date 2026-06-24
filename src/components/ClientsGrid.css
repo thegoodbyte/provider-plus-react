@@ -20,7 +20,7 @@
   color: #333;
   font-size: 32px;
   font-weight: 700;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -48,7 +48,7 @@
 
 .search-input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #374151;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -69,7 +69,7 @@
 
 .workflow-select:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #374151;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -92,7 +92,7 @@
 }
 
 .add-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
   color: white;
   padding: 12px 24px;
   border: none;
@@ -174,7 +174,7 @@
 }
 
 .edit-btn {
-  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  background: linear-gradient(135deg, #6b7280 0%, #d1d5db 100%);
   color: white;
 }
 
@@ -257,7 +257,7 @@
 }
 
 .workflow-completed {
-  background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+  background: linear-gradient(135deg, #6b7280 0%, #138496 100%);
   color: white;
 }
 
@@ -325,7 +325,7 @@
   font-weight: 600;
   padding-bottom: 12px;
   border-bottom: 2px solid #e1e5e9;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -359,7 +359,7 @@
 .form-group select:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #374151;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -395,7 +395,7 @@
 }
 
 .save-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
   color: white;
 }
 
@@ -537,7 +537,7 @@
   font-size: 24px;
   font-weight: 600;
   text-align: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -653,7 +653,7 @@
   font-size: 34px;
   line-height: 1.15;
   font-weight: 700;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -690,7 +690,7 @@
 
 .retreat-meta .status-badge {
   background: #e0edff;
-  color: #1d4ed8;
+  color: #111827;
   border-radius: 999px;
 }
 
@@ -719,7 +719,7 @@
 .stat-number {
   font-size: 28px;
   font-weight: 700;
-  color: #667eea;
+  color: #374151;
   margin-bottom: 8px;
 }
 
@@ -767,7 +767,7 @@
 
 .back-btn {
   padding: 12px 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
   color: white;
   border: none;
   border-radius: 8px;
@@ -995,7 +995,7 @@
 }
 
 .summary-card {
-  background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);
+  background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
   padding: 24px;
   border-radius: 12px;
   text-align: center;
@@ -1012,19 +1012,19 @@
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
 }
 
 .summary-card:hover {
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15);
-  border-color: #667eea;
+  border-color: #374151;
 }
 
 .summary-number {
   font-size: 24px;
   font-weight: 700;
-  color: #667eea;
+  color: #374151;
   margin-bottom: 8px;
 }
 
@@ -1048,7 +1048,7 @@
   color: #333;
   font-size: 18px;
   font-weight: 600;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -1081,7 +1081,7 @@
 .category-amount {
   font-size: 14px;
   font-weight: 600;
-  color: #667eea;
+  color: #374151;
 }
 
 .expenses-actions {
@@ -1161,7 +1161,7 @@
   color: #333;
   font-size: 20px;
   font-weight: 600;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -1211,7 +1211,7 @@
 }
 
 .cell-actions .edit-btn:hover {
-  background: #e3f2fd;
+  background: #f3f4f6;
 }
 
 .cell-actions .delete-btn:hover {
@@ -1225,7 +1225,7 @@
 }
 
 .status-approved {
-  background: linear-gradient(135deg, #17a2b8 0%, #20c997 100%);
+  background: linear-gradient(135deg, #6b7280 0%, #20c997 100%);
   color: white;
 }
 
@@ -1378,7 +1378,7 @@
 }
 
 .tab-button.active {
-  background: #3498db;
+  background: #374151;
   color: white;
   transform: translateY(2px);
 }
@@ -1390,7 +1390,7 @@
   left: 0;
   right: 0;
   height: 2px;
-  background: #3498db;
+  background: #374151;
 }
 
 /* Client Detail View Styles */
@@ -1402,7 +1402,7 @@
 }
 
 .client-detail-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
   border-radius: 16px;
   padding: 32px;
   margin-bottom: 32px;
@@ -1628,7 +1628,7 @@
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
 }
 
 .info-card:hover {
@@ -1672,10 +1672,10 @@
 }
 
 .info-row .text-content {
-  background: #f8f9ff;
+  background: #f9fafb;
   padding: 12px 16px;
   border-radius: 8px;
-  border-left: 3px solid #667eea;
+  border-left: 3px solid #374151;
   margin-top: 8px;
   font-style: italic;
   color: #666;
@@ -1745,7 +1745,7 @@
 }
 
 .retreat-selector {
-  background: #f8f9ff;
+  background: #f9fafb;
   padding: 24px;
   border-radius: 12px;
   border: 2px solid #e1e5e9;
@@ -1772,7 +1772,7 @@
 
 .retreat-selector select:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #374151;
 }
 
 .no-medical-records {
@@ -1802,7 +1802,7 @@
 }
 
 .requirements-summary {
-  background: #f8f9ff;
+  background: #f9fafb;
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 32px;
@@ -1861,11 +1861,11 @@
 }
 
 .summary-stats .stat-card.total {
-  border-color: #667eea;
+  border-color: #374151;
 }
 
 .summary-stats .stat-card.total .stat-number {
-  color: #667eea;
+  color: #374151;
 }
 
 .requirement-card, .reminder-card {
@@ -1977,7 +1977,7 @@
 }
 
 .priority-low {
-  background: #d1ecf1;
+  background: #e5e7eb;
   color: #0c5460;
 }
 
@@ -2028,14 +2028,14 @@
   color: #333;
   font-size: 24px;
   font-weight: 600;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .add-reminder-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
   color: white;
   padding: 12px 24px;
   border: none;
@@ -2074,7 +2074,7 @@
 }
 
 .edit-reminder-btn:hover {
-  background: #e3f2fd;
+  background: #f3f4f6;
   transform: scale(1.1);
 }
 
@@ -2092,7 +2092,7 @@
 
 .action-type {
   text-transform: capitalize;
-  color: #667eea;
+  color: #374151;
   font-weight: 500;
 }
 
@@ -2160,7 +2160,7 @@
 .reminder-form-grid select:focus,
 .reminder-form-grid textarea:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #374151;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -2179,7 +2179,7 @@
 
 /* Priority styling in cards */
 .reminder-card.priority-low {
-  border-left: 4px solid #17a2b8;
+  border-left: 4px solid #6b7280;
 }
 
 .reminder-card.priority-medium {
@@ -2371,8 +2371,8 @@
 }
 
 .ceremony-date {
-  background: #f8f9ff;
-  color: #667eea;
+  background: #f9fafb;
+  color: #374151;
   padding: 8px 16px;
   border-radius: 20px;
   font-size: 14px;
@@ -2386,7 +2386,7 @@
 }
 
 .detail-section {
-  background: #f8f9ff;
+  background: #f9fafb;
   border-radius: 12px;
   padding: 20px;
   border: 1px solid #e1e5e9;

@@ -146,8 +146,8 @@ const ModuleLauncherPage: React.FC = () => {
         tone: 'violet',
         tiles: [
           { id: 'workflow', label: 'Workflow', subtitle: 'Readiness', route: 'workflow', icon: Workflow, tone: 'violet' },
-          { id: 'retreat-flow', label: 'Retreat Flow', subtitle: 'Templates', route: 'retreat-flow', icon: LayoutGrid, tone: 'violet' },
-          { id: 'retreat-flow-library', label: 'Flow Library', subtitle: 'Generic steps', route: 'retreat-flow-library', icon: BookOpen, tone: 'violet' },
+          { id: 'retreat-flow', label: 'Retreat Readiness', subtitle: 'Per-retreat steps', route: 'retreat-flow', icon: LayoutGrid, tone: 'violet' },
+          { id: 'retreat-flow-library', label: 'Booking Step Setup', subtitle: 'Master steps', route: 'retreat-flow-library', icon: BookOpen, tone: 'violet' },
           { id: 'flow-tasks', label: 'Flow Tasks', subtitle: 'Queue', route: 'flow-tasks', icon: ListTodo, tone: 'violet' },
         ],
       },
@@ -204,7 +204,7 @@ const ModuleLauncherPage: React.FC = () => {
         tone: 'violet',
         tiles: [
           { id: 'workflow', label: 'Workflow', subtitle: 'Readiness', route: 'workflow', icon: Workflow, tone: 'violet' },
-          { id: 'retreat-flow', label: 'Retreat Flow', subtitle: 'Steps', route: 'retreat-flow', icon: LayoutGrid, tone: 'violet' },
+          { id: 'retreat-flow', label: 'Retreat Readiness', subtitle: 'Steps', route: 'retreat-flow', icon: LayoutGrid, tone: 'violet' },
           { id: 'flow-tasks', label: 'Flow Tasks', subtitle: 'Queue', route: 'flow-tasks', icon: ListTodo, tone: 'violet' },
         ],
       },

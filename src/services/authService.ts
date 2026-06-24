@@ -5,7 +5,6 @@ interface LoginResponse {
   access_token: string;
   user: {
     id?: string;
-    username: string; // This is now the email for compatibility
     email: string;
     role: string;
     firstName?: string;
@@ -17,14 +16,14 @@ interface LoginResponse {
 }
 
 export const authService = {
-  async login(username: string, password: string): Promise<LoginResponse> {
+  async login(email: string, password: string): Promise<LoginResponse> {
     try {
       const response = await fetch(`${API_BASE_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ email, password }),
       });
 
       if (!response.ok) {

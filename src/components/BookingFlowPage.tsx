@@ -11,6 +11,7 @@ type FlowDraft = {
   title: string;
   order: string;
   offsetDays: string;
+  dueDate: string;
   notes: string;
 };
 
@@ -26,10 +27,18 @@ const formatDate = (value?: string | Date | null) => {
   return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
 };
 
+const toDateInputValue = (value?: string | Date | null) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString().slice(0, 10);
+};
+
 const makeDraft = (item: BookingFlowItem): FlowDraft => ({
   title: item.title || '',
   order: String(item.order || 0),
   offsetDays: String(item.offsetDays || 0),
+  dueDate: toDateInputValue(item.dueDate),
   notes: item.notes || '',
 });
 
@@ -42,7 +51,7 @@ const BookingFlowPage: React.FC = () => {
   const [retreat, setRetreat] = useState<Retreat | null>(null);
   const [items, setItems] = useState<BookingFlowItem[]>([]);
   const [drafts, setDrafts] = useState<Record<string, FlowDraft>>({});
-  const [newStep, setNewStep] = useState<FlowDraft>({ title: '', order: '0', offsetDays: '0', notes: '' });
+  const [newStep, setNewStep] = useState<FlowDraft>({ title: '', order: '0', offsetDays: '0', dueDate: '', notes: '' });
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState('');
   const [error, setError] = useState('');
@@ -67,7 +76,7 @@ const BookingFlowPage: React.FC = () => {
       const response = await bookingsApi.getAll();
       setBookings(response.data || []);
     } catch (err) {
-      console.error('Error loading booking steps:', err);
+      console.error('Error loading booking requirements:', err);
       setError('Unable to load bookings.');
     } finally {
       setLoading(false);
@@ -105,8 +114,8 @@ const BookingFlowPage: React.FC = () => {
       setItems(flowItems);
       hydrateDrafts(flowItems);
     } catch (err) {
-      console.error('Error loading booking steps:', err);
-      setError('Unable to load Booking Steps.');
+      console.error('Error loading booking requirements:', err);
+      setError('Unable to load Booking Requirements.');
     } finally {
       setLoading(false);
     }
@@ -123,7 +132,7 @@ const BookingFlowPage: React.FC = () => {
     setDrafts((current) => ({
       ...current,
       [itemId]: {
-        ...(current[itemId] || { title: '', order: '0', offsetDays: '0', notes: '' }),
+        ...(current[itemId] || { title: '', order: '0', offsetDays: '0', dueDate: '', notes: '' }),
         ...patch,
       },
     }));
@@ -139,7 +148,7 @@ const BookingFlowPage: React.FC = () => {
         title: draft.title.trim(),
         order: Number(draft.order || 0),
         offsetDays,
-        dueDate: calculateDueDate(offsetDays),
+        dueDate: draft.dueDate ? new Date(`${draft.dueDate}T12:00:00`).toISOString() : null,
         notes: draft.notes,
       });
       await loadData();
@@ -158,11 +167,11 @@ const BookingFlowPage: React.FC = () => {
         title: newStep.title.trim(),
         order: Number(newStep.order || 0),
         offsetDays,
-        dueDate: calculateDueDate(offsetDays),
+        dueDate: newStep.dueDate ? new Date(`${newStep.dueDate}T12:00:00`).toISOString() : calculateDueDate(offsetDays),
         notes: newStep.notes,
         category: 'other',
       });
-      setNewStep({ title: '', order: String((sortedItems.at(-1)?.order || 0) + 10), offsetDays: '0', notes: '' });
+      setNewStep({ title: '', order: String((sortedItems.at(-1)?.order || 0) + 10), offsetDays: '0', dueDate: '', notes: '' });
       await loadData();
     } finally {
       setSavingId('');
@@ -211,7 +220,7 @@ const BookingFlowPage: React.FC = () => {
   };
 
   if (loading) {
-    return <LoadingSpinner message="Loading booking steps..." />;
+    return <LoadingSpinner message="Loading booking requirements..." />;
   }
 
   const getClientName = (currentBooking: any): string => {
@@ -247,8 +256,8 @@ const BookingFlowPage: React.FC = () => {
       <div className="p-6">
         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Booking Steps</h1>
-            <p className="text-sm text-gray-600">Select a client booking to add, delete, edit, and reorder its flow steps.</p>
+            <h1 className="text-2xl font-semibold text-gray-900">Booking Requirements</h1>
+            <p className="text-sm text-gray-600">Select a booking to edit client-specific deadlines, statuses, notes, and requirement rows.</p>
           </div>
           <button onClick={loadClientFlowIndex} className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
             <Icon icon={RefreshCw} className="h-4 w-4" />
@@ -289,7 +298,7 @@ const BookingFlowPage: React.FC = () => {
                       onClick={() => navigate(id)}
                       className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
                     >
-                      Edit Steps
+                      Edit Requirements
                     </button>
                   </div>
                 </div>
@@ -320,10 +329,10 @@ const BookingFlowPage: React.FC = () => {
             <Icon icon={ArrowLeft} className="h-4 w-4" />
             Back
           </button>
-          <h1 className="text-2xl font-semibold text-gray-900">Booking Steps</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Booking Requirements</h1>
           <p className="text-sm text-gray-600">
             {(booking?.clientId as any)?.firstName ? `${(booking.clientId as any).firstName} ${(booking.clientId as any).lastName}` : 'Client'}
-            {' '}• {retreat?.name || 'Retreat'} • top step happens first
+            {' '}• {retreat?.name || 'Retreat'} • generated from booking step setup
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -338,10 +347,10 @@ const BookingFlowPage: React.FC = () => {
       </div>
 
       <div className="mb-5 rounded-lg border border-gray-200 bg-white p-4">
-        <div className="mb-3 text-sm font-semibold text-gray-900">Add Step</div>
-        <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_100px_130px_minmax(220px,1fr)_auto]">
+        <div className="mb-3 text-sm font-semibold text-gray-900">Add Requirement</div>
+        <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_90px_130px_150px_minmax(220px,1fr)_auto]">
           <label className="block">
-            <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Step name</span>
+            <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Requirement name</span>
             <input
               value={newStep.title}
               onChange={(event) => setNewStep((current) => ({ ...current, title: event.target.value }))}
@@ -360,13 +369,22 @@ const BookingFlowPage: React.FC = () => {
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Days before retreat</span>
+            <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Offset days</span>
             <input
               type="number"
               value={newStep.offsetDays}
               onChange={(event) => setNewStep((current) => ({ ...current, offsetDays: event.target.value }))}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
               placeholder="21"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Deadline</span>
+            <input
+              type="date"
+              value={newStep.dueDate}
+              onChange={(event) => setNewStep((current) => ({ ...current, dueDate: event.target.value }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             />
           </label>
           <label className="block">
@@ -390,24 +408,25 @@ const BookingFlowPage: React.FC = () => {
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
-        <div className="grid min-w-[1100px] grid-cols-[72px_minmax(220px,1fr)_100px_130px_minmax(220px,1fr)_140px_150px] gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3 text-xs font-semibold uppercase text-gray-500">
+        <div className="grid min-w-[1220px] grid-cols-[72px_minmax(220px,1fr)_90px_120px_150px_minmax(220px,1fr)_140px_150px] gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3 text-xs font-semibold uppercase text-gray-500">
           <div>Move</div>
           <div>Name</div>
           <div>Order</div>
-          <div>Days prior</div>
+          <div>Offset days</div>
+          <div>Deadline</div>
           <div>Note</div>
           <div>Last update</div>
           <div>Actions</div>
         </div>
 
         {sortedItems.length === 0 ? (
-          <div className="p-8 text-center text-sm text-gray-500">No booking steps yet.</div>
+          <div className="p-8 text-center text-sm text-gray-500">No booking requirements yet.</div>
         ) : (
           sortedItems.map((item, index) => {
             const id = item._id || item.key;
             const draft = drafts[id] || makeDraft(item);
             return (
-              <div key={id} className="grid min-w-[1100px] grid-cols-[72px_minmax(220px,1fr)_100px_130px_minmax(220px,1fr)_140px_150px] gap-3 border-b border-gray-100 px-4 py-3 last:border-b-0">
+              <div key={id} className="grid min-w-[1220px] grid-cols-[72px_minmax(220px,1fr)_90px_120px_150px_minmax(220px,1fr)_140px_150px] gap-3 border-b border-gray-100 px-4 py-3 last:border-b-0">
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => moveItem(index, -1)}
@@ -441,6 +460,12 @@ const BookingFlowPage: React.FC = () => {
                   type="number"
                   value={draft.offsetDays}
                   onChange={(event) => setDraft(id, { offsetDays: event.target.value })}
+                  className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+                />
+                <input
+                  type="date"
+                  value={draft.dueDate}
+                  onChange={(event) => setDraft(id, { dueDate: event.target.value })}
                   className="rounded-md border border-gray-300 px-3 py-2 text-sm"
                 />
                 <textarea

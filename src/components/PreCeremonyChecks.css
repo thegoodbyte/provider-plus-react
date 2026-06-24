@@ -137,7 +137,7 @@
 }
 
 .record-card.initial {
-  border-left-color: #667eea;
+  border-left-color: #374151;
 }
 
 .record-card.pre-ceremony {
@@ -233,7 +233,7 @@
 }
 
 .btn-primary {
-  background: #667eea;
+  background: #374151;
   color: white;
   border: none;
   padding: 10px 20px;
@@ -248,7 +248,7 @@
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #5a67d8;
+  background: #111827;
 }
 
 .btn-primary:disabled {

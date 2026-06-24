@@ -92,15 +92,18 @@ export const clientsApi = {
   getOne: (id: string) => cachedGet<Client>(`clients:${id}`, () => api.get<Client>(`/clients/${id}`)),
   create: (data: Omit<Client, '_id'>) => {
     cacheService.clearPattern('clients:');
-    return api.post<Client>('/clients', data);
+    const { loginPin: _loginPin, ...safeData } = data as Partial<Client> & { loginPin?: string };
+    return api.post<Client>('/clients', safeData);
   },
   quickAdd: (data: Partial<Client>) => {
     cacheService.clearPattern('clients:');
-    return api.post<Client>('/clients/quick-add', data);
+    const { loginPin: _loginPin, ...safeData } = data as Partial<Client> & { loginPin?: string };
+    return api.post<Client>('/clients/quick-add', safeData);
   },
   update: (id: string, data: Partial<Client>) => {
     cacheService.clearPattern('clients:');
-    return api.patch<Client>(`/clients/${id}`, data);
+    const { loginPin: _loginPin, ...safeData } = data as Partial<Client> & { loginPin?: string };
+    return api.patch<Client>(`/clients/${id}`, safeData);
   },
   delete: (id: string) => {
     cacheService.clearPattern('clients:');
@@ -284,6 +287,7 @@ export const paymentsApi = {
   getByBookingHash: (bookingHash: string) => cachedGet<Payment[]>(`payments:hash:${bookingHash}`, () => api.get<Payment[]>(`/payments/by-booking-hash/${bookingHash}`)),
   getByClientAndRetreat: (clientId: string, retreatId: string) => cachedGet<Payment[]>(`payments:client-retreat:${clientId}-${retreatId}`, () => api.get<Payment[]>(`/payments/by-client-and-retreat?clientId=${clientId}&retreatId=${retreatId}`)),
   getRetreatSummary: (retreatId: string) => cachedGet<PaymentSummary>(`payments:summary:${retreatId}`, () => api.get<PaymentSummary>(`/payments/retreat-summary/${retreatId}`)),
+  getNextDisplayId: () => api.get<number>('/payments/next-display-id'),
   convertToUsd: (amount: number, currency: string) => api.get<{ amount: number; currency: string; usd_amount: number }>(`/payments/convert-to-usd?amount=${encodeURIComponent(String(amount))}&currency=${encodeURIComponent(currency)}`),
   create: (data: Omit<Payment, '_id'>) => {
     cacheService.clearPattern('payments:');
@@ -355,6 +359,10 @@ export const communicationsApi = {
   testConnection: () => api.post<{ settings: MailSettings; profile: Record<string, any> }>('/communications/gmail/test', {}),
   getTemplates: () => cachedGet<EmailTemplate[]>('communications:templates', () => api.get<EmailTemplate[]>('/communications/templates')),
   getTemplate: (id: string) => cachedGet<EmailTemplate>(`communications:templates:${id}`, () => api.get<EmailTemplate>(`/communications/templates/${id}`)),
+  getTemplateByCategoryAndLanguage: (category: string, language: string) => cachedGet<EmailTemplate>(
+    `communications:templates:${category}:${language}`,
+    () => api.get<EmailTemplate>(`/communications/templates/category/${category}/${language}`)
+  ),
   getNextTemplateDisplayId: () => api.get<number>('/communications/templates/next-display-id'),
   seedDefaultTemplates: () => {
     cacheService.clearPattern('communications:templates');
@@ -677,8 +685,13 @@ export const medicalArtifactsApi = {
     cacheService.clearPattern('medical-artifacts:');
     return api.delete<MedicalArtifact>(`/medical-artifacts/${id}/files?storedPath=${encodeURIComponent(storedPath)}`);
   },
-  getFileBlob: (id: string, storedPath: string) =>
-    api.get(`/medical-artifacts/${id}/files/view?storedPath=${encodeURIComponent(storedPath)}`, { responseType: 'blob' }),
+  getFileBlob: (id: string, storedPath: string) => {
+    const legacyFileUploadMatch = storedPath.match(/(?:^|\/)file-uploads\/view\/([^/?#]+)/);
+    if (legacyFileUploadMatch?.[1]) {
+      return api.get(`/file-uploads/view/${encodeURIComponent(legacyFileUploadMatch[1])}`, { responseType: 'blob' });
+    }
+    return api.get(`/medical-artifacts/${id}/files/view?storedPath=${encodeURIComponent(storedPath)}`, { responseType: 'blob' });
+  },
   update: (id: string, data: Partial<MedicalArtifact>) => {
     cacheService.clearPattern('medical-artifacts:');
     return api.patch<MedicalArtifact>(`/medical-artifacts/${id}`, data);

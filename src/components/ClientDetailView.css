@@ -84,7 +84,7 @@
 }
 
 .tab-btn.active {
-  background-color: #007bff;
+  background-color: #374151;
   color: white;
 }
 
@@ -178,7 +178,7 @@
 }
 
 .status-received {
-  background-color: #007bff;
+  background-color: #374151;
   color: white;
 }
 
@@ -265,7 +265,7 @@
 }
 
 .stat-card.total {
-  background-color: #d1ecf1;
+  background-color: #e5e7eb;
   border-color: #b8daff;
 }
 
@@ -350,12 +350,12 @@
 }
 
 .mark-received-btn {
-  background-color: #007bff;
+  background-color: #374151;
   color: white;
 }
 
 .mark-received-btn:hover {
-  background-color: #0056b3;
+  background-color: #111827;
 }
 
 .approve-btn {
@@ -413,7 +413,7 @@
   border-radius: 12px;
   padding: 20px;
   border: 1px solid #e9ecef;
-  border-left: 4px solid #007bff;
+  border-left: 4px solid #374151;
 }
 
 .reminder-card.priority-high {
@@ -501,7 +501,7 @@
 
 .retreat-selector select:focus {
   outline: none;
-  border-color: #007bff;
+  border-color: #374151;
 }
 
 .medical-tab {

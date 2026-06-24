@@ -268,6 +268,8 @@ const translations = {
     retreatDescription: 'Pobyt uzdrawiający psychoduchowo z dwiema ceremoniami Missoko Bwiti Iboga, zakwaterowaniem (pokój Aleksism) i wyżywieniem.',
     location: 'Miejsce',
     dates: 'Data',
+    checkIn: 'Przyjazd',
+    checkOut: 'Wyjazd',
     addressLabel: 'Adres',
     googleMaps: 'Google maps',
     // Table headers
@@ -313,6 +315,8 @@ const translations = {
     retreatDescription: 'Psychospiritualní léčebný pobyt se dvěma ceremoniemi Missoko Bwiti Iboga, ubytováním (pokoj Aleksism) a stravováním.',
     location: 'Místo',
     dates: 'Datum',
+    checkIn: 'Příjezd',
+    checkOut: 'Odjezd',
     addressLabel: 'Adresa',
     googleMaps: 'Google mapy',
     // Table headers
@@ -358,6 +362,8 @@ const translations = {
     retreatDescription: 'Psycho-spiritual healing retreat with two Missoko Bwiti Iboga ceremonies, accommodation (Aleksism room) and meals.',
     location: 'Location',
     dates: 'Dates',
+    checkIn: 'Check-in',
+    checkOut: 'Check-out',
     addressLabel: 'Address',
     googleMaps: 'Google maps',
     // Table headers
@@ -444,6 +450,13 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
     retreatStartDate ? formatDate(retreatStartDate) : null,
     retreatEndDate ? formatDate(retreatEndDate) : null,
   ].filter(Boolean).join(' - ') || 'N/A';
+  const formatRetreatDateTime = (date: Date | null, time?: string) => {
+    if (!date) return 'N/A';
+    const trimmedTime = String(time || '').trim();
+    return trimmedTime ? `${formatDate(date)} ${trimmedTime}` : formatDate(date);
+  };
+  const retreatCheckIn = formatRetreatDateTime(retreatStartDate, retreat?.startTime || retreat?.dates?.startTime);
+  const retreatCheckOut = formatRetreatDateTime(retreatEndDate, retreat?.endTime || retreat?.dates?.endTime);
   const retreatDateRangeCompact = [
     retreatStartDate ? retreatStartDate.toLocaleDateString(getDateLocale(), { day: '2-digit', month: '2-digit' }) : null,
     retreatEndDate ? retreatEndDate.toLocaleDateString(getDateLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' }) : null,
@@ -591,6 +604,14 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
           <tr>
             <td style="padding: 2px 10px 2px 0; vertical-align: top;">${t.dates}:</td>
             <td style="padding: 2px 0; font-weight: bold;">${escapeHtml(retreatDateRange)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 2px 10px 2px 0; vertical-align: top;">${t.checkIn}:</td>
+            <td style="padding: 2px 0; font-weight: bold;">${escapeHtml(retreatCheckIn)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 2px 10px 2px 0; vertical-align: top;">${t.checkOut}:</td>
+            <td style="padding: 2px 0; font-weight: bold;">${escapeHtml(retreatCheckOut)}</td>
           </tr>
           <tr>
             <td style="padding: 2px 10px 2px 0; vertical-align: top;">${t.addressLabel}:</td>

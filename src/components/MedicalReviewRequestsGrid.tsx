@@ -14,6 +14,11 @@ interface EnrichedReviewRequest extends MedicalReviewRequest {
   trackingFileName?: string;
 }
 
+const getRetreatCode = (retreat?: Retreat) => {
+  if (!retreat) return 'Unknown Retreat';
+  return retreat.retreatCode || retreat.code || retreat.name || 'Unknown Retreat';
+};
+
 const statusClass: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
   in_review: 'bg-blue-100 text-blue-800',
@@ -69,7 +74,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
         return {
           ...request,
           clientName: client ? `${client.firstName} ${client.lastName}` : 'Unknown Client',
-          retreatName: retreat ? retreat.name : 'Unknown Retreat',
+          retreatName: getRetreatCode(retreat),
           trackingFileName: tracking?.ekgFileName || tracking?.liverPanelFileName || undefined,
         };
       });

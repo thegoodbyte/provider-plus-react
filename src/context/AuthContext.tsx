@@ -4,7 +4,7 @@ import { authService } from '../services/authService';
 interface AuthContextType {
   isAuthenticated: boolean;
   user: any | null;
-  login: (username: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => void;
   startMedicalStaffPreview: () => Promise<void>;
   stopImpersonation: () => void;
@@ -43,9 +43,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setLoading(false);
   }, []);
 
-  const login = async (username: string, password: string) => {
+  const login = async (email: string, password: string) => {
     try {
-      const response = await authService.login(username, password);
+      const response = await authService.login(email, password);
       setIsAuthenticated(true);
       setUser(response.user);
     } catch (error) {

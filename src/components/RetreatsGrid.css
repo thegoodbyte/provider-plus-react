@@ -19,14 +19,14 @@
   color: #333;
   font-size: 32px;
   font-weight: 700;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
 .add-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
   color: white;
   padding: 12px 24px;
   border: none;
@@ -69,12 +69,12 @@
 }
 
 .edit-btn {
-  background-color: #2196F3;
+  background-color: #4b5563;
   color: white;
 }
 
 .edit-btn:hover {
-  background-color: #0b7dda;
+  background-color: #374151;
 }
 
 .delete-btn {

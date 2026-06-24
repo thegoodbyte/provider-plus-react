@@ -67,6 +67,17 @@ export const TaskList: React.FC<TaskListProps> = ({
     });
   };
 
+  const getClientDisplayName = (client: any) => {
+    const firstName = client?.firstName || client?.fname || '';
+    const lastName = client?.lastName || client?.lname || '';
+    return `${firstName} ${lastName}`.trim() || 'Client';
+  };
+
+  const getClientNumber = (client: any) => {
+    const displayId = client?.display_id || client?.displayId || client?.clientNumber;
+    return displayId ? `#${displayId}` : 'No client #';
+  };
+
   const getUrgencyBadge = (urgency: string) => {
     const color = taskService.getUrgencyColor(urgency);
     return (
@@ -157,16 +168,6 @@ export const TaskList: React.FC<TaskListProps> = ({
           >
             <div className="task-cell task-name">
               <div className="task-title">{task.name}</div>
-              {task.description && (
-                <div className="task-description">{task.description}</div>
-              )}
-              {task.tags.length > 0 && (
-                <div className="task-tags">
-                  {task.tags.map((tag) => (
-                    <span key={`${task.id}-tag-${tag}`} className="tag">{tag}</span>
-                  ))}
-                </div>
-              )}
             </div>
 
             <div className="task-cell">
@@ -202,9 +203,9 @@ export const TaskList: React.FC<TaskListProps> = ({
               {task.clientId && typeof task.clientId === 'object' ? (
                 <div className="client-info">
                   <div className="client-name">
-                    {(task.clientId as any).firstName} {(task.clientId as any).lastName}
+                    {getClientDisplayName(task.clientId)}
                   </div>
-                  <div className="client-email">{(task.clientId as any).email}</div>
+                  <div className="client-number">{getClientNumber(task.clientId)}</div>
                 </div>
               ) : (
                 <span className="no-client">-</span>
@@ -226,24 +227,27 @@ export const TaskList: React.FC<TaskListProps> = ({
               <div className="action-buttons">
                 {task.status !== 'completed' && (
                   <button
-                    className="btn btn-sm btn-success"
+                    className="btn btn-sm btn-icon btn-success"
                     onClick={() => onCompleteTask(task.id)}
                     title="Mark as complete"
+                    aria-label="Mark task as complete"
                   >
                     ✓
                   </button>
                 )}
                 <button
-                  className="btn btn-sm btn-secondary"
+                  className="btn btn-sm btn-icon btn-secondary"
                   onClick={() => onEditTask(task)}
                   title="Edit task"
+                  aria-label="Edit task"
                 >
                   ✎
                 </button>
                 <button
-                  className="btn btn-sm btn-danger"
+                  className="btn btn-sm btn-icon btn-danger"
                   onClick={() => onDeleteTask(task.id)}
                   title="Delete task"
+                  aria-label="Delete task"
                 >
                   ✗
                 </button>

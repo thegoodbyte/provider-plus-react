@@ -144,7 +144,7 @@
 }
 
 .badge-received {
-    background: #d1ecf1;
+    background: #e5e7eb;
     color: #0c5460;
 }
 
@@ -207,7 +207,7 @@
     border: 0;
     padding: 0;
     background: transparent;
-    color: #1d4ed8;
+    color: #111827;
     font: inherit;
     font-weight: 600;
     text-align: left;
@@ -225,7 +225,7 @@
     padding: 12px;
     border: 1px solid #dbeafe;
     border-radius: 6px;
-    background: #eff6ff;
+    background: #f3f4f6;
 }
 
 .booking-medical-result-editor label {
@@ -239,7 +239,7 @@
     width: 100%;
     min-height: 88px;
     resize: vertical;
-    border: 1px solid #bfdbfe;
+    border: 1px solid #d1d5db;
     border-radius: 6px;
     padding: 8px 10px;
     color: #111827;
@@ -250,8 +250,8 @@
 
 .booking-medical-result-editor textarea:focus {
     outline: none;
-    border-color: #2563eb;
-    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+    border-color: #374151;
+    box-shadow: 0 0 0 2px rgba(55, 65, 81, 0.15);
 }
 
 .booking-medical-result-editor button {
@@ -310,7 +310,7 @@
 }
 
 .file-info i {
-    color: #007bff;
+    color: #374151;
     margin-right: 5px;
 }
 
@@ -373,7 +373,7 @@
 
 .blood-pressure {
     padding: 8px;
-    background: #e7f3ff;
+    background: #f3f4f6;
     border-radius: 4px;
     margin-bottom: 8px;
     font-size: 14px;
@@ -416,7 +416,7 @@
 }
 
 .version {
-    background: #17a2b8;
+    background: #6b7280;
     color: white;
     padding: 2px 6px;
     border-radius: 3px;
@@ -450,12 +450,12 @@
 }
 
 .booking-medical-upload .btn-primary {
-    background: #007bff;
+    background: #374151;
     color: white;
 }
 
 .booking-medical-upload .btn-primary:hover {
-    background: #0056b3;
+    background: #111827;
 }
 
 .booking-medical-upload .btn-secondary {
@@ -478,13 +478,13 @@
 
 .booking-medical-upload .btn-link {
     background: none;
-    color: #007bff;
+    color: #374151;
     text-decoration: none;
     padding: 5px 0;
 }
 
 .booking-medical-upload .btn-link:hover {
-    color: #0056b3;
+    color: #111827;
 }
 
 .booking-medical-upload .btn:disabled {

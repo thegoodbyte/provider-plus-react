@@ -230,6 +230,7 @@ const ClientEditPage: React.FC = () => {
         medicalConditions: formData.medicalConditions,
         dietaryRestrictions: formData.dietaryRestrictions,
         notes: formData.notes,
+        source: normalizeOptionalValue(formData.source),
         status: normalizeOptionalValue(formData.status) as 'active' | 'inactive' | 'suspended' | undefined,
         language: normalizeOptionalValue(formData.language) as Client['language']
       };
@@ -406,6 +407,19 @@ const ClientEditPage: React.FC = () => {
                 name="country"
                 value={formData.country || ''}
                 onChange={handleInputChange}
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="source" className="block text-sm font-medium text-gray-700 mb-1">Referral</label>
+              <input
+                type="text"
+                id="source"
+                name="source"
+                value={formData.source || ''}
+                onChange={handleInputChange}
+                placeholder="Who referred them or how they found us"
                 className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner';
 import { retreatsApi, housesApi, bookingsApi } from '../services/api';
 import { Retreat, House, RetreatClient } from '../types';
 import AppleButton from './AppleButton';
-import RetreatDetailView from './RetreatDetailView';
 import { FiPlus, FiEdit2, FiTrash2, FiEye, FiCalendar, FiMapPin } from 'react-icons/fi';
 
 // Simple wrapper to fix TypeScript icon issues
@@ -12,12 +12,13 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
 };
 
 const RetreatsGrid: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [retreats, setRetreats] = useState<Retreat[]>([]);
   const [bookings, setBookings] = useState<RetreatClient[]>([]);
   const [houses, setHouses] = useState<House[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'holistic'>('list');
-  const [viewingRetreatId, setViewingRetreatId] = useState<string | null>(null);
   const [editingRetreat, setEditingRetreat] = useState<Retreat | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -27,6 +28,11 @@ const RetreatsGrid: React.FC = () => {
     fetchRetreats();
     fetchHouses();
   }, []);
+
+  const routePrefix = location.pathname.split('/').filter(Boolean)[0] || 'admin';
+  const handleViewRetreat = (retreatId: string) => {
+    navigate(`/${routePrefix}/retreats/${retreatId}`);
+  };
 
   const fetchRetreats = async () => {
     try {
@@ -255,16 +261,6 @@ const RetreatsGrid: React.FC = () => {
     </div>
   );
 
-  // If viewing a specific retreat, show the detail view
-  if (viewingRetreatId) {
-    return (
-      <RetreatDetailView
-        retreatId={viewingRetreatId}
-        onBack={() => setViewingRetreatId(null)}
-      />
-    );
-  }
-
   if (isLoading) {
     return <LoadingSpinner message="Loading retreats..." />;
   }
@@ -337,7 +333,7 @@ const RetreatsGrid: React.FC = () => {
               <section key={retreat._id} className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
                 <button
                   type="button"
-                  onClick={() => setViewingRetreatId(retreat._id!)}
+                  onClick={() => handleViewRetreat(retreat._id!)}
                   className={`flex w-full items-center justify-between px-5 py-4 text-left ${getRetreatRowColor(retreat._id!, index).replace('hover:bg-', 'bg-').split(' ')[0]}`}
                   style={headerStyle}
                 >
@@ -380,7 +376,7 @@ const RetreatsGrid: React.FC = () => {
                             <td className="whitespace-nowrap px-4 py-2 text-sm font-semibold text-gray-900">
                               <button
                                 type="button"
-                                onClick={() => setViewingRetreatId(retreat._id!)}
+                                onClick={() => handleViewRetreat(retreat._id!)}
                                 className="text-blue-700 hover:underline"
                               >
                                 {booking.bookingNumber || booking._id?.slice(-6) || '-'}
@@ -452,7 +448,7 @@ const RetreatsGrid: React.FC = () => {
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        onClick={() => setViewingRetreatId(retreat._id!)}
+                        onClick={() => handleViewRetreat(retreat._id!)}
                         className="rounded px-2 py-1 text-left text-sm font-medium text-gray-700 hover:text-gray-900 hover:underline focus:outline-none focus:ring-2 focus:ring-gray-500 bg-transparent"
                         style={retreatLabelStyle(retreat)}
                       >
@@ -469,7 +465,7 @@ const RetreatsGrid: React.FC = () => {
                     {retreat._id ? (
                       <button
                         type="button"
-                        onClick={() => setViewingRetreatId(retreat._id!)}
+                        onClick={() => handleViewRetreat(retreat._id!)}
                         className="text-gray-700 hover:text-gray-900 hover:underline focus:outline-none"
                         style={{
                           backgroundColor: 'transparent !important',
@@ -519,7 +515,7 @@ const RetreatsGrid: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => setViewingRetreatId(retreat._id!)}
+                        onClick={() => handleViewRetreat(retreat._id!)}
                         className="icon-action-btn icon-action-btn-view"
                         title="View Details"
                       >
@@ -703,12 +699,36 @@ const RetreatsGrid: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Start Time
+                </label>
+                <input
+                  type="time"
+                  value={formData.startTime || ''}
+                  onChange={(e) => setFormData({ ...formData, startTime: e.target.value || undefined })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   End Date
                 </label>
                 <input
                   type="date"
                   value={formData.endDate ? new Date(formData.endDate).toISOString().split('T')[0] : ''}
                   onChange={(e) => setFormData({ ...formData, endDate: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  End Time
+                </label>
+                <input
+                  type="time"
+                  value={formData.endTime || ''}
+                  onChange={(e) => setFormData({ ...formData, endTime: e.target.value || undefined })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -748,7 +768,9 @@ const RetreatsGrid: React.FC = () => {
                       type: formData.type || 'regular' as 'regular' | 'booster',
                       description: formData.description || '',
                       startDate: formData.startDate,
+                      startTime: formData.startTime,
                       endDate: formData.endDate,
+                      endTime: formData.endTime,
                       backgroundColor: formData.backgroundColor,
                       textColor: formData.textColor
                     };
@@ -890,12 +912,36 @@ const RetreatsGrid: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Start Time
+                </label>
+                <input
+                  type="time"
+                  value={formData.startTime || ''}
+                  onChange={(e) => setFormData({ ...formData, startTime: e.target.value || undefined })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   End Date
                 </label>
                 <input
                   type="date"
                   value={formData.endDate ? new Date(formData.endDate).toISOString().split('T')[0] : ''}
                   onChange={(e) => setFormData({ ...formData, endDate: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  End Time
+                </label>
+                <input
+                  type="time"
+                  value={formData.endTime || ''}
+                  onChange={(e) => setFormData({ ...formData, endTime: e.target.value || undefined })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>

@@ -95,10 +95,10 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed,
       description: 'Per-retreat checklist and timing'
     },
     {
-      id: 'booking-flow',
-      label: 'Booking Steps',
+      id: 'retreat-flow-library',
+      label: 'Booking Step Setup',
       icon: FiClipboard,
-      description: 'Client-specific flow timeline'
+      description: 'Master booking step configuration'
     },
     {
       id: 'houses',

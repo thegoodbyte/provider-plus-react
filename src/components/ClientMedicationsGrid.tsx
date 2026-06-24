@@ -87,10 +87,12 @@ const ClientMedicationsGrid: React.FC = () => {
 
   const filteredMedications = medications.filter(med => {
     const clientName = getClientName(med.client_id).toLowerCase();
+    const clientDisplayId = getClientDisplayId(med.client_id).toLowerCase();
     const displayId = med.display_id?.toString() || '';
     const searchLower = searchTerm.toLowerCase();
 
     return clientName.includes(searchLower) ||
+           clientDisplayId.includes(searchLower) ||
            displayId.includes(searchLower) ||
            med.admin_notes?.toLowerCase().includes(searchLower) ||
            med.medstaff_review_notes?.toLowerCase().includes(searchLower);
@@ -190,6 +192,9 @@ const ClientMedicationsGrid: React.FC = () => {
                   Record ID
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Client ID
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Client
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -220,15 +225,15 @@ const ClientMedicationsGrid: React.FC = () => {
                       #{medication.display_id}
                     </button>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-blue-700">
+                    {getClientDisplayId(medication.client_id) || '—'}
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <button
                       onClick={() => handleClientClick(medication.client_id)}
                       className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
                     >
                       {getClientName(medication.client_id)}
-                      <span className="text-gray-500 text-sm ml-1">
-                        {getClientDisplayId(medication.client_id)}
-                      </span>
                     </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -288,7 +293,7 @@ const ClientMedicationsGrid: React.FC = () => {
               ))}
               {filteredMedications.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
                     {searchTerm ? 'No medications found matching your search.' : 'No medication records found.'}
                   </td>
                 </tr>

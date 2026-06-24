@@ -46,7 +46,7 @@
 .client-avatar {
   width: 80px;
   height: 80px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -171,12 +171,12 @@
 }
 
 .status-badge.status-received {
-  background: #cce5ff;
+  background: #e5e7eb;
   color: #004085;
 }
 
 .status-badge.status-reviewed {
-  background: #d1ecf1;
+  background: #e5e7eb;
   color: #0c5460;
 }
 
@@ -223,7 +223,7 @@
   padding: 12px;
   background: white;
   border-radius: 6px;
-  border-left: 3px solid #667eea;
+  border-left: 3px solid #374151;
 }
 
 .advisor-notes strong {
@@ -246,7 +246,7 @@
   align-items: center;
   gap: 6px;
   padding: 8px 16px;
-  background: #667eea;
+  background: #374151;
   color: white;
   text-decoration: none;
   border-radius: 6px;
@@ -257,7 +257,7 @@
 }
 
 .view-document-btn:hover {
-  background: #5568d3;
+  background: #111827;
 }
 
 .medical-info-section {
@@ -403,8 +403,8 @@
 }
 
 .decision-option:hover {
-  border-color: #667eea;
-  background: #f8f9ff;
+  border-color: #374151;
+  background: #f9fafb;
 }
 
 .decision-option input[type="radio"] {
@@ -416,7 +416,7 @@
 }
 
 .decision-option input[type="radio"]:checked ~ svg {
-  color: #667eea;
+  color: #374151;
 }
 
 .review-notes {
@@ -442,7 +442,7 @@
 
 .review-notes textarea:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #374151;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -453,7 +453,7 @@
 
 .submit-review-btn {
   padding: 12px 30px;
-  background: #667eea;
+  background: #374151;
   color: white;
   border: none;
   border-radius: 8px;
@@ -464,7 +464,7 @@
 }
 
 .submit-review-btn:hover:not(:disabled) {
-  background: #5568d3;
+  background: #111827;
 }
 
 .submit-review-btn:disabled {

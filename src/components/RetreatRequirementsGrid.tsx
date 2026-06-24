@@ -81,7 +81,7 @@ const RetreatRequirementsGrid: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'approved': return '#28a745';
-      case 'received': case 'reviewed': return '#007bff';
+      case 'received': case 'reviewed': return '#374151';
       case 'pending': return '#ffc107';
       case 'rejected': return '#dc3545';
       default: return '#6c757d';
@@ -209,7 +209,7 @@ const RetreatRequirementsGrid: React.FC = () => {
             <button
               onClick={handleInitializeAllRequirements}
               className="add-btn"
-              style={{ backgroundColor: '#17a2b8' }}
+              style={{ backgroundColor: '#6b7280' }}
             >
               🏗️ Initialize All Requirements
             </button>

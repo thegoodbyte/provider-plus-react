@@ -105,7 +105,7 @@ const Layout: React.FC = () => {
               💱 Currency
             </button>
             <div className="user-info">
-              <span>Welcome, {user?.username || 'Admin'}</span>
+              <span>Welcome, {user?.email || 'Admin'}</span>
               <button onClick={logout} className="logout-btn">Logout</button>
             </div>
           </div>

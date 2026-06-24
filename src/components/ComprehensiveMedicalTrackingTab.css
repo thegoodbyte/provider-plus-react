@@ -68,7 +68,7 @@
 }
 
 .medical-action-card.status-received {
-  border-left: 4px solid #007bff;
+  border-left: 4px solid #374151;
 }
 
 .medical-action-card.status-sent_to_cook {
@@ -157,12 +157,12 @@
 }
 
 .receive-btn {
-  background: #007bff;
+  background: #374151;
   color: white;
 }
 
 .receive-btn:hover {
-  background: #0056b3;
+  background: #111827;
 }
 
 .review-btn {

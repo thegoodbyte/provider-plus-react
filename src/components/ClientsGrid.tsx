@@ -708,7 +708,7 @@ const ClientsGrid: React.FC = () => {
             style={{
               padding: '8px 16px',
               borderRadius: '6px',
-              backgroundColor: '#3b82f6',
+              backgroundColor: '#4b5563',
               color: 'white',
               border: 'none',
               fontSize: '14px',

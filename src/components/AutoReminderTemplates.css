@@ -56,12 +56,12 @@
 }
 
 .refresh-btn {
-  background: #3498db;
+  background: #374151;
   color: white;
 }
 
 .refresh-btn:hover {
-  background: #2980b9;
+  background: #111827;
   transform: translateY(-1px);
 }
 
@@ -129,7 +129,7 @@
 .template-form-grid select:focus,
 .template-form-grid textarea:focus {
   outline: none;
-  border-color: #3498db;
+  border-color: #374151;
 }
 
 .template-form-grid input[type="checkbox"] {
@@ -170,7 +170,7 @@
 }
 
 .action-buttons .toggle-btn:hover {
-  background: #3498db;
+  background: #374151;
 }
 
 .action-buttons .delete-btn:hover {

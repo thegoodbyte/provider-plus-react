@@ -15,7 +15,7 @@
   align-items: center;
   padding: 24px 24px 16px 24px;
   border-bottom: 1px solid #e0e0e0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
   color: white;
   border-radius: 12px 12px 0 0;
 }
@@ -122,13 +122,13 @@
 
 .converter-controls input:focus,
 .converter-controls select:focus {
-  border-color: #007bff;
+  border-color: #374151;
   outline: none;
   box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.15);
 }
 
 .convert-btn {
-  background: #007bff;
+  background: #374151;
   color: white;
   border: none;
   padding: 11px 18px;
@@ -140,7 +140,7 @@
 }
 
 .convert-btn:hover:not(:disabled) {
-  background: #0056b3;
+  background: #111827;
 }
 
 .convert-btn:disabled {
@@ -157,7 +157,7 @@
   padding: 14px 16px;
   border: 1px solid #bbdefb;
   border-radius: 6px;
-  background: #e3f2fd;
+  background: #f3f4f6;
   color: #0d47a1;
 }
 
@@ -221,7 +221,7 @@
 }
 
 .test-btn {
-  background: #007bff;
+  background: #374151;
   color: white;
   border: none;
   padding: 6px 12px;
@@ -232,7 +232,7 @@
 }
 
 .test-btn:hover {
-  background: #0056b3;
+  background: #111827;
 }
 
 .base-currency {
@@ -277,7 +277,7 @@
 }
 
 .currency-note {
-  background: #e3f2fd;
+  background: #f3f4f6;
   border: 1px solid #bbdefb;
   border-radius: 6px;
   padding: 16px;

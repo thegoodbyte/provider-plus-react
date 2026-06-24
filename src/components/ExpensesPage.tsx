@@ -15,6 +15,19 @@ const getRetreatCode = (retreat?: Retreat | null) => {
   return String(retreat.code || retreat.retreatCode || retreat.name || 'Unknown Retreat').trim();
 };
 
+type RetreatReference = string | (Partial<Retreat> & { _id?: string }) | null | undefined;
+
+const getRetreatReferenceId = (retreatRef: RetreatReference) => {
+  if (!retreatRef) return '';
+  if (typeof retreatRef === 'string') return retreatRef;
+  return String(retreatRef._id || '').trim();
+};
+
+const getRetreatReferenceCode = (retreatRef: RetreatReference) => {
+  if (!retreatRef || typeof retreatRef === 'string') return '';
+  return getRetreatCode(retreatRef as Retreat);
+};
+
 const ExpensesPage: React.FC = () => {
   const [expenses, setExpenses] = useState<RetreatExpense[]>([]);
   const [expenseTypes, setExpenseTypes] = useState<ExpenseType[]>([]);
@@ -100,7 +113,7 @@ const ExpensesPage: React.FC = () => {
         ? expense.expenseDate.split('T')[0]
         : new Date(expense.expenseDate).toISOString().split('T')[0],
       status: expense.status,
-      retreatId: expense.retreatId,
+      retreatId: getRetreatReferenceId(expense.retreatId as RetreatReference),
       expenseTypeId: typeof expense.expenseTypeId === 'object' ? expense.expenseTypeId._id! : expense.expenseTypeId
     });
     setShowAddForm(true);
@@ -127,10 +140,11 @@ const ExpensesPage: React.FC = () => {
     return type?.name || 'Unknown';
   };
 
-  const getRetreatName = (retreatId: string) => {
-    if (!retreatId) return 'General Company Expense';
+  const getRetreatName = (retreatRef: RetreatReference) => {
+    const retreatId = getRetreatReferenceId(retreatRef);
+    if (!retreatId) return getRetreatReferenceCode(retreatRef) || 'General Company Expense';
     const retreat = retreats.find(r => r._id === retreatId);
-    return getRetreatCode(retreat);
+    return getRetreatCode(retreat) || getRetreatReferenceCode(retreatRef) || retreatId;
   };
 
   const formatCurrency = (amount: number, currency: string) => {
@@ -152,9 +166,25 @@ const ExpensesPage: React.FC = () => {
 
   // Filter expenses based on selected filters
   const filteredExpenses = expenses.filter(expense => {
-    if (filterType === 'retreat' && !expense.retreatId) return false;
-    if (filterType === 'general' && expense.retreatId) return false;
-    if (filterRetreatId && expense.retreatId !== filterRetreatId) return false;
+    const expenseRetreatRef = expense.retreatId as RetreatReference;
+    const expenseRetreatId = getRetreatReferenceId(expenseRetreatRef);
+    const expenseRetreatCode = getRetreatReferenceCode(expenseRetreatRef);
+    const hasRetreat = Boolean(expenseRetreatId || expenseRetreatCode);
+
+    if (filterType === 'retreat' && !hasRetreat) return false;
+    if (filterType === 'general' && hasRetreat) return false;
+
+    if (filterRetreatId) {
+      const selectedRetreat = retreats.find((retreat) => retreat._id === filterRetreatId);
+      const selectedRetreatCode = getRetreatCode(selectedRetreat);
+      const selectedRetreatName = selectedRetreat?.name?.trim() || '';
+      const matchesId = expenseRetreatId === filterRetreatId;
+      const matchesCode = Boolean(selectedRetreatCode && expenseRetreatCode && selectedRetreatCode === expenseRetreatCode);
+      const matchesLegacyString = typeof expenseRetreatRef === 'string' && [selectedRetreatCode, selectedRetreatName].includes(expenseRetreatRef);
+
+      if (!matchesId && !matchesCode && !matchesLegacyString) return false;
+    }
+
     return true;
   });
 
@@ -277,7 +307,7 @@ const ExpensesPage: React.FC = () => {
                 Retreat (leave empty for general expense)
               </label>
               <select
-                value={formData.retreatId}
+                value={getRetreatReferenceId(formData.retreatId as RetreatReference)}
                 onChange={(e) => setFormData({...formData, retreatId: e.target.value})}
                 className="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >

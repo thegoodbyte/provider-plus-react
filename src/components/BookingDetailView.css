@@ -42,7 +42,7 @@
 }
 
 .language-selector:hover:not(:disabled) {
-  border-color: #60a5fa;
+  border-color: #9ca3af;
   background: #f8fbff;
 }
 
@@ -79,8 +79,8 @@
   height: 55px;
   padding: 7px;
   background: #ffffff;
-  color: #1d4ed8;
-  border: 1px solid #bfdbfe;
+  color: #111827;
+  border: 1px solid #d1d5db;
   border-radius: 10px;
   cursor: pointer;
   font-size: 11px;
@@ -92,7 +92,7 @@
   justify-content: center;
   gap: 4px;
   position: relative;
-  box-shadow: 0 5px 12px rgba(37, 99, 235, 0.10);
+  box-shadow: 0 5px 12px rgba(55, 65, 81, 0.10);
 }
 
 .pdf-btn svg {
@@ -111,10 +111,10 @@
 .pdf-btn.primary-action {
   width: 70px;
   height: 62px;
-  background: #2563eb;
+  background: #374151;
   color: white;
-  border-color: #2563eb;
-  box-shadow: 0 8px 16px rgba(37, 99, 235, 0.26);
+  border-color: #374151;
+  box-shadow: 0 8px 16px rgba(55, 65, 81, 0.22);
 }
 
 .pdf-btn::after {
@@ -139,14 +139,14 @@
 }
 
 .pdf-btn:hover:not(:disabled) {
-  background: #eff6ff;
-  border-color: #60a5fa;
+  background: #f3f4f6;
+  border-color: #9ca3af;
   transform: translateY(-1px);
 }
 
 .pdf-btn.primary-action:hover:not(:disabled) {
-  background: #1d4ed8;
-  border-color: #1d4ed8;
+  background: #111827;
+  border-color: #111827;
 }
 
 .pdf-btn:hover:not(:disabled)::after,
@@ -228,14 +228,14 @@
 }
 
 .booking-detail-tab:hover {
-  border-color: #93c5fd;
-  background: #eff6ff;
-  color: #1d4ed8;
+  border-color: #d1d5db;
+  background: #f3f4f6;
+  color: #111827;
 }
 
 .booking-detail-tab.active {
-  border-color: #2563eb;
-  background: #2563eb;
+  border-color: #374151;
+  background: #374151;
   color: #ffffff;
 }
 
@@ -308,7 +308,7 @@
 }
 
 .booking-detail-accordion-trigger span:last-child {
-  color: #2563eb;
+  color: #374151;
   font-size: 13px;
 }
 
@@ -388,7 +388,7 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: #1d4ed8;
+  color: #111827;
   font: inherit;
   font-size: 13px;
   font-weight: 750;
@@ -487,8 +487,8 @@
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: #e0ecff;
-  color: #1d4ed8;
+  background: #e5e7eb;
+  color: #111827;
   font-size: 12px;
 }
 
@@ -643,7 +643,7 @@
 }
 
 .generating-pdf .detail-section h3.pdf-section-title {
-  color: #2196F3 !important;
+  color: #4b5563 !important;
   font-size: 20px !important;
   font-weight: 600 !important;
   margin-bottom: 20px !important;
@@ -659,7 +659,7 @@
 }
 
 .generating-pdf .section-header h3 {
-  color: #2196F3 !important;
+  color: #4b5563 !important;
   font-size: 20px !important;
   font-weight: 600 !important;
   margin-bottom: 20px !important;
@@ -698,7 +698,7 @@
 .generating-pdf .booking-number {
   font-size: 18px !important;
   font-weight: bold !important;
-  color: #2196F3 !important;
+  color: #4b5563 !important;
 }
 
 .generating-pdf .status-badge {
@@ -969,7 +969,7 @@
     padding: 0;
     justify-content: center;
     border-radius: 8px;
-    background: #2563eb;
+    background: #374151;
   }
 
   .edit-client-btn span {
@@ -1010,7 +1010,7 @@
   .mobile-client-details-toggle svg {
     width: 18px;
     height: 18px;
-    color: #2563eb;
+    color: #374151;
     transition: transform 0.16s ease;
   }
 
@@ -1138,7 +1138,7 @@
 .booking-number {
   font-weight: bold;
   font-size: 18px;
-  color: #2196F3;
+  color: #4b5563;
 }
 
 .status-badge {
@@ -1161,7 +1161,7 @@
 }
 
 .status-checked-in {
-  background: #e3f2fd;
+  background: #f3f4f6;
   color: #1976d2;
 }
 
@@ -1196,7 +1196,7 @@
   justify-content: center;
   border-radius: 999px;
   color: #ffffff;
-  background: #2563eb;
+  background: #374151;
   font-size: 15px;
   font-weight: 800;
   line-height: 1;
@@ -1332,7 +1332,7 @@
 
 .error-container button {
   padding: 10px 20px;
-  background: #2196F3;
+  background: #4b5563;
   color: white;
   border: none;
   border-radius: 4px;
@@ -1378,7 +1378,7 @@
     padding: 0;
     justify-content: center;
     border-radius: 8px;
-    background: #2563eb;
+    background: #374151;
   }
 
   .edit-client-btn span {

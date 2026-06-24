@@ -12,6 +12,7 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
 interface MedicalGridData {
   _id: string;
   clientId: string;
+  clientDisplayId?: number | string;
   clientName: string;
   retreatName: string;
   retreatLocation: string;
@@ -53,10 +54,11 @@ const MedicalGrid: React.FC = () => {
       const transformedData: MedicalGridData[] = response.data.map((record: any) => ({
         _id: record._id,
         clientId: typeof record.clientId === 'string' ? record.clientId : record.clientId?._id || '',
+        clientDisplayId: typeof record.clientId === 'object' ? record.clientId?.display_id || record.clientId?.clientNumber : undefined,
         clientName: record.clientId
           ? `${record.clientId.firstName || record.clientId.fname || ''} ${record.clientId.lastName || record.clientId.lname || ''}`.trim()
           : 'Unknown Client',
-        retreatName: record.retreatId?.name || 'Unknown Retreat',
+        retreatName: record.retreatId?.retreatCode || record.retreatId?.code || record.retreatId?.name || 'Unknown Retreat',
         retreatLocation: record.retreatId?.location || '',
         retreatStartDate: record.retreatId?.startDate || record.retreatId?.dates?.startDate || '',
 
@@ -148,7 +150,7 @@ const MedicalGrid: React.FC = () => {
     const csvContent = [
       ['Client', 'Retreat', 'Location', 'Start Date', 'EKG Status', 'EKG Received', 'EKG Sent', 'EKG File', 'EKG Notes', 'Liver Status', 'Liver Received', 'Liver Sent', 'Liver File', 'Liver Notes', 'Medical Clearance', 'Clearance Date', 'Clearance Notes', 'Medical Advisor', 'Advisor Email'].join(','),
       ...filteredData.map(record => [
-        record.clientName,
+        [record.clientDisplayId ? `#${record.clientDisplayId}` : '', record.clientName].filter(Boolean).join(' '),
         record.retreatName,
         record.retreatLocation,
         formatDate(record.retreatStartDate),
@@ -258,6 +260,9 @@ const MedicalGrid: React.FC = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Client ID
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Client
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -292,6 +297,9 @@ const MedicalGrid: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {filteredData.map((record) => (
                 <tr key={record._id} className="hover:bg-gray-50">
+                  <td className="px-4 py-4 whitespace-nowrap text-sm font-semibold text-blue-700">
+                    {record.clientDisplayId ? `#${record.clientDisplayId}` : '—'}
+                  </td>
                   <td className="px-4 py-4 whitespace-nowrap">
                     <button
                       type="button"

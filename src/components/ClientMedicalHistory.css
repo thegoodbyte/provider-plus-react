@@ -42,9 +42,9 @@
 }
 
 .view-btn.active {
-    background: #007bff;
+    background: #374151;
     color: white;
-    border-color: #007bff;
+    border-color: #374151;
 }
 
 .loading {
@@ -80,11 +80,11 @@
 .retreat-header {
     margin-bottom: 20px;
     padding-bottom: 15px;
-    border-bottom: 2px solid #007bff;
+    border-bottom: 2px solid #374151;
 }
 
 .retreat-header h3 {
-    color: #007bff;
+    color: #374151;
     margin: 0 0 8px 0;
     font-size: 20px;
 }
@@ -135,7 +135,7 @@
 }
 
 .version {
-    background: #17a2b8;
+    background: #6b7280;
     color: white;
     padding: 3px 8px;
     border-radius: 3px;
@@ -172,7 +172,7 @@
 }
 
 .retreat-context {
-    background: #f0f8ff;
+    background: #f9fafb;
     padding: 10px;
     border-radius: 4px;
     margin-bottom: 15px;
@@ -202,7 +202,7 @@
 
 .test-item h4 i {
     margin-right: 8px;
-    color: #007bff;
+    color: #374151;
 }
 
 .status-badge {
@@ -221,7 +221,7 @@
 }
 
 .badge-received {
-    background: #d1ecf1;
+    background: #e5e7eb;
     color: #0c5460;
 }
 
@@ -252,7 +252,7 @@
 }
 
 .file-info i {
-    color: #007bff;
+    color: #374151;
     margin-right: 5px;
 }
 
@@ -270,19 +270,19 @@
     border-radius: 4px;
     font-size: 13px;
     color: #555;
-    border-left: 3px solid #007bff;
+    border-left: 3px solid #374151;
 }
 
 .blood-pressure-section {
     padding: 15px;
-    background: #e7f3ff;
+    background: #f3f4f6;
     border-radius: 6px;
     margin-bottom: 15px;
 }
 
 .blood-pressure-section h4 {
     margin: 0 0 10px 0;
-    color: #0056b3;
+    color: #111827;
     font-size: 16px;
 }
 

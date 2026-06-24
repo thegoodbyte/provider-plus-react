@@ -4,7 +4,7 @@ import { API_BASE_URL } from '../../config/api.config';
 import './Login.css';
 
 export const Login: React.FC = () => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -33,7 +33,7 @@ export const Login: React.FC = () => {
     setLoading(true);
 
     try {
-      await login(username, password);
+      await login(email, password);
       // Redirect handled by App component
     } catch (err: any) {
       // Check for connection error
@@ -45,7 +45,7 @@ export const Login: React.FC = () => {
       } else if (err?.message?.startsWith('Server error')) {
         setError(err.message);
       } else if (err?.message === 'Invalid credentials') {
-        setError('Invalid username or password');
+        setError('Invalid email or password');
       } else {
         // For any other error, check if it's likely a connection issue
         setError('Connection error - Unable to reach the server. Please check your connection and try again.');
@@ -71,12 +71,12 @@ export const Login: React.FC = () => {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="username">Email Address:</label>
+            <label htmlFor="email">Email Address:</label>
             <input
               type="email"
-              id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email address"
               required
               disabled={loading}

@@ -141,7 +141,7 @@ const MedicalClientView: React.FC = () => {
     if (!user) return 'Medical Advisor';
     const parts = [user.firstName, user.lastName].filter(Boolean);
     if (parts.length) return parts.join(' ');
-    return user.username || user.email || 'Medical Advisor';
+    return user.email || 'Medical Advisor';
   };
 
   const getRetreatName = (retreatId?: string | Retreat | null) => {

@@ -215,6 +215,17 @@ const MedicalTrackingNew: React.FC = () => {
     return client ? `${client.firstName} ${client.lastName}` : 'Unknown Client';
   }, [clients, user?.role]);
 
+  const getClientDisplayId = useCallback((clientIdOrItem: string | MedicalItem) => {
+    if (user?.role === 'medical_advisor' && typeof clientIdOrItem === 'object') {
+      const item = clientIdOrItem as any;
+      return item.client?.display_id || item.clientDisplayId || '';
+    }
+
+    const clientId = typeof clientIdOrItem === 'string' ? clientIdOrItem : getMedicalItemClientId(clientIdOrItem);
+    const client = clients.find(c => c._id === clientId);
+    return client?.display_id || (typeof clientIdOrItem === 'object' ? (clientIdOrItem as any).clientDisplayId : '');
+  }, [clients, user?.role]);
+
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'EKG':
@@ -499,6 +510,9 @@ const MedicalTrackingNew: React.FC = () => {
                   Type
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Client ID
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Client
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -541,6 +555,11 @@ const MedicalTrackingNew: React.FC = () => {
                         {item.type}
                       </span>
                     </div>
+                  </td>
+                  <td className="px-4 py-4 whitespace-nowrap text-sm font-semibold text-blue-700">
+                    {getClientDisplayId(user?.role === 'medical_advisor' ? item : getMedicalItemClientId(item))
+                      ? `#${getClientDisplayId(user?.role === 'medical_advisor' ? item : getMedicalItemClientId(item))}`
+                      : '—'}
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap">
                     <button

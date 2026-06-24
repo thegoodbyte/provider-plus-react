@@ -26,7 +26,7 @@
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
   color: white;
   border: none;
   border-radius: 6px;
@@ -129,7 +129,7 @@
 }
 
 .section-divider {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #374151 0%, #6b7280 100%);
 }
 
 .section-title {
@@ -147,7 +147,7 @@
 
 .display-number {
   font-family: monospace;
-  background: #e7f3ff;
+  background: #f3f4f6;
   padding: 2px 6px;
   border-radius: 4px;
   color: #0066cc;
@@ -262,7 +262,7 @@
   width: 36px;
   height: 36px;
   border: 3px solid #e5e7eb;
-  border-top-color: #667eea;
+  border-top-color: #374151;
   border-radius: 999px;
   animation: spin 1s linear infinite;
 }

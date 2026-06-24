@@ -29,8 +29,8 @@
 .client-edit-page input:focus,
 .client-edit-page select:focus,
 .client-edit-page textarea:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  border-color: #374151;
+  box-shadow: 0 0 0 3px rgba(55, 65, 81, 0.12);
   outline: none;
 }
 

@@ -12,7 +12,10 @@ export interface Task {
   clientId?: string | {
     firstName: string;
     lastName: string;
+    fname?: string;
+    lname?: string;
     email: string;
+    display_id?: number | string;
   };
   retreatId?: string | {
     name: string;
@@ -252,7 +255,7 @@ class TaskService {
       case 'completed':
         return '#16a34a'; // green-600
       case 'in_progress':
-        return '#2563eb'; // blue-600
+        return '#374151'; // blue-600
       case 'cancelled':
         return '#dc2626'; // red-600
       case 'pending':

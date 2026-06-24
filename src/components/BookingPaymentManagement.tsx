@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Payment, PaymentRequest } from '../types';
 import { paymentsApi } from '../services/api';
@@ -30,8 +30,13 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [allPayments, setAllPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddPayment, setShowAddPayment] = useState(false);
+  const [showLinkExisting, setShowLinkExisting] = useState(false);
+  const [selectedExistingPaymentId, setSelectedExistingPaymentId] = useState('');
+  const [linkExistingLoading, setLinkExistingLoading] = useState(false);
+  const [linkExistingError, setLinkExistingError] = useState('');
   const [usdPreview, setUsdPreview] = useState<number | null>(null);
   const [usdPreviewLoading, setUsdPreviewLoading] = useState(false);
   const [usdPreviewError, setUsdPreviewError] = useState('');
@@ -168,6 +173,64 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       setPayments([]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const resolvePaymentId = (value: any) => (typeof value === 'object' && value?._id ? value._id : value || '');
+
+  const loadExistingPayments = async () => {
+    try {
+      setLinkExistingLoading(true);
+      setLinkExistingError('');
+      const response = await paymentsApi.getAll();
+      setAllPayments(response.data || []);
+    } catch (error) {
+      console.error('Error loading existing payments:', error);
+      setLinkExistingError('Could not load existing payments.');
+    } finally {
+      setLinkExistingLoading(false);
+    }
+  };
+
+  const availableExistingPayments = useMemo(() => {
+    const currentPaymentIds = new Set(payments.map((payment) => payment._id).filter(Boolean));
+    return allPayments.filter((payment) => {
+      if (!payment._id || currentPaymentIds.has(payment._id)) return false;
+      if (resolvePaymentId(payment.clientId) !== clientId) return false;
+      if (resolvePaymentId(payment.retreatId) !== retreatId) return false;
+      const linkedBookingId = resolvePaymentId(payment.bookingId);
+      const linkedBookingHash = payment.bookingHash || '';
+      return !linkedBookingId && !linkedBookingHash;
+    });
+  }, [allPayments, clientId, payments, retreatId]);
+
+  const handleLinkExistingPayment = async () => {
+    if (!selectedExistingPaymentId) {
+      setLinkExistingError('Select a payment to link.');
+      return;
+    }
+
+    try {
+      setLinkExistingLoading(true);
+      setLinkExistingError('');
+      await paymentsApi.update(selectedExistingPaymentId, {
+        bookingId,
+        bookingHash,
+        clientId,
+        retreatId,
+      } as Partial<Payment>);
+      setSelectedExistingPaymentId('');
+      setShowLinkExisting(false);
+      await fetchPayments();
+      if (onPaymentUpdate) {
+        onPaymentUpdate();
+      }
+    } catch (error) {
+      console.error('Error linking existing payment:', error);
+      const message = (error as any)?.response?.data?.message || 'Could not link existing payment.';
+      setLinkExistingError(Array.isArray(message) ? message.join(', ') : message);
+    } finally {
+      setLinkExistingLoading(false);
     }
   };
 
@@ -309,7 +372,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       case 'deposit_non_refundable': return '#dc3545';
       case 'deposit_refundable': return '#ffc107';
       case 'regular_payment': return '#28a745';
-      case 'balance_payment': return '#007bff';
+      case 'balance_payment': return '#374151';
       case 'adjustment': return '#6c757d';
       default: return '#6c757d';
     }
@@ -329,6 +392,12 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
     if (!paymentRequest) return '-';
     if (typeof paymentRequest === 'string') return paymentRequest.slice(-8);
     return paymentRequest.invoiceNumber || (paymentRequest.display_id ? `#${paymentRequest.display_id}` : paymentRequest._id?.slice(-8)) || '-';
+  };
+
+  const formatExistingPaymentLabel = (payment: Payment) => {
+    const date = payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : 'No date';
+    const displayId = payment.display_id ? `#${payment.display_id}` : payment._id?.slice(-8) || 'Payment';
+    return `${displayId} - ${date} - ${payment.amount?.toLocaleString?.() || payment.amount} ${payment.currency} - ${payment.status}`;
   };
 
   const routePrefix = (() => {
@@ -393,15 +462,75 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       <div className="payments-list">
         <div className="payment-history-header">
           <h4>Payment History ({payments.length})</h4>
-          <button
-            onClick={() => setShowAddPayment(!showAddPayment)}
-            className="add-payment-btn"
-            title={showAddPayment ? 'Cancel adding payment' : 'Add new payment'}
-            aria-label={showAddPayment ? 'Cancel adding payment' : 'Add new payment'}
-          >
-            {showAddPayment ? '×' : '+'}
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={() => {
+                setShowLinkExisting(false);
+                setShowAddPayment(!showAddPayment);
+              }}
+              className="add-payment-btn"
+              title={showAddPayment ? 'Cancel adding payment' : 'Add new payment'}
+              aria-label={showAddPayment ? 'Cancel adding payment' : 'Add new payment'}
+            >
+              {showAddPayment ? '×' : '+'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                const nextOpen = !showLinkExisting;
+                setShowAddPayment(false);
+                setShowLinkExisting(nextOpen);
+                if (nextOpen && allPayments.length === 0) {
+                  loadExistingPayments();
+                }
+              }}
+              className="add-payment-btn"
+              title={showLinkExisting ? 'Cancel linking payment' : 'Link existing payment'}
+              aria-label={showLinkExisting ? 'Cancel linking payment' : 'Link existing payment'}
+            >
+              {showLinkExisting ? '×' : '↗'}
+            </button>
+          </div>
         </div>
+
+        {showLinkExisting && (
+          <div className="add-payment-form">
+            <h4>Link Existing Payment</h4>
+            <div className="form-group">
+              <label>Existing Payment</label>
+              <select
+                value={selectedExistingPaymentId}
+                onChange={(e) => {
+                  setSelectedExistingPaymentId(e.target.value);
+                  setLinkExistingError('');
+                }}
+                disabled={linkExistingLoading}
+              >
+                <option value="">Select payment...</option>
+                {availableExistingPayments.map((payment) => (
+                  <option key={payment._id} value={payment._id}>
+                    {formatExistingPaymentLabel(payment)}
+                  </option>
+                ))}
+              </select>
+              {!linkExistingLoading && availableExistingPayments.length === 0 && (
+                <p className="usd-preview-error">No unlinked payments found for this client and retreat.</p>
+              )}
+              {linkExistingError && <p className="usd-preview-error">{linkExistingError}</p>}
+            </div>
+            <div className="form-buttons">
+              <button
+                type="button"
+                className="save-btn"
+                onClick={handleLinkExistingPayment}
+                disabled={linkExistingLoading || !selectedExistingPaymentId}
+              >
+                {linkExistingLoading ? 'Linking...' : 'Link Payment'}
+              </button>
+              <button type="button" onClick={() => setShowLinkExisting(false)} className="cancel-btn">Cancel</button>
+            </div>
+          </div>
+        )}
 
         {showAddPayment && (
           <div className="add-payment-form">
@@ -544,6 +673,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
             <table className="payments-table">
               <thead>
                 <tr>
+                  <th>#</th>
                   <th>Date</th>
                   <th>Amount</th>
                   <th>Request</th>
@@ -563,6 +693,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
                       key={payment._id}
                       title={`USD equivalent: ${usdAmount}`}
                     >
+                      <td>{payment.display_id ? `#${payment.display_id}` : '-'}</td>
                       <td>{new Date(payment.paymentDate).toLocaleDateString()}</td>
                       <td className="amount-cell">
                         <CurrencyDisplay amount={payment.amount} currency={payment.currency} />

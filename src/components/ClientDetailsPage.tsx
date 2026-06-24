@@ -537,6 +537,8 @@ const ClientDetailsPage: React.FC = () => {
       probiotics: 'Probiotics',
       multivitamin: 'Multivitamin',
       creatine: 'Creatine',
+      ashwagandha: 'Ashwagandha',
+      potassium: 'Potassium',
       other: 'Other',
     };
     const selected = Object.entries(labels)
@@ -1002,6 +1004,10 @@ const ClientDetailsPage: React.FC = () => {
                   <div className="flex flex-wrap justify-between gap-2">
                     <dt className="text-sm text-gray-600">Preferred Language:</dt>
                     <dd className="text-sm font-medium">{getLanguageLabel(client.language)}</dd>
+                  </div>
+                  <div className="flex flex-wrap justify-between gap-2">
+                    <dt className="text-sm text-gray-600">Referral:</dt>
+                    <dd className="text-sm font-medium">{client.source || 'N/A'}</dd>
                   </div>
                   <div className="flex flex-wrap justify-between gap-2">
                     <dt className="text-sm text-gray-600">City:</dt>

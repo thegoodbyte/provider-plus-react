@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ceremoniesApi } from '../services/api';
 import { Ceremony, Retreat } from '../types';
-import { Button, Modal, Form, Input, DatePicker, TimePicker, Select, message, Popconfirm } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, ClockCircleOutlined } from '@ant-design/icons';
+import { Button, Modal, Form, Input, DatePicker, TimePicker, Select, message } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import moment from 'moment';
 import ParticipantTracker from './ParticipantTracker';
 
@@ -80,10 +80,17 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
     }
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
     form.resetFields();
     setEditingCeremony(null);
-    const nextCeremonyNumber = ceremonies.reduce((max, ceremony) => Math.max(max, Number(ceremony.ceremonyNumber) || 0), 0) + 1;
+    let allCeremonies = ceremonies;
+    try {
+      const response = await ceremoniesApi.getAll();
+      allCeremonies = response.data;
+    } catch (error) {
+      console.error('Error loading all ceremonies for next ceremony number:', error);
+    }
+    const nextCeremonyNumber = allCeremonies.reduce((max, ceremony) => Math.max(max, Number(ceremony.ceremonyNumber) || 0), 0) + 1;
     form.setFieldsValue({ ceremonyNumber: nextCeremonyNumber, retreatId: retreatId || undefined });
     setModalVisible(true);
   };
@@ -336,7 +343,14 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
               {ceremonies.map((ceremony) => (
                 <tr key={ceremony._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {formatOrdinal(ceremony.ceremonyNumber)}
+                    <button
+                      type="button"
+                      onClick={() => openFullView(ceremony, 'med_prep')}
+                      className="font-semibold text-blue-700 hover:text-blue-900 hover:underline"
+                      title="Open ceremony view"
+                    >
+                      {formatOrdinal(ceremony.ceremonyNumber)}
+                    </button>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {formatDate(ceremony.date)}
@@ -369,13 +383,12 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
                     <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                       <Button
                         type="primary"
-                        icon={<ClockCircleOutlined />}
+                        icon={<EyeOutlined />}
                         onClick={() => openFullView(ceremony, 'spoons')}
                         size="small"
                         title="Open ceremony full view"
-                      >
-                        Ceremony view
-                      </Button>
+                        aria-label="Open ceremony full view"
+                      />
                       <Button
                         type="text"
                         icon={<EditOutlined />}
@@ -383,20 +396,23 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
                         size="small"
                         title="Edit Ceremony"
                       />
-                      <Popconfirm
-                        title="Are you sure you want to delete this ceremony?"
-                        onConfirm={() => handleDelete(ceremony._id!)}
-                        okText="Yes"
-                        cancelText="No"
-                      >
-                        <Button
-                          type="text"
-                          icon={<DeleteOutlined />}
-                          danger
-                          size="small"
-                          title="Delete Ceremony"
-                        />
-                      </Popconfirm>
+                      <Button
+                        type="text"
+                        icon={<DeleteOutlined />}
+                        danger
+                        size="small"
+                        title="Delete Ceremony"
+                        onClick={() => {
+                          Modal.confirm({
+                            title: 'Delete ceremony?',
+                            content: 'Are you sure you want to delete this ceremony?',
+                            okText: 'Yes, delete',
+                            cancelText: 'No',
+                            okButtonProps: { danger: true },
+                            onOk: () => handleDelete(ceremony._id!),
+                          });
+                        }}
+                      />
                     </div>
                   </td>
                 </tr>

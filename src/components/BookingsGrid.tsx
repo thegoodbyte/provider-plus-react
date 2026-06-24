@@ -14,9 +14,15 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
   return <IconComponent className={className} />;
 };
 
+const getRetreatDisplayCode = (retreat?: Retreat | any): string => {
+  if (!retreat) return 'Unknown Retreat';
+  return retreat.retreatCode || retreat.code || retreat.name || 'Unknown Retreat';
+};
+
 interface BookingWithDetails extends RetreatClient {
   clientName?: string;
   retreatName?: string;
+  retreatCode?: string;
   retreatBackgroundColor?: string;
 }
 
@@ -143,7 +149,8 @@ const BookingsGrid: React.FC = () => {
         return {
           ...booking,
           clientName: client ? `${client.firstName} ${client.lastName}` : 'Unknown Client',
-          retreatName: retreat ? retreat.name : 'Unknown Retreat',
+          retreatName: getRetreatDisplayCode(retreat || (typeof booking.retreatId === 'object' ? booking.retreatId : undefined)),
+          retreatCode: getRetreatDisplayCode(retreat || (typeof booking.retreatId === 'object' ? booking.retreatId : undefined)),
           retreatBackgroundColor: retreat?.backgroundColor
         };
       });
@@ -444,7 +451,7 @@ const BookingsGrid: React.FC = () => {
                           color: booking.retreatBackgroundColor ? getContrastColor(booking.retreatBackgroundColor) : '#111827'
                         }}
                       >
-                        {booking.retreatName}
+                        {booking.retreatCode || booking.retreatName}
                       </span>
                     </div>
                   </td>

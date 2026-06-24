@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { retreatsApi, bookingsApi, retreatExpensesApi, paymentsApi, clientsApi, housesApi } from '../services/api';
 import { Retreat, ExpenseSummary, House, Payment } from '../types';
 import ExpensesTab from './ExpensesTab';
@@ -39,7 +40,11 @@ const { Panel } = Collapse;
 interface RetreatDetailViewProps {
   retreatId: string;
   onBack: () => void;
+  initialTab?: RetreatDetailTab;
+  onTabChange?: (tab: RetreatDetailTab) => void;
 }
+
+export type RetreatDetailTab = 'clients' | 'holisticView' | 'tracking' | 'expenses' | 'payments' | 'ceremonies' | 'analytics' | 'tasks';
 
 interface QuickBookingFormData {
   firstName: string;
@@ -105,12 +110,13 @@ const formatUSD = (amount: number) => {
   });
 };
 
-const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack }) => {
+const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack, initialTab = 'clients', onTabChange }) => {
+  const location = useLocation();
   const [retreat, setRetreat] = useState<Retreat | null>(null);
   const [clients, setClients] = useState<RetreatClientData[]>([]);
   const [expensesSummary, setExpensesSummary] = useState<ExpenseSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'clients' | 'holisticView' | 'tracking' | 'expenses' | 'payments' | 'ceremonies' | 'analytics' | 'tasks'>('clients');
+  const [activeTab, setActiveTab] = useState<RetreatDetailTab>(initialTab);
   const [viewingClientId, setViewingClientId] = useState<string | null>(null);
   const [editingBookingId, setEditingBookingId] = useState<string | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -136,6 +142,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [quickBookingForm] = Form.useForm();
   const [quickBookingLoading, setQuickBookingLoading] = useState(false);
   const [existingClientBookingLoading, setExistingClientBookingLoading] = useState(false);
+  const firstRouteSegment = location.pathname.split('/').filter(Boolean)[0];
+  const routePrefix = ['admin', 'medical', 'staff', 'user', 'helper'].includes(firstRouteSegment) ? firstRouteSegment : 'admin';
 
   const formatDateUTC = (date: Date) => {
     const year = date.getUTCFullYear();
@@ -242,6 +250,15 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     fetchRetreatData();
   }, [fetchRetreatData]);
 
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
+
+  const handleTabChange = useCallback((tab: RetreatDetailTab) => {
+    setActiveTab(tab);
+    onTabChange?.(tab);
+  }, [onTabChange]);
+
   const handleDeleteBooking = useCallback(async (bookingId: string) => {
     if (window.confirm('Are you sure you want to delete this booking? This action cannot be undone.')) {
       try {
@@ -319,7 +336,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       if (retreatFormData.name?.trim()) cleanData.name = retreatFormData.name.trim();
       cleanData.location = 'Default Location'; // Backend requires location
       if (retreatFormData.startDate) cleanData.startDate = retreatFormData.startDate;
+      cleanData.startTime = retreatFormData.startTime?.trim() || undefined;
       if (retreatFormData.endDate) cleanData.endDate = retreatFormData.endDate;
+      cleanData.endTime = retreatFormData.endTime?.trim() || undefined;
       if (retreatFormData.capacity !== undefined && retreatFormData.capacity !== null && !Number.isNaN(Number(retreatFormData.capacity))) {
         cleanData.capacity = Number(retreatFormData.capacity);
       }
@@ -370,7 +389,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       const clientId = clientResponse.data._id;
 
       // Then create the booking
-      const bookingData = {
+      const bookingData: any = {
         clientId: clientId!,
         retreatId: retreatId,
         totalAmount: values.totalAmount,
@@ -379,9 +398,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         registrationDate: new Date().toISOString(),
         amountPaid: 0,
         amountPaidUSD: 0,
-        checkInDate: retreat?.startDate || new Date().toISOString(),
-        checkOutDate: retreat?.endDate || new Date().toISOString()
       };
+      if (retreat?.startDate) bookingData.checkInDate = retreat.startDate;
+      if (retreat?.endDate) bookingData.checkOutDate = retreat.endDate;
 
       await bookingsApi.create(bookingData);
 
@@ -402,7 +421,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       setExistingClientBookingLoading(true);
 
       // Create booking for existing client
-      const bookingData = {
+      const bookingData: any = {
         clientId: selectedClient._id!,
         retreatId: retreatId,
         totalAmount: 3000, // Default amount, can be edited later
@@ -411,9 +430,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         registrationDate: new Date().toISOString(),
         amountPaid: 0,
         amountPaidUSD: 0,
-        checkInDate: retreat?.startDate || new Date().toISOString(),
-        checkOutDate: retreat?.endDate || new Date().toISOString()
       };
+      if (retreat?.startDate) bookingData.checkInDate = retreat.startDate;
+      if (retreat?.endDate) bookingData.checkOutDate = retreat.endDate;
 
       await bookingsApi.create(bookingData);
 
@@ -533,7 +552,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             setRetreatFormData({
               ...retreat,
               startDate: retreat?.startDate || '',
+              startTime: retreat?.startTime || '',
               endDate: retreat?.endDate || '',
+              endTime: retreat?.endTime || '',
               capacity: retreat?.capacity || 0
             });
             setShowRetreatEditModal(true);
@@ -642,56 +663,56 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       <div className="tab-navigation">
         <button
           className={`tab-btn ${activeTab === 'clients' ? 'active' : ''}`}
-          onClick={() => setActiveTab('clients')}
+          onClick={() => handleTabChange('clients')}
         >
           <PeopleAltRoundedIcon className="retreat-tab-icon" />
           <span>Clients ({clients.length})</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'holisticView' ? 'active' : ''}`}
-          onClick={() => setActiveTab('holisticView')}
+          onClick={() => handleTabChange('holisticView')}
         >
           <AssignmentTurnedInRoundedIcon className="retreat-tab-icon" />
           <span>Retreat Readiness</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'tracking' ? 'active' : ''}`}
-          onClick={() => setActiveTab('tracking')}
+          onClick={() => handleTabChange('tracking')}
         >
           <FactCheckRoundedIcon className="retreat-tab-icon" />
           <span>Tracking Grid</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'expenses' ? 'active' : ''}`}
-          onClick={() => setActiveTab('expenses')}
+          onClick={() => handleTabChange('expenses')}
         >
           <SavingsRoundedIcon className="retreat-tab-icon" />
           <span>Expenses</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'payments' ? 'active' : ''}`}
-          onClick={() => setActiveTab('payments')}
+          onClick={() => handleTabChange('payments')}
         >
           <CreditCardRoundedIcon className="retreat-tab-icon" />
           <span>Payments</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'ceremonies' ? 'active' : ''}`}
-          onClick={() => setActiveTab('ceremonies')}
+          onClick={() => handleTabChange('ceremonies')}
         >
           <SpaRoundedIcon className="retreat-tab-icon" />
           <span>Ceremonies</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'analytics' ? 'active' : ''}`}
-          onClick={() => setActiveTab('analytics')}
+          onClick={() => handleTabChange('analytics')}
         >
           <InsightsRoundedIcon className="retreat-tab-icon" />
           <span>Analytics</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'tasks' ? 'active' : ''}`}
-          onClick={() => setActiveTab('tasks')}
+          onClick={() => handleTabChange('tasks')}
         >
           <TaskAltRoundedIcon className="retreat-tab-icon" />
           <span>Tasks</span>
@@ -790,7 +811,13 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                   {sortedClients.map((client) => (
                     <tr key={client._id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        #{client.bookingNumber || client._id?.slice(-6)}
+                        <Link
+                          to={`/${routePrefix}/bookings/${client._id}`}
+                          className="font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+                          title="View booking"
+                        >
+                          #{client.bookingNumber || client._id?.slice(-6)}
+                        </Link>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         <div>{client.clientName}</div>
@@ -1222,6 +1249,28 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                   id="retreat-endDate"
                   name="endDate"
                   value={retreatFormData.endDate ? new Date(retreatFormData.endDate).toISOString().split('T')[0] : ''}
+                  onChange={handleRetreatInputChange}
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="retreat-startTime">Start Time:</label>
+                <input
+                  type="time"
+                  id="retreat-startTime"
+                  name="startTime"
+                  value={retreatFormData.startTime || ''}
+                  onChange={handleRetreatInputChange}
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="retreat-endTime">End Time:</label>
+                <input
+                  type="time"
+                  id="retreat-endTime"
+                  name="endTime"
+                  value={retreatFormData.endTime || ''}
                   onChange={handleRetreatInputChange}
                 />
               </div>

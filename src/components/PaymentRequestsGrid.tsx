@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { paymentRequestsApi } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
 import LoadingSpinner from './LoadingSpinner';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiCheckCircle, FiClock, FiAlertTriangle, FiSend, FiCopy, FiExternalLink, FiDollarSign } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiCheckCircle, FiClock, FiAlertTriangle, FiSend, FiCopy, FiExternalLink, FiDollarSign, FiChevronDown } from 'react-icons/fi';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -24,7 +24,7 @@ const resolveClient = (clientValue: any) => {
 const resolveRetreat = (retreatValue: any) => {
   if (!retreatValue) return 'Unknown Retreat';
   if (typeof retreatValue === 'string') return retreatValue;
-  return [retreatValue.name, retreatValue.location].filter(Boolean).join(' - ') || 'Unknown Retreat';
+  return retreatValue.retreatCode || retreatValue.code || retreatValue.name || 'Unknown Retreat';
 };
 
 const getPublicPaymentUrl = (request: any) => (
@@ -41,12 +41,17 @@ const formatAmount = (amount: any, currency: string) => {
   return `${numericAmount.toLocaleString()} ${currency || ''}`.trim();
 };
 
+type PaymentRequestSortKey = 'invoice' | 'client' | 'retreat' | 'date' | 'publicHash' | 'quote' | 'usd' | 'currency' | 'status';
+type SortDirection = 'asc' | 'desc';
+
 const PaymentRequestsGrid: React.FC = () => {
   const navigate = useNavigate();
   const [paymentRequests, setPaymentRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSendRequest, setSelectedSendRequest] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortKey, setSortKey] = useState<PaymentRequestSortKey>('date');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   const fetchPaymentRequests = async () => {
     try {
@@ -161,6 +166,72 @@ const PaymentRequestsGrid: React.FC = () => {
     });
   }, [paymentRequests, searchTerm]);
 
+  const getSortValue = (request: any, key: PaymentRequestSortKey) => {
+    const client = resolveClient(request.clientId);
+    const retreat = resolveRetreat(request.retreatId);
+
+    switch (key) {
+      case 'invoice':
+        return Number(request.display_id || request.invoiceNumber) || String(request.invoiceNumber || '').toLowerCase();
+      case 'client':
+        return client.name.toLowerCase();
+      case 'retreat':
+        return retreat.toLowerCase();
+      case 'date':
+        return request.paymentDate ? new Date(request.paymentDate).getTime() : 0;
+      case 'publicHash':
+        return String(request.publicHash || '').toLowerCase();
+      case 'quote':
+        return Number(request.fullPriceQuote || request.fullPrice || 0);
+      case 'usd':
+        return Number(request.usd_amount || 0);
+      case 'currency':
+        return String(request.currency || '').toLowerCase();
+      case 'status':
+        return String(request.status || '').toLowerCase();
+      default:
+        return '';
+    }
+  };
+
+  const sortedRequests = useMemo(() => {
+    return [...filteredRequests].sort((a, b) => {
+      const aValue = getSortValue(a, sortKey);
+      const bValue = getSortValue(b, sortKey);
+      const direction = sortDirection === 'asc' ? 1 : -1;
+
+      if (typeof aValue === 'number' && typeof bValue === 'number') {
+        return (aValue - bValue) * direction;
+      }
+
+      return String(aValue).localeCompare(String(bValue), undefined, { numeric: true, sensitivity: 'base' }) * direction;
+    });
+  }, [filteredRequests, sortDirection, sortKey]);
+
+  const handleSort = (key: PaymentRequestSortKey) => {
+    if (sortKey === key) {
+      setSortDirection((direction) => direction === 'asc' ? 'desc' : 'asc');
+      return;
+    }
+
+    setSortKey(key);
+    setSortDirection(key === 'date' || key === 'invoice' || key === 'quote' || key === 'usd' ? 'desc' : 'asc');
+  };
+
+  const renderSortableHeader = (key: PaymentRequestSortKey, label: string) => (
+    <button
+      type="button"
+      onClick={() => handleSort(key)}
+      className="inline-flex items-center gap-1 text-xs font-medium uppercase text-gray-500 hover:text-gray-900"
+    >
+      {label}
+      <Icon
+        icon={FiChevronDown}
+        className={`h-3 w-3 transition-transform ${sortKey === key && sortDirection === 'asc' ? 'rotate-180' : ''} ${sortKey === key ? 'opacity-100' : 'opacity-35'}`}
+      />
+    </button>
+  );
+
   if (loading) {
     return <LoadingSpinner message="Loading payment requests..." />;
   }
@@ -197,20 +268,20 @@ const PaymentRequestsGrid: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice #</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Public Hash</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Retreat</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quote</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">USD</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Currency</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-4 py-3 text-left">{renderSortableHeader('invoice', 'Invoice #')}</th>
+                <th className="px-4 py-3 text-left">{renderSortableHeader('client', 'Client')}</th>
+                <th className="px-4 py-3 text-left">{renderSortableHeader('retreat', 'Retreat')}</th>
+                <th className="px-4 py-3 text-left">{renderSortableHeader('date', 'Date')}</th>
+                <th className="px-4 py-3 text-left">{renderSortableHeader('publicHash', 'Public Hash')}</th>
+                <th className="px-4 py-3 text-left">{renderSortableHeader('quote', 'Quote')}</th>
+                <th className="px-4 py-3 text-left">{renderSortableHeader('usd', 'USD')}</th>
+                <th className="px-4 py-3 text-left">{renderSortableHeader('currency', 'Currency')}</th>
+                <th className="px-4 py-3 text-left">{renderSortableHeader('status', 'Status')}</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredRequests.map((request) => {
+              {sortedRequests.map((request) => {
                 const client = resolveClient(request.clientId);
                 const retreat = resolveRetreat(request.retreatId);
                 return (
@@ -219,11 +290,21 @@ const PaymentRequestsGrid: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => navigate(`/admin/payment-requests/${request._id}`)}
-                        className="font-semibold text-blue-700 hover:underline"
+                        className="font-semibold text-gray-900 hover:underline"
                         title="View payment request"
                       >
                         {request.invoiceNumber || (request.display_id ? `#${request.display_id}` : 'n/a')}
                       </button>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="font-medium text-gray-900">{client.name}</div>
+                      {client.displayId && (
+                        <div className="mt-1 text-xs font-semibold text-blue-700">{client.displayId}</div>
+                      )}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{retreat}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
+                      {request.paymentDate ? new Date(request.paymentDate).toLocaleDateString() : 'N/A'}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       {request.publicHash ? (
@@ -259,14 +340,6 @@ const PaymentRequestsGrid: React.FC = () => {
                       ) : (
                         <span className="text-xs text-amber-700">Save once to generate</span>
                       )}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="font-medium text-gray-900">{client.name}</div>
-                      {client.displayId && <div className="text-xs text-blue-600">{client.displayId}</div>}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{retreat}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {request.paymentDate ? new Date(request.paymentDate).toLocaleDateString() : 'N/A'}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                       {request.fullPriceQuote?.toLocaleString?.() ?? request.fullPriceQuote} {request.currency}
@@ -318,7 +391,7 @@ const PaymentRequestsGrid: React.FC = () => {
                   </tr>
                 );
               })}
-              {filteredRequests.length === 0 && (
+              {sortedRequests.length === 0 && (
                 <tr>
                   <td colSpan={10} className="px-4 py-10 text-center text-gray-500">
                     {searchTerm ? 'No payment requests found matching your search' : 'No payment requests found'}

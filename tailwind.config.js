@@ -23,8 +23,8 @@ module.exports = {
             800: '#242426',     // Darker text
             900: '#1c1c1e',     // Almost black
           },
-          blue: '#007AFF',      // Primary blue
-          teal: '#5AC8FA',      // Teal accent
+          blue: '#007AFF',      // Apple system blue
+          teal: '#5AC8FA',      // Apple system teal
           green: '#34C759',     // Success green
           yellow: '#FFCC00',    // Warning yellow
           orange: '#FF9500',    // Orange accent
