@@ -97,6 +97,41 @@ interface ScreeningData {
   status: string;
 }
 
+const sectionStyles = {
+  client: {
+    container: 'bg-slate-50 rounded-lg border border-slate-200 p-6 mb-6 shadow-sm',
+    heading: 'text-lg font-semibold mb-4 text-slate-800',
+  },
+  context: {
+    container: 'bg-amber-50 rounded-lg border border-amber-200 p-6 mb-6 shadow-sm',
+    heading: 'text-lg font-semibold mb-4 text-amber-900',
+  },
+  health: {
+    container: 'bg-green-50 rounded-lg border border-green-200 p-6 mb-6 shadow-sm',
+    heading: 'text-lg font-semibold mb-4 text-green-900',
+  },
+  vitamins: {
+    container: 'bg-sky-50 rounded-lg border border-sky-200 p-6 mb-6 shadow-sm',
+    heading: 'text-lg font-semibold mb-4 text-sky-900',
+  },
+  substances: {
+    container: 'bg-rose-50 rounded-lg border border-rose-200 p-6 mb-6 shadow-sm',
+    heading: 'text-lg font-semibold mb-4 text-rose-900',
+  },
+  plantMedicine: {
+    container: 'bg-violet-50 rounded-lg border border-violet-200 p-6 mb-6 shadow-sm',
+    heading: 'text-lg font-semibold mb-4 text-violet-900',
+  },
+  files: {
+    container: 'bg-gray-50 rounded-lg border border-gray-200 p-6 mb-6 shadow-sm',
+    heading: 'text-lg font-semibold mb-4 text-gray-900',
+  },
+  notes: {
+    container: 'bg-yellow-50 rounded-lg border border-yellow-200 p-6 mb-6 shadow-sm',
+    heading: 'text-lg font-semibold mb-4 text-yellow-900',
+  },
+};
+
 const compressScreeningImage = (file: File, maxDimension = 1800, quality = 0.82): Promise<File> => {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith('image/')) {
@@ -604,8 +639,8 @@ const ClientScreening: React.FC = () => {
       </div>
 
       {/* Client Info Section */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">Client Information</h2>
+      <div className={sectionStyles.client.container}>
+        <h2 className={sectionStyles.client.heading}>Client Information</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
@@ -647,8 +682,8 @@ const ClientScreening: React.FC = () => {
       </div>
 
       {/* Main Screening Info */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">Screening Information</h2>
+      <div className={sectionStyles.context.container}>
+        <h2 className={sectionStyles.context.heading}>Screening Information</h2>
 
         <div className="space-y-4">
           <div>
@@ -804,8 +839,8 @@ const ClientScreening: React.FC = () => {
       </div>
 
       {/* Health Section */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">Health Information</h2>
+      <div className={sectionStyles.health.container}>
+        <h2 className={sectionStyles.health.heading}>Health Information</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -1017,8 +1052,8 @@ const ClientScreening: React.FC = () => {
       </div>
 
       {/* Vitamins and Supplements */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">Vitamins & Supplements</h2>
+      <div className={sectionStyles.vitamins.container}>
+        <h2 className={sectionStyles.vitamins.heading}>Vitamins & Supplements</h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
           {[
@@ -1059,8 +1094,8 @@ const ClientScreening: React.FC = () => {
       </div>
 
       {/* Drug History */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">Substance History</h2>
+      <div className={sectionStyles.substances.container}>
+        <h2 className={sectionStyles.substances.heading}>Substance History</h2>
 
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">General Drug History</label>
@@ -1119,8 +1154,8 @@ const ClientScreening: React.FC = () => {
       </div>
 
       {/* Plant Medicines */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">Plant Medicine Experience</h2>
+      <div className={sectionStyles.plantMedicine.container}>
+        <h2 className={sectionStyles.plantMedicine.heading}>Plant Medicine Experience</h2>
 
         <label className="flex items-center space-x-2">
           <input
@@ -1175,8 +1210,8 @@ const ClientScreening: React.FC = () => {
       </div>
 
       {/* Handwriting Upload */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">Handwriting Upload</h2>
+      <div className={sectionStyles.files.container}>
+        <h2 className={sectionStyles.files.heading}>Handwriting Upload</h2>
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">Upload Handwriting Image</label>
@@ -1201,8 +1236,8 @@ const ClientScreening: React.FC = () => {
       </div>
 
       {/* Additional Notes */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-        <h2 className="text-lg font-semibold mb-4">Additional Information</h2>
+      <div className={sectionStyles.notes.container}>
+        <h2 className={sectionStyles.notes.heading}>Additional Information</h2>
 
         <div className="space-y-4">
           <div>
