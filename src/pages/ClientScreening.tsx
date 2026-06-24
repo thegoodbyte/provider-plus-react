@@ -20,6 +20,7 @@ interface ScreeningData {
   psychologicalAbuse: boolean;
   psychologicalAbuseDetails: string;
   age: number;
+  year_of_birth: number;
   screeningDate: string;
   riskLevel: number;
   heartConditionOk: boolean;
@@ -132,6 +133,13 @@ const sectionStyles = {
   },
 };
 
+const getCurrentYear = () => new Date().getFullYear();
+
+const getYearOfBirthFromAge = (age?: number) => {
+  if (!Number.isFinite(age) || !age || age <= 0) return undefined;
+  return getCurrentYear() - Math.floor(age);
+};
+
 const compressScreeningImage = (file: File, maxDimension = 1800, quality = 0.82): Promise<File> => {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith('image/')) {
@@ -211,6 +219,7 @@ const ClientScreening: React.FC = () => {
     psychologicalAbuse: false,
     psychologicalAbuseDetails: '',
     age: undefined as any,
+    year_of_birth: undefined as any,
     screeningDate: new Date().toISOString().split('T')[0],
     riskLevel: 1,
     heartConditionOk: false,
@@ -356,6 +365,11 @@ const ClientScreening: React.FC = () => {
       ];
       const hasPlantMedicineExperience = existingScreening.plantMedicineExperience === true
         || plantMedicineFields.some((field) => Boolean(existingScreening[field] || existingScreening[`${field}Details`]));
+      const existingAge = existingValue('age') as number | undefined;
+      const existingYearOfBirth = existingValue('year_of_birth', 'yearOfBirth') as number | undefined;
+      const dateOfBirthYear = (clientData as any).dateOfBirth
+        ? new Date((clientData as any).dateOfBirth).getFullYear()
+        : undefined;
 
       // Pre-populate client info
       setFormData(prev => ({
@@ -366,6 +380,11 @@ const ClientScreening: React.FC = () => {
         lastName: clientData.lastName || '',
         displayId: clientData.display_id || 0,
         phoneNumber: clientData.phone || '',
+        age: existingAge ?? prev.age,
+        year_of_birth: existingYearOfBirth
+          ?? dateOfBirthYear
+          ?? getYearOfBirthFromAge(existingAge)
+          ?? prev.year_of_birth,
         mainIntent: existingValue('mainIntent', 'whySeekingIboga') ?? prev.mainIntent,
         riskNotes: existingValue('riskNotes', 'whatToChange') ?? prev.riskNotes,
         childhood: existingValue('childhood', 'childhood') ?? prev.childhood,
@@ -453,7 +472,16 @@ const ClientScreening: React.FC = () => {
       }
       setFormData(prev => ({ ...prev, [name]: checked }));
     } else if (type === 'number') {
-      setFormData(prev => ({ ...prev, [name]: parseFloat(value) || 0 }));
+      const numericValue = value === '' ? undefined : parseFloat(value) || 0;
+      if (name === 'age') {
+        setFormData(prev => ({
+          ...prev,
+          age: numericValue as any,
+          year_of_birth: getYearOfBirthFromAge(numericValue) as any,
+        }));
+        return;
+      }
+      setFormData(prev => ({ ...prev, [name]: numericValue }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -800,7 +828,7 @@ const ClientScreening: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
               <input
@@ -810,6 +838,17 @@ const ClientScreening: React.FC = () => {
                 onChange={handleInputChange}
                 placeholder="Enter age"
                 className="w-full px-3 py-2 border border-gray-200 rounded-md"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Year of Birth</label>
+              <input
+                type="number"
+                name="year_of_birth"
+                value={formData.year_of_birth || ''}
+                readOnly
+                placeholder="Auto-filled"
+                className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-700"
               />
             </div>
             <div>
