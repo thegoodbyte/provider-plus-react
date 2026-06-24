@@ -198,11 +198,10 @@ const PaymentRequestsGrid: React.FC = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Invoice #</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Public Hash</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client ID</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Client</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Retreat</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Public Hash</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Quote</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">USD</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Currency</th>
@@ -220,11 +219,21 @@ const PaymentRequestsGrid: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => navigate(`/admin/payment-requests/${request._id}`)}
-                        className="font-semibold text-blue-700 hover:underline"
+                        className="font-semibold text-gray-900 hover:underline"
                         title="View payment request"
                       >
                         {request.invoiceNumber || (request.display_id ? `#${request.display_id}` : 'n/a')}
                       </button>
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap">
+                      <div className="font-medium text-gray-900">{client.name}</div>
+                      {client.displayId && (
+                        <div className="mt-1 text-xs font-semibold text-blue-700">{client.displayId}</div>
+                      )}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{retreat}</td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
+                      {request.paymentDate ? new Date(request.paymentDate).toLocaleDateString() : 'N/A'}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       {request.publicHash ? (
@@ -260,16 +269,6 @@ const PaymentRequestsGrid: React.FC = () => {
                       ) : (
                         <span className="text-xs text-amber-700">Save once to generate</span>
                       )}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm font-semibold text-blue-700">
-                      {client.displayId || '—'}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="font-medium text-gray-900">{client.name}</div>
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{retreat}</td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {request.paymentDate ? new Date(request.paymentDate).toLocaleDateString() : 'N/A'}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                       {request.fullPriceQuote?.toLocaleString?.() ?? request.fullPriceQuote} {request.currency}
@@ -323,7 +322,7 @@ const PaymentRequestsGrid: React.FC = () => {
               })}
               {filteredRequests.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="px-4 py-10 text-center text-gray-500">
+                  <td colSpan={10} className="px-4 py-10 text-center text-gray-500">
                     {searchTerm ? 'No payment requests found matching your search' : 'No payment requests found'}
                   </td>
                 </tr>
