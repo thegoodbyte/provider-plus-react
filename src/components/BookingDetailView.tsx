@@ -976,8 +976,10 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const markBookingConfirmationSent = async () => {
     try {
       const response = await bookingFlowApi.getItems({ bookingId });
-      const item = (response.data || []).find((flowItem: BookingFlowItem) => flowItem.key === 'booking_confirmation_sent');
-      if (!item?._id) return;
+      let item = (response.data || []).find((flowItem: BookingFlowItem) =>
+        flowItem.key === 'booking_confirmation_sent' ||
+        String(flowItem.title || '').toLowerCase() === 'send booking confirmation'
+      );
 
       const sentAt = new Date().toLocaleString('en-US', {
         year: 'numeric',
@@ -987,8 +989,22 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         minute: '2-digit',
       });
       const entry = `Booking confirmation sent ${sentAt}`;
-      const existingNotes = String(item.notes || '').trim();
 
+      if (!item?._id) {
+        const created = await bookingFlowApi.createItem({
+          bookingId,
+          title: 'Send booking confirmation',
+          description: 'Booking confirmation email has been sent to the client.',
+          category: 'booking',
+          offsetDays: 0,
+          status: 'pending',
+          notes: entry,
+          isBlocking: false,
+        });
+        item = created.data;
+      }
+
+      const existingNotes = String(item.notes || '').trim();
       await bookingFlowApi.updateItem(item._id, {
         status: 'completed',
         completedAt: new Date().toISOString(),
