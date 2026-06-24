@@ -250,7 +250,18 @@ const PaymentsPage: React.FC = () => {
                     {payment.retreatName}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {payment.bookingNumber ? `#${payment.bookingNumber}` : '-'}
+                    {payment.bookingNumber && payment.bookingId ? (
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/admin/bookings/${payment.bookingId}`)}
+                        className="font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+                        title="Open booking"
+                      >
+                        #{payment.bookingNumber}
+                      </button>
+                    ) : (
+                      '-'
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <CurrencyDisplay amount={payment.amount} currency={payment.currency} />
