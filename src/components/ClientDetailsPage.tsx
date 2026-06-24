@@ -537,6 +537,8 @@ const ClientDetailsPage: React.FC = () => {
       probiotics: 'Probiotics',
       multivitamin: 'Multivitamin',
       creatine: 'Creatine',
+      ashwagandha: 'Ashwagandha',
+      potassium: 'Potassium',
       other: 'Other',
     };
     const selected = Object.entries(labels)

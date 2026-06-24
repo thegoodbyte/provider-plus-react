@@ -32,29 +32,35 @@ const formatDate = (value: any) => {
   return date.toLocaleDateString();
 };
 
+const buildPaymentRequestFromSearch = (search: string): Partial<PaymentRequest> => {
+  const params = new URLSearchParams(search);
+  return {
+    clientId: params.get('clientId') || undefined,
+    retreatId: params.get('retreatId') || undefined,
+    requestType: (params.get('requestType') as PaymentRequest['requestType']) || undefined,
+    paymentType: (params.get('paymentType') as PaymentRequest['paymentType']) || undefined,
+    fullPriceQuote: params.get('fullPrice') ? Number(params.get('fullPrice')) : undefined,
+    fullPrice: params.get('fullPrice') ? Number(params.get('fullPrice')) : undefined,
+    currency: (params.get('currency') as PaymentRequest['currency']) || undefined,
+    note: params.get('note') || undefined,
+  };
+};
+
 const PaymentRequestEditorPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const isView = Boolean(id) && !location.pathname.endsWith('/edit');
   const [loading, setLoading] = useState(Boolean(id));
-  const [paymentRequest, setPaymentRequest] = useState<Partial<PaymentRequest> | undefined>(undefined);
+  const [paymentRequest, setPaymentRequest] = useState<Partial<PaymentRequest> | undefined>(
+    () => (id ? undefined : buildPaymentRequestFromSearch(location.search))
+  );
 
   useEffect(() => {
     const loadRequest = async () => {
       if (!id) {
-        const params = new URLSearchParams(location.search);
         setLoading(false);
-        setPaymentRequest({
-          clientId: params.get('clientId') || undefined,
-          retreatId: params.get('retreatId') || undefined,
-          requestType: (params.get('requestType') as PaymentRequest['requestType']) || undefined,
-          paymentType: (params.get('paymentType') as PaymentRequest['paymentType']) || undefined,
-          fullPriceQuote: params.get('fullPrice') ? Number(params.get('fullPrice')) : undefined,
-          fullPrice: params.get('fullPrice') ? Number(params.get('fullPrice')) : undefined,
-          currency: (params.get('currency') as PaymentRequest['currency']) || undefined,
-          note: params.get('note') || undefined,
-        });
+        setPaymentRequest(buildPaymentRequestFromSearch(location.search));
         return;
       }
 
