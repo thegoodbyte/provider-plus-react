@@ -35,6 +35,9 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
+  const [usdPreview, setUsdPreview] = useState<number | null>(null);
+  const [usdPreviewLoading, setUsdPreviewLoading] = useState(false);
+  const [usdPreviewError, setUsdPreviewError] = useState('');
   const [formData, setFormData] = useState<PaymentFormData>({
     clientId: '',
     amount: 0,
@@ -71,6 +74,38 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    const amount = Number(formData.amount);
+    if (!Number.isFinite(amount) || amount <= 0 || !formData.currency) {
+      setUsdPreview(null);
+      setUsdPreviewError('');
+      return;
+    }
+
+    let active = true;
+    const timeout = window.setTimeout(async () => {
+      try {
+        setUsdPreviewLoading(true);
+        setUsdPreviewError('');
+        const response = await paymentsApi.convertToUsd(amount, formData.currency);
+        if (active) setUsdPreview(response.data.usd_amount);
+      } catch (error) {
+        console.error('Error converting payment amount to USD:', error);
+        if (active) {
+          setUsdPreview(null);
+          setUsdPreviewError('USD conversion unavailable');
+        }
+      } finally {
+        if (active) setUsdPreviewLoading(false);
+      }
+    }, 350);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+    };
+  }, [formData.amount, formData.currency]);
 
 
   const handleDeletePayment = useCallback(async (paymentId: string) => {
@@ -127,6 +162,7 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
       const submitData = {
         ...formData,
         retreatId,
+        usd_amount: usdPreview ?? undefined,
         paymentDate: new Date(formData.paymentDate),
         paymentType: 'regular_payment' as const,
         isRefundable: true
@@ -153,6 +189,8 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
         isDeposit: false,
         isFinalPayment: false
       });
+      setUsdPreview(null);
+      setUsdPreviewError('');
       await fetchData();
     } catch (error) {
       console.error('Error saving payment:', error);
@@ -162,6 +200,11 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
 
   const formatCurrency = (amount: number, currency: string) => {
     return `${amount.toLocaleString()} ${currency}`;
+  };
+
+  const formatUsd = (amount?: number | null) => {
+    if (amount === null || amount === undefined || !Number.isFinite(amount)) return '';
+    return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   if (isLoading) {
@@ -257,6 +300,17 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
               </div>
 
               <div className="form-group">
+                <label>USD Amount</label>
+                <input
+                  type="text"
+                  value={usdPreviewLoading ? 'Calculating...' : formatUsd(usdPreview)}
+                  readOnly
+                  placeholder="Calculated from Revolut rate"
+                />
+                {usdPreviewError && <p className="usd-preview-error">{usdPreviewError}</p>}
+              </div>
+
+              <div className="form-group">
                 <label>Payment Method</label>
                 <select
                   value={formData.paymentMethod}
@@ -349,6 +403,8 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
                 onClick={() => {
                   setShowAddForm(false);
                   setEditingPayment(null);
+                  setUsdPreview(null);
+                  setUsdPreviewError('');
                 }}
                 className="cancel-btn"
               >

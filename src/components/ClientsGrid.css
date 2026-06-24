@@ -363,6 +363,12 @@
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
+.usd-preview-error {
+  margin-top: 4px;
+  color: #dc3545;
+  font-size: 12px;
+}
+
 .form-group textarea {
   resize: vertical;
   min-height: 80px;
