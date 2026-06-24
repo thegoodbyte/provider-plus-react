@@ -65,6 +65,8 @@ interface ScreeningData {
     probiotics: boolean;
     multivitamin: boolean;
     creatine: boolean;
+    ashwagandha: boolean;
+    potassium: boolean;
     other: boolean;
     details: string;
   };
@@ -89,6 +91,8 @@ interface ScreeningData {
   ketamineDetails: string;
   mdma: boolean;
   mdmaDetails: string;
+  sassafras: boolean;
+  sassafrasDetails: string;
   handwritingImageUrl: string;
   riskNotes: string;
   generalNotes: string;
@@ -264,6 +268,8 @@ const ClientScreening: React.FC = () => {
       probiotics: false,
       multivitamin: false,
       creatine: false,
+      ashwagandha: false,
+      potassium: false,
       other: false,
       details: '',
     },
@@ -288,6 +294,8 @@ const ClientScreening: React.FC = () => {
     ketamineDetails: '',
     mdma: false,
     mdmaDetails: '',
+    sassafras: false,
+    sassafrasDetails: '',
     handwritingImageUrl: '',
     riskNotes: '',
     generalNotes: '',
@@ -362,6 +370,7 @@ const ClientScreening: React.FC = () => {
         'dmt',
         'ketamine',
         'mdma',
+        'sassafras',
       ];
       const hasPlantMedicineExperience = existingScreening.plantMedicineExperience === true
         || plantMedicineFields.some((field) => Boolean(existingScreening[field] || existingScreening[`${field}Details`]));
@@ -466,6 +475,8 @@ const ClientScreening: React.FC = () => {
             ketamineDetails: '',
             mdma: false,
             mdmaDetails: '',
+            sassafras: false,
+            sassafrasDetails: '',
           } : {}),
         }));
         return;
@@ -955,6 +966,16 @@ const ClientScreening: React.FC = () => {
             )}
           </div>
           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Medications/Pills</label>
+            <textarea
+              name="medications"
+              value={formData.medications}
+              onChange={handleInputChange}
+              rows={2}
+              className="w-full px-3 py-2 border border-gray-200 rounded-md"
+            />
+          </div>
+          <div>
             <label className="flex items-center space-x-2">
               <input
                 type="checkbox"
@@ -997,16 +1018,6 @@ const ClientScreening: React.FC = () => {
                 placeholder="Current or past anxiety, panic attacks, treatment, severity, dates, or notes"
               />
             )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Medications/Pills</label>
-            <textarea
-              name="medications"
-              value={formData.medications}
-              onChange={handleInputChange}
-              rows={2}
-              className="w-full px-3 py-2 border border-gray-200 rounded-md"
-            />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">SSRIs</label>
@@ -1106,6 +1117,8 @@ const ClientScreening: React.FC = () => {
             { name: 'probiotics', label: 'Probiotics' },
             { name: 'multivitamin', label: 'Multivitamin' },
             { name: 'creatine', label: 'Creatine' },
+            { name: 'ashwagandha', label: 'Ashwagandha' },
+            { name: 'potassium', label: 'Potassium' },
             { name: 'other', label: 'Other' },
           ].map(vitamin => (
             <label key={vitamin.name} className="flex items-center space-x-2">
@@ -1219,7 +1232,8 @@ const ClientScreening: React.FC = () => {
               { name: 'mescaline', label: 'Mescaline' },
               { name: 'dmt', label: 'DMT' },
               { name: 'ketamine', label: 'Ketamine' },
-              { name: 'mdma', label: 'MDMA' }
+              { name: 'mdma', label: 'MDMA' },
+              { name: 'sassafras', label: 'Sassafras' }
             ].map(medicine => (
               <div key={medicine.name}>
                 <label className="flex items-center space-x-2">
