@@ -398,6 +398,7 @@ export interface ExpenseSummary {
 
 export interface Payment {
   _id?: string;
+  display_id?: number;
   clientId: string | Client;
   retreatId: string | Retreat;
   paymentRequestId?: string | PaymentRequest;

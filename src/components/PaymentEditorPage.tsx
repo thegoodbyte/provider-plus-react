@@ -78,7 +78,9 @@ const PaymentEditorPage: React.FC = () => {
   const [usdPreview, setUsdPreview] = useState<number | null>(null);
   const [usdPreviewLoading, setUsdPreviewLoading] = useState(false);
   const [usdPreviewError, setUsdPreviewError] = useState('');
+  const [formError, setFormError] = useState('');
   const [formData, setFormData] = useState({
+    display_id: '',
     paymentRequestId: '',
     clientId: '',
     retreatId: '',
@@ -101,11 +103,12 @@ const PaymentEditorPage: React.FC = () => {
     const loadData = async () => {
       try {
         setLoading(true);
-        const [clientsResponse, retreatsResponse, bookingsResponse, paymentResponse] = await Promise.all([
+        const [clientsResponse, retreatsResponse, bookingsResponse, paymentResponse, nextDisplayIdResponse] = await Promise.all([
           clientsApi.getAll(),
           retreatsApi.getAll(),
           bookingsApi.getAll(),
           id ? paymentsApi.getOne(id) : Promise.resolve(null),
+          !id ? paymentsApi.getNextDisplayId().catch(() => null) : Promise.resolve(null),
         ]);
 
         setClients(clientsResponse.data || []);
@@ -117,6 +120,7 @@ const PaymentEditorPage: React.FC = () => {
           const populatedPaymentRequest = typeof payment.paymentRequestId === 'object' ? payment.paymentRequestId as PaymentRequest : null;
           if (populatedPaymentRequest) setSelectedPaymentRequest(populatedPaymentRequest);
           setFormData({
+            display_id: payment.display_id?.toString?.() || '',
             paymentRequestId: resolveId(payment.paymentRequestId),
             clientId: resolveId(payment.clientId),
             retreatId: resolveId(payment.retreatId),
@@ -135,8 +139,13 @@ const PaymentEditorPage: React.FC = () => {
             paymentType: payment.paymentType || 'regular_payment',
           });
         } else if (paymentRequestIdFromQuery) {
+          if (nextDisplayIdResponse?.data) {
+            setFormData((prev) => ({ ...prev, display_id: String(nextDisplayIdResponse.data) }));
+          }
           const paymentRequestResponse = await paymentRequestsApi.getOne(paymentRequestIdFromQuery);
           applyPaymentRequest(paymentRequestIdFromQuery, paymentRequestResponse.data, bookingsResponse.data || []);
+        } else if (nextDisplayIdResponse?.data) {
+          setFormData((prev) => ({ ...prev, display_id: String(nextDisplayIdResponse.data) }));
         }
       } catch (error) {
         console.error('Error loading payment editor data:', error);
@@ -263,6 +272,7 @@ const PaymentEditorPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError('');
 
     if (!isEdit && !formData.paymentRequestId) {
       alert('Please select a payment request first');
@@ -274,7 +284,23 @@ const PaymentEditorPage: React.FC = () => {
       return;
     }
 
+    const displayId = Number(formData.display_id);
+    if (!Number.isInteger(displayId) || displayId <= 1000) {
+      setFormError('Payment number must be a whole number greater than 1000.');
+      return;
+    }
+
+    const existingPayments = await paymentsApi.getAll();
+    const duplicate = (existingPayments.data || []).find((payment: Payment) => {
+      return payment._id !== id && Number(payment.display_id) === displayId;
+    });
+    if (duplicate) {
+      setFormError(`Payment number ${displayId} already exists. Save cancelled.`);
+      return;
+    }
+
     const submitData = {
+      display_id: displayId,
       paymentRequestId: formData.paymentRequestId || undefined,
       clientId: formData.clientId,
       retreatId: formData.retreatId,
@@ -301,7 +327,8 @@ const PaymentEditorPage: React.FC = () => {
       navigate(returnTo || defaultReturnPath);
     } catch (error) {
       console.error('Error saving payment:', error);
-      alert('Error saving payment');
+      const message = (error as any)?.response?.data?.message || 'Error saving payment';
+      setFormError(Array.isArray(message) ? message.join(', ') : message);
     }
   };
 
@@ -334,7 +361,26 @@ const PaymentEditorPage: React.FC = () => {
 
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
+          {formError && (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+              {formError}
+            </div>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Payment Number *</label>
+              <input
+                type="number"
+                min="1001"
+                step="1"
+                value={formData.display_id}
+                onChange={(e) => handleChange('display_id', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+              <p className="mt-1 text-xs text-gray-500">Auto-filled. You can override it, but it must be unique.</p>
+            </div>
+
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Payment Request</label>
               <SearchablePaymentRequestSelect

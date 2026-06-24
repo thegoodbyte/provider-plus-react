@@ -287,6 +287,7 @@ export const paymentsApi = {
   getByBookingHash: (bookingHash: string) => cachedGet<Payment[]>(`payments:hash:${bookingHash}`, () => api.get<Payment[]>(`/payments/by-booking-hash/${bookingHash}`)),
   getByClientAndRetreat: (clientId: string, retreatId: string) => cachedGet<Payment[]>(`payments:client-retreat:${clientId}-${retreatId}`, () => api.get<Payment[]>(`/payments/by-client-and-retreat?clientId=${clientId}&retreatId=${retreatId}`)),
   getRetreatSummary: (retreatId: string) => cachedGet<PaymentSummary>(`payments:summary:${retreatId}`, () => api.get<PaymentSummary>(`/payments/retreat-summary/${retreatId}`)),
+  getNextDisplayId: () => api.get<number>('/payments/next-display-id'),
   convertToUsd: (amount: number, currency: string) => api.get<{ amount: number; currency: string; usd_amount: number }>(`/payments/convert-to-usd?amount=${encodeURIComponent(String(amount))}&currency=${encodeURIComponent(currency)}`),
   create: (data: Omit<Payment, '_id'>) => {
     cacheService.clearPattern('payments:');
