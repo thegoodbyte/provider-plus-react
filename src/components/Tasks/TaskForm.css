@@ -59,6 +59,31 @@
   padding: 20px;
 }
 
+.task-context-banner {
+  align-items: center;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 8px;
+  color: #1f2937;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  margin-bottom: 18px;
+  padding: 10px 12px;
+}
+
+.task-context-banner span {
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.task-context-banner strong {
+  color: #111827;
+  font-size: 14px;
+}
+
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;

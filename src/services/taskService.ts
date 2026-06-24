@@ -23,6 +23,15 @@ export interface Task {
     startDate: string;
     endDate: string;
   };
+  bookingId?: string | {
+    _id?: string;
+    id?: string;
+    bookingNumber?: number | string;
+    bookingHash?: string;
+    clientId?: any;
+    retreatId?: any;
+    status?: string;
+  };
   assignedTo?: string;
   completedAt?: string;
   completedBy?: string;
@@ -58,6 +67,7 @@ export interface CreateTaskDto {
   dueDate?: string;
   clientId?: string;
   retreatId?: string;
+  bookingId?: string;
   assignedTo?: string;
   tags?: string[];
   notes?: string;
@@ -73,6 +83,7 @@ export interface TaskFilters {
   urgency?: string;
   clientId?: string;
   retreatId?: string;
+  bookingId?: string;
   sourceType?: string;
   sourceId?: string;
   bookingFlowItemId?: string;

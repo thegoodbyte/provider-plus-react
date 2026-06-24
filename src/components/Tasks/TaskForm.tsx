@@ -10,6 +10,8 @@ interface TaskFormProps {
   onCancel: () => void;
   clientId?: string;
   retreatId?: string;
+  bookingId?: string;
+  bookingLabel?: string;
   error?: string | null;
 }
 
@@ -19,6 +21,8 @@ export const TaskForm: React.FC<TaskFormProps> = ({
   onCancel,
   clientId,
   retreatId,
+  bookingId,
+  bookingLabel,
   error,
 }) => {
   const [formData, setFormData] = useState<CreateTaskDto>({
@@ -29,6 +33,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
     dueDate: '',
     clientId: clientId || '',
     retreatId: retreatId || '',
+    bookingId: bookingId || '',
     tags: [],
     notes: '',
   });
@@ -56,8 +61,9 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         type: task.type,
         urgency: task.urgency,
         dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
-        clientId: typeof task.clientId === 'string' ? task.clientId : '',
-        retreatId: typeof task.retreatId === 'string' ? task.retreatId : '',
+        clientId: typeof task.clientId === 'string' ? task.clientId : ((task.clientId as any)?._id || (task.clientId as any)?.id || clientId || ''),
+        retreatId: typeof task.retreatId === 'string' ? task.retreatId : ((task.retreatId as any)?._id || (task.retreatId as any)?.id || retreatId || ''),
+        bookingId: typeof task.bookingId === 'string' ? task.bookingId : (task.bookingId?._id || task.bookingId?.id || ''),
         tags: task.tags,
         notes: task.notes || '',
       });
@@ -72,9 +78,10 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         type: taskType,
         clientId: clientId || '',
         retreatId: retreatId || '',
+        bookingId: bookingId || '',
       }));
     }
-  }, [task, clientId, retreatId]);
+  }, [task, clientId, retreatId, bookingId]);
 
   // Load clients and retreats when form opens
   useEffect(() => {
@@ -189,6 +196,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
       dueDate: formData.dueDate || undefined,
       clientId: formData.clientId || undefined,
       retreatId: formData.retreatId || undefined,
+      bookingId: formData.bookingId || undefined,
       notes: formData.notes || undefined,
     };
 
@@ -205,6 +213,12 @@ export const TaskForm: React.FC<TaskFormProps> = ({
 
         <form onSubmit={handleSubmit} className="task-form">
           {error && <div className="error-message">{error}</div>}
+          {bookingId && (
+            <div className="task-context-banner">
+              <span>Booking</span>
+              <strong>{bookingLabel || `#${bookingId.slice(-6)}`}</strong>
+            </div>
+          )}
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="name">Task Name *</label>

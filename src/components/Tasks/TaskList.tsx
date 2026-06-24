@@ -47,6 +47,9 @@ export const TaskList: React.FC<TaskListProps> = ({
     } else if (sortField === 'retreatName') {
       aVal = a.retreatId && typeof a.retreatId === 'object' ? (a.retreatId as any).name : '';
       bVal = b.retreatId && typeof b.retreatId === 'object' ? (b.retreatId as any).name : '';
+    } else if (sortField === 'bookingNumber') {
+      aVal = getBookingSortValue(a.bookingId);
+      bVal = getBookingSortValue(b.bookingId);
     }
 
     if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
@@ -76,6 +79,19 @@ export const TaskList: React.FC<TaskListProps> = ({
   const getClientNumber = (client: any) => {
     const displayId = client?.display_id || client?.displayId || client?.clientNumber;
     return displayId ? `#${displayId}` : 'No client #';
+  };
+
+  function getBookingSortValue(booking: Task['bookingId']) {
+    if (!booking) return '';
+    if (typeof booking === 'string') return booking;
+    return booking.bookingNumber || booking.bookingHash || booking._id || booking.id || '';
+  }
+
+  const getBookingNumber = (booking: Task['bookingId']) => {
+    if (!booking) return '-';
+    if (typeof booking === 'string') return `#${booking.slice(-6)}`;
+    const value = booking.bookingNumber || booking.bookingHash || booking._id || booking.id;
+    return value ? `#${value}` : '-';
   };
 
   const getUrgencyBadge = (urgency: string) => {
@@ -146,6 +162,12 @@ export const TaskList: React.FC<TaskListProps> = ({
           </div>
           <div
             className="header-cell sortable"
+            onClick={() => handleSort('bookingNumber')}
+          >
+            Booking {getSortIcon('bookingNumber')}
+          </div>
+          <div
+            className="header-cell sortable"
             onClick={() => handleSort('clientName')}
           >
             Client {getSortIcon('clientName')}
@@ -196,6 +218,16 @@ export const TaskList: React.FC<TaskListProps> = ({
                 </div>
               ) : (
                 <span className="no-due-date">No due date</span>
+              )}
+            </div>
+
+            <div className="task-cell">
+              {task.bookingId ? (
+                <div className="booking-info">
+                  <div className="booking-number">{getBookingNumber(task.bookingId)}</div>
+                </div>
+              ) : (
+                <span className="no-booking">-</span>
               )}
             </div>
 

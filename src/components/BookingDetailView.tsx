@@ -7,7 +7,10 @@ import BookingMedicalUpload from './BookingMedicalUpload';
 import BookingDocumentsUpload from './BookingDocumentsUpload';
 import ClientBookingWorkflowTab from './ClientBookingWorkflowTab';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
+import { TaskList } from './Tasks/TaskList';
+import { TaskForm } from './Tasks/TaskForm';
 import { createBookingConfirmationPdf, generateBookingPDF } from './BookingConfirmationPDF';
+import { Task, CreateTaskDto, taskService } from '../services/taskService';
 import { BookingFlowItem, CeremonyParticipant, MedicalArtifact, MedicalReviewRequest } from '../types';
 import './BookingDetailView.css';
 
@@ -793,7 +796,12 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [isSendingConfirmation, setIsSendingConfirmation] = useState(false);
   const [isPreparingConfirmationEmail, setIsPreparingConfirmationEmail] = useState(false);
   const [confirmationEmailDraft, setConfirmationEmailDraft] = useState<EmailComposeInitialValues | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'requirements' | 'medical' | 'ceremonies' | 'documents' | 'workflow' | 'notes'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'requirements' | 'medical' | 'ceremonies' | 'documents' | 'tasks' | 'workflow' | 'notes'>('overview');
+  const [bookingTasks, setBookingTasks] = useState<Task[]>([]);
+  const [loadingBookingTasks, setLoadingBookingTasks] = useState(false);
+  const [bookingTasksError, setBookingTasksError] = useState<string | null>(null);
+  const [showTaskForm, setShowTaskForm] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [showBookingDates, setShowBookingDates] = useState(false);
   const [showClientDetails, setShowClientDetails] = useState(false);
   const [showRetreatInfo, setShowRetreatInfo] = useState(false);
@@ -808,6 +816,12 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   useEffect(() => {
     fetchBookingDetails();
   }, [bookingId]);
+
+  useEffect(() => {
+    if (activeTab === 'tasks') {
+      loadBookingTasks();
+    }
+  }, [activeTab, bookingId]);
 
   useEffect(() => {
     return () => {
@@ -826,6 +840,68 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
       console.error('Error fetching booking details:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadBookingTasks = async () => {
+    try {
+      setLoadingBookingTasks(true);
+      setBookingTasksError(null);
+      const tasks = await taskService.getTasks({ bookingId, sortBy: 'dueDate', sortOrder: 'asc' });
+      setBookingTasks(tasks);
+    } catch (error: any) {
+      setBookingTasksError(error?.message || 'Unable to load booking tasks.');
+    } finally {
+      setLoadingBookingTasks(false);
+    }
+  };
+
+  const handleCreateTask = () => {
+    setEditingTask(null);
+    setBookingTasksError(null);
+    setShowTaskForm(true);
+  };
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setBookingTasksError(null);
+    setShowTaskForm(true);
+  };
+
+  const handleSubmitTask = async (taskData: CreateTaskDto) => {
+    try {
+      setBookingTasksError(null);
+      if (editingTask) {
+        await taskService.updateTask(editingTask.id, taskData);
+      } else {
+        await taskService.createTask({ ...taskData, bookingId });
+      }
+      setShowTaskForm(false);
+      setEditingTask(null);
+      await loadBookingTasks();
+    } catch (error: any) {
+      setBookingTasksError(error?.message || 'Unable to save task.');
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (!window.confirm('Delete this task?')) return;
+    try {
+      setBookingTasksError(null);
+      await taskService.deleteTask(taskId);
+      await loadBookingTasks();
+    } catch (error: any) {
+      setBookingTasksError(error?.message || 'Unable to delete task.');
+    }
+  };
+
+  const handleCompleteTask = async (taskId: string) => {
+    try {
+      setBookingTasksError(null);
+      await taskService.completeTask(taskId);
+      await loadBookingTasks();
+    } catch (error: any) {
+      setBookingTasksError(error?.message || 'Unable to complete task.');
     }
   };
 
@@ -1193,6 +1269,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     { key: 'medical', label: 'Medical' },
     { key: 'ceremonies', label: 'Ceremonies' },
     { key: 'documents', label: 'Documents' },
+    { key: 'tasks', label: 'Tasks' },
     { key: 'workflow', label: 'Booking Requirements' },
     { key: 'notes', label: 'Notes' },
   ] as const;
@@ -1552,6 +1629,28 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
           />
         )}
 
+        {activeTab === 'tasks' && (
+          <div className="detail-section">
+            <div className="section-header">
+              <h3 className="pdf-section-title">Booking Tasks</h3>
+              <button type="button" className="edit-btn" onClick={handleCreateTask}>
+                Add Task
+              </button>
+            </div>
+            {bookingTasksError && <div className="alert alert-danger">{bookingTasksError}</div>}
+            {loadingBookingTasks ? (
+              <p className="text-sm text-gray-500">Loading tasks...</p>
+            ) : (
+              <TaskList
+                tasks={bookingTasks}
+                onEditTask={handleEditTask}
+                onDeleteTask={handleDeleteTask}
+                onCompleteTask={handleCompleteTask}
+              />
+            )}
+          </div>
+        )}
+
         {activeTab === 'workflow' && (
           <div className="detail-section">
             <ClientBookingWorkflowTab bookings={[booking]} hideBookingSelector />
@@ -1593,6 +1692,22 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
             setConfirmationEmailDraft(null);
             fetchBookingDetails();
           }}
+        />
+      )}
+
+      {showTaskForm && (
+        <TaskForm
+          task={editingTask}
+          clientId={getObjectId(booking?.clientId || booking?.clientDetails)}
+          retreatId={getObjectId(booking?.retreatId || booking?.retreatDetails)}
+          bookingId={bookingId}
+          bookingLabel={`#${booking.bookingNumber || bookingId.slice(-6)}`}
+          onSubmit={handleSubmitTask}
+          onCancel={() => {
+            setShowTaskForm(false);
+            setEditingTask(null);
+          }}
+          error={bookingTasksError}
         />
       )}
     </div>
