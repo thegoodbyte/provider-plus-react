@@ -359,6 +359,10 @@ export const communicationsApi = {
   testConnection: () => api.post<{ settings: MailSettings; profile: Record<string, any> }>('/communications/gmail/test', {}),
   getTemplates: () => cachedGet<EmailTemplate[]>('communications:templates', () => api.get<EmailTemplate[]>('/communications/templates')),
   getTemplate: (id: string) => cachedGet<EmailTemplate>(`communications:templates:${id}`, () => api.get<EmailTemplate>(`/communications/templates/${id}`)),
+  getTemplateByCategoryAndLanguage: (category: string, language: string) => cachedGet<EmailTemplate>(
+    `communications:templates:${category}:${language}`,
+    () => api.get<EmailTemplate>(`/communications/templates/category/${category}/${language}`)
+  ),
   getNextTemplateDisplayId: () => api.get<number>('/communications/templates/next-display-id'),
   seedDefaultTemplates: () => {
     cacheService.clearPattern('communications:templates');

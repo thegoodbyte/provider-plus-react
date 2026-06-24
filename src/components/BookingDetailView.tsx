@@ -107,6 +107,26 @@ const getRetreatAddress = (retreat: any) =>
     ''
   ).trim();
 
+const getRetreatMapLink = (retreat: any) =>
+  String(
+    retreat?.googleMapLink ||
+    retreat?.google_map_link ||
+    retreat?.house?.googleMapLink ||
+    retreat?.house?.google_map_link ||
+    retreat?.houseId?.googleMapLink ||
+    retreat?.houseId?.google_map_link ||
+    ''
+  ).trim();
+
+const interpolateTemplate = (template: string, variables: Record<string, any>) =>
+  String(template || '').replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_match, path) => {
+    const value = String(path).split('.').reduce((current, key) => current?.[key], variables);
+    return value === undefined || value === null ? '' : String(value);
+  });
+
+const textToHtml = (text: string) =>
+  `<pre style="white-space: pre-wrap; font-family: Arial, Helvetica, sans-serif; line-height: 1.55; color: #111827;">${escapeHtml(text)}</pre>`;
+
 const getArtifactTime = (artifact: MedicalArtifact) =>
   new Date(artifact.receivedAt || artifact.createdAt || 0).getTime();
 
@@ -127,8 +147,8 @@ const getClientEmail = (client: any) => String(client?.email || '').trim();
 
 const getBookingConfirmationLanguage = (client: any): BookingConfirmationLanguage => {
   const language = String(client?.language || client?.preferredLanguage || '').trim().toUpperCase();
-  if (['CZ', 'CS', 'CZECH'].includes(language)) return 'cz';
-  if (['PL', 'POLISH'].includes(language)) return 'pl';
+  if (['CZ', 'CS', 'CZECH', 'CESKY', 'ČESKY'].includes(language)) return 'cz';
+  if (['PL', 'POLISH', 'POLSKI', 'POLSKA'].includes(language)) return 'pl';
   if (['EN', 'ENG', 'ENGLISH'].includes(language)) return 'en';
   return 'en';
 };
@@ -163,6 +183,8 @@ const bookingConfirmationEmailCopy: Record<BookingConfirmationLanguage, {
       dates: 'Dates',
       checkIn: 'Check-in',
       checkOut: 'Check-out',
+      address: 'Address',
+      googleMapLink: 'Google map',
       specialRequests: 'Special requests',
     },
   },
@@ -185,6 +207,8 @@ const bookingConfirmationEmailCopy: Record<BookingConfirmationLanguage, {
       dates: 'Termín',
       checkIn: 'Příjezd',
       checkOut: 'Odjezd',
+      address: 'Adresa',
+      googleMapLink: 'Google mapa',
       specialRequests: 'Speciální požadavky',
     },
   },
@@ -207,6 +231,8 @@ const bookingConfirmationEmailCopy: Record<BookingConfirmationLanguage, {
       dates: 'Termin',
       checkIn: 'Przyjazd',
       checkOut: 'Wyjazd',
+      address: 'Adres',
+      googleMapLink: 'Mapa Google',
       specialRequests: 'Specjalne prośby',
     },
   },
@@ -816,12 +842,14 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     });
   };
 
-  const buildBookingConfirmationEmail = (language: BookingConfirmationLanguage) => {
+  const buildBookingConfirmationEmail = async (language: BookingConfirmationLanguage) => {
     const clientData = booking?.clientId || booking?.clientDetails;
     const retreatData = booking?.retreatId || booking?.retreatDetails;
     const copy = bookingConfirmationEmailCopy[language];
     const firstName = clientData?.firstName || clientData?.fname || 'there';
     const locationText = getRetreatLocationTown(retreatData) || 'our retreat center';
+    const addressText = getRetreatAddress(retreatData) || 'N/A';
+    const mapLinkText = getRetreatMapLink(retreatData) || 'N/A';
     const dateLocale = language === 'cz' ? 'cs-CZ' : language === 'pl' ? 'pl-PL' : 'en-US';
     const formatLocalizedDate = (date?: string | Date) => {
       if (!date) return 'N/A';
@@ -834,6 +862,12 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         timeZone: 'UTC',
       });
     };
+    const formatLocalizedDateTime = (date?: string | Date, time?: string) => {
+      const dateText = formatLocalizedDate(date);
+      if (dateText === 'N/A') return dateText;
+      const trimmedTime = String(time || '').trim();
+      return trimmedTime ? `${dateText} ${trimmedTime}` : dateText;
+    };
     const getLocalizedRetreatDateRange = (retreat: any) => {
       const startDate = retreat?.startDate || retreat?.dates?.startDate;
       const endDate = retreat?.endDate || retreat?.dates?.endDate;
@@ -842,18 +876,62 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     };
     const dateText = getLocalizedRetreatDateRange(retreatData);
     const contactEmail = 'info@ibogaspirit.cz';
+    const bookingNumber = String(booking?.bookingNumber || 'N/A');
+    const bookingType = `${booking?.bookingType === 'booster' ? 'B' : 'F'} / ${getRetreatCode(retreatData)}`;
+    const checkInText = formatLocalizedDateTime(retreatData?.startDate || retreatData?.dates?.startDate, retreatData?.startTime || retreatData?.dates?.startTime);
+    const checkOutText = formatLocalizedDateTime(retreatData?.endDate || retreatData?.dates?.endDate, retreatData?.endTime || retreatData?.dates?.endTime);
+    const specialRequestsText = booking?.specialRequests || copy.none;
     const rows = [
-      [copy.rows.bookingNumber, booking?.bookingNumber || 'N/A'],
-      [copy.rows.bookingType, `${booking?.bookingType === 'booster' ? 'B' : 'F'} / ${getRetreatCode(retreatData)}`],
+      [copy.rows.bookingNumber, bookingNumber],
+      [copy.rows.bookingType, bookingType],
       [copy.rows.status, booking?.status || 'pending'],
       [copy.rows.client, getClientName(clientData) || 'N/A'],
       [copy.rows.retreat, retreatData?.name || 'N/A'],
       [copy.rows.locationTown, getRetreatLocationTown(retreatData) || 'N/A'],
       [copy.rows.dates, dateText],
-      [copy.rows.checkIn, formatLocalizedDate(booking?.checkInDate)],
-      [copy.rows.checkOut, formatLocalizedDate(booking?.checkOutDate)],
-      [copy.rows.specialRequests, booking?.specialRequests || copy.none],
+      [copy.rows.checkIn, checkInText],
+      [copy.rows.checkOut, checkOutText],
+      [copy.rows.address, addressText],
+      [copy.rows.googleMapLink, mapLinkText],
+      [copy.rows.specialRequests, specialRequestsText],
     ];
+    const variables = {
+      client: {
+        firstName,
+        fullName: getClientName(clientData) || 'N/A',
+      },
+      booking: {
+        number: bookingNumber,
+        type: bookingType,
+        status: booking?.status || 'pending',
+        specialRequests: specialRequestsText,
+      },
+      retreat: {
+        name: retreatData?.name || 'N/A',
+        locationTown: getRetreatLocationTown(retreatData) || 'N/A',
+        dateRange: dateText,
+        checkIn: checkInText,
+        checkOut: checkOutText,
+        address: addressText,
+        googleMapLink: mapLinkText,
+      },
+    };
+
+    try {
+      const templateResponse = await communicationsApi.getTemplateByCategoryAndLanguage('booking_confirmation', language);
+      const template = templateResponse.data;
+      if (template?.bodyText && template?.subject) {
+        const bodyText = interpolateTemplate(template.bodyText, variables);
+        return {
+          subject: interpolateTemplate(template.subject, variables),
+          bodyText,
+          bodyHtml: template.bodyHtml ? interpolateTemplate(template.bodyHtml, variables) : textToHtml(bodyText),
+        };
+      }
+    } catch (error) {
+      console.warn('Booking confirmation template missing; using fallback copy.', error);
+    }
+
     const bodyText = [
       copy.greeting(firstName),
       '',
@@ -889,10 +967,37 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
       </div>
     `;
     return {
-      subject: copy.subject(booking?.bookingNumber),
+      subject: copy.subject(bookingNumber),
       bodyText,
       bodyHtml,
     };
+  };
+
+  const markBookingConfirmationSent = async () => {
+    try {
+      const response = await bookingFlowApi.getItems({ bookingId });
+      const item = (response.data || []).find((flowItem: BookingFlowItem) => flowItem.key === 'booking_confirmation_sent');
+      if (!item?._id) return;
+
+      const sentAt = new Date().toLocaleString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      const entry = `Booking confirmation sent ${sentAt}`;
+      const existingNotes = String(item.notes || '').trim();
+
+      await bookingFlowApi.updateItem(item._id, {
+        status: 'completed',
+        completedAt: new Date().toISOString(),
+        notes: existingNotes ? `${existingNotes}\n${entry}` : entry,
+      });
+      setRequirementsRefreshKey((current) => current + 1);
+    } catch (error) {
+      console.warn('Booking confirmation email sent, but workflow item was not updated.', error);
+    }
   };
 
   const handleBookingRelatedUpdate = () => {
@@ -956,7 +1061,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
       const language = pdfLanguage;
       const { blob, fileName } = await createBookingConfirmationPdf({ booking, language });
       const contentBase64 = await blobToBase64(blob);
-      const email = buildBookingConfirmationEmail(language);
+      const email = await buildBookingConfirmationEmail(language);
       setConfirmationEmailDraft({
         to: recipientEmail,
         subject: email.subject,
@@ -996,7 +1101,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
       const { blob, fileName } = await createBookingConfirmationPdf({ booking, language });
       pdfSize = blob.size;
       const contentBase64 = await blobToBase64(blob);
-      const email = buildBookingConfirmationEmail(language);
+      const email = await buildBookingConfirmationEmail(language);
       const payload = {
         to: recipientEmail,
         subject: email.subject,
@@ -1018,6 +1123,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         alert(`Email was logged but Gmail failed to send it: ${response.data.errorMessage || 'Unknown error'}`);
         return;
       }
+      await markBookingConfirmationSent();
       alert('Booking confirmation email sent.');
     } catch (error: any) {
       console.error('Error sending booking confirmation email:', error);
@@ -1466,7 +1572,8 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
           title="Booking Confirmation Email"
           initialValues={confirmationEmailDraft}
           onClose={() => setConfirmationEmailDraft(null)}
-          onSent={() => {
+          onSent={async () => {
+            await markBookingConfirmationSent();
             setConfirmationEmailDraft(null);
             fetchBookingDetails();
           }}

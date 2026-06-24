@@ -7,7 +7,9 @@ export interface Retreat {
   locationTown?: string;
   location: string;
   startDate?: Date | string;
+  startTime?: string;
   endDate?: Date | string;
+  endTime?: string;
   capacity?: number;
   currentOccupancy?: number;
   description?: string;
@@ -22,6 +24,7 @@ export interface Retreat {
   // Legacy format support
   dates?: {
     startDate?: string;
+    endDate?: string;
     startTime?: string;
     endTime?: string;
   };
@@ -1157,6 +1160,7 @@ export interface EmailTemplate {
   bodyText: string;
   bodyHtml?: string;
   category?: string;
+  language?: 'en' | 'cz' | 'pl' | string;
   active?: boolean;
   notes?: string;
   tags?: string;

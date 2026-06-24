@@ -336,7 +336,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       if (retreatFormData.name?.trim()) cleanData.name = retreatFormData.name.trim();
       cleanData.location = 'Default Location'; // Backend requires location
       if (retreatFormData.startDate) cleanData.startDate = retreatFormData.startDate;
+      cleanData.startTime = retreatFormData.startTime?.trim() || undefined;
       if (retreatFormData.endDate) cleanData.endDate = retreatFormData.endDate;
+      cleanData.endTime = retreatFormData.endTime?.trim() || undefined;
       if (retreatFormData.capacity !== undefined && retreatFormData.capacity !== null && !Number.isNaN(Number(retreatFormData.capacity))) {
         cleanData.capacity = Number(retreatFormData.capacity);
       }
@@ -387,7 +389,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       const clientId = clientResponse.data._id;
 
       // Then create the booking
-      const bookingData = {
+      const bookingData: any = {
         clientId: clientId!,
         retreatId: retreatId,
         totalAmount: values.totalAmount,
@@ -396,9 +398,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         registrationDate: new Date().toISOString(),
         amountPaid: 0,
         amountPaidUSD: 0,
-        checkInDate: retreat?.startDate || new Date().toISOString(),
-        checkOutDate: retreat?.endDate || new Date().toISOString()
       };
+      if (retreat?.startDate) bookingData.checkInDate = retreat.startDate;
+      if (retreat?.endDate) bookingData.checkOutDate = retreat.endDate;
 
       await bookingsApi.create(bookingData);
 
@@ -419,7 +421,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       setExistingClientBookingLoading(true);
 
       // Create booking for existing client
-      const bookingData = {
+      const bookingData: any = {
         clientId: selectedClient._id!,
         retreatId: retreatId,
         totalAmount: 3000, // Default amount, can be edited later
@@ -428,9 +430,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         registrationDate: new Date().toISOString(),
         amountPaid: 0,
         amountPaidUSD: 0,
-        checkInDate: retreat?.startDate || new Date().toISOString(),
-        checkOutDate: retreat?.endDate || new Date().toISOString()
       };
+      if (retreat?.startDate) bookingData.checkInDate = retreat.startDate;
+      if (retreat?.endDate) bookingData.checkOutDate = retreat.endDate;
 
       await bookingsApi.create(bookingData);
 
@@ -550,7 +552,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             setRetreatFormData({
               ...retreat,
               startDate: retreat?.startDate || '',
+              startTime: retreat?.startTime || '',
               endDate: retreat?.endDate || '',
+              endTime: retreat?.endTime || '',
               capacity: retreat?.capacity || 0
             });
             setShowRetreatEditModal(true);
@@ -1245,6 +1249,28 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                   id="retreat-endDate"
                   name="endDate"
                   value={retreatFormData.endDate ? new Date(retreatFormData.endDate).toISOString().split('T')[0] : ''}
+                  onChange={handleRetreatInputChange}
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="retreat-startTime">Start Time:</label>
+                <input
+                  type="time"
+                  id="retreat-startTime"
+                  name="startTime"
+                  value={retreatFormData.startTime || ''}
+                  onChange={handleRetreatInputChange}
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="retreat-endTime">End Time:</label>
+                <input
+                  type="time"
+                  id="retreat-endTime"
+                  name="endTime"
+                  value={retreatFormData.endTime || ''}
                   onChange={handleRetreatInputChange}
                 />
               </div>

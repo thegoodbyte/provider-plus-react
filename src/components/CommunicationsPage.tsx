@@ -19,6 +19,7 @@ const defaultTemplateForm: Partial<EmailTemplate> = {
   bodyText: '',
   bodyHtml: '',
   category: 'general',
+  language: 'en',
   active: true,
   notes: '',
   tags: '',
@@ -171,6 +172,7 @@ const CommunicationsPage: React.FC = () => {
         subject: String(templateForm.subject || '').trim(),
         bodyText: String(templateForm.bodyText || ''),
         bodyHtml: String(templateForm.bodyHtml || '').trim() || undefined,
+        language: String(templateForm.language || 'en').trim().toLowerCase(),
       };
 
       if (!payload.name || !payload.subject || !payload.bodyText) {
@@ -569,6 +571,7 @@ const CommunicationsPage: React.FC = () => {
                     <div className="min-w-0">
                       <div className="truncate text-sm font-semibold text-gray-900">{template.name}</div>
                       <div className="truncate text-xs text-gray-500">{template.subject}</div>
+                      <div className="mt-1 text-[11px] uppercase text-gray-400">{template.language || 'en'}</div>
                     </div>
                     <div className="text-right text-xs text-gray-500">
                       <div>#{template.display_id || 'n/a'}</div>
@@ -613,6 +616,18 @@ const CommunicationsPage: React.FC = () => {
                   className="w-full rounded-md border border-gray-300 px-3 py-2"
                   placeholder="general"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Language</label>
+                <select
+                  value={templateForm.language || 'en'}
+                  onChange={(e) => setTemplateForm((prev) => ({ ...prev, language: e.target.value }))}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2"
+                >
+                  <option value="en">English</option>
+                  <option value="cz">Czech</option>
+                  <option value="pl">Polish</option>
+                </select>
               </div>
             </div>
             <div>

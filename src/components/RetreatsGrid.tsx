@@ -699,12 +699,36 @@ const RetreatsGrid: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Start Time
+                </label>
+                <input
+                  type="time"
+                  value={formData.startTime || ''}
+                  onChange={(e) => setFormData({ ...formData, startTime: e.target.value || undefined })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   End Date
                 </label>
                 <input
                   type="date"
                   value={formData.endDate ? new Date(formData.endDate).toISOString().split('T')[0] : ''}
                   onChange={(e) => setFormData({ ...formData, endDate: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  End Time
+                </label>
+                <input
+                  type="time"
+                  value={formData.endTime || ''}
+                  onChange={(e) => setFormData({ ...formData, endTime: e.target.value || undefined })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -744,7 +768,9 @@ const RetreatsGrid: React.FC = () => {
                       type: formData.type || 'regular' as 'regular' | 'booster',
                       description: formData.description || '',
                       startDate: formData.startDate,
+                      startTime: formData.startTime,
                       endDate: formData.endDate,
+                      endTime: formData.endTime,
                       backgroundColor: formData.backgroundColor,
                       textColor: formData.textColor
                     };
@@ -886,12 +912,36 @@ const RetreatsGrid: React.FC = () => {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Start Time
+                </label>
+                <input
+                  type="time"
+                  value={formData.startTime || ''}
+                  onChange={(e) => setFormData({ ...formData, startTime: e.target.value || undefined })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   End Date
                 </label>
                 <input
                   type="date"
                   value={formData.endDate ? new Date(formData.endDate).toISOString().split('T')[0] : ''}
                   onChange={(e) => setFormData({ ...formData, endDate: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  End Time
+                </label>
+                <input
+                  type="time"
+                  value={formData.endTime || ''}
+                  onChange={(e) => setFormData({ ...formData, endTime: e.target.value || undefined })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
