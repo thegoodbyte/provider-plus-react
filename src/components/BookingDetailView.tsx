@@ -16,6 +16,11 @@ import './BookingDetailView.css';
 
 type RequirementArtifactType = NonNullable<MedicalArtifact['artifactType']>;
 type BookingConfirmationLanguage = 'pl' | 'cz' | 'en';
+const bookingConfirmationLanguageLabels: Record<BookingConfirmationLanguage, string> = {
+  pl: 'Polish',
+  cz: 'Czech',
+  en: 'English',
+};
 type RequirementDefinition = {
   key: string;
   label: string;
@@ -796,6 +801,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [isSendingConfirmation, setIsSendingConfirmation] = useState(false);
   const [isPreparingConfirmationEmail, setIsPreparingConfirmationEmail] = useState(false);
   const [confirmationEmailDraft, setConfirmationEmailDraft] = useState<EmailComposeInitialValues | null>(null);
+  const [showQuickSendConfirm, setShowQuickSendConfirm] = useState(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'requirements' | 'medical' | 'ceremonies' | 'documents' | 'tasks' | 'workflow' | 'notes'>('overview');
   const [bookingTasks, setBookingTasks] = useState<Task[]>([]);
   const [loadingBookingTasks, setLoadingBookingTasks] = useState(false);
@@ -1176,6 +1182,16 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     }
   };
 
+  const requestQuickSendBookingConfirmation = () => {
+    const clientData = booking?.clientId || booking?.clientDetails;
+    const recipientEmail = getClientEmail(clientData);
+    if (!recipientEmail) {
+      alert('This client does not have an email address.');
+      return;
+    }
+    setShowQuickSendConfirm(true);
+  };
+
   const sendBookingConfirmationEmail = async () => {
     const clientData = booking?.clientId || booking?.clientDetails;
     const retreatData = booking?.retreatId || booking?.retreatDetails;
@@ -1188,6 +1204,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     }
 
     setIsSendingConfirmation(true);
+    setShowQuickSendConfirm(false);
     try {
       const language = pdfLanguage;
       const { blob, fileName } = await createBookingConfirmationPdf({ booking, language });
@@ -1317,7 +1334,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
             <span>{isPreviewingPDF ? 'Previewing' : 'Preview'}</span>
           </button>
           <button
-            onClick={sendBookingConfirmationEmail}
+            onClick={requestQuickSendBookingConfirmation}
             disabled={isSendingConfirmation}
             className="pdf-btn primary-action"
             title="Send email with PDF attachment"
@@ -1694,6 +1711,52 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
           }}
         />
       )}
+
+      {showQuickSendConfirm && (() => {
+        const confirmClient = booking?.clientId || booking?.clientDetails;
+        const confirmName = getClientName(confirmClient) || 'this client';
+        const confirmEmail = getClientEmail(confirmClient);
+        return (
+          <div className="booking-confirm-dialog-overlay" role="presentation">
+            <div className="booking-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="quick-send-confirm-title">
+              <h2 id="quick-send-confirm-title">Send booking confirmation?</h2>
+              <p>Do you want to send the booking confirmation to this client?</p>
+              <div className="booking-confirm-dialog-details">
+                <div>
+                  <span>Name</span>
+                  <strong>{confirmName}</strong>
+                </div>
+                <div>
+                  <span>Email</span>
+                  <strong>{confirmEmail}</strong>
+                </div>
+                <div>
+                  <span>Language</span>
+                  <strong>{bookingConfirmationLanguageLabels[pdfLanguage]}</strong>
+                </div>
+              </div>
+              <div className="booking-confirm-dialog-actions">
+                <button
+                  type="button"
+                  className="booking-confirm-secondary"
+                  onClick={() => setShowQuickSendConfirm(false)}
+                  disabled={isSendingConfirmation}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="booking-confirm-primary"
+                  onClick={sendBookingConfirmationEmail}
+                  disabled={isSendingConfirmation}
+                >
+                  {isSendingConfirmation ? 'Sending...' : 'Send'}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {showTaskForm && (
         <TaskForm

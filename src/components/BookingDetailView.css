@@ -164,6 +164,118 @@
   box-shadow: none;
 }
 
+.booking-confirm-dialog-overlay {
+  align-items: center;
+  background: rgba(17, 24, 39, 0.45);
+  bottom: 0;
+  display: flex;
+  justify-content: center;
+  left: 0;
+  padding: 20px;
+  position: fixed;
+  right: 0;
+  top: 0;
+  z-index: 1000;
+}
+
+.booking-confirm-dialog {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 24px 60px rgba(17, 24, 39, 0.22);
+  max-width: 460px;
+  padding: 22px;
+  width: min(100%, 460px);
+}
+
+.booking-confirm-dialog h2 {
+  color: #111827;
+  font-size: 22px;
+  line-height: 1.2;
+  margin: 0 0 8px;
+}
+
+.booking-confirm-dialog p {
+  color: #4b5563;
+  font-size: 14px;
+  line-height: 1.45;
+  margin: 0 0 18px;
+}
+
+.booking-confirm-dialog-details {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.booking-confirm-dialog-details div {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: 92px minmax(0, 1fr);
+  padding: 10px 12px;
+}
+
+.booking-confirm-dialog-details div + div {
+  border-top: 1px solid #e5e7eb;
+}
+
+.booking-confirm-dialog-details span {
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.booking-confirm-dialog-details strong {
+  color: #111827;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+
+.booking-confirm-dialog-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.booking-confirm-primary,
+.booking-confirm-secondary {
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 750;
+  min-height: 42px;
+  padding: 0 18px;
+}
+
+.booking-confirm-primary {
+  background: #374151;
+  border: 1px solid #374151;
+  color: #ffffff;
+}
+
+.booking-confirm-primary:hover:not(:disabled) {
+  background: #111827;
+  border-color: #111827;
+}
+
+.booking-confirm-secondary {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  color: #111827;
+}
+
+.booking-confirm-secondary:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.booking-confirm-primary:disabled,
+.booking-confirm-secondary:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
 .booking-title-block {
   min-width: 220px;
   flex: 1 1 auto;
