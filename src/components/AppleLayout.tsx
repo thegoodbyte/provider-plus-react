@@ -112,6 +112,7 @@ const AppleLayout: React.FC = () => {
   const navigate = useNavigate();
 
   const isMedicalAdvisor = user?.role === 'medical_advisor';
+  const showQuickMenu = !isMedicalAdvisor;
 
   const getActiveItemFromPath = () => {
     const path = location.pathname;
@@ -233,6 +234,12 @@ const AppleLayout: React.FC = () => {
     navigate(`/${getRoutePrefix()}/${route}`);
     setQuickMenuOpen(false);
   };
+
+  useEffect(() => {
+    if (!showQuickMenu && quickMenuOpen) {
+      setQuickMenuOpen(false);
+    }
+  }, [showQuickMenu, quickMenuOpen]);
 
   // Close sidebar on escape key
   useEffect(() => {
@@ -387,41 +394,43 @@ const AppleLayout: React.FC = () => {
         {/* Page Content */}
         <main className="h-[calc(100vh-32px)] overflow-y-auto px-4 py-4 sm:px-6 lg:h-[calc(100vh-64px-32px)] lg:px-8 lg:py-6">
           <div className="max-w-7xl mx-auto">
-            <div className="mb-4 border-b border-apple-gray-200 pb-3">
-              <button
-                type="button"
-                onClick={() => setQuickMenuOpen((open) => !open)}
-                className="inline-flex items-center gap-2 rounded-apple border border-apple-gray-200 bg-white px-3 py-2 text-sm font-semibold text-apple-gray-700 shadow-apple-sm transition-colors hover:bg-apple-gray-50"
-                aria-expanded={quickMenuOpen}
-                aria-controls="quick-menu"
-              >
-                Quick Menu
-                <HeaderIcon
-                  icon={FiChevronDown}
-                  className={`h-4 w-4 transition-transform ${quickMenuOpen ? 'rotate-180' : ''}`}
-                />
-              </button>
-
-              {quickMenuOpen && (
-                <div
-                  id="quick-menu"
-                  className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4"
+            {showQuickMenu && (
+              <div className="mb-4 border-b border-apple-gray-200 pb-3">
+                <button
+                  type="button"
+                  onClick={() => setQuickMenuOpen((open) => !open)}
+                  className="inline-flex items-center gap-2 rounded-apple border border-apple-gray-200 bg-white px-3 py-2 text-sm font-semibold text-apple-gray-700 shadow-apple-sm transition-colors hover:bg-apple-gray-50"
+                  aria-expanded={quickMenuOpen}
+                  aria-controls="quick-menu"
                 >
-                  {quickMenuItems.map((item) => (
-                    <button
-                      key={item.route}
-                      type="button"
-                      onClick={() => handleQuickMenuClick(item.route)}
-                      className="flex h-32 items-center justify-center rounded-apple-lg border border-apple-gray-200 bg-white text-apple-gray-700 shadow-apple-sm transition-colors hover:bg-apple-gray-50 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      aria-label={item.label}
-                      title={item.label}
-                    >
-                      <HeaderIcon icon={item.icon} className="h-[100px] w-[100px]" />
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+                  Quick Menu
+                  <HeaderIcon
+                    icon={FiChevronDown}
+                    className={`h-4 w-4 transition-transform ${quickMenuOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+
+                {quickMenuOpen && (
+                  <div
+                    id="quick-menu"
+                    className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4"
+                  >
+                    {quickMenuItems.map((item) => (
+                      <button
+                        key={item.route}
+                        type="button"
+                        onClick={() => handleQuickMenuClick(item.route)}
+                        className="flex h-32 items-center justify-center rounded-apple-lg border border-apple-gray-200 bg-white text-apple-gray-700 shadow-apple-sm transition-colors hover:bg-apple-gray-50 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        aria-label={item.label}
+                        title={item.label}
+                      >
+                        <HeaderIcon icon={item.icon} className="h-[100px] w-[100px]" />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
             <div className="bg-white rounded-apple-lg shadow-apple-sm">
               <Routes>
                 {/* Unauthorized route */}
