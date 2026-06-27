@@ -325,6 +325,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
         }
       }
       setSelected(selectedItem);
+      setGeneratedAccessUrl('');
 
       if (selectedItem) {
         if (selectedItem._id) {
@@ -406,6 +407,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
 
   const handleSelect = (request: MedicalReviewRequest) => {
     setSelected(request);
+    setGeneratedAccessUrl('');
     navigate(`${isMedicalRoute ? '/medical/review-requests' : '/admin/medical-review-requests'}/${request._id}`);
   };
 
@@ -979,6 +981,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   </div>
                   {generatedAccessUrl && (
                     <div className="mt-3 rounded-md border border-blue-200 bg-blue-50 p-2">
+                      <div className="mb-1 text-xs font-semibold text-blue-900">New access link</div>
                       <div className="break-all text-xs text-blue-900">{generatedAccessUrl}</div>
                       <button
                         type="button"
@@ -1006,6 +1009,22 @@ const MedicalReviewRequestsPage: React.FC = () => {
                           <div>First IP: {link.firstAccessIp || '-'}</div>
                           <div>Last IP: {link.lastAccessIp || '-'}</div>
                         </div>
+                        {link.url ? (
+                          <div className="mt-2 rounded-md border border-blue-100 bg-white p-2">
+                            <div className="break-all text-[11px] font-medium text-blue-900">{link.url}</div>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyAccessLink(link.url!)}
+                              className="mt-2 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                            >
+                              Copy link
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-[11px] text-amber-800">
+                            This older link was stored as a hash only. Generate a new one if you need to copy it again.
+                          </div>
+                        )}
                         {!link.revokedAt && (
                           <button
                             type="button"
