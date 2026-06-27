@@ -1,7 +1,9 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import AppleLayout from './components/AppleLayout';
 import { Login } from './components/Login/Login';
+import MedicalReviewAccessPage from './components/MedicalReviewAccessPage';
+import MedicalReviewPublicPage from './components/MedicalReviewPublicPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { preloaderService } from './services/preloader';
 import ApiErrorHandler from './components/ApiErrorHandler';
@@ -15,6 +17,9 @@ installNativeDialogReplacement();
 
 function AppContent() {
   const { isAuthenticated, loading } = useAuth();
+  const location = useLocation();
+  const isPublicMedicalReviewRoute = location.pathname.startsWith('/medical-review-access/')
+    || location.pathname.startsWith('/medical/review-link/');
 
   // Preload essential data when user is authenticated (non-blocking)
   useEffect(() => {
@@ -31,6 +36,16 @@ function AppContent() {
 
   if (loading) {
     return <div className="loading">Loading...</div>;
+  }
+
+  if (!isAuthenticated && isPublicMedicalReviewRoute) {
+    return (
+      <Routes>
+        <Route path="/medical-review-access/:token/:label" element={<MedicalReviewAccessPage />} />
+        <Route path="/medical-review-access/:token" element={<MedicalReviewAccessPage />} />
+        <Route path="/medical/review-link/:token" element={<MedicalReviewPublicPage />} />
+      </Routes>
+    );
   }
 
   if (!isAuthenticated) {
