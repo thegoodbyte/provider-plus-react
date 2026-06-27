@@ -20,6 +20,7 @@ interface MedicalRecordsManagerProps {
   clientId: string;
   retreatId?: string;
   clientName?: string;
+  retreatOptions?: Array<{ id: string; label: string }>;
 }
 
 // Helper to get record type label
@@ -155,7 +156,8 @@ const mapArtifactsToRecords = (artifacts: MedicalArtifact[]): MedicalRecord[] =>
 const MedicalRecordsManager: React.FC<MedicalRecordsManagerProps> = ({
   clientId,
   retreatId,
-  clientName = 'Client'
+  clientName = 'Client',
+  retreatOptions = []
 }) => {
   const [records, setRecords] = useState<MedicalRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -226,6 +228,11 @@ const MedicalRecordsManager: React.FC<MedicalRecordsManagerProps> = ({
 
   const groupedRecords = groupRecords(records);
 
+  const getRetreatLabel = (recordRetreatId?: string) => {
+    if (!recordRetreatId) return 'No retreat linked';
+    return retreatOptions.find((option) => option.id === recordRetreatId)?.label || `Retreat ${recordRetreatId}`;
+  };
+
   const loadRecords = useCallback(async () => {
     if (!clientId) return;
     setLoading(true);
@@ -253,6 +260,7 @@ const MedicalRecordsManager: React.FC<MedicalRecordsManagerProps> = ({
       version: 1,
       isLatestVersion: true,
       testDate: moment().format('YYYY-MM-DD'),
+      retreatId: retreatId || '',
       results: {}
     });
     setEditingRecord(null);
@@ -266,10 +274,11 @@ const MedicalRecordsManager: React.FC<MedicalRecordsManagerProps> = ({
       setLoading(true);
       const recordType = formData.recordType || activeTab;
       const testType = formData.testType || TestType.EKG;
+      const selectedRetreatId = typeof formData.retreatId === 'string' ? formData.retreatId : '';
       const title = `${getRecordTypeLabel(recordType)} ${getTestTypeLabel(testType)}`;
       const artifactPayload = {
         clientId,
-        ...(retreatId ? { retreatId } : {}),
+        ...(selectedRetreatId ? { retreatId: selectedRetreatId } : {}),
         documentStage: recordTypeToDocumentStage(recordType),
         documentType: testTypeToDocumentType(testType),
         artifactType: getArtifactTypeForRecord(recordType, testType),
@@ -282,6 +291,7 @@ const MedicalRecordsManager: React.FC<MedicalRecordsManagerProps> = ({
           results: formData.results || {},
           measurementTime: formData.measurementTime,
           correctionRequested: formData.correctionRequested,
+          retreatId: selectedRetreatId || undefined,
         },
         receivedAt: new Date().toISOString(),
         source: 'admin_upload' as const,
@@ -346,6 +356,9 @@ const MedicalRecordsManager: React.FC<MedicalRecordsManagerProps> = ({
           </div>
           <div className="text-sm text-gray-600 mt-1">
             Test Date: {moment(record.testDate).format('MM/DD/YYYY')}
+          </div>
+          <div className="text-xs text-gray-500 mt-1">
+            {getRetreatLabel(record.retreatId)}
           </div>
         </div>
 
@@ -600,6 +613,21 @@ const MedicalRecordsManager: React.FC<MedicalRecordsManagerProps> = ({
                 ))}
               </Select>
             </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Linked Retreat</label>
+            <Select
+              value={typeof formData.retreatId === 'string' ? formData.retreatId : ''}
+              onChange={(value) => setFormData({ ...formData, retreatId: value || undefined })}
+              className="w-full"
+              placeholder="No retreat linked"
+            >
+              <Option value="">No retreat linked</Option>
+              {retreatOptions.map((option) => (
+                <Option key={option.id} value={option.id}>{option.label}</Option>
+              ))}
+            </Select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

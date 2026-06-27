@@ -1469,36 +1469,12 @@ const ClientDetailsPage: React.FC = () => {
 
             {/* Medical Records Section */}
             <div className="mt-8">
-              <h3 className="text-lg font-semibold mb-4">Medical Records</h3>
-              {medicalRecords.length > 0 ? (
-                <div className="space-y-4">
-                  {medicalRecords.map((record: any, index: number) => (
-                    <div key={index} className="bg-gray-50 p-4 rounded-lg">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h4 className="font-medium text-gray-900">{record.title}</h4>
-                          <p className="text-sm text-gray-600 mt-1">{record.notes}</p>
-                          <div className="flex items-center mt-2 text-xs text-gray-500">
-                            <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded mr-2">{record.type}</span>
-                            <span>{new Date(record.date).toLocaleDateString()}</span>
-                          </div>
-                        </div>
-                        <button className="text-blue-600 hover:text-blue-800 text-sm">
-                          View
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <Icon icon={FiHeart} className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">No medical records yet</h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    Add a medical record to keep track of important health information.
-                  </p>
-                </div>
-              )}
+              <MedicalRecordsManager
+                clientId={clientId || ''}
+                clientName={`${client.firstName} ${client.lastName}`}
+                retreatId={getDefaultRetreatId()}
+                retreatOptions={getRetreatOptions()}
+              />
             </div>
           </div>
         )}
@@ -1508,7 +1484,8 @@ const ClientDetailsPage: React.FC = () => {
             <MedicalRecordsManager
               clientId={clientId || ''}
               clientName={`${client.firstName} ${client.lastName}`}
-              retreatId={bookings[0]?.retreatId}
+              retreatId={getDefaultRetreatId()}
+              retreatOptions={getRetreatOptions()}
             />
           </div>
         )}
