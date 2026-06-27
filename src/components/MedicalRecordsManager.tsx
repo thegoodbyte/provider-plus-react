@@ -1,13 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   MedicalRecord,
   MedicalRecordType,
   TestType,
   TestStatus,
-  MedicalRecordGroup,
-  ClientMedicalSummary
+  MedicalRecordGroup
 } from '../types/medical';
-import { Eye as FiEye, Upload as FiUpload, Download as FiDownload, Edit2 as FiEdit2, Check as FiCheck, X as FiX, AlertCircle as FiAlertCircle, Clock as FiClock, Plus as FiPlus } from 'lucide-react';
+import { MedicalArtifact } from '../types';
+import { medicalArtifactsApi } from '../services/api';
+import { Eye as FiEye, Upload as FiUpload, AlertCircle as FiAlertCircle, Plus as FiPlus } from 'lucide-react';
 import { message, Modal, Upload, Select, Input, DatePicker, InputNumber, Tabs, Badge, Collapse, Button, Tag } from 'antd';
 import moment from 'moment';
 
@@ -58,6 +59,99 @@ const getStatusColor = (status: TestStatus): string => {
   return colors[status];
 };
 
+const recordTypeToDocumentStage = (type?: MedicalRecordType): MedicalArtifact['documentStage'] => {
+  if (type === MedicalRecordType.PRE_CEREMONY) return 'pre_ceremony';
+  if (type === MedicalRecordType.IN_CEREMONY) return 'in_ceremony';
+  if (type === MedicalRecordType.POST_CEREMONY) return 'post_ceremony';
+  if (type === MedicalRecordType.ADDITIONAL) return 'additional';
+  return 'entry';
+};
+
+const artifactToRecordType = (artifact: MedicalArtifact): MedicalRecordType => {
+  if (artifact.purpose === 'correction') return MedicalRecordType.ENTRY_CORRECTION;
+  if (artifact.documentStage === 'pre_ceremony') return MedicalRecordType.PRE_CEREMONY;
+  if (artifact.documentStage === 'in_ceremony') return MedicalRecordType.IN_CEREMONY;
+  if (artifact.documentStage === 'post_ceremony') return MedicalRecordType.POST_CEREMONY;
+  if (artifact.documentStage === 'additional') return MedicalRecordType.ADDITIONAL;
+  return MedicalRecordType.ENTRY_DOCUMENT;
+};
+
+const testTypeToDocumentType = (type?: TestType): MedicalArtifact['documentType'] => {
+  if (type === TestType.EKG) return 'EKG';
+  if (type === TestType.LIVER_PANEL || type === TestType.BLOOD_TEST) return 'Liver';
+  if (type === TestType.BLOOD_PRESSURE || type === TestType.HEART_RATE) return 'BP';
+  return 'other';
+};
+
+const artifactToTestType = (artifact: MedicalArtifact): TestType => {
+  if (artifact.artifactType === 'ekg' || artifact.artifactType === 'ceremony_ekg' || artifact.documentType === 'EKG') return TestType.EKG;
+  if (artifact.artifactType === 'liver_panel' || artifact.documentType === 'Liver') return TestType.LIVER_PANEL;
+  if (artifact.artifactType === 'blood_pressure' || artifact.documentType === 'BP') return TestType.BLOOD_PRESSURE;
+  return TestType.OTHER;
+};
+
+const getArtifactTypeForRecord = (recordType?: MedicalRecordType, testType?: TestType): NonNullable<MedicalArtifact['artifactType']> => {
+  if (testType === TestType.EKG) {
+    return recordType === MedicalRecordType.ENTRY_DOCUMENT || recordType === MedicalRecordType.ENTRY_CORRECTION ? 'ekg' : 'ceremony_ekg';
+  }
+  if (testType === TestType.LIVER_PANEL || testType === TestType.BLOOD_TEST) return 'liver_panel';
+  if (testType === TestType.BLOOD_PRESSURE || testType === TestType.HEART_RATE) return 'blood_pressure';
+  return 'other';
+};
+
+const artifactStatusToTestStatus = (status?: MedicalArtifact['status']): TestStatus => {
+  if (status === 'approved') return TestStatus.APPROVED;
+  if (status === 'rejected') return TestStatus.REJECTED;
+  if (status === 'needs_resubmission') return TestStatus.NEEDS_CORRECTION;
+  return TestStatus.PENDING;
+};
+
+const testStatusToArtifactStatus = (status?: TestStatus): MedicalArtifact['status'] => {
+  if (status === TestStatus.APPROVED) return 'approved';
+  if (status === TestStatus.REJECTED) return 'rejected';
+  if (status === TestStatus.NEEDS_CORRECTION) return 'needs_resubmission';
+  return 'pending_review';
+};
+
+const mapArtifactsToRecords = (artifacts: MedicalArtifact[]): MedicalRecord[] => {
+  const mapped = artifacts.map((artifact) => ({
+    _id: artifact._id,
+    clientId: typeof artifact.clientId === 'string' ? artifact.clientId : artifact.clientId?._id || '',
+    retreatId: typeof artifact.retreatId === 'string' ? artifact.retreatId : artifact.retreatId?._id,
+    ceremonyId: artifact.ceremonyId,
+    recordType: artifactToRecordType(artifact),
+    testType: artifactToTestType(artifact),
+    testDate: artifact.data?.testDate || artifact.receivedAt || artifact.createdAt || new Date(),
+    uploadDate: artifact.receivedAt || artifact.createdAt || new Date(),
+    version: artifact.version || 1,
+    status: artifactStatusToTestStatus(artifact.status),
+    results: artifact.data?.results || {},
+    attachments: (artifact.files || []).map((file) => ({
+      url: file.url || file.filePath || file.s3Key || '',
+      filename: file.fileName || 'Medical file',
+      uploadedAt: file.uploadedAt || artifact.receivedAt || new Date(),
+      fileType: file.mimeType || '',
+      size: file.size,
+    })),
+    notes: artifact.notes || artifact.description,
+    correctionRequested: artifact.data?.correctionRequested,
+    measurementTime: artifact.data?.measurementTime,
+    takenBy: artifact.uploadedBy,
+    previousVersionId: typeof artifact.replacesArtifactId === 'string' ? artifact.replacesArtifactId : artifact.replacesArtifactId?._id,
+    isLatestVersion: true,
+    createdAt: artifact.createdAt,
+    updatedAt: artifact.updatedAt,
+  }));
+
+  const latestKeys = new Set<string>();
+  return mapped.map((record) => {
+    const key = `${record.recordType}:${record.testType}`;
+    if (latestKeys.has(key)) return { ...record, isLatestVersion: false };
+    latestKeys.add(key);
+    return record;
+  });
+};
+
 const MedicalRecordsManager: React.FC<MedicalRecordsManagerProps> = ({
   clientId,
   retreatId,
@@ -68,6 +162,7 @@ const MedicalRecordsManager: React.FC<MedicalRecordsManagerProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<MedicalRecord | null>(null);
   const [activeTab, setActiveTab] = useState<MedicalRecordType>(MedicalRecordType.ENTRY_DOCUMENT);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   // Form states
   const [formData, setFormData] = useState<Partial<MedicalRecord>>({
@@ -131,6 +226,24 @@ const MedicalRecordsManager: React.FC<MedicalRecordsManagerProps> = ({
 
   const groupedRecords = groupRecords(records);
 
+  const loadRecords = useCallback(async () => {
+    if (!clientId) return;
+    setLoading(true);
+    try {
+      const response = await medicalArtifactsApi.getAll({ clientId });
+      setRecords(mapArtifactsToRecords(response.data || []));
+    } catch (error) {
+      console.error('Error loading medical artifacts:', error);
+      message.error('Failed to load medical records');
+    } finally {
+      setLoading(false);
+    }
+  }, [clientId]);
+
+  useEffect(() => {
+    loadRecords();
+  }, [loadRecords]);
+
   // Add new record
   const handleAddRecord = () => {
     setFormData({
@@ -143,42 +256,60 @@ const MedicalRecordsManager: React.FC<MedicalRecordsManagerProps> = ({
       results: {}
     });
     setEditingRecord(null);
+    setSelectedFiles([]);
     setIsModalOpen(true);
   };
 
   // Save record
   const handleSaveRecord = async () => {
     try {
-      // Here you would save to your API
-      console.log('Saving record:', formData);
-
-      // For now, just add to local state
-      const newRecord: MedicalRecord = {
-        ...formData as MedicalRecord,
-        _id: Date.now().toString(),
+      setLoading(true);
+      const recordType = formData.recordType || activeTab;
+      const testType = formData.testType || TestType.EKG;
+      const title = `${getRecordTypeLabel(recordType)} ${getTestTypeLabel(testType)}`;
+      const artifactPayload = {
         clientId,
-        retreatId,
-        uploadDate: new Date(),
-        createdAt: new Date(),
-        updatedAt: new Date()
+        ...(retreatId ? { retreatId } : {}),
+        documentStage: recordTypeToDocumentStage(recordType),
+        documentType: testTypeToDocumentType(testType),
+        artifactType: getArtifactTypeForRecord(recordType, testType),
+        contextType: 'client' as const,
+        purpose: recordType === MedicalRecordType.ENTRY_CORRECTION ? 'correction' as const : 'general' as const,
+        title,
+        description: formData.notes || title,
+        data: {
+          testDate: formData.testDate,
+          results: formData.results || {},
+          measurementTime: formData.measurementTime,
+          correctionRequested: formData.correctionRequested,
+        },
+        receivedAt: new Date().toISOString(),
+        source: 'admin_upload' as const,
+        version: formData.version || 1,
+        status: testStatusToArtifactStatus(formData.status),
+        notes: formData.notes,
+        tags: [recordTypeToDocumentStage(recordType), testTypeToDocumentType(testType), testType].filter(Boolean),
       };
 
-      if (editingRecord) {
-        setRecords(records.map(r => r._id === editingRecord._id ? newRecord : r));
-      } else {
-        // If adding new version, mark previous as not latest
-        if (formData.previousVersionId) {
-          setRecords(prev => prev.map(r =>
-            r._id === formData.previousVersionId
-              ? { ...r, isLatestVersion: false }
-              : r
-          ));
+      if (editingRecord?._id) {
+        await medicalArtifactsApi.update(editingRecord._id, artifactPayload);
+        if (selectedFiles.length > 0) {
+          await medicalArtifactsApi.uploadFiles(editingRecord._id, selectedFiles);
         }
-        setRecords([...records, newRecord]);
+      } else {
+        const created = await medicalArtifactsApi.create({
+          ...artifactPayload,
+          replacesArtifactId: formData.previousVersionId,
+        });
+        if (created.data._id && selectedFiles.length > 0) {
+          await medicalArtifactsApi.uploadFiles(created.data._id, selectedFiles);
+        }
       }
 
       message.success('Medical record saved successfully');
+      await loadRecords();
       setIsModalOpen(false);
+      setSelectedFiles([]);
       setFormData({
         recordType: activeTab,
         testType: TestType.EKG,
@@ -190,6 +321,8 @@ const MedicalRecordsManager: React.FC<MedicalRecordsManagerProps> = ({
     } catch (error) {
       console.error('Error saving record:', error);
       message.error('Failed to save medical record');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -217,7 +350,7 @@ const MedicalRecordsManager: React.FC<MedicalRecordsManagerProps> = ({
         </div>
 
         <div className="flex gap-2">
-          <Button size="small" icon={<FiEye />} onClick={() => {/* View logic */}}>
+          <Button size="small" icon={<FiEye />} onClick={() => record._id && window.open(`/medical-artifacts/${record._id}`, '_blank')}>
             View
           </Button>
           {isLatest && record.status === TestStatus.NEEDS_CORRECTION && (
@@ -394,7 +527,7 @@ const MedicalRecordsManager: React.FC<MedicalRecordsManagerProps> = ({
           }
           key={MedicalRecordType.ENTRY_DOCUMENT}
         >
-          {renderRecordSection(MedicalRecordType.ENTRY_DOCUMENT)}
+          {loading ? <div className="py-8 text-center text-gray-500">Loading medical records...</div> : renderRecordSection(MedicalRecordType.ENTRY_DOCUMENT)}
         </Tabs.TabPane>
 
         <Tabs.TabPane
@@ -408,23 +541,23 @@ const MedicalRecordsManager: React.FC<MedicalRecordsManagerProps> = ({
           }
           key={MedicalRecordType.ENTRY_CORRECTION}
         >
-          {renderRecordSection(MedicalRecordType.ENTRY_CORRECTION)}
+          {loading ? <div className="py-8 text-center text-gray-500">Loading medical records...</div> : renderRecordSection(MedicalRecordType.ENTRY_CORRECTION)}
         </Tabs.TabPane>
 
         <Tabs.TabPane tab="Pre-Ceremony" key={MedicalRecordType.PRE_CEREMONY}>
-          {renderRecordSection(MedicalRecordType.PRE_CEREMONY)}
+          {loading ? <div className="py-8 text-center text-gray-500">Loading medical records...</div> : renderRecordSection(MedicalRecordType.PRE_CEREMONY)}
         </Tabs.TabPane>
 
         <Tabs.TabPane tab="In-Ceremony" key={MedicalRecordType.IN_CEREMONY}>
-          {renderRecordSection(MedicalRecordType.IN_CEREMONY)}
+          {loading ? <div className="py-8 text-center text-gray-500">Loading medical records...</div> : renderRecordSection(MedicalRecordType.IN_CEREMONY)}
         </Tabs.TabPane>
 
         <Tabs.TabPane tab="Post-Ceremony" key={MedicalRecordType.POST_CEREMONY}>
-          {renderRecordSection(MedicalRecordType.POST_CEREMONY)}
+          {loading ? <div className="py-8 text-center text-gray-500">Loading medical records...</div> : renderRecordSection(MedicalRecordType.POST_CEREMONY)}
         </Tabs.TabPane>
 
         <Tabs.TabPane tab="Additional" key={MedicalRecordType.ADDITIONAL}>
-          {renderRecordSection(MedicalRecordType.ADDITIONAL)}
+          {loading ? <div className="py-8 text-center text-gray-500">Loading medical records...</div> : renderRecordSection(MedicalRecordType.ADDITIONAL)}
         </Tabs.TabPane>
       </Tabs>
 
@@ -438,6 +571,7 @@ const MedicalRecordsManager: React.FC<MedicalRecordsManagerProps> = ({
           setEditingRecord(null);
         }}
         width={700}
+        confirmLoading={loading}
       >
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -584,9 +718,18 @@ const MedicalRecordsManager: React.FC<MedicalRecordsManagerProps> = ({
             <Upload.Dragger
               multiple
               beforeUpload={() => false}
+              fileList={selectedFiles.map((file, index) => ({
+                uid: `${file.name}-${index}`,
+                name: file.name,
+                status: 'done',
+              }))}
               onChange={(info) => {
-                // Handle file upload
-                console.log('Files:', info.fileList);
+                setSelectedFiles(info.fileList.flatMap((file) =>
+                  file.originFileObj ? [file.originFileObj as File] : []
+                ));
+              }}
+              onRemove={(file) => {
+                setSelectedFiles((current) => current.filter((item) => item.name !== file.name));
               }}
             >
               <p className="ant-upload-drag-icon">
