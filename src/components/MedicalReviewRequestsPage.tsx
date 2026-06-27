@@ -104,9 +104,40 @@ type ReviewContext = {
   };
   reviewHistory?: MedicalReviewRequest[];
 };
+type MedicalReviewAccessLink = {
+  _id: string;
+  reviewerName?: string;
+  reviewerEmail?: string;
+  label?: string;
+  createdAt?: string;
+  firstAccessedAt?: string;
+  expiresAt?: string;
+  lastAccessedAt?: string;
+  accessCount?: number;
+  firstAccessIp?: string;
+  lastAccessIp?: string;
+  revokedAt?: string;
+  status?: string;
+  url?: string;
+};
 
 const getArtifactFileUrl = (file: ArtifactFile) => file.url || file.filePath || file.s3Key || '';
 const getArtifactFileKey = (file: ArtifactFile) => file.s3Key || file.filePath || file.url || file.fileName || '';
+const getArtifactReviewTargets = (artifact: MedicalArtifact) => {
+  if (artifact.files?.length) {
+    return artifact.files.map((file) => ({
+      artifact,
+      file,
+      fileKey: getArtifactFileKey(file),
+    }));
+  }
+  const pseudoFile = {
+    fileName: artifact.title || getArtifactTypeLabel(artifact.artifactType),
+    filePath: `artifact:${artifact._id}`,
+    uploadedAt: artifact.receivedAt,
+  } as ArtifactFile;
+  return [{ artifact, file: pseudoFile, fileKey: getArtifactFileKey(pseudoFile) }];
+};
 const isImageFile = (file: ArtifactFile) => Boolean(file.mimeType?.startsWith('image/')) || /\.(png|jpe?g|gif|webp|bmp|heic|heif)$/i.test(file.fileName || '');
 const isPdfFile = (file: ArtifactFile) => file.mimeType === 'application/pdf' || /\.pdf($|\?)/i.test(file.fileName || '');
 const getPopulatedArtifacts = (request: MedicalReviewRequest) =>
@@ -141,10 +172,23 @@ const formatDateTime = (value?: string | Date | null) => {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? 'Not set' : date.toLocaleString();
 };
+const labelFromKey = (value: string) =>
+  value
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, (char) => char.toUpperCase())
+    .trim();
 const renderValue = (value: any): string => {
   if (value === null || value === undefined || value === '') return 'Not provided';
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return String(value);
   if (Array.isArray(value)) return value.length ? value.map((item) => renderValue(item)).join(', ') : 'Not provided';
+  if (typeof value === 'object') {
+    const selectedItems = Object.entries(value)
+      .filter(([key, item]) => item === true && !['other'].includes(key))
+      .map(([key]) => labelFromKey(key));
+    const details = [value.details, value.otherDetails].filter(Boolean).join(', ');
+    const other = value.other && details ? `Other: ${details}` : details;
+    return [...selectedItems, other].filter(Boolean).join(', ') || 'Not provided';
+  }
   return JSON.stringify(value, null, 2);
 };
 const getMedicationPdfUrl = (filePath?: string) => {
@@ -240,6 +284,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const isMedicalRoute = location.pathname.startsWith('/medical/');
   const isEditRoute = location.pathname.endsWith('/edit');
   const isAdvisorReviewRoute = isMedicalRoute || user?.role === 'medical_advisor';
+  const isMagicReviewSession = user?.accessType === 'medical_review_magic_link';
+  const canManageAccessLinks = user?.role === 'admin' || user?.role === 'medical_staff';
   const canEditReview = isEditRoute;
   const routeId = id === 'new' ? undefined : id;
   const [loading, setLoading] = useState(true);
@@ -251,15 +297,20 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [medicalStaffNotes, setMedicalStaffNotes] = useState('');
   const [fileReviews, setFileReviews] = useState<FileReviewDraft[]>([]);
   const [reviewContext, setReviewContext] = useState<ReviewContext | null>(null);
+  const [accessLinks, setAccessLinks] = useState<MedicalReviewAccessLink[]>([]);
+  const [generatedAccessUrl, setGeneratedAccessUrl] = useState('');
+  const [accessLinkBusy, setAccessLinkBusy] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | MedicalReviewRequest['status']>('all');
   const [validationError, setValidationError] = useState('');
 
   const loadRequests = useCallback(async () => {
     try {
       setLoading(true);
-      const response = isAdvisorReviewRoute
-        ? await medicalReviewRequestsApi.getQueue()
-        : await medicalReviewRequestsApi.getAll();
+      const response = isMagicReviewSession && routeId
+        ? { data: [] as MedicalReviewRequest[] }
+        : isAdvisorReviewRoute
+          ? await medicalReviewRequestsApi.getQueue()
+          : await medicalReviewRequestsApi.getAll();
       const items = response.data || [];
       setRequests(items);
 
@@ -282,10 +333,17 @@ const MedicalReviewRequestsPage: React.FC = () => {
           setReviewContext(context);
           setHistory(context?.reviewHistory || []);
           setRelatedArtifacts(context?.artifacts?.all || getPopulatedArtifacts(selectedItem));
+          if (canManageAccessLinks) {
+            const linksResponse = await medicalReviewRequestsApi.getAccessLinks(selectedItem._id).catch(() => ({ data: [] }));
+            setAccessLinks(linksResponse.data || []);
+          } else {
+            setAccessLinks([]);
+          }
         } else {
           setReviewContext(null);
           setHistory([]);
           setRelatedArtifacts([]);
+          setAccessLinks([]);
         }
         setReviewDecision(selectedItem.reviewDecision || '');
         setMedicalStaffNotes(selectedItem.medicalStaffNotes || selectedItem.overallNotes || selectedItem.reviewNotes || '');
@@ -297,6 +355,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
         setReviewContext(null);
         setHistory([]);
         setRelatedArtifacts([]);
+        setAccessLinks([]);
       }
     } catch (error) {
       console.error('Error loading review requests:', error);
@@ -305,10 +364,11 @@ const MedicalReviewRequestsPage: React.FC = () => {
       setReviewContext(null);
       setHistory([]);
       setRelatedArtifacts([]);
+      setAccessLinks([]);
     } finally {
       setLoading(false);
     }
-  }, [routeId, isAdvisorReviewRoute]);
+  }, [routeId, isAdvisorReviewRoute, canManageAccessLinks, isMagicReviewSession]);
 
   useEffect(() => {
     loadRequests();
@@ -352,14 +412,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const handleSaveReview = async () => {
     if (!selected?._id) return;
     setValidationError('');
-    const linkedFiles = linkedArtifacts.flatMap((artifact) =>
-      (artifact.files || []).map((file) => ({
-        artifact,
-        file,
-        fileKey: getArtifactFileKey(file),
-      }))
-    );
-    const missingFileReview = linkedFiles.find(({ artifact, file, fileKey }) => {
+    const reviewTargets = linkedArtifacts.flatMap((artifact) => getArtifactReviewTargets(artifact));
+    const missingFileReview = reviewTargets.find(({ artifact, fileKey }) => {
       const review = fileReviews.find((item) => item.artifactId === artifact._id && item.fileKey === fileKey);
       return !review?.decision || !review?.notes?.trim();
     });
@@ -385,9 +439,45 @@ const MedicalReviewRequestsPage: React.FC = () => {
       overallNotes: overallMedicalNotes,
       medicalStaffNotes: overallMedicalNotes,
       fileReviews: cleanedFileReviews,
-      reviewedBy: 'medical_staff',
+      reviewedBy: [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || 'medical_staff',
     });
     await loadRequests();
+  };
+
+  const handleGenerateAccessLink = async () => {
+    if (!selected?._id) return;
+    setAccessLinkBusy(true);
+    try {
+      const response = await medicalReviewRequestsApi.createAccessLink(selected._id);
+      setGeneratedAccessUrl(response.data.url || '');
+      const linksResponse = await medicalReviewRequestsApi.getAccessLinks(selected._id);
+      setAccessLinks(linksResponse.data || []);
+    } catch (error: any) {
+      alert(error?.response?.data?.message || error?.message || 'Unable to generate medical review access link.');
+    } finally {
+      setAccessLinkBusy(false);
+    }
+  };
+
+  const handleCopyAccessLink = async (url: string) => {
+    await navigator.clipboard.writeText(url);
+    alert('Medical review access link copied.');
+  };
+
+  const handleRevokeAccessLink = async (accessLinkId: string) => {
+    if (!window.confirm('Revoke this medical review access link?')) return;
+    setAccessLinkBusy(true);
+    try {
+      await medicalReviewRequestsApi.revokeAccessLink(accessLinkId);
+      if (selected?._id) {
+        const linksResponse = await medicalReviewRequestsApi.getAccessLinks(selected._id);
+        setAccessLinks(linksResponse.data || []);
+      }
+    } catch (error: any) {
+      alert(error?.response?.data?.message || error?.message || 'Unable to revoke access link.');
+    } finally {
+      setAccessLinkBusy(false);
+    }
   };
 
   const updateFileReview = (artifact: MedicalArtifact, file: ArtifactFile, patch: Partial<FileReviewDraft>) => {
@@ -411,6 +501,132 @@ const MedicalReviewRequestsPage: React.FC = () => {
     const artifactId = artifact._id;
     const fileKey = getArtifactFileKey(file);
     return fileReviews.find((review) => review.artifactId === artifactId && review.fileKey === fileKey) || {};
+  };
+
+  const isPreCeremonyReview = useMemo(() => {
+    return linkedArtifacts.some((artifact) =>
+      artifact.documentStage === 'pre_ceremony'
+      && (artifact.artifactType === 'ceremony_ekg' || artifact.artifactType === 'blood_pressure' || artifact.documentType === 'EKG' || artifact.documentType === 'BP')
+    );
+  }, [linkedArtifacts]);
+
+  const preCeremonyClientColumns = useMemo(() => {
+    const clients = new Map<string, { id: string; name: string; artifacts: MedicalArtifact[] }>();
+    linkedArtifacts
+      .filter((artifact) => artifact.documentStage === 'pre_ceremony')
+      .forEach((artifact) => {
+        const clientValue = artifact.clientId as any;
+        const selectedClient = selected?.clientId as any;
+        const clientId = getId(clientValue) || getId(selectedClient) || 'client';
+        const clientName = clientValue && typeof clientValue === 'object'
+          ? `${clientValue.firstName || ''} ${clientValue.lastName || ''}`.trim() || clientValue.email || `Client ${clientValue.display_id || ''}`.trim()
+          : selectedClient && typeof selectedClient === 'object'
+            ? `${selectedClient.firstName || ''} ${selectedClient.lastName || ''}`.trim() || selectedClient.email || String(clientId)
+            : String(clientId);
+        const current = clients.get(clientId) || { id: clientId, name: clientName, artifacts: [] as MedicalArtifact[] };
+        current.artifacts.push(artifact);
+        clients.set(clientId, current);
+      });
+    return Array.from(clients.values());
+  }, [linkedArtifacts, selected?.clientId]);
+
+  const renderArtifactReviewTarget = (artifact: MedicalArtifact, target: ReturnType<typeof getArtifactReviewTargets>[number]) => {
+    const fileReview = getFileReview(artifact, target.file);
+    const hasRealFile = !String(target.fileKey).startsWith('artifact:');
+    return (
+      <div key={`${artifact._id}-${target.fileKey}`} className="rounded-md border border-gray-200 bg-white p-2">
+        <div className="text-xs font-semibold text-gray-900">{target.file.fileName || artifact.title}</div>
+        <div className="text-[11px] text-gray-500">{formatDateTime(target.file.uploadedAt || artifact.receivedAt)}</div>
+        {artifact.textContent && <div className="mt-2 whitespace-pre-wrap rounded bg-gray-50 p-2 text-xs text-gray-700">{artifact.textContent}</div>}
+        {artifact.data && Object.keys(artifact.data).length > 0 && (
+          <pre className="mt-2 max-h-28 overflow-auto rounded bg-gray-50 p-2 text-[11px] text-gray-600">{JSON.stringify(artifact.data, null, 2)}</pre>
+        )}
+        {hasRealFile && <ArtifactInlinePreview artifactId={artifact._id} file={target.file} index={0} />}
+        {isReadOnlyView ? (
+          <div className="mt-2 rounded-md bg-gray-50 p-2 text-xs">
+            <div className="font-semibold text-gray-900">{fileReview.decision || 'Not reviewed'}</div>
+            <div className="mt-1 whitespace-pre-wrap text-gray-600">{fileReview.notes || 'No comment.'}</div>
+          </div>
+        ) : (
+          <div className="mt-2 space-y-2">
+            <div className="flex flex-wrap gap-1">
+              {decisionOptions.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => updateFileReview(artifact, target.file, { decision: option })}
+                  className={`rounded-full px-2 py-1 text-[11px] font-semibold ${fileReview.decision === option ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                >
+                  {decisionLabels[option]}
+                </button>
+              ))}
+            </div>
+            <textarea
+              value={fileReview.notes || ''}
+              onChange={(event) => updateFileReview(artifact, target.file, { notes: event.target.value })}
+              rows={2}
+              className="w-full rounded-md border border-gray-300 px-2 py-1 text-xs"
+              placeholder="Required comment"
+            />
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderPreCeremonyMatrix = () => {
+    if (!isPreCeremonyReview || !preCeremonyClientColumns.length) return null;
+    const sections = [
+      {
+        key: 'ekg',
+        label: 'Pre-Ceremony EKG',
+        filter: (artifact: MedicalArtifact) => artifact.artifactType === 'ceremony_ekg' || artifact.documentType === 'EKG',
+      },
+      {
+        key: 'bp',
+        label: 'Blood Pressure',
+        filter: (artifact: MedicalArtifact) => artifact.artifactType === 'blood_pressure' || artifact.documentType === 'BP',
+      },
+    ];
+    return (
+      <div className="rounded-md border border-blue-200 bg-blue-50 p-3">
+        <div className="mb-3">
+          <div className="text-sm font-semibold text-gray-900">Pre-ceremony combo review</div>
+          <div className="text-xs text-gray-600">Each client column shows all EKG and BP entries linked to this request, including repeated captures.</div>
+        </div>
+        <div className="overflow-x-auto">
+          <div
+            className="grid min-w-[760px] gap-2"
+            style={{ gridTemplateColumns: `180px repeat(${preCeremonyClientColumns.length}, minmax(220px, 1fr))` }}
+          >
+            <div className="rounded-md bg-white p-2 text-xs font-semibold text-gray-500">Review item</div>
+            {preCeremonyClientColumns.map((client) => (
+              <div key={client.id} className="rounded-md bg-white p-2 text-sm font-semibold text-gray-900">{client.name}</div>
+            ))}
+            {sections.map((section) => (
+              <React.Fragment key={section.key}>
+                <div className="rounded-md bg-white p-2 text-sm font-semibold text-gray-900">{section.label}</div>
+                {preCeremonyClientColumns.map((client) => {
+                  const artifacts = client.artifacts.filter(section.filter);
+                  return (
+                    <div key={`${section.key}-${client.id}`} className="space-y-2 rounded-md bg-white/70 p-2">
+                      {artifacts.length ? artifacts.map((artifact) => (
+                        <div key={artifact._id || `${section.key}-${artifact.title}`} className="space-y-2">
+                          <div className="text-xs font-semibold text-blue-800">
+                            #{artifact.display_id || '—'} {formatArtifactDocumentMeta(artifact)}
+                          </div>
+                          {getArtifactReviewTargets(artifact).map((target) => renderArtifactReviewTarget(artifact, target))}
+                        </div>
+                      )) : <div className="text-xs text-gray-500">No {section.label.toLowerCase()} linked.</div>}
+                    </div>
+                  );
+                })}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const getScreeningValue = (screening: any, ...keys: string[]) => {
@@ -745,6 +961,69 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 </div>
               )}
 
+              {canManageAccessLinks && selected._id && (
+                <div className="rounded-md border border-gray-200 p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold text-gray-900">WhatsApp reviewer access</div>
+                      <div className="text-xs text-gray-500">Magic links open only this medical review and require full login for any other page.</div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={accessLinkBusy}
+                      onClick={handleGenerateAccessLink}
+                      className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+                    >
+                      Generate Link
+                    </button>
+                  </div>
+                  {generatedAccessUrl && (
+                    <div className="mt-3 rounded-md border border-blue-200 bg-blue-50 p-2">
+                      <div className="break-all text-xs text-blue-900">{generatedAccessUrl}</div>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyAccessLink(generatedAccessUrl)}
+                        className="mt-2 rounded-md border border-blue-300 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+                      >
+                        Copy for WhatsApp
+                      </button>
+                    </div>
+                  )}
+                  <div className="mt-3 space-y-2">
+                    {accessLinks.length ? accessLinks.map((link) => (
+                      <div key={link._id} className="rounded-md border border-gray-200 bg-gray-50 p-2 text-xs">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="font-semibold text-gray-900">
+                            {link.reviewerName || link.reviewerEmail || 'Assigned reviewer'} · {link.label || 'review'}
+                          </div>
+                          <span className="rounded-full bg-white px-2 py-1 font-semibold text-gray-700">{link.status || 'not_accessed'}</span>
+                        </div>
+                        <div className="mt-1 grid gap-1 text-gray-600 sm:grid-cols-2">
+                          <div>Created: {formatDateTime(link.createdAt)}</div>
+                          <div>First access: {formatDateTime(link.firstAccessedAt)}</div>
+                          <div>Expires: {formatDateTime(link.expiresAt)}</div>
+                          <div>Access count: {link.accessCount || 0}</div>
+                          <div>First IP: {link.firstAccessIp || '-'}</div>
+                          <div>Last IP: {link.lastAccessIp || '-'}</div>
+                        </div>
+                        {!link.revokedAt && (
+                          <button
+                            type="button"
+                            disabled={accessLinkBusy}
+                            onClick={() => handleRevokeAccessLink(link._id)}
+                            className="mt-2 rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                          >
+                            Revoke
+                          </button>
+                        )}
+                      </div>
+                    )) : (
+                      <div className="text-xs text-gray-500">No WhatsApp access links generated yet.</div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className={isDetailView ? 'space-y-2' : 'rounded-md border border-gray-200 bg-gray-50 p-3'}>
                 {!isDetailView && (
                   <div className="mb-3">
@@ -839,6 +1118,9 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 </div>
               </div>
 
+              {renderPreCeremonyMatrix()}
+
+              {!isPreCeremonyReview && (
               <div className={isDetailView ? 'rounded-md border border-gray-200 p-3' : 'rounded-md border border-gray-200 p-3'}>
                 <div className="flex items-center justify-between gap-3">
                   <div>
@@ -926,6 +1208,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   )}
                 </div>
               </div>
+              )}
 
               {!isDetailView && (
                 <div className="rounded-md border border-gray-200 p-3">

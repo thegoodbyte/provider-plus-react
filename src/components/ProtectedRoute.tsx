@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { authService } from '../services/authService';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -53,6 +54,19 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   const userRole = user.role;
+  if (user.accessType === 'medical_review_magic_link') {
+    const allowedReviewId = user.medicalReviewRequestId;
+    const allowedPaths = allowedReviewId
+      ? [
+        `/medical/review-requests/${allowedReviewId}`,
+        `/medical/review-requests/${allowedReviewId}/edit`,
+      ]
+      : [];
+    if (!allowedPaths.includes(location.pathname)) {
+      authService.logout();
+      return <Navigate to="/login" state={{ from: location, reason: 'full_login_required' }} replace />;
+    }
+  }
 
   // Check if user has required role (if specified)
   if (requiredRole) {

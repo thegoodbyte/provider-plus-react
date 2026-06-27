@@ -35,6 +35,7 @@ import FlowTaskInboxPage from './FlowTaskInboxPage';
 import MedicalReviewRequestsGrid from './MedicalReviewRequestsGrid';
 import MedicalReviewRequestEditorPage from './MedicalReviewRequestEditorPage';
 import MedicalReviewRequestsPage from './MedicalReviewRequestsPage';
+import MedicalReviewAccessPage from './MedicalReviewAccessPage';
 import MedicalReviewPublicPage from './MedicalReviewPublicPage';
 import RemindersPage from './RemindersPage';
 import PaymentsPage from './PaymentsPage';
@@ -60,6 +61,7 @@ import PermissionsMatrix from './PermissionsMatrix';
 import ClientMedicationsGrid from './ClientMedicationsGrid';
 import ClientMedicationForm from './ClientMedicationForm';
 import UserManagement from './UserManagement';
+import AuditLogsPage from './AuditLogsPage';
 import { Tasks } from '../pages/Tasks/Tasks';
 import { useAuth } from '../context/AuthContext';
 
@@ -159,6 +161,7 @@ const AppleLayout: React.FC = () => {
     if (route === 'analytics') return 'analytics';
     if (route === 'permissions') return 'permissions';
     if (route === 'users') return 'users';
+    if (route === 'audit-logs') return 'audit-logs';
     if (route === 'tasks') return 'tasks';
 
     return getDefaultRoute();
@@ -436,6 +439,8 @@ const AppleLayout: React.FC = () => {
                 {/* Unauthorized route */}
                 <Route path="/unauthorized" element={<Unauthorized />} />
                 <Route path="/medical/review-link/:token" element={<MedicalReviewPublicPage />} />
+                <Route path="/medical-review-access/:token/:label" element={<MedicalReviewAccessPage />} />
+                <Route path="/medical-review-access/:token" element={<MedicalReviewAccessPage />} />
 
                 {/* Admin routes */}
                 <Route path="/admin/*" element={
@@ -513,6 +518,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="client-medications/view/:id" element={<ClientMedicationForm mode="view" />} />
                       <Route path="analytics" element={<div className="p-6">Analytics - Coming Soon</div>} />
                       <Route path="users" element={<UserManagement />} />
+                      <Route path="audit-logs" element={<AuditLogsPage />} />
                       <Route path="tasks" element={<Tasks />} />
                     </Routes>
                   </ProtectedRoute>

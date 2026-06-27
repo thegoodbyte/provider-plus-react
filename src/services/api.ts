@@ -765,6 +765,21 @@ export const configSummaryApi = {
   get: () => api.get('/config-summary'),
 };
 
+export const auditLogsApi = {
+  getAll: (filters: {
+    action?: string;
+    entityType?: string;
+    entityId?: string;
+    actorEmail?: string;
+    keyword?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    page?: number;
+    limit?: number;
+  } = {}) => api.get('/audit-logs', { params: filters }),
+  getOne: (id: string) => api.get(`/audit-logs/${id}`),
+};
+
 export const medicalReviewRequestsApi = {
   getAll: () => cachedGet<MedicalReviewRequest[]>('medical-review-requests:all', () => api.get<MedicalReviewRequest[]>('/medical-review-requests')),
   getQueue: () => cachedGet<MedicalReviewRequest[]>('medical-review-requests:queue', () => api.get<MedicalReviewRequest[]>('/medical-review-requests/queue')),
@@ -787,6 +802,25 @@ export const medicalReviewRequestsApi = {
     return api.post<MedicalReviewRequest>(`/medical-review-requests/from-artifact/${artifactId}`, { ...data, requestType });
   },
   getPublic: (token: string) => api.get<{ request: MedicalReviewRequest; artifacts: MedicalArtifact[] }>(`/medical-review-public/${encodeURIComponent(token)}`),
+  exchangeAccessLink: (token: string) => api.post<{
+    access_token: string;
+    expiresAt: string;
+    redirectTo: string;
+    reviewRequestId: string;
+    user: {
+      id?: string;
+      email: string;
+      role: string;
+      firstName?: string;
+      lastName?: string;
+      accessType?: string;
+      medicalReviewRequestId?: string;
+      accessLinkId?: string;
+    };
+  }>(`/medical-review-public/access/${encodeURIComponent(token)}`),
+  getAccessLinks: (id: string) => api.get<any[]>(`/medical-review-requests/${id}/access-links`),
+  createAccessLink: (id: string) => api.post<any>(`/medical-review-requests/${id}/access-links`, {}),
+  revokeAccessLink: (accessLinkId: string) => api.patch<any>(`/medical-review-requests/access-links/${accessLinkId}/revoke`, {}),
   update: (id: string, data: Partial<MedicalReviewRequest>) => {
     cacheService.clearPattern('medical-review-requests:');
     return api.patch<MedicalReviewRequest>(`/medical-review-requests/${id}`, data);

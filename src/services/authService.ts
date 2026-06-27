@@ -12,6 +12,9 @@ interface LoginResponse {
     originalRole?: string;
     impersonatedBy?: string;
     readOnly?: boolean;
+    accessType?: string;
+    medicalReviewRequestId?: string;
+    accessLinkId?: string;
   };
 }
 
@@ -112,6 +115,12 @@ export const authService = {
     localStorage.removeItem('originalToken');
     localStorage.removeItem('originalUser');
     return JSON.parse(originalUser);
+  },
+
+  storeSession(data: LoginResponse) {
+    cacheService.clear();
+    localStorage.setItem('token', data.access_token);
+    localStorage.setItem('user', JSON.stringify(data.user));
   },
 
   getToken(): string | null {
