@@ -685,6 +685,7 @@ const AppleLayout: React.FC = () => {
                 <Route path="/medical/review-requests" element={<ProtectedRoute><MedicalReviewRequestsPage /></ProtectedRoute>} />
                 <Route path="/medical/review-requests/new" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><MedicalReviewRequestEditorPage /></ProtectedRoute>} />
                 <Route path="/medical/review-requests/:id" element={<ProtectedRoute><MedicalReviewRequestsPage /></ProtectedRoute>} />
+                <Route path="/medical/review-requests/:id/edit" element={<ProtectedRoute><MedicalReviewRequestsPage /></ProtectedRoute>} />
                 <Route path="/communications" element={<ProtectedRoute><CommunicationsPage /></ProtectedRoute>} />
                 <Route path="/admin/communications" element={<ProtectedRoute><CommunicationsPage /></ProtectedRoute>} />
                 <Route path="/medical/communications" element={<ProtectedRoute><CommunicationsPage /></ProtectedRoute>} />

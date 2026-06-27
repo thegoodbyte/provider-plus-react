@@ -2,11 +2,12 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner';
 import { medicalReviewRequestsApi } from '../services/api';
-import { authService } from '../services/authService';
+import { useAuth } from '../context/AuthContext';
 
 const MedicalReviewAccessPage: React.FC = () => {
   const { token = '', label = '' } = useParams();
   const navigate = useNavigate();
+  const { storeSession } = useAuth();
   const [error, setError] = useState('');
   const decodedToken = useMemo(() => decodeURIComponent(token), [token]);
 
@@ -22,11 +23,11 @@ const MedicalReviewAccessPage: React.FC = () => {
       try {
         const response = await medicalReviewRequestsApi.exchangeAccessLink(decodedToken);
         if (!active) return;
-        authService.storeSession({
+        storeSession({
           access_token: response.data.access_token,
           user: response.data.user,
         });
-        window.location.href = response.data.redirectTo || `/medical/review-requests/${response.data.reviewRequestId}/edit`;
+        navigate(response.data.redirectTo || `/medical/review-requests/${response.data.reviewRequestId}/edit`, { replace: true });
       } catch (requestError: any) {
         if (!active) return;
         setError(requestError?.response?.data?.message || requestError?.message || 'This medical review access link is invalid or expired.');
@@ -38,7 +39,7 @@ const MedicalReviewAccessPage: React.FC = () => {
     return () => {
       active = false;
     };
-  }, [decodedToken]);
+  }, [decodedToken, navigate, storeSession]);
 
   if (error) {
     return (

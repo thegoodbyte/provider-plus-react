@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { authService } from '../services/authService';
 
 interface AuthContextType {
   isAuthenticated: boolean;
   user: any | null;
   login: (email: string, password: string) => Promise<void>;
+  storeSession: (data: { access_token: string; user: any }) => void;
   logout: () => void;
   startMedicalStaffPreview: () => Promise<void>;
   stopImpersonation: () => void;
@@ -53,6 +54,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const storeSession = useCallback((data: { access_token: string; user: any }) => {
+    authService.storeSession(data);
+    setIsAuthenticated(true);
+    setUser(data.user);
+  }, []);
+
   const logout = () => {
     authService.logout();
     setIsAuthenticated(false);
@@ -76,7 +83,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout, startMedicalStaffPreview, stopImpersonation, loading }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, storeSession, logout, startMedicalStaffPreview, stopImpersonation, loading }}>
       {children}
     </AuthContext.Provider>
   );
