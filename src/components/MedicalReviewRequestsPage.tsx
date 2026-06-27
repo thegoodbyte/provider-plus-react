@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
@@ -302,6 +302,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [accessLinkBusy, setAccessLinkBusy] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | MedicalReviewRequest['status']>('all');
   const [validationError, setValidationError] = useState('');
+  const reviewDecisionSectionRef = useRef<HTMLDivElement | null>(null);
 
   const loadRequests = useCallback(async () => {
     try {
@@ -422,6 +423,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
     const overallMedicalNotes = medicalStaffNotes.trim();
     if (!reviewDecision || !overallMedicalNotes) {
       setValidationError('Choose an overall decision and add medical staff notes before saving.');
+      reviewDecisionSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
     if (missingFileReview) {
@@ -821,6 +823,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
       ? selected.retreatId
       : selected.retreatId?.name || 'Unknown retreat'
     : '';
+  const isMissingOverallDecision = Boolean(validationError && !reviewDecision);
+  const isMissingMedicalStaffNotes = Boolean(validationError && !medicalStaffNotes.trim());
 
   return (
     <div className="p-3 sm:p-6">
@@ -1254,8 +1258,18 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 </div>
               )}
 
-              <div className="rounded-md border border-gray-200 p-3">
-                <div className="mb-2 text-sm font-semibold text-gray-900">Review decision</div>
+              <div
+                ref={reviewDecisionSectionRef}
+                className={`rounded-md border p-3 ${
+                  isMissingOverallDecision || isMissingMedicalStaffNotes
+                    ? 'border-red-300 bg-red-50/40'
+                    : 'border-gray-200'
+                }`}
+              >
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-sm font-semibold text-gray-900">Review decision</div>
+                  {!isReadOnlyView && <div className="text-xs font-medium text-red-700">Decision and medical staff notes are required</div>}
+                </div>
                 {isReadOnlyView ? (
                   <div className="rounded-md bg-gray-50 p-3 text-sm">
                     <div className="font-semibold text-gray-900">{selected.reviewDecision || 'No decision recorded'}</div>
@@ -1268,20 +1282,46 @@ const MedicalReviewRequestsPage: React.FC = () => {
                         <button
                           key={option}
                           type="button"
-                          onClick={() => setReviewDecision(option)}
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${reviewDecision === option ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                          onClick={() => {
+                            setReviewDecision(option);
+                            if (validationError && medicalStaffNotes.trim()) setValidationError('');
+                          }}
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                            reviewDecision === option
+                              ? 'bg-blue-600 text-white'
+                              : isMissingOverallDecision
+                                ? 'border border-red-300 bg-white text-red-700 hover:bg-red-50'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
                         >
                           {decisionLabels[option]}
                         </button>
                       ))}
                     </div>
+                    {isMissingOverallDecision && (
+                      <div className="mt-2 text-xs font-medium text-red-700">Select OK, Need more info, or No good.</div>
+                    )}
+                    <label htmlFor="medical-staff-notes" className="mt-4 block text-sm font-semibold text-gray-900">
+                      Medical staff notes <span className="text-red-600">*</span>
+                    </label>
                     <textarea
+                      id="medical-staff-notes"
                       value={medicalStaffNotes}
-                      onChange={(e) => setMedicalStaffNotes(e.target.value)}
+                      onChange={(e) => {
+                        setMedicalStaffNotes(e.target.value);
+                        if (validationError && reviewDecision && e.target.value.trim()) setValidationError('');
+                      }}
                       rows={4}
-                      className="mt-3 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                      placeholder="Required medical staff notes"
+                      className={`mt-2 w-full rounded-md border px-3 py-2 text-sm ${
+                        isMissingMedicalStaffNotes
+                          ? 'border-red-400 bg-white ring-2 ring-red-100'
+                          : 'border-gray-300'
+                      }`}
+                      placeholder="Required: add the overall medical staff notes for this review"
                     />
+                    {isMissingMedicalStaffNotes && (
+                      <div className="mt-1 text-xs font-medium text-red-700">Add medical staff notes before saving.</div>
+                    )}
                   </>
                 )}
               </div>
