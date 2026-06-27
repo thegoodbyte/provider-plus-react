@@ -413,18 +413,18 @@ const AppleLayout: React.FC = () => {
                 {quickMenuOpen && (
                   <div
                     id="quick-menu"
-                    className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4"
+                    className="mt-3 grid grid-cols-4 gap-2 sm:gap-3"
                   >
                     {quickMenuItems.map((item) => (
                       <button
                         key={item.route}
                         type="button"
                         onClick={() => handleQuickMenuClick(item.route)}
-                        className="flex h-32 items-center justify-center rounded-apple-lg border border-apple-gray-200 bg-white text-apple-gray-700 shadow-apple-sm transition-colors hover:bg-apple-gray-50 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="flex h-16 items-center justify-center rounded-apple-lg border border-apple-gray-200 bg-white text-apple-gray-700 shadow-apple-sm transition-colors hover:bg-apple-gray-50 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:h-32"
                         aria-label={item.label}
                         title={item.label}
                       >
-                        <HeaderIcon icon={item.icon} className="h-[100px] w-[100px]" />
+                        <HeaderIcon icon={item.icon} className="h-10 w-10 sm:h-[100px] sm:w-[100px]" />
                       </button>
                     ))}
                   </div>

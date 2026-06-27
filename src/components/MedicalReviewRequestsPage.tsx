@@ -240,7 +240,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const isMedicalRoute = location.pathname.startsWith('/medical/');
   const isEditRoute = location.pathname.endsWith('/edit');
   const isAdvisorReviewRoute = isMedicalRoute || user?.role === 'medical_advisor';
-  const canEditReview = isAdvisorReviewRoute || isEditRoute;
+  const canEditReview = isEditRoute;
   const routeId = id === 'new' ? undefined : id;
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState<MedicalReviewRequest[]>([]);
@@ -416,6 +416,143 @@ const MedicalReviewRequestsPage: React.FC = () => {
     return fileReviews.find((review) => review.artifactId === artifactId && review.fileKey === fileKey) || {};
   };
 
+  const getScreeningValue = (screening: any, ...keys: string[]) => {
+    const client = reviewContext?.client || {};
+    for (const key of keys) {
+      const value = screening?.[key] ?? client?.screeningData?.[key] ?? client?.[key];
+      if (value !== undefined && value !== null && value !== '') return value;
+    }
+    return '';
+  };
+
+  const getScreeningBooleanDetails = (screening: any, flagKey: string, detailKey: string) => {
+    const details = getScreeningValue(screening, detailKey);
+    if (details) return details;
+    const flag = getScreeningValue(screening, flagKey);
+    return flag === true || flag === 'true' || flag === 'yes' || flag === 'Yes' ? 'Yes' : '';
+  };
+
+  const renderScreeningItems = (screening: any, items: Array<{ label: string; keys?: string[]; value?: any }>) => {
+    const visibleItems = items
+      .map((item) => ({
+        label: item.label,
+        value: item.value !== undefined ? item.value : getScreeningValue(screening, ...(item.keys || [])),
+      }))
+      .filter((item) => item.value !== undefined && item.value !== null && item.value !== '');
+
+    if (!visibleItems.length) return null;
+
+    return (
+      <div className="grid gap-2 sm:grid-cols-2">
+        {visibleItems.map((item) => (
+          <div key={item.label} className="rounded-md bg-gray-50 p-3">
+            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{item.label}</div>
+            <div className="mt-1 whitespace-pre-wrap text-sm text-gray-800">{renderValue(item.value)}</div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderScreeningSection = (screening: any, title: string, items: Array<{ label: string; keys?: string[]; value?: any }>) => {
+    const content = renderScreeningItems(screening, items);
+    if (!content) return null;
+    return (
+      <div className="space-y-2">
+        <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{title}</div>
+        {content}
+      </div>
+    );
+  };
+
+  const renderReadOnlyScreening = (screening: any) => {
+    const fileUrl = getScreeningValue(screening, 'handwritingImageUrl');
+    const fileName = fileUrl ? decodeURIComponent(String(fileUrl).split('/').pop() || 'Screening file') : '';
+
+    return (
+      <div key={screening._id || screening.createdAt || 'screening'} className="space-y-4 rounded-md border border-gray-200 p-3 text-sm">
+        <div>
+          <div className="font-semibold text-gray-900">
+            {getScreeningValue(screening, 'status') || 'screening'} • {formatDateTime(getScreeningValue(screening, 'screeningCompletedDate', 'screeningDate', 'updatedAt', 'createdAt'))}
+          </div>
+          <div className="mt-1 text-xs font-medium text-blue-700">Read-only screening view</div>
+        </div>
+
+        {renderScreeningSection(screening, 'Screening basics', [
+          { label: 'Age', keys: ['age'] },
+          { label: 'Year of birth', keys: ['year_of_birth', 'yearOfBirth'] },
+          { label: 'Risk level', keys: ['riskLevel'] },
+          { label: 'Desired retreat', keys: ['desiredRetreat'] },
+          { label: 'Quoted price', keys: ['quotedPrice'] },
+          { label: 'Screened by', keys: ['screenedBy'] },
+          { label: 'Phone number', keys: ['phoneNumber'] },
+        ])}
+
+        {renderScreeningSection(screening, 'Motivation and notes', [
+          { label: 'Why seeking iboga', keys: ['whySeekingIboga', 'mainIntent'] },
+          { label: 'What to change / risk notes', keys: ['whatToChange', 'riskNotes'] },
+          { label: 'Childhood', keys: ['childhood'] },
+          { label: 'Observations / general notes', keys: ['observations', 'generalNotes', 'notes'] },
+        ])}
+
+        {renderScreeningSection(screening, 'Trauma', [
+          { label: 'Sexual abuse', value: getScreeningBooleanDetails(screening, 'sexualAbuse', 'sexualAbuseDetails') },
+          { label: 'Physical abuse', value: getScreeningBooleanDetails(screening, 'physicalAbuse', 'physicalAbuseDetails') },
+          { label: 'Psychological abuse', value: getScreeningBooleanDetails(screening, 'psychologicalAbuse', 'psychologicalAbuseDetails') },
+          { label: 'Trauma history', keys: ['traumaHistory'] },
+          { label: 'Mental health history', keys: ['mentalHealthHistory'] },
+        ])}
+
+        {renderScreeningSection(screening, 'Health', [
+          { label: 'Heart', keys: ['heartConditions', 'heartCondition'] },
+          { label: 'Liver', keys: ['liverConditions', 'liverCondition'] },
+          { label: 'Asthma', keys: ['asthmaConditions', 'asthmaCondition'] },
+          { label: 'Medications', keys: ['currentMedications', 'medications'] },
+          { label: 'SSRIs', keys: ['ssris'] },
+          { label: 'Blood pressure', keys: ['bloodPressureIssues', 'bloodPressure'] },
+          { label: 'Blood pressure details', value: [getScreeningValue(screening, 'bloodPressureStatus'), getScreeningValue(screening, 'bloodPressureValue')].filter(Boolean).join(' - ') },
+          { label: 'Alcohol history', keys: ['alcoholHistory', 'alcoholConsumption'] },
+          { label: 'Health complications', keys: ['healthComplications'] },
+          { label: 'Medical tests details', keys: ['medicalTestsDetails'] },
+          { label: 'Vitamins & supplements', keys: ['vitaminsSupplements'] },
+        ])}
+
+        {renderScreeningSection(screening, 'Substances', [
+          { label: 'Drug history', keys: ['drugsHistory', 'addictionHistory'] },
+          { label: 'Recreational drugs', keys: ['recreationalDrugs'] },
+          { label: 'Marijuana', value: getScreeningBooleanDetails(screening, 'marijuana', 'marijuanaDetails') },
+          { label: 'Cocaine', value: getScreeningBooleanDetails(screening, 'cocaine', 'cocaineDetails') },
+          { label: 'Meth', value: getScreeningBooleanDetails(screening, 'meth', 'methDetails') },
+          { label: 'Heroin', value: getScreeningBooleanDetails(screening, 'heroin', 'heroinDetails') },
+          { label: 'Benzos', value: getScreeningBooleanDetails(screening, 'benzos', 'benzosDetails') },
+        ])}
+
+        {renderScreeningSection(screening, 'Plant medicines', [
+          { label: 'Previous plant medicines', keys: ['previousPlantMedicines'] },
+          { label: 'Ayahuasca', value: getScreeningBooleanDetails(screening, 'ayahuasca', 'ayahuascaDetails') },
+          { label: 'Iboga', value: getScreeningBooleanDetails(screening, 'iboga', 'ibogaDetails') },
+          { label: 'Psilocybin', value: getScreeningBooleanDetails(screening, 'psilocybin', 'psilocybinDetails') },
+          { label: 'Bufo', value: getScreeningBooleanDetails(screening, 'bufo', 'bufoDetails') },
+          { label: 'Kambo', value: getScreeningBooleanDetails(screening, 'kambo', 'kamboDetails') },
+          { label: 'San Pedro', value: getScreeningBooleanDetails(screening, 'sanPedro', 'sanPedroDetails') },
+          { label: 'Mescaline', value: getScreeningBooleanDetails(screening, 'mescaline', 'mescalineDetails') },
+          { label: 'DMT', value: getScreeningBooleanDetails(screening, 'dmt', 'dmtDetails') },
+          { label: 'Ketamine', value: getScreeningBooleanDetails(screening, 'ketamine', 'ketamineDetails') },
+          { label: 'MDMA', value: getScreeningBooleanDetails(screening, 'mdma', 'mdmaDetails') },
+        ])}
+
+        {fileUrl && (
+          <div className="rounded-md bg-gray-50 p-3">
+            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Uploaded screening file</div>
+            <a href={String(fileUrl)} target="_blank" rel="noreferrer" className="mt-1 inline-block text-sm font-semibold text-blue-700 hover:text-blue-900">
+              {fileName || 'Open screening file'}
+            </a>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderArtifactList = (artifacts: MedicalArtifact[] = [], emptyText: string) => {
     if (!artifacts.length) return <div className="text-sm text-gray-500">{emptyText}</div>;
     return (
@@ -451,7 +588,12 @@ const MedicalReviewRequestsPage: React.FC = () => {
   }
 
   const isDetailView = Boolean(routeId);
-  const isReadOnlyView = isDetailView && !canEditReview;
+  const isReadOnlyView = Boolean(selected) && !canEditReview;
+  const contextScreenings = reviewContext?.screenings?.length
+    ? reviewContext.screenings
+    : reviewContext?.client?.screeningData
+      ? [reviewContext.client.screeningData]
+      : [];
 
   return (
     <div className="p-6">
@@ -461,7 +603,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
             {isDetailView && selected ? `Medical Review Request #${selected.display_id || '—'}` : 'Medical Review Requests'}
           </h1>
           <p className="text-sm text-gray-600">
-            {isReadOnlyView ? 'Read-only record of the request, linked files, and decision history.' : isDetailView ? 'Review the linked files and record a final decision.' : isMedicalRoute ? 'Queue for review and commentary on medical records, ceremony EKG, and blood pressure.' : 'Administrative review request queue and history.'}
+            {canEditReview ? 'Review the linked files and record decisions and comments.' : isDetailView ? 'Read-only record of the request, linked files, decisions, comments, and history.' : isMedicalRoute ? 'Queue for review requests. Open Review to change decisions and comments.' : 'Administrative review request queue and history.'}
           </p>
         </div>
         {!isMedicalRoute && !isDetailView && (
@@ -589,20 +731,9 @@ const MedicalReviewRequestsPage: React.FC = () => {
                           <div><span className="font-medium text-gray-700">Liver:</span> {renderValue(reviewContext.client.liverConditions)}</div>
                         </div>
                       )}
-                      {reviewContext?.screenings?.length ? reviewContext.screenings.slice(0, 2).map((screening) => (
-                        <div key={screening._id || screening.createdAt} className="rounded-md border border-gray-200 p-3 text-sm">
-                          <div className="font-semibold text-gray-900">{screening.status || 'screening'} • {formatDateTime(screening.screeningCompletedDate || screening.updatedAt || screening.createdAt)}</div>
-                          <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                            <div><span className="font-medium text-gray-700">Why seeking iboga:</span> {renderValue(screening.whySeekingIboga)}</div>
-                            <div><span className="font-medium text-gray-700">What to change:</span> {renderValue(screening.whatToChange)}</div>
-                            <div><span className="font-medium text-gray-700">Mental health:</span> {renderValue(screening.mentalHealthHistory)}</div>
-                            <div><span className="font-medium text-gray-700">Addiction:</span> {renderValue(screening.addictionHistory)}</div>
-                            <div><span className="font-medium text-gray-700">Medications:</span> {renderValue(screening.currentMedications)}</div>
-                            <div><span className="font-medium text-gray-700">Substances:</span> {renderValue(screening.recreationalDrugs)}</div>
-                          </div>
-                          {screening.notes && <div className="mt-2 whitespace-pre-wrap text-gray-700">Notes: {screening.notes}</div>}
-                        </div>
-                      )) : <div className="text-sm text-gray-500">No screening record found.</div>}
+                      {contextScreenings.length
+                        ? contextScreenings.slice(0, 3).map((screening) => renderReadOnlyScreening(screening))
+                        : <div className="text-sm text-gray-500">No screening record found.</div>}
                     </div>
                   </details>
 
@@ -842,13 +973,13 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   >
                     Back
                   </button>
-                  {isReadOnlyView && !isAdvisorReviewRoute ? (
+                  {isReadOnlyView ? (
                     <button
                       type="button"
                       onClick={() => navigate(`${isMedicalRoute ? '/medical/review-requests' : '/admin/medical-review-requests'}/${selected._id}/edit`)}
                       className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
                     >
-                      Edit
+                      {isMedicalRoute ? 'Review' : 'Edit Request'}
                     </button>
                   ) : (
                     <button
