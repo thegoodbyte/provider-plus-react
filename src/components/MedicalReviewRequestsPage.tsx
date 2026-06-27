@@ -17,6 +17,11 @@ const reviewStatusStyle: Record<string, string> = {
 };
 
 const decisionOptions = ['OK', 'caution', 'NOT OK'] as const;
+const decisionLabels: Record<typeof decisionOptions[number], string> = {
+  OK: 'OK',
+  caution: 'Need more info',
+  'NOT OK': 'No good',
+};
 
 const requestTypeLabels: Record<string, string> = {
   ekg: 'EKG',
@@ -235,6 +240,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const isMedicalRoute = location.pathname.startsWith('/medical/');
   const isEditRoute = location.pathname.endsWith('/edit');
   const isAdvisorReviewRoute = isMedicalRoute || user?.role === 'medical_advisor';
+  const canEditReview = isAdvisorReviewRoute || isEditRoute;
   const routeId = id === 'new' ? undefined : id;
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState<MedicalReviewRequest[]>([]);
@@ -248,6 +254,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [fileReviews, setFileReviews] = useState<FileReviewDraft[]>([]);
   const [reviewContext, setReviewContext] = useState<ReviewContext | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | MedicalReviewRequest['status']>('all');
+  const [validationError, setValidationError] = useState('');
 
   const loadRequests = useCallback(async () => {
     try {
@@ -348,6 +355,26 @@ const MedicalReviewRequestsPage: React.FC = () => {
 
   const handleSaveReview = async () => {
     if (!selected?._id) return;
+    setValidationError('');
+    const linkedFiles = linkedArtifacts.flatMap((artifact) =>
+      (artifact.files || []).map((file) => ({
+        artifact,
+        file,
+        fileKey: getArtifactFileKey(file),
+      }))
+    );
+    const missingFileReview = linkedFiles.find(({ artifact, file, fileKey }) => {
+      const review = fileReviews.find((item) => item.artifactId === artifact._id && item.fileKey === fileKey);
+      return !review?.decision || !review?.notes?.trim();
+    });
+    if (!reviewDecision || !reviewNotes.trim() || !overallNotes.trim()) {
+      setValidationError('Choose an overall decision and add both review notes and final notes before saving.');
+      return;
+    }
+    if (missingFileReview) {
+      setValidationError('Each linked file needs a decision and a comment before saving.');
+      return;
+    }
     const cleanedFileReviews = fileReviews
       .filter((review) => review.fileKey || review.fileName || review.notes || review.decision)
       .map((review) => ({
@@ -424,7 +451,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   }
 
   const isDetailView = Boolean(routeId);
-  const isReadOnlyView = isDetailView && !isEditRoute;
+  const isReadOnlyView = isDetailView && !canEditReview;
 
   return (
     <div className="p-6">
@@ -676,9 +703,6 @@ const MedicalReviewRequestsPage: React.FC = () => {
                           </div>
                           {artifact.textContent && <div className="mt-2 whitespace-pre-wrap text-gray-700">{artifact.textContent}</div>}
                           {artifact.notes && <div className="mt-2 text-xs text-gray-600">Notes: {artifact.notes}</div>}
-                          {artifact.data && Object.keys(artifact.data).length > 0 && (
-                            <pre className="mt-2 max-h-24 overflow-auto rounded bg-gray-50 p-2 text-xs text-gray-600">{JSON.stringify(artifact.data, null, 2)}</pre>
-                          )}
                           {!!artifact.files?.length && (
                             <div className="mt-2 space-y-3">
                               {artifact.files.map((file, index) => {
@@ -692,23 +716,25 @@ const MedicalReviewRequestsPage: React.FC = () => {
                                         <div className="mt-1 whitespace-pre-wrap text-gray-600">{fileReview.notes || 'No file notes.'}</div>
                                       </div>
                                     ) : (
-                                      <div className="mt-3 grid gap-3 sm:grid-cols-[180px_minmax(0,1fr)]">
-                                        <select
-                                          value={fileReview.decision || ''}
-                                          onChange={(event) => updateFileReview(artifact, file, { decision: event.target.value as FileReviewDraft['decision'] })}
-                                          className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-                                        >
-                                          <option value="">File decision</option>
-                                          <option value="OK">Accept file</option>
-                                          <option value="caution">Caution</option>
-                                          <option value="NOT OK">Deny file</option>
-                                        </select>
+                                      <div className="mt-3 grid gap-3">
+                                        <div className="flex flex-wrap gap-2">
+                                          {decisionOptions.map((option) => (
+                                            <button
+                                              key={option}
+                                              type="button"
+                                              onClick={() => updateFileReview(artifact, file, { decision: option })}
+                                              className={`rounded-full px-3 py-1 text-xs font-semibold ${fileReview.decision === option ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                                            >
+                                              {decisionLabels[option]}
+                                            </button>
+                                          ))}
+                                        </div>
                                         <textarea
                                           value={fileReview.notes || ''}
                                           onChange={(event) => updateFileReview(artifact, file, { notes: event.target.value })}
                                           rows={2}
                                           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                                          placeholder="Comment on this file"
+                                          placeholder="Required comment on this file"
                                         />
                                       </div>
                                     )}
@@ -770,11 +796,11 @@ const MedicalReviewRequestsPage: React.FC = () => {
                             onClick={() => setReviewDecision(option)}
                             className={`rounded-full px-3 py-1 text-xs font-semibold ${reviewDecision === option ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                           >
-                            {option}
+                            {decisionLabels[option]}
                           </button>
                         ))}
                       </div>
-                      <textarea value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} rows={4} className="mt-3 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="General review notes" />
+                      <textarea value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} rows={4} className="mt-3 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Required overall review comment" />
                     </>
                   )}
                 </div>
@@ -784,7 +810,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   {isReadOnlyView ? (
                     <div className="min-h-24 whitespace-pre-wrap rounded-md bg-gray-50 p-3 text-sm text-gray-700">{selected.overallNotes || 'No final notes.'}</div>
                   ) : (
-                    <textarea value={overallNotes} onChange={(e) => setOverallNotes(e.target.value)} rows={4} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Additional information or context" />
+                    <textarea value={overallNotes} onChange={(e) => setOverallNotes(e.target.value)} rows={4} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Required final result notes" />
                   )}
                 </div>
               </div>
@@ -798,6 +824,12 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 )}
               </div>
 
+              {validationError && (
+                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {validationError}
+                </div>
+              )}
+
               <div className="flex items-center justify-between gap-3">
                 <div className="text-xs text-gray-500">
                   {selected.requestedAt ? `Requested ${new Date(selected.requestedAt).toLocaleString()}` : 'No request date'}
@@ -810,7 +842,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   >
                     Back
                   </button>
-                  {isReadOnlyView ? (
+                  {isReadOnlyView && !isAdvisorReviewRoute ? (
                     <button
                       type="button"
                       onClick={() => navigate(`${isMedicalRoute ? '/medical/review-requests' : '/admin/medical-review-requests'}/${selected._id}/edit`)}

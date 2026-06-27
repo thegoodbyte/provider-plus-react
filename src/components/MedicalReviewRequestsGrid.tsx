@@ -189,13 +189,15 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                       >
                         <Icon icon={FiEye} />
                       </button>
-                      <button
-                        onClick={() => navigate(`${basePath}/${request._id}/edit`)}
-                        className="icon-action-btn icon-action-btn-edit"
-                        title="Edit"
-                      >
-                        <Icon icon={FiEdit2} />
-                      </button>
+                      {canManageRequests && (
+                        <button
+                          onClick={() => navigate(`${basePath}/${request._id}/edit`)}
+                          className="icon-action-btn icon-action-btn-edit"
+                          title="Edit"
+                        >
+                          <Icon icon={FiEdit2} />
+                        </button>
+                      )}
                       {canManageRequests && (
                         <button
                           onClick={() => handleDelete(request._id!)}
