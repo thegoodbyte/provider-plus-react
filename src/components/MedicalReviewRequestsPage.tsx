@@ -248,8 +248,6 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [history, setHistory] = useState<MedicalReviewRequest[]>([]);
   const [relatedArtifacts, setRelatedArtifacts] = useState<MedicalArtifact[]>([]);
   const [reviewDecision, setReviewDecision] = useState<'OK' | 'caution' | 'NOT OK' | ''>('');
-  const [reviewNotes, setReviewNotes] = useState('');
-  const [overallNotes, setOverallNotes] = useState('');
   const [medicalStaffNotes, setMedicalStaffNotes] = useState('');
   const [fileReviews, setFileReviews] = useState<FileReviewDraft[]>([]);
   const [reviewContext, setReviewContext] = useState<ReviewContext | null>(null);
@@ -290,9 +288,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
           setRelatedArtifacts([]);
         }
         setReviewDecision(selectedItem.reviewDecision || '');
-        setReviewNotes(selectedItem.reviewNotes || '');
-        setOverallNotes(selectedItem.overallNotes || '');
-        setMedicalStaffNotes(selectedItem.medicalStaffNotes || '');
+        setMedicalStaffNotes(selectedItem.medicalStaffNotes || selectedItem.overallNotes || selectedItem.reviewNotes || '');
         setFileReviews((selectedItem.fileReviews || []).map((review: NonNullable<MedicalReviewRequest['fileReviews']>[number]) => ({
           ...review,
           decision: review.decision || '',
@@ -367,8 +363,9 @@ const MedicalReviewRequestsPage: React.FC = () => {
       const review = fileReviews.find((item) => item.artifactId === artifact._id && item.fileKey === fileKey);
       return !review?.decision || !review?.notes?.trim();
     });
-    if (!reviewDecision || !reviewNotes.trim() || !overallNotes.trim()) {
-      setValidationError('Choose an overall decision and add both review notes and final notes before saving.');
+    const overallMedicalNotes = medicalStaffNotes.trim();
+    if (!reviewDecision || !overallMedicalNotes) {
+      setValidationError('Choose an overall decision and add medical staff notes before saving.');
       return;
     }
     if (missingFileReview) {
@@ -384,9 +381,9 @@ const MedicalReviewRequestsPage: React.FC = () => {
     await medicalReviewRequestsApi.review(selected._id, {
       status: reviewDecision === 'OK' ? 'approved' : reviewDecision === 'NOT OK' ? 'rejected' : reviewDecision === 'caution' ? 'caution' : 'in_review',
       reviewDecision: reviewDecision || undefined,
-      reviewNotes,
-      overallNotes,
-      medicalStaffNotes,
+      reviewNotes: overallMedicalNotes,
+      overallNotes: overallMedicalNotes,
+      medicalStaffNotes: overallMedicalNotes,
       fileReviews: cleanedFileReviews,
       reviewedBy: 'medical_staff',
     });
@@ -955,49 +952,35 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 </div>
               )}
 
-              <div className="grid gap-4 lg:grid-cols-2">
-                <div className="rounded-md border border-gray-200 p-3">
-                  <div className="mb-2 text-sm font-semibold text-gray-900">Review decision</div>
-                  {isReadOnlyView ? (
-                    <div className="rounded-md bg-gray-50 p-3 text-sm">
-                      <div className="font-semibold text-gray-900">{selected.reviewDecision || 'No decision recorded'}</div>
-                      <div className="mt-2 whitespace-pre-wrap text-gray-600">{selected.reviewNotes || 'No review notes.'}</div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="flex flex-wrap gap-2">
-                        {decisionOptions.map((option) => (
-                          <button
-                            key={option}
-                            type="button"
-                            onClick={() => setReviewDecision(option)}
-                            className={`rounded-full px-3 py-1 text-xs font-semibold ${reviewDecision === option ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
-                          >
-                            {decisionLabels[option]}
-                          </button>
-                        ))}
-                      </div>
-                      <textarea value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} rows={4} className="mt-3 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Required overall review comment" />
-                    </>
-                  )}
-                </div>
-
-                <div className="rounded-md border border-gray-200 p-3">
-                  <div className="mb-2 text-sm font-semibold text-gray-900">Final notes</div>
-                  {isReadOnlyView ? (
-                    <div className="min-h-24 whitespace-pre-wrap rounded-md bg-gray-50 p-3 text-sm text-gray-700">{selected.overallNotes || 'No final notes.'}</div>
-                  ) : (
-                    <textarea value={overallNotes} onChange={(e) => setOverallNotes(e.target.value)} rows={4} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Required final result notes" />
-                  )}
-                </div>
-              </div>
-
               <div className="rounded-md border border-gray-200 p-3">
-                <div className="mb-2 text-sm font-semibold text-gray-900">Medical staff notes</div>
+                <div className="mb-2 text-sm font-semibold text-gray-900">Review decision</div>
                 {isReadOnlyView ? (
-                  <div className="min-h-24 whitespace-pre-wrap rounded-md bg-gray-50 p-3 text-sm text-gray-700">{selected.medicalStaffNotes || 'No medical staff notes.'}</div>
+                  <div className="rounded-md bg-gray-50 p-3 text-sm">
+                    <div className="font-semibold text-gray-900">{selected.reviewDecision || 'No decision recorded'}</div>
+                    <div className="mt-2 whitespace-pre-wrap text-gray-600">{selected.medicalStaffNotes || selected.overallNotes || selected.reviewNotes || 'No medical staff notes.'}</div>
+                  </div>
                 ) : (
-                  <textarea value={medicalStaffNotes} onChange={(e) => setMedicalStaffNotes(e.target.value)} rows={4} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Internal medical staff notes" />
+                  <>
+                    <div className="flex flex-wrap gap-2">
+                      {decisionOptions.map((option) => (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => setReviewDecision(option)}
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${reviewDecision === option ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                        >
+                          {decisionLabels[option]}
+                        </button>
+                      ))}
+                    </div>
+                    <textarea
+                      value={medicalStaffNotes}
+                      onChange={(e) => setMedicalStaffNotes(e.target.value)}
+                      rows={4}
+                      className="mt-3 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                      placeholder="Required medical staff notes"
+                    />
+                  </>
                 )}
               </div>
 
@@ -1054,22 +1037,10 @@ const MedicalReviewRequestsPage: React.FC = () => {
                             </div>
                             <span className="text-xs text-gray-500">{formatDateTime(entry.reviewedAt)}</span>
                           </div>
-                          <div className="mt-2 grid gap-2 md:grid-cols-2">
-                            <div className="rounded border border-gray-200 bg-white p-2">
-                              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Review notes</div>
-                              <div className="mt-1 whitespace-pre-wrap text-gray-700">{entry.notes || 'No review notes'}</div>
-                            </div>
-                            <div className="rounded border border-gray-200 bg-white p-2">
-                              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Final notes</div>
-                              <div className="mt-1 whitespace-pre-wrap text-gray-700">{entry.overallNotes || 'No final notes'}</div>
-                            </div>
+                          <div className="mt-2 rounded border border-gray-200 bg-white p-2">
+                            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Medical staff notes</div>
+                            <div className="mt-1 whitespace-pre-wrap text-gray-700">{entry.medicalStaffNotes || entry.overallNotes || entry.notes || 'No medical staff notes'}</div>
                           </div>
-                          {entry.medicalStaffNotes && (
-                            <div className="mt-2 rounded border border-gray-200 bg-white p-2">
-                              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Medical staff notes</div>
-                              <div className="mt-1 whitespace-pre-wrap text-gray-700">{entry.medicalStaffNotes}</div>
-                            </div>
-                          )}
                           {!!entry.fileReviews?.length && (
                             <div className="mt-2 space-y-1">
                               {entry.fileReviews.map((fileReview, fileIndex) => (
