@@ -594,17 +594,53 @@ const MedicalReviewRequestsPage: React.FC = () => {
     : reviewContext?.client?.screeningData
       ? [reviewContext.client.screeningData]
       : [];
+  const selectedClientName = selected
+    ? typeof selected.clientId === 'string'
+      ? selected.clientId
+      : selected.clientId?.firstName
+        ? `${selected.clientId.firstName} ${selected.clientId.lastName || ''}`.trim()
+        : 'Unknown client'
+    : '';
+  const selectedRetreatName = selected
+    ? typeof selected.retreatId === 'string'
+      ? selected.retreatId
+      : selected.retreatId?.name || 'Unknown retreat'
+    : '';
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex items-start justify-between gap-4">
+    <div className="p-3 sm:p-6">
+      <div className="mb-4 flex items-start justify-between gap-4 sm:mb-6">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">
-            {isDetailView && selected ? `Medical Review Request #${selected.display_id || '—'}` : 'Medical Review Requests'}
+          <h1 className="text-xl font-semibold leading-tight text-gray-900 sm:text-2xl">
+            {isDetailView && selected ? 'Medical Review' : 'Medical Review Requests'}
           </h1>
-          <p className="text-sm text-gray-600">
-            {canEditReview ? 'Review the linked files and record decisions and comments.' : isDetailView ? 'Read-only record of the request, linked files, decisions, comments, and history.' : isMedicalRoute ? 'Queue for review requests. Open Review to change decisions and comments.' : 'Administrative review request queue and history.'}
-          </p>
+          {isDetailView && selected ? (
+            <div className="mt-1">
+              <div className="text-base font-medium text-gray-900 sm:text-lg">{selectedClientName}</div>
+              <div className="text-sm text-gray-600">{getRequestTypeLabel(selected.requestType)}</div>
+              {formatDocumentMeta(selected) && (
+                <div className="text-xs font-medium text-blue-700 sm:text-sm">{formatDocumentMeta(selected)}</div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-600">
+              {isMedicalRoute ? 'Queue for review requests. Open Review to change decisions and comments.' : 'Administrative review request queue and history.'}
+            </p>
+          )}
+          {isDetailView && selected && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+              <span>Request #{selected.display_id || '—'}</span>
+              {selectedRetreatName && <span>{selectedRetreatName}</span>}
+              <span className={`rounded-full px-2 py-1 font-semibold ${reviewStatusStyle[selected.status] || 'bg-gray-100 text-gray-700'}`}>
+                {selected.status}
+              </span>
+            </div>
+          )}
+          {!isDetailView && (
+            <p className="mt-1 text-xs text-gray-500 sm:text-sm">
+              {canEditReview ? 'Review the linked files and record decisions and comments.' : ''}
+            </p>
+          )}
         </div>
         {!isMedicalRoute && !isDetailView && (
           <button
@@ -669,17 +705,18 @@ const MedicalReviewRequestsPage: React.FC = () => {
           </div>
         )}
 
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <div className={isDetailView ? 'bg-white' : 'rounded-lg border border-gray-200 bg-white p-4'}>
           {!selected ? (
             <div className="p-4 text-sm text-gray-500">Select a request to review it.</div>
           ) : (
-            <div className="space-y-5">
+            <div className="space-y-4 sm:space-y-5">
+              {!isDetailView && (
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900">#{selected.display_id || '—'} Review Request</h2>
                   <div className="text-sm text-gray-600">
-                    {typeof selected.clientId === 'string' ? selected.clientId : selected.clientId?.firstName ? `${selected.clientId.firstName} ${selected.clientId.lastName}` : 'Unknown client'}
-                    {' '}• {typeof selected.retreatId === 'string' ? selected.retreatId : selected.retreatId?.name || 'Unknown retreat'}
+                    {selectedClientName}
+                    {' '}• {selectedRetreatName}
                   </div>
                   <div className="mt-1 text-sm font-medium text-gray-900">{getRequestTypeLabel(selected.requestType)}</div>
                   {formatDocumentMeta(selected) && (
@@ -690,6 +727,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   {selected.status}
                 </span>
               </div>
+              )}
 
               {!isDetailView && (
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -710,11 +748,13 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 </div>
               )}
 
-              <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
-                <div className="mb-3">
-                  <div className="text-sm font-semibold text-gray-900">Client medical context</div>
-                  <div className="text-xs text-gray-500">Screening, booking medical requirements, medications, and questionnaire information available for this client.</div>
-                </div>
+              <div className={isDetailView ? 'space-y-2' : 'rounded-md border border-gray-200 bg-gray-50 p-3'}>
+                {!isDetailView && (
+                  <div className="mb-3">
+                    <div className="text-sm font-semibold text-gray-900">Client medical context</div>
+                    <div className="text-xs text-gray-500">Screening, booking medical requirements, medications, and questionnaire information available for this client.</div>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <details className="rounded-md border border-gray-200 bg-white p-3" open>
                     <summary className="cursor-pointer text-sm font-semibold text-gray-900">
@@ -737,6 +777,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
                     </div>
                   </details>
 
+                  {!isDetailView && (
+                  <>
                   <details className="rounded-md border border-gray-200 bg-white p-3" open>
                     <summary className="cursor-pointer text-sm font-semibold text-gray-900">
                       Entry EKG • {contextSummary((reviewContext?.artifacts?.entryEkg?.length || 0) + (reviewContext?.medicalRecords?.filter((record) => record.ekgFileName || record.ekgStatus !== 'pending').length || 0))}
@@ -795,14 +837,18 @@ const MedicalReviewRequestsPage: React.FC = () => {
                       {renderArtifactList(reviewContext?.artifacts?.questionnaire || [], 'No questionnaire artifact found.')}
                     </div>
                   </details>
+                  </>
+                  )}
                 </div>
               </div>
 
-              <div className="rounded-md border border-gray-200 p-3">
+              <div className={isDetailView ? 'rounded-md border border-gray-200 p-3' : 'rounded-md border border-gray-200 p-3'}>
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <div className="text-sm font-semibold text-gray-900">Linked Files For This Request</div>
-                    <div className="text-xs text-gray-500">These are the stored files included in this medical review request.</div>
+                    <div className="text-sm font-semibold text-gray-900">Files for review</div>
+                    {!isDetailView && (
+                      <div className="text-xs text-gray-500">These are the stored files included in this medical review request.</div>
+                    )}
                   </div>
                   {profileHref && (
                     <button type="button" onClick={() => navigate(profileHref)} className="rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
@@ -810,7 +856,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                     </button>
                   )}
                 </div>
-                <div className="mt-3 max-h-72 space-y-2 overflow-auto">
+                <div className={`mt-3 space-y-2 ${isDetailView ? '' : 'max-h-72 overflow-auto'}`}>
                   {linkedArtifacts.length === 0 ? (
                     <div className="text-sm text-gray-500">No linked files are available for this request.</div>
                   ) : (
