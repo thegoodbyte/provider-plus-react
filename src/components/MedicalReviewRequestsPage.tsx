@@ -1003,10 +1003,27 @@ const MedicalReviewRequestsPage: React.FC = () => {
                       .map((entry, index) => (
                         <div key={`${entry.reviewedAt || index}`} className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm">
                           <div className="flex items-center justify-between gap-3">
-                            <div className="font-semibold text-gray-900">{entry.decision || 'No decision'} • {entry.reviewedBy || 'Unknown reviewer'}</div>
+                            <div className="font-semibold text-gray-900">
+                              {entry.decision || 'No decision'}{entry.status ? ` • ${entry.status}` : ''} • {entry.reviewedBy || 'Unknown reviewer'}
+                            </div>
                             <span className="text-xs text-gray-500">{formatDateTime(entry.reviewedAt)}</span>
                           </div>
-                          <div className="mt-1 whitespace-pre-wrap text-gray-700">{entry.notes || 'No notes'}</div>
+                          <div className="mt-2 grid gap-2 md:grid-cols-2">
+                            <div className="rounded border border-gray-200 bg-white p-2">
+                              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Review notes</div>
+                              <div className="mt-1 whitespace-pre-wrap text-gray-700">{entry.notes || 'No review notes'}</div>
+                            </div>
+                            <div className="rounded border border-gray-200 bg-white p-2">
+                              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Final notes</div>
+                              <div className="mt-1 whitespace-pre-wrap text-gray-700">{entry.overallNotes || 'No final notes'}</div>
+                            </div>
+                          </div>
+                          {entry.medicalStaffNotes && (
+                            <div className="mt-2 rounded border border-gray-200 bg-white p-2">
+                              <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Medical staff notes</div>
+                              <div className="mt-1 whitespace-pre-wrap text-gray-700">{entry.medicalStaffNotes}</div>
+                            </div>
+                          )}
                           {!!entry.fileReviews?.length && (
                             <div className="mt-2 space-y-1">
                               {entry.fileReviews.map((fileReview, fileIndex) => (
