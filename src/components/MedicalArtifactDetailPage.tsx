@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Edit, Eye, Inbox, Save, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, Edit, Eye, Plus, Save, Trash2, Upload } from 'lucide-react';
 import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { Client, MedicalArtifact, MedicalReviewRequest } from '../types';
 import LoadingSpinner from './LoadingSpinner';
@@ -87,6 +87,14 @@ const isPreviewableFile = (file: NonNullable<MedicalArtifact['files']>[number]) 
 
 const getReviewSortTime = (review: MedicalReviewRequest) =>
   new Date(review.reviewedAt || review.requestedAt || review.createdAt || 0).getTime();
+
+const formatDateTime = (value?: Date | string) => value ? new Date(value).toLocaleString() : '-';
+
+const getReviewRequestLabel = (request: MedicalReviewRequest) =>
+  request.requestType?.replace(/_/g, ' ') || 'medical review';
+
+const getReviewDecision = (request: MedicalReviewRequest) =>
+  request.reviewDecision || request.decision || request.status || 'pending';
 
 const MedicalArtifactInlinePreview: React.FC<{
   artifactId: string;
@@ -333,8 +341,8 @@ const MedicalArtifactDetailPage: React.FC = () => {
             </button>
           )}
           <button onClick={() => navigate(`${routePrefix}/medical-review-requests/new?artifactId=${artifact._id}`)} className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700">
-            <Inbox className="h-4 w-4" />
-            Send for Review
+            <Plus className="h-4 w-4" />
+            Create Medical Review
           </button>
           <button onClick={() => navigate(`${routePrefix}/medical-artifacts`)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
             <ArrowLeft className="h-4 w-4" />
@@ -465,53 +473,6 @@ const MedicalArtifactDetailPage: React.FC = () => {
           </div>
 
           <div className="rounded-md border border-gray-200 bg-white p-4 text-sm">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Review History</h2>
-              <button
-                type="button"
-                onClick={() => navigate(`${routePrefix}/medical-review-requests/new?artifactId=${artifact._id}`)}
-                className="rounded-md border border-blue-200 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50"
-              >
-                New MRR
-              </button>
-            </div>
-            {reviewRequests.length > 0 ? (
-              <div className="space-y-3">
-                {reviewRequests.map((request) => (
-                  <button
-                    key={request._id}
-                    type="button"
-                    onClick={() => navigate(`${routePrefix}/medical-review-requests/${request._id}`)}
-                    className="block w-full rounded-md border border-gray-200 p-3 text-left hover:bg-gray-50"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-semibold text-gray-900">#{request.display_id || request._id}</span>
-                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold capitalize text-gray-700">
-                        {request.status?.replace(/_/g, ' ') || 'pending'}
-                      </span>
-                    </div>
-                    <div className="mt-1 text-xs text-gray-500">
-                      {request.requestType?.replace(/_/g, ' ') || 'review'} · Attempt {request.attemptNumber || 1}
-                    </div>
-                    <div className="mt-1 text-xs text-gray-500">
-                      Requested {request.requestedAt ? new Date(request.requestedAt).toLocaleString() : '-'}
-                    </div>
-                    {(request.reviewDecision || request.reviewNotes || request.overallNotes) && (
-                      <div className="mt-2 line-clamp-2 text-xs text-gray-700">
-                        {[request.reviewDecision, request.reviewNotes || request.overallNotes].filter(Boolean).join(': ')}
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-4 text-center text-gray-500">
-                No medical review requests linked yet.
-              </div>
-            )}
-          </div>
-
-          <div className="rounded-md border border-gray-200 bg-white p-4 text-sm">
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Files</h2>
             {isEditMode && (
               <div className="mb-4 rounded-md border border-dashed border-gray-300 bg-gray-50 p-3">
@@ -591,6 +552,124 @@ const MedicalArtifactDetailPage: React.FC = () => {
           </div>
         </aside>
       </div>
+
+      <section className="mt-6 rounded-md border border-gray-200 bg-white p-4">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Medical Review History</h2>
+            <p className="text-sm text-gray-500">All medical review requests linked to this artifact.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => navigate(`${routePrefix}/medical-review-requests/new?artifactId=${artifact._id}`)}
+            className="inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            <Plus className="h-4 w-4" />
+            Create Medical Review
+          </button>
+        </div>
+
+        {reviewRequests.length > 0 ? (
+          <div className="space-y-4">
+            {reviewRequests.map((request) => (
+              <div key={request._id} className="rounded-md border border-gray-200 p-4">
+                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`${routePrefix}/medical-review-requests/${request._id}`)}
+                      className="text-left text-base font-semibold text-blue-700 hover:text-blue-900"
+                    >
+                      Medical Review #{request.display_id || request._id}
+                    </button>
+                    <div className="mt-1 text-sm capitalize text-gray-600">
+                      {getReviewRequestLabel(request)} · Attempt {request.attemptNumber || 1}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold capitalize text-gray-700">
+                      {request.status?.replace(/_/g, ' ') || 'pending'}
+                    </span>
+                    <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                      {String(getReviewDecision(request)).replace(/_/g, ' ')}
+                    </span>
+                  </div>
+                </div>
+
+                <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                  <div>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Requested</dt>
+                    <dd className="mt-1 text-gray-900">{formatDateTime(request.requestedAt || request.createdAt)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Assigned</dt>
+                    <dd className="mt-1 text-gray-900">{request.assignedToEmail || request.medicalReviewerName || request.assignedTo || '-'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Reviewed</dt>
+                    <dd className="mt-1 text-gray-900">{formatDateTime(request.reviewedAt || request.decisionDate)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Reviewer</dt>
+                    <dd className="mt-1 text-gray-900">{request.reviewedBy || '-'}</dd>
+                  </div>
+                </dl>
+
+                {(request.reviewNotes || request.overallNotes || request.medicalStaffNotes) && (
+                  <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
+                    {request.reviewNotes && (
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Review Notes</div>
+                        <div className="mt-1 whitespace-pre-wrap text-gray-800">{request.reviewNotes}</div>
+                      </div>
+                    )}
+                    {request.overallNotes && (
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Overall Notes</div>
+                        <div className="mt-1 whitespace-pre-wrap text-gray-800">{request.overallNotes}</div>
+                      </div>
+                    )}
+                    {request.medicalStaffNotes && (
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Medical Staff Notes</div>
+                        <div className="mt-1 whitespace-pre-wrap text-gray-800">{request.medicalStaffNotes}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {request.decisionHistory?.length ? (
+                  <div className="mt-4">
+                    <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Decision History</div>
+                    <div className="space-y-2">
+                      {request.decisionHistory.map((entry, index) => (
+                        <div key={`${entry.reviewedAt || index}`} className="rounded-md bg-gray-50 p-3 text-sm">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold capitalize text-gray-900">{entry.status?.replace(/_/g, ' ') || 'updated'}</span>
+                            {entry.decision && <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-gray-700">{entry.decision}</span>}
+                            <span className="text-xs text-gray-500">{formatDateTime(entry.reviewedAt)}</span>
+                            {entry.reviewedBy && <span className="text-xs text-gray-500">by {entry.reviewedBy}</span>}
+                          </div>
+                          {(entry.notes || entry.overallNotes || entry.medicalStaffNotes) && (
+                            <div className="mt-2 whitespace-pre-wrap text-gray-700">
+                              {[entry.notes, entry.overallNotes, entry.medicalStaffNotes].filter(Boolean).join('\n')}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-6 text-center">
+            <div className="font-medium text-gray-700">No medical reviews yet.</div>
+            <div className="mt-1 text-sm text-gray-500">Create a medical review request to send this artifact for review.</div>
+          </div>
+        )}
+      </section>
     </div>
   );
 };
