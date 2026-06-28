@@ -379,57 +379,59 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                   const dateField = item ? getStatusDateField(item.status) : 'dueDate';
                   const dateValue = item ? item[dateField as keyof BookingFlowItem] as Date | string | null | undefined : undefined;
                   return (
-                    <td key={`${getObjectId(booking)}:${row.key}`} className={`min-w-[190px] border-b border-r border-gray-300 px-2 py-1 align-top ${item ? getStatusCellClass(item.status) : 'bg-white'}`}>
+                    <td key={`${getObjectId(booking)}:${row.key}`} className={`min-w-[230px] border-b border-r border-gray-300 px-2 py-1 align-top ${item ? getStatusCellClass(item.status) : 'bg-white'}`}>
                       {item ? (
-                        <div className="min-h-[88px]">
-                          <button
-                            type="button"
-                            disabled={saving === item._id}
-                            onClick={() => toggleItem(item, !done)}
-                            className="flex w-full items-start gap-1 text-left disabled:opacity-50"
-                          >
-                            {done ? <CheckCircle2 className="mt-0.5 h-4 w-4 flex-none" /> : <Circle className="mt-0.5 h-4 w-4 flex-none" />}
-                            <span className="min-w-0">
-                              <span className="block truncate font-semibold">{getItemDisplayValue(item) || '-'}</span>
-                              {item.emailSentAt && <span className="block text-xs opacity-75">Email {formatDate(item.emailSentAt)}</span>}
-                            </span>
-                          </button>
-                          <select
-                            value={item.status || 'pending'}
-                            disabled={saving === item._id}
-                            onChange={(event) => updateItemStatus(item, event.target.value as BookingFlowItem['status'])}
-                            className="mt-1 w-full rounded border border-black/10 bg-white/80 px-1.5 py-1 text-xs font-medium text-gray-800"
-                          >
-                            {statusOptions.map((status) => (
-                              <option key={status} value={status}>{status.replace(/_/g, ' ')}</option>
-                            ))}
-                          </select>
-                          <input
-                            type="date"
-                            value={formatDateInput(dateValue)}
-                            disabled={saving === `date:${item._id}`}
-                            onChange={(event) => updateItemDate(item, event.target.value)}
-                            className="mt-1 w-full rounded border border-black/10 bg-white/80 px-1.5 py-1 text-xs text-gray-800"
-                          />
-                          <textarea
-                            value={noteDrafts[item._id || ''] || ''}
-                            onChange={(event) => item._id && setNoteDrafts((current) => ({ ...current, [item._id!]: event.target.value }))}
-                            onBlur={() => saveItemNotes(item)}
-                            rows={2}
-                            placeholder="Notes"
-                            className="mt-1 w-full resize-y rounded border border-black/10 bg-white/80 px-1.5 py-1 text-xs text-gray-800 placeholder:text-gray-400"
-                          />
-                          {itemCanSendEmail(item) && (
+                        <div className="space-y-1">
+                          <div className="grid grid-cols-[18px_minmax(88px,1fr)_92px] items-center gap-1">
                             <button
                               type="button"
-                              disabled={saving === `email:${item._id}`}
-                              onClick={() => sendItemEmail(item)}
-                              className="mt-1 inline-flex w-full items-center justify-center gap-1 rounded-md border border-blue-200 bg-white px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+                              disabled={saving === item._id}
+                              onClick={() => toggleItem(item, !done)}
+                              className="inline-flex justify-center disabled:opacity-50"
+                              title={done ? 'Mark pending' : 'Mark complete'}
                             >
-                              <Mail className="h-3.5 w-3.5" />
-                              {saving === `email:${item._id}` ? 'Sending...' : 'Send email'}
+                              {done ? <CheckCircle2 className="h-4 w-4 flex-none" /> : <Circle className="h-4 w-4 flex-none" />}
                             </button>
-                          )}
+                            <select
+                              value={item.status || 'pending'}
+                              disabled={saving === item._id}
+                              onChange={(event) => updateItemStatus(item, event.target.value as BookingFlowItem['status'])}
+                              className="w-full rounded border border-black/10 bg-white/80 px-1.5 py-1 text-xs font-medium text-gray-800"
+                              title={getItemDisplayValue(item) || item.status || 'pending'}
+                            >
+                              {statusOptions.map((status) => (
+                                <option key={status} value={status}>{status.replace(/_/g, ' ')}</option>
+                              ))}
+                            </select>
+                            <input
+                              type="date"
+                              value={formatDateInput(dateValue)}
+                              disabled={saving === `date:${item._id}`}
+                              onChange={(event) => updateItemDate(item, event.target.value)}
+                              className="w-full rounded border border-black/10 bg-white/80 px-1.5 py-1 text-xs text-gray-800"
+                            />
+                          </div>
+                          <div className="grid grid-cols-[1fr_auto] gap-1">
+                            <textarea
+                              value={noteDrafts[item._id || ''] || ''}
+                              onChange={(event) => item._id && setNoteDrafts((current) => ({ ...current, [item._id!]: event.target.value }))}
+                              onBlur={() => saveItemNotes(item)}
+                              rows={1}
+                              placeholder={item.emailSentAt ? `Email ${formatDate(item.emailSentAt)}` : 'Notes'}
+                              className="min-h-[28px] w-full resize-y rounded border border-black/10 bg-white/80 px-1.5 py-1 text-xs text-gray-800 placeholder:text-gray-400"
+                            />
+                            {itemCanSendEmail(item) && (
+                              <button
+                                type="button"
+                                disabled={saving === `email:${item._id}`}
+                                onClick={() => sendItemEmail(item)}
+                                className="inline-flex items-center justify-center gap-1 rounded-md border border-blue-200 bg-white px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+                              >
+                                <Mail className="h-3.5 w-3.5" />
+                                {saving === `email:${item._id}` ? '...' : 'Send'}
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ) : (
                         <span className="text-gray-300">-</span>

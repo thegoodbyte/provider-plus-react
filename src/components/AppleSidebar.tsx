@@ -61,16 +61,15 @@ const FULL_MENU_SECTIONS: MenuSection[] = [
       { id: 'ceremonies', label: 'Ceremonies', Icon: Fi.FiClock },
       { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
       { id: 'houses', label: 'Houses', Icon: Fi.FiHome },
+      { id: 'retreat-flow', label: 'Retreat Readiness', Icon: Fi.FiCalendar },
+      { id: 'retreat-flow-library', label: 'Booking Step Setup', Icon: Fi.FiLayers },
     ],
   },
   {
     id: 'workflow',
     label: 'Readiness',
     Icon: Fi.FiLayers,
-    items: [
-      { id: 'retreat-flow', label: 'Retreat Readiness', Icon: Fi.FiCalendar },
-      { id: 'retreat-flow-library', label: 'Booking Step Setup', Icon: Fi.FiLayers },
-    ],
+    items: [],
   },
   {
     id: 'medical',
@@ -217,7 +216,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
 
     switch (navigationRole) {
       case 'admin':
-        return FULL_MENU_SECTIONS;
+        return FULL_MENU_SECTIONS.filter((section) => section.items.length > 0);
       case 'medical_staff':
         return [
           { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: 'Home', Icon: Fi.FiGrid }] },
@@ -243,6 +242,8 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
               { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
               { id: 'ceremonies', label: 'Ceremonies', Icon: Fi.FiClock },
               { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
+              { id: 'retreat-flow', label: 'Retreat Readiness', Icon: Fi.FiCalendar },
+              { id: 'retreat-flow-library', label: 'Booking Step Setup', Icon: Fi.FiLayers },
             ],
           },
           {
@@ -253,15 +254,6 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
               { id: 'clients', label: 'Clients', Icon: Fi.FiUsers },
               { id: 'potential-clients', label: 'Potential Clients', Icon: Fi.FiUserPlus },
               { id: 'screening', label: 'Screenings', Icon: Fi.FiClipboard },
-            ],
-          },
-          {
-            id: 'readiness',
-            label: 'Readiness',
-            Icon: Fi.FiLayers,
-            items: [
-              { id: 'retreat-flow', label: 'Retreat Readiness', Icon: Fi.FiCalendar },
-              { id: 'retreat-flow-library', label: 'Booking Step Setup', Icon: Fi.FiLayers },
             ],
           },
           { id: 'operations', label: 'Operations', Icon: Fi.FiBriefcase, items: [

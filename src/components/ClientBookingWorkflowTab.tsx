@@ -435,64 +435,49 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                 const dueSoon = isDueSoon(item);
 
                 return (
-                  <div key={id} className={`grid gap-3 p-4 lg:grid-cols-[minmax(220px,1.1fr)_220px_minmax(220px,1fr)_auto] lg:items-start ${isChecked ? 'bg-green-50/60' : overdue ? 'bg-red-50/70' : dueSoon ? 'bg-amber-50/70' : 'bg-white'}`}>
-                    <label className="flex min-w-0 items-start gap-3">
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        disabled={!isEditing || savingId === 'all'}
-                        onChange={(event) => setActionChecked(item, event.target.checked)}
-                        className="mt-1 h-5 w-5 rounded border-gray-300 text-green-600 focus:ring-green-500"
-                      />
-                      <span className="min-w-0">
-                        <span className={`block font-medium ${isChecked ? 'text-green-900' : 'text-gray-950'}`}>
-                          {item.title}
-                        </span>
-                        <span className="mt-1 block text-xs text-gray-500">
-                          {item.dueDate ? `Due ${formatDisplayDate(item.dueDate)}` : item.category}
-                        </span>
-                        {overdue && <span className="mt-1 inline-flex rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">Past due</span>}
-                        {dueSoon && <span className="mt-1 inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-700">Due soon</span>}
-                        {item.metadata?.latestFileName && (
-                          <span className="mt-1 block text-xs text-gray-500">
-                            Latest upload: {item.metadata.latestFileName}
-                          </span>
-                        )}
-                      </span>
-                    </label>
-
-                    <div>
-                      <label className="block text-xs font-medium uppercase text-gray-500">Date / time</label>
-                      {isChecked ? (
+                  <div key={id} className={`grid gap-2 p-3 ${isChecked ? 'bg-green-50/60' : overdue ? 'bg-red-50/70' : dueSoon ? 'bg-amber-50/70' : 'bg-white'}`}>
+                    <div className="grid gap-2 lg:grid-cols-[minmax(240px,1fr)_minmax(210px,260px)] lg:items-center">
+                      <label className="flex min-w-0 items-center gap-2">
                         <input
-                          type="datetime-local"
-                          value={draft.dateTime}
+                          type="checkbox"
+                          checked={isChecked}
                           disabled={!isEditing || savingId === 'all'}
-                          onChange={(event) => setDraft(item, { dateTime: event.target.value })}
-                          className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          onChange={(event) => setActionChecked(item, event.target.checked)}
+                          className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
                         />
-                      ) : (
-                        <div className="mt-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-400">
-                          Not done
-                        </div>
-                      )}
+                        <span className="min-w-0">
+                          <span className={`block truncate text-sm font-semibold ${isChecked ? 'text-green-900' : 'text-gray-950'}`}>
+                            {item.title}
+                          </span>
+                          <span className="block truncate text-xs text-gray-500">
+                            {item.dueDate ? `Due ${formatDisplayDate(item.dueDate)}` : item.category}
+                            {overdue ? ' • Past due' : dueSoon ? ' • Due soon' : ''}
+                            {item.metadata?.latestFileName ? ` • ${item.metadata.latestFileName}` : ''}
+                          </span>
+                        </span>
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={draft.dateTime}
+                        disabled={!isEditing || !isChecked || savingId === 'all'}
+                        onChange={(event) => setDraft(item, { dateTime: event.target.value })}
+                        className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        title={isChecked ? 'Action date and time' : 'Check this action before setting the completion date'}
+                      />
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-medium uppercase text-gray-500">Notes</label>
+                    <div className="grid gap-2 lg:grid-cols-[1fr_auto] lg:items-center">
                       <textarea
                         value={draft.notes}
                         disabled={!isEditing || savingId === 'all'}
                         onChange={(event) => setDraft(item, { notes: event.target.value })}
-                        rows={2}
-                        className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        rows={1}
+                        className="min-h-[36px] w-full resize-y rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="Internal note"
                       />
-                    </div>
-
-                    <div className="flex items-center gap-2 lg:justify-end lg:pt-5">
+                      <div className="flex items-center gap-2 lg:justify-end">
                       {uploadConfig && (
-                        <label className={`inline-flex items-center rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm font-medium ${isEditing ? 'cursor-pointer text-blue-700 hover:bg-blue-50' : 'cursor-not-allowed text-gray-400'}`}>
+                        <label className={`inline-flex items-center rounded-md border border-blue-200 bg-white px-2.5 py-1.5 text-sm font-medium ${isEditing ? 'cursor-pointer text-blue-700 hover:bg-blue-50' : 'cursor-not-allowed text-gray-400'}`}>
                           <Icon icon={FiUpload} className="mr-2 h-4 w-4" />
                           {uploadingId === item._id ? 'Uploading...' : 'Upload'}
                           <input
@@ -509,6 +494,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                         </label>
                       )}
                       {savingId === item._id && <span className="text-xs text-blue-700">Saving...</span>}
+                      </div>
                     </div>
                   </div>
                 );
