@@ -55,6 +55,14 @@ const isValidDate = (date: Date) => !Number.isNaN(date.getTime());
 
 const parseDate = (value: any): Date | null => {
   if (!value) return null;
+  if (typeof value === 'string') {
+    const calendarDateMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})(?:$|T00:00:00(?:\.\d{3})?Z?$)/);
+    if (calendarDateMatch) {
+      const [, year, month, day] = calendarDateMatch;
+      const date = new Date(Number(year), Number(month) - 1, Number(day));
+      return isValidDate(date) ? date : null;
+    }
+  }
   const date = new Date(value);
   return isValidDate(date) ? date : null;
 };
