@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import LoadingSpinner from './LoadingSpinner';
 import { housesApi } from '../services/api';
 import { House } from '../types';
@@ -10,6 +10,64 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
   return <IconComponent className={className} />;
 };
 
+const cropImageToHeroBanner = (file: File, width = 1200, height = 250): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) {
+      reject(new Error('Please choose an image file.'));
+      return;
+    }
+
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    image.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('Image editor is not available in this browser.');
+
+        const sourceRatio = image.naturalWidth / image.naturalHeight;
+        const targetRatio = width / height;
+        let sourceWidth = image.naturalWidth;
+        let sourceHeight = image.naturalHeight;
+        let sourceX = 0;
+        let sourceY = 0;
+
+        if (sourceRatio > targetRatio) {
+          sourceWidth = image.naturalHeight * targetRatio;
+          sourceX = (image.naturalWidth - sourceWidth) / 2;
+        } else {
+          sourceHeight = image.naturalWidth / targetRatio;
+          sourceY = (image.naturalHeight - sourceHeight) / 2;
+        }
+
+        context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          URL.revokeObjectURL(objectUrl);
+          if (!blob) {
+            reject(new Error('Could not prepare house hero image.'));
+            return;
+          }
+          const baseName = file.name.replace(/\.[^/.]+$/, '').trim() || 'house-hero';
+          resolve(new File([blob], `${baseName}-hero.jpg`, { type: 'image/jpeg' }));
+        }, 'image/jpeg', 0.9);
+      } catch (error) {
+        URL.revokeObjectURL(objectUrl);
+        reject(error);
+      }
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Could not read this image file.'));
+    };
+
+    image.src = objectUrl;
+  });
+};
+
 const HousesGrid: React.FC = () => {
   const [houses, setHouses] = useState<House[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -17,6 +75,9 @@ const HousesGrid: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingHouse, setEditingHouse] = useState<House | null>(null);
   const [formData, setFormData] = useState<Partial<House>>({});
+  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
+  const [heroImageUploading, setHeroImageUploading] = useState(false);
+  const heroImageInputRef = useRef<HTMLInputElement | null>(null);
 
   const fetchHouses = useCallback(async () => {
     try {
@@ -41,6 +102,7 @@ const HousesGrid: React.FC = () => {
 
   const handleAdd = () => {
     setEditingHouse(null);
+    setHeroImageUrl(null);
     setFormData({
       status: 'available',
       amenities: []
@@ -50,6 +112,7 @@ const HousesGrid: React.FC = () => {
 
   const handleEdit = (house: House) => {
     setEditingHouse(house);
+    setHeroImageUrl(null);
     // Convert legacy format to new format for editing
     const formattedHouse = {
       ...house,
@@ -60,6 +123,50 @@ const HousesGrid: React.FC = () => {
     };
     setFormData(formattedHouse);
     setIsModalOpen(true);
+    if (house._id && house.heroImageS3Key) {
+      housesApi.getHeroImageUrl(house._id)
+        .then((response) => setHeroImageUrl(response.data.heroImageUrl || null))
+        .catch((error) => console.error('Error loading house hero image:', error));
+    }
+  };
+
+  const updateHouseInList = (house: House) => {
+    setHouses((current) => current.map((item) => item._id === house._id ? house : item));
+    setEditingHouse(house);
+    setFormData((current) => ({ ...current, ...house }));
+  };
+
+  const handleHeroImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!editingHouse?._id || !file) return;
+
+    try {
+      setHeroImageUploading(true);
+      const croppedFile = await cropImageToHeroBanner(file);
+      const response = await housesApi.uploadHeroImage(editingHouse._id, croppedFile);
+      updateHouseInList(response.data.house);
+      setHeroImageUrl(response.data.heroImageUrl);
+    } catch (error: any) {
+      console.error('Error uploading house hero image:', error);
+      alert(error?.response?.data?.message || error?.message || 'Failed to upload house hero image.');
+    } finally {
+      setHeroImageUploading(false);
+    }
+  };
+
+  const handleClearHeroImage = async () => {
+    if (!editingHouse?._id) return;
+    if (!window.confirm('Remove the default hero image from this house?')) return;
+
+    try {
+      const response = await housesApi.clearHeroImage(editingHouse._id);
+      updateHouseInList(response.data.house);
+      setHeroImageUrl(null);
+    } catch (error: any) {
+      console.error('Error removing house hero image:', error);
+      alert(error?.response?.data?.message || error?.message || 'Failed to remove house hero image.');
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -173,6 +280,9 @@ const HousesGrid: React.FC = () => {
                   Source
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Hero
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -217,6 +327,15 @@ const HousesGrid: React.FC = () => {
                     <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
                       {house.bookingSource || 'N/A'}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {house.heroImageS3Key ? (
+                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                        Default
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">None</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center gap-2">
@@ -317,6 +436,59 @@ const HousesGrid: React.FC = () => {
                   placeholder="https://maps.app.goo.gl/..."
                   className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                 />
+              </div>
+
+              <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-medium text-gray-900">Default house hero image</div>
+                    <div className="text-xs text-gray-500">Used by retreats assigned to this house unless the retreat has its own hero.</div>
+                  </div>
+                  {editingHouse?._id && (
+                    <div className="flex shrink-0 items-center gap-2">
+                      <input
+                        ref={heroImageInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleHeroImageSelect}
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => heroImageInputRef.current?.click()}
+                        disabled={heroImageUploading}
+                        className="rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                      >
+                        {heroImageUploading ? 'Uploading...' : 'Upload'}
+                      </button>
+                      {formData.heroImageS3Key && (
+                        <button
+                          type="button"
+                          onClick={handleClearHeroImage}
+                          className="rounded-md border border-red-200 bg-white px-3 py-2 text-xs font-medium text-red-700 hover:bg-red-50"
+                        >
+                          Remove
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {editingHouse?._id ? (
+                  heroImageUrl ? (
+                    <div
+                      className="h-24 rounded-md border border-gray-200 bg-cover bg-center"
+                      style={{ backgroundImage: `url(${heroImageUrl})` }}
+                    />
+                  ) : (
+                    <div className="rounded-md border border-dashed border-gray-300 bg-white px-3 py-6 text-center text-xs text-gray-500">
+                      No default hero image uploaded.
+                    </div>
+                  )
+                ) : (
+                  <div className="rounded-md border border-dashed border-gray-300 bg-white px-3 py-6 text-center text-xs text-gray-500">
+                    Save the house first, then upload its default hero image.
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">

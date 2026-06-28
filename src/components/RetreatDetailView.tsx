@@ -188,6 +188,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [metricsCollapsed, setMetricsCollapsed] = useState(true);
   const [showRetreatEditModal, setShowRetreatEditModal] = useState(false);
   const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
+  const [heroImageSource, setHeroImageSource] = useState<'retreat' | 'house' | null>(null);
   const [heroImageUploading, setHeroImageUploading] = useState(false);
   const [houses, setHouses] = useState<House[]>([]);
   const [retreatFormData, setRetreatFormData] = useState<Partial<Retreat>>({});
@@ -229,17 +230,20 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   };
 
   const loadHeroImageUrl = async (targetRetreat: Retreat) => {
-    if (!targetRetreat?._id || !targetRetreat.heroImageS3Key) {
+    if (!targetRetreat?._id) {
       setHeroImageUrl(null);
+      setHeroImageSource(null);
       return;
     }
 
     try {
       const response = await retreatsApi.getHeroImageUrl(targetRetreat._id);
       setHeroImageUrl(response.data.heroImageUrl || null);
+      setHeroImageSource(response.data.source || null);
     } catch (error) {
       console.error('Error loading retreat hero image:', error);
       setHeroImageUrl(null);
+      setHeroImageSource(null);
     }
   };
 
@@ -541,12 +545,29 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       const response = await retreatsApi.uploadHeroImage(retreat._id, croppedFile);
       setRetreat(response.data.retreat);
       setHeroImageUrl(response.data.heroImageUrl);
+      setHeroImageSource('retreat');
       message.success('Retreat hero image uploaded.');
     } catch (error: any) {
       console.error('Error uploading retreat hero image:', error);
       message.error(error?.response?.data?.message || error?.message || 'Failed to upload retreat hero image.');
     } finally {
       setHeroImageUploading(false);
+    }
+  };
+
+  const handleClearHeroImage = async () => {
+    if (!retreat?._id) return;
+    if (!window.confirm('Remove the custom retreat hero image and use the house default?')) return;
+
+    try {
+      const response = await retreatsApi.clearHeroImage(retreat._id);
+      setRetreat(response.data.retreat);
+      setHeroImageUrl(response.data.heroImageUrl || null);
+      setHeroImageSource(response.data.source || null);
+      message.success(response.data.heroImageUrl ? 'Using house default hero image.' : 'Retreat hero image removed.');
+    } catch (error: any) {
+      console.error('Error clearing retreat hero image:', error);
+      message.error(error?.response?.data?.message || error?.message || 'Failed to remove retreat hero image.');
     }
   };
 
@@ -665,9 +686,20 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             onClick={() => heroImageInputRef.current?.click()}
             className="edit-retreat-btn"
             disabled={heroImageUploading}
+            title={heroImageSource === 'house' ? 'Upload a custom hero image for this retreat' : 'Upload Hero Image'}
           >
-            {heroImageUploading ? 'Uploading image...' : 'Upload Hero Image'}
+            {heroImageUploading ? 'Uploading image...' : heroImageSource === 'house' ? 'Override Hero Image' : 'Upload Hero Image'}
           </button>
+          {retreat.heroImageS3Key && (
+            <button
+              type="button"
+              onClick={handleClearHeroImage}
+              className="edit-retreat-btn"
+              title="Remove custom retreat hero and use the house default"
+            >
+              Use House Hero
+            </button>
+          )}
           <button onClick={async () => {
             // Fetch houses when edit modal is opened
             if (houses.length === 0) {

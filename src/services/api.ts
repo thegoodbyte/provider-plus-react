@@ -72,7 +72,11 @@ export const retreatsApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
-  getHeroImageUrl: (id: string) => api.get<{ heroImageUrl: string | null }>(`/retreats/${id}/hero-image-url`),
+  getHeroImageUrl: (id: string) => api.get<{ heroImageUrl: string | null; source?: 'retreat' | 'house' }>(`/retreats/${id}/hero-image-url`),
+  clearHeroImage: (id: string) => {
+    cacheService.clearPattern('retreats:');
+    return api.delete<{ retreat: Retreat; heroImageUrl: string | null; source?: 'retreat' | 'house' }>(`/retreats/${id}/hero-image`);
+  },
   delete: (id: string) => {
     cacheService.clearPattern('retreats:');
     return api.delete(`/retreats/${id}`);
@@ -89,6 +93,21 @@ export const housesApi = {
   update: (id: string, data: Partial<House>) => {
     cacheService.clearPattern('houses:');
     return api.patch<House>(`/houses/${id}`, data);
+  },
+  uploadHeroImage: (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    cacheService.clearPattern('houses:');
+    cacheService.clearPattern('retreats:');
+    return api.post<{ house: House; heroImageUrl: string }>(`/houses/${id}/hero-image`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  getHeroImageUrl: (id: string) => api.get<{ heroImageUrl: string | null }>(`/houses/${id}/hero-image-url`),
+  clearHeroImage: (id: string) => {
+    cacheService.clearPattern('houses:');
+    cacheService.clearPattern('retreats:');
+    return api.delete<{ house: House; heroImageUrl: string | null }>(`/houses/${id}/hero-image`);
   },
   delete: (id: string) => {
     cacheService.clearPattern('houses:');

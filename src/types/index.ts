@@ -22,6 +22,7 @@ export interface Retreat {
   heroImageS3Key?: string;
   heroImageFileName?: string;
   heroImageMimeType?: string;
+  heroImageSource?: 'retreat' | 'house';
   createdAt?: string;
   updatedAt?: string;
   // Legacy format support
@@ -51,6 +52,9 @@ export interface House {
   allInclusive?: boolean;
   payingForElectricity?: boolean;
   bookingSource?: 'Airbnb' | 'Owner';
+  heroImageS3Key?: string;
+  heroImageFileName?: string;
+  heroImageMimeType?: string;
   createdAt?: string;
   updatedAt?: string;
   // Legacy format support

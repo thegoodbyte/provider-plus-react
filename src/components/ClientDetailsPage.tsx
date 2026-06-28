@@ -308,9 +308,8 @@ const ClientDetailsPage: React.FC = () => {
       if (id && typeof retreat === 'object') retreatMap.set(id, retreat);
     });
 
-    const entries = await Promise.all(Array.from(retreatMap.entries())
-      .filter(([, retreat]) => Boolean(retreat?.heroImageS3Key))
-      .map(async ([id]) => {
+    const entries = await Promise.all(Array.from(retreatMap.keys())
+      .map(async (id) => {
         try {
           const response = await retreatsApi.getHeroImageUrl(id);
           return [id, response.data.heroImageUrl || ''] as const;
