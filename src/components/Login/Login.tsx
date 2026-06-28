@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { API_BASE_URL } from '../../config/api.config';
 import './Login.css';
@@ -101,6 +102,10 @@ export const Login: React.FC = () => {
             {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
+
+        <div className="login-footer-link">
+          <Link to="/users/forgot-password">Forgot password?</Link>
+        </div>
       </div>
     </div>
   );

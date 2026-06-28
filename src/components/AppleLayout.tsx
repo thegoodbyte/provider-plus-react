@@ -64,6 +64,8 @@ import UserManagement from './UserManagement';
 import AuditLogsPage from './AuditLogsPage';
 import { Tasks } from '../pages/Tasks/Tasks';
 import { useAuth } from '../context/AuthContext';
+import { ForgotPassword } from './Login/ForgotPassword';
+import { ResetPassword } from './Login/ResetPassword';
 
 const BookingDetailRoute: React.FC = () => {
   const { bookingId } = useParams();
@@ -448,6 +450,9 @@ const AppleLayout: React.FC = () => {
                 <Route path="/medical/review-link/:token" element={<MedicalReviewPublicPage />} />
                 <Route path="/medical-review-access/:token/:label" element={<MedicalReviewAccessPage />} />
                 <Route path="/medical-review-access/:token" element={<MedicalReviewAccessPage />} />
+                <Route path="/users/forgot-password" element={<ForgotPassword />} />
+                <Route path="/users/forgot-pasword" element={<ForgotPassword />} />
+                <Route path="/users/change-password/:token" element={<ResetPassword />} />
 
                 {/* Admin routes */}
                 <Route path="/admin/*" element={

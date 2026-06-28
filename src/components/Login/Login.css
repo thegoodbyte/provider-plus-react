@@ -73,6 +73,40 @@
   border-radius: 5px;
 }
 
+.success-message {
+  color: #166534;
+  margin-bottom: 1rem;
+  text-align: center;
+  padding: 0.5rem;
+  background: #dcfce7;
+  border-radius: 5px;
+}
+
+.login-help-text {
+  color: #5f6b7a;
+  font-size: 0.92rem;
+  line-height: 1.45;
+  margin: -0.75rem 0 1.25rem;
+  text-align: center;
+}
+
+.login-footer-link {
+  margin-top: 1rem;
+  text-align: center;
+  color: #5f6b7a;
+  font-size: 0.92rem;
+}
+
+.login-footer-link a {
+  color: #007aff;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.login-footer-link a:hover {
+  text-decoration: underline;
+}
+
 .login-box button {
   width: 100%;
   padding: 0.75rem;

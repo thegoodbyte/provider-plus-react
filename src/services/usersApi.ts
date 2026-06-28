@@ -77,6 +77,21 @@ export const usersApi = {
     return response.data;
   },
 
+  async requestPasswordReset(email: string): Promise<{ message: string }> {
+    const response = await api.post('/users/forgot-password', { email });
+    return response.data;
+  },
+
+  async validatePasswordResetToken(token: string): Promise<{ data: { valid: boolean; email?: string; expiresAt?: string } }> {
+    const response = await api.get(`/users/change-password/${encodeURIComponent(token)}`);
+    return response;
+  },
+
+  async resetPasswordWithToken(token: string, password: string): Promise<{ message: string }> {
+    const response = await api.post(`/users/change-password/${encodeURIComponent(token)}`, { password });
+    return response.data;
+  },
+
   // Reset password (admin only)
   async resetPassword(userId: string, password: string): Promise<{ data: any }> {
     const response = await api.post(`/users/${userId}/reset-password`, { password });

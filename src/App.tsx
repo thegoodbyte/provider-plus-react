@@ -2,6 +2,8 @@ import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import AppleLayout from './components/AppleLayout';
 import { Login } from './components/Login/Login';
+import { ForgotPassword } from './components/Login/ForgotPassword';
+import { ResetPassword } from './components/Login/ResetPassword';
 import MedicalReviewAccessPage from './components/MedicalReviewAccessPage';
 import MedicalReviewPublicPage from './components/MedicalReviewPublicPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -20,6 +22,9 @@ function AppContent() {
   const location = useLocation();
   const isPublicMedicalReviewRoute = location.pathname.startsWith('/medical-review-access/')
     || location.pathname.startsWith('/medical/review-link/');
+  const isPublicPasswordRoute = location.pathname === '/users/forgot-password'
+    || location.pathname === '/users/forgot-pasword'
+    || location.pathname.startsWith('/users/change-password/');
 
   // Preload essential data when user is authenticated (non-blocking)
   useEffect(() => {
@@ -38,12 +43,15 @@ function AppContent() {
     return <div className="loading">Loading...</div>;
   }
 
-  if (!isAuthenticated && isPublicMedicalReviewRoute) {
+  if (!isAuthenticated && (isPublicMedicalReviewRoute || isPublicPasswordRoute)) {
     return (
       <Routes>
         <Route path="/medical-review-access/:token/:label" element={<MedicalReviewAccessPage />} />
         <Route path="/medical-review-access/:token" element={<MedicalReviewAccessPage />} />
         <Route path="/medical/review-link/:token" element={<MedicalReviewPublicPage />} />
+        <Route path="/users/forgot-password" element={<ForgotPassword />} />
+        <Route path="/users/forgot-pasword" element={<ForgotPassword />} />
+        <Route path="/users/change-password/:token" element={<ResetPassword />} />
       </Routes>
     );
   }
