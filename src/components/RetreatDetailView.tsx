@@ -604,7 +604,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         <h2>❌ Retreat Not Found</h2>
         <p>The retreat with ID "{retreatId}" could not be found or there was an error loading the data.</p>
         <p>Please try again or contact support if the issue persists.</p>
-        <button onClick={onBack} className="back-btn">← Back to Retreats</button>
+        <button onClick={onBack} className="back-btn" title="Back to retreats" aria-label="Back to retreats">←</button>
       </div>
     );
   }
@@ -638,7 +638,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     <div className="retreat-detail-container">
       <div className="retreat-detail-header">
         <div className="retreat-detail-actions">
-          <button onClick={onBack} className="back-btn">← Back to Retreats</button>
+          <button onClick={onBack} className="back-btn" title="Back to retreats" aria-label="Back to retreats">←</button>
           <input
             ref={heroImageInputRef}
             type="file"

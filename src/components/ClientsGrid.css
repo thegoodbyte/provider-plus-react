@@ -601,16 +601,22 @@
   background: transparent;
   color: #374151;
   border: none;
-  border-radius: 0;
+  border-radius: 8px;
   box-shadow: none;
-  font-size: 15px;
+  font-size: 24px;
   font-weight: 500;
-  line-height: 1.4;
+  line-height: 1;
   white-space: nowrap;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .retreat-detail-header .back-btn:hover {
   color: #111827;
+  background: #f3f4f6;
   transform: none;
   box-shadow: none;
 }
@@ -817,7 +823,7 @@
   }
 
   .retreat-detail-header .back-btn {
-    font-size: 14px;
+    font-size: 22px;
   }
 
   .retreat-detail-header .edit-retreat-btn {
