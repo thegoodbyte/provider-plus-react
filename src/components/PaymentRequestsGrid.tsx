@@ -42,7 +42,7 @@ const formatAmount = (amount: any, currency: string) => {
   return `${numericAmount.toLocaleString()} ${currency || ''}`.trim();
 };
 
-type PaymentRequestSortKey = 'invoice' | 'client' | 'retreat' | 'date' | 'publicHash' | 'quote' | 'usd' | 'currency' | 'status';
+type PaymentRequestSortKey = 'invoice' | 'client' | 'retreat' | 'date' | 'paidDate' | 'publicHash' | 'quote' | 'usd' | 'currency' | 'status';
 type SortDirection = 'asc' | 'desc';
 
 const PaymentRequestsGrid: React.FC = () => {
@@ -180,6 +180,8 @@ const PaymentRequestsGrid: React.FC = () => {
         return retreat.toLowerCase();
       case 'date':
         return parseCalendarDate(request.paymentDate)?.getTime() || 0;
+      case 'paidDate':
+        return parseCalendarDate(request.paidDate)?.getTime() || 0;
       case 'publicHash':
         return String(request.publicHash || '').toLowerCase();
       case 'quote':
@@ -272,7 +274,8 @@ const PaymentRequestsGrid: React.FC = () => {
                 <th className="px-4 py-3 text-left">{renderSortableHeader('invoice', 'Invoice #')}</th>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('client', 'Client')}</th>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('retreat', 'Retreat')}</th>
-                <th className="px-4 py-3 text-left">{renderSortableHeader('date', 'Date')}</th>
+                <th className="px-4 py-3 text-left">{renderSortableHeader('date', 'Request Date')}</th>
+                <th className="px-4 py-3 text-left">{renderSortableHeader('paidDate', 'Paid Date')}</th>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('publicHash', 'Public Hash')}</th>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('quote', 'Quote')}</th>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('usd', 'USD')}</th>
@@ -306,6 +309,9 @@ const PaymentRequestsGrid: React.FC = () => {
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{retreat}</td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                       {formatCalendarDate(request.paymentDate)}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
+                      {request.paidDate ? formatCalendarDate(request.paidDate) : '-'}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       {request.publicHash ? (

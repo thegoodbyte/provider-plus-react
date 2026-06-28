@@ -156,8 +156,12 @@ const PaymentRequestEditorPage: React.FC = () => {
               <div className="mt-1 font-semibold text-gray-900">{paymentRequest.requestType || '-'}</div>
             </div>
             <div className="rounded-md bg-gray-50 p-4">
-              <div className="text-xs font-semibold uppercase text-gray-500">Date</div>
+              <div className="text-xs font-semibold uppercase text-gray-500">Request Date</div>
               <div className="mt-1 font-semibold text-gray-900">{formatDate(paymentRequest.paymentDate)}</div>
+            </div>
+            <div className="rounded-md bg-gray-50 p-4">
+              <div className="text-xs font-semibold uppercase text-gray-500">Paid Date</div>
+              <div className="mt-1 font-semibold text-gray-900">{paymentRequest.paidDate ? formatDate(paymentRequest.paidDate) : '-'}</div>
             </div>
             <div className="rounded-md bg-gray-50 p-4 md:col-span-2">
               <div className="text-xs font-semibold uppercase text-gray-500">Note</div>
