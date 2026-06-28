@@ -244,6 +244,48 @@ const AppleLayout: React.FC = () => {
     }
   }, [showQuickMenu, quickMenuOpen]);
 
+  const renderQuickMenu = () => {
+    if (!showQuickMenu) return null;
+
+    return (
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => setQuickMenuOpen((open) => !open)}
+          className="inline-flex items-center gap-2 rounded-apple border border-apple-gray-200 bg-white px-3 py-2 text-sm font-semibold text-apple-gray-700 shadow-apple-sm transition-colors hover:bg-apple-gray-50"
+          aria-expanded={quickMenuOpen}
+          aria-controls="quick-menu"
+        >
+          Quick Menu
+          <HeaderIcon
+            icon={FiChevronDown}
+            className={`h-4 w-4 transition-transform ${quickMenuOpen ? 'rotate-180' : ''}`}
+          />
+        </button>
+
+        {quickMenuOpen && (
+          <div
+            id="quick-menu"
+            className="absolute left-0 top-full z-50 mt-2 grid w-[460px] grid-cols-4 gap-3 rounded-apple-lg border border-apple-gray-200 bg-white p-3 shadow-apple-lg"
+          >
+            {quickMenuItems.map((item) => (
+              <button
+                key={item.route}
+                type="button"
+                onClick={() => handleQuickMenuClick(item.route)}
+                className="flex h-[108px] items-center justify-center rounded-apple-lg border border-apple-gray-200 bg-white text-apple-gray-700 shadow-apple-sm transition-colors hover:bg-apple-gray-50 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                aria-label={item.label}
+                title={item.label}
+              >
+                <HeaderIcon icon={item.icon} className="h-[100px] w-[100px]" />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Close sidebar on escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -326,10 +368,12 @@ const AppleLayout: React.FC = () => {
                 </svg>
               </button>
 
-              {/* Title */}
-              <h1 className="text-xl font-semibold text-apple-gray-900 tracking-tight">
-                Provider Plus
-              </h1>
+              <div className="flex items-center gap-4">
+                <h1 className="text-xl font-semibold text-apple-gray-900 tracking-tight">
+                  Provider Plus
+                </h1>
+                {renderQuickMenu()}
+              </div>
 
                 {/* Actions */}
               <div className="flex items-center gap-2">
@@ -397,43 +441,6 @@ const AppleLayout: React.FC = () => {
         {/* Page Content */}
         <main className="h-[calc(100vh-32px)] overflow-y-auto px-4 py-4 sm:px-6 lg:h-[calc(100vh-64px-32px)] lg:px-8 lg:py-6">
           <div className="max-w-7xl mx-auto">
-            {showQuickMenu && (
-              <div className="mb-4 border-b border-apple-gray-200 pb-3">
-                <button
-                  type="button"
-                  onClick={() => setQuickMenuOpen((open) => !open)}
-                  className="inline-flex items-center gap-2 rounded-apple border border-apple-gray-200 bg-white px-3 py-2 text-sm font-semibold text-apple-gray-700 shadow-apple-sm transition-colors hover:bg-apple-gray-50"
-                  aria-expanded={quickMenuOpen}
-                  aria-controls="quick-menu"
-                >
-                  Quick Menu
-                  <HeaderIcon
-                    icon={FiChevronDown}
-                    className={`h-4 w-4 transition-transform ${quickMenuOpen ? 'rotate-180' : ''}`}
-                  />
-                </button>
-
-                {quickMenuOpen && (
-                  <div
-                    id="quick-menu"
-                    className="mt-3 grid grid-cols-4 gap-2 sm:gap-3"
-                  >
-                    {quickMenuItems.map((item) => (
-                      <button
-                        key={item.route}
-                        type="button"
-                        onClick={() => handleQuickMenuClick(item.route)}
-                        className="flex h-16 items-center justify-center rounded-apple-lg border border-apple-gray-200 bg-white text-apple-gray-700 shadow-apple-sm transition-colors hover:bg-apple-gray-50 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 sm:h-32"
-                        aria-label={item.label}
-                        title={item.label}
-                      >
-                        <HeaderIcon icon={item.icon} className="h-10 w-10 sm:h-[100px] sm:w-[100px]" />
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
             <div className="bg-white rounded-apple-lg shadow-apple-sm">
               <Routes>
                 {/* Unauthorized route */}
