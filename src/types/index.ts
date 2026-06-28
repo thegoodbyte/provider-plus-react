@@ -19,6 +19,9 @@ export interface Retreat {
   type?: 'regular' | 'booster';
   backgroundColor?: string; // Added for custom background color
   textColor?: string;
+  heroImageS3Key?: string;
+  heroImageFileName?: string;
+  heroImageMimeType?: string;
   createdAt?: string;
   updatedAt?: string;
   // Legacy format support

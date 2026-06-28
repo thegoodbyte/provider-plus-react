@@ -2545,3 +2545,105 @@
     transform: translateY(0);
   }
 }
+
+.retreat-hero-banner {
+  min-height: 250px;
+  border-radius: 8px;
+  background-size: cover;
+  background-position: center;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: stretch;
+}
+
+.retreat-hero-content {
+  width: 100%;
+  min-height: 250px;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+}
+
+.retreat-code-cutout {
+  display: inline-flex;
+  width: fit-content;
+  max-width: min(100%, 920px);
+  background: rgba(255, 255, 255, 0.94);
+  border-radius: 8px;
+  padding: 8px 16px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.18);
+}
+
+.retreat-code-cutout span {
+  display: block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  font-size: 44px;
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: 0;
+  color: #111827;
+}
+
+.retreat-hero-primary,
+.retreat-hero-secondary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  color: #fff;
+  text-shadow: 0 2px 10px rgba(15, 23, 42, 0.34);
+}
+
+.retreat-hero-primary {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.retreat-hero-primary span + span {
+  border-left: 1px solid rgba(255, 255, 255, 0.55);
+  padding-left: 12px;
+}
+
+.retreat-hero-secondary {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.client-booking-hero-card {
+  min-height: 144px;
+  border-radius: 8px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background-color: #1f2937;
+  background-size: cover;
+  background-position: center;
+  padding: 16px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.client-booking-hero-card:hover {
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.14);
+}
+
+.client-booking-hero-card-past {
+  filter: grayscale(1);
+}
+
+@media (max-width: 768px) {
+  .retreat-hero-content {
+    padding: 18px;
+  }
+
+  .retreat-code-cutout span {
+    font-size: 32px;
+  }
+
+  .retreat-hero-primary {
+    font-size: 17px;
+  }
+}

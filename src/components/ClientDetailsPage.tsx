@@ -7,6 +7,7 @@ import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
 import { PaymentRequest } from '../types';
 import { FiArrowLeft, FiCamera, FiEdit2, FiTrash2, FiUser, FiMapPin, FiCalendar, FiDollarSign, FiActivity, FiFileText, FiAlertCircle, FiPlus, FiMessageSquare, FiCheckSquare, FiHeart, FiEye, FiEyeOff } from 'react-icons/fi';
 import MedicalRecordsManager from './MedicalRecordsManager';
+import './ClientsGrid.css';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -88,6 +89,7 @@ const ClientDetailsPage: React.FC = () => {
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
   const [retreats, setRetreats] = useState<any[]>([]);
+  const [retreatHeroUrls, setRetreatHeroUrls] = useState<Record<string, string>>({});
   const [medicalInfo, setMedicalInfo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState(() => new URLSearchParams(location.search).get('tab') || 'overview');
@@ -281,6 +283,46 @@ const ClientDetailsPage: React.FC = () => {
       || null;
   };
 
+  const getBookingRetreat = (booking: any) => {
+    const inlineRetreat = booking.retreat || (typeof booking.retreatId === 'object' ? booking.retreatId : null);
+    const retreatId = getId(inlineRetreat || booking.retreatId);
+    return inlineRetreat || getRetreatById(retreatId);
+  };
+
+  const isRetreatPast = (retreat: any) => {
+    if (!retreat?.endDate) return false;
+    const end = new Date(retreat.endDate);
+    end.setHours(23, 59, 59, 999);
+    return end.getTime() < Date.now();
+  };
+
+  const loadRetreatHeroUrls = async (bookingList: any[], retreatList: any[]) => {
+    const retreatMap = new Map<string, any>();
+    retreatList.forEach((retreat) => {
+      const id = getId(retreat);
+      if (id) retreatMap.set(id, retreat);
+    });
+    bookingList.forEach((booking) => {
+      const retreat = booking.retreat || booking.retreatId;
+      const id = getId(retreat);
+      if (id && typeof retreat === 'object') retreatMap.set(id, retreat);
+    });
+
+    const entries = await Promise.all(Array.from(retreatMap.entries())
+      .filter(([, retreat]) => Boolean(retreat?.heroImageS3Key))
+      .map(async ([id]) => {
+        try {
+          const response = await retreatsApi.getHeroImageUrl(id);
+          return [id, response.data.heroImageUrl || ''] as const;
+        } catch (error) {
+          console.error('Error loading retreat hero image:', error);
+          return [id, ''] as const;
+        }
+      }));
+
+    setRetreatHeroUrls(Object.fromEntries(entries.filter(([, url]) => Boolean(url))));
+  };
+
   const getRetreatOptions = () => {
     const options = new Map<string, any>();
     bookings.forEach((booking) => {
@@ -459,8 +501,11 @@ const ClientDetailsPage: React.FC = () => {
       setClient(clientResponse.data);
       setPayments(paymentsResponse.data || []);
       setPaymentRequests(paymentRequestsResponse.data || []);
-      setBookings(bookingsResponse.data || []);
-      setRetreats(retreatsResponse.data || []);
+      const bookingData = bookingsResponse.data || [];
+      const retreatData = retreatsResponse.data || [];
+      setBookings(bookingData);
+      setRetreats(retreatData);
+      await loadRetreatHeroUrls(bookingData, retreatData);
       setMedicalInfo(medicalResponse.data);
     } catch (error: any) {
       console.error('Error fetching client data:', error);
@@ -1532,12 +1577,23 @@ const ClientDetailsPage: React.FC = () => {
             <h2 className="text-lg font-semibold mb-4">Client Bookings</h2>
             {bookings.length > 0 ? (
               <div className="space-y-4">
-                {bookings.map((booking: any) => (
-                  <div key={booking._id} className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                    <div className="flex justify-between items-start">
+                {bookings.map((booking: any) => {
+                  const bookingRetreat = getBookingRetreat(booking);
+                  const bookingRetreatId = getId(bookingRetreat || booking.retreatId);
+                  const heroUrl = retreatHeroUrls[bookingRetreatId];
+                  const isPast = isRetreatPast(bookingRetreat);
+                  const retreatCode = bookingRetreat?.code || bookingRetreat?.retreatCode || bookingRetreat?.name || booking.retreat?.name || 'Retreat';
+
+                  return (
+                  <div
+                    key={booking._id}
+                    className={`client-booking-hero-card ${isPast ? 'client-booking-hero-card-past' : ''}`}
+                    style={heroUrl ? { backgroundImage: `linear-gradient(90deg, rgba(15,23,42,0.78), rgba(15,23,42,0.38)), url(${heroUrl})` } : undefined}
+                  >
+                    <div className="flex justify-between items-start gap-4">
                       <div className="flex-1">
                         <div className="flex items-center space-x-3 mb-2">
-                          <h3 className="font-semibold text-gray-900">{booking.retreat?.name || 'Retreat'}</h3>
+                          <h3 className="font-semibold text-white">{retreatCode}</h3>
                           <span className={`px-2 py-1 text-xs font-medium rounded-full ${
                             booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
                             booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
@@ -1547,13 +1603,13 @@ const ClientDetailsPage: React.FC = () => {
                             {booking.status?.charAt(0).toUpperCase() + booking.status?.slice(1) || 'Unknown'}
                           </span>
                         </div>
-                        <div className="text-sm text-gray-600 space-y-1">
-                          {booking.retreat?.startDate && (
+                        <div className="text-sm text-white/85 space-y-1">
+                          {bookingRetreat?.startDate && (
                             <div className="flex items-center">
                               <Icon icon={FiCalendar} className="w-4 h-4 mr-2" />
                               <span>
-                                {new Date(booking.retreat.startDate).toLocaleDateString()} - {' '}
-                                {booking.retreat.endDate ? new Date(booking.retreat.endDate).toLocaleDateString() : 'TBD'}
+                                {new Date(bookingRetreat.startDate).toLocaleDateString()} - {' '}
+                                {bookingRetreat.endDate ? new Date(bookingRetreat.endDate).toLocaleDateString() : 'TBD'}
                               </span>
                             </div>
                           )}
@@ -1568,7 +1624,7 @@ const ClientDetailsPage: React.FC = () => {
                             <span>Booking ID: {booking._id.slice(-8)}</span>
                           </div>
                           {booking.bookingDate && (
-                            <div className="text-xs text-gray-500 mt-1">
+                            <div className="text-xs text-white/70 mt-1">
                               Booked: {new Date(booking.bookingDate).toLocaleDateString()}
                             </div>
                           )}
@@ -1586,7 +1642,8 @@ const ClientDetailsPage: React.FC = () => {
                       </AppleButton>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-12">

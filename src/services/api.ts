@@ -64,6 +64,15 @@ export const retreatsApi = {
     cacheService.clearPattern('retreats:');
     return api.patch<Retreat>(`/retreats/${id}`, data);
   },
+  uploadHeroImage: (id: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    cacheService.clearPattern('retreats:');
+    return api.post<{ retreat: Retreat; heroImageUrl: string }>(`/retreats/${id}/hero-image`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  getHeroImageUrl: (id: string) => api.get<{ heroImageUrl: string | null }>(`/retreats/${id}/hero-image-url`),
   delete: (id: string) => {
     cacheService.clearPattern('retreats:');
     return api.delete(`/retreats/${id}`);

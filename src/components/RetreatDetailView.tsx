@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { retreatsApi, bookingsApi, retreatExpensesApi, paymentsApi, clientsApi, housesApi } from '../services/api';
 import { Retreat, ExpenseSummary, House, Payment } from '../types';
@@ -110,6 +110,64 @@ const formatUSD = (amount: number) => {
   });
 };
 
+const cropImageToHeroBanner = (file: File, width = 1200, height = 250): Promise<File> => {
+  return new Promise((resolve, reject) => {
+    if (!file.type.startsWith('image/')) {
+      reject(new Error('Please choose an image file.'));
+      return;
+    }
+
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    image.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const context = canvas.getContext('2d');
+        if (!context) throw new Error('Image editor is not available in this browser.');
+
+        const sourceRatio = image.naturalWidth / image.naturalHeight;
+        const targetRatio = width / height;
+        let sourceWidth = image.naturalWidth;
+        let sourceHeight = image.naturalHeight;
+        let sourceX = 0;
+        let sourceY = 0;
+
+        if (sourceRatio > targetRatio) {
+          sourceWidth = image.naturalHeight * targetRatio;
+          sourceX = (image.naturalWidth - sourceWidth) / 2;
+        } else {
+          sourceHeight = image.naturalWidth / targetRatio;
+          sourceY = (image.naturalHeight - sourceHeight) / 2;
+        }
+
+        context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height);
+        canvas.toBlob((blob) => {
+          URL.revokeObjectURL(objectUrl);
+          if (!blob) {
+            reject(new Error('Could not prepare retreat hero image.'));
+            return;
+          }
+          const baseName = file.name.replace(/\.[^/.]+$/, '').trim() || 'retreat-hero';
+          resolve(new File([blob], `${baseName}-hero.jpg`, { type: 'image/jpeg' }));
+        }, 'image/jpeg', 0.9);
+      } catch (error) {
+        URL.revokeObjectURL(objectUrl);
+        reject(error);
+      }
+    };
+
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('Could not read this image file.'));
+    };
+
+    image.src = objectUrl;
+  });
+};
+
 const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack, initialTab = 'clients', onTabChange }) => {
   const location = useLocation();
   const [retreat, setRetreat] = useState<Retreat | null>(null);
@@ -124,6 +182,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [showExistingClientModal, setShowExistingClientModal] = useState(false);
   const [metricsCollapsed, setMetricsCollapsed] = useState(true);
   const [showRetreatEditModal, setShowRetreatEditModal] = useState(false);
+  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
+  const [heroImageUploading, setHeroImageUploading] = useState(false);
   const [houses, setHouses] = useState<House[]>([]);
   const [retreatFormData, setRetreatFormData] = useState<Partial<Retreat>>({});
   const [sortField, setSortField] = useState<'bookingNumber' | 'clientName' | null>(null);
@@ -142,6 +202,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [quickBookingForm] = Form.useForm();
   const [quickBookingLoading, setQuickBookingLoading] = useState(false);
   const [existingClientBookingLoading, setExistingClientBookingLoading] = useState(false);
+  const heroImageInputRef = useRef<HTMLInputElement | null>(null);
   const firstRouteSegment = location.pathname.split('/').filter(Boolean)[0];
   const routePrefix = ['admin', 'medical', 'staff', 'user', 'helper'].includes(firstRouteSegment) ? firstRouteSegment : 'admin';
 
@@ -162,6 +223,20 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     return formatDateUTC(new Date(date));
   };
 
+  const loadHeroImageUrl = async (targetRetreat: Retreat) => {
+    if (!targetRetreat?._id || !targetRetreat.heroImageS3Key) {
+      setHeroImageUrl(null);
+      return;
+    }
+
+    try {
+      const response = await retreatsApi.getHeroImageUrl(targetRetreat._id);
+      setHeroImageUrl(response.data.heroImageUrl || null);
+    } catch (error) {
+      console.error('Error loading retreat hero image:', error);
+      setHeroImageUrl(null);
+    }
+  };
 
   const fetchRetreatData = useCallback(async () => {
     try {
@@ -174,6 +249,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       ]);
 
       setRetreat(retreatResponse.data);
+      await loadHeroImageUrl(retreatResponse.data);
       setExpensesSummary(expensesSummaryResponse.data);
 
       const payments = paymentsResponse.data || [];
@@ -448,6 +524,26 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     }
   };
 
+  const handleHeroImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!retreat?._id || !file) return;
+
+    try {
+      setHeroImageUploading(true);
+      const croppedFile = await cropImageToHeroBanner(file);
+      const response = await retreatsApi.uploadHeroImage(retreat._id, croppedFile);
+      setRetreat(response.data.retreat);
+      setHeroImageUrl(response.data.heroImageUrl);
+      message.success('Retreat hero image uploaded.');
+    } catch (error: any) {
+      console.error('Error uploading retreat hero image:', error);
+      message.error(error?.response?.data?.message || error?.message || 'Failed to upload retreat hero image.');
+    } finally {
+      setHeroImageUploading(false);
+    }
+  };
+
   const countryOptions = [
     'USA', 'Canada', 'UK', 'Germany', 'France', 'Spain', 'Italy',
     'Poland', 'Czech Republic', 'Netherlands', 'Belgium', 'Switzerland', 'Austria', 'Other'
@@ -522,6 +618,11 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const profitUSD = totalRevenueUSD - totalExpensesUSD;
   const expectedProfitUSD = totalExpectedUSD - totalExpensesUSD;
   const occupancyRate = retreat.capacity ? Math.round((clients.length / retreat.capacity) * 100) : 0;
+  const retreatCode = retreat.code || retreat.retreatCode || retreat.name || 'Retreat';
+  const retreatPlace = retreat.location_town || retreat.locationTown || retreat.location || 'Location TBD';
+  const retreatCapacity = Number(retreat.capacity || 0);
+  const availableSpaces = retreatCapacity ? Math.max(retreatCapacity - clients.length, 0) : 0;
+  const retreatDateText = `${formatDate(retreat.startDate || '')} - ${formatDate(retreat.endDate || '')}`;
 
   // If viewing a specific client, show the client detail view
   if (viewingClientId) {
@@ -538,6 +639,21 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       <div className="retreat-detail-header">
         <div className="retreat-detail-actions">
           <button onClick={onBack} className="back-btn">← Back to Retreats</button>
+          <input
+            ref={heroImageInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleHeroImageSelect}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => heroImageInputRef.current?.click()}
+            className="edit-retreat-btn"
+            disabled={heroImageUploading}
+          >
+            {heroImageUploading ? 'Uploading image...' : 'Upload Hero Image'}
+          </button>
           <button onClick={async () => {
             // Fetch houses when edit modal is opened
             if (houses.length === 0) {
@@ -563,51 +679,39 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             Edit Retreat
           </button>
         </div>
-        <div className="retreat-info">
-          <h1 style={{ fontSize: '2rem', marginBottom: '1rem' }}>
-            <span
-              className="retreat-name-badge"
-              style={{
-                backgroundColor: retreat.backgroundColor || 'transparent',
-                color: retreat.textColor || (retreat.backgroundColor ? '#111827' : 'inherit'),
-                padding: retreat.backgroundColor ? '8px 16px' : '0'
-              }}
-            >
-              {retreat.name}
-            </span>
-          </h1>
-          <div className="retreat-meta" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
-              <div className="meta-item" style={{ fontWeight: '600' }}>
-                {retreat.code || retreat.retreatCode || 'No Code'}
-              </div>
-              <div className="meta-item">
-                <strong>Town:</strong> {retreat.location_town || retreat.locationTown || retreat.location || 'N/A'}
-              </div>
+        <div
+          className="retreat-hero-banner"
+          style={{
+            backgroundImage: heroImageUrl
+              ? `linear-gradient(90deg, rgba(15,23,42,0.55), rgba(15,23,42,0.18)), url(${heroImageUrl})`
+              : 'linear-gradient(135deg, #1f2937 0%, #475569 100%)',
+          }}
+        >
+          <div className="retreat-hero-content">
+            <div className="retreat-code-cutout">
+              <span
+                style={heroImageUrl ? {
+                  backgroundImage: `url(${heroImageUrl})`,
+                  backgroundSize: 'cover',
+                  backgroundPosition: 'center',
+                  WebkitBackgroundClip: 'text',
+                  backgroundClip: 'text',
+                  color: 'transparent',
+                } : undefined}
+              >
+                {retreatCode}
+              </span>
             </div>
-            <div className="meta-item">
-              <strong>Address:</strong> {retreat.location || 'Default Location'}
+            <div className="retreat-hero-primary">
+              <span>{retreatPlace}</span>
+              {retreatCapacity > 0 && <span>{availableSpaces}/{retreatCapacity}</span>}
             </div>
-            <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
-              <div className="meta-item">
-                <strong>Capacity:</strong> {retreat.capacity || 'N/A'}
-              </div>
-              <div className="meta-item">
-                <strong>Status:</strong> <span className={`status-badge status-${retreat.status}`} style={{ textTransform: 'uppercase' }}>{retreat.status}</span>
-              </div>
+            <div className="retreat-hero-secondary">
+              <span>{retreatDateText}</span>
+              <span className={`status-badge status-${retreat.status}`} style={{ textTransform: 'uppercase' }}>
+                {retreat.status || 'upcoming'}
+              </span>
             </div>
-            <div className="meta-item">
-              <strong>Dates:</strong> {(() => {
-                const startDate = new Date(retreat.startDate!);
-                const endDate = new Date(retreat.endDate!);
-                return `${formatDateUTC(startDate)} - ${formatDateUTC(endDate)}`;
-              })()}
-            </div>
-            {retreat.description && (
-              <div className="meta-item">
-                <strong>Description:</strong> {retreat.description}
-              </div>
-            )}
           </div>
         </div>
       </div>
