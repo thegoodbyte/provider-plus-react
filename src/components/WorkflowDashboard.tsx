@@ -32,6 +32,7 @@ import {
   MedicalArtifact,
   MedicalReviewRequest,
 } from '../types';
+import { formatCalendarDate, parseCalendarDate } from '../utils/dateFormat';
 import './WorkflowDashboard.css';
 
 const DEFAULT_MESSAGE_TEMPLATE = [
@@ -100,15 +101,13 @@ const getId = (value: any): string | undefined => {
 
 const formatDate = (value?: string | Date) => {
   if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleDateString();
+  return formatCalendarDate(value);
 };
 
 const formatRelativeDate = (date?: string | Date) => {
   if (!date) return '—';
-  const d = new Date(date);
-  if (Number.isNaN(d.getTime())) return '—';
+  const d = parseCalendarDate(date);
+  if (!d) return '—';
   const diffDays = Math.round((d.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
   if (diffDays === 0) return 'Today';
   if (diffDays === 1) return 'Tomorrow';

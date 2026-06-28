@@ -4,6 +4,7 @@ import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 import { clientsApi, paymentRequestsApi, paymentsApi, retreatsApi } from '../services/api';
 import { FiSave, FiArrowLeft } from 'react-icons/fi';
+import { toDateInputValue, todayDateInputValue } from '../utils/dateFormat';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
@@ -16,7 +17,7 @@ interface PaymentRequestFormProps {
   isEdit?: boolean;
 }
 
-const defaultDate = () => new Date().toISOString().split('T')[0];
+const defaultDate = () => todayDateInputValue();
 const resolveId = (value: any) => (typeof value === 'object' && value?._id ? value._id : value || '');
 
 const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
@@ -40,7 +41,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     invoiceNumber: paymentRequest?.invoiceNumber || paymentRequest?.display_id?.toString() || '',
     clientId: resolveId(paymentRequest?.clientId),
     retreatId: resolveId(paymentRequest?.retreatId),
-    paymentDate: paymentRequest?.paymentDate ? new Date(paymentRequest.paymentDate).toISOString().split('T')[0] : defaultDate(),
+    paymentDate: paymentRequest?.paymentDate ? toDateInputValue(paymentRequest.paymentDate) : defaultDate(),
     paymentType: paymentRequest?.paymentType || 'Other',
     requestType: paymentRequest?.requestType || 'full_payment',
     fullPriceQuote: paymentRequest?.fullPriceQuote?.toString() || '',
@@ -48,8 +49,8 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     currency: paymentRequest?.currency || 'EUR',
     note: paymentRequest?.note || paymentRequest?.notes || '',
     status: paymentRequest?.status || 'pending',
-    dueDate: paymentRequest?.dueDate ? new Date(paymentRequest.dueDate).toISOString().split('T')[0] : '',
-    paidDate: paymentRequest?.paidDate ? new Date(paymentRequest.paidDate).toISOString().split('T')[0] : '',
+    dueDate: paymentRequest?.dueDate ? toDateInputValue(paymentRequest.dueDate) : '',
+    paidDate: paymentRequest?.paidDate ? toDateInputValue(paymentRequest.paidDate) : '',
     isUrgent: paymentRequest?.isUrgent || false,
     paymentInstructions: paymentRequest?.paymentInstructions || '',
     createdBy: paymentRequest?.createdBy || '',

@@ -7,6 +7,7 @@ import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
 import { PaymentRequest } from '../types';
 import { FiArrowLeft, FiCamera, FiEdit2, FiTrash2, FiUser, FiMapPin, FiCalendar, FiDollarSign, FiActivity, FiFileText, FiAlertCircle, FiPlus, FiMessageSquare, FiCheckSquare, FiHeart, FiEye, FiEyeOff } from 'react-icons/fi';
 import MedicalRecordsManager from './MedicalRecordsManager';
+import { formatCalendarDate, toDateInputValue } from '../utils/dateFormat';
 import './ClientsGrid.css';
 
 // Simple wrapper to fix TypeScript icon issues
@@ -351,7 +352,7 @@ const ClientDetailsPage: React.FC = () => {
   const openEditPaymentModal = (payment: any) => {
     setEditingPayment(payment);
     setNewPayment({
-      date: payment.paymentDate ? new Date(payment.paymentDate).toISOString().slice(0, 10) : '',
+      date: toDateInputValue(payment.paymentDate),
       type: getPaymentTypeFormValue(payment.paymentType || payment.type),
       amount: payment.amount ? String(payment.amount) : '',
       currency: payment.currency || 'EUR',
@@ -427,7 +428,7 @@ const ClientDetailsPage: React.FC = () => {
         paymentMethod: 'other',
         paymentType: (paymentTypeMap[newPayment.type] || 'regular_payment') as any,
         description: newPayment.note || undefined,
-        paymentDate: new Date(newPayment.date),
+        paymentDate: newPayment.date,
         notes: newPayment.note || undefined,
       } as any;
 
@@ -516,7 +517,7 @@ const ClientDetailsPage: React.FC = () => {
 
   const formatDate = (date: Date | string | undefined) => {
     if (!date) return 'N/A';
-    return new Date(date).toLocaleDateString();
+    return formatCalendarDate(date);
   };
 
   const getStatusBadge = (status: string) => {
@@ -1607,8 +1608,8 @@ const ClientDetailsPage: React.FC = () => {
                             <div className="flex items-center">
                               <Icon icon={FiCalendar} className="w-4 h-4 mr-2" />
                               <span>
-                                {new Date(bookingRetreat.startDate).toLocaleDateString()} - {' '}
-                                {bookingRetreat.endDate ? new Date(bookingRetreat.endDate).toLocaleDateString() : 'TBD'}
+                                {formatDate(bookingRetreat.startDate)} - {' '}
+                                {bookingRetreat.endDate ? formatDate(bookingRetreat.endDate) : 'TBD'}
                               </span>
                             </div>
                           )}
@@ -1624,7 +1625,7 @@ const ClientDetailsPage: React.FC = () => {
                           </div>
                           {booking.bookingDate && (
                             <div className="text-xs text-white/70 mt-1">
-                              Booked: {new Date(booking.bookingDate).toLocaleDateString()}
+                              Booked: {formatDate(booking.bookingDate)}
                             </div>
                           )}
                         </div>

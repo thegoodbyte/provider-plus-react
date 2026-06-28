@@ -4,6 +4,7 @@ import PaymentRequestForm from './PaymentRequestForm';
 import LoadingSpinner from './LoadingSpinner';
 import { paymentRequestsApi } from '../services/api';
 import { PaymentRequest } from '../types';
+import { formatCalendarDate } from '../utils/dateFormat';
 
 const resolveClientName = (value: any) => {
   if (!value) return 'Unknown client';
@@ -27,9 +28,7 @@ const formatAmount = (value: any, currency?: string) => {
 
 const formatDate = (value: any) => {
   if (!value) return '-';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '-';
-  return date.toLocaleDateString();
+  return formatCalendarDate(value);
 };
 
 const buildPaymentRequestFromSearch = (search: string): Partial<PaymentRequest> => {

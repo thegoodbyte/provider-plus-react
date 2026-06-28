@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { paymentsApi } from '../services/api';
 import { Payment, PaymentSummary } from '../types';
 import { FiEdit2, FiTrash2, FiRefreshCw } from 'react-icons/fi';
+import { formatCalendarDate, toDateInputValue, todayDateInputValue } from '../utils/dateFormat';
 import './ClientsGrid.css';
 
 // Simple wrapper to fix TypeScript icon issues
@@ -46,7 +47,7 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
     paymentMethod: 'bank_transfer' as 'bank_transfer' | 'card' | 'cash' | 'paypal' | 'crypto' | 'stripe' | 'wise' | 'revolut' | 'other',
     description: '',
     transactionId: '',
-    paymentDate: new Date().toISOString().split('T')[0],
+    paymentDate: todayDateInputValue(),
     notes: '',
     isDeposit: false,
     isFinalPayment: false
@@ -131,7 +132,7 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
       paymentMethod: payment.paymentMethod as 'bank_transfer' | 'card' | 'cash' | 'paypal' | 'crypto' | 'stripe' | 'wise' | 'revolut' | 'other',
       description: payment.description || '',
       transactionId: payment.transactionId || '',
-      paymentDate: new Date(payment.paymentDate).toISOString().split('T')[0],
+      paymentDate: toDateInputValue(payment.paymentDate),
       notes: payment.notes || '',
       isDeposit: payment.isDeposit,
       isFinalPayment: payment.isFinalPayment,
@@ -163,7 +164,7 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
         ...formData,
         retreatId,
         usd_amount: usdPreview ?? undefined,
-        paymentDate: new Date(formData.paymentDate),
+        paymentDate: formData.paymentDate,
         paymentType: 'regular_payment' as const,
         isRefundable: true
       };
@@ -184,7 +185,7 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
         paymentMethod: 'bank_transfer' as 'bank_transfer' | 'card' | 'cash' | 'paypal' | 'crypto' | 'stripe' | 'wise' | 'revolut' | 'other',
         description: '',
         transactionId: '',
-        paymentDate: new Date().toISOString().split('T')[0],
+        paymentDate: todayDateInputValue(),
         notes: '',
         isDeposit: false,
         isFinalPayment: false
@@ -526,7 +527,7 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
                       {payment.transactionId || '-'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : 'N/A'}
+                      {formatCalendarDate(payment.paymentDate)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex items-center gap-2">

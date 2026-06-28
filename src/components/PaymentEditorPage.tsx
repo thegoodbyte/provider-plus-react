@@ -7,6 +7,7 @@ import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
 import { FiArrowLeft, FiSave } from 'react-icons/fi';
+import { toDateInputValue, todayDateInputValue } from '../utils/dateFormat';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
@@ -14,7 +15,7 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
 
 const resolveId = (value: any) => (typeof value === 'object' && value?._id ? value._id : value || '');
 
-const defaultDate = () => new Date().toISOString().split('T')[0];
+const defaultDate = () => todayDateInputValue();
 
 const getPaymentRequestAmount = (paymentRequest?: PaymentRequest | null) => {
   if (!paymentRequest) return '';
@@ -133,7 +134,7 @@ const PaymentEditorPage: React.FC = () => {
             paymentMethod: payment.paymentMethod,
             description: payment.description || '',
             transactionId: payment.transactionId || '',
-            paymentDate: payment.paymentDate ? new Date(payment.paymentDate).toISOString().split('T')[0] : defaultDate(),
+            paymentDate: payment.paymentDate ? toDateInputValue(payment.paymentDate) : defaultDate(),
             notes: payment.notes || '',
             isDeposit: payment.isDeposit || false,
             isFinalPayment: payment.isFinalPayment || false,
@@ -250,7 +251,7 @@ const PaymentEditorPage: React.FC = () => {
       isDeposit: requestPaymentType === 'deposit_non_refundable' || requestPaymentType === 'deposit_refundable',
       isFinalPayment: requestPaymentType === 'balance_payment' || paymentRequest.requestType === 'full_payment',
       status: paymentRequest.status === 'paid' ? 'completed' : prev.status === 'pending' ? 'completed' : prev.status,
-      paymentDate: paymentRequest.paidDate ? new Date(paymentRequest.paidDate).toISOString().split('T')[0] : prev.paymentDate,
+      paymentDate: paymentRequest.paidDate ? toDateInputValue(paymentRequest.paidDate) : prev.paymentDate,
       description: `Payment for invoice ${paymentRequest.invoiceNumber || paymentRequest.display_id || ''}`.trim(),
       notes: prev.notes || paymentRequest.note || paymentRequest.notes || '',
     }));
@@ -315,7 +316,7 @@ const PaymentEditorPage: React.FC = () => {
       paymentMethod: formData.paymentMethod,
       description: formData.description || undefined,
       transactionId: formData.transactionId || undefined,
-      paymentDate: new Date(formData.paymentDate),
+      paymentDate: formData.paymentDate,
       notes: formData.notes || undefined,
       isDeposit: formData.isDeposit,
       isFinalPayment: formData.isFinalPayment,

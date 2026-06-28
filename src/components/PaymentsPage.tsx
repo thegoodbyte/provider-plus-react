@@ -5,6 +5,7 @@ import { paymentsApi, clientsApi, retreatsApi, bookingsApi } from '../services/a
 import { Payment, Client, Retreat, RetreatClient } from '../types';
 import CurrencyDisplay from './CurrencyDisplay';
 import LoadingSpinner from './LoadingSpinner';
+import { formatCalendarDate, parseCalendarDate } from '../utils/dateFormat';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
@@ -133,7 +134,7 @@ const PaymentsPage: React.FC = () => {
       case 'display':
         return Number(payment.display_id || 0);
       case 'date':
-        return payment.paymentDate ? new Date(payment.paymentDate).getTime() : 0;
+        return parseCalendarDate(payment.paymentDate)?.getTime() || 0;
       case 'client':
         return `${payment.clientDisplayId || ''} ${payment.clientName || ''}`.toLowerCase();
       case 'retreat':
@@ -249,7 +250,7 @@ const PaymentsPage: React.FC = () => {
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {new Date(payment.paymentDate).toLocaleDateString()}
+                    {formatCalendarDate(payment.paymentDate)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <span className="font-semibold text-blue-600 mr-2">

@@ -5,6 +5,7 @@ import { API_BASE_URL } from '../config/api.config';
 import LoadingSpinner from './LoadingSpinner';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiCheckCircle, FiClock, FiAlertTriangle, FiSend, FiCopy, FiExternalLink, FiDollarSign, FiChevronDown } from 'react-icons/fi';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
+import { formatCalendarDate, parseCalendarDate } from '../utils/dateFormat';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
@@ -178,7 +179,7 @@ const PaymentRequestsGrid: React.FC = () => {
       case 'retreat':
         return retreat.toLowerCase();
       case 'date':
-        return request.paymentDate ? new Date(request.paymentDate).getTime() : 0;
+        return parseCalendarDate(request.paymentDate)?.getTime() || 0;
       case 'publicHash':
         return String(request.publicHash || '').toLowerCase();
       case 'quote':
@@ -304,7 +305,7 @@ const PaymentRequestsGrid: React.FC = () => {
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{retreat}</td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {request.paymentDate ? new Date(request.paymentDate).toLocaleDateString() : 'N/A'}
+                      {formatCalendarDate(request.paymentDate)}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       {request.publicHash ? (

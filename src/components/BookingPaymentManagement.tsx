@@ -4,6 +4,7 @@ import { Payment, PaymentRequest } from '../types';
 import { paymentsApi } from '../services/api';
 import CurrencyDisplay from './CurrencyDisplay';
 import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
+import { formatCalendarDate, todayDateInputValue } from '../utils/dateFormat';
 import './BookingPaymentManagement.css';
 
 interface BookingPaymentManagementProps {
@@ -50,7 +51,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
     description: '',
     transactionReference: '',
     notes: '',
-    paymentDate: new Date().toISOString().split('T')[0]
+    paymentDate: todayDateInputValue()
   });
 
   const paymentMethods = [
@@ -275,7 +276,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
         description: '',
         transactionReference: '',
         notes: '',
-        paymentDate: new Date().toISOString().split('T')[0]
+        paymentDate: todayDateInputValue()
       });
 
       setShowAddPayment(false);
@@ -395,7 +396,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   };
 
   const formatExistingPaymentLabel = (payment: Payment) => {
-    const date = payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString() : 'No date';
+    const date = payment.paymentDate ? formatCalendarDate(payment.paymentDate) : 'No date';
     const displayId = payment.display_id ? `#${payment.display_id}` : payment._id?.slice(-8) || 'Payment';
     return `${displayId} - ${date} - ${payment.amount?.toLocaleString?.() || payment.amount} ${payment.currency} - ${payment.status}`;
   };
@@ -694,7 +695,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
                       title={`USD equivalent: ${usdAmount}`}
                     >
                       <td>{payment.display_id ? `#${payment.display_id}` : '-'}</td>
-                      <td>{new Date(payment.paymentDate).toLocaleDateString()}</td>
+                      <td>{formatCalendarDate(payment.paymentDate)}</td>
                       <td className="amount-cell">
                         <CurrencyDisplay amount={payment.amount} currency={payment.currency} />
                         {payment.refundedAmount && payment.refundedAmount > 0 && (
