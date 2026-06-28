@@ -2567,10 +2567,10 @@
 .retreat-hero-content {
   width: 100%;
   min-height: 250px;
-  padding: 24px;
+  padding: 36px 24px 24px;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 12px;
 }
 
@@ -2642,7 +2642,7 @@
 
 @media (max-width: 768px) {
   .retreat-hero-content {
-    padding: 18px;
+    padding: 28px 18px 18px;
   }
 
   .retreat-code-cutout span {

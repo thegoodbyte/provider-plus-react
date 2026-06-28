@@ -630,7 +630,7 @@ const RetreatsGrid: React.FC = () => {
                   House
                 </label>
                 <select
-                  value={formData.houseId || ''}
+                  value={getObjectId(formData.houseId)}
                   onChange={(e) => handleHouseSelection(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
@@ -761,7 +761,7 @@ const RetreatsGrid: React.FC = () => {
                       retreatCode: formData.code?.trim() || formData.retreatCode?.trim() || undefined,
                       location_town: getRetreatTown(formData),
                       location: getRetreatTown(formData),
-                      houseId: formData.houseId,
+                      houseId: getObjectId(formData.houseId) || undefined,
                       status: formData.status || 'upcoming' as 'upcoming' | 'active' | 'completed' | 'cancelled',
                       capacity: formData.capacity ?? 20,
                       currentOccupancy: formData.currentOccupancy || 0,
@@ -843,7 +843,7 @@ const RetreatsGrid: React.FC = () => {
                   House
                 </label>
                 <select
-                  value={formData.houseId || ''}
+                  value={getObjectId(formData.houseId)}
                   onChange={(e) => handleHouseSelection(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
@@ -987,6 +987,7 @@ const RetreatsGrid: React.FC = () => {
                         retreatCode: formData.code?.trim() || formData.retreatCode?.trim() || undefined,
                         location_town: getRetreatTown(formData),
                         location: getRetreatTown(formData),
+                        houseId: getObjectId(formData.houseId) || undefined,
                       };
                       await retreatsApi.update(editingRetreat._id, updateData);
                       fetchRetreats();

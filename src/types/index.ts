@@ -13,7 +13,7 @@ export interface Retreat {
   capacity?: number;
   currentOccupancy?: number;
   description?: string;
-  houseId?: string;
+  houseId?: string | House;
   helpers?: string;
   status?: 'active' | 'completed' | 'cancelled' | 'upcoming';
   type?: 'regular' | 'booster';

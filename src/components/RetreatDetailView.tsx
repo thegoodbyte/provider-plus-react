@@ -110,6 +110,11 @@ const formatUSD = (amount: number) => {
   });
 };
 
+const getHouseIdValue = (houseId?: string | House) => {
+  if (!houseId) return '';
+  return typeof houseId === 'string' ? houseId : houseId._id || '';
+};
+
 const cropImageToHeroBanner = (file: File, width = 1200, height = 250): Promise<File> => {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith('image/')) {
@@ -420,7 +425,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       }
       if (retreatFormData.helpers?.trim()) cleanData.helpers = retreatFormData.helpers.trim();
       if (retreatFormData.description?.trim()) cleanData.description = retreatFormData.description.trim();
-      if (retreatFormData.houseId?.trim()) cleanData.houseId = retreatFormData.houseId.trim();
+      const houseId = getHouseIdValue(retreatFormData.houseId).trim();
+      if (houseId) cleanData.houseId = houseId;
       if (retreatFormData.status) cleanData.status = retreatFormData.status;
       if (retreatFormData.type) cleanData.type = retreatFormData.type;
       if (retreatFormData.backgroundColor !== undefined) cleanData.backgroundColor = retreatFormData.backgroundColor;
@@ -619,7 +625,15 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const expectedProfitUSD = totalExpectedUSD - totalExpensesUSD;
   const occupancyRate = retreat.capacity ? Math.round((clients.length / retreat.capacity) * 100) : 0;
   const retreatCode = retreat.code || retreat.retreatCode || retreat.name || 'Retreat';
-  const retreatPlace = retreat.location_town || retreat.locationTown || retreat.location || 'Location TBD';
+  const retreatCodeColor = retreat.backgroundColor || retreat.textColor || '#111827';
+  const retreatHouse = retreat.houseId && typeof retreat.houseId === 'object' ? retreat.houseId : null;
+  const retreatPlace = retreatHouse?.generalTown
+    || retreatHouse?.general_town
+    || retreatHouse?.city
+    || retreat.location_town
+    || retreat.locationTown
+    || retreat.location
+    || 'Location TBD';
   const retreatCapacity = Number(retreat.capacity || 0);
   const availableSpaces = retreatCapacity ? Math.max(retreatCapacity - clients.length, 0) : 0;
   const retreatDateText = `${formatDate(retreat.startDate || '')} - ${formatDate(retreat.endDate || '')}`;
@@ -683,21 +697,14 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           className="retreat-hero-banner"
           style={{
             backgroundImage: heroImageUrl
-              ? `linear-gradient(90deg, rgba(15,23,42,0.55), rgba(15,23,42,0.18)), url(${heroImageUrl})`
+              ? `linear-gradient(rgba(255,255,255,0.25), rgba(255,255,255,0.25)), url(${heroImageUrl})`
               : 'linear-gradient(135deg, #1f2937 0%, #475569 100%)',
           }}
         >
           <div className="retreat-hero-content">
             <div className="retreat-code-cutout">
               <span
-                style={heroImageUrl ? {
-                  backgroundImage: `url(${heroImageUrl})`,
-                  backgroundSize: 'cover',
-                  backgroundPosition: 'center',
-                  WebkitBackgroundClip: 'text',
-                  backgroundClip: 'text',
-                  color: 'transparent',
-                } : undefined}
+                style={{ color: retreatCodeColor }}
               >
                 {retreatCode}
               </span>
@@ -1410,7 +1417,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                 <select
                   id="retreat-houseId"
                   name="houseId"
-                  value={retreatFormData.houseId || ''}
+                  value={getHouseIdValue(retreatFormData.houseId)}
                   onChange={handleRetreatInputChange}
                 >
                   <option value="">Select a house</option>
