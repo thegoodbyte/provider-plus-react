@@ -141,12 +141,22 @@ export interface Client {
     iron?: boolean;
     probiotics?: boolean;
     multivitamin?: boolean;
+    kratom?: boolean;
     creatine?: boolean;
+    creatineFrequency?: string;
+    creatineGrams?: string;
     other?: boolean;
     details?: string;
     otherDetails?: string;
   };
   alcoholConsumption?: string;
+  alcoholSober?: boolean;
+  alcoholUse?: {
+    wine?: { selected?: boolean; frequency?: string; amount?: string };
+    beer?: { selected?: boolean; frequency?: string; amount?: string };
+    whiskey?: { selected?: boolean; frequency?: string; amount?: string };
+    vodka?: { selected?: boolean; frequency?: string; amount?: string };
+  };
   suicidalThoughts?: string;
   hospitalizations?: string;
   allergies?: string;
@@ -478,6 +488,7 @@ export interface ScreeningClient {
     ayahuasca?: boolean;
     marijuana?: boolean;
     psilocybin?: boolean;
+    rappe?: boolean;
     other?: boolean;
     otherDetails?: string;
   };
@@ -535,11 +546,20 @@ export interface ScreeningClient {
     multivitamin?: boolean;
     kratom?: boolean;
     creatine?: boolean;
+    creatineFrequency?: string;
+    creatineGrams?: string;
     other?: boolean;
     details?: string;
     otherDetails?: string;
   };
   alcoholConsumption?: string;
+  alcoholSober?: boolean;
+  alcoholUse?: {
+    wine?: { selected?: boolean; frequency?: string; amount?: string };
+    beer?: { selected?: boolean; frequency?: string; amount?: string };
+    whiskey?: { selected?: boolean; frequency?: string; amount?: string };
+    vodka?: { selected?: boolean; frequency?: string; amount?: string };
+  };
 
   // Safety Considerations
   suicidalThoughts?: string;

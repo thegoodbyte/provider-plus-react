@@ -649,6 +649,27 @@ const MedicalReviewRequestsPage: React.FC = () => {
     return flag === true || flag === 'true' || flag === 'yes' || flag === 'Yes' ? 'Yes' : '';
   };
 
+  const formatAlcoholUse = (screening: any) => {
+    const alcoholUse = getScreeningValue(screening, 'alcoholUse');
+    if (!alcoholUse || typeof alcoholUse !== 'object') return '';
+
+    const labels: Record<string, string> = {
+      wine: 'Wine',
+      beer: 'Beer',
+      whiskey: 'Whiskey',
+      vodka: 'Vodka',
+    };
+
+    return Object.entries(labels)
+      .filter(([key]) => Boolean(alcoholUse[key]?.selected))
+      .map(([key, label]) => {
+        const entry = alcoholUse[key] || {};
+        const details = [entry.frequency, entry.amount].filter(Boolean).join(', ');
+        return details ? `${label}: ${details}` : label;
+      })
+      .join('\n');
+  };
+
   const renderScreeningItems = (screening: any, items: Array<{ label: string; keys?: string[]; value?: any }>) => {
     const visibleItems = items
       .map((item) => ({
@@ -728,6 +749,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
           { label: 'SSRIs', keys: ['ssris'] },
           { label: 'Blood pressure', keys: ['bloodPressureIssues', 'bloodPressure'] },
           { label: 'Blood pressure details', value: [getScreeningValue(screening, 'bloodPressureStatus'), getScreeningValue(screening, 'bloodPressureValue')].filter(Boolean).join(' - ') },
+          { label: 'Sober', value: getScreeningValue(screening, 'alcoholSober') ? 'Yes' : '' },
+          { label: 'Alcohol use', value: formatAlcoholUse(screening) },
           { label: 'Alcohol history', keys: ['alcoholHistory', 'alcoholConsumption'] },
           { label: 'Health complications', keys: ['healthComplications'] },
           { label: 'Medical tests details', keys: ['medicalTestsDetails'] },
@@ -756,6 +779,10 @@ const MedicalReviewRequestsPage: React.FC = () => {
           { label: 'DMT', value: getScreeningBooleanDetails(screening, 'dmt', 'dmtDetails') },
           { label: 'Ketamine', value: getScreeningBooleanDetails(screening, 'ketamine', 'ketamineDetails') },
           { label: 'MDMA', value: getScreeningBooleanDetails(screening, 'mdma', 'mdmaDetails') },
+          { label: 'Sassafras', value: getScreeningBooleanDetails(screening, 'sassafras', 'sassafrasDetails') },
+          { label: 'Amanita mochomur', value: getScreeningBooleanDetails(screening, 'amanitaMochomur', 'amanitaMochomurDetails') },
+          { label: 'Rappe', value: getScreeningBooleanDetails(screening, 'rappe', 'rappeDetails') },
+          { label: 'Other plant medicine', value: getScreeningBooleanDetails(screening, 'otherPlantMedicine', 'otherPlantMedicineDetails') },
         ])}
 
         {fileUrl && (

@@ -526,6 +526,24 @@ const ClientDetailsPage: React.FC = () => {
   const formatScreeningValue = (value: any) => {
     if (!value || typeof value !== 'object') return value;
 
+    const alcoholLabels: Record<string, string> = {
+      wine: 'Wine',
+      beer: 'Beer',
+      whiskey: 'Whiskey',
+      vodka: 'Vodka',
+    };
+    const hasAlcoholEntries = Object.keys(alcoholLabels).some((key) => value[key]?.selected);
+    if (hasAlcoholEntries) {
+      return Object.entries(alcoholLabels)
+        .filter(([key]) => Boolean(value[key]?.selected))
+        .map(([key, label]) => {
+          const entry = value[key] || {};
+          const details = [entry.frequency, entry.amount].filter(Boolean).join(', ');
+          return details ? `${label}: ${details}` : label;
+        })
+        .join('\n');
+    }
+
     const labels: Record<string, string> = {
       vitaminD: 'Vitamin D',
       vitaminB12: 'Vitamin B12',
@@ -536,7 +554,10 @@ const ClientDetailsPage: React.FC = () => {
       iron: 'Iron',
       probiotics: 'Probiotics',
       multivitamin: 'Multivitamin',
+      kratom: 'Kratom',
       creatine: 'Creatine',
+      creatineFrequency: 'Creatine frequency',
+      creatineGrams: 'Creatine grams',
       ashwagandha: 'Ashwagandha',
       potassium: 'Potassium',
       other: 'Other',
@@ -709,6 +730,8 @@ const ClientDetailsPage: React.FC = () => {
     'heroinDetails',
     'benzos',
     'benzosDetails',
+    'alcoholSober',
+    'alcoholUse',
     'alcoholHistory',
     'healthComplications',
     'ayahuasca',
@@ -731,6 +754,14 @@ const ClientDetailsPage: React.FC = () => {
     'ketamineDetails',
     'mdma',
     'mdmaDetails',
+    'sassafras',
+    'sassafrasDetails',
+    'amanitaMochomur',
+    'amanitaMochomurDetails',
+    'rappe',
+    'rappeDetails',
+    'otherPlantMedicine',
+    'otherPlantMedicineDetails',
     'desiredRetreat',
     'quotedPrice',
     'screenedBy',
@@ -1169,6 +1200,8 @@ const ClientDetailsPage: React.FC = () => {
                 { label: 'SSRIs', value: getScreeningValue('ssris') },
                 { label: 'Blood Pressure', value: getScreeningValue('bloodPressureIssues', 'bloodPressure') },
                 { label: 'Blood Pressure Details', value: [getScreeningValue('bloodPressureStatus'), getScreeningValue('bloodPressureValue')].filter(Boolean).join(' - ') },
+                { label: 'Sober', value: getScreeningValue('alcoholSober') ? 'Yes' : '' },
+                { label: 'Alcohol Use', value: getScreeningValue('alcoholUse') },
                 { label: 'Alcohol History', value: getScreeningValue('alcoholHistory') },
                 { label: 'Health Complications', value: getScreeningValue('healthComplications') },
                 { label: 'EKG Requested', value: getScreeningValue('ekgRequested') ? 'Yes' : 'No' },
@@ -1197,6 +1230,10 @@ const ClientDetailsPage: React.FC = () => {
                 { label: 'DMT', value: getBooleanDetailValue('dmt', 'dmtDetails') },
                 { label: 'Ketamine', value: getBooleanDetailValue('ketamine', 'ketamineDetails') },
                 { label: 'MDMA', value: getBooleanDetailValue('mdma', 'mdmaDetails') },
+                { label: 'Sassafras', value: getBooleanDetailValue('sassafras', 'sassafrasDetails') },
+                { label: 'Amanita mochomur', value: getBooleanDetailValue('amanitaMochomur', 'amanitaMochomurDetails') },
+                { label: 'Rappe', value: getBooleanDetailValue('rappe', 'rappeDetails') },
+                { label: 'Other Plant Medicine', value: getBooleanDetailValue('otherPlantMedicine', 'otherPlantMedicineDetails') },
               ])}
 
               {screeningFileUrl && (

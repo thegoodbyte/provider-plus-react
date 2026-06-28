@@ -1,5 +1,5 @@
 import React, { useState, useEffect, ChangeEvent, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AppleButton from '../components/AppleButton';
 import { clientsApi, screeningApi } from '../services/api';
@@ -46,6 +46,13 @@ interface ScreeningData {
   heroinDetails: string;
   benzos: boolean;
   benzosDetails: string;
+  alcoholSober: boolean;
+  alcoholUse: {
+    wine: AlcoholUseEntry;
+    beer: AlcoholUseEntry;
+    whiskey: AlcoholUseEntry;
+    vodka: AlcoholUseEntry;
+  };
   alcoholHistory: string;
   healthComplications: string;
   bloodPressure: string;
@@ -64,7 +71,10 @@ interface ScreeningData {
     iron: boolean;
     probiotics: boolean;
     multivitamin: boolean;
+    kratom: boolean;
     creatine: boolean;
+    creatineFrequency: string;
+    creatineGrams: string;
     ashwagandha: boolean;
     potassium: boolean;
     other: boolean;
@@ -93,6 +103,12 @@ interface ScreeningData {
   mdmaDetails: string;
   sassafras: boolean;
   sassafrasDetails: string;
+  amanitaMochomur: boolean;
+  amanitaMochomurDetails: string;
+  rappe: boolean;
+  rappeDetails: string;
+  otherPlantMedicine: boolean;
+  otherPlantMedicineDetails: string;
   handwritingImageUrl: string;
   riskNotes: string;
   generalNotes: string;
@@ -100,6 +116,12 @@ interface ScreeningData {
   quotedPrice: string;
   screenedBy: string;
   status: string;
+}
+
+interface AlcoholUseEntry {
+  selected: boolean;
+  frequency: string;
+  amount: string;
 }
 
 const sectionStyles = {
@@ -198,6 +220,7 @@ const compressScreeningImage = (file: File, maxDimension = 1800, quality = 0.82)
 const ClientScreening: React.FC = () => {
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [, setClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
@@ -249,6 +272,13 @@ const ClientScreening: React.FC = () => {
     heroinDetails: '',
     benzos: false,
     benzosDetails: '',
+    alcoholSober: false,
+    alcoholUse: {
+      wine: { selected: false, frequency: '', amount: '' },
+      beer: { selected: false, frequency: '', amount: '' },
+      whiskey: { selected: false, frequency: '', amount: '' },
+      vodka: { selected: false, frequency: '', amount: '' },
+    },
     alcoholHistory: '',
     healthComplications: '',
     bloodPressure: '',
@@ -267,7 +297,10 @@ const ClientScreening: React.FC = () => {
       iron: false,
       probiotics: false,
       multivitamin: false,
+      kratom: false,
       creatine: false,
+      creatineFrequency: '',
+      creatineGrams: '',
       ashwagandha: false,
       potassium: false,
       other: false,
@@ -296,6 +329,12 @@ const ClientScreening: React.FC = () => {
     mdmaDetails: '',
     sassafras: false,
     sassafrasDetails: '',
+    amanitaMochomur: false,
+    amanitaMochomurDetails: '',
+    rappe: false,
+    rappeDetails: '',
+    otherPlantMedicine: false,
+    otherPlantMedicineDetails: '',
     handwritingImageUrl: '',
     riskNotes: '',
     generalNotes: '',
@@ -371,6 +410,9 @@ const ClientScreening: React.FC = () => {
         'ketamine',
         'mdma',
         'sassafras',
+        'amanitaMochomur',
+        'rappe',
+        'otherPlantMedicine',
       ];
       const hasPlantMedicineExperience = existingScreening.plantMedicineExperience === true
         || plantMedicineFields.some((field) => Boolean(existingScreening[field] || existingScreening[`${field}Details`]));
@@ -410,6 +452,13 @@ const ClientScreening: React.FC = () => {
         medications: existingValue('medications', 'currentMedications') ?? prev.medications,
         drugsHistory: existingValue('drugsHistory', 'recreationalDrugs', 'addictionHistory') ?? prev.drugsHistory,
         alcoholHistory: existingValue('alcoholHistory', 'alcoholConsumption') ?? prev.alcoholHistory,
+        alcoholSober: existingScreening.alcoholSober === true,
+        alcoholUse: {
+          ...prev.alcoholUse,
+          ...(typeof existingScreening.alcoholUse === 'object' && existingScreening.alcoholUse
+            ? existingScreening.alcoholUse
+            : {}),
+        },
         healthComplications: existingValue('healthComplications', 'otherMedicalComplications') ?? prev.healthComplications,
         bloodPressure: existingValue('bloodPressure', 'bloodPressureIssues') ?? prev.bloodPressure,
         bloodPressureStatus: existingValue('bloodPressureStatus') ?? prev.bloodPressureStatus,
@@ -477,6 +526,27 @@ const ClientScreening: React.FC = () => {
             mdmaDetails: '',
             sassafras: false,
             sassafrasDetails: '',
+            amanitaMochomur: false,
+            amanitaMochomurDetails: '',
+            rappe: false,
+            rappeDetails: '',
+            otherPlantMedicine: false,
+            otherPlantMedicineDetails: '',
+          } : {}),
+        }));
+        return;
+      }
+      if (name === 'alcoholSober') {
+        setFormData(prev => ({
+          ...prev,
+          alcoholSober: checked,
+          ...(checked ? {
+            alcoholUse: {
+              wine: { selected: false, frequency: '', amount: '' },
+              beer: { selected: false, frequency: '', amount: '' },
+              whiskey: { selected: false, frequency: '', amount: '' },
+              vodka: { selected: false, frequency: '', amount: '' },
+            },
           } : {}),
         }));
         return;
@@ -576,16 +646,22 @@ const ClientScreening: React.FC = () => {
   };
 
   const handleVitaminChange = (name: string, checked: boolean) => {
+    setHasChanges(true);
     setFormData(prev => ({
       ...prev,
       vitaminsSupplements: {
         ...prev.vitaminsSupplements,
         [name]: checked,
+        ...(name === 'creatine' && !checked ? {
+          creatineFrequency: '',
+          creatineGrams: '',
+        } : {}),
       },
     }));
   };
 
   const handleVitaminDetailsChange = (value: string) => {
+    setHasChanges(true);
     setFormData(prev => ({
       ...prev,
       vitaminsSupplements: {
@@ -595,11 +671,74 @@ const ClientScreening: React.FC = () => {
     }));
   };
 
+  const handleVitaminFieldChange = (
+    name: keyof Pick<ScreeningData['vitaminsSupplements'], 'creatineFrequency' | 'creatineGrams'>,
+    value: string
+  ) => {
+    setHasChanges(true);
+    setFormData(prev => ({
+      ...prev,
+      vitaminsSupplements: {
+        ...prev.vitaminsSupplements,
+        [name]: value,
+      },
+    }));
+  };
+
+  const handleAlcoholTypeChange = (type: keyof ScreeningData['alcoholUse'], selected: boolean) => {
+    setHasChanges(true);
+    setFormData(prev => ({
+      ...prev,
+      alcoholSober: selected ? false : prev.alcoholSober,
+      alcoholUse: {
+        ...prev.alcoholUse,
+        [type]: selected
+          ? { ...prev.alcoholUse[type], selected }
+          : { selected: false, frequency: '', amount: '' },
+      },
+    }));
+  };
+
+  const handleAlcoholUseFieldChange = (
+    type: keyof ScreeningData['alcoholUse'],
+    field: 'frequency' | 'amount',
+    value: string
+  ) => {
+    setHasChanges(true);
+    setFormData(prev => ({
+      ...prev,
+      alcoholUse: {
+        ...prev.alcoholUse,
+        [type]: {
+          ...prev.alcoholUse[type],
+          [field]: value,
+        },
+      },
+    }));
+  };
+
   const persistScreening = async () => {
     const bloodPressure = [
       formData.bloodPressureStatus,
       formData.bloodPressureValue,
     ].filter(Boolean).join(' - ');
+    const alcoholLabels: Record<keyof ScreeningData['alcoholUse'], string> = {
+      wine: 'Wine',
+      beer: 'Beer',
+      whiskey: 'Whiskey',
+      vodka: 'Vodka',
+    };
+    const alcoholUseSummary = Object.entries(formData.alcoholUse)
+      .filter(([, entry]) => entry.selected)
+      .map(([type, entry]) => {
+        const details = [entry.frequency, entry.amount].filter(Boolean).join(', ');
+        return `${alcoholLabels[type as keyof ScreeningData['alcoholUse']]}${details ? `: ${details}` : ''}`;
+      });
+    const alcoholSummary = [
+      formData.alcoholSober ? 'Sober / does not drink alcohol' : '',
+      ...alcoholUseSummary,
+      formData.alcoholHistory,
+    ].filter(Boolean).join('\n');
     const mentalHealthParts = [
       formData.depression ? `Depression: ${formData.depressionDetails || 'yes'}` : '',
       formData.anxiety ? `Anxiety: ${formData.anxietyDetails || 'yes'}` : '',
@@ -611,6 +750,7 @@ const ClientScreening: React.FC = () => {
       liverCondition: formData.liverConditionOk ? 'OK' : formData.liverCondition,
       asthmaCondition: formData.asthmaConditionOk ? 'OK' : formData.asthmaCondition,
       bloodPressure: bloodPressure || formData.bloodPressure,
+      alcoholConsumption: alcoholSummary,
       mentalHealthHistory: mentalHealthParts.join('\n'),
     });
   };
@@ -633,6 +773,26 @@ const ClientScreening: React.FC = () => {
       setClient(response.data);
       setHasChanges(false);
       flashSaveMessage('Screening saved.');
+    } catch (error) {
+      console.error('Error saving screening:', error);
+      flashSaveMessage('Could not save screening.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const getClientProfilePath = () => {
+    const prefix = location.pathname.startsWith('/admin') ? '/admin' : '';
+    return `${prefix}/clients/${clientId}`;
+  };
+
+  const handleSaveScreening = async () => {
+    setSaving(true);
+    try {
+      const response = await persistScreening();
+      setClient(response.data);
+      setHasChanges(false);
+      navigate(getClientProfilePath());
     } catch (error) {
       console.error('Error saving screening:', error);
       flashSaveMessage('Could not save screening.');
@@ -671,7 +831,7 @@ const ClientScreening: React.FC = () => {
           <AppleButton variant="secondary" onClick={() => navigate(-1)}>
             Cancel
           </AppleButton>
-          <AppleButton variant="primary" onClick={handleFloatingSave} disabled={saving}>
+          <AppleButton variant="primary" onClick={handleSaveScreening} disabled={saving}>
             {saving ? 'Saving...' : 'Save Screening'}
           </AppleButton>
         </div>
@@ -1160,6 +1320,7 @@ const ClientScreening: React.FC = () => {
             { name: 'iron', label: 'Iron' },
             { name: 'probiotics', label: 'Probiotics' },
             { name: 'multivitamin', label: 'Multivitamin' },
+            { name: 'kratom', label: 'Kratom' },
             { name: 'creatine', label: 'Creatine' },
             { name: 'ashwagandha', label: 'Ashwagandha' },
             { name: 'potassium', label: 'Potassium' },
@@ -1176,6 +1337,31 @@ const ClientScreening: React.FC = () => {
             </label>
           ))}
         </div>
+
+        {formData.vitaminsSupplements.creatine && (
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-md border border-sky-200 bg-white p-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Creatine frequency</label>
+              <input
+                type="text"
+                value={formData.vitaminsSupplements.creatineFrequency}
+                onChange={(e) => handleVitaminFieldChange('creatineFrequency', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-md"
+                placeholder="e.g. daily, workout days"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Creatine grams</label>
+              <input
+                type="text"
+                value={formData.vitaminsSupplements.creatineGrams}
+                onChange={(e) => handleVitaminFieldChange('creatineGrams', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-md"
+                placeholder="e.g. 5 g"
+              />
+            </div>
+          </div>
+        )}
 
         <div className="mt-4">
           <label className="block text-sm font-medium text-gray-700 mb-1">More Information</label>
@@ -1237,14 +1423,84 @@ const ClientScreening: React.FC = () => {
           ))}
         </div>
 
-        <div className="mt-4">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Alcohol History</label>
+        <div className="mt-6 space-y-4">
+          <div>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                name="alcoholSober"
+                checked={formData.alcoholSober}
+                onChange={handleInputChange}
+                className="rounded"
+              />
+              <span className="text-sm font-medium text-gray-700">Sober / does not drink alcohol</span>
+            </label>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {[
+              { name: 'wine', label: 'Wine' },
+              { name: 'beer', label: 'Beer' },
+              { name: 'whiskey', label: 'Whiskey' },
+              { name: 'vodka', label: 'Vodka' },
+            ].map(alcohol => {
+              const alcoholKey = alcohol.name as keyof ScreeningData['alcoholUse'];
+              const alcoholEntry = formData.alcoholUse[alcoholKey];
+
+              return (
+                <div key={alcohol.name} className="rounded-md border border-gray-200 bg-white p-3">
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={alcoholEntry.selected}
+                      onChange={(e) => handleAlcoholTypeChange(alcoholKey, e.target.checked)}
+                      className="rounded"
+                    />
+                    <span className="text-sm font-medium text-gray-700">{alcohol.label}</span>
+                  </label>
+
+                  {alcoholEntry.selected && (
+                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Frequency</label>
+                        <select
+                          value={alcoholEntry.frequency}
+                          onChange={(e) => handleAlcoholUseFieldChange(alcoholKey, 'frequency', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm"
+                        >
+                          <option value="">Select frequency</option>
+                          <option value="daily">Daily</option>
+                          <option value="few-times-a-week">Few times a week</option>
+                          <option value="weekly">Weekly</option>
+                          <option value="bimonthly">Bimonthly</option>
+                          <option value="monthly">Monthly</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">How much</label>
+                        <input
+                          type="text"
+                          value={alcoholEntry.amount}
+                          onChange={(e) => handleAlcoholUseFieldChange(alcoholKey, 'amount', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm"
+                          placeholder="e.g. 2 glasses"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <label className="block text-sm font-medium text-gray-700 mb-1">Alcohol History / Notes</label>
           <textarea
             name="alcoholHistory"
             value={formData.alcoholHistory}
             onChange={handleInputChange}
             rows={2}
             className="w-full px-3 py-2 border border-gray-200 rounded-md"
+            placeholder="Additional alcohol history, sober date, concerns, or context..."
           />
         </div>
       </div>
@@ -1277,7 +1533,10 @@ const ClientScreening: React.FC = () => {
               { name: 'dmt', label: 'DMT' },
               { name: 'ketamine', label: 'Ketamine' },
               { name: 'mdma', label: 'MDMA' },
-              { name: 'sassafras', label: 'Sassafras' }
+              { name: 'sassafras', label: 'Sassafras' },
+              { name: 'amanitaMochomur', label: 'Amanita mochomur' },
+              { name: 'rappe', label: 'Rappe' },
+              { name: 'otherPlantMedicine', label: 'Other' }
             ].map(medicine => (
               <div key={medicine.name}>
                 <label className="flex items-center space-x-2">
@@ -1291,13 +1550,13 @@ const ClientScreening: React.FC = () => {
                   <span className="text-sm font-medium text-gray-700">{medicine.label}</span>
                 </label>
                 {formData[medicine.name as keyof ScreeningData] && (
-                  <input
-                    type="text"
+                  <textarea
                     name={`${medicine.name}Details`}
                     value={formData[`${medicine.name}Details` as keyof ScreeningData] as string}
                     onChange={handleInputChange}
+                    rows={medicine.name === 'otherPlantMedicine' ? 3 : 2}
                     className="w-full mt-2 px-3 py-2 border border-gray-200 rounded-md"
-                    placeholder="Experience details..."
+                    placeholder={medicine.name === 'otherPlantMedicine' ? 'Which plant medicine and experience details...' : 'Experience details...'}
                   />
                 )}
               </div>
@@ -1387,7 +1646,7 @@ const ClientScreening: React.FC = () => {
         <AppleButton variant="secondary" onClick={() => navigate(-1)}>
           Cancel
         </AppleButton>
-        <AppleButton variant="primary" onClick={handleFloatingSave} disabled={saving}>
+        <AppleButton variant="primary" onClick={handleSaveScreening} disabled={saving}>
           {saving ? 'Saving...' : 'Save Screening'}
         </AppleButton>
       </div>
