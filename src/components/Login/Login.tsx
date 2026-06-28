@@ -16,7 +16,7 @@ export const Login: React.FC = () => {
   useEffect(() => {
     const checkConnection = async () => {
       try {
-        const response = await fetch(`${API_BASE_URL}/`, {
+        const response = await fetch(`${API_BASE_URL}/health`, {
           method: 'GET',
         });
         setConnectionStatus(response.ok ? 'connected' : 'error');

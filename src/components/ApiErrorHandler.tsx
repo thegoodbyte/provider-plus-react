@@ -108,7 +108,7 @@ const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
 
     // Trigger a simple health check
     try {
-      await api.get('/');
+      await api.get('/health');
     } catch (err) {
       // Error will be caught by interceptor
     }
