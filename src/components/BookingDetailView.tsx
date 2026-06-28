@@ -51,10 +51,11 @@ const medicalStageLabels: Record<MedicalArtifact['documentStage'], string> = {
   pre_ceremony: 'Pre-ceremony',
   in_ceremony: 'In-ceremony',
   post_ceremony: 'Post-ceremony',
+  other: 'Other',
   additional: 'Additional',
 };
 
-const medicalStageOrder: MedicalArtifact['documentStage'][] = ['entry', 'pre_ceremony', 'in_ceremony', 'post_ceremony', 'additional'];
+const medicalStageOrder: MedicalArtifact['documentStage'][] = ['entry', 'pre_ceremony', 'in_ceremony', 'post_ceremony', 'other', 'additional'];
 const requiredEntryDocumentTypes: MedicalArtifact['documentType'][] = ['EKG', 'Liver'];
 
 const escapeHtml = (value: any) =>
@@ -291,6 +292,16 @@ const mergeArtifacts = (artifactGroups: MedicalArtifact[][]) => {
   });
 };
 
+const isArtifactRelevantToBooking = (artifact: MedicalArtifact, bookingId: string, retreatId?: string) => {
+  const artifactBookingId = getObjectId(artifact.bookingId);
+  if (artifactBookingId) return artifactBookingId === bookingId;
+
+  const artifactRetreatId = getObjectId(artifact.retreatId);
+  if (artifactRetreatId) return Boolean(retreatId) && artifactRetreatId === retreatId;
+
+  return true;
+};
+
 const BookingRequirementsPanel: React.FC<{
   bookingId: string;
   clientId?: string;
@@ -318,9 +329,11 @@ const BookingRequirementsPanel: React.FC<{
         Promise.all([
           medicalArtifactsApi.getAll({ bookingId }),
           clientId && retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId }) : Promise.resolve({ data: [] }),
+          clientId ? medicalArtifactsApi.getAll({ clientId }) : Promise.resolve({ data: [] }),
         ]),
       ]);
-      const loadedArtifacts: MedicalArtifact[] = mergeArtifacts(artifactsResponse.map((response) => response.data || []));
+      const loadedArtifacts: MedicalArtifact[] = mergeArtifacts(artifactsResponse.map((response) => response.data || []))
+        .filter((artifact) => isArtifactRelevantToBooking(artifact, bookingId, retreatId));
       const reviewEntries = await Promise.all(
         loadedArtifacts
           .filter((artifact) => artifact._id)
@@ -496,8 +509,10 @@ const BookingMedicalOverviewPanel: React.FC<{
       const artifactResponses = await Promise.all([
         medicalArtifactsApi.getAll({ bookingId }),
         clientId && retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId }) : Promise.resolve({ data: [] }),
+        clientId ? medicalArtifactsApi.getAll({ clientId }) : Promise.resolve({ data: [] }),
       ]);
       const loadedArtifacts = mergeArtifacts(artifactResponses.map((response) => response.data || []))
+        .filter((artifact) => isArtifactRelevantToBooking(artifact, bookingId, retreatId))
         .sort(compareArtifactsForDisplay);
       const reviewEntries = await Promise.all(
         loadedArtifacts
@@ -668,10 +683,12 @@ const BookingCeremoniesPanel: React.FC<{
         Promise.all([
           medicalArtifactsApi.getAll({ bookingId }),
           retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId }) : Promise.resolve({ data: [] }),
+          medicalArtifactsApi.getAll({ clientId }),
         ]),
       ]);
       const allParticipations = participationResponse.data || [];
       const loadedArtifacts = mergeArtifacts(artifactResponses.map((response) => response.data || []))
+        .filter((artifact) => isArtifactRelevantToBooking(artifact, bookingId, retreatId))
         .sort(compareArtifactsForDisplay);
       const reviewEntries = await Promise.all(
         loadedArtifacts

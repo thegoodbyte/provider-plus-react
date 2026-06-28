@@ -13,12 +13,15 @@ const documentStageLabels: Record<NonNullable<MedicalArtifact['documentStage']>,
   pre_ceremony: 'Pre-Ceremony',
   in_ceremony: 'In-Ceremony',
   post_ceremony: 'Post-Ceremony',
+  other: 'Other',
   additional: 'Additional',
 };
 
 const documentTypeLabels: Record<NonNullable<MedicalArtifact['documentType']>, string> = {
-  BP: 'Blood Pressure',
   EKG: 'EKG',
+  BP: 'Blood Pressure',
+  meds: 'Meds',
+  additional: 'Additional',
   Liver: 'Liver panel tests',
   Medications: 'Medications',
   other: 'Other',
@@ -32,7 +35,7 @@ const getArtifactTypeForDocument = (stage: DocumentStage, type: DocumentType): N
   if (type === 'EKG') return ceremonyStages.has(stage) ? 'ceremony_ekg' : 'ekg';
   if (type === 'BP') return 'blood_pressure';
   if (type === 'Liver') return 'liver_panel';
-  if (type === 'Medications') return 'medications_form';
+  if (type === 'meds' || type === 'Medications') return 'medications_form';
   return 'other';
 };
 
@@ -70,7 +73,7 @@ const MedicalArtifactCreatePage: React.FC = () => {
   const [form, setForm] = useState({
     clientId: '',
     documentStage: 'entry' as NonNullable<MedicalArtifact['documentStage']>,
-    documentType: 'other' as NonNullable<MedicalArtifact['documentType']>,
+    documentType: 'additional' as NonNullable<MedicalArtifact['documentType']>,
     bookingId: '',
     ceremonyNumber: undefined as number | undefined,
     title: '',

@@ -797,8 +797,8 @@ export interface MedicalArtifact {
   ceremonyId?: string;
 
   // New document categorization
-  documentStage: 'entry' | 'pre_ceremony' | 'in_ceremony' | 'post_ceremony' | 'additional';
-  documentType: 'BP' | 'EKG' | 'Liver' | 'Medications' | 'other';
+  documentStage: 'entry' | 'pre_ceremony' | 'in_ceremony' | 'post_ceremony' | 'other' | 'additional';
+  documentType: 'EKG' | 'BP' | 'meds' | 'additional' | 'Liver' | 'Medications' | 'other';
   ceremonyNumber?: number; // Required for pre/in/post ceremony stages
 
   // Legacy fields (kept for backward compatibility)

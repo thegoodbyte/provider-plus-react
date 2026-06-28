@@ -27,12 +27,15 @@ const documentStageLabels: Record<NonNullable<MedicalArtifact['documentStage']>,
   pre_ceremony: 'Pre-Ceremony',
   in_ceremony: 'In-Ceremony',
   post_ceremony: 'Post-Ceremony',
+  other: 'Other',
   additional: 'Additional',
 };
 
 const documentTypeLabels: Record<NonNullable<MedicalArtifact['documentType']>, string> = {
-  BP: 'Blood Pressure',
   EKG: 'EKG',
+  BP: 'Blood Pressure',
+  meds: 'Meds',
+  additional: 'Additional',
   Liver: 'Liver panel tests',
   Medications: 'Medications',
   other: 'Other',

@@ -37,6 +37,25 @@ const purposeLabels: Record<NonNullable<MedicalArtifact['purpose']>, string> = {
   general: 'General',
 };
 
+const documentStageLabels: Record<NonNullable<MedicalArtifact['documentStage']>, string> = {
+  entry: 'Entry',
+  pre_ceremony: 'Pre-Ceremony',
+  in_ceremony: 'In-Ceremony',
+  post_ceremony: 'Post-Ceremony',
+  other: 'Other',
+  additional: 'Additional',
+};
+
+const documentTypeLabels: Record<NonNullable<MedicalArtifact['documentType']>, string> = {
+  EKG: 'EKG',
+  BP: 'Blood Pressure',
+  meds: 'Meds',
+  additional: 'Additional',
+  Liver: 'Liver panel tests',
+  Medications: 'Medications',
+  other: 'Other',
+};
+
 type ArtifactStatus = NonNullable<MedicalArtifact['status']>;
 
 const getClientLabel = (client?: string | Client) => {
@@ -203,6 +222,8 @@ const MedicalArtifactDetailPage: React.FC = () => {
     status: 'stored' as ArtifactStatus,
     contextType: 'client' as NonNullable<MedicalArtifact['contextType']>,
     purpose: 'general' as NonNullable<MedicalArtifact['purpose']>,
+    documentStage: 'entry' as NonNullable<MedicalArtifact['documentStage']>,
+    documentType: 'additional' as NonNullable<MedicalArtifact['documentType']>,
   });
 
   useEffect(() => {
@@ -222,6 +243,8 @@ const MedicalArtifactDetailPage: React.FC = () => {
           status: item.status || 'stored',
           contextType: item.contextType || 'client',
           purpose: item.purpose || 'general',
+          documentStage: item.documentStage || 'entry',
+          documentType: item.documentType || 'additional',
         });
       } finally {
         setLoading(false);
@@ -385,6 +408,22 @@ const MedicalArtifactDetailPage: React.FC = () => {
                 </select>
               </label>
               <label className="block text-sm font-medium text-gray-700">
+                Document stage
+                <select value={form.documentStage} onChange={(event) => setForm({ ...form, documentStage: event.target.value as typeof form.documentStage })} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                  {Object.entries(documentStageLabels).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block text-sm font-medium text-gray-700">
+                Document type
+                <select value={form.documentType} onChange={(event) => setForm({ ...form, documentType: event.target.value as typeof form.documentType })} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                  {Object.entries(documentTypeLabels).map(([value, label]) => (
+                    <option key={value} value={value}>{label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block text-sm font-medium text-gray-700">
                 Purpose
                 <select value={form.purpose} onChange={(event) => setForm({ ...form, purpose: event.target.value as typeof form.purpose })} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
                   {Object.entries(purposeLabels).map(([value, label]) => (
@@ -446,6 +485,16 @@ const MedicalArtifactDetailPage: React.FC = () => {
                 <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Status</div>
                 <div className="mt-1 capitalize text-gray-900">{artifact.status || 'stored'}</div>
               </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Document Stage</div>
+                  <div className="mt-1 text-gray-900">{documentStageLabels[artifact.documentStage || 'entry'] || artifact.documentStage || '-'}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Document Type</div>
+                  <div className="mt-1 text-gray-900">{documentTypeLabels[artifact.documentType || 'additional'] || artifact.documentType || '-'}</div>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -456,6 +505,8 @@ const MedicalArtifactDetailPage: React.FC = () => {
             <dl className="space-y-2">
               <div><dt className="text-gray-500">Client</dt><dd className="font-medium text-gray-900">{getClientLabel(artifact.clientId)}</dd></div>
               <div><dt className="text-gray-500">Type</dt><dd className="font-medium text-gray-900">{getArtifactTypeLabel(artifact.artifactType)}</dd></div>
+              <div><dt className="text-gray-500">Document stage</dt><dd className="font-medium text-gray-900">{documentStageLabels[artifact.documentStage || 'entry'] || artifact.documentStage || '-'}</dd></div>
+              <div><dt className="text-gray-500">Document type</dt><dd className="font-medium text-gray-900">{documentTypeLabels[artifact.documentType || 'additional'] || artifact.documentType || '-'}</dd></div>
               <div><dt className="text-gray-500">Context</dt><dd className="font-medium text-gray-900">{contextTypeLabels[artifact.contextType || 'client']}</dd></div>
               <div><dt className="text-gray-500">Purpose</dt><dd className="font-medium text-gray-900">{purposeLabels[artifact.purpose || 'general']}</dd></div>
               {artifact.reviewFeeAmount ? (
