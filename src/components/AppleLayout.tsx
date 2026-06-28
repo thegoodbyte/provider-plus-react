@@ -509,6 +509,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="reminders" element={<RemindersPage />} />
                       <Route path="payments" element={<PaymentsPage />} />
                       <Route path="payments/new" element={<PaymentEditorPage />} />
+                      <Route path="payments/:id" element={<PaymentEditorPage />} />
                       <Route path="payments/:id/edit" element={<PaymentEditorPage />} />
                       <Route path="expenses" element={<ExpensesPage />} />
                       <Route path="payment-requests" element={<PaymentRequestsGrid />} />
@@ -726,6 +727,8 @@ const AppleLayout: React.FC = () => {
                 <Route path="/bookings/:bookingId/edit" element={<ProtectedRoute><BookingEditorPage mode="edit" /></ProtectedRoute>} />
                 <Route path="/reminders" element={<ProtectedRoute><RemindersPage /></ProtectedRoute>} />
                 <Route path="/payments" element={<ProtectedRoute><PaymentsPage /></ProtectedRoute>} />
+                <Route path="/payments/:id" element={<ProtectedRoute><PaymentEditorPage /></ProtectedRoute>} />
+                <Route path="/payments/:id/edit" element={<ProtectedRoute><PaymentEditorPage /></ProtectedRoute>} />
                 <Route path="/expenses" element={<ProtectedRoute><ExpensesPage /></ProtectedRoute>} />
                 <Route path="/requirements" element={<ProtectedRoute><RequirementsGrid /></ProtectedRoute>} />
               </Routes>

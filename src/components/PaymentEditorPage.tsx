@@ -63,7 +63,9 @@ const PaymentEditorPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const isEdit = Boolean(id);
+  const isExisting = Boolean(id);
+  const isView = isExisting && !location.pathname.endsWith('/edit');
+  const isEdit = isExisting && !isView;
   const paymentRequestIdFromQuery = new URLSearchParams(location.search).get('paymentRequestId') || '';
   const returnTo = typeof (location.state as any)?.returnTo === 'string' && (location.state as any).returnTo.startsWith('/')
     ? (location.state as any).returnTo
@@ -274,7 +276,9 @@ const PaymentEditorPage: React.FC = () => {
     e.preventDefault();
     setFormError('');
 
-    if (!isEdit && !formData.paymentRequestId) {
+    if (isView) return;
+
+    if (!isExisting && !formData.paymentRequestId) {
       alert('Please select a payment request first');
       return;
     }
@@ -319,7 +323,7 @@ const PaymentEditorPage: React.FC = () => {
     };
 
     try {
-      if (isEdit && id) {
+      if (isExisting && id) {
         await paymentsApi.update(id, submitData as any);
       } else {
         await paymentsApi.create(submitData as any);
@@ -333,7 +337,7 @@ const PaymentEditorPage: React.FC = () => {
   };
 
   if (loading) {
-    return <LoadingSpinner message={isEdit ? 'Loading payment...' : 'Loading form...'} />;
+    return <LoadingSpinner message={isExisting ? 'Loading payment...' : 'Loading form...'} />;
   }
 
   return (
@@ -350,13 +354,22 @@ const PaymentEditorPage: React.FC = () => {
           </button>
           <div className="min-w-0">
             <h1 className="text-2xl font-semibold text-gray-900 whitespace-nowrap">
-              {isEdit ? 'Edit Payment' : 'Add Payment'}
+              {isView ? 'Payment View' : isEdit ? 'Edit Payment' : 'Add Payment'}
             </h1>
             <p className="text-sm text-gray-600">
-              {isEdit ? 'Update payment details' : 'Record a new payment against an invoice'}
+              {isView ? 'View payment details' : isEdit ? 'Update payment details' : 'Record a new payment against an invoice'}
             </p>
           </div>
         </div>
+        {isView && id && (
+          <button
+            type="button"
+            onClick={() => navigate(`/admin/payments/${id}/edit`, { state: { returnTo: location.pathname } })}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+          >
+            Edit Payment
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
@@ -366,7 +379,7 @@ const PaymentEditorPage: React.FC = () => {
               {formError}
             </div>
           )}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <fieldset disabled={isView} className="grid grid-cols-1 md:grid-cols-2 gap-6 disabled:opacity-90">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Payment Number *</label>
               <input
@@ -605,7 +618,7 @@ const PaymentEditorPage: React.FC = () => {
                 <span className="text-sm text-gray-700">Is Final Payment</span>
               </label>
             </div>
-          </div>
+          </fieldset>
 
           <div className="flex justify-end gap-2 pt-4 border-t">
             <button
@@ -613,15 +626,17 @@ const PaymentEditorPage: React.FC = () => {
               onClick={() => navigate(returnTo || defaultReturnPath)}
               className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
             >
-              Cancel
+              {isView ? 'Back' : 'Cancel'}
             </button>
-            <button
-              type="submit"
-              className="inline-flex items-center gap-2 px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"
-            >
-              <Icon icon={FiSave} className="w-4 h-4" />
-              {isEdit ? 'Update Payment' : 'Add Payment'}
-            </button>
+            {!isView && (
+              <button
+                type="submit"
+                className="inline-flex items-center gap-2 px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"
+              >
+                <Icon icon={FiSave} className="w-4 h-4" />
+                {isEdit ? 'Update Payment' : 'Add Payment'}
+              </button>
+            )}
           </div>
         </form>
       </div>
