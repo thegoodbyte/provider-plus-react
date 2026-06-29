@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Circle, Mail, RefreshCw } from 'lucide-react';
 import { bookingFlowApi, clientsApi, communicationsApi } from '../services/api';
 import { BookingFlowItem, BookingFlowTemplate, Client } from '../types';
@@ -149,21 +149,21 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const [saving, setSaving] = useState('');
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
       const response = await bookingFlowApi.getMatrix(retreatId);
       setBookings(response.data?.bookings || []);
       setTemplates(response.data?.templates || []);
       setItems(response.data?.items || []);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
-  };
+  }, [retreatId]);
 
   useEffect(() => {
     loadData();
-  }, [retreatId]);
+  }, [loadData]);
 
   useEffect(() => {
     const nextDrafts: Record<string, string> = {};
@@ -180,7 +180,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       await bookingFlowApi.seedLibraryTemplates();
       await bookingFlowApi.seedTemplates(retreatId);
       await bookingFlowApi.generateForRetreat(retreatId);
-      await loadData();
+      await loadData(false);
     } finally {
       setSaving('');
     }
@@ -230,7 +230,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
         status: checked ? 'completed' : 'pending',
         completedAt: checked ? new Date().toISOString() : null,
       } as Partial<BookingFlowItem>);
-      await loadData();
+      await loadData(false);
     } finally {
       setSaving('');
     }
@@ -241,7 +241,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     setSaving(item._id);
     try {
       await bookingFlowApi.updateItem(item._id, { status } as Partial<BookingFlowItem>);
-      await loadData();
+      await loadData(false);
     } finally {
       setSaving('');
     }
@@ -254,7 +254,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     setSaving(`notes:${item._id}`);
     try {
       await bookingFlowApi.updateItem(item._id, { notes } as Partial<BookingFlowItem>);
-      await loadData();
+      await loadData(false);
     } finally {
       setSaving('');
     }
@@ -265,8 +265,13 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     const field = getStatusDateField(item.status);
     setSaving(`date:${item._id}`);
     try {
+      setItems((current) => current.map((currentItem) => (
+        currentItem._id === item._id
+          ? { ...currentItem, [field]: value || null }
+          : currentItem
+      )));
       await bookingFlowApi.updateItem(item._id, { [field]: value || null } as Partial<BookingFlowItem>);
-      await loadData();
+      await loadData(false);
     } finally {
       setSaving('');
     }
@@ -280,7 +285,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       if (response.data.sentEmail?.status === 'failed') {
         alert(`Email was logged but Gmail failed to send it: ${response.data.sentEmail.errorMessage || 'Unknown error'}`);
       }
-      await loadData();
+      await loadData(false);
     } catch (error: any) {
       console.error('Error sending booking step email:', error);
       alert(error?.response?.data?.message || error?.message || 'Unable to send booking step email.');
@@ -299,7 +304,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       const response = await bookingFlowApi.sendTemplateEmailToRetreat(retreatId, row.templateId);
       const { sent = 0, failed = 0, skipped = 0 } = response.data || {};
       alert(`Sent: ${sent}\nFailed: ${failed}\nSkipped: ${skipped}`);
-      await loadData();
+      await loadData(false);
     } catch (error: any) {
       console.error('Error sending retreat step email:', error);
       alert(error?.response?.data?.message || error?.message || 'Unable to send retreat step email.');
@@ -328,7 +333,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
           <p className="text-sm text-gray-500">Actions are rows. Participants are columns. Each cell tracks status, date, and notes.</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={loadData} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+          <button onClick={() => loadData()} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
             <RefreshCw className="h-4 w-4" />
             Refresh
           </button>
