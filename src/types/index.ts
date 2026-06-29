@@ -1047,6 +1047,7 @@ export interface BookingFlowTemplate {
   description?: string;
   category: 'screening' | 'booking' | 'payment' | 'contract' | 'questionnaire' | 'medical' | 'dietary' | 'message' | 'access' | 'approval' | 'reminder' | 'other';
   offsetDays: number;
+  latestDaysBeforeRetreat?: number;
   deadlineBasis?: 'after_signup' | 'after_booking' | 'after_initial_payment' | 'before_retreat_start' | 'manual';
   active?: boolean;
   isBlocking?: boolean;

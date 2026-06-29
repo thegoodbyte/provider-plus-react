@@ -15,6 +15,7 @@ type TemplateForm = {
   description: string;
   category: BookingFlowTemplate['category'];
   offsetDays: number;
+  latestDaysBeforeRetreat: string;
   deadlineBasis: NonNullable<BookingFlowTemplate['deadlineBasis']>;
   active: boolean;
   isBlocking: boolean;
@@ -43,6 +44,7 @@ const emptyForm = (): TemplateForm => ({
   description: '',
   category: 'other',
   offsetDays: 0,
+  latestDaysBeforeRetreat: '',
   deadlineBasis: 'before_retreat_start',
   active: true,
   isBlocking: false,
@@ -66,9 +68,10 @@ const emptyForm = (): TemplateForm => ({
 
 const formatDeadlineLabel = (template: BookingFlowTemplate) => {
   const basis = template.deadlineBasis || template.triggerType || 'before_retreat_start';
+  const cap = template.latestDaysBeforeRetreat !== undefined ? `, no later than ${template.latestDaysBeforeRetreat} days before retreat` : '';
   if (basis === 'after_signup') return `${template.offsetDays} days after signup`;
-  if (basis === 'after_booking') return `${template.offsetDays} days after booking`;
-  if (basis === 'after_initial_payment') return `${template.offsetDays} days after initial payment`;
+  if (basis === 'after_booking') return `${template.offsetDays} days after booking${cap}`;
+  if (basis === 'after_initial_payment') return `${template.offsetDays} days after initial payment${cap}`;
   if (basis === 'manual') return 'Manual due date';
   return `${template.offsetDays} days before retreat`;
 };
@@ -131,6 +134,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
       description: template.description || '',
       category: template.category,
       offsetDays: template.offsetDays,
+      latestDaysBeforeRetreat: template.latestDaysBeforeRetreat === undefined ? '' : String(template.latestDaysBeforeRetreat),
       deadlineBasis: template.deadlineBasis || (template.triggerType as TemplateForm['deadlineBasis']) || 'before_retreat_start',
       active: template.active !== false,
       isBlocking: !!template.isBlocking,
@@ -164,6 +168,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
         description: form.description,
         category: form.category,
         offsetDays: form.offsetDays,
+        latestDaysBeforeRetreat: form.latestDaysBeforeRetreat === '' ? undefined : Number(form.latestDaysBeforeRetreat),
         deadlineBasis: form.deadlineBasis,
         active: form.active,
         isBlocking: form.isBlocking,
@@ -322,6 +327,10 @@ const RetreatFlowLibraryPage: React.FC = () => {
         <label className="block">
           <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Offset days</span>
           <input value={form.offsetDays} type="number" onChange={(e) => setForm({ ...form, offsetDays: Number(e.target.value) })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="21" />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Latest days before retreat</span>
+          <input value={form.latestDaysBeforeRetreat} type="number" onChange={(e) => setForm({ ...form, latestDaysBeforeRetreat: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Optional cap, e.g. 21" />
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Category</span>

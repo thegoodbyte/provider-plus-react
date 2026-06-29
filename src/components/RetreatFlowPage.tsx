@@ -14,6 +14,7 @@ type TemplateForm = {
   description: string;
   category: BookingFlowTemplate['category'];
   offsetDays: number;
+  latestDaysBeforeRetreat: string;
   deadlineBasis: NonNullable<BookingFlowTemplate['deadlineBasis']>;
   active: boolean;
   isBlocking: boolean;
@@ -35,6 +36,7 @@ const emptyForm = (): TemplateForm => ({
   description: '',
   category: 'other',
   offsetDays: 0,
+  latestDaysBeforeRetreat: '',
   deadlineBasis: 'before_retreat_start',
   active: true,
   isBlocking: false,
@@ -57,8 +59,10 @@ const formatDate = (value?: string | Date | null) => {
 
 const formatDeadlineLabel = (template: BookingFlowTemplate) => {
   const basis = template.deadlineBasis || template.triggerType || 'before_retreat_start';
+  const cap = template.latestDaysBeforeRetreat !== undefined ? `, no later than ${template.latestDaysBeforeRetreat} days before retreat` : '';
   if (basis === 'after_signup') return `${template.offsetDays} days after signup`;
-  if (basis === 'after_booking') return `${template.offsetDays} days after booking`;
+  if (basis === 'after_booking') return `${template.offsetDays} days after booking${cap}`;
+  if (basis === 'after_initial_payment') return `${template.offsetDays} days after initial payment${cap}`;
   if (basis === 'manual') return 'Manual due date';
   return `${template.offsetDays} days before retreat`;
 };
@@ -130,6 +134,7 @@ const RetreatFlowPage: React.FC = () => {
           description: firstTemplate.description || '',
           category: firstTemplate.category,
           offsetDays: firstTemplate.offsetDays,
+          latestDaysBeforeRetreat: firstTemplate.latestDaysBeforeRetreat === undefined ? '' : String(firstTemplate.latestDaysBeforeRetreat),
           deadlineBasis: firstTemplate.deadlineBasis || (firstTemplate.triggerType as TemplateForm['deadlineBasis']) || 'before_retreat_start',
           active: firstTemplate.active !== false,
           isBlocking: !!firstTemplate.isBlocking,
@@ -167,6 +172,7 @@ const RetreatFlowPage: React.FC = () => {
       description: template.description || '',
       category: template.category,
       offsetDays: template.offsetDays,
+      latestDaysBeforeRetreat: template.latestDaysBeforeRetreat === undefined ? '' : String(template.latestDaysBeforeRetreat),
       deadlineBasis: template.deadlineBasis || (template.triggerType as TemplateForm['deadlineBasis']) || 'before_retreat_start',
       active: template.active !== false,
       isBlocking: !!template.isBlocking,
@@ -197,6 +203,7 @@ const RetreatFlowPage: React.FC = () => {
       const payload = {
         retreatId: selectedRetreatId,
         ...form,
+        latestDaysBeforeRetreat: form.latestDaysBeforeRetreat === '' ? undefined : Number(form.latestDaysBeforeRetreat),
         emailTemplateId: form.emailEnabled ? form.emailTemplateId : undefined,
       };
 
@@ -298,10 +305,18 @@ const RetreatFlowPage: React.FC = () => {
           className="rounded-md border border-gray-300 px-3 py-2 text-sm"
           placeholder="Offset days"
         />
+        <input
+          value={form.latestDaysBeforeRetreat}
+          type="number"
+          onChange={(e) => setForm({ ...form, latestDaysBeforeRetreat: e.target.value })}
+          className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+          placeholder="Latest days before retreat"
+        />
         <select value={form.deadlineBasis} onChange={(e) => setForm({ ...form, deadlineBasis: e.target.value as TemplateForm['deadlineBasis'] })} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
           <option value="before_retreat_start">Before retreat start</option>
           <option value="after_signup">After signup</option>
           <option value="after_booking">After booking</option>
+          <option value="after_initial_payment">After initial payment</option>
           <option value="manual">Manual due date</option>
         </select>
         <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value as TemplateForm['category'] })} className="rounded-md border border-gray-300 px-3 py-2 text-sm">

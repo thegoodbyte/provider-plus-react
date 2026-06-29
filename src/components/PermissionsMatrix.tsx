@@ -43,7 +43,7 @@ const AVAILABLE_PERMISSIONS: Permission[] = [
   { route: 'tasks', name: 'General Tasks', description: 'General task queue', category: 'Operations' },
   { route: 'retreat-flow', name: 'Retreat Readiness', description: 'Retreat-specific readiness workflow', category: 'Operations' },
   { route: 'retreat-flow-library', name: 'Booking Step Setup', description: 'Master booking step configuration', category: 'Operations' },
-  { route: 'booking-flow', name: 'Booking Requirements', description: 'Per-booking requirement deadlines and status', category: 'Operations' },
+  { route: 'booking-flow', name: 'Booking Step Deadlines', description: 'Per-booking requirement deadlines and status', category: 'Operations' },
   { route: 'file-uploads', name: 'File Uploads', description: 'File upload inventory', category: 'Operations' },
 
   // Financial

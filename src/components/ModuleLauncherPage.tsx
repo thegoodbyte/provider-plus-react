@@ -141,6 +141,7 @@ const ModuleLauncherPage: React.FC = () => {
           { id: 'bookings', label: 'Bookings', subtitle: 'Retreat seats', route: 'bookings', icon: ClipboardPaste, tone: 'blue' },
           { id: 'retreat-flow', label: 'Retreat Readiness', subtitle: 'Per-retreat steps', route: 'retreat-flow', icon: LayoutGrid, tone: 'blue' },
           { id: 'retreat-flow-library', label: 'Booking Step Setup', subtitle: 'Master steps', route: 'retreat-flow-library', icon: BookOpen, tone: 'blue' },
+          { id: 'booking-flow', label: 'Step Deadlines', subtitle: 'Per booking', route: 'booking-flow', icon: ListTodo, tone: 'blue' },
         ],
       },
       {
@@ -215,6 +216,7 @@ const ModuleLauncherPage: React.FC = () => {
           { id: 'potential-clients', label: 'Potential', subtitle: 'Lead queue', route: 'potential-clients', icon: ClipboardList, tone: 'blue' },
           { id: 'bookings', label: 'Bookings', subtitle: 'Booking list', route: 'bookings', icon: ClipboardPaste, tone: 'blue' },
           { id: 'retreat-flow', label: 'Retreat Readiness', subtitle: 'Steps', route: 'retreat-flow', icon: LayoutGrid, tone: 'blue' },
+          { id: 'booking-flow', label: 'Step Deadlines', subtitle: 'Per booking', route: 'booking-flow', icon: ListTodo, tone: 'blue' },
         ],
       },
       {
