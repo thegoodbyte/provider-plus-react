@@ -4,7 +4,7 @@ import { CheckCircle2, Copy, GripVertical, Plus, RefreshCw, Save, Trash2 } from 
 import LoadingSpinner from './LoadingSpinner';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 import { bookingFlowApi, communicationsApi, retreatsApi } from '../services/api';
-import { BookingFlowTemplate, EmailTemplate, Retreat } from '../types';
+import { BookingFlowAction, BookingFlowTemplate, EmailTemplate, Retreat } from '../types';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
@@ -35,6 +35,7 @@ type TemplateForm = {
   autoCompleteStatus: string;
   emailEnabled: boolean;
   emailTemplateId: string;
+  actions: BookingFlowAction[];
 };
 
 const emptyForm = (): TemplateForm => ({
@@ -64,6 +65,7 @@ const emptyForm = (): TemplateForm => ({
   autoCompleteStatus: 'received',
   emailEnabled: false,
   emailTemplateId: '',
+  actions: [],
 });
 
 const formatDeadlineLabel = (template: BookingFlowTemplate) => {
@@ -154,6 +156,10 @@ const RetreatFlowLibraryPage: React.FC = () => {
       autoCompleteStatus: template.autoCompleteStatus || 'received',
       emailEnabled: !!template.emailEnabled,
       emailTemplateId: typeof template.emailTemplateId === 'string' ? template.emailTemplateId : template.emailTemplateId?._id || '',
+      actions: (template.actions || []).map((action) => ({
+        ...action,
+        emailTemplateId: typeof action.emailTemplateId === 'string' ? action.emailTemplateId : action.emailTemplateId?._id || '',
+      })),
     });
   };
 
@@ -189,6 +195,14 @@ const RetreatFlowLibraryPage: React.FC = () => {
         autoCompleteStatus: form.autoCompleteStatus || 'received',
         emailEnabled: form.emailEnabled,
         emailTemplateId: form.emailEnabled ? form.emailTemplateId : undefined,
+        actions: form.actions.map((action, index) => ({
+          ...action,
+          key: action.key || `${action.type}_${index + 1}`,
+          label: action.label || 'Action',
+          emailTemplateId: action.type === 'email' ? (typeof action.emailTemplateId === 'string' ? action.emailTemplateId : action.emailTemplateId?._id) : undefined,
+          urlTemplate: action.type === 'whatsapp' || action.type === 'link' ? action.urlTemplate : undefined,
+          order: action.order ?? index,
+        })),
       };
 
       if (selectedTemplateId) {
@@ -282,6 +296,41 @@ const RetreatFlowLibraryPage: React.FC = () => {
   };
 
   const sortedTemplates = useMemo(() => templates.slice().sort((a, b) => (a.order || 0) - (b.order || 0)), [templates]);
+
+  const updateAction = (index: number, patch: Partial<BookingFlowAction>) => {
+    setForm((current) => ({
+      ...current,
+      actions: current.actions.map((action, actionIndex) => (
+        actionIndex === index ? { ...action, ...patch } : action
+      )),
+    }));
+  };
+
+  const addAction = () => {
+    setForm((current) => ({
+      ...current,
+      actions: [
+        ...current.actions,
+        {
+          key: `action_${current.actions.length + 1}`,
+          label: 'Send email',
+          type: 'email',
+          active: true,
+          allowRepeat: true,
+          openComposer: true,
+          statusAfterSuccess: 'sent',
+          order: current.actions.length,
+        },
+      ],
+    }));
+  };
+
+  const removeAction = (index: number) => {
+    setForm((current) => ({
+      ...current,
+      actions: current.actions.filter((_action, actionIndex) => actionIndex !== index),
+    }));
+  };
 
   const renderTemplateEditor = () => (
     <div className="rounded-md border border-gray-200 bg-white p-4 shadow-sm">
@@ -461,6 +510,83 @@ const RetreatFlowLibraryPage: React.FC = () => {
             <option key={template._id} value={template._id}>{template.name} ({template.category || 'general'})</option>
           ))}
         </select>
+      </div>
+
+      <div className="mt-3 rounded-md border border-gray-200 bg-white p-3">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <div className="text-xs font-semibold uppercase text-gray-500">Step actions</div>
+            <div className="text-xs text-gray-500">Buttons shown in Retreat Readiness for this booking step.</div>
+          </div>
+          <button type="button" onClick={addAction} className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
+            Add action
+          </button>
+        </div>
+        <div className="space-y-3">
+          {form.actions.length === 0 && (
+            <div className="rounded-md border border-dashed border-gray-300 px-3 py-4 text-sm text-gray-500">
+              No extra actions. The legacy email action above still works when enabled.
+            </div>
+          )}
+          {form.actions.map((action, index) => (
+            <div key={`${action.key}-${index}`} className="rounded-md border border-gray-200 bg-gray-50 p-3">
+              <div className="grid gap-2 sm:grid-cols-4">
+                <label className="block">
+                  <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Key</span>
+                  <input value={action.key} onChange={(e) => updateAction(index, { key: e.target.value })} className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm" />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Button label</span>
+                  <input value={action.label} onChange={(e) => updateAction(index, { label: e.target.value })} className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm" />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Type</span>
+                  <select value={action.type} onChange={(e) => updateAction(index, { type: e.target.value as BookingFlowAction['type'] })} className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm">
+                    <option value="email">Email</option>
+                    <option value="whatsapp">WhatsApp</option>
+                    <option value="link">Link</option>
+                    <option value="manual">Manual</option>
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">After success</span>
+                  <select value={action.statusAfterSuccess || ''} onChange={(e) => updateAction(index, { statusAfterSuccess: e.target.value as BookingFlowAction['statusAfterSuccess'] || undefined })} className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm">
+                    <option value="">No status change</option>
+                    <option value="sent">Sent</option>
+                    <option value="completed">Completed</option>
+                    <option value="received">Received</option>
+                    <option value="approved">Approved</option>
+                  </select>
+                </label>
+              </div>
+              {action.type === 'email' ? (
+                <label className="mt-2 block">
+                  <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Email template</span>
+                  <select value={typeof action.emailTemplateId === 'string' ? action.emailTemplateId : action.emailTemplateId?._id || ''} onChange={(e) => updateAction(index, { emailTemplateId: e.target.value })} className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm">
+                    <option value="">Select email template</option>
+                    {emailTemplates.map((template) => (
+                      <option key={template._id} value={template._id}>{template.name} ({template.category || 'general'})</option>
+                    ))}
+                  </select>
+                </label>
+              ) : (
+                <label className="mt-2 block">
+                  <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">URL template</span>
+                  <input value={action.urlTemplate || ''} onChange={(e) => updateAction(index, { urlTemplate: e.target.value })} className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm" placeholder="https://wa.me/{{client.phone}}" />
+                </label>
+              )}
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                <label className="flex items-center gap-2 text-xs text-gray-700">
+                  <input type="checkbox" checked={action.active !== false} onChange={(e) => updateAction(index, { active: e.target.checked })} />
+                  Active
+                </label>
+                <button type="button" onClick={() => removeAction(index)} className="text-xs font-medium text-red-600 hover:text-red-700">
+                  Remove
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="mt-3 rounded-md border border-gray-200 bg-white p-3">

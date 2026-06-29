@@ -975,19 +975,25 @@ export const bookingFlowApi = {
     cacheService.clearPattern('communications:sent-emails');
     return api.post<{ item: BookingFlowItem; sentEmail: SentEmail }>(`/booking-flow/items/${id}/send-email`, {});
   },
-  getItemEmailComposeData: (id: string) => api.get<{
+  getItemEmailComposeData: (id: string, actionKey?: string) => api.get<{
     to: string;
     templateId: string;
     clientId: string;
     retreatId: string;
     relatedEntityType: string;
     relatedEntityId: string;
+    actionKey?: string;
+    actionLabel?: string;
     variables: Record<string, any>;
-  }>(`/booking-flow/items/${id}/email-compose-data`),
-  recordItemEmailSent: (id: string, sentEmailId: string) => {
+  }>(`/booking-flow/items/${id}/email-compose-data${actionKey ? `?actionKey=${encodeURIComponent(actionKey)}` : ''}`),
+  recordItemEmailSent: (id: string, sentEmailId: string, actionKey?: string) => {
     cacheService.clearPattern('booking-flow:');
     cacheService.clearPattern('communications:sent-emails');
-    return api.post<{ item: BookingFlowItem; actionLog: BookingFlowActionLog }>(`/booking-flow/items/${id}/record-email-sent`, { sentEmailId });
+    return api.post<{ item: BookingFlowItem; actionLog: BookingFlowActionLog }>(`/booking-flow/items/${id}/record-email-sent`, { sentEmailId, actionKey });
+  },
+  recordItemAction: (id: string, data: { actionKey?: string; actionType?: string; statusAfter?: string; notes?: string; metadata?: Record<string, any> }) => {
+    cacheService.clearPattern('booking-flow:');
+    return api.post<{ item: BookingFlowItem; actionLog: BookingFlowActionLog }>(`/booking-flow/items/${id}/record-action`, data);
   },
   sendTemplateEmailToRetreat: (retreatId: string, templateId: string) => {
     cacheService.clearPattern('booking-flow:');

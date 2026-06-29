@@ -1068,8 +1068,22 @@ export interface BookingFlowTemplate {
   requirementType?: string;
   emailEnabled?: boolean;
   emailTemplateId?: string | EmailTemplate;
+  actions?: BookingFlowAction[];
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface BookingFlowAction {
+  key: string;
+  label: string;
+  type: 'email' | 'whatsapp' | 'link' | 'manual';
+  active?: boolean;
+  emailTemplateId?: string | EmailTemplate;
+  urlTemplate?: string;
+  statusAfterSuccess?: BookingFlowItem['status'];
+  allowRepeat?: boolean;
+  openComposer?: boolean;
+  order?: number;
 }
 
 export interface BookingFlowItem {
@@ -1081,6 +1095,7 @@ export interface BookingFlowItem {
   templateId?: string | BookingFlowTemplate;
   emailEnabled?: boolean;
   emailTemplateId?: string | EmailTemplate;
+  actions?: BookingFlowAction[];
   emailSentEmailId?: string | SentEmail;
   key: string;
   title: string;
@@ -1119,7 +1134,9 @@ export interface BookingFlowActionLog {
   bookingId: string | RetreatClient;
   clientId: string | Client;
   retreatId: string | Retreat;
-  actionType: 'email_sent' | 'manual_mark' | 'artifact_received' | 'system_update' | 'other';
+  actionType: 'email_sent' | 'whatsapp' | 'link' | 'manual_mark' | 'artifact_received' | 'system_update' | 'other';
+  actionKey?: string;
+  actionLabel?: string;
   emailTemplateId?: string | EmailTemplate;
   sentEmailId?: string | SentEmail;
   statusBefore?: string;

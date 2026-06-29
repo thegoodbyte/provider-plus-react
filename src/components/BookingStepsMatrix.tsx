@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Circle, Mail, RefreshCw } from 'lucide-react';
 import { bookingFlowApi, clientsApi, communicationsApi } from '../services/api';
-import { BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, Client } from '../types';
+import { BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, Client } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 
@@ -152,6 +152,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [composeState, setComposeState] = useState<{
     item: BookingFlowItem;
+    action?: BookingFlowAction;
     initialValues: EmailComposeInitialValues;
   } | null>(null);
 
@@ -296,18 +297,69 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     }
   };
 
-  const openItemEmailComposer = async (item: BookingFlowItem | undefined) => {
-    if (!item?._id) return;
-    setSaving(`email:${item._id}`);
-    try {
-      const response = await bookingFlowApi.getItemEmailComposeData(item._id);
-      setComposeState({
-        item,
-        initialValues: response.data,
+  const getConfiguredActions = (item?: BookingFlowItem): BookingFlowAction[] => {
+    if (!item) return [];
+    const configured = Array.isArray(item.actions) && item.actions.length > 0
+      ? item.actions
+      : Array.isArray(item.metadata?.actions)
+        ? (item.metadata?.actions as BookingFlowAction[])
+        : [];
+    const actions = configured.filter((action) => action.active !== false);
+    const hasLegacyEmail = Boolean(item.emailEnabled && item.emailTemplateId);
+    if (hasLegacyEmail && !actions.some((action) => action.type === 'email' && action.emailTemplateId)) {
+      actions.unshift({
+        key: 'default_email',
+        label: 'Send email',
+        type: 'email',
+        emailTemplateId: item.emailTemplateId,
+        statusAfterSuccess: 'sent',
+        allowRepeat: true,
+        openComposer: true,
+        order: -1,
       });
+    }
+    return actions.sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+  };
+
+  const interpolateActionUrl = (template: string, variables: Record<string, any> = {}) => {
+    return template.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_match, path) => {
+      const value = String(path).split('.').reduce((current: any, key: string) => current?.[key], variables);
+      return encodeURIComponent(value ?? '');
+    });
+  };
+
+  const runItemAction = async (item: BookingFlowItem | undefined, action: BookingFlowAction) => {
+    if (!item?._id) return;
+    setSaving(`action:${item._id}:${action.key}`);
+    try {
+      if (action.type === 'email') {
+        const response = await bookingFlowApi.getItemEmailComposeData(item._id, action.key);
+        setComposeState({
+          item,
+          action,
+          initialValues: response.data,
+        });
+        return;
+      }
+
+      let metadata: Record<string, any> = {};
+      if ((action.type === 'whatsapp' || action.type === 'link') && action.urlTemplate) {
+        const response = await bookingFlowApi.getItemEmailComposeData(item._id, action.key).catch(() => null);
+        metadata = { urlTemplate: action.urlTemplate };
+        const url = interpolateActionUrl(action.urlTemplate, response?.data?.variables || {});
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+
+      await bookingFlowApi.recordItemAction(item._id, {
+        actionKey: action.key,
+        actionType: action.type,
+        statusAfter: action.statusAfterSuccess,
+        metadata,
+      });
+      await loadData(false);
     } catch (error: any) {
-      console.error('Error preparing booking step email:', error);
-      alert(error?.response?.data?.message || error?.message || 'Unable to prepare booking step email.');
+      console.error('Error running booking step action:', error);
+      alert(error?.response?.data?.message || error?.message || 'Unable to run booking step action.');
     } finally {
       setSaving('');
     }
@@ -315,7 +367,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
 
   const handleComposedEmailSent = async (sentEmail: any) => {
     if (!composeState?.item?._id || !sentEmail?._id) return;
-    await bookingFlowApi.recordItemEmailSent(composeState.item._id, sentEmail._id);
+    await bookingFlowApi.recordItemEmailSent(composeState.item._id, sentEmail._id, composeState.action?.key);
     await loadData(false);
   };
 
@@ -336,12 +388,6 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     } finally {
       setSaving('');
     }
-  };
-
-  const itemCanSendEmail = (item?: BookingFlowItem) => {
-    if (!item) return false;
-    const template = typeof item.templateId === 'object' ? item.templateId : null;
-    return Boolean(item.emailEnabled && item.emailTemplateId) || Boolean(template?.emailEnabled && template?.emailTemplateId);
   };
 
   const rowCanSendEmail = (row: MatrixRow) => Boolean(row.templateId && row.emailEnabled && row.emailTemplateId);
@@ -409,8 +455,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                   const dateField = item ? getStatusDateField(item.status) : 'dueDate';
                   const dateValue = item ? item[dateField as keyof BookingFlowItem] as Date | string | null | undefined : undefined;
                   const itemActionLogs = item?._id ? actionLogMap.get(item._id) || [] : [];
-                  const emailActionCount = itemActionLogs.filter((log) => log.actionType === 'email_sent').length;
-                  const latestEmailAction = itemActionLogs.find((log) => log.actionType === 'email_sent');
+                  const configuredActions = getConfiguredActions(item);
                   return (
                     <td key={`${getObjectId(booking)}:${row.key}`} className={`min-w-[230px] border-b border-r border-gray-300 px-2 py-1 align-top ${item ? getStatusCellClass(item.status) : 'bg-white'}`}>
                       {item ? (
@@ -453,21 +498,35 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                               placeholder={item.emailSentAt ? `Email ${formatDate(item.emailSentAt)}` : 'Notes'}
                               className="min-h-[28px] w-full resize-y rounded border border-black/10 bg-white/80 px-1.5 py-1 text-xs text-gray-800 placeholder:text-gray-400"
                             />
-                            {itemCanSendEmail(item) && (
-                              <button
-                                type="button"
-                                disabled={saving === `email:${item._id}`}
-                                onClick={() => openItemEmailComposer(item)}
-                                className="inline-flex items-center justify-center gap-1 rounded-md border border-blue-200 bg-white px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
-                              >
-                                <Mail className="h-3.5 w-3.5" />
-                                {saving === `email:${item._id}` ? '...' : emailActionCount > 0 ? 'Send again' : 'Send'}
-                              </button>
-                            )}
+                            {configuredActions.map((action) => {
+                              const actionLogs = itemActionLogs.filter((log) => (log.actionKey || 'default_email') === action.key);
+                              const actionCount = actionLogs.length;
+                              const savingKey = `action:${item._id}:${action.key}`;
+                              return (
+                                <button
+                                  key={action.key}
+                                  type="button"
+                                  disabled={saving === savingKey}
+                                  onClick={() => runItemAction(item, action)}
+                                  className="inline-flex items-center justify-center gap-1 rounded-md border border-blue-200 bg-white px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+                                  title={action.type}
+                                >
+                                  {action.type === 'email' && <Mail className="h-3.5 w-3.5" />}
+                                  {saving === savingKey ? '...' : actionCount > 0 && action.allowRepeat !== false ? `${action.label} again` : action.label}
+                                </button>
+                              );
+                            })}
                           </div>
-                          {emailActionCount > 0 && (
-                            <div className="text-[11px] text-blue-800">
-                              Sent {emailActionCount}x{latestEmailAction?.performedAt ? `, last ${formatDateTime(latestEmailAction.performedAt)}` : ''}
+                          {itemActionLogs.length > 0 && (
+                            <div className="space-y-0.5 text-[11px] text-blue-800">
+                              {configuredActions
+                                .map((action) => ({ action, logs: itemActionLogs.filter((log) => (log.actionKey || 'default_email') === action.key) }))
+                                .filter(({ logs }) => logs.length > 0)
+                                .map(({ action, logs }) => (
+                                  <div key={action.key}>
+                                    {action.label}: {logs.length}x{logs[0]?.performedAt ? `, last ${formatDateTime(logs[0].performedAt)}` : ''}
+                                  </div>
+                                ))}
                             </div>
                           )}
                         </div>
