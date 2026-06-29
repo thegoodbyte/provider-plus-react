@@ -1113,6 +1113,26 @@ export interface BookingFlowItem {
   updatedAt?: string;
 }
 
+export interface BookingFlowActionLog {
+  _id?: string;
+  bookingFlowItemId: string | BookingFlowItem;
+  bookingId: string | RetreatClient;
+  clientId: string | Client;
+  retreatId: string | Retreat;
+  actionType: 'email_sent' | 'manual_mark' | 'artifact_received' | 'system_update' | 'other';
+  emailTemplateId?: string | EmailTemplate;
+  sentEmailId?: string | SentEmail;
+  statusBefore?: string;
+  statusAfter?: string;
+  performedByUserId?: string | any;
+  performedByEmail?: string;
+  performedAt?: string | Date;
+  notes?: string;
+  metadata?: Record<string, any>;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface BookingFlowGate {
   key: string;
   label: string;

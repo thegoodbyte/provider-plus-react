@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Circle, Mail, RefreshCw } from 'lucide-react';
 import { bookingFlowApi, clientsApi, communicationsApi } from '../services/api';
-import { BookingFlowItem, BookingFlowTemplate, Client } from '../types';
+import { BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, Client } from '../types';
 import LoadingSpinner from './LoadingSpinner';
+import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 
 const getObjectId = (value: any): string => {
   if (!value) return '';
@@ -145,9 +146,14 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const [bookings, setBookings] = useState<any[]>([]);
   const [templates, setTemplates] = useState<BookingFlowTemplate[]>([]);
   const [items, setItems] = useState<BookingFlowItem[]>([]);
+  const [actionLogs, setActionLogs] = useState<BookingFlowActionLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState('');
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
+  const [composeState, setComposeState] = useState<{
+    item: BookingFlowItem;
+    initialValues: EmailComposeInitialValues;
+  } | null>(null);
 
   const loadData = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
@@ -156,6 +162,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       setBookings(response.data?.bookings || []);
       setTemplates(response.data?.templates || []);
       setItems(response.data?.items || []);
+      setActionLogs(response.data?.actionLogs || []);
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -222,6 +229,18 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     return map;
   }, [items]);
 
+  const actionLogMap = useMemo(() => {
+    const map = new Map<string, BookingFlowActionLog[]>();
+    actionLogs.forEach((log) => {
+      const itemId = getObjectId(log.bookingFlowItemId);
+      if (!itemId) return;
+      const current = map.get(itemId) || [];
+      current.push(log);
+      map.set(itemId, current);
+    });
+    return map;
+  }, [actionLogs]);
+
   const toggleItem = async (item: BookingFlowItem | undefined, checked: boolean) => {
     if (!item?._id) return;
     setSaving(item._id);
@@ -277,21 +296,27 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     }
   };
 
-  const sendItemEmail = async (item: BookingFlowItem | undefined) => {
+  const openItemEmailComposer = async (item: BookingFlowItem | undefined) => {
     if (!item?._id) return;
     setSaving(`email:${item._id}`);
     try {
-      const response = await bookingFlowApi.sendItemEmail(item._id);
-      if (response.data.sentEmail?.status === 'failed') {
-        alert(`Email was logged but Gmail failed to send it: ${response.data.sentEmail.errorMessage || 'Unknown error'}`);
-      }
-      await loadData(false);
+      const response = await bookingFlowApi.getItemEmailComposeData(item._id);
+      setComposeState({
+        item,
+        initialValues: response.data,
+      });
     } catch (error: any) {
-      console.error('Error sending booking step email:', error);
-      alert(error?.response?.data?.message || error?.message || 'Unable to send booking step email.');
+      console.error('Error preparing booking step email:', error);
+      alert(error?.response?.data?.message || error?.message || 'Unable to prepare booking step email.');
     } finally {
       setSaving('');
     }
+  };
+
+  const handleComposedEmailSent = async (sentEmail: any) => {
+    if (!composeState?.item?._id || !sentEmail?._id) return;
+    await bookingFlowApi.recordItemEmailSent(composeState.item._id, sentEmail._id);
+    await loadData(false);
   };
 
   const sendRowEmail = async (row: MatrixRow) => {
@@ -383,6 +408,9 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                   const done = item?.status ? fulfilledStatuses.has(item.status) : false;
                   const dateField = item ? getStatusDateField(item.status) : 'dueDate';
                   const dateValue = item ? item[dateField as keyof BookingFlowItem] as Date | string | null | undefined : undefined;
+                  const itemActionLogs = item?._id ? actionLogMap.get(item._id) || [] : [];
+                  const emailActionCount = itemActionLogs.filter((log) => log.actionType === 'email_sent').length;
+                  const latestEmailAction = itemActionLogs.find((log) => log.actionType === 'email_sent');
                   return (
                     <td key={`${getObjectId(booking)}:${row.key}`} className={`min-w-[230px] border-b border-r border-gray-300 px-2 py-1 align-top ${item ? getStatusCellClass(item.status) : 'bg-white'}`}>
                       {item ? (
@@ -429,14 +457,19 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                               <button
                                 type="button"
                                 disabled={saving === `email:${item._id}`}
-                                onClick={() => sendItemEmail(item)}
+                                onClick={() => openItemEmailComposer(item)}
                                 className="inline-flex items-center justify-center gap-1 rounded-md border border-blue-200 bg-white px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
                               >
                                 <Mail className="h-3.5 w-3.5" />
-                                {saving === `email:${item._id}` ? '...' : 'Send'}
+                                {saving === `email:${item._id}` ? '...' : emailActionCount > 0 ? 'Send again' : 'Send'}
                               </button>
                             )}
                           </div>
+                          {emailActionCount > 0 && (
+                            <div className="text-[11px] text-blue-800">
+                              Sent {emailActionCount}x{latestEmailAction?.performedAt ? `, last ${formatDateTime(latestEmailAction.performedAt)}` : ''}
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <span className="text-gray-300">-</span>
@@ -454,6 +487,14 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
           </tbody>
         </table>
       </div>
+      {composeState && (
+        <EmailComposeModal
+          title={`Send ${composeState.item.title}`}
+          initialValues={composeState.initialValues}
+          onClose={() => setComposeState(null)}
+          onSent={handleComposedEmailSent}
+        />
+      )}
     </div>
   );
 };

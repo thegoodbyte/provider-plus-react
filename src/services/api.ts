@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, FileUpload, BookingFlowItem, BookingFlowTemplate, MailSettings, EmailTemplate, SentEmail } from '../types';
+import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, MailSettings, EmailTemplate, SentEmail } from '../types';
 import { authService } from './authService';
 import { cacheService } from './cacheService';
 import { API_BASE_URL } from '../config/api.config';
@@ -974,6 +974,20 @@ export const bookingFlowApi = {
     cacheService.clearPattern('booking-flow:');
     cacheService.clearPattern('communications:sent-emails');
     return api.post<{ item: BookingFlowItem; sentEmail: SentEmail }>(`/booking-flow/items/${id}/send-email`, {});
+  },
+  getItemEmailComposeData: (id: string) => api.get<{
+    to: string;
+    templateId: string;
+    clientId: string;
+    retreatId: string;
+    relatedEntityType: string;
+    relatedEntityId: string;
+    variables: Record<string, any>;
+  }>(`/booking-flow/items/${id}/email-compose-data`),
+  recordItemEmailSent: (id: string, sentEmailId: string) => {
+    cacheService.clearPattern('booking-flow:');
+    cacheService.clearPattern('communications:sent-emails');
+    return api.post<{ item: BookingFlowItem; actionLog: BookingFlowActionLog }>(`/booking-flow/items/${id}/record-email-sent`, { sentEmailId });
   },
   sendTemplateEmailToRetreat: (retreatId: string, templateId: string) => {
     cacheService.clearPattern('booking-flow:');

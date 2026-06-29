@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { FiSend, FiX } from 'react-icons/fi';
 import { communicationsApi } from '../services/api';
 import { EmailTemplate, MailSettings } from '../types';
@@ -16,6 +16,7 @@ export interface EmailComposeInitialValues {
   fromName?: string;
   fromEmail?: string;
   replyTo?: string;
+  templateId?: string;
   clientId?: string;
   retreatId?: string;
   relatedEntityType?: string;
@@ -33,7 +34,7 @@ interface EmailComposeModalProps {
   initialValues: EmailComposeInitialValues;
   extraContent?: React.ReactNode;
   onClose: () => void;
-  onSent?: () => void | Promise<void>;
+  onSent?: (sentEmail: any) => void | Promise<void>;
 }
 
 const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
@@ -59,7 +60,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
   });
 
   useEffect(() => {
-    setSelectedTemplateId('');
+    setSelectedTemplateId(initialValues.templateId || '');
     setFormData({
       to: initialValues.to || '',
       cc: initialValues.cc || '',
@@ -101,7 +102,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleTemplateChange = (templateId: string) => {
+  const handleTemplateChange = useCallback((templateId: string) => {
     setSelectedTemplateId(templateId);
     const template = templates.find((item) => item._id === templateId);
     if (!template) return;
@@ -110,7 +111,12 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
       subject: template.subject || prev.subject,
       bodyText: template.bodyText || prev.bodyText,
     }));
-  };
+  }, [templates]);
+
+  useEffect(() => {
+    if (!initialValues.templateId || templates.length === 0) return;
+    handleTemplateChange(initialValues.templateId);
+  }, [handleTemplateChange, initialValues.templateId, templates]);
 
   const handleSend = async () => {
     const to = formData.to.trim();
@@ -127,12 +133,13 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
 
     setSending(true);
     try {
-      await communicationsApi.sendEmail({
+      const response = await communicationsApi.sendEmail({
         to,
         cc: formData.cc.trim() || undefined,
         bcc: formData.bcc.trim() || undefined,
         subject,
         bodyText: formData.bodyText,
+        templateId: selectedTemplateId || initialValues.templateId || undefined,
         fromName: formData.fromName.trim() || settings?.senderName,
         fromEmail: formData.fromEmail.trim() || settings?.senderEmail,
         replyTo: formData.replyTo.trim() || settings?.replyTo,
@@ -143,7 +150,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
         variables: initialValues.variables,
         attachments: initialValues.attachments || undefined,
       });
-      await onSent?.();
+      await onSent?.(response.data);
       alert('Email sent.');
       onClose();
     } catch (error) {
