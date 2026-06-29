@@ -95,9 +95,18 @@ interface MatrixRow {
   key: string;
   title: string;
   order: number;
+  category?: BookingFlowTemplate['category'] | BookingFlowItem['category'];
+  groupKey: string;
+  groupLabel: string;
   templateId?: string;
   emailEnabled?: boolean;
   emailTemplateId?: BookingFlowTemplate['emailTemplateId'];
+}
+
+interface MatrixRowGroup {
+  key: string;
+  label: string;
+  rows: MatrixRow[];
 }
 
 const statusOptions: BookingFlowItem['status'][] = [
@@ -140,6 +149,30 @@ const getItemDisplayValue = (item: BookingFlowItem) => {
   const dateField = getStatusDateField(item.status);
   const dateValue = item[dateField as keyof BookingFlowItem] as Date | string | null | undefined;
   return formatDateTime(dateValue) || (item.status === 'pending' ? '' : item.status.replace(/_/g, ' '));
+};
+
+const titleizeGroup = (value?: string) => {
+  const normalized = String(value || 'other').trim() || 'other';
+  return normalized
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
+};
+
+const getTemplateGroup = (template?: Partial<BookingFlowTemplate> | null, fallbackCategory?: string) => {
+  const groupKey = String(template?.readinessGroup || fallbackCategory || template?.category || 'other').trim() || 'other';
+  return {
+    groupKey,
+    groupLabel: titleizeGroup(groupKey),
+  };
+};
+
+const getItemGroup = (item?: Partial<BookingFlowItem> | null, template?: Partial<BookingFlowTemplate> | null) => {
+  const metadata = item?.metadata || {};
+  const groupKey = String(metadata.readinessGroup || template?.readinessGroup || item?.category || template?.category || 'other').trim() || 'other';
+  return {
+    groupKey,
+    groupLabel: titleizeGroup(groupKey),
+  };
 };
 
 const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
@@ -197,10 +230,13 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const rows = useMemo<MatrixRow[]>(() => {
     const rowMap = new Map<string, MatrixRow>();
     templates.forEach((template) => {
+      const group = getTemplateGroup(template);
       rowMap.set(template.key, {
         key: template.key,
         title: template.title,
         order: template.order || 0,
+        category: template.category,
+        ...group,
         templateId: template._id,
         emailEnabled: template.emailEnabled,
         emailTemplateId: template.emailTemplateId,
@@ -209,11 +245,14 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     items.forEach((item) => {
       const template = typeof item.templateId === 'object' ? item.templateId : null;
       const existing = rowMap.get(item.key);
+      const group = getItemGroup(item, template || existing);
       rowMap.set(item.key, {
         ...existing,
         key: item.key,
         title: item.title,
         order: item.order || 0,
+        category: item.category || existing?.category || template?.category,
+        ...group,
         templateId: existing?.templateId || template?._id || (typeof item.templateId === 'string' ? item.templateId : undefined),
         emailEnabled: existing?.emailEnabled || item.emailEnabled || template?.emailEnabled,
         emailTemplateId: existing?.emailTemplateId || item.emailTemplateId || template?.emailTemplateId,
@@ -221,6 +260,17 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     });
     return Array.from(rowMap.values()).sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
   }, [items, templates]);
+
+  const groupedRows = useMemo<MatrixRowGroup[]>(() => {
+    const groups = new Map<string, MatrixRowGroup>();
+    rows.forEach((row) => {
+      const groupKey = row.groupKey || row.category || 'other';
+      const current = groups.get(groupKey) || { key: groupKey, label: row.groupLabel || titleizeGroup(groupKey), rows: [] };
+      current.rows.push(row);
+      groups.set(groupKey, current);
+    });
+    return Array.from(groups.values());
+  }, [rows]);
 
   const itemMap = useMemo(() => {
     const map = new Map<string, BookingFlowItem>();
@@ -433,34 +483,51 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <tr key={row.key}>
-                <td className="sticky left-0 z-10 border-b border-r border-gray-300 bg-white px-3 py-2 font-medium text-gray-900">
-                  <div>{row.title}</div>
-                  {rowCanSendEmail(row) && (
-                    <button
-                      type="button"
-                      disabled={saving === `row-email:${row.key}`}
-                      onClick={() => sendRowEmail(row)}
-                      className="mt-2 inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
-                    >
-                      <Mail className="h-3.5 w-3.5" />
-                      {saving === `row-email:${row.key}` ? 'Sending...' : row.key === 'address_sent' ? 'Send address' : 'Send row'}
-                    </button>
-                  )}
-                </td>
-                {bookings.map((booking) => {
-                  const item = itemMap.get(`${getObjectId(booking)}:${row.key}`);
-                  const done = item?.status ? fulfilledStatuses.has(item.status) : false;
-                  const dateField = item ? getStatusDateField(item.status) : 'dueDate';
-                  const dateValue = item ? item[dateField as keyof BookingFlowItem] as Date | string | null | undefined : undefined;
-                  const itemActionLogs = item?._id ? actionLogMap.get(item._id) || [] : [];
-                  const configuredActions = getConfiguredActions(item);
-                  return (
-                    <td key={`${getObjectId(booking)}:${row.key}`} className={`min-w-[230px] border-b border-r border-gray-300 px-2 py-1 align-top ${item ? getStatusCellClass(item.status) : 'bg-white'}`}>
-                      {item ? (
-                        <div className="space-y-1">
-                          <div className="grid grid-cols-[18px_minmax(88px,1fr)_92px] items-center gap-1">
+            {groupedRows.map((group) => (
+              <React.Fragment key={group.key}>
+                <tr>
+                  <td className="sticky left-0 z-10 border-b border-r border-gray-300 bg-gray-200 px-3 py-2 text-xs font-bold uppercase tracking-wide text-gray-700">
+                    {group.label}
+                  </td>
+                  {bookings.map((booking) => (
+                    <td key={`${group.key}:${getObjectId(booking)}`} className="border-b border-r border-gray-300 bg-gray-200 px-2 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      {group.rows.length} steps
+                    </td>
+                  ))}
+                </tr>
+                {group.rows.map((row, rowIndex) => (
+                  <tr key={row.key}>
+                    <td className="sticky left-0 z-10 border-b border-r border-gray-300 bg-white px-3 py-2 font-medium text-gray-900">
+                      <div className="flex items-start gap-2">
+                        <span className="mt-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded bg-gray-100 px-1 text-[11px] font-semibold text-gray-600">
+                          {rowIndex + 1}
+                        </span>
+                        <span>{row.title}</span>
+                      </div>
+                      {rowCanSendEmail(row) && (
+                        <button
+                          type="button"
+                          disabled={saving === `row-email:${row.key}`}
+                          onClick={() => sendRowEmail(row)}
+                          className="mt-2 inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+                        >
+                          <Mail className="h-3.5 w-3.5" />
+                          {saving === `row-email:${row.key}` ? 'Sending...' : row.key === 'address_sent' ? 'Send address' : 'Send row'}
+                        </button>
+                      )}
+                    </td>
+                    {bookings.map((booking) => {
+                      const item = itemMap.get(`${getObjectId(booking)}:${row.key}`);
+                      const done = item?.status ? fulfilledStatuses.has(item.status) : false;
+                      const dateField = item ? getStatusDateField(item.status) : 'dueDate';
+                      const dateValue = item ? item[dateField as keyof BookingFlowItem] as Date | string | null | undefined : undefined;
+                      const itemActionLogs = item?._id ? actionLogMap.get(item._id) || [] : [];
+                      const configuredActions = getConfiguredActions(item);
+                      return (
+                        <td key={`${getObjectId(booking)}:${row.key}`} className={`min-w-[230px] border-b border-r border-gray-300 px-2 py-1 align-top ${item ? getStatusCellClass(item.status) : 'bg-white'}`}>
+                          {item ? (
+                            <div className="space-y-1">
+                              <div className="grid grid-cols-[18px_minmax(88px,1fr)_92px] items-center gap-1">
                             <button
                               type="button"
                               disabled={saving === item._id}
@@ -488,8 +555,8 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                               onChange={(event) => updateItemDate(item, event.target.value)}
                               className="w-full rounded border border-black/10 bg-white/80 px-1.5 py-1 text-xs text-gray-800"
                             />
-                          </div>
-                          <div className="grid grid-cols-[1fr_auto] gap-1">
+                              </div>
+                              <div className="grid grid-cols-[1fr_auto] gap-1">
                             <textarea
                               value={noteDrafts[item._id || ''] || ''}
                               onChange={(event) => item._id && setNoteDrafts((current) => ({ ...current, [item._id!]: event.target.value }))}
@@ -516,9 +583,9 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                                 </button>
                               );
                             })}
-                          </div>
-                          {itemActionLogs.length > 0 && (
-                            <div className="space-y-0.5 text-[11px] text-blue-800">
+                              </div>
+                              {itemActionLogs.length > 0 && (
+                                <div className="space-y-0.5 text-[11px] text-blue-800">
                               {configuredActions
                                 .map((action) => ({ action, logs: itemActionLogs.filter((log) => (log.actionKey || 'default_email') === action.key) }))
                                 .filter(({ logs }) => logs.length > 0)
@@ -527,16 +594,18 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                                     {action.label}: {logs.length}x{logs[0]?.performedAt ? `, last ${formatDateTime(logs[0].performedAt)}` : ''}
                                   </div>
                                 ))}
+                                </div>
+                              )}
                             </div>
+                          ) : (
+                            <span className="text-gray-300">-</span>
                           )}
-                        </div>
-                      ) : (
-                        <span className="text-gray-300">-</span>
-                      )}
-                    </td>
-                  );
-                })}
-              </tr>
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </React.Fragment>
             ))}
             {rows.length === 0 && (
               <tr>

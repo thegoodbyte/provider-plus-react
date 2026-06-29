@@ -425,7 +425,17 @@ const RetreatFlowLibraryPage: React.FC = () => {
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Readiness group</span>
-          <input value={form.readinessGroup} onChange={(e) => setForm({ ...form, readinessGroup: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="ekg" />
+          <input value={form.readinessGroup} list="booking-step-groups" onChange={(e) => setForm({ ...form, readinessGroup: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="medical" />
+          <datalist id="booking-step-groups">
+            <option value="admin" />
+            <option value="medical" />
+            <option value="questionnaires" />
+            <option value="payments" />
+            <option value="travel" />
+            <option value="preparation" />
+            <option value="dietary" />
+            <option value="other" />
+          </datalist>
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Expected artifact</span>
