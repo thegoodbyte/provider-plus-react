@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import AppleButton from './AppleButton';
 import AppleInput from './AppleInput';
@@ -22,6 +22,8 @@ import {
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
 };
+
+type ClientSortField = keyof Client | 'retreatCode';
 
 const getObjectId = (value: any): string => {
   if (!value) return '';
@@ -138,7 +140,7 @@ const UnifiedClientManager: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [sortField, setSortField] = useState<keyof Client>('lastName');
+  const [sortField, setSortField] = useState<ClientSortField>('lastName');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState<Partial<Client>>({
@@ -242,6 +244,32 @@ const UnifiedClientManager: React.FC = () => {
     fetchBookingContext();
   }, []);
 
+  const getClientBooking = useCallback((client: Client) => {
+    if (!client._id) return undefined;
+    const activeStatuses = new Set(['confirmed', 'approved', 'checked-in', 'pending', 'conditional']);
+    return bookings.find((booking) => {
+      const bookingClientId = getObjectId((booking as any).clientId || (booking as any).client);
+      return bookingClientId === client._id && activeStatuses.has(String(booking.status || 'pending'));
+    });
+  }, [bookings]);
+
+  const getBookingRetreat = useCallback((booking?: RetreatClient) => {
+    if (!booking) return undefined;
+    const retreatValue = (booking as any).retreatId || (booking as any).retreat || (booking as any).retreatDetails;
+    const retreatId = getObjectId(retreatValue);
+    if (retreatValue && typeof retreatValue === 'object' && (retreatValue.name || retreatValue.location)) {
+      return retreatValue;
+    }
+    return retreats.find((retreat) => retreat._id === retreatId);
+  }, [retreats]);
+
+  const getClientRetreatCode = useCallback((client: Client) => {
+    const status = client.workflowStatus || (client.status as string);
+    if (status !== 'booked') return '';
+    const retreat = getBookingRetreat(getClientBooking(client));
+    return retreat ? getRetreatCode(retreat) : '';
+  }, [getBookingRetreat, getClientBooking]);
+
   // Filter and search clients
   useEffect(() => {
     let filtered = [...clients];
@@ -265,14 +293,14 @@ const UnifiedClientManager: React.FC = () => {
 
     // Sort
     filtered.sort((a, b) => {
-      const aVal = a[sortField] || '';
-      const bVal = b[sortField] || '';
+      const aVal = sortField === 'retreatCode' ? getClientRetreatCode(a) : (a[sortField] || '');
+      const bVal = sortField === 'retreatCode' ? getClientRetreatCode(b) : (b[sortField] || '');
       const comparison = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
       return sortDirection === 'asc' ? comparison : -comparison;
     });
 
     setFilteredClients(filtered);
-  }, [clients, filterStatus, searchTerm, sortField, sortDirection]);
+  }, [clients, filterStatus, searchTerm, sortField, sortDirection, getClientRetreatCode]);
 
   const handleSave = async () => {
     console.log('=== SAVE STARTED ===');
@@ -468,7 +496,7 @@ const UnifiedClientManager: React.FC = () => {
     }
   };
 
-  const handleSort = (field: keyof Client) => {
+  const handleSort = (field: ClientSortField) => {
     if (field === sortField) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
@@ -503,32 +531,6 @@ const UnifiedClientManager: React.FC = () => {
         {new Date(signupDate).toLocaleDateString()}
       </span>
     );
-  };
-
-  const getClientBooking = (client: Client) => {
-    if (!client._id) return undefined;
-    const activeStatuses = new Set(['confirmed', 'approved', 'checked-in', 'pending', 'conditional']);
-    return bookings.find((booking) => {
-      const bookingClientId = getObjectId((booking as any).clientId || (booking as any).client);
-      return bookingClientId === client._id && activeStatuses.has(String(booking.status || 'pending'));
-    });
-  };
-
-  const getBookingRetreat = (booking?: RetreatClient) => {
-    if (!booking) return undefined;
-    const retreatValue = (booking as any).retreatId || (booking as any).retreat || (booking as any).retreatDetails;
-    const retreatId = getObjectId(retreatValue);
-    if (retreatValue && typeof retreatValue === 'object' && (retreatValue.name || retreatValue.location)) {
-      return retreatValue;
-    }
-    return retreats.find((retreat) => retreat._id === retreatId);
-  };
-
-  const getClientRetreatCode = (client: Client) => {
-    const status = client.workflowStatus || (client.status as string);
-    if (status !== 'booked') return '';
-    const retreat = getBookingRetreat(getClientBooking(client));
-    return retreat ? getRetreatCode(retreat) : '';
   };
 
   if (isLoading) {
@@ -621,8 +623,16 @@ const UnifiedClientManager: React.FC = () => {
                     }
                   </div>
                 </th>
-                <th className="hidden px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:table-cell">
-                  Retreat
+                <th
+                  onClick={() => handleSort('retreatCode')}
+                  className="hidden px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 sm:table-cell"
+                >
+                  <div className="flex items-center">
+                    Retreat
+                    {sortField === 'retreatCode' &&
+                      <Icon icon={FiChevronDown} className={`ml-1 w-4 h-4 transform ${sortDirection === 'asc' ? '' : 'rotate-180'}`} />
+                    }
+                  </div>
                 </th>
                 <th className="hidden px-3 py-1.5 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:table-cell">
                   Signup Date
