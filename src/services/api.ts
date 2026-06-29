@@ -32,6 +32,9 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      if ((error.config as any)?.suppressAuthRedirect) {
+        return Promise.reject(error);
+      }
       // Token expired or invalid
       authService.logout();
       window.location.href = '/';
@@ -829,7 +832,10 @@ export const medicalReviewRequestsApi = {
     cacheService.clearPattern('medical-review-requests:');
     return api.post<MedicalReviewRequest>(`/medical-review-requests/from-artifact/${artifactId}`, { ...data, requestType });
   },
-  getPublic: (token: string) => api.get<{ request: MedicalReviewRequest; artifacts: MedicalArtifact[] }>(`/medical-review-public/${encodeURIComponent(token)}`),
+  getPublic: (token: string) => api.get<{ request: MedicalReviewRequest; artifacts: MedicalArtifact[] }>(
+    `/medical-review-public/${encodeURIComponent(token)}`,
+    { suppressAuthRedirect: true, suppressGlobalError: true } as any
+  ),
   exchangeAccessLink: (token: string) => api.post<{
     access_token: string;
     expiresAt: string;
@@ -845,7 +851,11 @@ export const medicalReviewRequestsApi = {
       medicalReviewRequestId?: string;
       accessLinkId?: string;
     };
-  }>(`/medical-review-public/access/${encodeURIComponent(token)}`),
+  }>(
+    `/medical-review-public/access/${encodeURIComponent(token)}`,
+    {},
+    { suppressAuthRedirect: true, suppressGlobalError: true } as any
+  ),
   getAccessLinks: (id: string) => api.get<any[]>(`/medical-review-requests/${id}/access-links`),
   createAccessLink: (id: string) => api.post<any>(`/medical-review-requests/${id}/access-links`, {}),
   revokeAccessLink: (accessLinkId: string) => api.patch<any>(`/medical-review-requests/access-links/${accessLinkId}/revoke`, {}),
