@@ -27,6 +27,11 @@ type TemplateForm = {
   taskPriority: 'low' | 'medium' | 'high' | 'urgent';
   readinessGroup: string;
   expectedArtifact: string;
+  expectedDocumentStage: string;
+  expectedDocumentType: string;
+  expectedArtifactPurpose: string;
+  autoCompleteOnArtifact: boolean;
+  autoCompleteStatus: string;
   emailEnabled: boolean;
   emailTemplateId: string;
 };
@@ -50,6 +55,11 @@ const emptyForm = (): TemplateForm => ({
   taskPriority: 'medium',
   readinessGroup: '',
   expectedArtifact: '',
+  expectedDocumentStage: '',
+  expectedDocumentType: '',
+  expectedArtifactPurpose: '',
+  autoCompleteOnArtifact: false,
+  autoCompleteStatus: 'received',
   emailEnabled: false,
   emailTemplateId: '',
 });
@@ -133,6 +143,11 @@ const RetreatFlowLibraryPage: React.FC = () => {
       taskPriority: template.taskPriority || 'medium',
       readinessGroup: template.readinessGroup || '',
       expectedArtifact: template.expectedArtifact || '',
+      expectedDocumentStage: template.expectedDocumentStage || '',
+      expectedDocumentType: template.expectedDocumentType || '',
+      expectedArtifactPurpose: template.expectedArtifactPurpose || '',
+      autoCompleteOnArtifact: !!template.autoCompleteOnArtifact,
+      autoCompleteStatus: template.autoCompleteStatus || 'received',
       emailEnabled: !!template.emailEnabled,
       emailTemplateId: typeof template.emailTemplateId === 'string' ? template.emailTemplateId : template.emailTemplateId?._id || '',
     });
@@ -162,6 +177,11 @@ const RetreatFlowLibraryPage: React.FC = () => {
         triggerType: form.deadlineBasis,
         readinessGroup: form.readinessGroup,
         expectedArtifact: form.expectedArtifact,
+        expectedDocumentStage: form.expectedDocumentStage || undefined,
+        expectedDocumentType: form.expectedDocumentType || undefined,
+        expectedArtifactPurpose: form.expectedArtifactPurpose || undefined,
+        autoCompleteOnArtifact: form.autoCompleteOnArtifact,
+        autoCompleteStatus: form.autoCompleteStatus || 'received',
         emailEnabled: form.emailEnabled,
         emailTemplateId: form.emailEnabled ? form.emailTemplateId : undefined,
       };
@@ -352,6 +372,59 @@ const RetreatFlowLibraryPage: React.FC = () => {
         <label className="block">
           <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Expected artifact</span>
           <input value={form.expectedArtifact} onChange={(e) => setForm({ ...form, expectedArtifact: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="ekg" />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Expected stage</span>
+          <select value={form.expectedDocumentStage} onChange={(e) => setForm({ ...form, expectedDocumentStage: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+            <option value="">Any entry-stage upload</option>
+            <option value="entry">Entry</option>
+            <option value="pre_ceremony">Pre-ceremony</option>
+            <option value="in_ceremony">In-ceremony</option>
+            <option value="post_ceremony">Post-ceremony</option>
+            <option value="other">Other</option>
+            <option value="additional">Additional</option>
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Expected document type</span>
+          <select value={form.expectedDocumentType} onChange={(e) => setForm({ ...form, expectedDocumentType: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+            <option value="">Any</option>
+            <option value="EKG">EKG</option>
+            <option value="Liver">Liver</option>
+            <option value="BP">BP</option>
+            <option value="meds">Meds</option>
+            <option value="Medications">Medications</option>
+            <option value="additional">Additional</option>
+            <option value="other">Other</option>
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Expected purpose</span>
+          <select value={form.expectedArtifactPurpose} onChange={(e) => setForm({ ...form, expectedArtifactPurpose: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+            <option value="">Any</option>
+            <option value="booking_requirement">Booking requirement</option>
+            <option value="pre_ceremony">Pre-ceremony</option>
+            <option value="paid_review">Paid review</option>
+            <option value="repeat_test">Repeat test</option>
+            <option value="correction">Correction</option>
+            <option value="general">General</option>
+          </select>
+        </label>
+        <label className="flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-800">
+          <input
+            type="checkbox"
+            checked={form.autoCompleteOnArtifact}
+            onChange={(e) => setForm({ ...form, autoCompleteOnArtifact: e.target.checked })}
+          />
+          Auto-mark when matching artifact is uploaded
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Auto status</span>
+          <select value={form.autoCompleteStatus} onChange={(e) => setForm({ ...form, autoCompleteStatus: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+            <option value="received">Received</option>
+            <option value="completed">Completed</option>
+            <option value="approved">Approved</option>
+          </select>
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Requirement type</span>

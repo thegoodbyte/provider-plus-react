@@ -1058,6 +1058,11 @@ export interface BookingFlowTemplate {
   reviewRequired?: boolean;
   readinessGroup?: string;
   expectedArtifact?: string;
+  expectedDocumentStage?: string;
+  expectedDocumentType?: string;
+  expectedArtifactPurpose?: string;
+  autoCompleteOnArtifact?: boolean;
+  autoCompleteStatus?: string;
   isRequirement?: boolean;
   requirementType?: string;
   emailEnabled?: boolean;
