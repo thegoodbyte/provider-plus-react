@@ -57,6 +57,9 @@ const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
             case 500:
               apiError.message = 'Server error occurred. Please try again later.';
               break;
+            case 502:
+              apiError.message = 'API gateway error. The backend did not return a valid response.';
+              break;
             case 503:
               apiError.message = /storage|s3|configured|configuration|upload/i.test(responseMessage || '')
                 ? [
@@ -73,7 +76,7 @@ const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
           }
         } else if (error.request) {
           // No response received
-          apiError.message = 'Cannot connect to server. Please check your connection.';
+          apiError.message = 'The API request failed before the browser received a valid response. This is usually a backend deploy/gateway issue or a CORS-blocked server error.';
           apiError.code = 'NETWORK_ERROR';
         } else {
           // Request setup error
@@ -108,7 +111,7 @@ const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
 
     // Trigger a simple health check
     try {
-      await api.get('/health');
+      await api.get('/', { suppressGlobalError: true } as any);
     } catch (err) {
       // Error will be caught by interceptor
     }
@@ -176,9 +179,9 @@ const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
           <div className="api-error-help">
             <p>If this problem persists, please:</p>
             <ul>
-              <li>Check your internet connection</li>
-              <li>Verify the backend API is reachable at the configured URL</li>
-              <li>Contact support if the issue continues</li>
+              <li>Refresh the page to load the latest deployed bundle</li>
+              <li>Check whether the backend API is returning 502 or restarting</li>
+              <li>Contact support with the endpoint and time shown above</li>
             </ul>
           </div>
         </div>

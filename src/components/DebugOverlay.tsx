@@ -45,7 +45,7 @@ const DebugOverlay: React.FC = () => {
   const checkConnection = async () => {
     const startTime = Date.now();
     try {
-      await api.get('/');
+      await api.get('/', { suppressGlobalError: true } as any);
       const responseTime = Date.now() - startTime;
       setConnectionStatus({
         isConnected: true,
