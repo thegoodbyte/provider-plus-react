@@ -157,6 +157,17 @@ const BookingFlowPage: React.FC = () => {
     }
   };
 
+  const resetDueDate = async (item: BookingFlowItem) => {
+    if (!item._id) return;
+    try {
+      setSavingId(item._id);
+      await bookingFlowApi.updateItem(item._id, { dueDateManuallyOverridden: false } as Partial<BookingFlowItem>);
+      await loadData();
+    } finally {
+      setSavingId('');
+    }
+  };
+
   const addItem = async () => {
     if (!bookingId || !newStep.title.trim()) return;
     const offsetDays = Number(newStep.offsetDays || 0);
@@ -462,12 +473,31 @@ const BookingFlowPage: React.FC = () => {
                   onChange={(event) => setDraft(id, { offsetDays: event.target.value })}
                   className="rounded-md border border-gray-300 px-3 py-2 text-sm"
                 />
-                <input
-                  type="date"
-                  value={draft.dueDate}
-                  onChange={(event) => setDraft(id, { dueDate: event.target.value })}
-                  className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-                />
+                <div className="space-y-1">
+                  <input
+                    type="date"
+                    value={draft.dueDate}
+                    onChange={(event) => setDraft(id, { dueDate: event.target.value })}
+                    className={`w-full rounded-md border px-3 py-2 text-sm ${item.dueDateManuallyOverridden ? 'border-amber-400 bg-amber-50' : 'border-gray-300'}`}
+                  />
+                  <div className="flex items-center gap-2 text-xs text-gray-600">
+                    {item.dueDateManuallyOverridden ? (
+                      <>
+                        <span className="rounded-full bg-amber-100 px-2 py-1 font-semibold text-amber-800">Manual</span>
+                        <button
+                          type="button"
+                          onClick={() => resetDueDate(item)}
+                          disabled={savingId === item._id}
+                          className="rounded-md border border-amber-300 bg-white px-2 py-1 font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50"
+                        >
+                          Reset
+                        </button>
+                      </>
+                    ) : (
+                      <span>Auto</span>
+                    )}
+                  </div>
+                </div>
                 <textarea
                   value={draft.notes}
                   onChange={(event) => setDraft(id, { notes: event.target.value })}

@@ -1088,6 +1088,9 @@ export interface BookingFlowItem {
   category: 'screening' | 'booking' | 'payment' | 'contract' | 'questionnaire' | 'medical' | 'dietary' | 'message' | 'access' | 'approval' | 'reminder' | 'other';
   offsetDays: number;
   dueDate?: Date | string | null;
+  dueDateManuallyOverridden?: boolean;
+  dueDateManuallyOverriddenAt?: Date | string;
+  dueDateManuallyOverriddenByUserId?: string | any;
   status: 'pending' | 'sent' | 'received' | 'sent_for_review' | 'in_review' | 'reviewed' | 'approved' | 'caution' | 'rejected' | 'needs_resubmission' | 'completed' | 'blocked' | 'waived' | 'scheduled';
   isBlocking?: boolean;
   order?: number;
