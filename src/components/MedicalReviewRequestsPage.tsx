@@ -1037,8 +1037,12 @@ const MedicalReviewRequestsPage: React.FC = () => {
                         </div>
                         <div className="mt-1 grid gap-1 text-gray-600 sm:grid-cols-2">
                           <div>Created: {formatDateTime(link.createdAt)}</div>
-                          <div>First access: {formatDateTime(link.firstAccessedAt)}</div>
-                          <div>Expires: {formatDateTime(link.expiresAt)}</div>
+                          <div>First access: {link.firstAccessedAt ? formatDateTime(link.firstAccessedAt) : 'Not accessed yet'}</div>
+                          <div>
+                            Expires: {link.expiresAt
+                              ? formatDateTime(link.expiresAt)
+                              : 'One hour after first successful access'}
+                          </div>
                           <div>Access count: {link.accessCount || 0}</div>
                           <div>First IP: {link.firstAccessIp || '-'}</div>
                           <div>Last IP: {link.lastAccessIp || '-'}</div>
