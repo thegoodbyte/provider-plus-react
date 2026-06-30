@@ -122,6 +122,7 @@ const FULL_MENU_SECTIONS: MenuSection[] = [
       { id: 'permissions', label: 'Permissions', Icon: Fi.FiShield },
       { id: 'users', label: 'Users', Icon: Fi.FiUser },
       { id: 'audit-logs', label: 'Audit Logs', Icon: Fi.FiActivity },
+      { id: 'backups', label: 'Data Backup', Icon: Fi.FiDatabase },
     ],
   },
 ];

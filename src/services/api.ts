@@ -811,6 +811,34 @@ export const auditLogsApi = {
   getOne: (id: string) => api.get(`/audit-logs/${id}`),
 };
 
+export const backupsApi = {
+  exportBackup: (options: { redactEmails?: boolean; emailReplacement?: string; collections?: string } = {}) =>
+    api.get('/backups/export', {
+      params: options,
+      responseType: 'blob',
+    }),
+  importBackup: (file: File, options: {
+    dryRun?: boolean;
+    confirm?: string;
+    emailMode?: 'preserve' | 'override';
+    overrideEmail?: string;
+    collections?: string;
+  } = {}) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/backups/import', formData, {
+      params: {
+        dryRun: options.dryRun === false ? 'false' : 'true',
+        confirm: options.confirm,
+        emailMode: options.emailMode || 'preserve',
+        overrideEmail: options.overrideEmail,
+        collections: options.collections,
+      },
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+};
+
 export const medicalReviewRequestsApi = {
   getAll: () => cachedGet<MedicalReviewRequest[]>('medical-review-requests:all', () => api.get<MedicalReviewRequest[]>('/medical-review-requests')),
   getQueue: () => cachedGet<MedicalReviewRequest[]>('medical-review-requests:queue', () => api.get<MedicalReviewRequest[]>('/medical-review-requests/queue')),

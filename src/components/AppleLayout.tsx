@@ -62,6 +62,7 @@ import ClientMedicationsGrid from './ClientMedicationsGrid';
 import ClientMedicationForm from './ClientMedicationForm';
 import UserManagement from './UserManagement';
 import AuditLogsPage from './AuditLogsPage';
+import DataBackupPage from './DataBackupPage';
 import { Tasks } from '../pages/Tasks/Tasks';
 import { useAuth } from '../context/AuthContext';
 import { ForgotPassword } from './Login/ForgotPassword';
@@ -532,6 +533,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="analytics" element={<div className="p-6">Analytics - Coming Soon</div>} />
                       <Route path="users" element={<UserManagement />} />
                       <Route path="audit-logs" element={<AuditLogsPage />} />
+                      <Route path="backups" element={<DataBackupPage />} />
                       <Route path="tasks" element={<Tasks />} />
                     </Routes>
                   </ProtectedRoute>

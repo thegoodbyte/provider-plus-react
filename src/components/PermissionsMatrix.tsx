@@ -55,6 +55,7 @@ const AVAILABLE_PERMISSIONS: Permission[] = [
   { route: 'analytics', name: 'Analytics', description: 'System analytics and reporting', category: 'Administration' },
   { route: 'users', name: 'User Management', description: 'Manage system users', category: 'Administration' },
   { route: 'permissions', name: 'Permission Management', description: 'Manage role permissions', category: 'Administration' },
+  { route: 'backups', name: 'Data Backup', description: 'Export and restore database backups', category: 'Administration' },
 ];
 
 const ROLES = [
