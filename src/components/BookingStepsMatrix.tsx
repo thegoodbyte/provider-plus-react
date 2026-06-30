@@ -196,7 +196,7 @@ const getItemGroup = (item?: Partial<BookingFlowItem> | null, template?: Partial
   return {
     groupKey,
     groupLabel: titleizeGroup(groupKey),
-    groupColor: metadata.readinessGroupColor || (template as any)?.readinessGroupColor,
+    groupColor: (template as any)?.readinessGroupColor || metadata.readinessGroupColor,
   };
 };
 
