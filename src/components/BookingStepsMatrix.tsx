@@ -487,9 +487,9 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
         <table className="min-w-full border-separate border-spacing-0 text-sm">
           <thead>
             <tr>
-              <th className="sticky left-0 z-20 min-w-[220px] border-b border-r border-gray-300 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase text-gray-600">Action</th>
+              <th className="sticky left-0 top-0 z-30 min-w-[220px] border-b border-r border-gray-300 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase text-gray-600">Action</th>
               {bookings.map((booking) => (
-                <th key={getObjectId(booking)} className="min-w-[260px] border-b border-r border-gray-300 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase text-gray-600">
+                <th key={getObjectId(booking)} className="sticky top-0 z-20 min-w-[260px] border-b border-r border-gray-300 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase text-gray-600">
                   <div className="flex items-start gap-2">
                     <ClientAvatar client={getBookingClient(booking)} name={getClientName(booking)} />
                     <div className="min-w-0 space-y-1 normal-case">
