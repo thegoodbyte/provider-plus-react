@@ -432,11 +432,13 @@ const RetreatFlowPage: React.FC = () => {
         >
           <option value="">Select email template</option>
           {emailTemplates.map((template) => (
-            <option key={template._id} value={template._id}>{template.name} ({template.category || 'general'} / {template.language || 'en'})</option>
+            <option key={template._id} value={template._id}>
+              {template.name} ({template.templateKey || template.category || 'general'} / {template.language || 'en'})
+            </option>
           ))}
         </select>
         <p className="mt-2 text-xs text-gray-500">
-          Choose the default template for this step. Sending uses the client's language from an active template in the same category, then English, then this template.
+          Choose the default template for this step. Sending uses the client's language from an active template with the same variant key, then English, then this template.
         </p>
       </div>
 

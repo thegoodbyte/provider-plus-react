@@ -19,6 +19,7 @@ const defaultTemplateForm: Partial<EmailTemplate> = {
   bodyText: '',
   bodyHtml: '',
   category: 'general',
+  templateKey: '',
   language: 'en',
   active: true,
   notes: '',
@@ -190,6 +191,7 @@ const CommunicationsPage: React.FC = () => {
         bodyText: String(templateForm.bodyText || ''),
         bodyHtml: String(templateForm.bodyHtml || '').trim() || undefined,
         language: String(templateForm.language || 'en').trim().toLowerCase(),
+        templateKey: String(templateForm.templateKey || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || undefined,
       };
 
       if (!payload.name || !payload.subject || !payload.bodyText) {
@@ -602,7 +604,9 @@ const CommunicationsPage: React.FC = () => {
                     <div className="min-w-0">
                       <div className="truncate text-sm font-semibold text-gray-900">{template.name}</div>
                       <div className="truncate text-xs text-gray-500">{template.subject}</div>
-                      <div className="mt-1 text-[11px] uppercase text-gray-400">{template.language || 'en'}</div>
+                      <div className="mt-1 text-[11px] uppercase text-gray-400">
+                        {template.language || 'en'}{template.templateKey ? ` / ${template.templateKey}` : ''}
+                      </div>
                     </div>
                     <div className="text-right text-xs text-gray-500">
                       <div>#{template.display_id || 'n/a'}</div>
@@ -647,6 +651,16 @@ const CommunicationsPage: React.FC = () => {
                   className="w-full rounded-md border border-gray-300 px-3 py-2"
                   placeholder="general"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Variant Key</label>
+                <input
+                  value={templateForm.templateKey || ''}
+                  onChange={(e) => setTemplateForm((prev) => ({ ...prev, templateKey: e.target.value }))}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2"
+                  placeholder="contract_sent"
+                />
+                <p className="mt-1 text-xs text-gray-500">Use the same key for all language versions of the same email.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Language</label>
@@ -802,7 +816,10 @@ const CommunicationsPage: React.FC = () => {
               >
                 <option value="">Manual message</option>
                 {templates.map((template) => (
-                  <option key={template._id} value={template._id}>{template.display_id ? `#${template.display_id} ` : ''}{template.name}</option>
+                  <option key={template._id} value={template._id}>
+                    {template.display_id ? `#${template.display_id} ` : ''}{template.name}
+                    {` (${template.templateKey || template.category || 'general'} / ${template.language || 'en'})`}
+                  </option>
                 ))}
               </select>
             </div>
