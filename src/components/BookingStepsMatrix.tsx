@@ -4,7 +4,11 @@ import { bookingFlowApi, clientsApi, communicationsApi } from '../services/api';
 import { BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, Client } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
-import { getBookingStepTone, titleizeBookingStepGroup } from '../utils/bookingStepColors';
+import {
+  getBookingStepColorStyles,
+  getBookingStepToneWithColor,
+  titleizeBookingStepGroup,
+} from '../utils/bookingStepColors';
 
 const getObjectId = (value: any): string => {
   if (!value) return '';
@@ -118,6 +122,7 @@ interface MatrixRow {
   category?: BookingFlowTemplate['category'] | BookingFlowItem['category'];
   groupKey: string;
   groupLabel: string;
+  groupColor?: string;
   templateId?: string;
   emailEnabled?: boolean;
   emailTemplateId?: BookingFlowTemplate['emailTemplateId'];
@@ -126,6 +131,7 @@ interface MatrixRow {
 interface MatrixRowGroup {
   key: string;
   label: string;
+  color?: string;
   rows: MatrixRow[];
 }
 
@@ -180,6 +186,7 @@ const getTemplateGroup = (template?: Partial<BookingFlowTemplate> | null, fallba
   return {
     groupKey,
     groupLabel: titleizeGroup(groupKey),
+    groupColor: (template as any)?.readinessGroupColor,
   };
 };
 
@@ -189,6 +196,7 @@ const getItemGroup = (item?: Partial<BookingFlowItem> | null, template?: Partial
   return {
     groupKey,
     groupLabel: titleizeGroup(groupKey),
+    groupColor: metadata.readinessGroupColor || (template as any)?.readinessGroupColor,
   };
 };
 
@@ -283,6 +291,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     rows.forEach((row) => {
       const groupKey = row.groupKey || row.category || 'other';
       const current = groups.get(groupKey) || { key: groupKey, label: row.groupLabel || titleizeGroup(groupKey), rows: [] };
+      if (!current.color && row.groupColor) current.color = row.groupColor;
       current.rows.push(row);
       groups.set(groupKey, current);
     });
@@ -516,27 +525,31 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
             {groupedRows.map((group) => (
               <React.Fragment key={group.key}>
                 {(() => {
-                  const tone = getBookingStepTone(group.key);
+                  const tone = getBookingStepToneWithColor(group.key, group.color);
+                  const groupStyle = getBookingStepColorStyles(tone, 'group');
+                  const stepStyle = getBookingStepColorStyles(tone, 'step');
+                  const dotStyle = getBookingStepColorStyles(tone, 'dot');
+                  const badgeStyle = getBookingStepColorStyles(tone, 'badge');
                   return (
                 <>
                 <tr>
-                  <td className={`sticky left-0 z-10 border-b border-r border-gray-300 px-3 py-2 text-xs font-bold uppercase tracking-wide ${tone.groupCell} ${tone.groupText}`}>
+                  <td className={`sticky left-0 z-10 border-b border-r border-gray-300 px-3 py-2 text-xs font-bold uppercase tracking-wide ${tone.groupCell} ${tone.groupText}`} style={groupStyle}>
                     <span className="inline-flex items-center gap-2">
-                      <span className={`h-2.5 w-2.5 rounded-full ${tone.badge.split(' ')[0]}`} />
+                      <span className={`h-2.5 w-2.5 rounded-full ${tone.dot}`} style={dotStyle} />
                       {group.label}
                     </span>
                   </td>
                   {bookings.map((booking) => (
-                    <td key={`${group.key}:${getObjectId(booking)}`} className={`border-b border-r border-gray-300 px-2 py-2 text-xs font-semibold uppercase tracking-wide ${tone.groupCell} ${tone.groupText}`}>
+                    <td key={`${group.key}:${getObjectId(booking)}`} className={`border-b border-r border-gray-300 px-2 py-2 text-xs font-semibold uppercase tracking-wide ${tone.groupCell} ${tone.groupText}`} style={groupStyle}>
                       {group.rows.length} steps
                     </td>
                   ))}
                 </tr>
                 {group.rows.map((row, rowIndex) => (
                   <tr key={row.key}>
-                    <td className={`sticky left-0 z-10 border-b border-l-4 border-r border-gray-300 px-3 py-2 font-medium text-gray-900 ${tone.stepCell} ${tone.stepStripe}`}>
+                    <td className={`sticky left-0 z-10 border-b border-l-4 border-r border-gray-300 px-3 py-2 font-medium text-gray-900 ${tone.stepCell} ${tone.stepStripe}`} style={stepStyle}>
                       <div className="flex items-start gap-2">
-                        <span className={`mt-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded px-1 text-[11px] font-semibold ${tone.badge}`}>
+                        <span className={`mt-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded px-1 text-[11px] font-semibold ${tone.badge}`} style={badgeStyle}>
                           {rowIndex + 1}
                         </span>
                         <span>{row.title}</span>

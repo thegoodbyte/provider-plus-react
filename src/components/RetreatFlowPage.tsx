@@ -4,7 +4,12 @@ import { GripVertical, Mail, Plus, Save, Trash2 } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
 import { bookingFlowApi, communicationsApi, retreatsApi } from '../services/api';
 import { BookingFlowTemplate, EmailTemplate, Retreat } from '../types';
-import { getBookingStepTone, titleizeBookingStepGroup } from '../utils/bookingStepColors';
+import {
+  getBookingStepColorStyles,
+  getBookingStepToneWithColor,
+  normalizeBookingStepColor,
+  titleizeBookingStepGroup,
+} from '../utils/bookingStepColors';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
@@ -25,6 +30,7 @@ type TemplateForm = {
   taskTitle: string;
   taskPriority: 'low' | 'medium' | 'high' | 'urgent';
   readinessGroup: string;
+  readinessGroupColor: string;
   expectedArtifact: string;
   emailEnabled: boolean;
   emailTemplateId: string;
@@ -47,6 +53,7 @@ const emptyForm = (): TemplateForm => ({
   taskTitle: '',
   taskPriority: 'medium',
   readinessGroup: '',
+  readinessGroupColor: '',
   expectedArtifact: '',
   emailEnabled: false,
   emailTemplateId: '',
@@ -145,6 +152,7 @@ const RetreatFlowPage: React.FC = () => {
           taskTitle: firstTemplate.taskTitle || '',
           taskPriority: firstTemplate.taskPriority || 'medium',
           readinessGroup: firstTemplate.readinessGroup || '',
+          readinessGroupColor: firstTemplate.readinessGroupColor || '',
           expectedArtifact: firstTemplate.expectedArtifact || '',
           emailEnabled: !!firstTemplate.emailEnabled,
           emailTemplateId: typeof firstTemplate.emailTemplateId === 'string' ? firstTemplate.emailTemplateId : firstTemplate.emailTemplateId?._id || '',
@@ -183,6 +191,7 @@ const RetreatFlowPage: React.FC = () => {
       taskTitle: template.taskTitle || '',
       taskPriority: template.taskPriority || 'medium',
       readinessGroup: template.readinessGroup || '',
+      readinessGroupColor: template.readinessGroupColor || '',
       expectedArtifact: template.expectedArtifact || '',
       emailEnabled: !!template.emailEnabled,
       emailTemplateId: typeof template.emailTemplateId === 'string' ? template.emailTemplateId : template.emailTemplateId?._id || '',
@@ -206,6 +215,7 @@ const RetreatFlowPage: React.FC = () => {
         ...form,
         latestDaysBeforeRetreat: form.latestDaysBeforeRetreat === '' ? undefined : Number(form.latestDaysBeforeRetreat),
         emailTemplateId: form.emailEnabled ? form.emailTemplateId : undefined,
+        readinessGroupColor: normalizeBookingStepColor(form.readinessGroupColor) || undefined,
       };
 
       if (selectedTemplateId) {
@@ -370,6 +380,21 @@ const RetreatFlowPage: React.FC = () => {
           className="rounded-md border border-gray-300 px-3 py-2 text-sm"
           placeholder="Readiness group (ekg, liver...)"
         />
+        <div className="flex gap-2">
+          <input
+            type="color"
+            value={normalizeBookingStepColor(form.readinessGroupColor) || '#e2e8f0'}
+            onChange={(e) => setForm({ ...form, readinessGroupColor: e.target.value })}
+            className="h-[38px] w-12 rounded-md border border-gray-300 bg-white p-1"
+            title="Section background color"
+          />
+          <input
+            value={form.readinessGroupColor}
+            onChange={(e) => setForm({ ...form, readinessGroupColor: e.target.value })}
+            className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
+            placeholder="Section color #dbeafe"
+          />
+        </div>
         <input
           value={form.expectedArtifact}
           onChange={(e) => setForm({ ...form, expectedArtifact: e.target.value })}
@@ -489,7 +514,9 @@ const RetreatFlowPage: React.FC = () => {
               <React.Fragment key={template._id}>
                 {(() => {
                   const groupKey = template.readinessGroup || template.category || 'other';
-                  const tone = getBookingStepTone(groupKey);
+                  const tone = getBookingStepToneWithColor(groupKey, template.readinessGroupColor);
+                  const stepStyle = getBookingStepColorStyles(tone, 'step');
+                  const dotStyle = getBookingStepColorStyles(tone, 'dot');
                   return (
                 <>
                 <div
@@ -498,13 +525,14 @@ const RetreatFlowPage: React.FC = () => {
                   onDragOver={(event) => event.preventDefault()}
                   onDrop={() => template._id && handleDropTemplate(template._id)}
                   className={`flex w-full items-center gap-2 rounded-md border border-l-4 px-3 py-2 text-left ${tone.stepStripe} ${selectedTemplateId === template._id ? `${tone.border} ${tone.stepCell} ring-1 ${tone.ring}` : 'border-gray-200 bg-white hover:bg-gray-50'}`}
+                  style={stepStyle}
                 >
                   <Icon icon={GripVertical} className="h-4 w-4 flex-shrink-0 cursor-grab text-gray-400" />
                   <button type="button" onClick={() => handleSelectTemplate(template)} className="min-w-0 flex-1 text-left">
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
                         <div className="flex min-w-0 items-center gap-2">
-                          <span className={`h-2.5 w-2.5 flex-none rounded-full ${tone.dot}`} />
+                          <span className={`h-2.5 w-2.5 flex-none rounded-full ${tone.dot}`} style={dotStyle} />
                           <div className="truncate text-sm font-semibold text-gray-900">{template.title}</div>
                         </div>
                         <div className="truncate text-xs text-gray-500">{titleizeBookingStepGroup(groupKey)} • {formatDeadlineLabel(template)}</div>

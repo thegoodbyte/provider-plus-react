@@ -1,3 +1,5 @@
+import type React from 'react';
+
 export type BookingStepTone = {
   label: string;
   groupCell: string;
@@ -8,6 +10,7 @@ export type BookingStepTone = {
   dot: string;
   border: string;
   ring: string;
+  customColor?: string;
 };
 
 export const BOOKING_STEP_TONES: Record<string, BookingStepTone> = {
@@ -209,6 +212,37 @@ export const getBookingStepTone = (groupKey?: string | null): BookingStepTone =>
   return BOOKING_STEP_TONES[normalized] || BOOKING_STEP_TONES.other;
 };
 
+export const normalizeBookingStepColor = (value?: string | null) => {
+  const normalized = String(value || '').trim();
+  if (!normalized) return '';
+  if (/^#[0-9a-fA-F]{6}$/.test(normalized)) return normalized.toLowerCase();
+  if (/^[0-9a-fA-F]{6}$/.test(normalized)) return `#${normalized.toLowerCase()}`;
+  return '';
+};
+
+export const getBookingStepToneWithColor = (groupKey?: string | null, customColor?: string | null): BookingStepTone => {
+  const tone = getBookingStepTone(groupKey);
+  const color = normalizeBookingStepColor(customColor);
+  return color ? { ...tone, customColor: color } : tone;
+};
+
+export const getBookingStepColorStyles = (tone: BookingStepTone, variant: 'group' | 'step' | 'badge' | 'dot' = 'group'): React.CSSProperties | undefined => {
+  if (!tone.customColor) return undefined;
+  if (variant === 'dot') return { backgroundColor: tone.customColor };
+  if (variant === 'badge') return {
+    backgroundColor: `${tone.customColor}26`,
+    color: '#111827',
+  };
+  if (variant === 'step') return {
+    backgroundColor: `${tone.customColor}12`,
+    borderLeftColor: tone.customColor,
+  };
+  return {
+    backgroundColor: `${tone.customColor}26`,
+    color: '#111827',
+  };
+};
+
 export const titleizeBookingStepGroup = (value?: string | null) => {
   const normalized = normalizeBookingStepGroup(value);
   const tone = BOOKING_STEP_TONES[normalized];
@@ -227,5 +261,15 @@ export const getBookingStepGroupKey = (step?: any) => {
     step?.category ||
     template?.category ||
     'other',
+  );
+};
+
+export const getBookingStepGroupColor = (step?: any) => {
+  const template = typeof step?.templateId === 'object' ? step.templateId : null;
+  return String(
+    step?.metadata?.readinessGroupColor ||
+    step?.readinessGroupColor ||
+    template?.readinessGroupColor ||
+    '',
   );
 };

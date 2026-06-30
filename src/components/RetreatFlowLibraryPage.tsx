@@ -5,7 +5,12 @@ import LoadingSpinner from './LoadingSpinner';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 import { bookingFlowApi, communicationsApi, retreatsApi } from '../services/api';
 import { BookingFlowAction, BookingFlowTemplate, EmailTemplate, Retreat } from '../types';
-import { getBookingStepTone, titleizeBookingStepGroup } from '../utils/bookingStepColors';
+import {
+  getBookingStepColorStyles,
+  getBookingStepToneWithColor,
+  normalizeBookingStepColor,
+  titleizeBookingStepGroup,
+} from '../utils/bookingStepColors';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
@@ -28,6 +33,7 @@ type TemplateForm = {
   taskTitle: string;
   taskPriority: 'low' | 'medium' | 'high' | 'urgent';
   readinessGroup: string;
+  readinessGroupColor: string;
   expectedArtifact: string;
   expectedDocumentStage: string;
   expectedDocumentType: string;
@@ -58,6 +64,7 @@ const emptyForm = (): TemplateForm => ({
   taskTitle: '',
   taskPriority: 'medium',
   readinessGroup: '',
+  readinessGroupColor: '',
   expectedArtifact: '',
   expectedDocumentStage: '',
   expectedDocumentType: '',
@@ -149,6 +156,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
       taskTitle: template.taskTitle || '',
       taskPriority: template.taskPriority || 'medium',
       readinessGroup: template.readinessGroup || '',
+      readinessGroupColor: template.readinessGroupColor || '',
       expectedArtifact: template.expectedArtifact || '',
       expectedDocumentStage: template.expectedDocumentStage || '',
       expectedDocumentType: template.expectedDocumentType || '',
@@ -188,6 +196,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
         taskPriority: form.taskPriority,
         triggerType: form.deadlineBasis,
         readinessGroup: form.readinessGroup,
+        readinessGroupColor: normalizeBookingStepColor(form.readinessGroupColor) || undefined,
         expectedArtifact: form.expectedArtifact,
         expectedDocumentStage: form.expectedDocumentStage || undefined,
         expectedDocumentType: form.expectedDocumentType || undefined,
@@ -439,6 +448,24 @@ const RetreatFlowLibraryPage: React.FC = () => {
           </datalist>
         </label>
         <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Section background color</span>
+          <div className="flex gap-2">
+            <input
+              type="color"
+              value={normalizeBookingStepColor(form.readinessGroupColor) || '#e2e8f0'}
+              onChange={(e) => setForm({ ...form, readinessGroupColor: e.target.value })}
+              className="h-[38px] w-12 rounded-md border border-gray-300 bg-white p-1"
+              title="Section background color"
+            />
+            <input
+              value={form.readinessGroupColor}
+              onChange={(e) => setForm({ ...form, readinessGroupColor: e.target.value })}
+              className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
+              placeholder="#dbeafe"
+            />
+          </div>
+        </label>
+        <label className="block">
           <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Expected artifact</span>
           <input value={form.expectedArtifact} onChange={(e) => setForm({ ...form, expectedArtifact: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="ekg" />
         </label>
@@ -673,7 +700,9 @@ const RetreatFlowLibraryPage: React.FC = () => {
             {sortedTemplates.map((template) => {
               const isSelected = selectedTemplateId === template._id;
               const groupKey = template.readinessGroup || template.category || 'other';
-              const tone = getBookingStepTone(groupKey);
+              const tone = getBookingStepToneWithColor(groupKey, template.readinessGroupColor);
+              const stepStyle = getBookingStepColorStyles(tone, 'step');
+              const dotStyle = getBookingStepColorStyles(tone, 'dot');
 
               return (
                 <React.Fragment key={template._id}>
@@ -688,13 +717,14 @@ const RetreatFlowLibraryPage: React.FC = () => {
                         ? `${tone.border} ${tone.stepCell} ring-1 ${tone.ring}`
                         : 'border-gray-200 bg-white hover:bg-gray-50'
                     } ${draggedTemplateId === template._id ? 'opacity-60' : ''}`}
+                    style={stepStyle}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-2">
                         <Icon icon={GripVertical} className="h-4 w-4 shrink-0 text-gray-400" />
                         <div className="min-w-0">
                           <div className="flex min-w-0 items-center gap-2">
-                            <span className={`h-2.5 w-2.5 flex-none rounded-full ${tone.dot}`} />
+                            <span className={`h-2.5 w-2.5 flex-none rounded-full ${tone.dot}`} style={dotStyle} />
                             <div className="truncate text-sm font-semibold text-gray-900">{template.title}</div>
                           </div>
                           <div className="truncate text-xs text-gray-500">{template.key} • {titleizeBookingStepGroup(groupKey)} • {formatDeadlineLabel(template)}</div>

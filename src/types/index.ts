@@ -1058,6 +1058,7 @@ export interface BookingFlowTemplate {
   triggerType?: string;
   reviewRequired?: boolean;
   readinessGroup?: string;
+  readinessGroupColor?: string;
   expectedArtifact?: string;
   expectedDocumentStage?: string;
   expectedDocumentType?: string;

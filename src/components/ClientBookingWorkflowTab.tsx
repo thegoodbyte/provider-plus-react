@@ -4,7 +4,13 @@ import { bookingFlowApi, medicalArtifactsApi } from '../services/api';
 import { BookingFlowItem, MedicalArtifact } from '../types';
 import AppleButton from './AppleButton';
 import LoadingSpinner from './LoadingSpinner';
-import { getBookingStepGroupKey, getBookingStepTone, titleizeBookingStepGroup } from '../utils/bookingStepColors';
+import {
+  getBookingStepColorStyles,
+  getBookingStepGroupColor,
+  getBookingStepGroupKey,
+  getBookingStepToneWithColor,
+  titleizeBookingStepGroup,
+} from '../utils/bookingStepColors';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => (
   <IconComponent className={className} />
@@ -442,10 +448,12 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                 const overdue = isPastDue(item);
                 const dueSoon = isDueSoon(item);
                 const groupKey = getBookingStepGroupKey(item);
-                const tone = getBookingStepTone(groupKey);
+                const tone = getBookingStepToneWithColor(groupKey, getBookingStepGroupColor(item));
+                const stepStyle = getBookingStepColorStyles(tone, 'step');
+                const dotStyle = getBookingStepColorStyles(tone, 'dot');
 
                 return (
-                  <div key={id} className={`grid gap-2 border-l-4 p-3 ${tone.stepStripe} ${isChecked ? 'bg-green-50/60' : overdue ? 'bg-red-50/70' : dueSoon ? 'bg-amber-50/70' : tone.stepCell}`}>
+                  <div key={id} className={`grid gap-2 border-l-4 p-3 ${tone.stepStripe} ${isChecked ? 'bg-green-50/60' : overdue ? 'bg-red-50/70' : dueSoon ? 'bg-amber-50/70' : tone.stepCell}`} style={!isChecked && !overdue && !dueSoon ? stepStyle : undefined}>
                     <div className="grid gap-2 lg:grid-cols-[minmax(240px,1fr)_minmax(210px,260px)] lg:items-center">
                       <label className="flex min-w-0 items-center gap-2">
                         <input
@@ -457,7 +465,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                         />
                         <span className="min-w-0">
                           <span className="flex min-w-0 items-center gap-2">
-                            <span className={`h-2.5 w-2.5 flex-none rounded-full ${tone.dot}`} />
+                            <span className={`h-2.5 w-2.5 flex-none rounded-full ${tone.dot}`} style={dotStyle} />
                             <span className={`block truncate text-sm font-semibold ${isChecked ? 'text-green-900' : 'text-gray-950'}`}>
                               {item.title}
                             </span>

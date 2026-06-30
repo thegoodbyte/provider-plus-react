@@ -4,7 +4,13 @@ import { ArrowDown, ArrowLeft, ArrowUp, Plus, RefreshCw, Save, Trash2 } from 'lu
 import LoadingSpinner from './LoadingSpinner';
 import { bookingsApi, bookingFlowApi, retreatsApi } from '../services/api';
 import { BookingFlowItem, Retreat } from '../types';
-import { getBookingStepGroupKey, getBookingStepTone, titleizeBookingStepGroup } from '../utils/bookingStepColors';
+import {
+  getBookingStepColorStyles,
+  getBookingStepGroupColor,
+  getBookingStepGroupKey,
+  getBookingStepToneWithColor,
+  titleizeBookingStepGroup,
+} from '../utils/bookingStepColors';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
@@ -438,9 +444,11 @@ const BookingFlowPage: React.FC = () => {
             const id = item._id || item.key;
             const draft = drafts[id] || makeDraft(item);
             const groupKey = getBookingStepGroupKey(item);
-            const tone = getBookingStepTone(groupKey);
+            const tone = getBookingStepToneWithColor(groupKey, getBookingStepGroupColor(item));
+            const stepStyle = getBookingStepColorStyles(tone, 'step');
+            const dotStyle = getBookingStepColorStyles(tone, 'dot');
             return (
-              <div key={id} className={`grid min-w-[1220px] grid-cols-[72px_minmax(220px,1fr)_90px_120px_150px_minmax(220px,1fr)_140px_150px] gap-3 border-b border-l-4 border-gray-100 px-4 py-3 last:border-b-0 ${tone.stepStripe} ${tone.stepCell}`}>
+              <div key={id} className={`grid min-w-[1220px] grid-cols-[72px_minmax(220px,1fr)_90px_120px_150px_minmax(220px,1fr)_140px_150px] gap-3 border-b border-l-4 border-gray-100 px-4 py-3 last:border-b-0 ${tone.stepStripe} ${tone.stepCell}`} style={stepStyle}>
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => moveItem(index, -1)}
@@ -461,7 +469,7 @@ const BookingFlowPage: React.FC = () => {
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className={`h-2.5 w-2.5 flex-none rounded-full ${tone.dot}`} />
+                    <span className={`h-2.5 w-2.5 flex-none rounded-full ${tone.dot}`} style={dotStyle} />
                     <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">{titleizeBookingStepGroup(groupKey)}</span>
                   </div>
                   <input
