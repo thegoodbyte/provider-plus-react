@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Circle, Mail, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Circle, Mail, RefreshCw, X } from 'lucide-react';
 import { bookingFlowApi, clientsApi, communicationsApi } from '../services/api';
 import { BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, Client } from '../types';
 import LoadingSpinner from './LoadingSpinner';
@@ -153,6 +153,8 @@ const statusOptions: BookingFlowItem['status'][] = [
 ];
 
 const fulfilledStatuses = new Set<BookingFlowItem['status']>(['received', 'reviewed', 'approved', 'caution', 'completed']);
+const failedStatuses = new Set<BookingFlowItem['status']>(['rejected', 'needs_resubmission', 'blocked']);
+const attentionStatuses = new Set<BookingFlowItem['status']>(['caution', 'sent_for_review', 'in_review']);
 
 const getStatusCellClass = (status?: BookingFlowItem['status']) => {
   if (status === 'caution') return 'bg-orange-200 text-orange-950';
@@ -160,6 +162,42 @@ const getStatusCellClass = (status?: BookingFlowItem['status']) => {
   if (status && fulfilledStatuses.has(status)) return 'bg-green-100 text-green-950';
   if (status === 'sent' || status === 'sent_for_review' || status === 'in_review' || status === 'scheduled') return 'bg-blue-100 text-blue-950';
   return 'bg-white text-gray-700';
+};
+
+const getSimpleStatus = (item?: BookingFlowItem) => {
+  if (!item) {
+    return {
+      label: 'Missing',
+      className: 'bg-gray-50 text-gray-400',
+      icon: <span className="text-lg font-semibold">-</span>,
+    };
+  }
+  if (failedStatuses.has(item.status)) {
+    return {
+      label: item.status.replace(/_/g, ' '),
+      className: 'bg-red-50 text-red-700',
+      icon: <X className="h-5 w-5" />,
+    };
+  }
+  if (attentionStatuses.has(item.status)) {
+    return {
+      label: item.status.replace(/_/g, ' '),
+      className: 'bg-amber-50 text-amber-700',
+      icon: <AlertTriangle className="h-5 w-5" />,
+    };
+  }
+  if (fulfilledStatuses.has(item.status)) {
+    return {
+      label: item.status.replace(/_/g, ' '),
+      className: 'bg-green-50 text-green-700',
+      icon: <CheckCircle2 className="h-5 w-5" />,
+    };
+  }
+  return {
+    label: item.status?.replace(/_/g, ' ') || 'pending',
+    className: 'bg-orange-50 text-orange-600',
+    icon: <X className="h-5 w-5" />,
+  };
 };
 
 const getStatusDateField = (status?: BookingFlowItem['status']): keyof BookingFlowItem | 'dueDate' => {
@@ -207,6 +245,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const [actionLogs, setActionLogs] = useState<BookingFlowActionLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState('');
+  const [viewMode, setViewMode] = useState<'detail' | 'simple'>('detail');
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [composeState, setComposeState] = useState<{
     item: BookingFlowItem;
@@ -477,9 +516,29 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       <div className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Retreat Readiness</h2>
-          <p className="text-sm text-gray-500">Actions are rows. Participants are columns. Each cell tracks status, date, and notes.</p>
+          <p className="text-sm text-gray-500">
+            {viewMode === 'detail'
+              ? 'Actions are rows. Participants are columns. Each cell tracks status, date, and notes.'
+              : 'Simple view shows only complete, pending, and problem status by color.'}
+          </p>
         </div>
         <div className="flex gap-2">
+          <div className="inline-flex rounded-md border border-gray-300 bg-white p-0.5">
+            <button
+              type="button"
+              onClick={() => setViewMode('detail')}
+              className={`rounded px-3 py-1.5 text-sm font-medium ${viewMode === 'detail' ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
+            >
+              Detail
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('simple')}
+              className={`rounded px-3 py-1.5 text-sm font-medium ${viewMode === 'simple' ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
+            >
+              Simple
+            </button>
+          </div>
           <button onClick={() => loadData()} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
             <RefreshCw className="h-4 w-4" />
             Refresh
@@ -494,23 +553,23 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
         <table className="min-w-full border-separate border-spacing-0 text-sm">
           <thead>
             <tr>
-              <th className="sticky left-0 top-0 z-30 min-w-[220px] border-b border-r border-gray-300 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase text-gray-600">Action</th>
+              <th className={`sticky left-0 top-0 z-30 border-b border-r border-gray-300 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase text-gray-600 ${viewMode === 'simple' ? 'min-w-[240px]' : 'min-w-[220px]'}`}>Action</th>
               {bookings.map((booking) => (
-                <th key={getObjectId(booking)} className="sticky top-0 z-20 min-w-[260px] border-b border-r border-gray-300 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase text-gray-600">
+                <th key={getObjectId(booking)} className={`sticky top-0 z-20 border-b border-r border-gray-300 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase text-gray-600 ${viewMode === 'simple' ? 'min-w-[150px]' : 'min-w-[260px]'}`}>
                   <div className="flex items-start gap-2">
-                    <ClientAvatar client={getBookingClient(booking)} name={getClientName(booking)} />
+                    {viewMode === 'detail' && <ClientAvatar client={getBookingClient(booking)} name={getClientName(booking)} />}
                     <div className="min-w-0 space-y-1 normal-case">
-                      <div className="max-w-[210px] truncate text-sm font-bold uppercase text-gray-900">{getClientName(booking)}</div>
+                      <div className={`${viewMode === 'simple' ? 'max-w-[130px] text-xs' : 'max-w-[210px] text-sm'} truncate font-bold uppercase text-gray-900`}>{getClientName(booking)}</div>
                       <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] font-semibold text-blue-700">
                         <span>Booking #{getBookingNumber(booking)}</span>
-                        {getClientDisplayId(booking) && <span>Client #{getClientDisplayId(booking)}</span>}
+                        {viewMode === 'detail' && getClientDisplayId(booking) && <span>Client #{getClientDisplayId(booking)}</span>}
                       </div>
-                      {getClientEmail(booking) && (
+                      {viewMode === 'detail' && getClientEmail(booking) && (
                         <div className="max-w-[220px] truncate text-[11px] font-medium text-gray-600" title={getClientEmail(booking)}>
                           {getClientEmail(booking)}
                         </div>
                       )}
-                      {getClientPhone(booking) && (
+                      {viewMode === 'detail' && getClientPhone(booking) && (
                         <div className="max-w-[220px] truncate text-[11px] font-medium text-gray-600" title={getClientPhone(booking)}>
                           {getClientPhone(booking)}
                         </div>
@@ -573,9 +632,17 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                       const dateValue = item ? item[dateField as keyof BookingFlowItem] as Date | string | null | undefined : undefined;
                       const itemActionLogs = item?._id ? actionLogMap.get(item._id) || [] : [];
                       const configuredActions = getConfiguredActions(item);
+                      const simpleStatus = getSimpleStatus(item);
                       return (
-                        <td key={`${getObjectId(booking)}:${row.key}`} className={`min-w-[230px] border-b border-r border-gray-300 px-2 py-1 align-top ${item ? getStatusCellClass(item.status) : 'bg-white'}`}>
-                          {item ? (
+                        <td key={`${getObjectId(booking)}:${row.key}`} className={`${viewMode === 'simple' ? 'min-w-[150px] px-2 py-2 text-center' : 'min-w-[230px] px-2 py-1 align-top'} border-b border-r border-gray-300 ${item ? getStatusCellClass(item.status) : 'bg-white'}`}>
+                          {viewMode === 'simple' ? (
+                            <div
+                              className={`mx-auto flex h-9 w-9 items-center justify-center rounded-full ${simpleStatus.className}`}
+                              title={`${row.title}: ${simpleStatus.label}`}
+                            >
+                              {simpleStatus.icon}
+                            </div>
+                          ) : item ? (
                             <div className="space-y-1">
                               <div className="grid grid-cols-[18px_minmax(88px,1fr)_92px] items-center gap-1">
                             <button
