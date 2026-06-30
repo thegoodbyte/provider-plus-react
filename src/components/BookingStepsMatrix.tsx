@@ -483,7 +483,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
         </div>
       </div>
 
-      <div className="overflow-auto rounded-lg border border-gray-300 bg-white">
+      <div className="max-h-[calc(100vh-220px)] overflow-auto rounded-lg border border-gray-300 bg-white">
         <table className="min-w-full border-separate border-spacing-0 text-sm">
           <thead>
             <tr>
