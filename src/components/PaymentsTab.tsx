@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import { paymentsApi } from '../services/api';
 import { Payment, PaymentSummary } from '../types';
 import { FiEdit2, FiTrash2, FiRefreshCw } from 'react-icons/fi';
@@ -461,6 +462,8 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
               {payments.map((payment: any) => {
                 const client = typeof payment.clientId === 'object' ? payment.clientId : null;
                 const clientName = client ? `${client.firstName || ''} ${client.lastName || ''}`.trim() : 'Unknown Client';
+                const clientDisplayId = client?.display_id ? `#${client.display_id}` : '';
+                const clientId = client?._id || (typeof payment.clientId === 'string' ? payment.clientId : '');
 
                 const getStatusColor = (status: string) => {
                   switch (status) {
@@ -498,6 +501,15 @@ const PaymentsTab: React.FC<PaymentsTabProps> = ({ retreatId }) => {
                 return (
                   <tr key={payment._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {clientDisplayId && clientId && (
+                        <Link
+                          to={`/admin/clients/${clientId}`}
+                          className="mr-2 font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+                          title="Open client profile"
+                        >
+                          {clientDisplayId}
+                        </Link>
+                      )}
                       {clientName}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
