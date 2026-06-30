@@ -86,6 +86,8 @@ const formatDeadlineLabel = (template: BookingFlowTemplate) => {
   return `${template.offsetDays} days before retreat`;
 };
 
+const normalizeGroupKey = (value?: string) => String(value || 'other').trim().toLowerCase().replace(/[\s-]+/g, '_') || 'other';
+
 const RetreatFlowLibraryPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -100,6 +102,16 @@ const RetreatFlowLibraryPage: React.FC = () => {
   const [applying, setApplying] = useState(false);
   const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([]);
   const [draggedTemplateId, setDraggedTemplateId] = useState<string>('');
+
+  const groupColorByKey = useMemo(() => {
+    const colors: Record<string, string> = {};
+    templates.forEach((template) => {
+      const groupKey = normalizeGroupKey(template.readinessGroup || template.category);
+      const color = normalizeBookingStepColor(template.readinessGroupColor);
+      if (color && !colors[groupKey]) colors[groupKey] = color;
+    });
+    return colors;
+  }, [templates]);
 
   useEffect(() => {
     void loadData();
@@ -136,6 +148,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
   };
 
   const selectTemplate = (template: BookingFlowTemplate) => {
+    const groupKey = normalizeGroupKey(template.readinessGroup || template.category);
     setSelectedTemplateId(template._id || '');
       setForm({
         workflowStage: template.workflowStage || 'potential',
@@ -156,7 +169,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
       taskTitle: template.taskTitle || '',
       taskPriority: template.taskPriority || 'medium',
       readinessGroup: template.readinessGroup || '',
-      readinessGroupColor: template.readinessGroupColor || '',
+      readinessGroupColor: template.readinessGroupColor || groupColorByKey[groupKey] || '',
       expectedArtifact: template.expectedArtifact || '',
       expectedDocumentStage: template.expectedDocumentStage || '',
       expectedDocumentType: template.expectedDocumentType || '',
@@ -700,7 +713,8 @@ const RetreatFlowLibraryPage: React.FC = () => {
             {sortedTemplates.map((template) => {
               const isSelected = selectedTemplateId === template._id;
               const groupKey = template.readinessGroup || template.category || 'other';
-              const tone = getBookingStepToneWithColor(groupKey, template.readinessGroupColor);
+              const effectiveGroupColor = template.readinessGroupColor || groupColorByKey[normalizeGroupKey(groupKey)];
+              const tone = getBookingStepToneWithColor(groupKey, effectiveGroupColor);
               const stepStyle = getBookingStepColorStyles(tone, 'step');
               const dotStyle = getBookingStepColorStyles(tone, 'dot');
 

@@ -75,6 +75,8 @@ const formatDeadlineLabel = (template: BookingFlowTemplate) => {
   return `${template.offsetDays} days before retreat`;
 };
 
+const normalizeGroupKey = (value?: string) => String(value || 'other').trim().toLowerCase().replace(/[\s-]+/g, '_') || 'other';
+
 const RetreatFlowPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -171,8 +173,18 @@ const RetreatFlowPage: React.FC = () => {
 
   const selectedRetreat = useMemo(() => retreats.find((retreat) => retreat._id === selectedRetreatId), [retreats, selectedRetreatId]);
   const sortedTemplates = useMemo(() => templates.slice().sort((a, b) => (a.order || 0) - (b.order || 0)), [templates]);
+  const groupColorByKey = useMemo(() => {
+    const colors: Record<string, string> = {};
+    templates.forEach((template) => {
+      const groupKey = normalizeGroupKey(template.readinessGroup || template.category);
+      const color = normalizeBookingStepColor(template.readinessGroupColor);
+      if (color && !colors[groupKey]) colors[groupKey] = color;
+    });
+    return colors;
+  }, [templates]);
 
   const handleSelectTemplate = (template: BookingFlowTemplate) => {
+    const groupKey = normalizeGroupKey(template.readinessGroup || template.category);
     setSelectedTemplateId(template._id || '');
     setForm({
       workflowStage: template.workflowStage || 'potential',
@@ -191,7 +203,7 @@ const RetreatFlowPage: React.FC = () => {
       taskTitle: template.taskTitle || '',
       taskPriority: template.taskPriority || 'medium',
       readinessGroup: template.readinessGroup || '',
-      readinessGroupColor: template.readinessGroupColor || '',
+      readinessGroupColor: template.readinessGroupColor || groupColorByKey[groupKey] || '',
       expectedArtifact: template.expectedArtifact || '',
       emailEnabled: !!template.emailEnabled,
       emailTemplateId: typeof template.emailTemplateId === 'string' ? template.emailTemplateId : template.emailTemplateId?._id || '',
@@ -514,7 +526,8 @@ const RetreatFlowPage: React.FC = () => {
               <React.Fragment key={template._id}>
                 {(() => {
                   const groupKey = template.readinessGroup || template.category || 'other';
-                  const tone = getBookingStepToneWithColor(groupKey, template.readinessGroupColor);
+                  const effectiveGroupColor = template.readinessGroupColor || groupColorByKey[normalizeGroupKey(groupKey)];
+                  const tone = getBookingStepToneWithColor(groupKey, effectiveGroupColor);
                   const stepStyle = getBookingStepColorStyles(tone, 'step');
                   const dotStyle = getBookingStepColorStyles(tone, 'dot');
                   return (
