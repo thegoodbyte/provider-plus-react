@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { paymentRequestsApi } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
 import LoadingSpinner from './LoadingSpinner';
@@ -12,9 +12,10 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
 };
 
 const resolveClient = (clientValue: any) => {
-  if (!clientValue) return { name: 'Unknown Client', displayId: '', email: '', firstName: '' };
-  if (typeof clientValue === 'string') return { name: clientValue, displayId: '', email: '', firstName: '' };
+  if (!clientValue) return { id: '', name: 'Unknown Client', displayId: '', email: '', firstName: '' };
+  if (typeof clientValue === 'string') return { id: clientValue, name: clientValue, displayId: '', email: '', firstName: '' };
   return {
+    id: clientValue._id || clientValue.id || '',
     name: `${clientValue.firstName || ''} ${clientValue.lastName || ''}`.trim() || 'Unknown Client',
     displayId: clientValue.display_id ? `#${clientValue.display_id}` : '',
     email: clientValue.email || '',
@@ -303,7 +304,19 @@ const PaymentRequestsGrid: React.FC = () => {
                     <td className="px-4 py-4 whitespace-nowrap">
                       <div className="font-medium text-gray-900">{client.name}</div>
                       {client.displayId && (
-                        <div className="mt-1 text-xs font-semibold text-blue-700">{client.displayId}</div>
+                        <div className="mt-1 text-xs font-semibold">
+                          {client.id ? (
+                            <Link
+                              to={`/admin/clients/${client.id}`}
+                              className="text-blue-700 hover:text-blue-900 hover:underline"
+                              title="Open client profile"
+                            >
+                              {client.displayId}
+                            </Link>
+                          ) : (
+                            <span className="text-blue-700">{client.displayId}</span>
+                          )}
+                        </div>
                       )}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{retreat}</td>
