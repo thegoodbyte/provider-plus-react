@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FiCheckCircle, FiEdit2, FiRefreshCw, FiSave, FiUpload } from 'react-icons/fi';
+import { FiCheckCircle, FiEdit2, FiExternalLink, FiRefreshCw, FiSave, FiUpload } from 'react-icons/fi';
+import { useNavigate } from 'react-router-dom';
 import { bookingFlowApi, medicalArtifactsApi } from '../services/api';
 import { BookingFlowItem, MedicalArtifact } from '../types';
 import AppleButton from './AppleButton';
@@ -93,6 +94,7 @@ type StepDraft = {
 type StepFilter = 'all' | 'past_due' | 'due_soon' | 'open' | 'completed';
 
 const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ bookings, hideBookingSelector = false }) => {
+  const navigate = useNavigate();
   const [selectedBookingId, setSelectedBookingId] = useState('');
   const [items, setItems] = useState<BookingFlowItem[]>([]);
   const [drafts, setDrafts] = useState<Record<string, StepDraft>>({});
@@ -287,6 +289,17 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
         purpose: 'booking_requirement',
         source: 'admin_upload',
         status: 'stored',
+        data: {
+          bookingId: selectedBookingId,
+          bookingNumber: selectedBooking.bookingNumber,
+          bookingFlowItemId: item._id,
+          bookingFlowItemKey: item.key,
+        },
+        tags: [
+          'booking-requirement',
+          item.key,
+          selectedBooking.bookingNumber ? `booking-${selectedBooking.bookingNumber}` : '',
+        ].filter(Boolean),
       });
 
       if (created.data._id) {
@@ -445,6 +458,8 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                 const tone = getBookingStepToneWithColor(groupKey, getBookingStepGroupColor(item));
                 const stepStyle = getBookingStepColorStyles(tone, 'step');
                 const dotStyle = getBookingStepColorStyles(tone, 'dot');
+                const linkedArtifactId = item.metadata?.latestArtifactId || item.metadata?.linkedMedicalArtifactId;
+                const linkedArtifactDisplayId = item.metadata?.latestArtifactDisplayId || item.metadata?.linkedMedicalArtifactDisplayId;
 
                 return (
                   <div key={id} className={`grid gap-2 border-l-4 p-3 ${tone.stepStripe} ${isChecked ? 'bg-green-50/60' : overdue ? 'bg-red-50/70' : dueSoon ? 'bg-amber-50/70' : tone.stepCell}`} style={!isChecked && !overdue && !dueSoon ? stepStyle : undefined}>
@@ -491,24 +506,34 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                         placeholder="Internal note"
                       />
                       <div className="flex items-center gap-2 lg:justify-end">
-                      {uploadConfig && (
-                        <label className={`inline-flex items-center rounded-md border border-blue-200 bg-white px-2.5 py-1.5 text-sm font-medium ${isEditing ? 'cursor-pointer text-blue-700 hover:bg-blue-50' : 'cursor-not-allowed text-gray-400'}`}>
-                          <Icon icon={FiUpload} className="mr-2 h-4 w-4" />
-                          {uploadingId === item._id ? 'Uploading...' : 'Upload'}
-                          <input
-                            type="file"
-                            className="hidden"
-                            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.heic,.heif"
-                            multiple
-                            disabled={!isEditing || Boolean(uploadingId)}
-                            onChange={(event) => {
-                              uploadStepArtifact(item, event.target.files);
-                              event.target.value = '';
-                            }}
-                          />
-                        </label>
-                      )}
-                      {savingId === item._id && <span className="text-xs text-blue-700">Saving...</span>}
+                        {linkedArtifactId && (
+                          <button
+                            type="button"
+                            className="inline-flex items-center rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                            onClick={() => navigate(`/medical-artifacts/${linkedArtifactId}`)}
+                          >
+                            <Icon icon={FiExternalLink} className="mr-2 h-4 w-4" />
+                            Artifact {linkedArtifactDisplayId ? `#${linkedArtifactDisplayId}` : ''}
+                          </button>
+                        )}
+                        {uploadConfig && (
+                          <label className={`inline-flex items-center rounded-md border border-blue-200 bg-white px-2.5 py-1.5 text-sm font-medium ${isEditing ? 'cursor-pointer text-blue-700 hover:bg-blue-50' : 'cursor-not-allowed text-gray-400'}`}>
+                            <Icon icon={FiUpload} className="mr-2 h-4 w-4" />
+                            {uploadingId === item._id ? 'Uploading...' : 'Upload'}
+                            <input
+                              type="file"
+                              className="hidden"
+                              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.heic,.heif"
+                              multiple
+                              disabled={!isEditing || Boolean(uploadingId)}
+                              onChange={(event) => {
+                                uploadStepArtifact(item, event.target.files);
+                                event.target.value = '';
+                              }}
+                            />
+                          </label>
+                        )}
+                        {savingId === item._id && <span className="text-xs text-blue-700">Saving...</span>}
                       </div>
                     </div>
                   </div>

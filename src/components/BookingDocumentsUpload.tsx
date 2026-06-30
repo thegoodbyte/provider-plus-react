@@ -67,8 +67,26 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
     setLoading(true);
     setError(null);
     try {
-      const response = await medicalArtifactsApi.getAll({ bookingId });
-      const bookingArtifacts: MedicalArtifact[] = response.data || [];
+      const [response, contextualResponse] = await Promise.all([
+        medicalArtifactsApi.getAll({ bookingId }),
+        clientId
+          ? medicalArtifactsApi.getAll({
+              clientId,
+              retreatId,
+              contextType: 'booking',
+              purpose: 'booking_requirement',
+            })
+          : Promise.resolve({ data: [] as MedicalArtifact[] }),
+      ]);
+      const directArtifacts: MedicalArtifact[] = response.data || [];
+      const contextualArtifacts: MedicalArtifact[] = contextualResponse.data || [];
+      const bookingArtifacts = [...directArtifacts, ...contextualArtifacts.filter((artifact) => {
+        const artifactBookingId = typeof artifact.bookingId === 'string' ? artifact.bookingId : '';
+        return !artifactBookingId || artifactBookingId === bookingId || artifact.data?.bookingId === bookingId;
+      })].filter((artifact, index, all) => {
+        const key = artifact._id || `${artifact.artifactType}-${artifact.title}-${artifact.receivedAt || artifact.createdAt || index}`;
+        return all.findIndex((candidate) => (candidate._id || `${candidate.artifactType}-${candidate.title}-${candidate.receivedAt || candidate.createdAt || index}`) === key) === index;
+      });
       const documentArtifacts = bookingArtifacts.filter((artifact) => documentSections.some((section) => section.type === artifact.artifactType));
       setArtifacts(documentArtifacts);
       const reviewEntries = await Promise.all(
@@ -93,7 +111,7 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
 
   useEffect(() => {
     loadDocuments();
-  }, [bookingId]);
+  }, [bookingId, clientId, retreatId]);
 
   const artifactsByType = useMemo(() => {
     return documentSections.reduce<Record<BookingDocumentType, MedicalArtifact[]>>((acc, section) => {
