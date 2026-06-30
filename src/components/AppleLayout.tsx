@@ -67,6 +67,7 @@ import { Tasks } from '../pages/Tasks/Tasks';
 import { useAuth } from '../context/AuthContext';
 import { ForgotPassword } from './Login/ForgotPassword';
 import { ResetPassword } from './Login/ResetPassword';
+import { ChangeOwnPassword } from './Login/ChangeOwnPassword';
 
 const BookingDetailRoute: React.FC = () => {
   const { bookingId } = useParams();
@@ -423,6 +424,13 @@ const AppleLayout: React.FC = () => {
                     </span>
                   )}
                   <button
+                    onClick={() => navigate('/users/change-password')}
+                    className="inline-flex px-3 py-1.5 text-sm font-medium text-apple-gray-600 hover:text-apple-gray-900
+                             bg-apple-gray-100 hover:bg-apple-gray-200 rounded-apple transition-all"
+                  >
+                    Change Password
+                  </button>
+                  <button
                     onClick={logout}
                     className="inline-flex px-3 py-1.5 text-sm font-medium text-apple-gray-600 hover:text-apple-gray-900
                              bg-apple-gray-100 hover:bg-apple-gray-200 rounded-apple transition-all"
@@ -454,6 +462,7 @@ const AppleLayout: React.FC = () => {
                 <Route path="/users/forgot-password" element={<ForgotPassword />} />
                 <Route path="/users/forgot-pasword" element={<ForgotPassword />} />
                 <Route path="/users/change-password/:token" element={<ResetPassword />} />
+                <Route path="/users/change-password" element={<ProtectedRoute><ChangeOwnPassword /></ProtectedRoute>} />
 
                 {/* Admin routes */}
                 <Route path="/admin/*" element={
