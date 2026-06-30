@@ -8,6 +8,9 @@ import { PaymentRequest } from '../types';
 import { FiArrowLeft, FiCamera, FiEdit2, FiTrash2, FiUser, FiMapPin, FiCalendar, FiDollarSign, FiActivity, FiFileText, FiAlertCircle, FiPlus, FiMessageSquare, FiCheckSquare, FiHeart, FiEye, FiEyeOff } from 'react-icons/fi';
 import MedicalRecordsManager from './MedicalRecordsManager';
 import { formatCalendarDate, toDateInputValue } from '../utils/dateFormat';
+import { CreateTaskDto, Task, taskService } from '../services/taskService';
+import { TaskForm } from './Tasks/TaskForm';
+import { TaskList } from './Tasks/TaskList';
 import './ClientsGrid.css';
 
 // Simple wrapper to fix TypeScript icon issues
@@ -99,18 +102,14 @@ const ClientDetailsPage: React.FC = () => {
   const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
   const [editingPayment, setEditingPayment] = useState<any | null>(null);
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [taskError, setTaskError] = useState<string | null>(null);
   const [showAddMedicalModal, setShowAddMedicalModal] = useState(false);
   const [showLoginPin, setShowLoginPin] = useState(false);
   const [notes, setNotes] = useState<any[]>([]);
-  const [tasks, setTasks] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
   const [newNote, setNewNote] = useState('');
-  const [newTask, setNewTask] = useState({
-    title: '',
-    description: '',
-    priority: 'medium',
-    dueDate: ''
-  });
   const [newPayment, setNewPayment] = useState({
     date: '',
     type: '',
@@ -483,6 +482,24 @@ const ClientDetailsPage: React.FC = () => {
     }
   };
 
+  const loadClientTasks = async () => {
+    if (!clientId) return;
+
+    try {
+      setTaskError(null);
+      const taskData = await taskService.getTasks({
+        clientId,
+        sortBy: 'dueDate',
+        sortOrder: 'asc',
+      });
+      setTasks(taskData);
+    } catch (taskLoadError: any) {
+      console.error('Error loading client tasks:', taskLoadError);
+      setTaskError(taskLoadError?.message || 'Failed to load client tasks');
+      setTasks([]);
+    }
+  };
+
   const fetchClientData = async () => {
     try {
       setIsLoading(true);
@@ -507,11 +524,72 @@ const ClientDetailsPage: React.FC = () => {
       setRetreats(retreatData);
       await loadRetreatHeroUrls(bookingData, retreatData);
       setMedicalInfo(medicalResponse.data);
+      await loadClientTasks();
     } catch (error: any) {
       console.error('Error fetching client data:', error);
       setError('Failed to load client data');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleCreateTask = () => {
+    setEditingTask(null);
+    setTaskError(null);
+    setShowAddTaskModal(true);
+  };
+
+  const handleEditTask = (task: Task) => {
+    setEditingTask(task);
+    setTaskError(null);
+    setShowAddTaskModal(true);
+  };
+
+  const handleSaveTask = async (taskData: CreateTaskDto) => {
+    try {
+      setTaskError(null);
+      const payload: CreateTaskDto = {
+        ...taskData,
+        type: taskData.type || 'client',
+        clientId: taskData.clientId || clientId,
+      };
+
+      if (editingTask?.id) {
+        await taskService.updateTask(editingTask.id, payload);
+      } else {
+        await taskService.createTask(payload);
+      }
+
+      setShowAddTaskModal(false);
+      setEditingTask(null);
+      await loadClientTasks();
+    } catch (taskSaveError: any) {
+      console.error('Error saving client task:', taskSaveError);
+      setTaskError(taskSaveError?.message || 'Failed to save task');
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (!window.confirm('Delete this task? This cannot be undone.')) return;
+
+    try {
+      setTaskError(null);
+      await taskService.deleteTask(taskId);
+      await loadClientTasks();
+    } catch (taskDeleteError: any) {
+      console.error('Error deleting client task:', taskDeleteError);
+      setTaskError(taskDeleteError?.message || 'Failed to delete task');
+    }
+  };
+
+  const handleCompleteTask = async (taskId: string) => {
+    try {
+      setTaskError(null);
+      await taskService.completeTask(taskId);
+      await loadClientTasks();
+    } catch (taskCompleteError: any) {
+      console.error('Error completing client task:', taskCompleteError);
+      setTaskError(taskCompleteError?.message || 'Failed to complete task');
     }
   };
 
@@ -1025,7 +1103,7 @@ const ClientDetailsPage: React.FC = () => {
             onClick={() => setActiveTab('notes')}
           />
           <Tab
-            label="Tasks"
+            label={`Tasks (${tasks.length})`}
             icon={FiCheckSquare}
             isActive={activeTab === 'tasks'}
             onClick={() => setActiveTab('tasks')}
@@ -1871,7 +1949,7 @@ const ClientDetailsPage: React.FC = () => {
               <h2 className="truncate text-lg font-semibold">Client Tasks</h2>
               <button
                 type="button"
-                onClick={() => setShowAddTaskModal(true)}
+                onClick={handleCreateTask}
                 className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-blue-600 text-white shadow-sm hover:bg-blue-700"
                 aria-label="Add task"
                 title="Add task"
@@ -1880,30 +1958,19 @@ const ClientDetailsPage: React.FC = () => {
               </button>
             </div>
 
-            {tasks.length > 0 ? (
-              <div className="space-y-4">
-                {tasks.map((task, index) => (
-                  <div key={index} className="bg-white rounded-lg border p-4">
-                    <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-medium text-gray-900">{task.title}</h3>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        task.priority === 'urgent' ? 'bg-red-100 text-red-800' :
-                        task.priority === 'high' ? 'bg-orange-100 text-orange-800' :
-                        task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {task.priority}
-                      </span>
-                    </div>
-                    {task.description && (
-                      <p className="text-gray-600 text-sm mb-2">{task.description}</p>
-                    )}
-                    <div className="text-xs text-gray-500">
-                      Due: {task.dueDate ? formatDate(task.dueDate) : 'No due date'}
-                    </div>
-                  </div>
-                ))}
+            {taskError && (
+              <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {taskError}
               </div>
+            )}
+
+            {tasks.length > 0 ? (
+              <TaskList
+                tasks={tasks}
+                onEditTask={handleEditTask}
+                onDeleteTask={handleDeleteTask}
+                onCompleteTask={handleCompleteTask}
+              />
             ) : (
               <div className="text-center py-12">
                 <Icon icon={FiCheckSquare} className="mx-auto h-12 w-12 text-gray-400" />
@@ -1962,95 +2029,18 @@ const ClientDetailsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Add Task Modal */}
       {showAddTaskModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-md">
-            <div className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Add Task</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Title
-                  </label>
-                  <input
-                    type="text"
-                    value={newTask.title}
-                    onChange={(e) => setNewTask({...newTask, title: e.target.value})}
-                    placeholder="Task title"
-                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    value={newTask.description}
-                    onChange={(e) => setNewTask({...newTask, description: e.target.value})}
-                    placeholder="Task description"
-                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows={3}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Priority
-                  </label>
-                  <select
-                    value={newTask.priority}
-                    onChange={(e) => setNewTask({...newTask, priority: e.target.value})}
-                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                    <option value="urgent">Urgent</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Due Date
-                  </label>
-                  <input
-                    type="date"
-                    value={newTask.dueDate}
-                    onChange={(e) => setNewTask({...newTask, dueDate: e.target.value})}
-                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end space-x-3 mt-6">
-                <AppleButton
-                  onClick={() => {
-                    setShowAddTaskModal(false);
-                    setNewTask({ title: '', description: '', priority: 'medium', dueDate: '' });
-                  }}
-                  variant="ghost"
-                >
-                  Cancel
-                </AppleButton>
-                <AppleButton
-                  onClick={() => {
-                    if (newTask.title.trim()) {
-                      setTasks([...tasks, {
-                        ...newTask,
-                        id: Date.now().toString(),
-                        createdAt: new Date().toISOString(),
-                        status: 'pending'
-                      }]);
-                      setNewTask({ title: '', description: '', priority: 'medium', dueDate: '' });
-                      setShowAddTaskModal(false);
-                    }
-                  }}
-                  className="apple-button-primary"
-                >
-                  Add Task
-                </AppleButton>
-              </div>
-            </div>
-          </div>
-        </div>
+        <TaskForm
+          task={editingTask}
+          clientId={clientId}
+          onSubmit={handleSaveTask}
+          onCancel={() => {
+            setShowAddTaskModal(false);
+            setEditingTask(null);
+            setTaskError(null);
+          }}
+          error={taskError}
+        />
       )}
 
       {/* Add Payment Modal */}
