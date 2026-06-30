@@ -289,7 +289,14 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
       });
 
       if (created.data._id) {
-        await medicalArtifactsApi.uploadFiles(created.data._id, fileArray);
+        try {
+          await medicalArtifactsApi.uploadFiles(created.data._id, fileArray);
+        } catch (uploadError) {
+          await medicalArtifactsApi.delete(created.data._id).catch((rollbackError) => {
+            console.error('Error rolling back empty medical artifact:', rollbackError);
+          });
+          throw uploadError;
+        }
       }
 
       await updateItem(item, {

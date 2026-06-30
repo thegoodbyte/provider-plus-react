@@ -253,7 +253,14 @@ const MedicalArtifactCreatePage: React.FC = () => {
       });
 
       if (created.data._id && selectedFiles.length > 0) {
-        await medicalArtifactsApi.uploadFiles(created.data._id, selectedFiles);
+        try {
+          await medicalArtifactsApi.uploadFiles(created.data._id, selectedFiles);
+        } catch (uploadError) {
+          await medicalArtifactsApi.delete(created.data._id).catch((rollbackError) => {
+            console.error('Error rolling back empty medical artifact:', rollbackError);
+          });
+          throw uploadError;
+        }
       }
 
       navigate(`${routePrefix}/medical-artifacts`);

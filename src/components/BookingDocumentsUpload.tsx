@@ -129,16 +129,23 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
       });
 
       if (created.data._id) {
-        if (section?.requestType) {
-          const review = await createReviewRequest(created.data, section.requestType);
-          if (!review?.display_id) {
-            throw new Error('Medical review request could not be created before upload.');
+        try {
+          if (section?.requestType) {
+            const review = await createReviewRequest(created.data, section.requestType);
+            if (!review?.display_id) {
+              throw new Error('Medical review request could not be created before upload.');
+            }
+            await medicalArtifactsApi.uploadFiles(created.data._id, fileArray, {
+              reviewRequestNumber: review.display_id,
+            });
+          } else {
+            await medicalArtifactsApi.uploadFiles(created.data._id, fileArray);
           }
-          await medicalArtifactsApi.uploadFiles(created.data._id, fileArray, {
-            reviewRequestNumber: review.display_id,
+        } catch (uploadError) {
+          await medicalArtifactsApi.delete(created.data._id).catch((rollbackError) => {
+            console.error('Error rolling back empty medical artifact:', rollbackError);
           });
-        } else {
-        await medicalArtifactsApi.uploadFiles(created.data._id, fileArray);
+          throw uploadError;
         }
       }
 

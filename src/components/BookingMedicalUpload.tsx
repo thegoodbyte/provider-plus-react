@@ -448,7 +448,15 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
       });
 
       if (created.data._id) {
-        const uploadResponse = await medicalArtifactsApi.uploadFiles(created.data._id, fileArray);
+        let uploadResponse;
+        try {
+          uploadResponse = await medicalArtifactsApi.uploadFiles(created.data._id, fileArray);
+        } catch (uploadError) {
+          await medicalArtifactsApi.delete(created.data._id).catch((rollbackError) => {
+            console.error('Error rolling back empty medical artifact:', rollbackError);
+          });
+          throw uploadError;
+        }
         const uploadedArtifact = uploadResponse.data?.artifact || created.data;
         await createReviewRequest(uploadedArtifact, section.requestType);
         await markBookingFlowReceived(section.type, uploadedArtifact);
