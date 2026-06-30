@@ -113,8 +113,6 @@ const BookingFlowPage: React.FC = () => {
 
       let flowItems = (await bookingFlowApi.getItems({ bookingId })).data || [];
       if (flowItems.length === 0 && retreatId) {
-        await bookingFlowApi.seedLibraryTemplates();
-        await bookingFlowApi.seedTemplates(retreatId);
         flowItems = (await bookingFlowApi.generateForBooking(bookingId)).data || [];
       }
 
