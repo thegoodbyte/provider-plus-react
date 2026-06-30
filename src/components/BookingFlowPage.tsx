@@ -4,6 +4,7 @@ import { ArrowDown, ArrowLeft, ArrowUp, Plus, RefreshCw, Save, Trash2 } from 'lu
 import LoadingSpinner from './LoadingSpinner';
 import { bookingsApi, bookingFlowApi, retreatsApi } from '../services/api';
 import { BookingFlowItem, Retreat } from '../types';
+import { getBookingStepGroupKey, getBookingStepTone, titleizeBookingStepGroup } from '../utils/bookingStepColors';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
@@ -436,8 +437,10 @@ const BookingFlowPage: React.FC = () => {
           sortedItems.map((item, index) => {
             const id = item._id || item.key;
             const draft = drafts[id] || makeDraft(item);
+            const groupKey = getBookingStepGroupKey(item);
+            const tone = getBookingStepTone(groupKey);
             return (
-              <div key={id} className="grid min-w-[1220px] grid-cols-[72px_minmax(220px,1fr)_90px_120px_150px_minmax(220px,1fr)_140px_150px] gap-3 border-b border-gray-100 px-4 py-3 last:border-b-0">
+              <div key={id} className={`grid min-w-[1220px] grid-cols-[72px_minmax(220px,1fr)_90px_120px_150px_minmax(220px,1fr)_140px_150px] gap-3 border-b border-l-4 border-gray-100 px-4 py-3 last:border-b-0 ${tone.stepStripe} ${tone.stepCell}`}>
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => moveItem(index, -1)}
@@ -456,11 +459,17 @@ const BookingFlowPage: React.FC = () => {
                     <Icon icon={ArrowDown} className="h-4 w-4" />
                   </button>
                 </div>
-                <input
-                  value={draft.title}
-                  onChange={(event) => setDraft(id, { title: event.target.value })}
-                  className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-                />
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className={`h-2.5 w-2.5 flex-none rounded-full ${tone.dot}`} />
+                    <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">{titleizeBookingStepGroup(groupKey)}</span>
+                  </div>
+                  <input
+                    value={draft.title}
+                    onChange={(event) => setDraft(id, { title: event.target.value })}
+                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                  />
+                </div>
                 <input
                   type="number"
                   value={draft.order}

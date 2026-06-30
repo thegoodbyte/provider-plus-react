@@ -4,6 +4,7 @@ import { GripVertical, Mail, Plus, Save, Trash2 } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
 import { bookingFlowApi, communicationsApi, retreatsApi } from '../services/api';
 import { BookingFlowTemplate, EmailTemplate, Retreat } from '../types';
+import { getBookingStepTone, titleizeBookingStepGroup } from '../utils/bookingStepColors';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
@@ -486,19 +487,27 @@ const RetreatFlowPage: React.FC = () => {
           <div className="space-y-2">
             {sortedTemplates.map((template) => (
               <React.Fragment key={template._id}>
+                {(() => {
+                  const groupKey = template.readinessGroup || template.category || 'other';
+                  const tone = getBookingStepTone(groupKey);
+                  return (
+                <>
                 <div
                   draggable
                   onDragStart={() => setDraggedTemplateId(template._id || '')}
                   onDragOver={(event) => event.preventDefault()}
                   onDrop={() => template._id && handleDropTemplate(template._id)}
-                  className={`flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left ${selectedTemplateId === template._id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'}`}
+                  className={`flex w-full items-center gap-2 rounded-md border border-l-4 px-3 py-2 text-left ${tone.stepStripe} ${selectedTemplateId === template._id ? `${tone.border} ${tone.stepCell} ring-1 ${tone.ring}` : 'border-gray-200 bg-white hover:bg-gray-50'}`}
                 >
                   <Icon icon={GripVertical} className="h-4 w-4 flex-shrink-0 cursor-grab text-gray-400" />
                   <button type="button" onClick={() => handleSelectTemplate(template)} className="min-w-0 flex-1 text-left">
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold text-gray-900">{template.title}</div>
-                        <div className="truncate text-xs text-gray-500">{template.category} • {formatDeadlineLabel(template)}</div>
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className={`h-2.5 w-2.5 flex-none rounded-full ${tone.dot}`} />
+                          <div className="truncate text-sm font-semibold text-gray-900">{template.title}</div>
+                        </div>
+                        <div className="truncate text-xs text-gray-500">{titleizeBookingStepGroup(groupKey)} • {formatDeadlineLabel(template)}</div>
                       </div>
                       <div className="text-right text-xs text-gray-500">
                         <div>{template.workflowStage || 'potential'}</div>
@@ -522,6 +531,9 @@ const RetreatFlowPage: React.FC = () => {
                   )}
                 </div>
                 {selectedTemplateId === template._id && renderStepForm()}
+                </>
+                  );
+                })()}
               </React.Fragment>
             ))}
             {!selectedTemplateId && renderStepForm()}

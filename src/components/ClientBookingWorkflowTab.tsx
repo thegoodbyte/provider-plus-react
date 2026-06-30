@@ -4,6 +4,7 @@ import { bookingFlowApi, medicalArtifactsApi } from '../services/api';
 import { BookingFlowItem, MedicalArtifact } from '../types';
 import AppleButton from './AppleButton';
 import LoadingSpinner from './LoadingSpinner';
+import { getBookingStepGroupKey, getBookingStepTone, titleizeBookingStepGroup } from '../utils/bookingStepColors';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => (
   <IconComponent className={className} />
@@ -440,9 +441,11 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                 const uploadConfig = artifactUploadsByStep[item.key];
                 const overdue = isPastDue(item);
                 const dueSoon = isDueSoon(item);
+                const groupKey = getBookingStepGroupKey(item);
+                const tone = getBookingStepTone(groupKey);
 
                 return (
-                  <div key={id} className={`grid gap-2 p-3 ${isChecked ? 'bg-green-50/60' : overdue ? 'bg-red-50/70' : dueSoon ? 'bg-amber-50/70' : 'bg-white'}`}>
+                  <div key={id} className={`grid gap-2 border-l-4 p-3 ${tone.stepStripe} ${isChecked ? 'bg-green-50/60' : overdue ? 'bg-red-50/70' : dueSoon ? 'bg-amber-50/70' : tone.stepCell}`}>
                     <div className="grid gap-2 lg:grid-cols-[minmax(240px,1fr)_minmax(210px,260px)] lg:items-center">
                       <label className="flex min-w-0 items-center gap-2">
                         <input
@@ -453,11 +456,14 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                           className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
                         />
                         <span className="min-w-0">
-                          <span className={`block truncate text-sm font-semibold ${isChecked ? 'text-green-900' : 'text-gray-950'}`}>
-                            {item.title}
+                          <span className="flex min-w-0 items-center gap-2">
+                            <span className={`h-2.5 w-2.5 flex-none rounded-full ${tone.dot}`} />
+                            <span className={`block truncate text-sm font-semibold ${isChecked ? 'text-green-900' : 'text-gray-950'}`}>
+                              {item.title}
+                            </span>
                           </span>
                           <span className="block truncate text-xs text-gray-500">
-                            {item.dueDate ? `Due ${formatDisplayDate(item.dueDate)}` : item.category}
+                            {titleizeBookingStepGroup(groupKey)} • {item.dueDate ? `Due ${formatDisplayDate(item.dueDate)}` : item.category}
                             {overdue ? ' • Past due' : dueSoon ? ' • Due soon' : ''}
                             {item.metadata?.latestFileName ? ` • ${item.metadata.latestFileName}` : ''}
                           </span>

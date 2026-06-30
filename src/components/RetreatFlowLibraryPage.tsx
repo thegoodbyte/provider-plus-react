@@ -5,6 +5,7 @@ import LoadingSpinner from './LoadingSpinner';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 import { bookingFlowApi, communicationsApi, retreatsApi } from '../services/api';
 import { BookingFlowAction, BookingFlowTemplate, EmailTemplate, Retreat } from '../types';
+import { getBookingStepTone, titleizeBookingStepGroup } from '../utils/bookingStepColors';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
@@ -671,6 +672,8 @@ const RetreatFlowLibraryPage: React.FC = () => {
           <div className="space-y-2">
             {sortedTemplates.map((template) => {
               const isSelected = selectedTemplateId === template._id;
+              const groupKey = template.readinessGroup || template.category || 'other';
+              const tone = getBookingStepTone(groupKey);
 
               return (
                 <React.Fragment key={template._id}>
@@ -680,18 +683,21 @@ const RetreatFlowLibraryPage: React.FC = () => {
                     onDragOver={(event) => event.preventDefault()}
                     onDrop={() => handleTemplateDrop(template._id)}
                     onClick={() => selectTemplate(template)}
-                    className={`block w-full rounded-md border bg-white px-3 py-2 text-left ${
+                    className={`block w-full rounded-md border border-l-4 px-3 py-2 text-left ${tone.stepStripe} ${
                       isSelected
-                        ? 'border-gray-400 ring-1 ring-gray-300'
-                        : 'border-gray-200 hover:bg-gray-50'
+                        ? `${tone.border} ${tone.stepCell} ring-1 ${tone.ring}`
+                        : 'border-gray-200 bg-white hover:bg-gray-50'
                     } ${draggedTemplateId === template._id ? 'opacity-60' : ''}`}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-2">
                         <Icon icon={GripVertical} className="h-4 w-4 shrink-0 text-gray-400" />
                         <div className="min-w-0">
-                          <div className="truncate text-sm font-semibold text-gray-900">{template.title}</div>
-                          <div className="truncate text-xs text-gray-500">{template.key} • {template.category} • {formatDeadlineLabel(template)}</div>
+                          <div className="flex min-w-0 items-center gap-2">
+                            <span className={`h-2.5 w-2.5 flex-none rounded-full ${tone.dot}`} />
+                            <div className="truncate text-sm font-semibold text-gray-900">{template.title}</div>
+                          </div>
+                          <div className="truncate text-xs text-gray-500">{template.key} • {titleizeBookingStepGroup(groupKey)} • {formatDeadlineLabel(template)}</div>
                         </div>
                       </div>
                       <div className="text-right text-xs text-gray-500">
