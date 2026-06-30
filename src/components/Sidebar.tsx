@@ -90,9 +90,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed,
     },
     {
       id: 'retreat-flow',
-      label: 'Retreat Readiness',
+      label: 'Retreat Readiness Setup',
       icon: FiCalendar,
-      description: 'Per-retreat checklist and timing'
+      description: 'Per-retreat step setup and timing'
     },
     {
       id: 'retreat-flow-library',
