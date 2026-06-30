@@ -25,6 +25,25 @@ const getBookingClient = (booking: any): Client | null => {
   return client && typeof client === 'object' ? client : null;
 };
 
+const getBookingNumber = (booking: any): string => {
+  return booking.bookingNumber || booking.displayNumber || getObjectId(booking).slice(-6);
+};
+
+const getClientDisplayId = (booking: any): string => {
+  const client = getBookingClient(booking);
+  return String(client?.display_id || booking.clientDisplayId || booking.clientDisplayNumber || '');
+};
+
+const getClientEmail = (booking: any): string => {
+  return getBookingClient(booking)?.email || booking.clientEmail || '';
+};
+
+const getClientPhone = (booking: any): string => {
+  const client = getBookingClient(booking) as any;
+  const phoneParts = [client?.phoneCountryCode, client?.phone || booking.clientPhone].filter(Boolean);
+  return phoneParts.join(' ');
+};
+
 const ClientAvatar: React.FC<{ client: Client | null; name: string }> = ({ client, name }) => {
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(client?.profilePictureUrl || null);
   const hasProfilePicture = Boolean(client?.profilePictureUrl || client?.profilePictureS3Key || client?.profilePictureFileUploadId);
@@ -470,12 +489,25 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
             <tr>
               <th className="sticky left-0 z-20 min-w-[220px] border-b border-r border-gray-300 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase text-gray-600">Action</th>
               {bookings.map((booking) => (
-                <th key={getObjectId(booking)} className="min-w-[190px] border-b border-r border-gray-300 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase text-gray-600">
-                  <div className="flex items-center gap-1">
+                <th key={getObjectId(booking)} className="min-w-[260px] border-b border-r border-gray-300 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase text-gray-600">
+                  <div className="flex items-start gap-2">
                     <ClientAvatar client={getBookingClient(booking)} name={getClientName(booking)} />
-                    <div>
-                      <div className="max-w-[140px] truncate">{getClientName(booking)}</div>
-                      <div className="mt-1 normal-case text-blue-700">P #{booking.bookingNumber || getObjectId(booking).slice(-6)}</div>
+                    <div className="min-w-0 space-y-1 normal-case">
+                      <div className="max-w-[210px] truncate text-sm font-bold uppercase text-gray-900">{getClientName(booking)}</div>
+                      <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] font-semibold text-blue-700">
+                        <span>Booking #{getBookingNumber(booking)}</span>
+                        {getClientDisplayId(booking) && <span>Client #{getClientDisplayId(booking)}</span>}
+                      </div>
+                      {getClientEmail(booking) && (
+                        <div className="max-w-[220px] truncate text-[11px] font-medium text-gray-600" title={getClientEmail(booking)}>
+                          {getClientEmail(booking)}
+                        </div>
+                      )}
+                      {getClientPhone(booking) && (
+                        <div className="max-w-[220px] truncate text-[11px] font-medium text-gray-600" title={getClientPhone(booking)}>
+                          {getClientPhone(booking)}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </th>
