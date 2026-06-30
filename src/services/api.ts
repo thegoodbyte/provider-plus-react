@@ -978,6 +978,10 @@ export const bookingFlowApi = {
   getItemEmailComposeData: (id: string, actionKey?: string) => api.get<{
     to: string;
     templateId: string;
+    configuredTemplateId?: string;
+    requestedLanguage?: string;
+    resolvedLanguage?: string;
+    languageFallbackUsed?: boolean;
     clientId: string;
     retreatId: string;
     relatedEntityType: string;

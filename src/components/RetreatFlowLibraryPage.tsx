@@ -558,9 +558,12 @@ const RetreatFlowLibraryPage: React.FC = () => {
         >
           <option value="">Select email template</option>
           {emailTemplates.map((template) => (
-            <option key={template._id} value={template._id}>{template.name} ({template.category || 'general'})</option>
+            <option key={template._id} value={template._id}>{template.name} ({template.category || 'general'} / {template.language || 'en'})</option>
           ))}
         </select>
+        <p className="mt-2 text-xs text-gray-500">
+          Choose the default template for this step. When sending, Provider Plus uses the client's language from an active template in the same category, then falls back to English, then this template.
+        </p>
       </div>
 
       <div className="mt-3 rounded-md border border-gray-200 bg-white p-3">
@@ -616,9 +619,12 @@ const RetreatFlowLibraryPage: React.FC = () => {
                   <select value={typeof action.emailTemplateId === 'string' ? action.emailTemplateId : action.emailTemplateId?._id || ''} onChange={(e) => updateAction(index, { emailTemplateId: e.target.value })} className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm">
                     <option value="">Select email template</option>
                     {emailTemplates.map((template) => (
-                      <option key={template._id} value={template._id}>{template.name} ({template.category || 'general'})</option>
+                      <option key={template._id} value={template._id}>{template.name} ({template.category || 'general'} / {template.language || 'en'})</option>
                     ))}
                   </select>
+                  <span className="mt-1 block text-xs text-gray-500">
+                    The selected template is the fallback; matching client-language templates are picked by category.
+                  </span>
                 </label>
               ) : (
                 <label className="mt-2 block">
