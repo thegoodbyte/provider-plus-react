@@ -20,7 +20,9 @@ const getRetreatDisplayCode = (retreat?: Retreat | any): string => {
 };
 
 interface BookingWithDetails extends RetreatClient {
+  resolvedClientId?: string;
   clientName?: string;
+  clientDisplayId?: string | number;
   retreatName?: string;
   retreatCode?: string;
   retreatBackgroundColor?: string;
@@ -148,7 +150,9 @@ const BookingsGrid: React.FC = () => {
 
         return {
           ...booking,
+          resolvedClientId: clientId,
           clientName: client ? `${client.firstName} ${client.lastName}` : 'Unknown Client',
+          clientDisplayId: client?.display_id,
           retreatName: getRetreatDisplayCode(retreat || (typeof booking.retreatId === 'object' ? booking.retreatId : undefined)),
           retreatCode: getRetreatDisplayCode(retreat || (typeof booking.retreatId === 'object' ? booking.retreatId : undefined)),
           retreatBackgroundColor: retreat?.backgroundColor
@@ -286,6 +290,7 @@ const BookingsGrid: React.FC = () => {
       filtered = bookings.filter(booking =>
         (booking.bookingNumber?.toString() || '').toLowerCase().includes(searchLower) ||
         (booking.clientName || '').toLowerCase().includes(searchLower) ||
+        (booking.clientDisplayId?.toString() || '').toLowerCase().includes(searchLower) ||
         (booking.retreatName || '').toLowerCase().includes(searchLower) ||
         (booking.status || '').toLowerCase().includes(searchLower) ||
         (booking._id || '').toLowerCase().includes(searchLower)
@@ -438,7 +443,21 @@ const BookingsGrid: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">
                       <Icon icon={FiUser} className="w-4 h-4 mr-2 text-gray-400" />
-                      <div className="text-sm text-gray-900">{booking.clientName}</div>
+                      {booking.resolvedClientId ? (
+                        <button
+                          type="button"
+                          onClick={() => navigate(`${routePrefix}/clients/${booking.resolvedClientId}`)}
+                          className="!border-0 !bg-transparent !p-0 text-left !shadow-none hover:!bg-transparent"
+                          title="View client profile"
+                        >
+                          <div className="text-sm font-semibold text-blue-700 hover:underline">{booking.clientName}</div>
+                          {booking.clientDisplayId && (
+                            <div className="text-xs font-medium text-blue-600 hover:underline">Client #{booking.clientDisplayId}</div>
+                          )}
+                        </button>
+                      ) : (
+                        <div className="text-sm text-gray-900">{booking.clientName}</div>
+                      )}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
