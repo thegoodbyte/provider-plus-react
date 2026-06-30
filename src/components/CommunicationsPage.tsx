@@ -60,6 +60,7 @@ const CommunicationsPage: React.FC = () => {
   const [sendingEmail, setSendingEmail] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [processingInbound, setProcessingInbound] = useState(false);
+  const [loadWarnings, setLoadWarnings] = useState<string[]>([]);
 
   const selectedTemplate = useMemo(
     () => templates.find((template) => template._id === selectedTemplateId) || null,
@@ -83,28 +84,39 @@ const CommunicationsPage: React.FC = () => {
 
   const loadAll = async () => {
     setLoading(true);
+    setLoadWarnings([]);
     try {
+      const quietRequest = { suppressGlobalError: true };
       const [settingsRes, templatesRes, sentRes, inboundRes, clientsRes, retreatsRes] = await Promise.allSettled([
-        communicationsApi.getSettings(),
+        communicationsApi.getSettings(quietRequest),
         communicationsApi.getTemplates(),
-        communicationsApi.getSentEmails(),
-        communicationsApi.getInboundEmails({ limit: 100 }),
+        communicationsApi.getSentEmails(quietRequest),
+        communicationsApi.getInboundEmails({ limit: 100 }, quietRequest),
         clientsApi.getAll(),
         retreatsApi.getAll(),
       ]);
+      const warnings: string[] = [];
       if (settingsRes.status === 'fulfilled') setSettings(settingsRes.value.data);
+      else warnings.push('Gmail settings could not be loaded.');
       if (templatesRes.status === 'fulfilled') setTemplates(Array.isArray(templatesRes.value.data) ? templatesRes.value.data : []);
+      else warnings.push('Email templates could not be loaded.');
       if (sentRes.status === 'fulfilled') setSentEmails(Array.isArray(sentRes.value.data) ? sentRes.value.data : []);
+      else warnings.push('Sent mail log could not be loaded.');
       if (inboundRes.status === 'fulfilled') {
         setInboundEmails(Array.isArray(inboundRes.value.data) ? inboundRes.value.data : []);
       } else {
         console.error('Error loading inbound emails:', inboundRes.reason);
+        warnings.push('Inbound mail could not be loaded.');
         setInboundEmails([]);
       }
       if (clientsRes.status === 'fulfilled') setClients(Array.isArray(clientsRes.value.data) ? clientsRes.value.data : []);
+      else warnings.push('Client list could not be loaded.');
       if (retreatsRes.status === 'fulfilled') setRetreats(Array.isArray(retreatsRes.value.data) ? retreatsRes.value.data : []);
+      else warnings.push('Retreat list could not be loaded.');
+      setLoadWarnings(warnings);
     } catch (error) {
       console.error('Error loading communications data:', error);
+      setLoadWarnings(['Communications data could not be loaded.']);
     } finally {
       setLoading(false);
     }
@@ -359,8 +371,15 @@ const CommunicationsPage: React.FC = () => {
   };
 
   const loadInboundEmails = async () => {
-    const response = await communicationsApi.getInboundEmails({ limit: 100 });
-    setInboundEmails(Array.isArray(response.data) ? response.data : []);
+    try {
+      const response = await communicationsApi.getInboundEmails({ limit: 100 }, { suppressGlobalError: true });
+      setInboundEmails(Array.isArray(response.data) ? response.data : []);
+      setLoadWarnings((current) => current.filter((warning) => warning !== 'Inbound mail could not be loaded.'));
+    } catch (error) {
+      console.error('Error loading inbound emails:', error);
+      setInboundEmails([]);
+      setLoadWarnings((current) => Array.from(new Set([...current, 'Inbound mail could not be loaded.'])));
+    }
   };
 
   const handleSetupGmailWatch = async () => {
@@ -439,6 +458,13 @@ const CommunicationsPage: React.FC = () => {
           ))}
         </div>
       </div>
+
+      {loadWarnings.length > 0 && (
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <div className="font-semibold">Some communications data is temporarily unavailable.</div>
+          <div className="mt-1">{loadWarnings.join(' ')}</div>
+        </div>
+      )}
 
       {activeTab === 'settings' && (
         <div className="grid gap-6 lg:grid-cols-2">

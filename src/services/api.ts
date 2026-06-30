@@ -383,7 +383,7 @@ export const paymentRequestsApi = {
 };
 
 export const communicationsApi = {
-  getSettings: () => api.get<MailSettings>('/communications/settings'),
+  getSettings: (config: any = {}) => api.get<MailSettings>('/communications/settings', config),
   saveSettings: (data: Partial<MailSettings>) => api.patch<MailSettings>('/communications/settings', data),
   getAuthUrl: () => api.get<{ authUrl: string; state: string; redirectUri: string }>('/communications/gmail/auth-url'),
   disconnect: () => api.post<MailSettings>('/communications/gmail/disconnect', {}),
@@ -411,19 +411,22 @@ export const communicationsApi = {
     cacheService.clearPattern('communications:templates');
     return api.delete(`/communications/templates/${id}`);
   },
-  getSentEmails: () => cachedGet<SentEmail[]>('communications:sent-emails', () => api.get<SentEmail[]>('/communications/sent-emails')),
+  getSentEmails: (config: any = {}) => {
+    if (config?.suppressGlobalError) return api.get<SentEmail[]>('/communications/sent-emails', config);
+    return cachedGet<SentEmail[]>('communications:sent-emails', () => api.get<SentEmail[]>('/communications/sent-emails'));
+  },
   getSentEmail: (id: string) => cachedGet<SentEmail>(`communications:sent-emails:${id}`, () => api.get<SentEmail>(`/communications/sent-emails/${id}`)),
   deleteSentEmail: (id: string) => {
     cacheService.clearPattern('communications:sent-emails');
     return api.delete(`/communications/sent-emails/${id}`);
   },
   setupGmailWatch: () => api.post('/communications/gmail/watch', {}),
-  getInboundEmails: (params: { status?: string; limit?: number } = {}) => {
+  getInboundEmails: (params: { status?: string; limit?: number } = {}, config: any = {}) => {
     const query = new URLSearchParams();
     if (params.status) query.set('status', params.status);
     if (params.limit) query.set('limit', String(params.limit));
     const suffix = query.toString() ? `?${query.toString()}` : '';
-    return api.get(`/communications/inbound-emails${suffix}`);
+    return api.get(`/communications/inbound-emails${suffix}`, config);
   },
   getInboundEmailJobs: (limit = 100) => api.get(`/communications/inbound-email-jobs?limit=${limit}`),
   processInboundEmails: (limit = 25) => {
