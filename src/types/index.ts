@@ -1234,6 +1234,7 @@ export interface EmailTemplate {
   bodyText: string;
   bodyHtml?: string;
   category?: string;
+  templateKey?: string;
   language?: 'en' | 'cz' | 'pl' | string;
   active?: boolean;
   notes?: string;
