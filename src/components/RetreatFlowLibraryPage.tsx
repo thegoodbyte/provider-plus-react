@@ -695,7 +695,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
           </button>
           <button onClick={() => navigate(`${routePrefix}/retreat-flow`)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
             <Icon icon={RefreshCw} className="h-4 w-4" />
-            Open Retreat Readiness
+            Open Retreat Readiness Setup
           </button>
         </div>
       </div>
