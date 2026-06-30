@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { FiPlus, FiEdit2, FiTrash2, FiDollarSign, FiChevronDown } from 'react-icons/fi';
 import { paymentsApi, clientsApi, retreatsApi, bookingsApi } from '../services/api';
 import { Payment, Client, Retreat, RetreatClient } from '../types';
@@ -253,9 +253,17 @@ const PaymentsPage: React.FC = () => {
                     {formatCalendarDate(payment.paymentDate)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    <span className="font-semibold text-blue-600 mr-2">
-                      {payment.clientDisplayId ? `#${payment.clientDisplayId}` : ''}
-                    </span>
+                    {payment.clientDisplayId && payment.clientId ? (
+                      <Link
+                        to={`/admin/clients/${payment.clientId}`}
+                        className="mr-2 font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+                        title="Open client profile"
+                      >
+                        #{payment.clientDisplayId}
+                      </Link>
+                    ) : payment.clientDisplayId ? (
+                      <span className="mr-2 font-semibold text-blue-600">#{payment.clientDisplayId}</span>
+                    ) : null}
                     {payment.clientName}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
