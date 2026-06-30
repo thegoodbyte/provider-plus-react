@@ -837,6 +837,42 @@ export const backupsApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+  exportToS3: (options: {
+    bucket?: string;
+    environment?: string;
+    compress?: boolean;
+    redactEmails?: boolean;
+    emailReplacement?: string;
+    collections?: string;
+  } = {}) => api.post('/backups/s3/export', {}, { params: options }),
+  listS3Files: (options: {
+    bucket?: string;
+    environment?: string;
+    prefix?: string;
+    maxKeys?: number;
+    continuationToken?: string;
+  } = {}) => api.get('/backups/s3/files', { params: options }),
+  downloadS3File: (options: { bucket?: string; key: string }) =>
+    api.get('/backups/s3/download', {
+      params: options,
+      responseType: 'blob',
+    }),
+  importFromS3: (options: {
+    bucket?: string;
+    key: string;
+    dryRun?: boolean;
+    confirm?: string;
+    emailMode?: 'preserve' | 'override';
+    overrideEmail?: string;
+    collections?: string;
+  }) => api.post('/backups/s3/import', {}, {
+    params: {
+      ...options,
+      dryRun: options.dryRun === false ? 'false' : 'true',
+    },
+  }),
+  getLogs: (filters: { action?: string; storage?: string; limit?: number } = {}) =>
+    api.get('/backups/logs', { params: filters }),
 };
 
 export const medicalReviewRequestsApi = {
