@@ -84,7 +84,7 @@ const CommunicationsPage: React.FC = () => {
   const loadAll = async () => {
     setLoading(true);
     try {
-      const [settingsRes, templatesRes, sentRes, inboundRes, clientsRes, retreatsRes] = await Promise.all([
+      const [settingsRes, templatesRes, sentRes, inboundRes, clientsRes, retreatsRes] = await Promise.allSettled([
         communicationsApi.getSettings(),
         communicationsApi.getTemplates(),
         communicationsApi.getSentEmails(),
@@ -92,12 +92,17 @@ const CommunicationsPage: React.FC = () => {
         clientsApi.getAll(),
         retreatsApi.getAll(),
       ]);
-      setSettings(settingsRes.data);
-      setTemplates(Array.isArray(templatesRes.data) ? templatesRes.data : []);
-      setSentEmails(Array.isArray(sentRes.data) ? sentRes.data : []);
-      setInboundEmails(Array.isArray(inboundRes.data) ? inboundRes.data : []);
-      setClients(Array.isArray(clientsRes.data) ? clientsRes.data : []);
-      setRetreats(Array.isArray(retreatsRes.data) ? retreatsRes.data : []);
+      if (settingsRes.status === 'fulfilled') setSettings(settingsRes.value.data);
+      if (templatesRes.status === 'fulfilled') setTemplates(Array.isArray(templatesRes.value.data) ? templatesRes.value.data : []);
+      if (sentRes.status === 'fulfilled') setSentEmails(Array.isArray(sentRes.value.data) ? sentRes.value.data : []);
+      if (inboundRes.status === 'fulfilled') {
+        setInboundEmails(Array.isArray(inboundRes.value.data) ? inboundRes.value.data : []);
+      } else {
+        console.error('Error loading inbound emails:', inboundRes.reason);
+        setInboundEmails([]);
+      }
+      if (clientsRes.status === 'fulfilled') setClients(Array.isArray(clientsRes.value.data) ? clientsRes.value.data : []);
+      if (retreatsRes.status === 'fulfilled') setRetreats(Array.isArray(retreatsRes.value.data) ? retreatsRes.value.data : []);
     } catch (error) {
       console.error('Error loading communications data:', error);
     } finally {
