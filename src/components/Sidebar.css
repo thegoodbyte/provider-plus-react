@@ -150,6 +150,33 @@
   border-radius: 0 4px 4px 0;
 }
 
+.nav-link-readiness {
+  background: rgba(14, 165, 233, 0.12);
+  box-shadow: inset 4px 0 0 #0ea5e9;
+}
+
+.nav-link-step-setup {
+  background: rgba(124, 58, 237, 0.12);
+  box-shadow: inset 4px 0 0 #7c3aed;
+}
+
+.nav-link-step-deadlines {
+  background: rgba(16, 185, 129, 0.12);
+  box-shadow: inset 4px 0 0 #10b981;
+}
+
+.nav-link-readiness.active::before {
+  background: #0ea5e9;
+}
+
+.nav-link-step-setup.active::before {
+  background: #7c3aed;
+}
+
+.nav-link-step-deadlines.active::before {
+  background: #10b981;
+}
+
 .nav-icon {
   width: 24px;
   height: 24px;

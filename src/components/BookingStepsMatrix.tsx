@@ -128,6 +128,151 @@ interface MatrixRowGroup {
   rows: MatrixRow[];
 }
 
+type GroupTone = {
+  label: string;
+  groupCell: string;
+  groupText: string;
+  stepCell: string;
+  badge: string;
+  stepStripe: string;
+};
+
+const GROUP_TONES: Record<string, GroupTone> = {
+  booking: {
+    label: 'Booking Admin',
+    groupCell: 'bg-sky-100',
+    groupText: 'text-sky-950',
+    stepCell: 'bg-sky-50',
+    badge: 'bg-sky-200 text-sky-950',
+    stepStripe: 'border-l-sky-400',
+  },
+  admin: {
+    label: 'Booking Admin',
+    groupCell: 'bg-sky-100',
+    groupText: 'text-sky-950',
+    stepCell: 'bg-sky-50',
+    badge: 'bg-sky-200 text-sky-950',
+    stepStripe: 'border-l-sky-400',
+  },
+  booking_admin: {
+    label: 'Booking Admin',
+    groupCell: 'bg-sky-100',
+    groupText: 'text-sky-950',
+    stepCell: 'bg-sky-50',
+    badge: 'bg-sky-200 text-sky-950',
+    stepStripe: 'border-l-sky-400',
+  },
+  medical: {
+    label: 'Medical',
+    groupCell: 'bg-emerald-100',
+    groupText: 'text-emerald-950',
+    stepCell: 'bg-emerald-50',
+    badge: 'bg-emerald-200 text-emerald-950',
+    stepStripe: 'border-l-emerald-400',
+  },
+  questionnaire: {
+    label: 'Questionnaires',
+    groupCell: 'bg-violet-100',
+    groupText: 'text-violet-950',
+    stepCell: 'bg-violet-50',
+    badge: 'bg-violet-200 text-violet-950',
+    stepStripe: 'border-l-violet-400',
+  },
+  questionaires: {
+    label: 'Questionnaires',
+    groupCell: 'bg-violet-100',
+    groupText: 'text-violet-950',
+    stepCell: 'bg-violet-50',
+    badge: 'bg-violet-200 text-violet-950',
+    stepStripe: 'border-l-violet-400',
+  },
+  documents: {
+    label: 'Documents',
+    groupCell: 'bg-indigo-100',
+    groupText: 'text-indigo-950',
+    stepCell: 'bg-indigo-50',
+    badge: 'bg-indigo-200 text-indigo-950',
+    stepStripe: 'border-l-indigo-400',
+  },
+  questionnaires: {
+    label: 'Questionnaires',
+    groupCell: 'bg-violet-100',
+    groupText: 'text-violet-950',
+    stepCell: 'bg-violet-50',
+    badge: 'bg-violet-200 text-violet-950',
+    stepStripe: 'border-l-violet-400',
+  },
+  payment: {
+    label: 'Payments',
+    groupCell: 'bg-amber-100',
+    groupText: 'text-amber-950',
+    stepCell: 'bg-amber-50',
+    badge: 'bg-amber-200 text-amber-950',
+    stepStripe: 'border-l-amber-400',
+  },
+  contract: {
+    label: 'Contracts',
+    groupCell: 'bg-indigo-100',
+    groupText: 'text-indigo-950',
+    stepCell: 'bg-indigo-50',
+    badge: 'bg-indigo-200 text-indigo-950',
+    stepStripe: 'border-l-indigo-400',
+  },
+  dietary: {
+    label: 'Dietary',
+    groupCell: 'bg-lime-100',
+    groupText: 'text-lime-950',
+    stepCell: 'bg-lime-50',
+    badge: 'bg-lime-200 text-lime-950',
+    stepStripe: 'border-l-lime-400',
+  },
+  message: {
+    label: 'Messages',
+    groupCell: 'bg-cyan-100',
+    groupText: 'text-cyan-950',
+    stepCell: 'bg-cyan-50',
+    badge: 'bg-cyan-200 text-cyan-950',
+    stepStripe: 'border-l-cyan-400',
+  },
+  access: {
+    label: 'Access',
+    groupCell: 'bg-fuchsia-100',
+    groupText: 'text-fuchsia-950',
+    stepCell: 'bg-fuchsia-50',
+    badge: 'bg-fuchsia-200 text-fuchsia-950',
+    stepStripe: 'border-l-fuchsia-400',
+  },
+  approval: {
+    label: 'Approvals',
+    groupCell: 'bg-teal-100',
+    groupText: 'text-teal-950',
+    stepCell: 'bg-teal-50',
+    badge: 'bg-teal-200 text-teal-950',
+    stepStripe: 'border-l-teal-400',
+  },
+  reminder: {
+    label: 'Reminders',
+    groupCell: 'bg-rose-100',
+    groupText: 'text-rose-950',
+    stepCell: 'bg-rose-50',
+    badge: 'bg-rose-200 text-rose-950',
+    stepStripe: 'border-l-rose-400',
+  },
+  other: {
+    label: 'Other',
+    groupCell: 'bg-slate-100',
+    groupText: 'text-slate-950',
+    stepCell: 'bg-slate-50',
+    badge: 'bg-slate-200 text-slate-950',
+    stepStripe: 'border-l-slate-400',
+  },
+};
+
+const getGroupTone = (groupKey?: string): GroupTone => {
+  const normalized = String(groupKey || 'other').toLowerCase().replace(/\s+/g, '_');
+  return GROUP_TONES[normalized] || GROUP_TONES.other;
+};
+
 const statusOptions: BookingFlowItem['status'][] = [
   'pending',
   'sent',
@@ -172,6 +317,8 @@ const getItemDisplayValue = (item: BookingFlowItem) => {
 
 const titleizeGroup = (value?: string) => {
   const normalized = String(value || 'other').trim() || 'other';
+  const tone = getGroupTone(normalized);
+  if (tone && normalized.toLowerCase() in GROUP_TONES) return tone.label;
   return normalized
     .replace(/[_-]+/g, ' ')
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
@@ -517,21 +664,28 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
           <tbody>
             {groupedRows.map((group) => (
               <React.Fragment key={group.key}>
+                {(() => {
+                  const tone = getGroupTone(group.key);
+                  return (
+                <>
                 <tr>
-                  <td className="sticky left-0 z-10 border-b border-r border-gray-300 bg-gray-200 px-3 py-2 text-xs font-bold uppercase tracking-wide text-gray-700">
-                    {group.label}
+                  <td className={`sticky left-0 z-10 border-b border-r border-gray-300 px-3 py-2 text-xs font-bold uppercase tracking-wide ${tone.groupCell} ${tone.groupText}`}>
+                    <span className="inline-flex items-center gap-2">
+                      <span className={`h-2.5 w-2.5 rounded-full ${tone.badge.split(' ')[0]}`} />
+                      {group.label}
+                    </span>
                   </td>
                   {bookings.map((booking) => (
-                    <td key={`${group.key}:${getObjectId(booking)}`} className="border-b border-r border-gray-300 bg-gray-200 px-2 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    <td key={`${group.key}:${getObjectId(booking)}`} className={`border-b border-r border-gray-300 px-2 py-2 text-xs font-semibold uppercase tracking-wide ${tone.groupCell} ${tone.groupText}`}>
                       {group.rows.length} steps
                     </td>
                   ))}
                 </tr>
                 {group.rows.map((row, rowIndex) => (
                   <tr key={row.key}>
-                    <td className="sticky left-0 z-10 border-b border-r border-gray-300 bg-white px-3 py-2 font-medium text-gray-900">
+                    <td className={`sticky left-0 z-10 border-b border-l-4 border-r border-gray-300 px-3 py-2 font-medium text-gray-900 ${tone.stepCell} ${tone.stepStripe}`}>
                       <div className="flex items-start gap-2">
-                        <span className="mt-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded bg-gray-100 px-1 text-[11px] font-semibold text-gray-600">
+                        <span className={`mt-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded px-1 text-[11px] font-semibold ${tone.badge}`}>
                           {rowIndex + 1}
                         </span>
                         <span>{row.title}</span>
@@ -637,6 +791,9 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                     })}
                   </tr>
                 ))}
+                </>
+                  );
+                })()}
               </React.Fragment>
             ))}
             {rows.length === 0 && (

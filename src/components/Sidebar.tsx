@@ -158,6 +158,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed,
 
   // Choose menu items based on user role
   const menuItems = userRole === 'medical_advisor' ? medicalAdvisorMenuItems : regularMenuItems;
+  const getBookingStepAccentClass = (itemId: string) => {
+    if (itemId === 'retreat-flow') return 'nav-link-readiness';
+    if (itemId === 'retreat-flow-library') return 'nav-link-step-setup';
+    if (itemId === 'booking-flow') return 'nav-link-step-deadlines';
+    return '';
+  };
 
   return (
     <div className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
@@ -187,7 +193,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed,
           {menuItems.map((item) => (
             <li key={item.id} className="nav-item">
               <button
-                className={`nav-link ${activeItem === item.id ? 'active' : ''}`}
+                className={`nav-link ${getBookingStepAccentClass(item.id)} ${activeItem === item.id ? 'active' : ''}`}
                 onClick={() => onItemClick(item.id)}
                 title={isCollapsed ? item.label : ''}
               >

@@ -161,6 +161,27 @@ const getTextColor = (isActive: boolean = false): string => {
   return isActive ? 'rgb(17, 24, 39)' : 'rgb(55, 65, 81)';
 };
 
+const BOOKING_STEP_NAV_ACCENTS: Record<string, { border: string; background: string; activeBackground: string; color: string }> = {
+  'retreat-flow': {
+    border: 'rgb(14, 165, 233)',
+    background: 'rgba(14, 165, 233, 0.08)',
+    activeBackground: 'rgba(14, 165, 233, 0.16)',
+    color: 'rgb(3, 105, 161)',
+  },
+  'retreat-flow-library': {
+    border: 'rgb(124, 58, 237)',
+    background: 'rgba(124, 58, 237, 0.08)',
+    activeBackground: 'rgba(124, 58, 237, 0.16)',
+    color: 'rgb(91, 33, 182)',
+  },
+  'booking-flow': {
+    border: 'rgb(16, 185, 129)',
+    background: 'rgba(16, 185, 129, 0.08)',
+    activeBackground: 'rgba(16, 185, 129, 0.16)',
+    color: 'rgb(4, 120, 87)',
+  },
+};
+
 const AppleSidebar: React.FC<AppleSidebarProps> = ({
   activeItem,
   onItemClick,
@@ -477,14 +498,16 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                         {section.items.map((item) => {
                           const isActive = activeItem === item.id;
                           const IconComponent = item.Icon;
+                          const accent = BOOKING_STEP_NAV_ACCENTS[item.id];
                           return (
                             <li key={item.id}>
                               <button
                                 onClick={() => onItemClick(item.id)}
                                 style={{
-                                  backgroundColor: 'transparent',
-                                  borderColor: isActive ? 'rgba(17, 24, 39, 0.24)' : 'transparent',
+                                  backgroundColor: accent ? (isActive ? accent.activeBackground : accent.background) : 'transparent',
+                                  borderColor: accent ? accent.border : isActive ? 'rgba(17, 24, 39, 0.24)' : 'transparent',
                                   borderWidth: '1px',
+                                  boxShadow: accent ? `inset 3px 0 0 ${accent.border}` : undefined,
                                 }}
                                 className={`
                                   w-full flex items-center gap-2 rounded-apple px-3 py-1.5 text-left
@@ -493,7 +516,10 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                                   ${isActive ? 'text-gray-950 shadow-none' : 'text-apple-gray-700 hover:text-apple-gray-950'}
                                 `}
                               >
-                                {React.createElement(IconComponent as any, { className: "w-4 h-4 flex-shrink-0" })}
+                                {React.createElement(IconComponent as any, {
+                                  className: "w-4 h-4 flex-shrink-0",
+                                  style: accent ? { color: accent.color } : undefined,
+                                })}
                                 <span className={`text-sm whitespace-nowrap ${isActive ? 'font-semibold' : 'font-medium'}`}>
                                   {item.label}
                                 </span>
