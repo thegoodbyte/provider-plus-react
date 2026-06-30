@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Circle, Mail, RefreshCw, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Circle, Lock, Mail, RefreshCw, RotateCcw, Save, Unlock, X } from 'lucide-react';
 import { bookingFlowApi, clientsApi, communicationsApi } from '../services/api';
 import { BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, Client } from '../types';
 import LoadingSpinner from './LoadingSpinner';
@@ -160,16 +160,16 @@ const getStatusCellClass = (status?: BookingFlowItem['status']) => {
   if (status === 'caution') return 'bg-orange-200 text-orange-950';
   if (status === 'rejected' || status === 'needs_resubmission' || status === 'blocked') return 'bg-red-200 text-red-950';
   if (status && fulfilledStatuses.has(status)) return 'bg-green-100 text-green-950';
-  if (status === 'sent' || status === 'sent_for_review' || status === 'in_review' || status === 'scheduled') return 'bg-blue-100 text-blue-950';
-  return 'bg-white text-gray-700';
+  if (status === 'sent' || status === 'sent_for_review' || status === 'in_review' || status === 'scheduled') return 'bg-red-50 text-red-900';
+  return 'bg-red-50 text-red-900';
 };
 
 const getSimpleStatus = (item?: BookingFlowItem) => {
   if (!item) {
     return {
       label: 'Missing',
-      className: 'bg-gray-50 text-gray-400',
-      icon: <span className="text-lg font-semibold">-</span>,
+      className: 'bg-red-50 text-red-600',
+      icon: <X className="h-5 w-5" />,
     };
   }
   if (failedStatuses.has(item.status)) {
@@ -195,7 +195,7 @@ const getSimpleStatus = (item?: BookingFlowItem) => {
   }
   return {
     label: item.status?.replace(/_/g, ' ') || 'pending',
-    className: 'bg-orange-50 text-orange-600',
+    className: 'bg-red-50 text-red-600',
     icon: <X className="h-5 w-5" />,
   };
 };
@@ -246,7 +246,9 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState('');
   const [viewMode, setViewMode] = useState<'detail' | 'simple'>('detail');
+  const [isEditing, setIsEditing] = useState(false);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
+  const [dirtyNoteIds, setDirtyNoteIds] = useState<Record<string, true>>({});
   const [composeState, setComposeState] = useState<{
     item: BookingFlowItem;
     action?: BookingFlowAction;
@@ -271,12 +273,24 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   }, [loadData]);
 
   useEffect(() => {
+    if (isEditing) {
+      setNoteDrafts((current) => {
+        const nextDrafts = { ...current };
+        items.forEach((item) => {
+          if (item._id && nextDrafts[item._id] === undefined) nextDrafts[item._id] = item.notes || '';
+        });
+        return nextDrafts;
+      });
+      return;
+    }
+
     const nextDrafts: Record<string, string> = {};
     items.forEach((item) => {
       if (item._id) nextDrafts[item._id] = item.notes || '';
     });
     setNoteDrafts(nextDrafts);
-  }, [items]);
+    setDirtyNoteIds({});
+  }, [isEditing, items]);
 
   const generateSteps = async () => {
     setSaving('generate');
@@ -382,17 +396,27 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     }
   };
 
-  const saveItemNotes = async (item: BookingFlowItem | undefined) => {
-    if (!item?._id) return;
-    const notes = noteDrafts[item._id] || '';
-    if ((item.notes || '') === notes) return;
-    setSaving(`notes:${item._id}`);
+  const saveAllAndLock = async () => {
+    const dirtyIds = Object.keys(dirtyNoteIds);
+    setSaving('save-all');
     try {
-      await bookingFlowApi.updateItem(item._id, { notes } as Partial<BookingFlowItem>);
+      await Promise.all(dirtyIds.map((itemId) => {
+        const item = items.find((currentItem) => currentItem._id === itemId);
+        if (!item || (item.notes || '') === (noteDrafts[itemId] || '')) return Promise.resolve();
+        return bookingFlowApi.updateItem(itemId, { notes: noteDrafts[itemId] || '' } as Partial<BookingFlowItem>);
+      }));
+      setDirtyNoteIds({});
       await loadData(false);
+      setIsEditing(false);
     } finally {
       setSaving('');
     }
+  };
+
+  const cancelEditing = async () => {
+    setIsEditing(false);
+    setDirtyNoteIds({});
+    await loadData(false);
   };
 
   const updateItemDate = async (item: BookingFlowItem | undefined, value: string) => {
@@ -518,11 +542,13 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
           <h2 className="text-lg font-semibold text-gray-900">Retreat Readiness</h2>
           <p className="text-sm text-gray-500">
             {viewMode === 'detail'
-              ? 'Actions are rows. Participants are columns. Each cell tracks status, date, and notes.'
+              ? isEditing
+                ? 'Editing is unlocked. Save and lock when you are done changing readiness.'
+                : 'Read-only mode prevents accidental changes. Unlock editing to update status, date, notes, or actions.'
               : 'Simple view shows only complete, pending, and problem status by color.'}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <div className="inline-flex rounded-md border border-gray-300 bg-white p-0.5">
             <button
               type="button"
@@ -539,6 +565,45 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
               Simple
             </button>
           </div>
+          {viewMode === 'detail' && (
+            isEditing ? (
+              <>
+                <button
+                  type="button"
+                  onClick={saveAllAndLock}
+                  disabled={saving === 'save-all'}
+                  className="inline-flex items-center gap-2 rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+                >
+                  <Save className="h-4 w-4" />
+                  {saving === 'save-all' ? 'Saving...' : 'Save & Lock'}
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelEditing}
+                  disabled={saving === 'save-all'}
+                  className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsEditing(true)}
+                className="inline-flex items-center gap-2 rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-800"
+              >
+                <Unlock className="h-4 w-4" />
+                Unlock Editing
+              </button>
+            )
+          )}
+          {!isEditing && viewMode === 'detail' && (
+            <span className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-2 py-2 text-xs font-medium text-gray-600">
+              <Lock className="h-3.5 w-3.5" />
+              Locked
+            </span>
+          )}
           <button onClick={() => loadData()} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
             <RefreshCw className="h-4 w-4" />
             Refresh
@@ -616,9 +681,10 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                       {rowCanSendEmail(row) && (
                         <button
                           type="button"
-                          disabled={saving === `row-email:${row.key}`}
+                          disabled={!isEditing || saving === `row-email:${row.key}`}
                           onClick={() => sendRowEmail(row)}
                           className="mt-2 inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+                          title={isEditing ? 'Send this email to all participants' : 'Unlock editing to send row email'}
                         >
                           <Mail className="h-3.5 w-3.5" />
                           {saving === `row-email:${row.key}` ? 'Sending...' : row.key === 'address_sent' ? 'Send address' : 'Send row'}
@@ -634,7 +700,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                       const configuredActions = getConfiguredActions(item);
                       const simpleStatus = getSimpleStatus(item);
                       return (
-                        <td key={`${getObjectId(booking)}:${row.key}`} className={`${viewMode === 'simple' ? 'min-w-[150px] px-2 py-2 text-center' : 'min-w-[230px] px-2 py-1 align-top'} border-b border-r border-gray-300 ${item ? getStatusCellClass(item.status) : 'bg-white'}`}>
+                        <td key={`${getObjectId(booking)}:${row.key}`} className={`${viewMode === 'simple' ? 'min-w-[150px] px-2 py-2 text-center' : 'min-w-[230px] px-2 py-1 align-top'} border-b border-r border-gray-300 ${item ? getStatusCellClass(item.status) : 'bg-red-50 text-red-900'}`}>
                           {viewMode === 'simple' ? (
                             <div
                               className={`mx-auto flex h-9 w-9 items-center justify-center rounded-full ${simpleStatus.className}`}
@@ -647,18 +713,18 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                               <div className="grid grid-cols-[18px_minmax(88px,1fr)_92px] items-center gap-1">
                             <button
                               type="button"
-                              disabled={saving === item._id}
+                              disabled={!isEditing || saving === item._id}
                               onClick={() => toggleItem(item, !done)}
                               className="inline-flex justify-center disabled:opacity-50"
-                              title={done ? 'Mark pending' : 'Mark complete'}
+                              title={isEditing ? (done ? 'Mark pending' : 'Mark complete') : 'Unlock editing to change status'}
                             >
                               {done ? <CheckCircle2 className="h-4 w-4 flex-none" /> : <Circle className="h-4 w-4 flex-none" />}
                             </button>
                             <select
                               value={item.status || 'pending'}
-                              disabled={saving === item._id}
+                              disabled={!isEditing || saving === item._id}
                               onChange={(event) => updateItemStatus(item, event.target.value as BookingFlowItem['status'])}
-                              className="w-full rounded border border-black/10 bg-white/80 px-1.5 py-1 text-xs font-medium text-gray-800"
+                              className="w-full rounded border border-black/10 bg-white/80 px-1.5 py-1 text-xs font-medium text-gray-800 disabled:cursor-not-allowed disabled:bg-white/40"
                               title={getItemDisplayValue(item) || item.status || 'pending'}
                             >
                               {statusOptions.map((status) => (
@@ -668,19 +734,23 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                             <input
                               type="date"
                               value={formatDateInput(dateValue)}
-                              disabled={saving === `date:${item._id}`}
+                              disabled={!isEditing || saving === `date:${item._id}`}
                               onChange={(event) => updateItemDate(item, event.target.value)}
-                              className="w-full rounded border border-black/10 bg-white/80 px-1.5 py-1 text-xs text-gray-800"
+                              className="w-full rounded border border-black/10 bg-white/80 px-1.5 py-1 text-xs text-gray-800 disabled:cursor-not-allowed disabled:bg-white/40"
                             />
                               </div>
                               <div className="grid grid-cols-[1fr_auto] gap-1">
                             <textarea
                               value={noteDrafts[item._id || ''] || ''}
-                              onChange={(event) => item._id && setNoteDrafts((current) => ({ ...current, [item._id!]: event.target.value }))}
-                              onBlur={() => saveItemNotes(item)}
+                              disabled={!isEditing}
+                              onChange={(event) => {
+                                if (!item._id) return;
+                                setNoteDrafts((current) => ({ ...current, [item._id!]: event.target.value }));
+                                setDirtyNoteIds((current) => ({ ...current, [item._id!]: true }));
+                              }}
                               rows={1}
                               placeholder={item.emailSentAt ? `Email ${formatDate(item.emailSentAt)}` : 'Notes'}
-                              className="min-h-[28px] w-full resize-y rounded border border-black/10 bg-white/80 px-1.5 py-1 text-xs text-gray-800 placeholder:text-gray-400"
+                              className="min-h-[28px] w-full resize-y rounded border border-black/10 bg-white/80 px-1.5 py-1 text-xs text-gray-800 placeholder:text-gray-400 disabled:cursor-not-allowed disabled:bg-white/40"
                             />
                             {configuredActions.map((action) => {
                               const actionLogs = itemActionLogs.filter((log) => (log.actionKey || 'default_email') === action.key);
@@ -690,10 +760,10 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                                 <button
                                   key={action.key}
                                   type="button"
-                                  disabled={saving === savingKey}
+                                  disabled={!isEditing || saving === savingKey}
                                   onClick={() => runItemAction(item, action)}
                                   className="inline-flex items-center justify-center gap-1 rounded-md border border-blue-200 bg-white px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
-                                  title={action.type}
+                                  title={isEditing ? action.type : 'Unlock editing to run actions'}
                                 >
                                   {action.type === 'email' && <Mail className="h-3.5 w-3.5" />}
                                   {saving === savingKey ? '...' : actionCount > 0 && action.allowRepeat !== false ? `${action.label} again` : action.label}
