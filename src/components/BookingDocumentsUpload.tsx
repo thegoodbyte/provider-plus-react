@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Eye, FileText, RefreshCw, Send, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { bookingFlowApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
@@ -35,6 +35,8 @@ const humanizeArtifactType = (value: string) => value
   .filter(Boolean)
   .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
   .join(' ');
+
+const getItemExpectedArtifact = (item: BookingFlowItem) => String(item.metadata?.expectedArtifact || '').trim();
 
 const getApiErrorMessage = (error: any) => {
   const status = error?.response?.status;
@@ -76,8 +78,6 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
   const [creatingReviewFor, setCreatingReviewFor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const getItemExpectedArtifact = (item: BookingFlowItem) => String(item.metadata?.expectedArtifact || '').trim();
-
   const configuredDocumentSections = useMemo(() => {
     const configured = flowItems
       .map((item) => getItemExpectedArtifact(item))
@@ -107,7 +107,7 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
     return [...configured, ...fallback];
   }, [flowItems]);
 
-  const loadDocuments = async () => {
+  const loadDocuments = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -181,11 +181,11 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [bookingId, clientId, retreatId]);
 
   useEffect(() => {
     loadDocuments();
-  }, [bookingId, clientId, retreatId]);
+  }, [loadDocuments]);
 
   const artifactsByType = useMemo(() => {
     return configuredDocumentSections.reduce<Record<BookingDocumentType, MedicalArtifact[]>>((acc, section) => {
