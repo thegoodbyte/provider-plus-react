@@ -150,6 +150,22 @@ export const TaskForm: React.FC<TaskFormProps> = ({
     }));
   };
 
+  const formatInputDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const setDueDateOffset = (daysFromToday: number) => {
+    const date = new Date();
+    date.setDate(date.getDate() + daysFromToday);
+    setFormData(prev => ({
+      ...prev,
+      dueDate: formatInputDate(date),
+    }));
+  };
+
   const formatDate = (value?: string | Date) => {
     if (!value) return '';
     const date = new Date(value);
@@ -320,8 +336,16 @@ export const TaskForm: React.FC<TaskFormProps> = ({
                 name="dueDate"
                 value={formData.dueDate}
                 onChange={handleChange}
-                min={new Date().toISOString().split('T')[0]}
+                min={formatInputDate(new Date())}
               />
+              <div className="quick-date-actions" aria-label="Quick due date actions">
+                <button type="button" onClick={() => setDueDateOffset(0)}>
+                  Today
+                </button>
+                <button type="button" onClick={() => setDueDateOffset(1)}>
+                  Tomorrow
+                </button>
+              </div>
             </div>
           </div>
 
