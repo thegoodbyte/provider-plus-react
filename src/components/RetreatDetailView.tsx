@@ -872,10 +872,12 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       </Collapse>
 
       {/* Tab Navigation */}
-      <div className="tab-navigation">
+      <div className="tab-navigation retreat-detail-tabs" role="tablist" aria-label="Retreat sections">
         <button
           className={`tab-btn ${activeTab === 'clients' ? 'active' : ''}`}
           onClick={() => handleTabChange('clients')}
+          role="tab"
+          aria-selected={activeTab === 'clients'}
         >
           <PeopleAltRoundedIcon className="retreat-tab-icon" />
           <span>Clients ({clients.length})</span>
@@ -883,6 +885,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         <button
           className={`tab-btn ${activeTab === 'holisticView' ? 'active' : ''}`}
           onClick={() => handleTabChange('holisticView')}
+          role="tab"
+          aria-selected={activeTab === 'holisticView'}
         >
           <AssignmentTurnedInRoundedIcon className="retreat-tab-icon" />
           <span>Retreat Readiness</span>
@@ -890,6 +894,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         <button
           className={`tab-btn ${activeTab === 'tracking' ? 'active' : ''}`}
           onClick={() => handleTabChange('tracking')}
+          role="tab"
+          aria-selected={activeTab === 'tracking'}
         >
           <FactCheckRoundedIcon className="retreat-tab-icon" />
           <span>Tracking Grid</span>
@@ -897,6 +903,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         <button
           className={`tab-btn ${activeTab === 'expenses' ? 'active' : ''}`}
           onClick={() => handleTabChange('expenses')}
+          role="tab"
+          aria-selected={activeTab === 'expenses'}
         >
           <SavingsRoundedIcon className="retreat-tab-icon" />
           <span>Expenses</span>
@@ -904,6 +912,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         <button
           className={`tab-btn ${activeTab === 'payments' ? 'active' : ''}`}
           onClick={() => handleTabChange('payments')}
+          role="tab"
+          aria-selected={activeTab === 'payments'}
         >
           <CreditCardRoundedIcon className="retreat-tab-icon" />
           <span>Payments</span>
@@ -911,6 +921,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         <button
           className={`tab-btn ${activeTab === 'ceremonies' ? 'active' : ''}`}
           onClick={() => handleTabChange('ceremonies')}
+          role="tab"
+          aria-selected={activeTab === 'ceremonies'}
         >
           <SpaRoundedIcon className="retreat-tab-icon" />
           <span>Ceremonies</span>
@@ -918,6 +930,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         <button
           className={`tab-btn ${activeTab === 'analytics' ? 'active' : ''}`}
           onClick={() => handleTabChange('analytics')}
+          role="tab"
+          aria-selected={activeTab === 'analytics'}
         >
           <InsightsRoundedIcon className="retreat-tab-icon" />
           <span>Analytics</span>
@@ -925,6 +939,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         <button
           className={`tab-btn ${activeTab === 'tasks' ? 'active' : ''}`}
           onClick={() => handleTabChange('tasks')}
+          role="tab"
+          aria-selected={activeTab === 'tasks'}
         >
           <TaskAltRoundedIcon className="retreat-tab-icon" />
           <span>Tasks</span>
@@ -932,7 +948,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       </div>
 
       {/* Tab Content */}
-      {activeTab === 'clients' && (
+      <div className="retreat-detail-tab-content">
+        {activeTab === 'clients' && (
         <div className="clients-section">
           <div className="section-header">
             <h2>📋 Retreat Clients ({clients.length})</h2>
@@ -1111,49 +1128,50 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             </div>
           </div>
         </div>
-      )}
+        )}
 
-      {activeTab === 'holisticView' && (
+        {activeTab === 'holisticView' && (
         <div className="booking-steps-section">
           <BookingStepsMatrix retreatId={retreatId} />
         </div>
-      )}
+        )}
 
-      {activeTab === 'tracking' && (
+        {activeTab === 'tracking' && (
         <div className="tracking-section">
           <RetreatTrackingGrid retreatId={retreatId} />
         </div>
-      )}
+        )}
 
-      {activeTab === 'expenses' && (
+        {activeTab === 'expenses' && (
         <div className="expenses-section">
           <ExpensesTab retreatId={retreatId} />
         </div>
-      )}
+        )}
 
-      {activeTab === 'payments' && (
+        {activeTab === 'payments' && (
         <div className="payments-section">
           <PaymentsTab retreatId={retreatId} />
         </div>
-      )}
+        )}
 
-      {activeTab === 'ceremonies' && (
+        {activeTab === 'ceremonies' && (
         <div className="ceremonies-section">
           <CeremoniesGrid retreatId={retreatId} retreats={retreat ? [retreat] : []} />
         </div>
-      )}
+        )}
 
-      {activeTab === 'analytics' && (
+        {activeTab === 'analytics' && (
         <div className="analytics-section">
           <CeremonyAnalytics retreatId={retreatId} />
         </div>
-      )}
+        )}
 
-      {activeTab === 'tasks' && (
+        {activeTab === 'tasks' && (
         <div className="tasks-section">
           <TasksWidget retreatId={retreatId} title="Retreat Tasks" />
         </div>
-      )}
+        )}
+      </div>
 
       {/* Edit Booking Modal */}
       {showEditModal && (
