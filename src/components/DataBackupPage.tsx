@@ -13,6 +13,12 @@ type S3BackupFile = {
   lastModified?: string;
 };
 
+type RestoreNotice = {
+  title: string;
+  message: string;
+  details: string[];
+};
+
 const DataBackupPage: React.FC = () => {
   const [busy, setBusy] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -29,6 +35,7 @@ const DataBackupPage: React.FC = () => {
   const [selectedS3Key, setSelectedS3Key] = useState('');
   const [logs, setLogs] = useState<any[]>([]);
   const [result, setResult] = useState<any>(null);
+  const [notice, setNotice] = useState<RestoreNotice | null>(null);
   const [error, setError] = useState('');
 
   const commonOptions = {
@@ -85,6 +92,7 @@ const DataBackupPage: React.FC = () => {
     setBusy('local-export');
     setError('');
     setResult(null);
+    setNotice(null);
     try {
       const response = await backupsApi.exportBackup({
         redactEmails: redactExportEmails,
@@ -106,6 +114,7 @@ const DataBackupPage: React.FC = () => {
     setBusy('s3-export');
     setError('');
     setResult(null);
+    setNotice(null);
     try {
       const response = await backupsApi.exportToS3({
         bucket: bucket.trim() || undefined,
@@ -163,9 +172,11 @@ const DataBackupPage: React.FC = () => {
     setBusy(dryRun ? 'dry-run' : 'restore');
     setError('');
     setResult(null);
+    setNotice(null);
     try {
       const response = await action();
       setResult(response.data);
+      setNotice(buildRestoreNotice(response.data, dryRun));
       await loadLogs();
     } catch (importError: any) {
       setError(importError?.response?.data?.message || importError?.message || 'Unable to import backup.');
@@ -178,6 +189,7 @@ const DataBackupPage: React.FC = () => {
     if (!selectedS3Key) return;
     setBusy('s3-download');
     setError('');
+    setNotice(null);
     try {
       const response = await backupsApi.downloadS3File({
         bucket: bucket.trim() || undefined,
@@ -195,6 +207,36 @@ const DataBackupPage: React.FC = () => {
     }
   };
 
+  const buildRestoreNotice = (data: any, dryRun: boolean): RestoreNotice => {
+    const source = data?.source?.storage === 's3'
+      ? `S3: ${[data.source.bucket, data.source.key].filter(Boolean).join('/')}`
+      : 'local file';
+    const restored = Array.isArray(data?.restored) ? data.restored : [];
+    const wouldReplace = Array.isArray(data?.wouldReplaceCollections) ? data.wouldReplaceCollections : [];
+    const rows = dryRun ? wouldReplace : restored;
+    const collectionCount = rows.length;
+    const documentCount = rows.reduce((sum: number, row: any) => {
+      return sum + Number(row.inserted ?? row.incomingCount ?? 0);
+    }, 0);
+    const deletedCount = restored.reduce((sum: number, row: any) => sum + Number(row.deleted || 0), 0);
+
+    const details = [
+      `Source: ${source}`,
+      `Collections: ${collectionCount}`,
+      dryRun ? `Documents that would be restored: ${documentCount}` : `Documents restored: ${documentCount}`,
+    ];
+    if (!dryRun) details.push(`Existing documents replaced: ${deletedCount}`);
+    if (data?.message) details.push(data.message);
+
+    return {
+      title: dryRun ? 'Dry run completed' : 'Restore completed successfully',
+      message: dryRun
+        ? 'No data was changed. Review the summary below before running the real restore.'
+        : 'The backup restore finished and the restore log was refreshed.',
+      details,
+    };
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div>
@@ -203,6 +245,23 @@ const DataBackupPage: React.FC = () => {
       </div>
 
       {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
+      {notice && (
+        <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+          <div className="font-semibold">{notice.title}</div>
+          <p className="mt-1">{notice.message}</p>
+          <dl className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {notice.details.map((detail) => {
+              const [label, ...rest] = detail.split(': ');
+              return (
+                <div key={detail} className="rounded border border-green-100 bg-white/70 px-3 py-2">
+                  <dt className="text-xs font-semibold uppercase tracking-wide text-green-700">{label}</dt>
+                  <dd className="mt-1 text-green-950">{rest.join(': ') || '-'}</dd>
+                </div>
+              );
+            })}
+          </dl>
+        </div>
+      )}
 
       <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-900">S3 Settings</h2>
