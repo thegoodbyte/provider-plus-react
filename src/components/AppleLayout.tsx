@@ -212,6 +212,9 @@ const AppleLayout: React.FC = () => {
 
   const activeItem = getActiveItemFromPath();
   const isImpersonating = Boolean(user?.impersonatedBy || user?.originalRole);
+  const isUserImpersonation = user?.impersonationType === 'user_impersonation';
+  const impersonatedLabel = user?.impersonatedUserName || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || 'user';
+  const originalLabel = user?.impersonatedByEmail || user?.originalRole || 'admin';
   const userEmail = user?.email || '';
 
   useEffect(() => {
@@ -450,7 +453,7 @@ const AppleLayout: React.FC = () => {
                     }}
                     className="hidden md:inline-flex px-3 py-1.5 text-sm font-medium text-amber-800 hover:text-amber-900 bg-amber-100 hover:bg-amber-200 rounded-apple transition-all"
                   >
-                    Exit Medical View
+                    {isUserImpersonation ? 'Return to Admin' : 'Exit Medical View'}
                   </button>
                 )}
                 {/* Settings button */}
@@ -494,8 +497,22 @@ const AppleLayout: React.FC = () => {
         </header>
 
         {isImpersonating && (
-          <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
-            Previewing the medical staff view as an admin. This session is audited and intended for read-only verification.
+          <div className="flex flex-col gap-2 border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900 sm:flex-row sm:items-center sm:justify-between">
+            <span>
+              {isUserImpersonation
+                ? `Impersonating ${impersonatedLabel}. Original admin: ${originalLabel}. This session is audited.`
+                : 'Previewing the medical staff view as an admin. This session is audited and intended for read-only verification.'}
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                stopImpersonation();
+                navigate('/admin/launcher');
+              }}
+              className="w-fit rounded-apple border border-amber-300 bg-white px-3 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+            >
+              {isUserImpersonation ? 'Return to Admin' : 'Exit Medical View'}
+            </button>
           </div>
         )}
 

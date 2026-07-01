@@ -16,6 +16,7 @@ interface AppleSidebarProps {
     role?: string;
     originalRole?: string;
     impersonatedBy?: string;
+    impersonationType?: string;
   } | null;
 }
 
@@ -150,7 +151,7 @@ const filterMenuSections = (sections: MenuSection[], allowedItems: string[]) => 
 
 const getNavigationRole = (userRole?: string, user?: AppleSidebarProps['user']) => {
   const originalRole = user?.originalRole;
-  if (originalRole && NAVIGATION_ROLE_OVERRIDES[originalRole]) {
+  if (user?.impersonationType === 'medical_staff_preview' && originalRole && NAVIGATION_ROLE_OVERRIDES[originalRole]) {
     return NAVIGATION_ROLE_OVERRIDES[originalRole];
   }
   if (userRole && NAVIGATION_ROLE_OVERRIDES[userRole]) {

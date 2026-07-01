@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { usersApi, User, CreateUserData, UpdateUserData } from '../services/usersApi';
+import { useAuth } from '../context/AuthContext';
 import AppleButton from './AppleButton';
 import AppleInput from './AppleInput';
-import { FiPlus, FiEdit2, FiTrash2, FiCheck, FiX, FiUser, FiMail, FiLock, FiClock, FiKey } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiCheck, FiX, FiUser, FiMail, FiLock, FiClock, FiKey, FiLogIn } from 'react-icons/fi';
 
 // Icon wrapper to fix TypeScript issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -19,6 +20,7 @@ const ROLES = [
 ] as const;
 
 const UserManagement: React.FC = () => {
+  const { user: currentUser, startUserImpersonation } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -28,6 +30,7 @@ const UserManagement: React.FC = () => {
   const [filterRole, setFilterRole] = useState<string>('all');
   const [error, setError] = useState<string | null>(null);
   const [showErrorModal, setShowErrorModal] = useState(false);
+  const [impersonatingUserId, setImpersonatingUserId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<Partial<CreateUserData & { confirmPassword: string; isActive: boolean }>>({
     email: '',
@@ -153,6 +156,36 @@ const UserManagement: React.FC = () => {
       password: '',
       confirmPassword: ''
     });
+  };
+
+  const handleImpersonateUser = async (targetUser: User) => {
+    if (targetUser.role === 'admin') {
+      showError('Admin users cannot be impersonated.');
+      return;
+    }
+    if (!targetUser.isActive) {
+      showError('Inactive users cannot be impersonated.');
+      return;
+    }
+    if (targetUser._id === currentUser?.id) {
+      showError('You cannot impersonate yourself.');
+      return;
+    }
+
+    const label = [targetUser.firstName, targetUser.lastName].filter(Boolean).join(' ').trim() || targetUser.email;
+    if (!window.confirm(`Impersonate ${label}? You will be logged in as this user until you click the return button in the header.`)) {
+      return;
+    }
+
+    setImpersonatingUserId(targetUser._id);
+    try {
+      await startUserImpersonation(targetUser._id);
+      window.location.href = '/';
+    } catch (impersonationError: any) {
+      showError(impersonationError?.message || 'Unable to impersonate user.');
+    } finally {
+      setImpersonatingUserId(null);
+    }
   };
 
   const validatePassword = (password: string): string | null => {
@@ -392,6 +425,16 @@ const UserManagement: React.FC = () => {
                       >
                         <Icon icon={FiKey} className="w-4 h-4" />
                       </button>
+                      {user.role !== 'admin' && user.isActive && user._id !== currentUser?.id && (
+                        <button
+                          onClick={() => handleImpersonateUser(user)}
+                          className="text-indigo-600 hover:text-indigo-900 disabled:text-gray-400"
+                          title="Impersonate user"
+                          disabled={impersonatingUserId === user._id}
+                        >
+                          <Icon icon={FiLogIn} className="w-4 h-4" />
+                        </button>
+                      )}
                       {user.role !== 'admin' && (
                         <button
                           onClick={() => handleDeleteUser(user)}

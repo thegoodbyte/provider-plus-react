@@ -11,6 +11,10 @@ interface LoginResponse {
     lastName?: string;
     originalRole?: string;
     impersonatedBy?: string;
+    impersonatedByEmail?: string;
+    impersonatedUserId?: string;
+    impersonatedUserName?: string;
+    impersonationType?: string;
     readOnly?: boolean;
     accessType?: string;
     medicalReviewRequestId?: string;
@@ -95,6 +99,38 @@ export const authService = {
 
     if (!response.ok) {
       throw new Error('Unable to start medical staff preview');
+    }
+
+    const data = await response.json();
+    cacheService.clear();
+    localStorage.setItem('token', data.access_token);
+    localStorage.setItem('user', JSON.stringify(data.user));
+    return data;
+  },
+
+  async startUserImpersonation(userId: string): Promise<LoginResponse> {
+    const token = this.getToken();
+    const user = this.getUser();
+    if (!token || !user) {
+      throw new Error('Not authenticated');
+    }
+
+    if (!localStorage.getItem('originalToken')) {
+      localStorage.setItem('originalToken', token);
+      localStorage.setItem('originalUser', JSON.stringify(user));
+    }
+
+    const response = await fetch(`${API_BASE_URL}/auth/impersonate/users/${encodeURIComponent(userId)}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.message || 'Unable to impersonate user');
     }
 
     const data = await response.json();

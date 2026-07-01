@@ -8,6 +8,7 @@ interface AuthContextType {
   storeSession: (data: { access_token: string; user: any }) => void;
   logout: () => void;
   startMedicalStaffPreview: () => Promise<void>;
+  startUserImpersonation: (userId: string) => Promise<void>;
   stopImpersonation: () => void;
   loading: boolean;
 }
@@ -74,6 +75,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(response.user);
   };
 
+  const startUserImpersonation = async (userId: string) => {
+    const response = await authService.startUserImpersonation(userId);
+    setIsAuthenticated(true);
+    setUser(response.user);
+  };
+
   const stopImpersonation = () => {
     const restoredUser = authService.stopImpersonation();
     if (restoredUser) {
@@ -83,7 +90,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, storeSession, logout, startMedicalStaffPreview, stopImpersonation, loading }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, storeSession, logout, startMedicalStaffPreview, startUserImpersonation, stopImpersonation, loading }}>
       {children}
     </AuthContext.Provider>
   );
