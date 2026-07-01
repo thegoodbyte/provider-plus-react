@@ -77,24 +77,18 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   const loadData = async () => {
     try {
       setLoading(true);
-      const [clientsResponse, retreatsResponse] = await Promise.all([
+      const [clientsResponse, retreatsResponse, nextNumberResponse] = await Promise.all([
         clientsApi.getAll(),
         retreatsApi.getAll(),
+        mode === 'create'
+          ? bookingsApi.getNextBookingNumber().catch((error) => {
+              console.error('Error loading next booking number:', error);
+              return { data: undefined };
+            })
+          : Promise.resolve({ data: undefined }),
       ]);
       setClients(clientsResponse.data || []);
       setRetreats(retreatsResponse.data || []);
-
-      if (mode === 'create') {
-        try {
-          const nextNumber = await bookingsApi.getNextBookingNumber();
-          setFormData((prev) => ({
-            ...prev,
-            bookingNumber: String(nextNumber),
-          }));
-        } catch (error) {
-          console.error('Error loading next booking number:', error);
-        }
-      }
 
       let currentBooking = initialBooking || null;
       if (mode === 'edit' && bookingId && !currentBooking) {
@@ -115,10 +109,10 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
           bookingNumber: currentBooking.bookingNumber?.toString() || '',
         });
       } else {
-        setFormData((prev) => ({
+        setFormData({
           ...emptyForm(),
-          bookingNumber: prev.bookingNumber || '',
-        }));
+          bookingNumber: nextNumberResponse.data ? String(nextNumberResponse.data) : '',
+        });
       }
     } catch (error) {
       console.error('Error loading booking editor data:', error);
