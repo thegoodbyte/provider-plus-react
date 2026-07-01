@@ -42,6 +42,7 @@ export interface House {
   general_town?: string;
   googleMapLink?: string;
   google_map_link?: string;
+  onlineProfileLink?: string;
   capacity?: number;
   numberOfRooms?: number;
   numberOfBathrooms?: number;

@@ -192,6 +192,7 @@ const HousesGrid: React.FC = () => {
       if (formData.address?.trim()) cleanData.address = formData.address.trim();
       if (formData.generalTown?.trim()) cleanData.generalTown = formData.generalTown.trim();
       if (formData.googleMapLink?.trim()) cleanData.googleMapLink = formData.googleMapLink.trim();
+      if (editingHouse || formData.onlineProfileLink?.trim()) cleanData.onlineProfileLink = formData.onlineProfileLink?.trim() || '';
       if (formData.capacity && formData.capacity > 0) cleanData.capacity = Number(formData.capacity);
       if (formData.numberOfRooms && formData.numberOfRooms > 0) cleanData.numberOfRooms = Number(formData.numberOfRooms);
       if (formData.numberOfBathrooms && formData.numberOfBathrooms > 0) cleanData.numberOfBathrooms = Number(formData.numberOfBathrooms);
@@ -268,6 +269,9 @@ const HousesGrid: React.FC = () => {
                   General Town
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Online Profile
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Capacity
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -306,6 +310,20 @@ const HousesGrid: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {house.generalTown || house.city || 'N/A'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    {house.onlineProfileLink ? (
+                      <a
+                        href={house.onlineProfileLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-blue-600 hover:text-blue-800"
+                      >
+                        Open
+                      </a>
+                    ) : (
+                      <span className="text-gray-400">None</span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center text-sm text-gray-900">
@@ -434,6 +452,21 @@ const HousesGrid: React.FC = () => {
                   value={formData.googleMapLink || ''}
                   onChange={handleInputChange}
                   placeholder="https://maps.app.goo.gl/..."
+                  className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="onlineProfileLink" className="block text-sm font-medium text-gray-700">
+                  Online profile link
+                </label>
+                <input
+                  type="url"
+                  id="onlineProfileLink"
+                  name="onlineProfileLink"
+                  value={formData.onlineProfileLink || ''}
+                  onChange={handleInputChange}
+                  placeholder="https://..."
                   className="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 text-sm"
                 />
               </div>
