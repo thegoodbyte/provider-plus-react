@@ -103,6 +103,28 @@ const RetreatFlowLibraryPage: React.FC = () => {
   const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([]);
   const [draggedTemplateId, setDraggedTemplateId] = useState<string>('');
 
+  const normalizeTemplateActionsForForm = (template: BookingFlowTemplate): BookingFlowAction[] => {
+    const actions = (template.actions || []).map((action) => ({
+      ...action,
+      emailTemplateId: typeof action.emailTemplateId === 'string' ? action.emailTemplateId : action.emailTemplateId?._id || '',
+    }));
+    const legacyEmailTemplateId = typeof template.emailTemplateId === 'string' ? template.emailTemplateId : template.emailTemplateId?._id || '';
+    if (template.emailEnabled && legacyEmailTemplateId && !actions.some((action) => action.type === 'email' && action.emailTemplateId)) {
+      actions.unshift({
+        key: 'default_email',
+        label: 'Send email',
+        type: 'email',
+        active: true,
+        emailTemplateId: legacyEmailTemplateId,
+        statusAfterSuccess: 'sent',
+        allowRepeat: true,
+        openComposer: true,
+        order: -1,
+      });
+    }
+    return actions;
+  };
+
   const groupColorByKey = useMemo(() => {
     const colors: Record<string, string> = {};
     templates.forEach((template) => {
@@ -178,16 +200,22 @@ const RetreatFlowLibraryPage: React.FC = () => {
       autoCompleteStatus: template.autoCompleteStatus || 'received',
       emailEnabled: !!template.emailEnabled,
       emailTemplateId: typeof template.emailTemplateId === 'string' ? template.emailTemplateId : template.emailTemplateId?._id || '',
-      actions: (template.actions || []).map((action) => ({
-        ...action,
-        emailTemplateId: typeof action.emailTemplateId === 'string' ? action.emailTemplateId : action.emailTemplateId?._id || '',
-      })),
+      actions: normalizeTemplateActionsForForm(template),
     });
   };
 
   const handleSave = async () => {
     try {
       setSaving(true);
+      const normalizedActions = form.actions.map((action, index) => ({
+        ...action,
+        key: action.key || `${action.type}_${index + 1}`,
+        label: action.label || 'Action',
+        emailTemplateId: action.type === 'email' ? (typeof action.emailTemplateId === 'string' ? action.emailTemplateId : action.emailTemplateId?._id) : undefined,
+        urlTemplate: action.type === 'whatsapp' || action.type === 'link' ? action.urlTemplate : undefined,
+        order: action.order ?? index,
+      }));
+      const primaryEmailAction = normalizedActions.find((action) => action.type === 'email' && action.emailTemplateId);
       const payload = {
         templateScope: 'global' as const,
         workflowStage: form.workflowStage,
@@ -216,16 +244,9 @@ const RetreatFlowLibraryPage: React.FC = () => {
         expectedArtifactPurpose: form.expectedArtifactPurpose || undefined,
         autoCompleteOnArtifact: form.autoCompleteOnArtifact,
         autoCompleteStatus: form.autoCompleteStatus || 'received',
-        emailEnabled: form.emailEnabled,
-        emailTemplateId: form.emailEnabled ? form.emailTemplateId : undefined,
-        actions: form.actions.map((action, index) => ({
-          ...action,
-          key: action.key || `${action.type}_${index + 1}`,
-          label: action.label || 'Action',
-          emailTemplateId: action.type === 'email' ? (typeof action.emailTemplateId === 'string' ? action.emailTemplateId : action.emailTemplateId?._id) : undefined,
-          urlTemplate: action.type === 'whatsapp' || action.type === 'link' ? action.urlTemplate : undefined,
-          order: action.order ?? index,
-        })),
+        emailEnabled: Boolean(primaryEmailAction),
+        emailTemplateId: primaryEmailAction?.emailTemplateId,
+        actions: normalizedActions,
       };
 
       if (selectedTemplateId) {
@@ -541,36 +562,11 @@ const RetreatFlowLibraryPage: React.FC = () => {
         </label>
       </div>
 
-      <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 p-3">
-        <label className="flex items-center gap-2 text-sm font-medium text-gray-800">
-          <input
-            type="checkbox"
-            checked={form.emailEnabled}
-            onChange={(e) => setForm({ ...form, emailEnabled: e.target.checked })}
-          />
-          Send email from this step
-        </label>
-        <select
-          value={form.emailTemplateId}
-          onChange={(e) => setForm({ ...form, emailTemplateId: e.target.value, emailEnabled: Boolean(e.target.value) })}
-          disabled={!form.emailEnabled}
-          className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-100"
-        >
-          <option value="">Select email template</option>
-          {emailTemplates.map((template) => (
-            <option key={template._id} value={template._id}>{template.name} ({template.category || 'general'} / {template.language || 'en'})</option>
-          ))}
-        </select>
-        <p className="mt-2 text-xs text-gray-500">
-          Choose the default template for this step. When sending, Provider Plus uses the client's language from an active template in the same category, then falls back to English, then this template.
-        </p>
-      </div>
-
       <div className="mt-3 rounded-md border border-gray-200 bg-white p-3">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
             <div className="text-xs font-semibold uppercase text-gray-500">Step actions</div>
-            <div className="text-xs text-gray-500">Buttons shown in Retreat Readiness for this booking step.</div>
+            <div className="text-xs text-gray-500">Buttons shown in booking views and Retreat Readiness for this booking step.</div>
           </div>
           <button type="button" onClick={addAction} className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-50">
             Add action
@@ -579,7 +575,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
         <div className="space-y-3">
           {form.actions.length === 0 && (
             <div className="rounded-md border border-dashed border-gray-300 px-3 py-4 text-sm text-gray-500">
-              No extra actions. The legacy email action above still works when enabled.
+              No actions yet. Add an email action to show a send button for this booking step.
             </div>
           )}
           {form.actions.map((action, index) => (
@@ -623,7 +619,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
                     ))}
                   </select>
                   <span className="mt-1 block text-xs text-gray-500">
-                    The selected template is the fallback; matching client-language templates are picked by category.
+                    The selected template is the fallback; matching client-language templates are picked by variant key.
                   </span>
                 </label>
               ) : (
