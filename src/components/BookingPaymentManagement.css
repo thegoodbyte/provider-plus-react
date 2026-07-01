@@ -158,6 +158,12 @@
   font-size: 12px;
 }
 
+.usd-preview-info {
+  margin: 8px 0 0;
+  color: #374151;
+  font-size: 13px;
+}
+
 .form-buttons {
   display: flex;
   gap: 12px;

@@ -329,6 +329,11 @@ export const paymentsApi = {
   getByClient: (clientId: string) => cachedGet<Payment[]>(`payments:client:${clientId}`, () => api.get<Payment[]>(`/payments/by-client/${clientId}`)),
   getByBooking: (bookingId: string) => cachedGet<Payment[]>(`payments:booking:${bookingId}`, () => api.get<Payment[]>(`/payments/by-booking/${bookingId}`)),
   getUnlinkedCandidatesByBooking: (bookingId: string) => api.get<Payment[]>(`/payments/unlinked-candidates/by-booking/${bookingId}`),
+  autoLinkByBooking: (bookingId: string) => {
+    cacheService.clearPattern('payments:');
+    cacheService.clearPattern('bookings:');
+    return api.post<{ linked: number; skipped: number; reason?: string }>(`/payments/auto-link/by-booking/${bookingId}`);
+  },
   getByBookingHash: (bookingHash: string) => cachedGet<Payment[]>(`payments:hash:${bookingHash}`, () => api.get<Payment[]>(`/payments/by-booking-hash/${bookingHash}`)),
   getByClientAndRetreat: (clientId: string, retreatId: string) => cachedGet<Payment[]>(`payments:client-retreat:${clientId}-${retreatId}`, () => api.get<Payment[]>(`/payments/by-client-and-retreat?clientId=${clientId}&retreatId=${retreatId}`)),
   getRetreatSummary: (retreatId: string) => cachedGet<PaymentSummary>(`payments:summary:${retreatId}`, () => api.get<PaymentSummary>(`/payments/retreat-summary/${retreatId}`)),

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Payment, PaymentRequest } from '../types';
 import { paymentsApi } from '../services/api';
@@ -17,6 +17,8 @@ interface BookingPaymentManagementProps {
   currency: string;
   onPaymentUpdate?: () => void;
 }
+
+const resolvePaymentId = (value: any) => (typeof value === 'object' && value?._id ? value._id : value || '');
 
 const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   bookingId,
@@ -38,6 +40,8 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   const [selectedExistingPaymentId, setSelectedExistingPaymentId] = useState('');
   const [linkExistingLoading, setLinkExistingLoading] = useState(false);
   const [linkExistingError, setLinkExistingError] = useState('');
+  const [autoLinkLoading, setAutoLinkLoading] = useState(false);
+  const [autoLinkMessage, setAutoLinkMessage] = useState('');
   const [usdPreview, setUsdPreview] = useState<number | null>(null);
   const [usdPreviewLoading, setUsdPreviewLoading] = useState(false);
   const [usdPreviewError, setUsdPreviewError] = useState('');
@@ -73,10 +77,6 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
     { value: 'balance_payment', label: '⚖️ Balance Payment', refundable: true },
     { value: 'adjustment', label: '🔧 Adjustment', refundable: true }
   ];
-
-  useEffect(() => {
-    fetchPayments();
-  }, [bookingId]);
 
   useEffect(() => {
     setNewPayment((current) => ({
@@ -141,33 +141,38 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
     };
   }, [totalAmount, currency]);
 
-  const fetchPayments = async () => {
+  const fetchPayments = useCallback(async () => {
     try {
       setIsLoading(true);
+      const paymentMap = new Map<string, Payment>();
 
-      // Prioritize booking hash if available, fallback to booking ID
       if (bookingHash) {
         try {
           const response = await paymentsApi.getByBookingHash(bookingHash);
-          setPayments(response.data || []);
-          return;
+          (response.data || []).forEach((payment: Payment) => {
+            if (payment._id) paymentMap.set(payment._id, payment);
+          });
         } catch (hashError) {
           console.warn('getByBookingHash failed:', hashError);
         }
       }
 
-      // Try booking ID endpoint
       try {
         const response = await paymentsApi.getByBooking(bookingId);
-        setPayments(response.data || []);
+        (response.data || []).forEach((payment: Payment) => {
+          if (payment._id) paymentMap.set(payment._id, payment);
+        });
+        setPayments(Array.from(paymentMap.values()));
       } catch (bookingError) {
         console.warn('getByBooking failed, trying fallback:', bookingError);
-        // Fallback: get all payments by client and filter
         const response = await paymentsApi.getByClient(clientId);
         const bookingPayments = (response.data || []).filter((payment: any) =>
-          payment.bookingId === bookingId || payment.bookingHash === bookingHash
+          resolvePaymentId(payment.bookingId) === bookingId || payment.bookingHash === bookingHash
         );
-        setPayments(bookingPayments);
+        bookingPayments.forEach((payment: Payment) => {
+          if (payment._id) paymentMap.set(payment._id, payment);
+        });
+        setPayments(Array.from(paymentMap.values()));
       }
     } catch (error) {
       console.error('Error fetching payments:', error);
@@ -175,9 +180,11 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [bookingHash, bookingId, clientId]);
 
-  const resolvePaymentId = (value: any) => (typeof value === 'object' && value?._id ? value._id : value || '');
+  useEffect(() => {
+    fetchPayments();
+  }, [fetchPayments]);
 
   const loadExistingPayments = async () => {
     try {
@@ -209,13 +216,11 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
     const currentPaymentIds = new Set(payments.map((payment) => payment._id).filter(Boolean));
     return allPayments.filter((payment) => {
       if (!payment._id || currentPaymentIds.has(payment._id)) return false;
-      if (resolvePaymentId(payment.clientId) !== clientId) return false;
-      if (resolvePaymentId(payment.retreatId) !== retreatId) return false;
       const linkedBookingId = resolvePaymentId(payment.bookingId);
       const linkedBookingHash = payment.bookingHash || '';
       return !linkedBookingId && !linkedBookingHash;
     });
-  }, [allPayments, clientId, payments, retreatId]);
+  }, [allPayments, payments]);
 
   const handleLinkExistingPayment = async () => {
     if (!selectedExistingPaymentId) {
@@ -244,6 +249,34 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       setLinkExistingError(Array.isArray(message) ? message.join(', ') : message);
     } finally {
       setLinkExistingLoading(false);
+    }
+  };
+
+  const handleAutoLinkPayments = async () => {
+    try {
+      setAutoLinkLoading(true);
+      setAutoLinkMessage('');
+      setLinkExistingError('');
+      const response = await paymentsApi.autoLinkByBooking(bookingId);
+      const { linked, reason } = response.data || {};
+      await fetchPayments();
+      if (showLinkExisting) {
+        await loadExistingPayments();
+      }
+      if (onPaymentUpdate) {
+        onPaymentUpdate();
+      }
+      setAutoLinkMessage(
+        linked > 0
+          ? `Auto-linked ${linked} payment${linked === 1 ? '' : 's'} to this booking.`
+          : `No payments auto-linked${reason ? ` (${reason.replace(/_/g, ' ')})` : ''}.`
+      );
+    } catch (error) {
+      console.error('Error auto-linking payments:', error);
+      const message = (error as any)?.response?.data?.message || 'Could not auto-link matching payments.';
+      setLinkExistingError(Array.isArray(message) ? message.join(', ') : message);
+    } finally {
+      setAutoLinkLoading(false);
     }
   };
 
@@ -503,8 +536,20 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
             >
               {showLinkExisting ? '×' : '↗'}
             </button>
+            <button
+              type="button"
+              onClick={handleAutoLinkPayments}
+              className="add-payment-btn"
+              title="Auto-link matching payments"
+              aria-label="Auto-link matching payments"
+              disabled={autoLinkLoading}
+            >
+              {autoLinkLoading ? '...' : 'Auto'}
+            </button>
           </div>
         </div>
+
+        {autoLinkMessage && <p className="usd-preview-info">{autoLinkMessage}</p>}
 
         {showLinkExisting && (
           <div className="add-payment-form">
