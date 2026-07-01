@@ -183,7 +183,19 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
     try {
       setLinkExistingLoading(true);
       setLinkExistingError('');
-      const response = await paymentsApi.getAll();
+      const response = await paymentsApi.getUnlinkedCandidatesByBooking(bookingId).catch(async () => {
+        const fallbackResponse = await paymentsApi.getAll();
+        return {
+          ...fallbackResponse,
+          data: (fallbackResponse.data || []).filter((payment: any) => {
+            if (resolvePaymentId(payment.clientId) !== clientId) return false;
+            if (resolvePaymentId(payment.retreatId) !== retreatId) return false;
+            const linkedBookingId = resolvePaymentId(payment.bookingId);
+            const linkedBookingHash = payment.bookingHash || '';
+            return !linkedBookingId && !linkedBookingHash;
+          }),
+        };
+      });
       setAllPayments(response.data || []);
     } catch (error) {
       console.error('Error loading existing payments:', error);
