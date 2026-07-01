@@ -1101,6 +1101,10 @@ export const bookingFlowApi = {
     actionLabel?: string;
     variables: Record<string, any>;
   }>(`/booking-flow/items/${id}/email-compose-data${actionKey ? `?actionKey=${encodeURIComponent(actionKey)}` : ''}`),
+  getItemActionLogs: (id: string) => cachedGet<BookingFlowActionLog[]>(
+    `booking-flow:item-action-logs:${id}`,
+    () => api.get<BookingFlowActionLog[]>(`/booking-flow/items/${id}/action-logs`)
+  ),
   recordItemEmailSent: (id: string, sentEmailId: string, actionKey?: string) => {
     cacheService.clearPattern('booking-flow:');
     cacheService.clearPattern('communications:sent-emails');

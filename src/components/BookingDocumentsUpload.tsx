@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Eye, FileText, RefreshCw, Send, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
-import { MedicalArtifact, MedicalReviewRequest } from '../types';
+import { bookingFlowApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { BookingFlowActionLog, BookingFlowItem, MedicalArtifact, MedicalReviewRequest } from '../types';
 import './BookingMedicalUpload.css';
 
-type BookingDocumentType = 'contract' | 'food_intake' | 'medications_form' | 'questionnaire';
+type BookingDocumentType = string;
 
 interface BookingDocumentsUploadProps {
   bookingId: string;
@@ -26,6 +26,15 @@ const documentSections: Array<{
   { type: 'medications_form', title: 'Medications Form', description: 'Initial or follow-up medication information.', requestType: 'medications_review' },
   { type: 'questionnaire', title: 'Questionnaire Form', description: 'Client questionnaire submitted for this booking.', requestType: 'questionnaire_review' },
 ];
+
+const SENT_MATCH = /\bsent|send|request(ed)?\b/i;
+const RECEIVED_MATCH = /\breceived|signed|submitted|uploaded|complete(d)?\b/i;
+
+const humanizeArtifactType = (value: string) => value
+  .split(/[_-]+/)
+  .filter(Boolean)
+  .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+  .join(' ');
 
 const getApiErrorMessage = (error: any) => {
   const status = error?.response?.status;
@@ -57,17 +66,52 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
 }) => {
   const navigate = useNavigate();
   const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
+  const [flowItems, setFlowItems] = useState<BookingFlowItem[]>([]);
+  const [actionLogsByItem, setActionLogsByItem] = useState<Record<string, BookingFlowActionLog[]>>({});
   const [reviewsByArtifact, setReviewsByArtifact] = useState<Record<string, MedicalReviewRequest[]>>({});
   const [loading, setLoading] = useState(false);
   const [uploadingType, setUploadingType] = useState<BookingDocumentType | null>(null);
+  const [sendingItemId, setSendingItemId] = useState<string | null>(null);
+  const [markOnUpload, setMarkOnUpload] = useState<Record<string, boolean>>({});
   const [creatingReviewFor, setCreatingReviewFor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const getItemExpectedArtifact = (item: BookingFlowItem) => String(item.metadata?.expectedArtifact || '').trim();
+
+  const configuredDocumentSections = useMemo(() => {
+    const configured = flowItems
+      .map((item) => getItemExpectedArtifact(item))
+      .filter(Boolean)
+      .filter((type, index, all) => all.indexOf(type) === index)
+      .map((type) => {
+        const matchingItems = flowItems.filter((item) => getItemExpectedArtifact(item) === type);
+        const fallback = documentSections.find((section) => section.type === type);
+        const receivedItem = matchingItems.find((item) => RECEIVED_MATCH.test(`${item.key} ${item.title}`));
+        const sentItem = matchingItems.find((item) => SENT_MATCH.test(`${item.key} ${item.title}`));
+        return {
+          type,
+          title: fallback?.title || humanizeArtifactType(type),
+          description: fallback?.description || receivedItem?.description || sentItem?.description || `Document configured from booking step ${receivedItem?.title || sentItem?.title || type}.`,
+          requestType: fallback?.requestType,
+          sentItem,
+          receivedItem,
+          items: matchingItems,
+        };
+      });
+
+    const configuredTypes = new Set(configured.map((section) => section.type));
+    const fallback = documentSections
+      .filter((section) => !configuredTypes.has(section.type))
+      .map((section) => ({ ...section, sentItem: undefined, receivedItem: undefined, items: [] as BookingFlowItem[] }));
+
+    return [...configured, ...fallback];
+  }, [flowItems]);
 
   const loadDocuments = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [response, contextualResponse] = await Promise.all([
+      const [response, contextualResponse, flowResponse] = await Promise.all([
         medicalArtifactsApi.getAll({ bookingId }),
         clientId
           ? medicalArtifactsApi.getAll({
@@ -77,7 +121,10 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
               purpose: 'booking_requirement',
             })
           : Promise.resolve({ data: [] as MedicalArtifact[] }),
+        bookingFlowApi.getItems({ bookingId }),
       ]);
+      const items: BookingFlowItem[] = flowResponse.data || [];
+      setFlowItems(items);
       const directArtifacts: MedicalArtifact[] = response.data || [];
       const contextualArtifacts: MedicalArtifact[] = contextualResponse.data || [];
       const bookingArtifacts = [...directArtifacts, ...contextualArtifacts.filter((artifact) => {
@@ -87,7 +134,11 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
         const key = artifact._id || `${artifact.artifactType}-${artifact.title}-${artifact.receivedAt || artifact.createdAt || index}`;
         return all.findIndex((candidate) => (candidate._id || `${candidate.artifactType}-${candidate.title}-${candidate.receivedAt || candidate.createdAt || index}`) === key) === index;
       });
-      const documentArtifacts = bookingArtifacts.filter((artifact) => documentSections.some((section) => section.type === artifact.artifactType));
+      const sectionTypes = new Set([
+        ...documentSections.map((section) => section.type),
+        ...items.map((item) => String(item.metadata?.expectedArtifact || '').trim()).filter(Boolean),
+      ]);
+      const documentArtifacts = bookingArtifacts.filter((artifact) => sectionTypes.has(String(artifact.artifactType || '')));
       setArtifacts(documentArtifacts);
       const reviewEntries = await Promise.all(
         documentArtifacts
@@ -102,6 +153,29 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
           })
       );
       setReviewsByArtifact(Object.fromEntries(reviewEntries));
+      const logEntries = await Promise.all(
+        items
+          .filter((item) => item._id && item.metadata?.expectedArtifact)
+          .map(async (item) => {
+            try {
+              const logsResponse = await bookingFlowApi.getItemActionLogs(item._id!);
+              return [item._id!, logsResponse.data || []] as const;
+            } catch {
+              return [item._id!, []] as const;
+            }
+          })
+      );
+      setActionLogsByItem(Object.fromEntries(logEntries));
+      setMarkOnUpload((current) => {
+        const next = { ...current };
+        items.forEach((item) => {
+          const artifactType = String(item.metadata?.expectedArtifact || '').trim();
+          if (artifactType && RECEIVED_MATCH.test(`${item.key} ${item.title}`) && next[artifactType] === undefined) {
+            next[artifactType] = true;
+          }
+        });
+        return next;
+      });
     } catch (loadError: any) {
       setError(loadError?.response?.data?.message || loadError?.message || 'Unable to load booking documents.');
     } finally {
@@ -114,36 +188,36 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
   }, [bookingId, clientId, retreatId]);
 
   const artifactsByType = useMemo(() => {
-    return documentSections.reduce<Record<BookingDocumentType, MedicalArtifact[]>>((acc, section) => {
+    return configuredDocumentSections.reduce<Record<BookingDocumentType, MedicalArtifact[]>>((acc, section) => {
       acc[section.type] = artifacts
         .filter((artifact) => artifact.artifactType === section.type)
         .sort((a, b) => new Date(b.receivedAt || b.createdAt || 0).getTime() - new Date(a.receivedAt || a.createdAt || 0).getTime());
       return acc;
-    }, {
-      contract: [],
-      food_intake: [],
-      medications_form: [],
-      questionnaire: [],
-    });
-  }, [artifacts]);
+    }, {});
+  }, [artifacts, configuredDocumentSections]);
 
-  const handleUpload = async (type: BookingDocumentType, files: FileList | null) => {
+  const handleUpload = async (section: (typeof configuredDocumentSections)[number], files: FileList | null) => {
     if (!files?.length) return;
 
-    setUploadingType(type);
+    setUploadingType(section.type);
     setError(null);
     try {
-      const section = documentSections.find((item) => item.type === type);
       const fileArray = Array.from(files);
       const created = await medicalArtifactsApi.create({
         clientId,
         retreatId,
         bookingId,
-        artifactType: type,
+        artifactType: section.type as any,
         title: fileArray[0]?.name || `${section?.title || 'Booking document'}${bookingNumber ? ` - ${bookingNumber}` : ''}`,
         description: section?.description,
         source: 'admin_upload',
         status: 'stored',
+        purpose: 'booking_requirement',
+        data: {
+          bookingId,
+          bookingFlowItemId: section.receivedItem?._id,
+          markBookingStepOnUpload: !!markOnUpload[section.type],
+        },
       });
 
       if (created.data._id) {
@@ -165,6 +239,20 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
           });
           throw uploadError;
         }
+      }
+
+      if (markOnUpload[section.type] && section.receivedItem?._id) {
+        await bookingFlowApi.recordItemAction(section.receivedItem._id, {
+          actionType: 'artifact_received',
+          actionKey: `${section.type}_uploaded`,
+          statusAfter: 'received',
+          notes: `${section.title} uploaded from booking documents.`,
+          metadata: {
+            artifactType: section.type,
+            medicalArtifactId: created.data._id,
+            fileNames: fileArray.map((file) => file.name),
+          },
+        });
       }
 
       await loadDocuments();
@@ -194,6 +282,20 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
     }
   };
 
+  const handleSendRequest = async (item?: BookingFlowItem) => {
+    if (!item?._id) return;
+    setSendingItemId(item._id);
+    setError(null);
+    try {
+      await bookingFlowApi.sendItemEmail(item._id);
+      await loadDocuments();
+    } catch (sendError: any) {
+      setError(sendError?.response?.data?.message || sendError?.message || 'Unable to send document request email.');
+    } finally {
+      setSendingItemId(null);
+    }
+  };
+
   return (
     <div className="booking-medical-upload">
       <div className="booking-documents-header">
@@ -209,10 +311,15 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
       {error && <div className="alert alert-danger">{error}</div>}
 
       <div className="booking-documents-grid">
-        {documentSections.map((section) => {
-          const sectionArtifacts = artifactsByType[section.type];
+        {configuredDocumentSections.map((section) => {
+          const sectionArtifacts = artifactsByType[section.type] || [];
           const inputId = `booking-document-${section.type}`;
           const isUploading = uploadingType === section.type;
+          const sentLogs = section.sentItem?._id ? (actionLogsByItem[section.sentItem._id] || []) : [];
+          const receivedLogs = section.receivedItem?._id ? (actionLogsByItem[section.receivedItem._id] || []) : [];
+          const historyLogs = [...sentLogs, ...receivedLogs]
+            .sort((a, b) => new Date(b.performedAt || b.createdAt || 0).getTime() - new Date(a.performedAt || a.createdAt || 0).getTime())
+            .slice(0, 5);
 
           return (
             <div key={section.type} className="booking-document-card">
@@ -223,6 +330,24 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
                   <p>{section.description}</p>
                 </div>
               </div>
+
+              {(section.sentItem || section.receivedItem) && (
+                <div className="booking-document-empty">
+                  {section.sentItem && <div>Email step: {section.sentItem.title} ({section.sentItem.status})</div>}
+                  {section.receivedItem && <div>Upload step: {section.receivedItem.title} ({section.receivedItem.status})</div>}
+                </div>
+              )}
+
+              {section.sentItem && (
+                <button
+                  className="btn btn-sm btn-secondary"
+                  type="button"
+                  disabled={sendingItemId === section.sentItem._id}
+                  onClick={() => handleSendRequest(section.sentItem)}
+                >
+                  <Send size={16} /> {sendingItemId === section.sentItem._id ? 'Sending...' : `Send ${section.title} Request`}
+                </button>
+              )}
 
               <div className="booking-document-files">
                 {sectionArtifacts.length === 0 ? (
@@ -270,13 +395,23 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
               </div>
 
               <div className="upload-section">
+                {section.receivedItem && (
+                  <label className="booking-document-empty" style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={markOnUpload[section.type] !== false}
+                      onChange={(event) => setMarkOnUpload((current) => ({ ...current, [section.type]: event.target.checked }))}
+                    />
+                    Mark "{section.receivedItem.title}" received after upload
+                  </label>
+                )}
                 <input
                   type="file"
                   id={inputId}
                   accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.heic,.heif"
                   multiple
                   onChange={(event) => {
-                    handleUpload(section.type, event.target.files);
+                    handleUpload(section, event.target.files);
                     event.target.value = '';
                   }}
                   disabled={Boolean(uploadingType)}
@@ -285,6 +420,20 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
                   <Upload size={16} /> {isUploading ? 'Uploading...' : `Upload ${section.title}`}
                 </label>
               </div>
+
+              {historyLogs.length > 0 && (
+                <div className="booking-document-files">
+                  <strong>Step action history</strong>
+                  {historyLogs.map((log) => (
+                    <div key={log._id} className="booking-document-empty">
+                      {formatDate(log.performedAt || log.createdAt)} - {log.actionLabel || log.actionKey || log.actionType}
+                      {log.statusAfter ? ` (${log.statusAfter})` : ''}
+                      {log.metadata?.sentEmailDisplayId ? ` - email #${log.metadata.sentEmailDisplayId}` : ''}
+                      {log.notes ? ` - ${log.notes}` : ''}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })}
