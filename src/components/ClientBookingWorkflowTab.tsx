@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FiCheckCircle, FiEdit2, FiExternalLink, FiRefreshCw, FiSave, FiUpload } from 'react-icons/fi';
+import { FiCheckCircle, FiEdit2, FiExternalLink, FiMail, FiRefreshCw, FiSave, FiUpload } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { bookingFlowApi, medicalArtifactsApi } from '../services/api';
-import { BookingFlowItem, MedicalArtifact } from '../types';
+import { BookingFlowAction, BookingFlowItem, MedicalArtifact } from '../types';
 import AppleButton from './AppleButton';
+import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 import LoadingSpinner from './LoadingSpinner';
 import {
   getBookingStepColorStyles,
@@ -103,6 +104,12 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [actionSavingKey, setActionSavingKey] = useState<string | null>(null);
+  const [composeState, setComposeState] = useState<{
+    item: BookingFlowItem;
+    action: BookingFlowAction;
+    initialValues: EmailComposeInitialValues;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -330,6 +337,82 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
     }
   };
 
+  const getConfiguredActions = (item: BookingFlowItem): BookingFlowAction[] => {
+    const configured = Array.isArray(item.actions) && item.actions.length > 0
+      ? item.actions
+      : Array.isArray(item.metadata?.actions)
+        ? (item.metadata?.actions as BookingFlowAction[])
+        : [];
+    const actions = configured.filter((action) => action.active !== false);
+    const hasLegacyEmail = Boolean(item.emailEnabled && item.emailTemplateId);
+    if (hasLegacyEmail && !actions.some((action) => action.type === 'email' && action.emailTemplateId)) {
+      actions.unshift({
+        key: 'default_email',
+        label: 'Send email',
+        type: 'email',
+        emailTemplateId: item.emailTemplateId,
+        statusAfterSuccess: 'sent',
+        allowRepeat: true,
+        openComposer: true,
+        order: -1,
+      });
+    }
+    return actions.sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+  };
+
+  const interpolateActionUrl = (template: string, variables: Record<string, any> = {}) => {
+    return template.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_match, path) => {
+      const value = String(path).split('.').reduce((current: any, key: string) => current?.[key], variables);
+      return encodeURIComponent(value ?? '');
+    });
+  };
+
+  const runItemAction = async (item: BookingFlowItem, action: BookingFlowAction) => {
+    if (!item._id) return;
+    const savingKey = `${item._id}:${action.key}`;
+    setActionSavingKey(savingKey);
+    setError(null);
+    try {
+      if (action.type === 'email') {
+        const response = await bookingFlowApi.getItemEmailComposeData(item._id, action.key);
+        setComposeState({
+          item,
+          action,
+          initialValues: response.data,
+        });
+        return;
+      }
+
+      let metadata: Record<string, any> = {};
+      if ((action.type === 'whatsapp' || action.type === 'link') && action.urlTemplate) {
+        const response = await bookingFlowApi.getItemEmailComposeData(item._id, action.key).catch(() => null);
+        metadata = { urlTemplate: action.urlTemplate };
+        const url = interpolateActionUrl(action.urlTemplate, response?.data?.variables || {});
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+
+      await bookingFlowApi.recordItemAction(item._id, {
+        actionKey: action.key,
+        actionType: action.type,
+        statusAfter: action.statusAfterSuccess,
+        metadata,
+      });
+      await loadItems(selectedBookingId);
+    } catch (actionError: any) {
+      console.error('Error running booking step action:', actionError);
+      setError(actionError?.response?.data?.message || actionError?.message || 'Unable to run booking step action.');
+    } finally {
+      setActionSavingKey(null);
+    }
+  };
+
+  const handleComposedEmailSent = async (sentEmail: any) => {
+    if (!composeState?.item?._id || !sentEmail?._id) return;
+    await bookingFlowApi.recordItemEmailSent(composeState.item._id, sentEmail._id, composeState.action.key);
+    setComposeState(null);
+    await loadItems(selectedBookingId);
+  };
+
   if (bookings.length === 0) {
     return (
       <div className="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center">
@@ -460,6 +543,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                 const dotStyle = getBookingStepColorStyles(tone, 'dot');
                 const linkedArtifactId = item.metadata?.latestArtifactId || item.metadata?.linkedMedicalArtifactId;
                 const linkedArtifactDisplayId = item.metadata?.latestArtifactDisplayId || item.metadata?.linkedMedicalArtifactDisplayId;
+                const configuredActions = getConfiguredActions(item);
 
                 return (
                   <div key={id} className={`grid gap-2 border-l-4 p-3 ${tone.stepStripe} ${isChecked ? 'bg-green-50/60' : overdue ? 'bg-red-50/70' : dueSoon ? 'bg-amber-50/70' : tone.stepCell}`} style={!isChecked && !overdue && !dueSoon ? stepStyle : undefined}>
@@ -506,6 +590,22 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                         placeholder="Internal note"
                       />
                       <div className="flex items-center gap-2 lg:justify-end">
+                        {configuredActions.map((action) => {
+                          const savingKey = `${item._id}:${action.key}`;
+                          return (
+                            <button
+                              key={action.key}
+                              type="button"
+                              disabled={!isEditing || actionSavingKey === savingKey || savingId === 'all'}
+                              onClick={() => runItemAction(item, action)}
+                              className="inline-flex items-center rounded-md border border-blue-200 bg-white px-2.5 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:bg-white"
+                              title={isEditing ? action.type : 'Unlock editing to run actions'}
+                            >
+                              {action.type === 'email' && <Icon icon={FiMail} className="mr-2 h-4 w-4" />}
+                              {actionSavingKey === savingKey ? 'Loading...' : action.label}
+                            </button>
+                          );
+                        })}
                         {linkedArtifactId && (
                           <button
                             type="button"
@@ -542,6 +642,25 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
             </div>
           )}
         </div>
+      )}
+      {composeState && (
+        <EmailComposeModal
+          title={composeState.action.label || 'Send booking step email'}
+          initialValues={composeState.initialValues}
+          extraContent={
+            <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
+              <div className="font-medium">{composeState.item.title}</div>
+              <div className="mt-1 text-xs">
+                Requested language: {composeState.initialValues.variables?.client?.language || composeState.initialValues.variables?.clientLanguage || 'default'}
+              </div>
+            </div>
+          }
+          onClose={() => {
+            setComposeState(null);
+            setActionSavingKey(null);
+          }}
+          onSent={handleComposedEmailSent}
+        />
       )}
     </div>
   );
