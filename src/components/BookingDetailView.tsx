@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { FiArrowLeft, FiChevronDown, FiDownload, FiEdit3, FiEye, FiMail, FiSend } from 'react-icons/fi';
+import { message } from 'antd';
 import { bookingsApi, bookingFlowApi, ceremoniesApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import BookingPaymentManagement from './BookingPaymentManagement';
 import BookingMedicalUpload from './BookingMedicalUpload';
@@ -1157,12 +1158,16 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     }
   };
 
+  const showMissingClientEmailError = () => {
+    message.error('This client does not have an email address.');
+  };
+
   const emailBookingConfirmation = async () => {
     const client = booking?.clientId || booking?.clientDetails;
     const retreat = booking?.retreatId || booking?.retreatDetails;
     const recipientEmail = getClientEmail(client);
     if (!recipientEmail) {
-      alert('This client does not have an email address.');
+      showMissingClientEmailError();
       return;
     }
     setIsPreparingConfirmationEmail(true);
@@ -1202,7 +1207,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     const clientData = booking?.clientId || booking?.clientDetails;
     const recipientEmail = getClientEmail(clientData);
     if (!recipientEmail) {
-      alert('This client does not have an email address.');
+      showMissingClientEmailError();
       return;
     }
     setConfirmationHistoryReason(getDefaultConfirmationReason());
@@ -1216,7 +1221,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     let pdfSize = 0;
     let payloadSize = 0;
     if (!recipientEmail) {
-      alert('This client does not have an email address.');
+      showMissingClientEmailError();
       return;
     }
 
