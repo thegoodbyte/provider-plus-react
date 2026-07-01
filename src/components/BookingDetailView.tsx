@@ -1411,23 +1411,38 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
           </div>
         )}
 
+        <div className="booking-info-strip" aria-label="Booking summary">
+          <div className="booking-info-item booking-info-client">
+            <span>Client</span>
+            <strong>{clientName}</strong>
+          </div>
+          {clientDisplayId && (
+            <div className="booking-info-item">
+              <span>Client ID</span>
+              <strong>#{clientDisplayId}</strong>
+            </div>
+          )}
+          <div className="booking-info-item">
+            <span>Retreat</span>
+            <strong>{retreatCode}</strong>
+          </div>
+          <div className="booking-info-item booking-info-type">
+            <span>Type</span>
+            <strong>{bookingTypeCode}</strong>
+          </div>
+        </div>
+
         <div className="booking-detail-tabs" role="tablist" aria-label="Booking sections">
           {tabs.map((tab) => (
             <button
               key={tab.key}
               type="button"
-              className={`booking-detail-tab ${tab.key === 'overview' ? 'booking-detail-tab-overview' : ''} ${activeTab === tab.key ? 'active' : ''}`}
+              className={`booking-detail-tab ${activeTab === tab.key ? 'active' : ''}`}
               onClick={() => setActiveTab(tab.key)}
               role="tab"
               aria-selected={activeTab === tab.key}
             >
-              {tab.key === 'overview' ? (
-                <span className="booking-overview-tab-label">
-                  <strong>{clientName}</strong>
-                  {clientDisplayId && <strong>Client #{clientDisplayId}</strong>}
-                  <span>{retreatCode}</span>
-                </span>
-              ) : tab.label}
+              {tab.label}
             </button>
           ))}
         </div>

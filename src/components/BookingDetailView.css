@@ -309,6 +309,53 @@
   border-radius: 8px;
 }
 
+.booking-info-strip {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.7fr) repeat(3, minmax(120px, auto));
+  gap: 10px;
+  align-items: stretch;
+  padding: 10px 0 2px;
+}
+
+.booking-info-item {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+}
+
+.booking-info-item span {
+  display: block;
+  margin-bottom: 3px;
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.booking-info-item strong {
+  display: block;
+  min-width: 0;
+  color: #111827;
+  font-size: 15px;
+  font-weight: 800;
+  line-height: 1.2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.booking-info-client strong {
+  font-size: 16px;
+}
+
+.booking-info-type {
+  text-align: center;
+}
+
 .booking-detail-tabs {
   position: sticky;
   top: 101px;
@@ -349,28 +396,6 @@
   border-color: #374151;
   background: #374151;
   color: #ffffff;
-}
-
-.booking-detail-tab-overview.active {
-  flex: 1 1 320px;
-}
-
-.booking-overview-tab-label {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  max-width: 100%;
-  line-height: 1.2;
-  white-space: normal;
-}
-
-.booking-overview-tab-label strong {
-  font-weight: 850;
-}
-
-.booking-overview-tab-label span {
-  font-weight: 750;
 }
 
 .booking-overview-summary {
@@ -1007,6 +1032,30 @@
     gap: 16px;
     padding: 0;
     background: transparent;
+  }
+
+  .booking-info-strip {
+    grid-template-columns: minmax(0, 1.3fr) minmax(76px, 0.7fr);
+    gap: 8px;
+    padding: 0;
+  }
+
+  .booking-info-item {
+    padding: 8px 10px;
+    border-radius: 8px;
+  }
+
+  .booking-info-item span {
+    font-size: 10px;
+  }
+
+  .booking-info-item strong,
+  .booking-info-client strong {
+    font-size: 13px;
+  }
+
+  .booking-info-type {
+    text-align: left;
   }
 
   .booking-detail-tabs {
