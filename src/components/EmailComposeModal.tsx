@@ -53,6 +53,8 @@ export interface EmailComposeInitialValues {
   retreatId?: string;
   relatedEntityType?: string;
   relatedEntityId?: string;
+  actionKey?: string;
+  actionLabel?: string;
   bookingFlowStepKey?: string;
   bookingFlowStatusOnSend?: string;
   variables?: Record<string, any>;
@@ -187,6 +189,8 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
         retreatId: initialValues.retreatId || undefined,
         relatedEntityType: initialValues.relatedEntityType || undefined,
         relatedEntityId: initialValues.relatedEntityId || undefined,
+        actionKey: initialValues.actionKey || undefined,
+        actionLabel: initialValues.actionLabel || undefined,
         bookingFlowStepKey: initialValues.bookingFlowStepKey || undefined,
         bookingFlowStatusOnSend: initialValues.bookingFlowStatusOnSend || undefined,
         variables: initialValues.variables,
