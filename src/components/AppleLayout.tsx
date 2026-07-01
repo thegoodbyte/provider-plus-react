@@ -118,6 +118,7 @@ const AppleLayout: React.FC = () => {
   const navigate = useNavigate();
 
   const isMedicalAdvisor = user?.role === 'medical_advisor';
+  const isMedicalQuickAccessSession = user?.accessType === 'medical_review_link' && Boolean(user?.medicalReviewRequestId);
   const showQuickMenu = !isMedicalAdvisor;
 
   const getActiveItemFromPath = () => {
@@ -212,12 +213,20 @@ const AppleLayout: React.FC = () => {
   const userEmail = user?.email || '';
 
   useEffect(() => {
+    if (isMedicalQuickAccessSession) {
+      const allowedPath = `/medical/review-requests/${user.medicalReviewRequestId}/edit`;
+      if (location.pathname !== allowedPath) {
+        navigate(allowedPath, { replace: true });
+      }
+      return;
+    }
+
     if (location.pathname === '/') {
       const prefix = getRoutePrefix();
       const defaultRoute = getDefaultRoute();
       navigate(`/${prefix}/${defaultRoute}`, { replace: true });
     }
-  }, [location.pathname, navigate, user?.role]);
+  }, [isMedicalQuickAccessSession, location.pathname, navigate, user?.medicalReviewRequestId, user?.role]);
 
   const handleItemClick = (item: string) => {
     const prefix = getRoutePrefix();
@@ -317,6 +326,45 @@ const AppleLayout: React.FC = () => {
       window.removeEventListener('sidebarCollapsedChange', handleStorageChange);
     };
   }, []);
+
+  if (isMedicalQuickAccessSession) {
+    return (
+      <div className="min-h-screen bg-apple-gray-50">
+        <header className="sticky top-0 z-30 border-b border-apple-gray-200 bg-white/90 backdrop-blur-apple">
+          <div className="mx-auto flex max-w-7xl flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-blue-700">Medical quick access</div>
+              <h1 className="text-lg font-semibold text-apple-gray-900">Provider Plus medical review</h1>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="max-w-64 truncate text-apple-gray-600" title={userEmail}>
+                {userEmail}
+              </span>
+              <button
+                type="button"
+                onClick={logout}
+                className="rounded-apple border border-apple-gray-200 bg-white px-3 py-1.5 font-medium text-apple-gray-700 hover:bg-apple-gray-50"
+              >
+                Login here to access your full profile
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <main className="min-h-[calc(100vh-73px)] px-3 py-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl rounded-apple-lg bg-white shadow-apple-sm">
+            <Routes>
+              <Route path="/medical/review-requests/:id/edit" element={<MedicalReviewRequestsPage />} />
+              <Route path="/medical/review-requests/:id" element={<MedicalReviewRequestsPage />} />
+              <Route path="/medical-review-requests/:id/edit" element={<MedicalReviewRequestsPage />} />
+              <Route path="/medical-review-requests/:id" element={<MedicalReviewRequestsPage />} />
+              <Route path="*" element={<MedicalReviewRequestsPage />} />
+            </Routes>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-apple-gray-50">
