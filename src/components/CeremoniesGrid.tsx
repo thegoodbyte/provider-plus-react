@@ -11,7 +11,25 @@ interface CeremoniesGridProps {
   retreats?: Retreat[];
 }
 
-type CeremonyFullTab = 'med_prep' | 'spiritual' | 'spoons' | 'post';
+type CeremonyFullTab = 'med_prep' | 'spiritual' | 'spoons' | 'post' | 'report';
+
+type CeremonyReportState = {
+  ceremonyReport: string;
+  journeyedNotes: string;
+  complicationsNotes: string;
+  whatWentRightNotes: string;
+  whatWentWrongNotes: string;
+  lessonsLearnedNotes: string;
+};
+
+const emptyReportState: CeremonyReportState = {
+  ceremonyReport: '',
+  journeyedNotes: '',
+  complicationsNotes: '',
+  whatWentRightNotes: '',
+  whatWentWrongNotes: '',
+  lessonsLearnedNotes: '',
+};
 
 const getRetreatCode = (retreat?: Retreat | null) => {
   if (!retreat) return 'No retreat linked';
@@ -36,6 +54,8 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
   const [activeFullTab, setActiveFullTab] = useState<CeremonyFullTab>('med_prep');
   const [spiritualNotes, setSpiritualNotes] = useState('');
   const [savingSpiritualNotes, setSavingSpiritualNotes] = useState(false);
+  const [reportNotes, setReportNotes] = useState<CeremonyReportState>(emptyReportState);
+  const [savingReportNotes, setSavingReportNotes] = useState(false);
   const [form] = Form.useForm();
 
   const getStatusColor = (status: string) => {
@@ -99,6 +119,14 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
     setTrackingCeremonyId(ceremony._id!);
     setActiveFullTab(tab);
     setSpiritualNotes(ceremony.spiritualVerificationNotes || '');
+    setReportNotes({
+      ceremonyReport: ceremony.ceremonyReport || '',
+      journeyedNotes: ceremony.journeyedNotes || '',
+      complicationsNotes: ceremony.complicationsNotes || '',
+      whatWentRightNotes: ceremony.whatWentRightNotes || '',
+      whatWentWrongNotes: ceremony.whatWentWrongNotes || '',
+      lessonsLearnedNotes: ceremony.lessonsLearnedNotes || '',
+    });
   };
 
   const handleEdit = (ceremony: Ceremony) => {
@@ -108,7 +136,9 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
       retreatId: getObjectId(ceremony.retreatId),
       date: ceremony.date ? moment(ceremony.date) : null,
       startTime: ceremony.startTime ? moment(ceremony.startTime, 'HH:mm') : null,
-      endTime: ceremony.endTime ? moment(ceremony.endTime, 'HH:mm') : null
+      endTime: ceremony.endTime ? moment(ceremony.endTime, 'HH:mm') : null,
+      realStartTime: ceremony.realStartTime ? moment(ceremony.realStartTime, 'HH:mm') : null,
+      realEndTime: ceremony.realEndTime ? moment(ceremony.realEndTime, 'HH:mm') : null,
     });
     setModalVisible(true);
   };
@@ -131,7 +161,9 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
         retreatId: values.retreatId || null,
         date: values.date?.format('YYYY-MM-DD'),
         startTime: values.startTime?.format('HH:mm'),
-        endTime: values.endTime?.format('HH:mm')
+        endTime: values.endTime?.format('HH:mm'),
+        realStartTime: values.realStartTime?.format('HH:mm'),
+        realEndTime: values.realEndTime?.format('HH:mm'),
       };
 
       if (editingCeremony) {
@@ -174,11 +206,34 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
     }
   };
 
+  const handleReportFieldChange = (field: keyof CeremonyReportState, value: string) => {
+    setReportNotes((current) => ({ ...current, [field]: value }));
+  };
+
+  const handleSaveCeremonyReport = async () => {
+    if (!selectedCeremony?._id) return;
+
+    try {
+      setSavingReportNotes(true);
+      const response = await ceremoniesApi.update(selectedCeremony._id, reportNotes);
+      setCeremonies((prev) => prev.map((ceremony) => (
+        ceremony._id === selectedCeremony._id ? { ...ceremony, ...response.data } : ceremony
+      )));
+      message.success('Ceremony report saved');
+    } catch (error) {
+      message.error('Failed to save ceremony report');
+      console.error('Error saving ceremony report:', error);
+    } finally {
+      setSavingReportNotes(false);
+    }
+  };
+
   const fullViewTabs: Array<{ key: CeremonyFullTab; label: string }> = [
     { key: 'med_prep', label: 'Med prep' },
     { key: 'spiritual', label: 'Spiritual verification' },
     { key: 'spoons', label: 'Spoons taken' },
     { key: 'post', label: 'Post ceremony data' },
+    { key: 'report', label: 'Report' },
   ];
 
   // If viewing a ceremony, show the full ceremony workspace
@@ -210,6 +265,9 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
                 {formatDate(selectedCeremony.date)}
                 {selectedCeremony.startTime ? `, ${selectedCeremony.startTime}` : ''}
                 {selectedCeremony.endTime ? ` - ${selectedCeremony.endTime}` : ''}
+                {(selectedCeremony.realStartTime || selectedCeremony.realEndTime) && (
+                  <> - Actual {selectedCeremony.realStartTime || '-'} - {selectedCeremony.realEndTime || '-'}</>
+                )}
               </p>
             </div>
             <span className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold ${getStatusColor(selectedCeremony.status || 'scheduled')}`}>
@@ -265,6 +323,76 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
 
         {activeFullTab === 'post' && (
           <ParticipantTracker ceremonyId={trackingCeremonyId} initialView="post" lockedView showHeader={false} />
+        )}
+
+        {activeFullTab === 'report' && (
+          <div className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm">
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Ceremony report</h3>
+              <p className="text-sm text-gray-500">Record what happened, complications, and what to improve next time.</p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="md:col-span-2">
+                <label className="mb-1 block text-sm font-medium text-gray-700">How it went</label>
+                <Input.TextArea
+                  rows={4}
+                  value={reportNotes.ceremonyReport}
+                  onChange={(event) => handleReportFieldChange('ceremonyReport', event.target.value)}
+                  placeholder="Overall ceremony report"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Who journeyed</label>
+                <Input.TextArea
+                  rows={4}
+                  value={reportNotes.journeyedNotes}
+                  onChange={(event) => handleReportFieldChange('journeyedNotes', event.target.value)}
+                  placeholder="Participants who journeyed, notable experiences"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Complications</label>
+                <Input.TextArea
+                  rows={4}
+                  value={reportNotes.complicationsNotes}
+                  onChange={(event) => handleReportFieldChange('complicationsNotes', event.target.value)}
+                  placeholder="Medical, logistical, emotional, or ceremony complications"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">What I did right</label>
+                <Input.TextArea
+                  rows={4}
+                  value={reportNotes.whatWentRightNotes}
+                  onChange={(event) => handleReportFieldChange('whatWentRightNotes', event.target.value)}
+                  placeholder="Actions and decisions that worked well"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">What I did wrong</label>
+                <Input.TextArea
+                  rows={4}
+                  value={reportNotes.whatWentWrongNotes}
+                  onChange={(event) => handleReportFieldChange('whatWentWrongNotes', event.target.value)}
+                  placeholder="Actions and decisions to improve"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="mb-1 block text-sm font-medium text-gray-700">What I learned</label>
+                <Input.TextArea
+                  rows={4}
+                  value={reportNotes.lessonsLearnedNotes}
+                  onChange={(event) => handleReportFieldChange('lessonsLearnedNotes', event.target.value)}
+                  placeholder="Lessons learned for future ceremonies"
+                />
+              </div>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <Button type="primary" onClick={handleSaveCeremonyReport} loading={savingReportNotes}>
+                Save report
+              </Button>
+            </div>
+          </div>
         )}
       </div>
     );
@@ -326,6 +454,9 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
                   End Time
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actual Time
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -365,6 +496,11 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {ceremony.endTime}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {ceremony.realStartTime || ceremony.realEndTime
+                      ? `${ceremony.realStartTime || '-'} - ${ceremony.realEndTime || '-'}`
+                      : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(ceremony.status || 'scheduled')}`}>
@@ -479,7 +615,7 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
           <div style={{ display: 'flex', gap: 16 }}>
             <Form.Item
               name="startTime"
-              label="Start Time"
+              label="Scheduled Start Time"
               style={{ flex: 1 }}
             >
               <TimePicker format="HH:mm" style={{ width: '100%' }} />
@@ -487,7 +623,25 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
 
             <Form.Item
               name="endTime"
-              label="End Time"
+              label="Scheduled End Time"
+              style={{ flex: 1 }}
+            >
+              <TimePicker format="HH:mm" style={{ width: '100%' }} />
+            </Form.Item>
+          </div>
+
+          <div style={{ display: 'flex', gap: 16 }}>
+            <Form.Item
+              name="realStartTime"
+              label="Real Start Time"
+              style={{ flex: 1 }}
+            >
+              <TimePicker format="HH:mm" style={{ width: '100%' }} />
+            </Form.Item>
+
+            <Form.Item
+              name="realEndTime"
+              label="Real End Time"
               style={{ flex: 1 }}
             >
               <TimePicker format="HH:mm" style={{ width: '100%' }} />
@@ -519,6 +673,48 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
             label="Spiritual Verification Notes"
           >
             <Input.TextArea rows={3} placeholder="Enter spiritual verification notes" />
+          </Form.Item>
+
+          <Form.Item
+            name="ceremonyReport"
+            label="Ceremony Report"
+          >
+            <Input.TextArea rows={3} placeholder="How it went overall" />
+          </Form.Item>
+
+          <Form.Item
+            name="journeyedNotes"
+            label="Who Journeyed"
+          >
+            <Input.TextArea rows={3} placeholder="Who journeyed and relevant participant notes" />
+          </Form.Item>
+
+          <Form.Item
+            name="complicationsNotes"
+            label="Complications"
+          >
+            <Input.TextArea rows={3} placeholder="Complications or events that need follow-up" />
+          </Form.Item>
+
+          <Form.Item
+            name="whatWentRightNotes"
+            label="What I Did Right"
+          >
+            <Input.TextArea rows={3} placeholder="What worked well" />
+          </Form.Item>
+
+          <Form.Item
+            name="whatWentWrongNotes"
+            label="What I Did Wrong"
+          >
+            <Input.TextArea rows={3} placeholder="What should be improved" />
+          </Form.Item>
+
+          <Form.Item
+            name="lessonsLearnedNotes"
+            label="What I Learned"
+          >
+            <Input.TextArea rows={3} placeholder="Lessons learned for future ceremonies" />
           </Form.Item>
 
           <div style={{ display: 'flex', gap: 16 }}>

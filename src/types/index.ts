@@ -632,10 +632,18 @@ export interface Ceremony {
   date: Date | string;
   startTime: string; // HH:MM format
   endTime: string; // HH:MM format
+  realStartTime?: string; // HH:MM format
+  realEndTime?: string; // HH:MM format
 
   // General ceremony notes
   majorNotes?: string;
   spiritualVerificationNotes?: string;
+  ceremonyReport?: string;
+  journeyedNotes?: string;
+  complicationsNotes?: string;
+  whatWentRightNotes?: string;
+  whatWentWrongNotes?: string;
+  lessonsLearnedNotes?: string;
 
   // Medical checks (done before ceremony)
   medicalChecksCompleted?: boolean;
