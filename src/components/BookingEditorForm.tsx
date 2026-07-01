@@ -141,6 +141,14 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
     }));
   };
 
+  const handleClientSelect = (clientId: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      clientId,
+      paymentRequestId: clientId === prev.clientId ? prev.paymentRequestId : '',
+    }));
+  };
+
   const validateBookingNumber = async (value: string) => {
     if (!value.trim()) {
       setBookingNumberError('');
@@ -257,7 +265,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
             <SearchableClientSelect
               clients={clients}
               selectedClientId={formData.clientId}
-              onClientSelect={(clientId) => setFormData({ ...formData, clientId })}
+              onClientSelect={handleClientSelect}
               placeholder="Search and select a client..."
             />
           </div>
@@ -279,7 +287,8 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
           <SearchablePaymentRequestSelect
             selectedPaymentRequestId={formData.paymentRequestId}
             onPaymentRequestSelect={handlePaymentRequestSelect}
-            placeholder="Search invoice, client, or retreat"
+            clientId={formData.clientId || undefined}
+            placeholder={formData.clientId ? "Search this client's payment requests" : 'Search invoice, client, or retreat'}
           />
           <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
             <span>Optional. Select one to auto-fill client, retreat, amount, and currency.</span>
