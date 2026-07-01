@@ -410,36 +410,41 @@ const UserManagement: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <div className="flex justify-end space-x-2">
+                    <div className="flex flex-wrap justify-end gap-2">
                       <button
                         onClick={() => handleEditUser(user)}
-                        className="text-blue-600 hover:text-blue-900"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-100 bg-blue-50 text-blue-700 hover:bg-blue-100"
                         title="Edit user"
+                        aria-label="Edit user"
                       >
                         <Icon icon={FiEdit2} className="w-4 h-4" />
                       </button>
                       <button
                         onClick={() => handleResetPassword(user)}
-                        className="text-orange-600 hover:text-orange-900"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-orange-100 bg-orange-50 text-orange-700 hover:bg-orange-100"
                         title="Reset password"
+                        aria-label="Reset password"
                       >
                         <Icon icon={FiKey} className="w-4 h-4" />
                       </button>
                       {user.role !== 'admin' && user.isActive && user._id !== currentUser?.id && (
                         <button
                           onClick={() => handleImpersonateUser(user)}
-                          className="text-indigo-600 hover:text-indigo-900 disabled:text-gray-400"
-                          title="Impersonate user"
+                          className="inline-flex h-8 items-center gap-1.5 rounded-md border border-indigo-100 bg-indigo-50 px-2.5 text-xs font-semibold text-indigo-700 hover:bg-indigo-100 disabled:border-gray-200 disabled:bg-gray-50 disabled:text-gray-400"
+                          title="Login as this user"
+                          aria-label={`Login as ${[user.firstName, user.lastName].filter(Boolean).join(' ').trim() || user.email}`}
                           disabled={impersonatingUserId === user._id}
                         >
                           <Icon icon={FiLogIn} className="w-4 h-4" />
+                          <span>{impersonatingUserId === user._id ? 'Logging in...' : 'Login as'}</span>
                         </button>
                       )}
                       {user.role !== 'admin' && (
                         <button
                           onClick={() => handleDeleteUser(user)}
-                          className="text-red-600 hover:text-red-900"
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-100 bg-red-50 text-red-700 hover:bg-red-100"
                           title="Delete user"
+                          aria-label="Delete user"
                         >
                           <Icon icon={FiTrash2} className="w-4 h-4" />
                         </button>
