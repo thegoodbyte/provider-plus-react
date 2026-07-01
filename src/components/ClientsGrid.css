@@ -980,7 +980,11 @@
 }
 
 .tab-navigation.retreat-detail-tabs {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
   align-items: center;
+  justify-content: flex-start;
   gap: 8px;
   margin: 20px 0 16px;
   padding: 8px;
@@ -1026,6 +1030,10 @@
 
 @media (max-width: 768px) {
   .tab-navigation.retreat-detail-tabs {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
     margin: 16px -8px 12px;
     padding: 8px;
     border-radius: 0;
@@ -2721,5 +2729,22 @@
 
   .retreat-hero-primary {
     font-size: 17px;
+  }
+}
+
+/* Keep retreat detail tabs horizontal on mobile despite shared tab-navigation rules. */
+@media (max-width: 768px) {
+  .tab-navigation.retreat-detail-tabs {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .tab-navigation.retreat-detail-tabs .tab-btn {
+    flex: 0 0 auto;
   }
 }
