@@ -359,6 +359,15 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     return map;
   }, [items]);
 
+  const templateMap = useMemo(() => {
+    const map = new Map<string, BookingFlowTemplate>();
+    templates.forEach((template) => {
+      if (template._id) map.set(template._id, template);
+      if (template.key) map.set(template.key, template);
+    });
+    return map;
+  }, [templates]);
+
   const actionLogMap = useMemo(() => {
     const map = new Map<string, BookingFlowActionLog[]>();
     actionLogs.forEach((log) => {
@@ -438,19 +447,25 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
 
   const getConfiguredActions = (item?: BookingFlowItem): BookingFlowAction[] => {
     if (!item) return [];
+    const template = typeof item.templateId === 'object'
+      ? item.templateId
+      : templateMap.get(getObjectId(item.templateId)) || templateMap.get(item.key) || null;
     const configured = Array.isArray(item.actions) && item.actions.length > 0
       ? item.actions
-      : Array.isArray(item.metadata?.actions)
+      : Array.isArray(item.metadata?.actions) && (item.metadata?.actions?.length || 0) > 0
         ? (item.metadata?.actions as BookingFlowAction[])
-        : [];
+        : Array.isArray(template?.actions)
+          ? template?.actions || []
+          : [];
     const actions = configured.filter((action) => action.active !== false);
-    const hasLegacyEmail = Boolean(item.emailEnabled && item.emailTemplateId);
+    const fallbackEmailTemplateId = item.emailTemplateId || template?.emailTemplateId;
+    const hasLegacyEmail = Boolean((item.emailEnabled || template?.emailEnabled) && fallbackEmailTemplateId);
     if (hasLegacyEmail && !actions.some((action) => action.type === 'email' && action.emailTemplateId)) {
       actions.unshift({
         key: 'default_email',
         label: 'Send email',
         type: 'email',
-        emailTemplateId: item.emailTemplateId,
+        emailTemplateId: fallbackEmailTemplateId,
         statusAfterSuccess: 'sent',
         allowRepeat: true,
         openComposer: true,

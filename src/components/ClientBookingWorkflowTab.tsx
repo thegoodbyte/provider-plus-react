@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { FiCheckCircle, FiEdit2, FiExternalLink, FiMail, FiRefreshCw, FiSave, FiUpload } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { bookingFlowApi, medicalArtifactsApi } from '../services/api';
-import { BookingFlowAction, BookingFlowItem, MedicalArtifact } from '../types';
+import { BookingFlowAction, BookingFlowItem, BookingFlowTemplate, MedicalArtifact } from '../types';
 import AppleButton from './AppleButton';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 import LoadingSpinner from './LoadingSpinner';
@@ -98,6 +98,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
   const navigate = useNavigate();
   const [selectedBookingId, setSelectedBookingId] = useState('');
   const [items, setItems] = useState<BookingFlowItem[]>([]);
+  const [templates, setTemplates] = useState<BookingFlowTemplate[]>([]);
   const [drafts, setDrafts] = useState<Record<string, StepDraft>>({});
   const [stepFilter, setStepFilter] = useState<StepFilter>('all');
   const [isEditing, setIsEditing] = useState(false);
@@ -122,6 +123,14 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
     () => bookings.find((booking) => getObjectId(booking) === selectedBookingId),
     [bookings, selectedBookingId],
   );
+  const templateMap = useMemo(() => {
+    const map = new Map<string, BookingFlowTemplate>();
+    templates.forEach((template) => {
+      if (template._id) map.set(template._id, template);
+      if (template.key) map.set(template.key, template);
+    });
+    return map;
+  }, [templates]);
 
   const completedCount = items.filter((item) => fulfilledStatuses.has(item.status)).length;
   const progressPercent = items.length > 0 ? Math.round((completedCount / items.length) * 100) : 0;
@@ -179,6 +188,13 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
       if (nextItems.length === 0) {
         const response = await bookingFlowApi.getItems({ bookingId });
         nextItems = response.data || [];
+      }
+      const retreatId = getRetreatId(selectedBooking) || getObjectId(nextItems[0]?.retreatId);
+      if (retreatId) {
+        const templateResponse = await bookingFlowApi.getTemplates(retreatId);
+        setTemplates(templateResponse.data || []);
+      } else {
+        setTemplates([]);
       }
 
       setItems(nextItems);
@@ -338,10 +354,12 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
   };
 
   const getConfiguredActions = (item: BookingFlowItem): BookingFlowAction[] => {
-    const template = typeof item.templateId === 'object' ? item.templateId : null;
+    const template = typeof item.templateId === 'object'
+      ? item.templateId
+      : templateMap.get(getObjectId(item.templateId)) || templateMap.get(item.key) || null;
     const configured = Array.isArray(item.actions) && item.actions.length > 0
       ? item.actions
-      : Array.isArray(item.metadata?.actions)
+      : Array.isArray(item.metadata?.actions) && (item.metadata?.actions?.length || 0) > 0
         ? (item.metadata?.actions as BookingFlowAction[])
         : Array.isArray(template?.actions)
           ? template?.actions || []
