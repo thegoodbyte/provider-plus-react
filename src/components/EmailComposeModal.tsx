@@ -7,6 +7,18 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
   return <IconComponent className={className} />;
 };
 
+const formatSentEmailReceipt = (sentEmail: any) => {
+  const lines = [
+    `Email ${sentEmail?.status || 'queued'}.`,
+    sentEmail?.display_id ? `Log #${sentEmail.display_id}` : '',
+    sentEmail?.gmailMessageId ? `Gmail message ID: ${sentEmail.gmailMessageId}` : '',
+    (sentEmail?.cc || []).length ? `CC: ${(sentEmail.cc || []).join(', ')}` : 'CC: none',
+    (sentEmail?.attachments || []).length ? `Attachments: ${sentEmail.attachments.length}` : '',
+    sentEmail?.errorMessage ? `Error: ${sentEmail.errorMessage}` : '',
+  ].filter(Boolean);
+  return lines.join('\n');
+};
+
 export interface EmailComposeInitialValues {
   to?: string;
   cc?: string;
@@ -155,7 +167,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
         attachments: initialValues.attachments || undefined,
       });
       await onSent?.(response.data);
-      alert('Email sent.');
+      alert(formatSentEmailReceipt(response.data));
       onClose();
     } catch (error) {
       console.error('Error sending email:', error);
@@ -212,6 +224,12 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
                   {attachment.fileName}
                 </div>
               ))}
+            </div>
+          )}
+
+          {settings?.autoCcEnabled !== false && (
+            <div className="rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-900">
+              Auto CC will add {settings?.autoCcEmail || 'info@ibogaspirit.cz'} when this email is sent.
             </div>
           )}
 

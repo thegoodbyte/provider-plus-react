@@ -1298,6 +1298,8 @@ export interface MailSettings {
   senderName?: string;
   senderEmail?: string;
   replyTo?: string;
+  autoCcEnabled?: boolean;
+  autoCcEmail?: string;
   gmailUserEmail?: string;
   gmailAccountName?: string;
   scopes?: string[];
