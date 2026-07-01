@@ -99,6 +99,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
   const [selectedBookingId, setSelectedBookingId] = useState('');
   const [items, setItems] = useState<BookingFlowItem[]>([]);
   const [templates, setTemplates] = useState<BookingFlowTemplate[]>([]);
+  const [libraryTemplates, setLibraryTemplates] = useState<BookingFlowTemplate[]>([]);
   const [drafts, setDrafts] = useState<Record<string, StepDraft>>({});
   const [stepFilter, setStepFilter] = useState<StepFilter>('all');
   const [isEditing, setIsEditing] = useState(false);
@@ -131,6 +132,14 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
     });
     return map;
   }, [templates]);
+  const libraryTemplateMap = useMemo(() => {
+    const map = new Map<string, BookingFlowTemplate>();
+    libraryTemplates.forEach((template) => {
+      if (template._id) map.set(template._id, template);
+      if (template.key) map.set(template.key, template);
+    });
+    return map;
+  }, [libraryTemplates]);
 
   const completedCount = items.filter((item) => fulfilledStatuses.has(item.status)).length;
   const progressPercent = items.length > 0 ? Math.round((completedCount / items.length) * 100) : 0;
@@ -191,10 +200,15 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
       }
       const retreatId = getRetreatId(selectedBooking) || getObjectId(nextItems[0]?.retreatId);
       if (retreatId) {
-        const templateResponse = await bookingFlowApi.getTemplates(retreatId);
+        const [templateResponse, libraryTemplateResponse] = await Promise.all([
+          bookingFlowApi.getTemplates(retreatId),
+          bookingFlowApi.getLibraryTemplates().catch(() => ({ data: [] as BookingFlowTemplate[] })),
+        ]);
         setTemplates(templateResponse.data || []);
+        setLibraryTemplates(libraryTemplateResponse.data || []);
       } else {
         setTemplates([]);
+        setLibraryTemplates([]);
       }
 
       setItems(nextItems);
@@ -357,16 +371,19 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
     const template = typeof item.templateId === 'object'
       ? item.templateId
       : templateMap.get(getObjectId(item.templateId)) || templateMap.get(item.key) || null;
+    const libraryTemplate = libraryTemplateMap.get(item.key) || null;
     const configured = Array.isArray(item.actions) && item.actions.length > 0
       ? item.actions
       : Array.isArray(item.metadata?.actions) && (item.metadata?.actions?.length || 0) > 0
         ? (item.metadata?.actions as BookingFlowAction[])
-        : Array.isArray(template?.actions)
+        : Array.isArray(template?.actions) && (template?.actions?.length || 0) > 0
           ? template?.actions || []
-          : [];
+          : Array.isArray(libraryTemplate?.actions)
+            ? libraryTemplate?.actions || []
+            : [];
     const actions = configured.filter((action) => action.active !== false);
-    const fallbackEmailTemplateId = item.emailTemplateId || template?.emailTemplateId;
-    const hasLegacyEmail = Boolean((item.emailEnabled || template?.emailEnabled) && fallbackEmailTemplateId);
+    const fallbackEmailTemplateId = item.emailTemplateId || template?.emailTemplateId || libraryTemplate?.emailTemplateId;
+    const hasLegacyEmail = Boolean((item.emailEnabled || template?.emailEnabled || libraryTemplate?.emailEnabled) && fallbackEmailTemplateId);
     if (hasLegacyEmail && !actions.some((action) => action.type === 'email' && action.emailTemplateId)) {
       actions.unshift({
         key: 'default_email',

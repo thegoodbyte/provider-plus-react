@@ -241,6 +241,7 @@ const getItemGroup = (item?: Partial<BookingFlowItem> | null, template?: Partial
 const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const [bookings, setBookings] = useState<any[]>([]);
   const [templates, setTemplates] = useState<BookingFlowTemplate[]>([]);
+  const [libraryTemplates, setLibraryTemplates] = useState<BookingFlowTemplate[]>([]);
   const [items, setItems] = useState<BookingFlowItem[]>([]);
   const [actionLogs, setActionLogs] = useState<BookingFlowActionLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -259,8 +260,10 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     if (showLoading) setLoading(true);
     try {
       const response = await bookingFlowApi.getMatrix(retreatId);
+      const libraryTemplateResponse = await bookingFlowApi.getLibraryTemplates().catch(() => ({ data: [] as BookingFlowTemplate[] }));
       setBookings(response.data?.bookings || []);
       setTemplates(response.data?.templates || []);
+      setLibraryTemplates(libraryTemplateResponse.data || []);
       setItems(response.data?.items || []);
       setActionLogs(response.data?.actionLogs || []);
     } finally {
@@ -368,6 +371,15 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     return map;
   }, [templates]);
 
+  const libraryTemplateMap = useMemo(() => {
+    const map = new Map<string, BookingFlowTemplate>();
+    libraryTemplates.forEach((template) => {
+      if (template._id) map.set(template._id, template);
+      if (template.key) map.set(template.key, template);
+    });
+    return map;
+  }, [libraryTemplates]);
+
   const actionLogMap = useMemo(() => {
     const map = new Map<string, BookingFlowActionLog[]>();
     actionLogs.forEach((log) => {
@@ -450,16 +462,19 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     const template = typeof item.templateId === 'object'
       ? item.templateId
       : templateMap.get(getObjectId(item.templateId)) || templateMap.get(item.key) || null;
+    const libraryTemplate = libraryTemplateMap.get(item.key) || null;
     const configured = Array.isArray(item.actions) && item.actions.length > 0
       ? item.actions
       : Array.isArray(item.metadata?.actions) && (item.metadata?.actions?.length || 0) > 0
         ? (item.metadata?.actions as BookingFlowAction[])
-        : Array.isArray(template?.actions)
+        : Array.isArray(template?.actions) && (template?.actions?.length || 0) > 0
           ? template?.actions || []
-          : [];
+          : Array.isArray(libraryTemplate?.actions)
+            ? libraryTemplate?.actions || []
+            : [];
     const actions = configured.filter((action) => action.active !== false);
-    const fallbackEmailTemplateId = item.emailTemplateId || template?.emailTemplateId;
-    const hasLegacyEmail = Boolean((item.emailEnabled || template?.emailEnabled) && fallbackEmailTemplateId);
+    const fallbackEmailTemplateId = item.emailTemplateId || template?.emailTemplateId || libraryTemplate?.emailTemplateId;
+    const hasLegacyEmail = Boolean((item.emailEnabled || template?.emailEnabled || libraryTemplate?.emailEnabled) && fallbackEmailTemplateId);
     if (hasLegacyEmail && !actions.some((action) => action.type === 'email' && action.emailTemplateId)) {
       actions.unshift({
         key: 'default_email',
