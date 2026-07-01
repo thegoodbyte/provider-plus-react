@@ -204,8 +204,44 @@ export interface RetreatClient {
   roomAssignment?: string;
   specialRequests?: string;
   notes?: string;
+  bookingConfirmationHistory?: BookingConfirmationHistoryEntry[];
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface BookingConfirmationHistoryEntry {
+  _id?: string;
+  iteration: number;
+  action?: 'created' | 'updated' | 'sent';
+  reason: string;
+  language?: string;
+  sentAt?: string;
+  createdAt?: string;
+  createdBy?: string;
+  sentEmailId?: string;
+  sentEmailDisplayId?: number;
+  retreatId?: string;
+  paymentRequestId?: string;
+  snapshot?: {
+    bookingNumber?: number;
+    bookingStatus?: string;
+    clientId?: string;
+    clientDisplayId?: number;
+    clientName?: string;
+    clientEmail?: string;
+    retreatId?: string;
+    retreatName?: string;
+    retreatCode?: string;
+    retreatStartDate?: string;
+    retreatEndDate?: string;
+    retreatStartTime?: string;
+    retreatEndTime?: string;
+    paymentRequestId?: string;
+    paymentRequestDisplayId?: number;
+    totalAmount?: number;
+    currency?: string;
+    amountPaid?: number;
+  };
 }
 
 export interface ClientMedical {

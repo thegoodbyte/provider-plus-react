@@ -1456,6 +1456,113 @@
   background: #1976D2;
 }
 
+.booking-confirm-history-count {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.booking-confirm-history {
+  display: grid;
+  gap: 14px;
+}
+
+.booking-confirm-history-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.booking-confirm-history-summary > div {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+}
+
+.booking-confirm-history-summary span,
+.booking-confirm-history-entry-main span {
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.booking-confirm-history-summary strong {
+  color: #111827;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.booking-confirm-history-list {
+  display: grid;
+  gap: 8px;
+}
+
+.booking-confirm-history-entry {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.booking-confirm-history-entry-main,
+.booking-confirm-history-entry-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.booking-confirm-history-entry-main strong {
+  color: #111827;
+}
+
+.booking-confirm-history-entry-meta span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: #f3f4f6;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.booking-confirm-dialog-reason {
+  grid-column: 1 / -1;
+}
+
+.booking-confirm-dialog-reason label {
+  display: block;
+  margin-bottom: 6px;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.booking-confirm-dialog-reason input {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  color: #111827;
+  font-size: 14px;
+}
+
 @media (max-width: 980px) {
   .detail-section {
     padding: 14px;
@@ -1535,5 +1642,9 @@
     margin-top: 0;
     border-radius: 0;
     box-shadow: none;
+  }
+
+  .booking-confirm-history-summary {
+    grid-template-columns: 1fr;
   }
 }

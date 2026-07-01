@@ -266,6 +266,17 @@ export const bookingsApi = {
     cacheService.clearPattern('payments:');
     return api.patch<RetreatClient>(`/bookings/${id}`, data);
   },
+  recordConfirmationHistory: (id: string, data: {
+    action?: 'created' | 'updated' | 'sent';
+    reason: string;
+    language?: string;
+    sentEmailId?: string;
+    sentEmailDisplayId?: number;
+    sentAt?: string;
+  }) => {
+    cacheService.clearPattern('bookings:');
+    return api.post<RetreatClient>(`/bookings/${id}/confirmation-history`, data);
+  },
   checkIn: (id: string) => {
     cacheService.clearPattern('bookings:');
     return api.patch<RetreatClient>(`/bookings/${id}/check-in`, {});

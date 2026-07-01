@@ -81,6 +81,19 @@ const formatFileSize = (bytes: number) => {
   return `${(bytes / Math.pow(1024, index)).toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
 };
 
+const formatHistoryDateTime = (date?: string | Date) => {
+  if (!date) return 'N/A';
+  const dateObj = new Date(date);
+  if (Number.isNaN(dateObj.getTime())) return 'N/A';
+  return dateObj.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+};
+
 const getClientName = (client: any) =>
   [client?.firstName || client?.fname, client?.lastName || client?.lname].filter(Boolean).join(' ').trim();
 
@@ -819,6 +832,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [isPreparingConfirmationEmail, setIsPreparingConfirmationEmail] = useState(false);
   const [confirmationEmailDraft, setConfirmationEmailDraft] = useState<EmailComposeInitialValues | null>(null);
   const [showQuickSendConfirm, setShowQuickSendConfirm] = useState(false);
+  const [confirmationHistoryReason, setConfirmationHistoryReason] = useState('');
   const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'requirements' | 'medical' | 'ceremonies' | 'documents' | 'tasks' | 'workflow' | 'notes'>('overview');
   const [bookingTasks, setBookingTasks] = useState<Task[]>([]);
   const [loadingBookingTasks, setLoadingBookingTasks] = useState(false);
@@ -1077,6 +1091,24 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     };
   };
 
+  const getDefaultConfirmationReason = () => {
+    const history = booking?.bookingConfirmationHistory || [];
+    return history.length === 0 ? 'Original booking confirmation' : 'Updated booking confirmation';
+  };
+
+  const recordBookingConfirmationHistory = async (sentEmail: any, language: BookingConfirmationLanguage, reason?: string) => {
+    const resolvedReason = String(reason || confirmationHistoryReason || getDefaultConfirmationReason()).trim() || getDefaultConfirmationReason();
+    const response = await bookingsApi.recordConfirmationHistory(bookingId, {
+      action: (booking?.bookingConfirmationHistory || []).length === 0 ? 'created' : 'updated',
+      reason: resolvedReason,
+      language,
+      sentEmailId: sentEmail?._id,
+      sentEmailDisplayId: sentEmail?.display_id,
+      sentAt: sentEmail?.sentAt || new Date().toISOString(),
+    });
+    setBooking(response.data);
+  };
+
   const handleBookingRelatedUpdate = () => {
     fetchBookingDetails();
     setRequirementsRefreshKey((current) => current + 1);
@@ -1134,6 +1166,8 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
       return;
     }
     setIsPreparingConfirmationEmail(true);
+    const reason = confirmationHistoryReason || getDefaultConfirmationReason();
+    setConfirmationHistoryReason(reason);
     try {
       const language = pdfLanguage;
       const { blob, fileName } = await createBookingConfirmationPdf({ booking, language });
@@ -1171,6 +1205,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
       alert('This client does not have an email address.');
       return;
     }
+    setConfirmationHistoryReason(getDefaultConfirmationReason());
     setShowQuickSendConfirm(true);
   };
 
@@ -1217,6 +1252,8 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         alert(`Email was logged but Gmail failed to send it: ${response.data.errorMessage || 'Unknown error'}`);
         return;
       }
+      await recordBookingConfirmationHistory(response.data, language, confirmationHistoryReason);
+      setRequirementsRefreshKey((current) => current + 1);
       alert('Booking confirmation email sent.');
     } catch (error: any) {
       console.error('Error sending booking confirmation email:', error);
@@ -1263,6 +1300,9 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const bookingTypeCode = booking.bookingType === 'booster' ? 'B' : 'F';
   const retreatCode = getRetreatCode(retreat);
   const retreatAddress = getRetreatAddress(retreat);
+  const confirmationHistory = [...(booking.bookingConfirmationHistory || [])].sort((a: any, b: any) => (a.iteration || 0) - (b.iteration || 0));
+  const firstConfirmation = confirmationHistory[0];
+  const latestConfirmation = confirmationHistory[confirmationHistory.length - 1];
   const tabs = [
     { key: 'overview', label: 'Overview' },
     { key: 'payments', label: 'Payments' },
@@ -1402,6 +1442,50 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
               <div className="booking-overview-address">
                 {retreatAddress || 'No retreat address recorded'}
               </div>
+            </div>
+
+            <div className="detail-section pdf-section">
+              <div className="section-header">
+                <h3 className="pdf-section-title">Booking Confirmation History</h3>
+                <span className="booking-confirm-history-count">{confirmationHistory.length} iteration{confirmationHistory.length === 1 ? '' : 's'}</span>
+              </div>
+              {confirmationHistory.length === 0 ? (
+                <p className="text-sm text-gray-500">No booking confirmation has been sent yet.</p>
+              ) : (
+                <div className="booking-confirm-history">
+                  <div className="booking-confirm-history-summary">
+                    <div>
+                      <span>Original sent</span>
+                      <strong>{formatHistoryDateTime(firstConfirmation?.sentAt || firstConfirmation?.createdAt)}</strong>
+                    </div>
+                    <div>
+                      <span>Last update</span>
+                      <strong>{formatHistoryDateTime(latestConfirmation?.sentAt || latestConfirmation?.createdAt)}</strong>
+                    </div>
+                    <div>
+                      <span>Latest reason</span>
+                      <strong>{latestConfirmation?.reason || 'N/A'}</strong>
+                    </div>
+                  </div>
+                  <div className="booking-confirm-history-list">
+                    {confirmationHistory.map((entry: any) => (
+                      <div key={entry._id || `${entry.iteration}-${entry.sentAt}`} className="booking-confirm-history-entry">
+                        <div className="booking-confirm-history-entry-main">
+                          <strong>Iteration {entry.iteration}</strong>
+                          <span>{formatHistoryDateTime(entry.sentAt || entry.createdAt)}</span>
+                        </div>
+                        <div className="booking-confirm-history-entry-meta">
+                          <span>{entry.reason || 'No reason recorded'}</span>
+                          {entry.language && <span>{bookingConfirmationLanguageLabels[entry.language as BookingConfirmationLanguage] || entry.language}</span>}
+                          {entry.sentEmailDisplayId && <span>Email #{entry.sentEmailDisplayId}</span>}
+                          {entry.snapshot?.retreatCode && <span>{entry.snapshot.retreatCode}</span>}
+                          {entry.snapshot?.paymentRequestDisplayId && <span>Payment request #{entry.snapshot.paymentRequestDisplayId}</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="detail-section pdf-section">
@@ -1687,8 +1771,20 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         <EmailComposeModal
           title="Booking Confirmation Email"
           initialValues={confirmationEmailDraft}
+          extraContent={
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Confirmation history reason</label>
+              <input
+                value={confirmationHistoryReason}
+                onChange={(event) => setConfirmationHistoryReason(event.target.value)}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                placeholder="Original booking confirmation, date change, new payment..."
+              />
+            </div>
+          }
           onClose={() => setConfirmationEmailDraft(null)}
-          onSent={async () => {
+          onSent={async (sentEmail) => {
+            await recordBookingConfirmationHistory(sentEmail, pdfLanguage, confirmationHistoryReason);
             setConfirmationEmailDraft(null);
             fetchBookingDetails();
             setRequirementsRefreshKey((current) => current + 1);
@@ -1717,6 +1813,15 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
                 <div>
                   <span>Language</span>
                   <strong>{bookingConfirmationLanguageLabels[pdfLanguage]}</strong>
+                </div>
+                <div className="booking-confirm-dialog-reason">
+                  <label htmlFor="booking-confirm-history-reason">Reason</label>
+                  <input
+                    id="booking-confirm-history-reason"
+                    value={confirmationHistoryReason}
+                    onChange={(event) => setConfirmationHistoryReason(event.target.value)}
+                    placeholder="Original booking confirmation, date change, new payment..."
+                  />
                 </div>
               </div>
               <div className="booking-confirm-dialog-actions">
