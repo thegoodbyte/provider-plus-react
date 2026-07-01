@@ -483,6 +483,34 @@ export const communicationsApi = {
     cacheService.clearPattern('communications:sent-emails');
     return api.post<SentEmail>('/communications/send', data);
   },
+  sendRetreatEmail: (retreatId: string, data: {
+    subject: string;
+    bodyText: string;
+    bodyHtml?: string;
+    templateId?: string;
+    cc?: string;
+    bcc?: string;
+    fromName?: string;
+    fromEmail?: string;
+    replyTo?: string;
+    variables?: Record<string, any>;
+    attachments?: Array<{
+      fileName: string;
+      mimeType?: string;
+      contentBase64: string;
+    }>;
+  }) => {
+    cacheService.clearPattern('communications:sent-emails');
+    return api.post<{
+      retreatId: string;
+      batchId: string;
+      totalBookings: number;
+      sent: number;
+      failed: number;
+      skipped: number;
+      results: any[];
+    }>(`/communications/retreats/${retreatId}/send`, data);
+  },
 };
 
 export const screeningClientsApi = {

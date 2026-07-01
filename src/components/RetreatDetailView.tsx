@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { retreatsApi, bookingsApi, retreatExpensesApi, paymentsApi, clientsApi, housesApi } from '../services/api';
-import { Retreat, ExpenseSummary, House, Payment } from '../types';
+import { retreatsApi, bookingsApi, retreatExpensesApi, paymentsApi, clientsApi, housesApi, communicationsApi } from '../services/api';
+import { Retreat, ExpenseSummary, House, Payment, EmailTemplate } from '../types';
 import ExpensesTab from './ExpensesTab';
 import PaymentsTab from './PaymentsTab';
 import ClientDetailView from './ClientDetailView';
@@ -16,6 +16,7 @@ import { Client } from '../types';
 import {
   FiEdit2,
   FiEye,
+  FiMail,
   FiTrash2,
 } from 'react-icons/fi';
 import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
@@ -65,6 +66,7 @@ interface RetreatClientData {
   clientId: string;
   clientDisplayId?: number;
   clientName: string;
+  clientEmail?: string;
   clientPhone: string;
   registrationDate: string;
   checkInDate?: string;
@@ -185,6 +187,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [showEditModal, setShowEditModal] = useState(false);
   const [showQuickBookingModal, setShowQuickBookingModal] = useState(false);
   const [showExistingClientModal, setShowExistingClientModal] = useState(false);
+  const [showRetreatEmailModal, setShowRetreatEmailModal] = useState(false);
+  const [retreatEmailTemplates, setRetreatEmailTemplates] = useState<EmailTemplate[]>([]);
+  const [retreatEmailLoading, setRetreatEmailLoading] = useState(false);
   const [metricsCollapsed, setMetricsCollapsed] = useState(true);
   const [showRetreatEditModal, setShowRetreatEditModal] = useState(false);
   const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
@@ -206,6 +211,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     notes: ''
   });
   const [quickBookingForm] = Form.useForm();
+  const [retreatEmailForm] = Form.useForm();
   const [quickBookingLoading, setQuickBookingLoading] = useState(false);
   const [existingClientBookingLoading, setExistingClientBookingLoading] = useState(false);
   const heroImageInputRef = useRef<HTMLInputElement | null>(null);
@@ -305,6 +311,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           clientName: booking.clientId
             ? `${booking.clientId.firstName || booking.clientId.fname || ''} ${booking.clientId.lastName || booking.clientId.lname || ''}`.trim()
             : 'Unknown Client',
+          clientEmail: booking.clientId?.email || '',
           clientPhone: booking.clientId?.phone || '',
           registrationDate: booking.registrationDate,
           checkInDate: booking.checkInDate,
@@ -534,6 +541,60 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     }
   };
 
+  const openRetreatEmailModal = async () => {
+    const retreatLabel = retreat?.code || retreat?.retreatCode || retreat?.name || 'retreat';
+    retreatEmailForm.setFieldsValue({
+      templateId: '',
+      subject: `Information for ${retreatLabel}`,
+      bodyText: '',
+    });
+    setShowRetreatEmailModal(true);
+
+    if (retreatEmailTemplates.length === 0) {
+      try {
+        const response = await communicationsApi.getTemplates();
+        setRetreatEmailTemplates((response.data || []).filter((template: EmailTemplate) => template.active !== false));
+      } catch (error) {
+        console.error('Error loading email templates:', error);
+        message.warning('Email templates could not be loaded. You can still write the email manually.');
+      }
+    }
+  };
+
+  const handleRetreatEmailTemplateChange = (templateId: string) => {
+    const template = retreatEmailTemplates.find((item) => item._id === templateId);
+    if (!template) return;
+    retreatEmailForm.setFieldsValue({
+      subject: template.subject || '',
+      bodyText: template.bodyText || '',
+    });
+  };
+
+  const handleRetreatEmailSend = async (values: { templateId?: string; subject: string; bodyText: string }) => {
+    try {
+      setRetreatEmailLoading(true);
+      const response = await communicationsApi.sendRetreatEmail(retreatId, {
+        templateId: values.templateId || undefined,
+        subject: values.subject,
+        bodyText: values.bodyText,
+        variables: {
+          retreatName: retreat?.name,
+          retreatCode: retreat?.code || retreat?.retreatCode || retreat?.name,
+          retreatStartDate: retreat?.startDate,
+          retreatEndDate: retreat?.endDate,
+        },
+      });
+      message.success(`Retreat email sent to ${response.data.sent}. Failed: ${response.data.failed}. Skipped: ${response.data.skipped}.`);
+      setShowRetreatEmailModal(false);
+      retreatEmailForm.resetFields();
+    } catch (error: any) {
+      console.error('Error sending retreat email:', error);
+      message.error(error?.response?.data?.message || 'Failed to send retreat email.');
+    } finally {
+      setRetreatEmailLoading(false);
+    }
+  };
+
   const handleHeroImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -606,6 +667,14 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       return sortDirection === 'asc' ? compareValue : -compareValue;
     });
   }, [clients, sortField, sortDirection]);
+
+  const retreatEmailRecipientCount = React.useMemo(() => {
+    return new Set(
+      clients
+        .map((client) => String(client.clientEmail || '').trim().toLowerCase())
+        .filter(Boolean)
+    ).size;
+  }, [clients]);
 
   const handleSort = (field: 'bookingNumber' | 'clientName') => {
     if (sortField === field) {
@@ -899,6 +968,24 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                 }}
               >
                 👥 Add Existing Client
+              </button>
+              <button
+                onClick={openRetreatEmailModal}
+                className="add-existing-client-btn"
+                disabled={retreatEmailRecipientCount === 0}
+                style={{
+                  background: retreatEmailRecipientCount === 0 ? '#9ca3af' : 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  cursor: retreatEmailRecipientCount === 0 ? 'not-allowed' : 'pointer',
+                  marginRight: '8px',
+                  fontWeight: '500'
+                }}
+                title={retreatEmailRecipientCount === 0 ? 'No clients with email addresses in this retreat' : 'Send email to all clients in this retreat'}
+              >
+                <Icon icon={FiMail} className="w-4 h-4" /> Email Retreat ({retreatEmailRecipientCount})
               </button>
               <button onClick={fetchRetreatData} className="refresh-btn">
                 🔄 Refresh
@@ -1344,6 +1431,70 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                 Book Client
               </Button>
             </div>
+          </div>
+        </Form>
+      </Modal>
+
+      {/* Retreat Email Modal */}
+      <Modal
+        title={`Email Everyone in ${retreatCode}`}
+        open={showRetreatEmailModal}
+        onCancel={() => setShowRetreatEmailModal(false)}
+        footer={null}
+        width={760}
+        destroyOnClose
+      >
+        <div className="mb-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+          This sends one logged email per client in this retreat. Current eligible recipients: <strong>{retreatEmailRecipientCount}</strong>.
+          Clients without an email address are skipped.
+        </div>
+        <Form
+          form={retreatEmailForm}
+          layout="vertical"
+          onFinish={handleRetreatEmailSend}
+        >
+          <Form.Item name="templateId" label="Template">
+            <Select
+              allowClear
+              placeholder="Optional template"
+              onChange={(value) => handleRetreatEmailTemplateChange(value)}
+            >
+              {retreatEmailTemplates.map((template) => (
+                <Option key={template._id} value={template._id}>
+                  {template.display_id ? `#${template.display_id} ` : ''}{template.name}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item
+            name="subject"
+            label="Subject"
+            rules={[{ required: true, message: 'Subject is required' }]}
+          >
+            <Input placeholder="Email subject" />
+          </Form.Item>
+
+          <Form.Item
+            name="bodyText"
+            label="Message"
+            rules={[{ required: true, message: 'Message is required' }]}
+          >
+            <TextArea rows={12} placeholder="Write the email that should be sent to everyone in this retreat." />
+          </Form.Item>
+
+          <div className="flex justify-end gap-3">
+            <Button onClick={() => setShowRetreatEmailModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              type="primary"
+              htmlType="submit"
+              loading={retreatEmailLoading}
+              disabled={retreatEmailRecipientCount === 0}
+            >
+              Send to {retreatEmailRecipientCount}
+            </Button>
           </div>
         </Form>
       </Modal>
