@@ -338,19 +338,23 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
   };
 
   const getConfiguredActions = (item: BookingFlowItem): BookingFlowAction[] => {
+    const template = typeof item.templateId === 'object' ? item.templateId : null;
     const configured = Array.isArray(item.actions) && item.actions.length > 0
       ? item.actions
       : Array.isArray(item.metadata?.actions)
         ? (item.metadata?.actions as BookingFlowAction[])
-        : [];
+        : Array.isArray(template?.actions)
+          ? template?.actions || []
+          : [];
     const actions = configured.filter((action) => action.active !== false);
-    const hasLegacyEmail = Boolean(item.emailEnabled && item.emailTemplateId);
+    const fallbackEmailTemplateId = item.emailTemplateId || template?.emailTemplateId;
+    const hasLegacyEmail = Boolean((item.emailEnabled || template?.emailEnabled) && fallbackEmailTemplateId);
     if (hasLegacyEmail && !actions.some((action) => action.type === 'email' && action.emailTemplateId)) {
       actions.unshift({
         key: 'default_email',
         label: 'Send email',
         type: 'email',
-        emailTemplateId: item.emailTemplateId,
+        emailTemplateId: fallbackEmailTemplateId,
         statusAfterSuccess: 'sent',
         allowRepeat: true,
         openComposer: true,
