@@ -453,6 +453,8 @@ export const communicationsApi = {
     retreatId?: string;
     relatedEntityType?: string;
     relatedEntityId?: string;
+    bookingFlowStepKey?: string;
+    bookingFlowStatusOnSend?: string;
     fromName?: string;
     fromEmail?: string;
     replyTo?: string;

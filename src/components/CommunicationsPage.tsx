@@ -21,6 +21,8 @@ const defaultTemplateForm: Partial<EmailTemplate> = {
   category: 'general',
   templateKey: '',
   language: 'en',
+  bookingFlowStepKey: '',
+  bookingFlowStatusOnSend: 'sent',
   active: true,
   notes: '',
   tags: '',
@@ -192,6 +194,8 @@ const CommunicationsPage: React.FC = () => {
         bodyHtml: String(templateForm.bodyHtml || '').trim() || undefined,
         language: String(templateForm.language || 'en').trim().toLowerCase(),
         templateKey: String(templateForm.templateKey || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || undefined,
+        bookingFlowStepKey: String(templateForm.bookingFlowStepKey || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || undefined,
+        bookingFlowStatusOnSend: String(templateForm.bookingFlowStatusOnSend || 'sent').trim().toLowerCase(),
       };
 
       if (!payload.name || !payload.subject || !payload.bodyText) {
@@ -672,6 +676,30 @@ const CommunicationsPage: React.FC = () => {
                   <option value="en">English</option>
                   <option value="cz">Czech</option>
                   <option value="pl">Polish</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Booking Step Key</label>
+                <input
+                  value={templateForm.bookingFlowStepKey || ''}
+                  onChange={(e) => setTemplateForm((prev) => ({ ...prev, bookingFlowStepKey: e.target.value }))}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2"
+                  placeholder="booking_confirmation_sent"
+                />
+                <p className="mt-1 text-xs text-gray-500">Optional. When this template is sent for a booking, this booking step is updated.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status After Send</label>
+                <select
+                  value={templateForm.bookingFlowStatusOnSend || 'sent'}
+                  onChange={(e) => setTemplateForm((prev) => ({ ...prev, bookingFlowStatusOnSend: e.target.value }))}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2"
+                >
+                  <option value="sent">Sent</option>
+                  <option value="completed">Completed</option>
+                  <option value="received">Received</option>
+                  <option value="approved">Approved</option>
+                  <option value="waived">Waived</option>
                 </select>
               </div>
             </div>

@@ -1022,6 +1022,9 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
       if (template?.bodyText && template?.subject) {
         const bodyText = interpolateTemplate(template.bodyText, variables);
         return {
+          templateId: template._id,
+          bookingFlowStepKey: template.bookingFlowStepKey || 'booking_confirmation_sent',
+          bookingFlowStatusOnSend: template.bookingFlowStatusOnSend || 'sent',
           subject: interpolateTemplate(template.subject, variables),
           bodyText,
           bodyHtml: template.bodyHtml ? interpolateTemplate(template.bodyHtml, variables) : textToHtml(bodyText),
@@ -1066,53 +1069,12 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
       </div>
     `;
     return {
+      bookingFlowStepKey: 'booking_confirmation_sent',
+      bookingFlowStatusOnSend: 'sent',
       subject: copy.subject(bookingNumber),
       bodyText,
       bodyHtml,
     };
-  };
-
-  const markBookingConfirmationSent = async () => {
-    try {
-      const response = await bookingFlowApi.getItems({ bookingId });
-      let item = (response.data || []).find((flowItem: BookingFlowItem) =>
-        flowItem.key === 'booking_confirmation_sent' ||
-        String(flowItem.title || '').toLowerCase() === 'send booking confirmation'
-      );
-
-      const sentAt = new Date().toLocaleString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-      const entry = `Booking confirmation sent ${sentAt}`;
-
-      if (!item?._id) {
-        const created = await bookingFlowApi.createItem({
-          bookingId,
-          title: 'Send booking confirmation',
-          description: 'Booking confirmation email has been sent to the client.',
-          category: 'booking',
-          offsetDays: 0,
-          status: 'pending',
-          notes: entry,
-          isBlocking: false,
-        });
-        item = created.data;
-      }
-
-      const existingNotes = String(item.notes || '').trim();
-      await bookingFlowApi.updateItem(item._id, {
-        status: 'completed',
-        completedAt: new Date().toISOString(),
-        notes: existingNotes ? `${existingNotes}\n${entry}` : entry,
-      });
-      setRequirementsRefreshKey((current) => current + 1);
-    } catch (error) {
-      console.warn('Booking confirmation email sent, but workflow item was not updated.', error);
-    }
   };
 
   const handleBookingRelatedUpdate = () => {
@@ -1181,6 +1143,9 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         to: recipientEmail,
         subject: email.subject,
         bodyText: email.bodyText,
+        templateId: email.templateId,
+        bookingFlowStepKey: email.bookingFlowStepKey || 'booking_confirmation_sent',
+        bookingFlowStatusOnSend: email.bookingFlowStatusOnSend || 'sent',
         clientId: client?._id,
         retreatId: retreat?._id,
         relatedEntityType: 'booking',
@@ -1233,10 +1198,13 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         subject: email.subject,
         bodyText: email.bodyText,
         bodyHtml: email.bodyHtml,
+        templateId: email.templateId,
         clientId: clientData?._id,
         retreatId: retreatData?._id,
         relatedEntityType: 'booking',
         relatedEntityId: bookingId,
+        bookingFlowStepKey: email.bookingFlowStepKey || 'booking_confirmation_sent',
+        bookingFlowStatusOnSend: email.bookingFlowStatusOnSend || 'sent',
         attachments: [{
           fileName,
           mimeType: 'application/pdf',
@@ -1249,7 +1217,6 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         alert(`Email was logged but Gmail failed to send it: ${response.data.errorMessage || 'Unknown error'}`);
         return;
       }
-      await markBookingConfirmationSent();
       alert('Booking confirmation email sent.');
     } catch (error: any) {
       console.error('Error sending booking confirmation email:', error);
@@ -1722,9 +1689,9 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
           initialValues={confirmationEmailDraft}
           onClose={() => setConfirmationEmailDraft(null)}
           onSent={async () => {
-            await markBookingConfirmationSent();
             setConfirmationEmailDraft(null);
             fetchBookingDetails();
+            setRequirementsRefreshKey((current) => current + 1);
           }}
         />
       )}

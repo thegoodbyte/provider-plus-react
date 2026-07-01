@@ -1237,6 +1237,8 @@ export interface EmailTemplate {
   category?: string;
   templateKey?: string;
   language?: 'en' | 'cz' | 'pl' | string;
+  bookingFlowStepKey?: string;
+  bookingFlowStatusOnSend?: 'pending' | 'sent' | 'received' | 'completed' | 'approved' | 'waived' | string;
   active?: boolean;
   notes?: string;
   tags?: string;

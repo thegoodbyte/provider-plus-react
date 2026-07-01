@@ -21,6 +21,8 @@ export interface EmailComposeInitialValues {
   retreatId?: string;
   relatedEntityType?: string;
   relatedEntityId?: string;
+  bookingFlowStepKey?: string;
+  bookingFlowStatusOnSend?: string;
   variables?: Record<string, any>;
   attachments?: Array<{
     fileName: string;
@@ -147,6 +149,8 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
         retreatId: initialValues.retreatId || undefined,
         relatedEntityType: initialValues.relatedEntityType || undefined,
         relatedEntityId: initialValues.relatedEntityId || undefined,
+        bookingFlowStepKey: initialValues.bookingFlowStepKey || undefined,
+        bookingFlowStatusOnSend: initialValues.bookingFlowStatusOnSend || undefined,
         variables: initialValues.variables,
         attachments: initialValues.attachments || undefined,
       });
