@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { FiCheckCircle, FiEdit2, FiExternalLink, FiMail, FiRefreshCw, FiSave, FiUpload } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { bookingDocumentsApi, bookingFlowApi, medicalArtifactsApi } from '../services/api';
-import { BookingFlowAction, BookingFlowItem, BookingFlowTemplate, MedicalArtifact } from '../types';
+import { BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, MedicalArtifact } from '../types';
 import AppleButton from './AppleButton';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 import LoadingSpinner from './LoadingSpinner';
@@ -69,6 +69,46 @@ const formatDisplayDate = (date?: Date | string | null): string => {
   return parsed.toLocaleString();
 };
 
+const getActionLogDate = (log: BookingFlowActionLog) => log.performedAt || log.createdAt;
+
+const describeActionLog = (log: BookingFlowActionLog) => {
+  return [
+    getActionLogDate(log) ? formatDisplayDate(getActionLogDate(log)) : '',
+    log.metadata?.sentEmailDisplayId ? `Email #${log.metadata.sentEmailDisplayId}` : '',
+    log.performedByEmail || '',
+    log.statusAfter ? `Status: ${String(log.statusAfter).replace(/_/g, ' ')}` : '',
+  ].filter(Boolean).join(' • ') || 'Recorded action';
+};
+
+const ActionHistoryHover: React.FC<{ logs: BookingFlowActionLog[]; label?: string }> = ({ logs, label = 'History' }) => {
+  if (logs.length === 0) return null;
+  const sortedLogs = [...logs].sort((a, b) => new Date(getActionLogDate(b) || 0).getTime() - new Date(getActionLogDate(a) || 0).getTime());
+
+  return (
+    <span className="group relative inline-flex items-center">
+      <button
+        type="button"
+        className="rounded-md border border-blue-100 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
+        title="Hover to see all actions"
+      >
+        {label} ({logs.length})
+      </button>
+      <span className="pointer-events-none absolute right-0 top-full z-50 mt-1 hidden w-80 max-w-[80vw] rounded-lg border border-gray-200 bg-white p-3 text-left text-xs text-gray-700 shadow-xl group-hover:block">
+        <span className="mb-2 block font-semibold text-gray-900">Action history</span>
+        <span className="block max-h-72 space-y-2 overflow-y-auto">
+          {sortedLogs.map((log, index) => (
+            <span key={log._id || `action-log-${index}`} className="block rounded-md bg-gray-50 p-2">
+              <span className="block font-medium text-gray-900">{describeActionLog(log)}</span>
+              {log.notes && <span className="mt-1 block whitespace-pre-wrap text-gray-600">{log.notes}</span>}
+              {log.actionLabel && <span className="mt-1 block text-gray-500">{log.actionLabel}</span>}
+            </span>
+          ))}
+        </span>
+      </span>
+    </span>
+  );
+};
+
 const toIsoFromDateTimeInput = (value: string) => value ? new Date(value).toISOString() : null;
 
 const getActionDateField = (item: BookingFlowItem): keyof BookingFlowItem => {
@@ -106,6 +146,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
   const [items, setItems] = useState<BookingFlowItem[]>([]);
   const [templates, setTemplates] = useState<BookingFlowTemplate[]>([]);
   const [libraryTemplates, setLibraryTemplates] = useState<BookingFlowTemplate[]>([]);
+  const [actionLogsByItem, setActionLogsByItem] = useState<Record<string, BookingFlowActionLog[]>>({});
   const [drafts, setDrafts] = useState<Record<string, StepDraft>>({});
   const [stepFilter, setStepFilter] = useState<StepFilter>('all');
   const [isEditing, setIsEditing] = useState(false);
@@ -218,6 +259,20 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
       }
 
       setItems(nextItems);
+      const logEntries = await Promise.all(
+        nextItems
+          .filter((item: BookingFlowItem) => item._id)
+          .map(async (item: BookingFlowItem) => {
+            try {
+              const logsResponse = await bookingFlowApi.getItemActionLogs(item._id!);
+              const logs = [...(logsResponse.data || [])].sort((a, b) => new Date(getActionLogDate(b) || 0).getTime() - new Date(getActionLogDate(a) || 0).getTime());
+              return [item._id!, logs] as const;
+            } catch {
+              return [item._id!, []] as const;
+            }
+          })
+      );
+      setActionLogsByItem(Object.fromEntries(logEntries));
       hydrateDrafts(nextItems);
       setIsEditing(false);
     } catch (err: any) {
@@ -631,6 +686,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                 const linkedBookingDocumentId = item.metadata?.latestBookingDocumentId;
                 const linkedBookingDocumentDisplayId = item.metadata?.latestBookingDocumentDisplayId;
                 const configuredActions = getConfiguredActions(item);
+                const itemActionLogs = item._id ? (actionLogsByItem[item._id] || []) : [];
 
                 return (
                   <div key={id} className={`grid gap-2 border-l-4 p-3 ${tone.stepStripe} ${isChecked ? 'bg-green-50/60' : overdue ? 'bg-red-50/70' : dueSoon ? 'bg-amber-50/70' : tone.stepCell}`} style={!isChecked && !overdue && !dueSoon ? stepStyle : undefined}>
@@ -679,18 +735,21 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                       <div className="flex items-center gap-2 lg:justify-end">
                         {configuredActions.map((action) => {
                           const savingKey = `${item._id}:${action.key}`;
+                          const actionLogs = itemActionLogs.filter((log) => (log.actionKey || 'default_email') === action.key);
                           return (
-                            <button
-                              key={action.key}
-                              type="button"
-                              disabled={!isEditing || actionSavingKey === savingKey || savingId === 'all'}
-                              onClick={() => runItemAction(item, action)}
-                              className="inline-flex items-center rounded-md border border-blue-200 bg-white px-2.5 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:bg-white"
-                              title={isEditing ? action.type : 'Unlock editing to run actions'}
-                            >
-                              {action.type === 'email' && <Icon icon={FiMail} className="mr-2 h-4 w-4" />}
-                              {actionSavingKey === savingKey ? 'Loading...' : action.label}
-                            </button>
+                            <span key={action.key} className="inline-flex items-center gap-1">
+                              <button
+                                type="button"
+                                disabled={!isEditing || actionSavingKey === savingKey || savingId === 'all'}
+                                onClick={() => runItemAction(item, action)}
+                                className="inline-flex items-center rounded-md border border-blue-200 bg-white px-2.5 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:bg-white"
+                                title={isEditing ? action.type : 'Unlock editing to run actions'}
+                              >
+                                {action.type === 'email' && <Icon icon={FiMail} className="mr-2 h-4 w-4" />}
+                                {actionSavingKey === savingKey ? 'Loading...' : action.label}
+                              </button>
+                              <ActionHistoryHover logs={actionLogs} />
+                            </span>
                           );
                         })}
                         {linkedArtifactId && (
