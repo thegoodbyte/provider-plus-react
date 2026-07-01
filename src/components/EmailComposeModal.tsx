@@ -19,6 +19,26 @@ const formatSentEmailReceipt = (sentEmail: any) => {
   return lines.join('\n');
 };
 
+const interpolateTemplate = (text: string | undefined, variables: Record<string, any> = {}) => {
+  return String(text || '').replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_, path) => {
+    const value = String(path).split('.').reduce((current, key) => current?.[key], variables);
+    return value === undefined || value === null ? '' : String(value);
+  });
+};
+
+const estimateAttachmentSize = (contentBase64: string) => {
+  const normalized = String(contentBase64 || '').replace(/^data:[^;]+;base64,/, '').replace(/\s/g, '');
+  if (!normalized) return 0;
+  return Math.max(0, Math.floor((normalized.length * 3) / 4));
+};
+
+const formatAttachmentSize = (bytes: number) => {
+  if (!bytes) return 'unknown size';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
 export interface EmailComposeInitialValues {
   to?: string;
   cc?: string;
@@ -122,15 +142,21 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
     if (!template) return;
     setFormData((prev) => ({
       ...prev,
-      subject: template.subject || prev.subject,
-      bodyText: template.bodyText || prev.bodyText,
+      subject: template.subject ? interpolateTemplate(template.subject, initialValues.variables) : prev.subject,
+      bodyText: template.bodyText ? interpolateTemplate(template.bodyText, initialValues.variables) : prev.bodyText,
     }));
-  }, [templates]);
+  }, [initialValues.variables, templates]);
 
   useEffect(() => {
     if (!initialValues.templateId || templates.length === 0) return;
+    if (initialValues.subject || initialValues.bodyText) return;
     handleTemplateChange(initialValues.templateId);
-  }, [handleTemplateChange, initialValues.templateId, templates]);
+  }, [handleTemplateChange, initialValues.bodyText, initialValues.subject, initialValues.templateId, templates]);
+
+  const attachments = initialValues.attachments || [];
+  const isBookingConfirmationEmail =
+    initialValues.relatedEntityType === 'booking' &&
+    (initialValues.bookingFlowStepKey === 'booking_confirmation_sent' || title.toLowerCase().includes('booking confirmation'));
 
   const handleSend = async () => {
     const to = formData.to.trim();
@@ -216,14 +242,28 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
             </div>
           )}
 
-          {(initialValues.attachments || []).length > 0 && (
+          {attachments.length > 0 && (
             <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
-              <div className="font-medium">Attached PDF</div>
-              {(initialValues.attachments || []).map((attachment) => (
-                <div key={attachment.fileName} className="mt-1 font-mono text-xs">
-                  {attachment.fileName}
-                </div>
-              ))}
+              <div className="font-medium">{attachments.length} attachment{attachments.length === 1 ? '' : 's'} will be sent</div>
+              {attachments.map((attachment) => {
+                const sizeText = formatAttachmentSize(estimateAttachmentSize(attachment.contentBase64));
+                return (
+                  <div key={attachment.fileName} className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                    <span className="font-mono">{attachment.fileName}</span>
+                    <span className="text-blue-700">{attachment.mimeType || 'file'}</span>
+                    <span className="text-blue-700">{sizeText}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {attachments.length === 0 && isBookingConfirmationEmail && (
+            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
+              <div className="font-medium">No attachment is ready</div>
+              <div className="mt-1 text-xs">
+                This booking confirmation email will be sent without the PDF unless you close this window and prepare it again.
+              </div>
             </div>
           )}
 
