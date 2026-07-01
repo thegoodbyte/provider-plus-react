@@ -414,9 +414,9 @@ export const communicationsApi = {
     () => api.get<EmailTemplate>(`/communications/templates/category/${category}/${language}`)
   ),
   getNextTemplateDisplayId: () => api.get<number>('/communications/templates/next-display-id'),
-  seedDefaultTemplates: () => {
+  seedDefaultTemplates: (options: { overwrite?: boolean; templateKey?: string; language?: string } = {}) => {
     cacheService.clearPattern('communications:templates');
-    return api.post<{ created: number; updated: number; templates: EmailTemplate[] }>('/communications/templates/seed-defaults', {});
+    return api.post<{ created: number; updated: number; skipped: number; templates: EmailTemplate[] }>('/communications/templates/seed-defaults', options);
   },
   createTemplate: (data: Omit<EmailTemplate, '_id' | 'createdAt' | 'updatedAt'>) => {
     cacheService.clearPattern('communications:templates');

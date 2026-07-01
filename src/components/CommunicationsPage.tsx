@@ -234,11 +234,14 @@ const CommunicationsPage: React.FC = () => {
   };
 
   const handleSeedDefaultTemplates = async () => {
+    const overwrite = window.confirm(
+      'Seed default templates?\n\nOK: reset existing default templates back to code defaults and create missing templates.\nCancel: create only missing default templates and keep existing edits unchanged.',
+    );
     setSeedingTemplates(true);
     try {
-      const response = await communicationsApi.seedDefaultTemplates();
+      const response = await communicationsApi.seedDefaultTemplates({ overwrite });
       await loadAll();
-      alert(`Default templates seeded. Created: ${response.data.created}. Updated: ${response.data.updated}.`);
+      alert(`Default templates seeded. Created: ${response.data.created}. Updated: ${response.data.updated}. Skipped unchanged existing templates: ${response.data.skipped || 0}.`);
     } catch (error: any) {
       console.error('Error seeding default templates:', error);
       alert(error?.response?.data?.message || error?.message || 'Unable to seed default templates.');
