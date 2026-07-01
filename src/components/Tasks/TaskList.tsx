@@ -95,24 +95,16 @@ export const TaskList: React.FC<TaskListProps> = ({
   };
 
   const getUrgencyBadge = (urgency: string) => {
-    const color = taskService.getUrgencyColor(urgency);
     return (
-      <span
-        className={`urgency-badge urgency-${urgency}`}
-        style={{ backgroundColor: color }}
-      >
+      <span className={`urgency-badge urgency-${urgency}`}>
         {urgency.toUpperCase()}
       </span>
     );
   };
 
   const getStatusBadge = (status: string) => {
-    const color = taskService.getStatusColor(status);
     return (
-      <span
-        className={`status-badge status-${status.replace('_', '-')}`}
-        style={{ backgroundColor: color }}
-      >
+      <span className={`status-badge status-${status.replace('_', '-')}`}>
         {status.replace('_', ' ').toUpperCase()}
       </span>
     );
@@ -189,24 +181,29 @@ export const TaskList: React.FC<TaskListProps> = ({
             }`}
           >
             <div className="task-cell task-name">
+              <span className="task-cell-label">Task</span>
               <div className="task-title">{task.name}</div>
             </div>
 
             <div className="task-cell">
+              <span className="task-cell-label">Type</span>
               <span className={`type-badge type-${task.type}`}>
                 {task.type.toUpperCase()}
               </span>
             </div>
 
             <div className="task-cell">
+              <span className="task-cell-label">Urgency</span>
               {getUrgencyBadge(task.urgency)}
             </div>
 
             <div className="task-cell">
+              <span className="task-cell-label">Status</span>
               {getStatusBadge(task.status)}
             </div>
 
             <div className="task-cell due-date">
+              <span className="task-cell-label">Due</span>
               {task.dueDate ? (
                 <div>
                   <div className="due-date-text">
@@ -222,6 +219,7 @@ export const TaskList: React.FC<TaskListProps> = ({
             </div>
 
             <div className="task-cell">
+              <span className="task-cell-label">Booking</span>
               {task.bookingId ? (
                 <div className="booking-info">
                   <div className="booking-number">{getBookingNumber(task.bookingId)}</div>
@@ -232,6 +230,7 @@ export const TaskList: React.FC<TaskListProps> = ({
             </div>
 
             <div className="task-cell">
+              <span className="task-cell-label">Client</span>
               {task.clientId && typeof task.clientId === 'object' ? (
                 <div className="client-info">
                   <div className="client-name">
@@ -245,6 +244,7 @@ export const TaskList: React.FC<TaskListProps> = ({
             </div>
 
             <div className="task-cell">
+              <span className="task-cell-label">Retreat</span>
               {task.retreatId && typeof task.retreatId === 'object' ? (
                 <div className="retreat-info">
                   <div className="retreat-name">{(task.retreatId as any).name}</div>
@@ -256,10 +256,11 @@ export const TaskList: React.FC<TaskListProps> = ({
             </div>
 
             <div className="task-cell actions">
+              <span className="task-cell-label">Actions</span>
               <div className="action-buttons">
                 {task.status !== 'completed' && (
                   <button
-                    className="btn btn-sm btn-icon btn-success"
+                    className="task-action-btn task-action-complete"
                     onClick={() => onCompleteTask(task.id)}
                     title="Mark as complete"
                     aria-label="Mark task as complete"
@@ -268,7 +269,7 @@ export const TaskList: React.FC<TaskListProps> = ({
                   </button>
                 )}
                 <button
-                  className="btn btn-sm btn-icon btn-secondary"
+                  className="task-action-btn task-action-edit"
                   onClick={() => onEditTask(task)}
                   title="Edit task"
                   aria-label="Edit task"
@@ -276,7 +277,7 @@ export const TaskList: React.FC<TaskListProps> = ({
                   ✎
                 </button>
                 <button
-                  className="btn btn-sm btn-icon btn-danger"
+                  className="task-action-btn task-action-delete"
                   onClick={() => onDeleteTask(task.id)}
                   title="Delete task"
                   aria-label="Delete task"
