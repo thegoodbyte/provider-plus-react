@@ -1214,6 +1214,47 @@ export interface BookingFlowProgress {
   gates: BookingFlowGate[];
 }
 
+export interface BookingDocumentType {
+  _id?: string;
+  key: string;
+  label: string;
+  description?: string;
+  active?: boolean;
+  order?: number;
+  bookingFlowReceivedStepKey?: string;
+  bookingFlowSentStepKey?: string;
+  reviewRequired?: boolean;
+  reviewRequestType?: MedicalReviewRequest['requestType'];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface BookingDocument {
+  _id?: string;
+  display_id?: number;
+  bookingId: string | RetreatClient;
+  clientId?: string | Client;
+  retreatId?: string | Retreat;
+  documentType: string;
+  title: string;
+  description?: string;
+  status?: 'stored' | 'superseded' | 'deleted';
+  receivedAt?: Date | string;
+  bookingFlowItemId?: string | BookingFlowItem;
+  files?: Array<{
+    fileName?: string;
+    s3Key?: string;
+    filePath?: string;
+    url?: string;
+    mimeType?: string;
+    size?: number;
+    uploadedAt?: Date | string;
+  }>;
+  metadata?: Record<string, any>;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface PaymentRequest {
   _id?: string;
   display_id?: number;

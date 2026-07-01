@@ -1,11 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Eye, FileText, RefreshCw, Send, Upload } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { bookingFlowApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
-import { BookingFlowActionLog, BookingFlowItem, MedicalArtifact, MedicalReviewRequest } from '../types';
+import { bookingDocumentsApi, bookingFlowApi } from '../services/api';
+import { BookingDocument, BookingDocumentType, BookingFlowActionLog, BookingFlowItem } from '../types';
 import './BookingMedicalUpload.css';
-
-type BookingDocumentType = string;
 
 interface BookingDocumentsUploadProps {
   bookingId: string;
@@ -15,28 +12,40 @@ interface BookingDocumentsUploadProps {
   onUploadComplete?: () => void;
 }
 
-const documentSections: Array<{
-  type: BookingDocumentType;
+type DocumentSection = {
+  type: string;
   title: string;
   description: string;
-  requestType?: MedicalReviewRequest['requestType'];
-}> = [
-  { type: 'contract', title: 'Contract', description: 'Signed client contract for this booking.' },
-  { type: 'food_intake', title: 'Food Form', description: 'Food intake, allergies, and kitchen notes.', requestType: 'food_review' },
-  { type: 'medications_form', title: 'Medications Form', description: 'Initial or follow-up medication information.', requestType: 'medications_review' },
-  { type: 'questionnaire', title: 'Questionnaire Form', description: 'Client questionnaire submitted for this booking.', requestType: 'questionnaire_review' },
+  sentItem?: BookingFlowItem;
+  receivedItem?: BookingFlowItem;
+};
+
+const DEFAULT_DOCUMENT_TYPES: BookingDocumentType[] = [
+  { key: 'contract', label: 'Contract', description: 'Signed client contract for this booking.', order: 10, bookingFlowReceivedStepKey: 'contract_signed' },
+  { key: 'food_intake', label: 'Food Form', description: 'Food intake, allergies, and kitchen notes.', order: 20 },
+  { key: 'medications_form', label: 'Medications Form', description: 'Initial or follow-up medication information.', order: 30 },
+  { key: 'questionnaire', label: 'Questionnaire Form', description: 'Client questionnaire submitted for this booking.', order: 40 },
+  { key: 'health_assessment', label: 'Health Assessment', description: 'General health assessment for this booking.', order: 50 },
 ];
 
 const SENT_MATCH = /\bsent|send|request(ed)?\b/i;
 const RECEIVED_MATCH = /\breceived|signed|submitted|uploaded|complete(d)?\b/i;
 
-const humanizeArtifactType = (value: string) => value
+const normalizeKey = (value?: string) => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+
+const humanizeKey = (value: string) => value
   .split(/[_-]+/)
   .filter(Boolean)
   .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
   .join(' ');
 
-const getItemExpectedArtifact = (item: BookingFlowItem) => String(item.metadata?.expectedArtifact || '').trim();
+const getItemExpectedDocument = (item: BookingFlowItem) => normalizeKey(
+  item.metadata?.expectedBookingDocument
+  || item.metadata?.expectedDocument
+  || item.metadata?.expectedArtifact
+  || item.metadata?.expectedArtifactPurpose
+  || ''
+);
 
 const getApiErrorMessage = (error: any) => {
   const status = error?.response?.status;
@@ -49,7 +58,7 @@ const getApiErrorMessage = (error: any) => {
 
 const formatDate = (value?: Date | string) => {
   if (!value) return '-';
-  return new Date(value).toLocaleDateString();
+  return new Date(value).toLocaleString();
 };
 
 const formatBytes = (size?: number) => {
@@ -66,96 +75,76 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
   retreatId,
   onUploadComplete,
 }) => {
-  const navigate = useNavigate();
-  const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
+  const [documents, setDocuments] = useState<BookingDocument[]>([]);
+  const [documentTypes, setDocumentTypes] = useState<BookingDocumentType[]>([]);
   const [flowItems, setFlowItems] = useState<BookingFlowItem[]>([]);
   const [actionLogsByItem, setActionLogsByItem] = useState<Record<string, BookingFlowActionLog[]>>({});
-  const [reviewsByArtifact, setReviewsByArtifact] = useState<Record<string, MedicalReviewRequest[]>>({});
   const [loading, setLoading] = useState(false);
-  const [uploadingType, setUploadingType] = useState<BookingDocumentType | null>(null);
+  const [uploadingType, setUploadingType] = useState<string | null>(null);
   const [sendingItemId, setSendingItemId] = useState<string | null>(null);
   const [markOnUpload, setMarkOnUpload] = useState<Record<string, boolean>>({});
-  const [creatingReviewFor, setCreatingReviewFor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const configuredDocumentSections = useMemo(() => {
-    const configured = flowItems
-      .map((item) => getItemExpectedArtifact(item))
-      .filter(Boolean)
-      .filter((type, index, all) => all.indexOf(type) === index)
+  const sections = useMemo<DocumentSection[]>(() => {
+    const typeMap = new Map<string, BookingDocumentType>();
+    [...DEFAULT_DOCUMENT_TYPES, ...documentTypes]
+      .filter((type) => type.active !== false)
+      .forEach((type) => typeMap.set(normalizeKey(type.key), { ...type, key: normalizeKey(type.key) }));
+
+    flowItems.forEach((item) => {
+      const expected = getItemExpectedDocument(item);
+      if (expected && !typeMap.has(expected)) {
+        typeMap.set(expected, {
+          key: expected,
+          label: humanizeKey(expected),
+          description: item.description || `Document configured from booking step ${item.title}.`,
+        });
+      }
+    });
+
+    return Array.from(typeMap.values())
+      .sort((a, b) => (a.order || 0) - (b.order || 0) || a.label.localeCompare(b.label))
       .map((type) => {
-        const matchingItems = flowItems.filter((item) => getItemExpectedArtifact(item) === type);
-        const fallback = documentSections.find((section) => section.type === type);
-        const receivedItem = matchingItems.find((item) => RECEIVED_MATCH.test(`${item.key} ${item.title}`));
-        const sentItem = matchingItems.find((item) => SENT_MATCH.test(`${item.key} ${item.title}`));
+        const key = normalizeKey(type.key);
+        const matchingItems = flowItems.filter((item) => {
+          const expected = getItemExpectedDocument(item);
+          return expected === key
+            || normalizeKey(item.metadata?.documentType) === key
+            || normalizeKey(item.key) === normalizeKey(type.bookingFlowReceivedStepKey)
+            || normalizeKey(item.key) === normalizeKey(type.bookingFlowSentStepKey);
+        });
+        const sentItem = matchingItems.find((item) => normalizeKey(item.key) === normalizeKey(type.bookingFlowSentStepKey))
+          || matchingItems.find((item) => SENT_MATCH.test(`${item.key} ${item.title}`));
+        const receivedItem = matchingItems.find((item) => normalizeKey(item.key) === normalizeKey(type.bookingFlowReceivedStepKey))
+          || matchingItems.find((item) => RECEIVED_MATCH.test(`${item.key} ${item.title}`));
         return {
-          type,
-          title: fallback?.title || humanizeArtifactType(type),
-          description: fallback?.description || receivedItem?.description || sentItem?.description || `Document configured from booking step ${receivedItem?.title || sentItem?.title || type}.`,
-          requestType: fallback?.requestType,
+          type: key,
+          title: type.label || humanizeKey(key),
+          description: type.description || receivedItem?.description || sentItem?.description || `Upload ${humanizeKey(key)} for this booking.`,
           sentItem,
           receivedItem,
-          items: matchingItems,
         };
       });
-
-    const configuredTypes = new Set(configured.map((section) => section.type));
-    const fallback = documentSections
-      .filter((section) => !configuredTypes.has(section.type))
-      .map((section) => ({ ...section, sentItem: undefined, receivedItem: undefined, items: [] as BookingFlowItem[] }));
-
-    return [...configured, ...fallback];
-  }, [flowItems]);
+  }, [documentTypes, flowItems]);
 
   const loadDocuments = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [response, contextualResponse, flowResponse] = await Promise.all([
-        medicalArtifactsApi.getAll({ bookingId }),
-        clientId
-          ? medicalArtifactsApi.getAll({
-              clientId,
-              retreatId,
-              contextType: 'booking',
-              purpose: 'booking_requirement',
-            })
-          : Promise.resolve({ data: [] as MedicalArtifact[] }),
+      const [typesResponse, documentsResponse, flowResponse] = await Promise.all([
+        bookingDocumentsApi.getTypes(),
+        bookingDocumentsApi.getAll({ bookingId }),
         bookingFlowApi.getItems({ bookingId }),
       ]);
+
       const items: BookingFlowItem[] = flowResponse.data || [];
+      setDocumentTypes(typesResponse.data || []);
+      setDocuments(documentsResponse.data || []);
       setFlowItems(items);
-      const directArtifacts: MedicalArtifact[] = response.data || [];
-      const contextualArtifacts: MedicalArtifact[] = contextualResponse.data || [];
-      const bookingArtifacts = [...directArtifacts, ...contextualArtifacts.filter((artifact) => {
-        const artifactBookingId = typeof artifact.bookingId === 'string' ? artifact.bookingId : '';
-        return !artifactBookingId || artifactBookingId === bookingId || artifact.data?.bookingId === bookingId;
-      })].filter((artifact, index, all) => {
-        const key = artifact._id || `${artifact.artifactType}-${artifact.title}-${artifact.receivedAt || artifact.createdAt || index}`;
-        return all.findIndex((candidate) => (candidate._id || `${candidate.artifactType}-${candidate.title}-${candidate.receivedAt || candidate.createdAt || index}`) === key) === index;
-      });
-      const sectionTypes = new Set([
-        ...documentSections.map((section) => section.type),
-        ...items.map((item) => String(item.metadata?.expectedArtifact || '').trim()).filter(Boolean),
-      ]);
-      const documentArtifacts = bookingArtifacts.filter((artifact) => sectionTypes.has(String(artifact.artifactType || '')));
-      setArtifacts(documentArtifacts);
-      const reviewEntries = await Promise.all(
-        documentArtifacts
-          .filter((artifact) => artifact._id)
-          .map(async (artifact) => {
-            try {
-              const reviewsResponse = await medicalReviewRequestsApi.getByArtifact(artifact._id!);
-              return [artifact._id!, reviewsResponse.data || []] as const;
-            } catch {
-              return [artifact._id!, []] as const;
-            }
-          })
-      );
-      setReviewsByArtifact(Object.fromEntries(reviewEntries));
+
       const logEntries = await Promise.all(
         items
-          .filter((item) => item._id && item.metadata?.expectedArtifact)
+          .filter((item) => item._id && (getItemExpectedDocument(item) || item.metadata?.expectedArtifact))
           .map(async (item) => {
             try {
               const logsResponse = await bookingFlowApi.getItemActionLogs(item._id!);
@@ -169,9 +158,9 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
       setMarkOnUpload((current) => {
         const next = { ...current };
         items.forEach((item) => {
-          const artifactType = String(item.metadata?.expectedArtifact || '').trim();
-          if (artifactType && RECEIVED_MATCH.test(`${item.key} ${item.title}`) && next[artifactType] === undefined) {
-            next[artifactType] = true;
+          const expected = getItemExpectedDocument(item);
+          if (expected && RECEIVED_MATCH.test(`${item.key} ${item.title}`) && next[expected] === undefined) {
+            next[expected] = true;
           }
         });
         return next;
@@ -181,61 +170,48 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [bookingId, clientId, retreatId]);
+  }, [bookingId]);
 
   useEffect(() => {
     loadDocuments();
   }, [loadDocuments]);
 
-  const artifactsByType = useMemo(() => {
-    return configuredDocumentSections.reduce<Record<BookingDocumentType, MedicalArtifact[]>>((acc, section) => {
-      acc[section.type] = artifacts
-        .filter((artifact) => artifact.artifactType === section.type)
+  const documentsByType = useMemo(() => {
+    return sections.reduce<Record<string, BookingDocument[]>>((acc, section) => {
+      acc[section.type] = documents
+        .filter((document) => normalizeKey(document.documentType) === section.type)
         .sort((a, b) => new Date(b.receivedAt || b.createdAt || 0).getTime() - new Date(a.receivedAt || a.createdAt || 0).getTime());
       return acc;
     }, {});
-  }, [artifacts, configuredDocumentSections]);
+  }, [documents, sections]);
 
-  const handleUpload = async (section: (typeof configuredDocumentSections)[number], files: FileList | null) => {
+  const handleUpload = async (section: DocumentSection, files: FileList | null) => {
     if (!files?.length) return;
 
     setUploadingType(section.type);
     setError(null);
     try {
       const fileArray = Array.from(files);
-      const created = await medicalArtifactsApi.create({
+      const created = await bookingDocumentsApi.create({
+        bookingId,
         clientId,
         retreatId,
-        bookingId,
-        artifactType: section.type as any,
-        title: fileArray[0]?.name || `${section?.title || 'Booking document'}${bookingNumber ? ` - ${bookingNumber}` : ''}`,
-        description: section?.description,
-        source: 'admin_upload',
-        status: 'stored',
-        purpose: 'booking_requirement',
-        data: {
-          bookingId,
-          bookingFlowItemId: section.receivedItem?._id,
+        documentType: section.type,
+        title: fileArray[0]?.name || `${section.title}${bookingNumber ? ` - ${bookingNumber}` : ''}`,
+        description: section.description,
+        bookingFlowItemId: section.receivedItem?._id,
+        metadata: {
+          bookingNumber,
           markBookingStepOnUpload: !!markOnUpload[section.type],
         },
       });
 
       if (created.data._id) {
         try {
-          if (section?.requestType) {
-            const review = await createReviewRequest(created.data, section.requestType);
-            if (!review?.display_id) {
-              throw new Error('Medical review request could not be created before upload.');
-            }
-            await medicalArtifactsApi.uploadFiles(created.data._id, fileArray, {
-              reviewRequestNumber: review.display_id,
-            });
-          } else {
-            await medicalArtifactsApi.uploadFiles(created.data._id, fileArray);
-          }
+          await bookingDocumentsApi.uploadFiles(created.data._id, fileArray);
         } catch (uploadError) {
-          await medicalArtifactsApi.delete(created.data._id).catch((rollbackError) => {
-            console.error('Error rolling back empty medical artifact:', rollbackError);
+          await bookingDocumentsApi.delete(created.data._id).catch((rollbackError) => {
+            console.error('Error rolling back empty booking document:', rollbackError);
           });
           throw uploadError;
         }
@@ -248,8 +224,8 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
           statusAfter: 'received',
           notes: `${section.title} uploaded from booking documents.`,
           metadata: {
-            artifactType: section.type,
-            medicalArtifactId: created.data._id,
+            documentType: section.type,
+            bookingDocumentId: created.data._id,
             fileNames: fileArray.map((file) => file.name),
           },
         });
@@ -261,24 +237,6 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
       setError(getApiErrorMessage(uploadError));
     } finally {
       setUploadingType(null);
-    }
-  };
-
-  const createReviewRequest = async (artifact: MedicalArtifact, requestType: MedicalReviewRequest['requestType']) => {
-    if (!artifact._id) return undefined;
-    setCreatingReviewFor(artifact._id);
-    setError(null);
-    try {
-      const response = await medicalReviewRequestsApi.createFromArtifact(artifact._id, requestType, {
-        medicalStaffNotes: `${artifact.title} linked to booking ${bookingNumber || bookingId}.`,
-      });
-      await loadDocuments();
-      return response.data;
-    } catch (reviewError: any) {
-      setError(reviewError?.response?.data?.message || reviewError?.message || 'Unable to create medical review request.');
-      return undefined;
-    } finally {
-      setCreatingReviewFor(null);
     }
   };
 
@@ -301,7 +259,7 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
       <div className="booking-documents-header">
         <div>
           <h3>Booking Documents</h3>
-          <p>Upload forms tied directly to this booking. Each upload is stored as a medical artifact with the booking ID.</p>
+          <p>Upload forms tied directly to this booking. Each upload is stored as a booking document with the booking ID.</p>
         </div>
         <button className="btn btn-sm btn-secondary" onClick={loadDocuments} disabled={loading}>
           <RefreshCw size={16} /> {loading ? 'Loading...' : 'Refresh'}
@@ -311,8 +269,8 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
       {error && <div className="alert alert-danger">{error}</div>}
 
       <div className="booking-documents-grid">
-        {configuredDocumentSections.map((section) => {
-          const sectionArtifacts = artifactsByType[section.type] || [];
+        {sections.map((section) => {
+          const sectionDocuments = documentsByType[section.type] || [];
           const inputId = `booking-document-${section.type}`;
           const isUploading = uploadingType === section.type;
           const sentLogs = section.sentItem?._id ? (actionLogsByItem[section.sentItem._id] || []) : [];
@@ -350,44 +308,28 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
               )}
 
               <div className="booking-document-files">
-                {sectionArtifacts.length === 0 ? (
+                {sectionDocuments.length === 0 ? (
                   <div className="booking-document-empty">No file uploaded yet.</div>
                 ) : (
-                  sectionArtifacts.map((artifact) => (
-                    <div key={artifact._id} className="booking-document-file-row">
+                  sectionDocuments.map((document) => (
+                    <div key={document._id} className="booking-document-file-row">
                       <div>
-                        <strong>{artifact.title}</strong>
-                        <div className="upload-date">Received: {formatDate(artifact.receivedAt || artifact.createdAt)}</div>
+                        <strong>{document.title}</strong>
+                        <div className="upload-date">Received: {formatDate(document.receivedAt || document.createdAt)}</div>
                       </div>
                       <div className="booking-document-file-list">
-                        {(artifact.files || []).map((file, index) => (
-                          <span key={`${file.s3Key || file.filePath || file.fileName}-${index}`}>
-                            {file.fileName || 'Uploaded file'} ({formatBytes(file.size)})
-                          </span>
-                        ))}
-                      </div>
-                      <div className="booking-medical-actions">
-                        {artifact._id && (
-                          <button className="btn btn-sm btn-secondary" type="button" onClick={() => navigate(`/medical-artifacts/${artifact._id}`)}>
-                            <Eye size={16} /> Artifact
+                        {(document.files || []).map((file, index) => (
+                          <button
+                            key={`${file.s3Key || file.filePath || file.fileName}-${index}`}
+                            type="button"
+                            className="booking-document-file-link"
+                            onClick={() => file.url && window.open(file.url, '_blank', 'noopener,noreferrer')}
+                            disabled={!file.url}
+                            title={file.url ? 'Open file' : 'File URL unavailable'}
+                          >
+                            <Eye size={14} /> {file.fileName || 'Uploaded file'} ({formatBytes(file.size)})
                           </button>
-                        )}
-                        {section.requestType && (
-                          (reviewsByArtifact[artifact._id || ''] || [])[0]?._id ? (
-                            <button className="btn btn-sm btn-secondary" type="button" onClick={() => navigate(`/medical-review-requests/${(reviewsByArtifact[artifact._id || ''] || [])[0]._id}`)}>
-                              <Eye size={16} /> Review #{(reviewsByArtifact[artifact._id || ''] || [])[0].display_id || (reviewsByArtifact[artifact._id || ''] || [])[0]._id}
-                            </button>
-                          ) : (
-                            <button
-                              className="btn btn-sm btn-primary"
-                              type="button"
-                              disabled={!artifact._id || creatingReviewFor === artifact._id}
-                              onClick={() => createReviewRequest(artifact, section.requestType!)}
-                            >
-                              <Send size={16} /> {creatingReviewFor === artifact._id ? 'Creating...' : 'Create Review'}
-                            </button>
-                          )
-                        )}
+                        ))}
                       </div>
                     </div>
                   ))

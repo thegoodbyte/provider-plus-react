@@ -1,0 +1,111 @@
+.booking-document-types-page {
+  padding: 24px;
+}
+
+.booking-document-types-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.booking-document-types-header h1 {
+  margin: 0 0 6px;
+  color: #111827;
+  font-size: 28px;
+}
+
+.booking-document-types-header p {
+  margin: 0;
+  color: #6b7280;
+}
+
+.booking-document-types-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.booking-document-types-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.booking-document-type-row {
+  padding: 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.booking-document-type-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.booking-document-type-row input,
+.booking-document-type-row textarea {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 9px 10px;
+  color: #111827;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.description-field {
+  margin-top: 12px;
+}
+
+.booking-document-type-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.booking-document-type-footer .checkbox-row {
+  flex-direction: row;
+  align-items: center;
+  width: fit-content;
+  text-transform: none;
+}
+
+.booking-document-type-footer .checkbox-row input {
+  width: auto;
+}
+
+.empty-state {
+  padding: 24px;
+  border: 1px dashed #d1d5db;
+  border-radius: 8px;
+  color: #6b7280;
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .booking-document-types-header,
+  .booking-document-type-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

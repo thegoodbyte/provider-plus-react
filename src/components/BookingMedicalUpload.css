@@ -89,6 +89,30 @@
     font-size: 13px;
 }
 
+.booking-document-file-link {
+    display: inline-flex;
+    width: fit-content;
+    align-items: center;
+    gap: 6px;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: #2563eb;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.booking-document-file-link:hover {
+    text-decoration: underline;
+}
+
+.booking-document-file-link:disabled {
+    color: #9ca3af;
+    cursor: not-allowed;
+    text-decoration: none;
+}
+
 .current-medical-section {
     background: white;
     padding: 20px;

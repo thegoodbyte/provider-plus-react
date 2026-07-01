@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, MailSettings, EmailTemplate, SentEmail } from '../types';
+import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, MailSettings, EmailTemplate, SentEmail } from '../types';
 import { authService } from './authService';
 import { cacheService } from './cacheService';
 import { API_BASE_URL } from '../config/api.config';
@@ -1127,6 +1127,54 @@ export const bookingFlowApi = {
   deleteItem: (id: string) => {
     cacheService.clearPattern('booking-flow:');
     return api.delete(`/booking-flow/items/${id}`);
+  },
+};
+
+export const bookingDocumentsApi = {
+  getTypes: (includeInactive = false) => cachedGet<BookingDocumentType[]>(
+    `booking-documents:types:${includeInactive}`,
+    () => api.get<BookingDocumentType[]>(`/booking-documents/types${includeInactive ? '?includeInactive=true' : ''}`)
+  ),
+  seedTypes: () => {
+    cacheService.clearPattern('booking-documents:');
+    return api.post<{ created: number; updated: number; types: BookingDocumentType[] }>('/booking-documents/types/seed', {});
+  },
+  createType: (data: Omit<BookingDocumentType, '_id' | 'createdAt' | 'updatedAt'>) => {
+    cacheService.clearPattern('booking-documents:');
+    return api.post<BookingDocumentType>('/booking-documents/types', data);
+  },
+  updateType: (id: string, data: Partial<BookingDocumentType>) => {
+    cacheService.clearPattern('booking-documents:');
+    return api.patch<BookingDocumentType>(`/booking-documents/types/${id}`, data);
+  },
+  deleteType: (id: string) => {
+    cacheService.clearPattern('booking-documents:');
+    return api.delete(`/booking-documents/types/${id}`);
+  },
+  getAll: (params: { bookingId?: string; clientId?: string; retreatId?: string; documentType?: string } = {}) => {
+    const query = new URLSearchParams();
+    if (params.bookingId) query.set('bookingId', params.bookingId);
+    if (params.clientId) query.set('clientId', params.clientId);
+    if (params.retreatId) query.set('retreatId', params.retreatId);
+    if (params.documentType) query.set('documentType', params.documentType);
+    const key = `booking-documents:${query.toString()}`;
+    return cachedGet<BookingDocument[]>(key, () => api.get<BookingDocument[]>(`/booking-documents?${query.toString()}`));
+  },
+  create: (data: Partial<BookingDocument> & { bookingId: string; documentType: string }) => {
+    cacheService.clearPattern('booking-documents:');
+    return api.post<BookingDocument>('/booking-documents', data);
+  },
+  uploadFiles: (id: string, files: File[]) => {
+    cacheService.clearPattern('booking-documents:');
+    const formData = new FormData();
+    files.forEach((file) => formData.append('files', file));
+    return api.post(`/booking-documents/${id}/upload-files`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  delete: (id: string) => {
+    cacheService.clearPattern('booking-documents:');
+    return api.delete(`/booking-documents/${id}`);
   },
 };
 

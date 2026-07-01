@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FiCheckCircle, FiEdit2, FiExternalLink, FiMail, FiRefreshCw, FiSave, FiUpload } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
-import { bookingFlowApi, medicalArtifactsApi } from '../services/api';
+import { bookingDocumentsApi, bookingFlowApi, medicalArtifactsApi } from '../services/api';
 import { BookingFlowAction, BookingFlowItem, BookingFlowTemplate, MedicalArtifact } from '../types';
 import AppleButton from './AppleButton';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
@@ -26,12 +26,18 @@ const artifactUploadsByStep: Record<string, {
   documentType: MedicalArtifact['documentType'];
   title: string;
 }> = {
-  contract_signed: { artifactType: 'contract', documentStage: 'additional', documentType: 'other', title: 'Signed Contract' },
   ekg_received: { artifactType: 'ekg', documentStage: 'entry', documentType: 'EKG', title: 'Entry EKG' },
   liver_received: { artifactType: 'liver_panel', documentStage: 'entry', documentType: 'Liver', title: 'Entry Liver Panel' },
-  medications_form_initial_received: { artifactType: 'medications_form', documentStage: 'entry', documentType: 'Medications', title: 'Medications Form' },
-  medications_form_30_day_received: { artifactType: 'medications_form', documentStage: 'additional', documentType: 'Medications', title: '30-Day Medications Form' },
-  questionnaire_received: { artifactType: 'questionnaire', documentStage: 'additional', documentType: 'other', title: 'Questionnaire' },
+};
+
+const bookingDocumentUploadsByStep: Record<string, {
+  documentType: string;
+  title: string;
+}> = {
+  contract_signed: { documentType: 'contract', title: 'Signed Contract' },
+  medications_form_initial_received: { documentType: 'medications_form', title: 'Medications Form' },
+  medications_form_30_day_received: { documentType: 'medications_form', title: '30-Day Medications Form' },
+  questionnaire_received: { documentType: 'questionnaire', title: 'Questionnaire' },
 };
 
 const getObjectId = (value: any): string => {
@@ -300,7 +306,8 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
   const uploadStepArtifact = async (item: BookingFlowItem, files: FileList | null) => {
     if (!files?.length || !selectedBooking) return;
     const config = artifactUploadsByStep[item.key];
-    if (!config || !item._id) return;
+    const documentConfig = bookingDocumentUploadsByStep[item.key];
+    if ((!config && !documentConfig) || !item._id) return;
 
     const clientId = getObjectId(selectedBooking.clientId || item.clientId);
     const retreatId = getRetreatId(selectedBooking) || getObjectId(item.retreatId);
@@ -313,6 +320,45 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
     setError(null);
     try {
       const fileArray = Array.from(files);
+      if (documentConfig) {
+        const createdDocument = await bookingDocumentsApi.create({
+          bookingId: selectedBookingId,
+          clientId,
+          retreatId,
+          documentType: documentConfig.documentType,
+          title: fileArray[0]?.name || documentConfig.title,
+          description: `${documentConfig.title} linked to booking ${selectedBooking.bookingNumber || selectedBookingId}.`,
+          bookingFlowItemId: item._id,
+          metadata: {
+            bookingNumber: selectedBooking.bookingNumber,
+            bookingFlowItemKey: item.key,
+          },
+        });
+
+        if (createdDocument.data._id) {
+          try {
+            await bookingDocumentsApi.uploadFiles(createdDocument.data._id, fileArray);
+          } catch (uploadError) {
+            await bookingDocumentsApi.delete(createdDocument.data._id).catch((rollbackError) => {
+              console.error('Error rolling back empty booking document:', rollbackError);
+            });
+            throw uploadError;
+          }
+        }
+
+        await updateItem(item, {
+          status: 'received',
+          receivedAt: new Date().toISOString(),
+          metadata: {
+            ...(item.metadata || {}),
+            latestBookingDocumentId: createdDocument.data._id,
+            latestBookingDocumentDisplayId: createdDocument.data.display_id,
+            latestFileName: fileArray[0]?.name,
+          },
+        } as Partial<BookingFlowItem>);
+        return;
+      }
+
       const created = await medicalArtifactsApi.create({
         clientId,
         retreatId,
@@ -573,7 +619,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                 const id = item._id || item.key;
                 const draft = drafts[id] || makeDraft(item);
                 const isChecked = draft.checked;
-                const uploadConfig = artifactUploadsByStep[item.key];
+                const uploadConfig = artifactUploadsByStep[item.key] || bookingDocumentUploadsByStep[item.key];
                 const overdue = isPastDue(item);
                 const dueSoon = isDueSoon(item);
                 const groupKey = getBookingStepGroupKey(item);
@@ -582,6 +628,8 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                 const dotStyle = getBookingStepColorStyles(tone, 'dot');
                 const linkedArtifactId = item.metadata?.latestArtifactId || item.metadata?.linkedMedicalArtifactId;
                 const linkedArtifactDisplayId = item.metadata?.latestArtifactDisplayId || item.metadata?.linkedMedicalArtifactDisplayId;
+                const linkedBookingDocumentId = item.metadata?.latestBookingDocumentId;
+                const linkedBookingDocumentDisplayId = item.metadata?.latestBookingDocumentDisplayId;
                 const configuredActions = getConfiguredActions(item);
 
                 return (
@@ -654,6 +702,12 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                             <Icon icon={FiExternalLink} className="mr-2 h-4 w-4" />
                             Artifact {linkedArtifactDisplayId ? `#${linkedArtifactDisplayId}` : ''}
                           </button>
+                        )}
+                        {linkedBookingDocumentId && (
+                          <span className="inline-flex items-center rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-sm font-medium text-gray-700">
+                            <Icon icon={FiExternalLink} className="mr-2 h-4 w-4" />
+                            Document {linkedBookingDocumentDisplayId ? `#${linkedBookingDocumentDisplayId}` : ''}
+                          </span>
                         )}
                         {uploadConfig && (
                           <label className={`inline-flex items-center rounded-md border border-blue-200 bg-white px-2.5 py-1.5 text-sm font-medium ${isEditing ? 'cursor-pointer text-blue-700 hover:bg-blue-50' : 'cursor-not-allowed text-gray-400'}`}>
