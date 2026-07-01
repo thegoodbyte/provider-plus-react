@@ -44,6 +44,18 @@ const defaultComposeForm = {
   relatedEntityId: '',
 };
 
+const formatSentEmailReceipt = (sentEmail: SentEmail) => {
+  const lines = [
+    `Email ${sentEmail.status || 'queued'}.`,
+    sentEmail.display_id ? `Log #${sentEmail.display_id}` : '',
+    sentEmail.gmailMessageId ? `Gmail message ID: ${sentEmail.gmailMessageId}` : '',
+    (sentEmail.cc || []).length ? `CC: ${(sentEmail.cc || []).join(', ')}` : 'CC: none',
+    (sentEmail.attachments || []).length ? `Attachments: ${(sentEmail.attachments || []).length}` : '',
+    sentEmail.errorMessage ? `Error: ${sentEmail.errorMessage}` : '',
+  ].filter(Boolean);
+  return lines.join('\n');
+};
+
 const CommunicationsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabKey>('settings');
   const location = useLocation();
@@ -304,10 +316,10 @@ const CommunicationsPage: React.FC = () => {
         return;
       }
 
-      await communicationsApi.sendEmail(payload);
+      const response = await communicationsApi.sendEmail(payload);
       await loadAll();
       setActiveTab('sent');
-      alert('Email sent');
+      alert(formatSentEmailReceipt(response.data));
     } catch (error) {
       console.error('Error sending email:', error);
       alert('Email send failed');
@@ -323,6 +335,8 @@ const CommunicationsPage: React.FC = () => {
         senderName: settings?.senderName || '',
         senderEmail: settings?.senderEmail || '',
         replyTo: settings?.replyTo || '',
+        autoCcEnabled: settings?.autoCcEnabled !== false,
+        autoCcEmail: settings?.autoCcEmail || 'info@ibogaspirit.cz',
       });
       setSettings(response.data);
       alert('Settings saved');
@@ -519,6 +533,29 @@ const CommunicationsPage: React.FC = () => {
               />
             </div>
 
+            <div className="rounded-md border border-blue-100 bg-blue-50 p-3">
+              <label className="inline-flex items-center gap-2 text-sm font-medium text-blue-950">
+                <input
+                  type="checkbox"
+                  checked={settings?.autoCcEnabled !== false}
+                  onChange={(e) => setSettings((prev) => ({ ...(prev || {}), autoCcEnabled: e.target.checked }))}
+                />
+                Automatically CC every sent email
+              </label>
+              <div className="mt-3">
+                <label className="block text-xs font-semibold uppercase text-blue-900">Auto CC email</label>
+                <input
+                  type="email"
+                  value={settings?.autoCcEmail || 'info@ibogaspirit.cz'}
+                  onChange={(e) => setSettings((prev) => ({ ...(prev || {}), autoCcEmail: e.target.value }))}
+                  className="mt-1 w-full rounded-md border border-blue-200 px-3 py-2 text-sm"
+                  placeholder="info@ibogaspirit.cz"
+                  disabled={settings?.autoCcEnabled === false}
+                />
+              </div>
+              <p className="mt-2 text-xs text-blue-900">Applied by the API to popup sends, direct sends, and retreat bulk emails.</p>
+            </div>
+
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
@@ -563,6 +600,7 @@ const CommunicationsPage: React.FC = () => {
               <div>Connected account: <span className="font-medium">{settings?.gmailUserEmail || 'Not connected'}</span></div>
               <div>Sender name: <span className="font-medium">{settings?.senderName || 'Not set'}</span></div>
               <div>Reply-to: <span className="font-medium">{settings?.replyTo || 'Not set'}</span></div>
+              <div>Auto CC: <span className="font-medium">{settings?.autoCcEnabled === false ? 'Off' : settings?.autoCcEmail || 'info@ibogaspirit.cz'}</span></div>
               <div>Last connected: <span className="font-medium">{settings?.lastConnectedAt ? new Date(settings.lastConnectedAt).toLocaleString() : 'Never'}</span></div>
               <div>Last test: <span className="font-medium">{settings?.lastTestAt ? new Date(settings.lastTestAt).toLocaleString() : 'Never'}</span></div>
               <div>Last error: <span className="font-medium text-red-600">{settings?.lastError || 'None'}</span></div>
@@ -822,6 +860,9 @@ const CommunicationsPage: React.FC = () => {
                 className="w-full rounded-md border border-gray-300 px-3 py-2"
                 placeholder="optional"
               />
+              {settings?.autoCcEnabled !== false && (
+                <p className="mt-1 text-xs text-gray-500">Auto CC will add {settings?.autoCcEmail || 'info@ibogaspirit.cz'}.</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">BCC</label>
@@ -1099,6 +1140,8 @@ const CommunicationsPage: React.FC = () => {
                 <div><span className="text-gray-500">Message #:</span> <span className="font-mono">#{selectedSentEmail.display_id || 'n/a'}</span></div>
                 <div><span className="text-gray-500">Status:</span> {selectedSentEmail.status}</div>
                 <div><span className="text-gray-500">To:</span> {(selectedSentEmail.to || []).join(', ')}</div>
+                <div><span className="text-gray-500">CC:</span> {(selectedSentEmail.cc || []).join(', ') || 'None'}</div>
+                <div><span className="text-gray-500">Gmail ID:</span> <span className="font-mono">{selectedSentEmail.gmailMessageId || 'Not returned'}</span></div>
                 <div><span className="text-gray-500">Subject:</span> {selectedSentEmail.subject}</div>
                 <div className="text-xs text-gray-500">
                   {selectedSentEmail.sentAt ? `Sent ${new Date(selectedSentEmail.sentAt).toLocaleString()}` : 'Not sent'}

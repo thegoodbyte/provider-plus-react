@@ -166,6 +166,18 @@ const interpolateTemplate = (template: string, variables: Record<string, any>) =
 const textToHtml = (text: string) =>
   `<pre style="white-space: pre-wrap; font-family: Arial, Helvetica, sans-serif; line-height: 1.55; color: #111827;">${escapeHtml(text)}</pre>`;
 
+const formatSentEmailReceipt = (sentEmail: any) => {
+  const lines = [
+    `Email ${sentEmail?.status || 'queued'}.`,
+    sentEmail?.display_id ? `Log #${sentEmail.display_id}` : '',
+    sentEmail?.gmailMessageId ? `Gmail message ID: ${sentEmail.gmailMessageId}` : '',
+    (sentEmail?.cc || []).length ? `CC: ${(sentEmail.cc || []).join(', ')}` : 'CC: none',
+    (sentEmail?.attachments || []).length ? `Attachments: ${sentEmail.attachments.length}` : '',
+    sentEmail?.errorMessage ? `Error: ${sentEmail.errorMessage}` : '',
+  ].filter(Boolean);
+  return lines.join('\n');
+};
+
 const getArtifactTime = (artifact: MedicalArtifact) =>
   new Date(artifact.receivedAt || artifact.createdAt || 0).getTime();
 
@@ -1295,7 +1307,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
       }
       await recordBookingConfirmationHistory(response.data, language, confirmationHistoryReason);
       setRequirementsRefreshKey((current) => current + 1);
-      alert('Booking confirmation email sent.');
+      alert(formatSentEmailReceipt(response.data));
     } catch (error: any) {
       console.error('Error sending booking confirmation email:', error);
       const status = error?.response?.status;
