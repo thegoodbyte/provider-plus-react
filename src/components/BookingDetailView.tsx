@@ -95,8 +95,11 @@ const formatHistoryDateTime = (date?: string | Date) => {
   });
 };
 
-const getClientName = (client: any) =>
-  [client?.firstName || client?.fname, client?.lastName || client?.lname].filter(Boolean).join(' ').trim();
+const getClientName = (client: any) => {
+  const explicitName = String(client?.fullName || client?.name || '').trim();
+  if (explicitName) return explicitName;
+  return [client?.firstName || client?.fname, client?.lastName || client?.lname].filter(Boolean).join(' ').trim();
+};
 
 const getClientDisplayId = (client: any, booking?: any) =>
   client?.display_id || client?.displayId || client?.clientNumber || booking?.clientDisplayId || booking?.clientDetails?.display_id || '';
@@ -119,7 +122,20 @@ const getRetreatCode = (retreat: any) => {
 };
 
 const getRetreatLocationTown = (retreat: any) =>
-  String(retreat?.location_town || retreat?.locationTown || retreat?.location || '').trim();
+  String(
+    retreat?.location_town ||
+    retreat?.locationTown ||
+    retreat?.generalTown ||
+    retreat?.general_town ||
+    retreat?.house?.generalTown ||
+    retreat?.house?.general_town ||
+    retreat?.house?.city ||
+    retreat?.houseId?.generalTown ||
+    retreat?.houseId?.general_town ||
+    retreat?.houseId?.city ||
+    retreat?.location ||
+    ''
+  ).trim();
 
 const getRetreatAddress = (retreat: any) =>
   String(
@@ -990,7 +1006,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     };
     const dateText = getLocalizedRetreatDateRange(retreatData);
     const contactEmail = 'info@ibogaspirit.cz';
-    const bookingNumber = String(booking?.bookingNumber || 'N/A');
+    const bookingNumber = String(booking?.bookingNumber || booking?.booking_number || booking?.display_id || booking?.displayId || 'N/A');
     const bookingType = `${booking?.bookingType === 'booster' ? 'B' : 'F'} / ${getRetreatCode(retreatData)}`;
     const checkInText = formatLocalizedDateTime(retreatData?.startDate || retreatData?.dates?.startDate, retreatData?.startTime || retreatData?.dates?.startTime);
     const checkOutText = formatLocalizedDateTime(retreatData?.endDate || retreatData?.dates?.endDate, retreatData?.endTime || retreatData?.dates?.endTime);
@@ -1029,6 +1045,22 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         address: addressText,
         googleMapLink: mapLinkText,
       },
+      bookingNumber,
+      bookingType,
+      bookingStatus: booking?.status || 'pending',
+      clientFirstName: firstName,
+      clientFullName: getClientName(clientData) || 'N/A',
+      clientName: getClientName(clientData) || 'N/A',
+      retreatName: retreatData?.name || 'N/A',
+      retreatCode: getRetreatCode(retreatData),
+      retreatLocationTown: getRetreatLocationTown(retreatData) || 'N/A',
+      locationTown: getRetreatLocationTown(retreatData) || 'N/A',
+      retreatDateRange: dateText,
+      retreatCheckIn: checkInText,
+      retreatCheckOut: checkOutText,
+      retreatAddress: addressText,
+      retreatGoogleMapLink: mapLinkText,
+      specialRequests: specialRequestsText,
     };
 
     try {
@@ -1043,6 +1075,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
           subject: interpolateTemplate(template.subject, variables),
           bodyText,
           bodyHtml: template.bodyHtml ? interpolateTemplate(template.bodyHtml, variables) : textToHtml(bodyText),
+          variables,
         };
       }
     } catch (error) {
@@ -1089,6 +1122,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
       subject: copy.subject(bookingNumber),
       bodyText,
       bodyHtml,
+      variables,
     };
   };
 
@@ -1185,6 +1219,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         templateId: email.templateId,
         bookingFlowStepKey: email.bookingFlowStepKey || 'booking_confirmation_sent',
         bookingFlowStatusOnSend: email.bookingFlowStatusOnSend || 'sent',
+        variables: email.variables,
         clientId: client?._id,
         retreatId: retreat?._id,
         relatedEntityType: 'booking',
@@ -1245,6 +1280,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         relatedEntityId: bookingId,
         bookingFlowStepKey: email.bookingFlowStepKey || 'booking_confirmation_sent',
         bookingFlowStatusOnSend: email.bookingFlowStatusOnSend || 'sent',
+        variables: email.variables,
         attachments: [{
           fileName,
           mimeType: 'application/pdf',
