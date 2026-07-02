@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import AppleButton from './AppleButton';
 import AppleInput from './AppleInput';
 import LoadingSpinner from './LoadingSpinner';
@@ -24,6 +24,16 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
 };
 
 type ClientSortField = keyof Client | 'retreatCode';
+const LEADS_FILTER = 'leads';
+const LEAD_STATUSES = new Set(['potential', 'screening']);
+
+const getInitialClientFilter = (pathname: string, search: string) => {
+  const params = new URLSearchParams(search);
+  const filter = params.get('filter') || params.get('workflowStatus') || params.get('status');
+  if (filter) return filter;
+  if (pathname.includes('potential-clients')) return LEADS_FILTER;
+  return 'all';
+};
 
 const getObjectId = (value: any): string => {
   if (!value) return '';
@@ -129,6 +139,7 @@ const cropImageToProfileSquare = (file: File, size = 200): Promise<File> => {
 
 const UnifiedClientManager: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const validClientStatuses = ['active', 'inactive', 'suspended'] as const;
   const isValidClientStatus = (value: unknown): value is Client['status'] =>
     typeof value === 'string' && validClientStatuses.includes(value as any);
@@ -139,7 +150,7 @@ const UnifiedClientManager: React.FC = () => {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>(() => getInitialClientFilter(location.pathname, location.search));
   const [sortField, setSortField] = useState<ClientSortField>('lastName');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [isLoading, setIsLoading] = useState(true);
@@ -244,6 +255,10 @@ const UnifiedClientManager: React.FC = () => {
     fetchBookingContext();
   }, []);
 
+  useEffect(() => {
+    setFilterStatus(getInitialClientFilter(location.pathname, location.search));
+  }, [location.pathname, location.search]);
+
   const getClientBooking = useCallback((client: Client) => {
     if (!client._id) return undefined;
     const activeStatuses = new Set(['confirmed', 'approved', 'checked-in', 'pending', 'conditional']);
@@ -275,8 +290,10 @@ const UnifiedClientManager: React.FC = () => {
     let filtered = [...clients];
 
     // Filter by status
-    if (filterStatus !== 'all') {
-      filtered = filtered.filter(client => client.workflowStatus === filterStatus);
+    if (filterStatus === LEADS_FILTER) {
+      filtered = filtered.filter((client) => LEAD_STATUSES.has(client.workflowStatus || 'potential'));
+    } else if (filterStatus !== 'all') {
+      filtered = filtered.filter((client) => (client.workflowStatus || 'potential') === filterStatus);
     }
 
     // Search
@@ -572,6 +589,7 @@ const UnifiedClientManager: React.FC = () => {
           className="px-4 py-2 border border-gray-200 rounded-apple focus:outline-none focus:ring-2 focus:ring-apple-blue/20 focus:border-apple-blue"
         >
           <option value="all">All Statuses</option>
+          <option value="leads">Potential + Screening</option>
           <option value="potential">Potential</option>
           <option value="screening">Screening</option>
           <option value="approved">Approved</option>

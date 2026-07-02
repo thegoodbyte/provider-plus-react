@@ -136,7 +136,7 @@ const ModuleLauncherPage: React.FC = () => {
         tone: 'blue',
         tiles: [
           { id: 'clients', label: 'Clients', subtitle: 'CRM', route: 'clients', icon: Users, tone: 'blue' },
-          { id: 'potential-clients', label: 'Potential', subtitle: 'Lead queue', route: 'potential-clients', icon: ClipboardList, tone: 'blue' },
+          { id: 'potential-clients', label: 'Potential', subtitle: 'Filtered clients', route: 'clients?filter=leads', icon: ClipboardList, tone: 'blue' },
           { id: 'retreats', label: 'Retreats', subtitle: 'Programs', route: 'retreats', icon: CalendarDays, tone: 'blue' },
           { id: 'bookings', label: 'Bookings', subtitle: 'Retreat seats', route: 'bookings', icon: ClipboardPaste, tone: 'blue' },
           { id: 'retreat-flow', label: 'Readiness Setup', subtitle: 'Per-retreat steps', route: 'retreat-flow', icon: LayoutGrid, tone: 'blue' },
@@ -213,7 +213,7 @@ const ModuleLauncherPage: React.FC = () => {
         tone: 'blue',
         tiles: [
           { id: 'clients', label: 'Clients', subtitle: 'CRM', route: 'clients', icon: Users, tone: 'blue' },
-          { id: 'potential-clients', label: 'Potential', subtitle: 'Lead queue', route: 'potential-clients', icon: ClipboardList, tone: 'blue' },
+          { id: 'potential-clients', label: 'Potential', subtitle: 'Filtered clients', route: 'clients?filter=leads', icon: ClipboardList, tone: 'blue' },
           { id: 'bookings', label: 'Bookings', subtitle: 'Booking list', route: 'bookings', icon: ClipboardPaste, tone: 'blue' },
           { id: 'retreat-flow', label: 'Readiness Setup', subtitle: 'Steps', route: 'retreat-flow', icon: LayoutGrid, tone: 'blue' },
           { id: 'booking-flow', label: 'Step Deadlines', subtitle: 'Per booking', route: 'booking-flow', icon: ListTodo, tone: 'blue' },
@@ -244,7 +244,7 @@ const ModuleLauncherPage: React.FC = () => {
         tone: 'violet',
         tiles: [
           { id: 'clients', label: 'Clients', subtitle: 'CRM', route: 'clients', icon: Users, tone: 'violet' },
-          { id: 'potential-clients', label: 'Potential', subtitle: 'Leads', route: 'potential-clients', icon: ClipboardList, tone: 'violet' },
+          { id: 'potential-clients', label: 'Potential', subtitle: 'Filtered clients', route: 'clients?filter=leads', icon: ClipboardList, tone: 'violet' },
         ],
       },
       {

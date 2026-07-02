@@ -21,7 +21,6 @@ const AVAILABLE_PERMISSIONS: Permission[] = [
 
   // Client Management
   { route: 'clients', name: 'Client Management', description: 'View and manage client information', category: 'Client Management' },
-  { route: 'potential-clients', name: 'Potential Clients', description: 'Manage potential/screening clients', category: 'Client Management' },
   { route: 'screening', name: 'Screenings', description: 'Screening client workflow', category: 'Client Management' },
 
   // Medical
@@ -73,7 +72,6 @@ const DEFAULT_PERMISSIONS: RolePermissions = {
   'launcher': ['user', 'facilitator', 'medical_staff', 'admin'],
   'current-retreat': ['helper', 'admin'],
   'clients': ['user', 'facilitator', 'medical_staff', 'admin'],
-  'potential-clients': ['facilitator', 'medical_staff', 'admin'],
   'screening': ['facilitator', 'medical_staff', 'admin'],
   'medical-artifacts': ['medical_staff', 'admin'],
   'medical-review-requests': ['medical_staff', 'medical_advisor', 'admin'],

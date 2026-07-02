@@ -49,7 +49,6 @@ const FULL_MENU_SECTIONS: MenuSection[] = [
     Icon: Fi.FiUsers,
     items: [
       { id: 'clients', label: 'Clients', Icon: Fi.FiUsers },
-      { id: 'potential-clients', label: 'Potential Clients', Icon: Fi.FiUserPlus },
       { id: 'screening', label: 'Screenings', Icon: Fi.FiClipboard },
     ],
   },
@@ -279,7 +278,6 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
             Icon: Fi.FiUsers,
             items: [
               { id: 'clients', label: 'Clients', Icon: Fi.FiUsers },
-              { id: 'potential-clients', label: 'Potential Clients', Icon: Fi.FiUserPlus },
               { id: 'screening', label: 'Screenings', Icon: Fi.FiClipboard },
             ],
           },
@@ -309,7 +307,6 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
           ] },
           { id: 'clients', label: 'Clients', Icon: Fi.FiUsers, items: [
             { id: 'clients', label: 'Clients', Icon: Fi.FiUsers },
-            { id: 'potential-clients', label: 'Potential Clients', Icon: Fi.FiUserPlus },
             { id: 'screening', label: 'Screenings', Icon: Fi.FiClipboard },
           ] },
           { id: 'operations', label: 'Operations', Icon: Fi.FiBriefcase, items: [
