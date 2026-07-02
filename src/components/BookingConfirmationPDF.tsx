@@ -441,6 +441,25 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
     .filter((payment) => payment.status === 'completed')
     .sort((a, b) => (getPaymentDate(a)?.getTime() || 0) - (getPaymentDate(b)?.getTime() || 0));
 
+  const resolveBookingTotalUsd = async () => {
+    if (bookingCurrency === 'USD') return bookingTotal;
+
+    const paymentRequest = booking?.paymentRequestId || booking?.paymentRequest;
+    const requestUsdAmount = Number(paymentRequest?.fullPriceUsdAmount ?? paymentRequest?.usd_amount ?? 0);
+    if (Number.isFinite(requestUsdAmount) && requestUsdAmount > 0) return requestUsdAmount;
+
+    try {
+      const response = await paymentsApi.convertToUsd(bookingTotal, bookingCurrency);
+      const converted = Number(response.data?.usd_amount ?? 0);
+      return Number.isFinite(converted) && converted > 0 ? converted : null;
+    } catch (error) {
+      console.warn('Unable to convert booking total to USD for mixed-currency PDF:', error);
+      return null;
+    }
+  };
+
+  const bookingTotalUsd = await resolveBookingTotalUsd();
+
   const formatAmount = (amount: number, currency: Payment['currency'] = bookingCurrency) => {
     if (!Number.isFinite(amount)) return '-';
     if (currency === 'USD') {
@@ -472,6 +491,15 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
         0
       );
       return Number.isFinite(requestedAmount) && requestedAmount > 0 ? requestedAmount : null;
+    }
+
+    const paymentUsdAmount = getPaymentUsdAmount(payment);
+    if (
+      bookingTotalUsd &&
+      bookingTotal > 0 &&
+      paymentUsdAmount > 0
+    ) {
+      return Math.round((paymentUsdAmount / bookingTotalUsd) * bookingTotal * 100) / 100;
     }
 
     return null;
@@ -561,7 +589,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
         <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">${escapeHtml(formatPaymentType(payment))}</td>
         <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">${paymentDate ? formatDate(paymentDate) : '-'}</td>
         <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">${escapeHtml(`${formatPaymentMethod(payment.paymentMethod)}${getPaymentReference(payment) !== '-' ? ` - ${getPaymentReference(payment)}` : ''}`)}</td>
-        <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right;">${bookingCurrencyAmount ? formatAmount(bookingCurrencyAmount, bookingCurrency) : '-'}</td>
+        <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right;">${bookingCurrencyAmount !== null ? formatAmount(bookingCurrencyAmount, bookingCurrency) : '-'}</td>
         ${showsSettlementColumn ? `<td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right;">${escapeHtml(formatSettlementAmount(payment))}</td>` : ''}
       </tr>
     `;
