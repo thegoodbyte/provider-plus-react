@@ -1521,24 +1521,73 @@
 .booking-confirm-history {
   display: grid;
   gap: 14px;
+  padding-top: 12px;
 }
 
-.booking-confirm-history-summary {
+.booking-confirm-history-accordion {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.booking-confirm-history-trigger {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.booking-confirm-history-trigger::-webkit-details-marker {
+  display: none;
+}
+
+.booking-confirm-history-trigger::before {
+  content: '›';
+  width: 22px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-size: 20px;
+  line-height: 1;
+  transform: rotate(0deg);
+  transition: transform 0.16s ease;
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.booking-confirm-history-accordion[open] .booking-confirm-history-trigger::before {
+  transform: rotate(90deg);
+}
+
+.booking-confirm-history-accordion[open] .booking-confirm-history-toggle {
+  color: #374151;
+}
+
+.booking-confirm-history-compact {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
+  grid-column: 2;
+  min-width: 0;
 }
 
-.booking-confirm-history-summary > div {
+.booking-confirm-history-toggle {
+  grid-column: 3;
+}
+
+.booking-confirm-history-compact > div {
   display: grid;
   gap: 4px;
-  padding: 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  background: #f9fafb;
+  min-width: 0;
 }
 
-.booking-confirm-history-summary span,
+.booking-confirm-history-compact span,
 .booking-confirm-history-entry-main span {
   color: #6b7280;
   font-size: 12px;
@@ -1546,15 +1595,45 @@
   text-transform: uppercase;
 }
 
-.booking-confirm-history-summary strong {
+.booking-confirm-history-compact strong {
   color: #111827;
   font-size: 14px;
   line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.booking-confirm-history-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #f3f4f6;
+  color: #4b5563;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.booking-confirm-history-accordion[open] .booking-confirm-history-toggle::before {
+  content: 'Hide';
+}
+
+.booking-confirm-history-accordion[open] .booking-confirm-history-toggle {
+  font-size: 0;
+}
+
+.booking-confirm-history-accordion[open] .booking-confirm-history-toggle::before {
+  font-size: 12px;
 }
 
 .booking-confirm-history-list {
   display: grid;
   gap: 8px;
+  padding: 0 12px 12px;
 }
 
 .booking-confirm-history-entry {
@@ -1693,7 +1772,16 @@
     box-shadow: none;
   }
 
-  .booking-confirm-history-summary {
+  .booking-confirm-history-trigger {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .booking-confirm-history-compact {
     grid-template-columns: 1fr;
+  }
+
+  .booking-confirm-history-toggle {
+    grid-column: 2;
+    justify-self: start;
   }
 }

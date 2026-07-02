@@ -1542,39 +1542,44 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
               {confirmationHistory.length === 0 ? (
                 <p className="text-sm text-gray-500">No booking confirmation has been sent yet.</p>
               ) : (
-                <div className="booking-confirm-history">
-                  <div className="booking-confirm-history-summary">
-                    <div>
-                      <span>Original sent</span>
-                      <strong>{formatHistoryDateTime(firstConfirmation?.sentAt || firstConfirmation?.createdAt)}</strong>
-                    </div>
-                    <div>
-                      <span>Last update</span>
-                      <strong>{formatHistoryDateTime(latestConfirmation?.sentAt || latestConfirmation?.createdAt)}</strong>
-                    </div>
-                    <div>
-                      <span>Latest reason</span>
-                      <strong>{latestConfirmation?.reason || 'N/A'}</strong>
-                    </div>
-                  </div>
-                  <div className="booking-confirm-history-list">
-                    {confirmationHistory.map((entry: any) => (
-                      <div key={entry._id || `${entry.iteration}-${entry.sentAt}`} className="booking-confirm-history-entry">
-                        <div className="booking-confirm-history-entry-main">
-                          <strong>Iteration {entry.iteration}</strong>
-                          <span>{formatHistoryDateTime(entry.sentAt || entry.createdAt)}</span>
-                        </div>
-                        <div className="booking-confirm-history-entry-meta">
-                          <span>{entry.reason || 'No reason recorded'}</span>
-                          {entry.language && <span>{bookingConfirmationLanguageLabels[entry.language as BookingConfirmationLanguage] || entry.language}</span>}
-                          {entry.sentEmailDisplayId && <span>Email #{entry.sentEmailDisplayId}</span>}
-                          {entry.snapshot?.retreatCode && <span>{entry.snapshot.retreatCode}</span>}
-                          {entry.snapshot?.paymentRequestDisplayId && <span>Payment request #{entry.snapshot.paymentRequestDisplayId}</span>}
-                        </div>
+                <details className="booking-confirm-history-accordion">
+                  <summary className="booking-confirm-history-trigger">
+                    <div className="booking-confirm-history-compact">
+                      <div>
+                        <span>Original</span>
+                        <strong>{formatHistoryDateTime(firstConfirmation?.sentAt || firstConfirmation?.createdAt)}</strong>
                       </div>
-                    ))}
+                      <div>
+                        <span>Last update</span>
+                        <strong>{formatHistoryDateTime(latestConfirmation?.sentAt || latestConfirmation?.createdAt)}</strong>
+                      </div>
+                      <div>
+                        <span>Latest reason</span>
+                        <strong>{latestConfirmation?.reason || 'N/A'}</strong>
+                      </div>
+                    </div>
+                    <span className="booking-confirm-history-toggle">Show iterations</span>
+                  </summary>
+                  <div className="booking-confirm-history">
+                    <div className="booking-confirm-history-list">
+                      {confirmationHistory.map((entry: any) => (
+                        <div key={entry._id || `${entry.iteration}-${entry.sentAt}`} className="booking-confirm-history-entry">
+                          <div className="booking-confirm-history-entry-main">
+                            <strong>Iteration {entry.iteration}</strong>
+                            <span>{formatHistoryDateTime(entry.sentAt || entry.createdAt)}</span>
+                          </div>
+                          <div className="booking-confirm-history-entry-meta">
+                            <span>{entry.reason || 'No reason recorded'}</span>
+                            {entry.language && <span>{bookingConfirmationLanguageLabels[entry.language as BookingConfirmationLanguage] || entry.language}</span>}
+                            {entry.sentEmailDisplayId && <span>Email #{entry.sentEmailDisplayId}</span>}
+                            {entry.snapshot?.retreatCode && <span>{entry.snapshot.retreatCode}</span>}
+                            {entry.snapshot?.paymentRequestDisplayId && <span>Payment request #{entry.snapshot.paymentRequestDisplayId}</span>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                </details>
               )}
             </div>
 
