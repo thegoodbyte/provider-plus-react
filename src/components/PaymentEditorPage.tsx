@@ -100,6 +100,9 @@ const PaymentEditorPage: React.FC = () => {
     isFinalPayment: false,
     isRefundable: false,
     paymentType: 'regular_payment' as 'deposit_non_refundable' | 'deposit_refundable' | 'regular_payment' | 'balance_payment' | 'refund' | 'adjustment',
+    bookingCurrencyAmount: '',
+    bookingCurrencyExchangeSource: '',
+    bookingCurrencyExchangeDate: '',
   });
 
   useEffect(() => {
@@ -140,6 +143,9 @@ const PaymentEditorPage: React.FC = () => {
             isFinalPayment: payment.isFinalPayment || false,
             isRefundable: payment.isRefundable || false,
             paymentType: payment.paymentType || 'regular_payment',
+            bookingCurrencyAmount: payment.bookingCurrencyAmount?.toString?.() || '',
+            bookingCurrencyExchangeSource: payment.bookingCurrencyExchangeSource || '',
+            bookingCurrencyExchangeDate: payment.bookingCurrencyExchangeDate ? toDateInputValue(payment.bookingCurrencyExchangeDate) : '',
           });
         } else if (paymentRequestIdFromQuery) {
           if (nextDisplayIdResponse?.data) {
@@ -178,6 +184,8 @@ const PaymentEditorPage: React.FC = () => {
     () => bookings.find((booking) => booking._id === formData.bookingId),
     [bookings, formData.bookingId],
   );
+  const bookingCurrency = (selectedBooking?.currency || formData.currency) as Payment['currency'];
+  const showBookingCurrencySettlement = Boolean(selectedBooking?.currency && formData.currency !== selectedBooking.currency);
 
   useEffect(() => {
     const amount = Number(formData.amount);
@@ -254,6 +262,9 @@ const PaymentEditorPage: React.FC = () => {
       paymentDate: paymentRequest.paidDate ? toDateInputValue(paymentRequest.paidDate) : prev.paymentDate,
       description: `Payment for invoice ${paymentRequest.invoiceNumber || paymentRequest.display_id || ''}`.trim(),
       notes: prev.notes || paymentRequest.note || paymentRequest.notes || '',
+      bookingCurrencyAmount: prev.bookingCurrencyAmount,
+      bookingCurrencyExchangeSource: prev.bookingCurrencyExchangeSource || paymentRequest.paymentType || '',
+      bookingCurrencyExchangeDate: prev.bookingCurrencyExchangeDate || (paymentRequest.paidDate ? toDateInputValue(paymentRequest.paidDate) : ''),
     }));
   };
 
@@ -321,6 +332,12 @@ const PaymentEditorPage: React.FC = () => {
       isDeposit: formData.isDeposit,
       isFinalPayment: formData.isFinalPayment,
       paymentType: formData.paymentType,
+      bookingCurrency: showBookingCurrencySettlement ? bookingCurrency : undefined,
+      bookingCurrencyAmount: showBookingCurrencySettlement && formData.bookingCurrencyAmount
+        ? parseFloat(formData.bookingCurrencyAmount)
+        : undefined,
+      bookingCurrencyExchangeSource: showBookingCurrencySettlement ? formData.bookingCurrencyExchangeSource || undefined : undefined,
+      bookingCurrencyExchangeDate: showBookingCurrencySettlement ? formData.bookingCurrencyExchangeDate || undefined : undefined,
     };
 
     try {
@@ -504,6 +521,49 @@ const PaymentEditorPage: React.FC = () => {
               />
               {usdPreviewError && <p className="mt-1 text-xs text-red-600">{usdPreviewError}</p>}
             </div>
+
+            {showBookingCurrencySettlement && (
+              <div className="md:col-span-2 rounded-md border border-amber-200 bg-amber-50 p-4">
+                <h3 className="text-sm font-semibold text-amber-900">Booking currency settlement</h3>
+                <p className="mt-1 text-xs text-amber-800">
+                  This payment is in {formData.currency}, but the booking is in {bookingCurrency}. Enter the exact {bookingCurrency} amount used for the balance, plus source and date.
+                </p>
+                <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{bookingCurrency} Equivalent *</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={formData.bookingCurrencyAmount}
+                      onChange={(e) => handleChange('bookingCurrencyAmount', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder={`Amount in ${bookingCurrency}`}
+                      required={showBookingCurrencySettlement}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Conversion Source</label>
+                    <input
+                      type="text"
+                      value={formData.bookingCurrencyExchangeSource}
+                      onChange={(e) => handleChange('bookingCurrencyExchangeSource', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Revolut, Wise, bank..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Conversion Date</label>
+                    <input
+                      type="date"
+                      value={formData.bookingCurrencyExchangeDate}
+                      onChange={(e) => handleChange('bookingCurrencyExchangeDate', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method *</label>

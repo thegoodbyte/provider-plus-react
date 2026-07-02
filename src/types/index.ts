@@ -464,6 +464,10 @@ export interface Payment {
   amount: number;
   usd_amount?: number;
   currency: 'EUR' | 'USD' | 'CZK' | 'PLN';
+  bookingCurrency?: 'EUR' | 'USD' | 'CZK' | 'PLN';
+  bookingCurrencyAmount?: number;
+  bookingCurrencyExchangeSource?: string;
+  bookingCurrencyExchangeDate?: Date | string;
   status: 'pending' | 'completed' | 'failed' | 'refunded';
   paymentMethod: 'bank_transfer' | 'card' | 'cash' | 'paypal' | 'crypto' | 'stripe' | 'wise' | 'revolut' | 'other';
   paymentType: 'deposit_non_refundable' | 'deposit_refundable' | 'regular_payment' | 'balance_payment' | 'refund' | 'adjustment';

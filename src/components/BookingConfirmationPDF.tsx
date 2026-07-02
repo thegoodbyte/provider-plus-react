@@ -170,6 +170,18 @@ const getBookingTotalAmount = (booking: any) => {
   );
 };
 
+const getBookingTotalUsdAmount = (booking: any) => {
+  const paymentRequest = booking?.paymentRequestId || booking?.paymentRequest;
+  const value = Number(
+    booking?.totalAmountUsd ??
+    booking?.totalUsdAmount ??
+    paymentRequest?.fullPriceUsdAmount ??
+    paymentRequest?.usd_amount ??
+    0
+  );
+  return Number.isFinite(value) && value > 0 ? value : null;
+};
+
 const resolveInitialPaymentDate = async (booking: any) => {
   const bookingId = booking?._id || booking?.id;
   const bookingHash = booking?.bookingHash;
@@ -305,10 +317,12 @@ const translations = {
     price: 'Cena',
     paidAmount: 'Zapłacono',
     deposit: 'Zaliczka',
+    requiredDeposit: 'Wymagana zaliczka',
     balance: 'Balans',
     currency: 'zł',
     // Footer notes
     balanceDueNote: (date: string) => `Pozostałe saldo należy uregulować najpóźniej 30 dni przed rozpoczęciem pobytu, czyli do ${date}.`,
+    requiredDepositNote: (amount: string, usdAmount?: string) => `Wymagana zaliczka do potwierdzenia rezerwacji wynosi 40% ceny pobytu: ${amount}${usdAmount ? ` (około ${usdAmount}, zaokrąglone w górę)` : ''}. Płatności w innej walucie są zaliczane według faktycznej kwoty przeliczonej przez Revolut/Wise/bank w dniu rozliczenia.`,
     footerNote3: 'Należy pamiętać, że żadna usługa nie będzie świadczona, dopóki nie zostanie ona w pełni opłacona. Dziękuję za zrozumienie',
     footerNote4: 'Aby potwierdzić rezerwację, każdy uczestnik musi dostarczyć EKG i panel wątroby w ciągu 21 dni od pierwszej płatności oraz podpisać umowę uczestnika w ciągu 3 dni od pierwszej płatności.',
     footerNote5: 'Jednocześnie każdy uczestnik musi być czysty od wszelkich leków i niektórych leków (takich jak leki przeciwdepresyjne itp.) przez co najmniej 30 dni przed leczeniem.',
@@ -353,10 +367,12 @@ const translations = {
     price: 'Cena',
     paidAmount: 'Zaplaceno',
     deposit: 'Záloha',
+    requiredDeposit: 'Požadovaná záloha',
     balance: 'Zůstatek',
     currency: 'Kč',
     // Footer notes
     balanceDueNote: (date: string) => `Zbývající částka je splatná nejpozději 30 dní před začátkem pobytu, tedy do ${date}.`,
+    requiredDepositNote: (amount: string, usdAmount?: string) => `Požadovaná záloha pro potvrzení rezervace je 40 % ceny pobytu: ${amount}${usdAmount ? ` (přibližně ${usdAmount}, zaokrouhleno nahoru)` : ''}. Platby v jiné měně se započítávají podle skutečné částky přepočtené přes Revolut/Wise/banku v den zúčtování.`,
     footerNote3: 'Pamatujte, že žádná služba nebude poskytována, dokud nebude plně uhrazena. Děkuji za pochopení',
     footerNote4: 'Pro potvrzení rezervace musí každý účastník dodat EKG a jaterní panel do 21 dnů od první platby a podepsat smlouvu účastníka do 3 dnů od první platby.',
     footerNote5: 'Současně musí být každý účastník čistý od všech léků a některých léků (jako jsou antidepresiva atd.) po dobu nejméně 30 dnů před léčbou.',
@@ -401,10 +417,12 @@ const translations = {
     price: 'Price',
     paidAmount: 'Paid',
     deposit: 'Deposit',
+    requiredDeposit: 'Required deposit',
     balance: 'Balance',
     currency: '€',
     // Footer notes
     balanceDueNote: (date: string) => `The remaining balance is due no later than 30 days before the retreat begins, by ${date}.`,
+    requiredDepositNote: (amount: string, usdAmount?: string) => `The deposit required to confirm the booking is 40% of the retreat price: ${amount}${usdAmount ? ` (about ${usdAmount}, rounded up)` : ''}. Payments in another currency are counted by the actual amount converted by Revolut/Wise/bank on the settlement date.`,
     footerNote3: 'Please note that no service will be provided until it is fully paid. Thank you for understanding',
     footerNote4: 'To confirm the reservation, each participant must provide EKG and liver panel results within 21 days of the initial payment and sign the participant agreement within 3 days of the initial payment.',
     footerNote5: 'At the same time, each participant must be clean of all drugs and certain medications (such as antidepressants, etc.) for at least 30 days before treatment.',
@@ -441,25 +459,6 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
     .filter((payment) => payment.status === 'completed')
     .sort((a, b) => (getPaymentDate(a)?.getTime() || 0) - (getPaymentDate(b)?.getTime() || 0));
 
-  const resolveBookingTotalUsd = async () => {
-    if (bookingCurrency === 'USD') return bookingTotal;
-
-    const paymentRequest = booking?.paymentRequestId || booking?.paymentRequest;
-    const requestUsdAmount = Number(paymentRequest?.fullPriceUsdAmount ?? paymentRequest?.usd_amount ?? 0);
-    if (Number.isFinite(requestUsdAmount) && requestUsdAmount > 0) return requestUsdAmount;
-
-    try {
-      const response = await paymentsApi.convertToUsd(bookingTotal, bookingCurrency);
-      const converted = Number(response.data?.usd_amount ?? 0);
-      return Number.isFinite(converted) && converted > 0 ? converted : null;
-    } catch (error) {
-      console.warn('Unable to convert booking total to USD for mixed-currency PDF:', error);
-      return null;
-    }
-  };
-
-  const bookingTotalUsd = await resolveBookingTotalUsd();
-
   const formatAmount = (amount: number, currency: Payment['currency'] = bookingCurrency) => {
     if (!Number.isFinite(amount)) return '-';
     if (currency === 'USD') {
@@ -473,36 +472,32 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
     }).format(amount);
   };
 
-  const getPaymentRequest = (payment: Payment) => {
-    const request = payment.paymentRequestId;
-    return request && typeof request === 'object' ? request as any : null;
-  };
-
   const getBookingCurrencyAmount = (payment: Payment) => {
     if (payment.currency === bookingCurrency) return payment.amount;
     if (bookingCurrency === 'USD') return getPaymentUsdAmount(payment);
-
-    const paymentRequest = getPaymentRequest(payment);
-    if (paymentRequest?.currency === bookingCurrency) {
-      const requestedAmount = Number(
-        paymentRequest.requestedAmount ??
-        paymentRequest.amountPaid ??
-        paymentRequest.fullPriceQuote ??
-        0
-      );
-      return Number.isFinite(requestedAmount) && requestedAmount > 0 ? requestedAmount : null;
-    }
-
-    const paymentUsdAmount = getPaymentUsdAmount(payment);
-    if (
-      bookingTotalUsd &&
-      bookingTotal > 0 &&
-      paymentUsdAmount > 0
-    ) {
-      return Math.round((paymentUsdAmount / bookingTotalUsd) * bookingTotal * 100) / 100;
+    if (payment.bookingCurrency === bookingCurrency) {
+      const amount = Number(payment.bookingCurrencyAmount ?? 0);
+      return Number.isFinite(amount) && amount > 0 ? amount : null;
     }
 
     return null;
+  };
+
+  const formatBookingCurrencyAmount = (payment: Payment, amount: number | null) => {
+    if (amount === null) {
+      return '<span style="color: #b91c1c;">Not counted</span>';
+    }
+
+    const source = String(payment.bookingCurrencyExchangeSource || '').trim();
+    const exchangeDate = parseDate(payment.bookingCurrencyExchangeDate);
+    const sourceNote = source || exchangeDate
+      ? `<br><span style="font-size: 10px; color: #6b7280;">${escapeHtml([
+        source ? `Calculated by ${source}` : '',
+        exchangeDate ? `on ${formatDate(exchangeDate)}` : '',
+      ].filter(Boolean).join(' '))}</span>`
+      : '';
+
+    return `${formatAmount(amount, bookingCurrency)}${sourceNote}`;
   };
 
   const formatSettlementAmount = (payment: Payment) => {
@@ -523,6 +518,12 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
     return sum + (bookingAmount || 0);
   }, 0);
   const balance = bookingTotal - totalPaid;
+  const bookingTotalUsd = getBookingTotalUsdAmount(booking);
+  const requiredDeposit = bookingTotal > 0 ? bookingTotal * 0.4 : null;
+  const roundUpCurrency = (amount: number) => Math.ceil(amount * 100) / 100;
+  const requiredDepositUsd = requiredDeposit && bookingTotalUsd
+    ? roundUpCurrency((requiredDeposit / bookingTotal) * bookingTotalUsd)
+    : null;
 
   // Get date locale based on language
   const getDateLocale = () => {
@@ -589,7 +590,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
         <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">${escapeHtml(formatPaymentType(payment))}</td>
         <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">${paymentDate ? formatDate(paymentDate) : '-'}</td>
         <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">${escapeHtml(`${formatPaymentMethod(payment.paymentMethod)}${getPaymentReference(payment) !== '-' ? ` - ${getPaymentReference(payment)}` : ''}`)}</td>
-        <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right;">${bookingCurrencyAmount !== null ? formatAmount(bookingCurrencyAmount, bookingCurrency) : '-'}</td>
+        <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right;">${formatBookingCurrencyAmount(payment, bookingCurrencyAmount)}</td>
         ${showsSettlementColumn ? `<td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right;">${escapeHtml(formatSettlementAmount(payment))}</td>` : ''}
       </tr>
     `;
@@ -748,6 +749,12 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
         <div style="font-style: italic; margin-bottom: 15px;">
           ${t.balanceDueNote(balanceDueDate ? formatDate(balanceDueDate) : retreatDateRange)}
         </div>
+
+        ${requiredDeposit ? `
+          <div style="font-style: italic; margin-bottom: 15px;">
+            ${t.requiredDepositNote(formatAmount(requiredDeposit), requiredDepositUsd ? formatAmount(requiredDepositUsd, 'USD') : undefined)}
+          </div>
+        ` : ''}
 
         <div style="margin: 20px 0;">
           ${t.footerNote3}
