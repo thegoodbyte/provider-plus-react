@@ -303,6 +303,7 @@ const translations = {
     tableDate: 'Data',
     reference: 'Reference',
     price: 'Cena',
+    paidAmount: 'Zapłacono',
     deposit: 'Zaliczka',
     balance: 'Balans',
     currency: 'zł',
@@ -350,6 +351,7 @@ const translations = {
     tableDate: 'Datum',
     reference: 'Reference',
     price: 'Cena',
+    paidAmount: 'Zaplaceno',
     deposit: 'Záloha',
     balance: 'Zůstatek',
     currency: 'Kč',
@@ -397,6 +399,7 @@ const translations = {
     tableDate: 'Date',
     reference: 'Reference',
     price: 'Price',
+    paidAmount: 'Paid',
     deposit: 'Deposit',
     balance: 'Balance',
     currency: '€',
@@ -437,11 +440,6 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   const completedPayments = payments
     .filter((payment) => payment.status === 'completed')
     .sort((a, b) => (getPaymentDate(a)?.getTime() || 0) - (getPaymentDate(b)?.getTime() || 0));
-  const totalPaid = completedPayments.reduce((sum, payment) => {
-    if (bookingCurrency === 'USD') return sum + getPaymentUsdAmount(payment);
-    return sum + (payment.currency === bookingCurrency ? payment.amount : 0);
-  }, 0);
-  const balance = bookingTotal - totalPaid;
 
   const formatAmount = (amount: number, currency: Payment['currency'] = bookingCurrency) => {
     if (!Number.isFinite(amount)) return '-';
@@ -455,6 +453,48 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
       maximumFractionDigits: 2,
     }).format(amount);
   };
+
+  const getPaymentRequest = (payment: Payment) => {
+    const request = payment.paymentRequestId;
+    return request && typeof request === 'object' ? request as any : null;
+  };
+
+  const getBookingCurrencyAmount = (payment: Payment) => {
+    if (payment.currency === bookingCurrency) return payment.amount;
+    if (bookingCurrency === 'USD') return getPaymentUsdAmount(payment);
+
+    const paymentRequest = getPaymentRequest(payment);
+    if (paymentRequest?.currency === bookingCurrency) {
+      const requestedAmount = Number(
+        paymentRequest.requestedAmount ??
+        paymentRequest.amountPaid ??
+        paymentRequest.fullPriceQuote ??
+        0
+      );
+      return Number.isFinite(requestedAmount) && requestedAmount > 0 ? requestedAmount : null;
+    }
+
+    return null;
+  };
+
+  const formatSettlementAmount = (payment: Payment) => {
+    const parts = [formatAmount(payment.amount, payment.currency)];
+    if (payment.currency !== 'USD' && typeof payment.usd_amount === 'number' && Number.isFinite(payment.usd_amount)) {
+      parts.push(formatAmount(payment.usd_amount, 'USD'));
+    }
+    return parts.join(' / ');
+  };
+
+  const showsSettlementColumn = completedPayments.some((payment) =>
+    payment.currency !== bookingCurrency ||
+    (payment.currency !== 'USD' && typeof payment.usd_amount === 'number' && Number.isFinite(payment.usd_amount))
+  );
+
+  const totalPaid = completedPayments.reduce((sum, payment) => {
+    const bookingAmount = getBookingCurrencyAmount(payment);
+    return sum + (bookingAmount || 0);
+  }, 0);
+  const balance = bookingTotal - totalPaid;
 
   // Get date locale based on language
   const getDateLocale = () => {
@@ -514,22 +554,15 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   };
   const paymentRowsHtml = completedPayments.map((payment) => {
     const paymentDate = getPaymentDate(payment);
-    const primaryAmount = bookingCurrency === 'USD'
-      ? getPaymentUsdAmount(payment)
-      : payment.currency === bookingCurrency
-        ? payment.amount
-        : payment.amount;
-    const primaryCurrency = bookingCurrency === 'USD' ? 'USD' : payment.currency;
-    const convertedNote = bookingCurrency !== 'USD' && payment.currency !== bookingCurrency && typeof payment.usd_amount === 'number'
-      ? `<br><span style="font-size: 10px; color: #6b7280;">USD ${formatAmount(payment.usd_amount, 'USD')}</span>`
-      : '';
+    const bookingCurrencyAmount = getBookingCurrencyAmount(payment);
 
     return `
       <tr>
         <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">${escapeHtml(formatPaymentType(payment))}</td>
         <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">${paymentDate ? formatDate(paymentDate) : '-'}</td>
         <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">${escapeHtml(`${formatPaymentMethod(payment.paymentMethod)}${getPaymentReference(payment) !== '-' ? ` - ${getPaymentReference(payment)}` : ''}`)}</td>
-        <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right;">${formatAmount(primaryAmount, primaryCurrency)}${convertedNote}</td>
+        <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right;">${bookingCurrencyAmount ? formatAmount(bookingCurrencyAmount, bookingCurrency) : '-'}</td>
+        ${showsSettlementColumn ? `<td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right;">${escapeHtml(formatSettlementAmount(payment))}</td>` : ''}
       </tr>
     `;
   }).join('');
@@ -658,6 +691,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
             <th style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: left; font-weight: 500;">${t.tableDate}</th>
             <th style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: left; font-weight: 500;">${t.reference}</th>
             <th style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right; font-weight: 500;">${t.price}</th>
+            ${showsSettlementColumn ? `<th style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right; font-weight: 500;">${t.paidAmount}</th>` : ''}
           </tr>
         </thead>
         <tbody>
@@ -666,15 +700,17 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
             <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;"></td>
             <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;"></td>
             <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right;">${formatAmount(bookingTotal)}</td>
+            ${showsSettlementColumn ? '<td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;"></td>' : ''}
           </tr>
           ${paymentRowsHtml || `
             <tr>
-              <td colspan="4" style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: center; color: #6b7280;">-</td>
+              <td colspan="${showsSettlementColumn ? '5' : '4'}" style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: center; color: #6b7280;">-</td>
             </tr>
           `}
           <tr>
             <td colspan="3" style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right; font-weight: 600;">${t.balance}</td>
             <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right; font-weight: 600;">${formatAmount(balance)}</td>
+            ${showsSettlementColumn ? '<td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;"></td>' : ''}
           </tr>
         </tbody>
       </table>
