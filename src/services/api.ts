@@ -470,6 +470,7 @@ export const communicationsApi = {
     templateId?: string;
     clientId?: string;
     retreatId?: string;
+    bookingId?: string;
     relatedEntityType?: string;
     relatedEntityId?: string;
     actionKey?: string;

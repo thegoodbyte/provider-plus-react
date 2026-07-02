@@ -247,6 +247,10 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
       alert('Subject is required.');
       return;
     }
+    if (isBookingConfirmationEmail && preparedAttachments.length === 0) {
+      alert(attachmentPreparationError || 'Booking confirmation PDF is not ready. Please close this window and open Send again.');
+      return;
+    }
 
     setSending(true);
     try {
@@ -262,6 +266,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
         replyTo: formData.replyTo.trim() || settings?.replyTo,
         clientId: initialValues.clientId || undefined,
         retreatId: initialValues.retreatId || undefined,
+        bookingId: initialValues.bookingId || initialValues.variables?.bookingId || initialValues.variables?.booking?._id || initialValues.variables?.booking?.id || undefined,
         relatedEntityType: initialValues.relatedEntityType || undefined,
         relatedEntityId: initialValues.relatedEntityId || undefined,
         actionKey: initialValues.actionKey || undefined,
@@ -341,7 +346,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
             <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
               <div className="font-medium">{attachmentPreparationError || 'No attachment is ready'}</div>
               <div className="mt-1 text-xs">
-                This booking confirmation email will be sent without the PDF unless you close this window and prepare it again.
+                This booking confirmation cannot be sent until the PDF is prepared. Close this window and open Send again.
               </div>
             </div>
           )}
