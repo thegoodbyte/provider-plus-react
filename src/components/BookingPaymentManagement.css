@@ -96,6 +96,23 @@
   color: #6b7280;
 }
 
+.booking-currency-equivalent {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #4b5563;
+  line-height: 1.25;
+}
+
+.booking-currency-equivalent span {
+  display: block;
+  color: #6b7280;
+}
+
+.booking-currency-equivalent.missing {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
 .add-payment-form {
   background: #f8f9fa;
   border: 1px solid #e9ecef;
