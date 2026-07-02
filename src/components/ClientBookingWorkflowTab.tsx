@@ -565,89 +565,91 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Booking Requirements</h2>
-          <p className="mt-1 text-sm text-gray-500">Track each booking action with a checkbox, timestamp, and notes.</p>
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          {!hideBookingSelector && (
-          <select
-            value={selectedBookingId}
-            onChange={(event) => setSelectedBookingId(event.target.value)}
-            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {bookings.map((booking) => {
-              const id = getObjectId(booking);
-              return (
-                <option key={id} value={id}>
-                  {getRetreatName(booking)} {booking?.bookingNumber ? `#${booking.bookingNumber}` : id.slice(-6)}
-                </option>
-              );
-            })}
-          </select>
-          )}
-          <AppleButton onClick={() => loadItems()} variant="ghost" className="px-3 py-2">
-            <Icon icon={FiRefreshCw} className="mr-2 h-4 w-4" />
-            Refresh
-          </AppleButton>
-          {isEditing ? (
-            <>
-              <AppleButton onClick={cancelEditing} variant="ghost" className="px-3 py-2" disabled={savingId === 'all'}>
-                Cancel
-              </AppleButton>
-              <AppleButton onClick={saveDrafts} variant="primary" className="px-3 py-2" disabled={savingId === 'all'}>
-                <Icon icon={FiSave} className="mr-2 h-4 w-4" />
-                {savingId === 'all' ? 'Saving...' : 'Save'}
-              </AppleButton>
-            </>
-          ) : (
-            <AppleButton onClick={() => setIsEditing(true)} variant="secondary" className="px-3 py-2">
-              <Icon icon={FiEdit2} className="mr-2 h-4 w-4" />
-              Edit
-            </AppleButton>
-          )}
-        </div>
-      </div>
-
-      <div className="rounded-lg border border-gray-200 bg-white p-4">
-        <div className="mb-2 flex items-center justify-between text-sm">
-          <span className="font-medium text-gray-700">{completedCount} of {items.length} complete</span>
-          <span className="text-gray-500">{progressPercent}%</span>
-        </div>
-        <div className="h-2 rounded-full bg-gray-100">
-          <div className="h-2 rounded-full bg-blue-600 transition-all" style={{ width: `${progressPercent}%` }} />
-        </div>
-        {selectedBooking && (
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-            <span>{getRetreatName(selectedBooking)} {selectedBooking?.status ? `- ${selectedBooking.status}` : ''}</span>
-            {pastDueCount > 0 && <span className="rounded-full bg-red-100 px-2 py-1 font-semibold text-red-700">{pastDueCount} past due</span>}
-            {dueSoonCount > 0 && <span className="rounded-full bg-amber-100 px-2 py-1 font-semibold text-amber-700">{dueSoonCount} due soon</span>}
+      <div className="sticky top-0 z-30 -mx-1 rounded-b-xl border-b border-gray-200 bg-white/95 px-1 pb-3 pt-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Booking Requirements</h2>
+            <p className="mt-1 text-sm text-gray-500">Track each booking action with a checkbox, timestamp, and notes.</p>
           </div>
-        )}
-      </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            {!hideBookingSelector && (
+            <select
+              value={selectedBookingId}
+              onChange={(event) => setSelectedBookingId(event.target.value)}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {bookings.map((booking) => {
+                const id = getObjectId(booking);
+                return (
+                  <option key={id} value={id}>
+                    {getRetreatName(booking)} {booking?.bookingNumber ? `#${booking.bookingNumber}` : id.slice(-6)}
+                  </option>
+                );
+              })}
+            </select>
+            )}
+            <AppleButton onClick={() => loadItems()} variant="ghost" className="px-3 py-2">
+              <Icon icon={FiRefreshCw} className="mr-2 h-4 w-4" />
+              Refresh
+            </AppleButton>
+            {isEditing ? (
+              <>
+                <AppleButton onClick={cancelEditing} variant="ghost" className="px-3 py-2" disabled={savingId === 'all'}>
+                  Cancel
+                </AppleButton>
+                <AppleButton onClick={saveDrafts} variant="primary" className="px-3 py-2" disabled={savingId === 'all'}>
+                  <Icon icon={FiSave} className="mr-2 h-4 w-4" />
+                  {savingId === 'all' ? 'Saving...' : 'Save'}
+                </AppleButton>
+              </>
+            ) : (
+              <AppleButton onClick={() => setIsEditing(true)} variant="secondary" className="px-3 py-2">
+                <Icon icon={FiEdit2} className="mr-2 h-4 w-4" />
+                Edit
+              </AppleButton>
+            )}
+          </div>
+        </div>
 
-      <div className="flex flex-wrap gap-2">
-        {([
-          ['all', `All (${items.length})`],
-          ['past_due', `Past due (${pastDueCount})`],
-          ['due_soon', `Due soon (${dueSoonCount})`],
-          ['open', `Open (${items.length - completedCount})`],
-          ['completed', `Completed (${completedCount})`],
-        ] as Array<[StepFilter, string]>).map(([key, label]) => (
-          <button
-            key={key}
-            type="button"
-            onClick={() => setStepFilter(key)}
-            className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${
-              stepFilter === key
-                ? 'border-blue-600 bg-blue-600 text-white'
-                : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
+        <div className="mt-3 rounded-lg border border-gray-200 bg-white p-4">
+          <div className="mb-2 flex items-center justify-between text-sm">
+            <span className="font-medium text-gray-700">{completedCount} of {items.length} complete</span>
+            <span className="text-gray-500">{progressPercent}%</span>
+          </div>
+          <div className="h-2 rounded-full bg-gray-100">
+            <div className="h-2 rounded-full bg-blue-600 transition-all" style={{ width: `${progressPercent}%` }} />
+          </div>
+          {selectedBooking && (
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+              <span>{getRetreatName(selectedBooking)} {selectedBooking?.status ? `- ${selectedBooking.status}` : ''}</span>
+              {pastDueCount > 0 && <span className="rounded-full bg-red-100 px-2 py-1 font-semibold text-red-700">{pastDueCount} past due</span>}
+              {dueSoonCount > 0 && <span className="rounded-full bg-amber-100 px-2 py-1 font-semibold text-amber-700">{dueSoonCount} due soon</span>}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          {([
+            ['all', `All (${items.length})`],
+            ['past_due', `Past due (${pastDueCount})`],
+            ['due_soon', `Due soon (${dueSoonCount})`],
+            ['open', `Open (${items.length - completedCount})`],
+            ['completed', `Completed (${completedCount})`],
+          ] as Array<[StepFilter, string]>).map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setStepFilter(key)}
+              className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${
+                stepFilter === key
+                  ? 'border-blue-600 bg-blue-600 text-white'
+                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {error && (
