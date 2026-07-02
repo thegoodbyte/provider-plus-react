@@ -87,6 +87,24 @@ const resolveHouseForRetreat = async (retreat: any) => {
   }
 };
 
+const getRetreatStartTime = (retreat: any) =>
+  String(
+    retreat?.startTime ||
+    retreat?.start_time ||
+    retreat?.dates?.startTime ||
+    retreat?.dates?.start_time ||
+    ''
+  ).trim();
+
+const getRetreatEndTime = (retreat: any) =>
+  String(
+    retreat?.endTime ||
+    retreat?.end_time ||
+    retreat?.dates?.endTime ||
+    retreat?.dates?.end_time ||
+    ''
+  ).trim();
+
 const paymentDateFields = (source: any) => [
   source?.paymentDate,
   source?.paidDate,
@@ -463,8 +481,8 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
     const trimmedTime = String(time || '').trim();
     return trimmedTime ? `${formatDate(date)} ${trimmedTime}` : formatDate(date);
   };
-  const retreatCheckIn = formatRetreatDateTime(retreatStartDate, retreat?.startTime || retreat?.dates?.startTime);
-  const retreatCheckOut = formatRetreatDateTime(retreatEndDate, retreat?.endTime || retreat?.dates?.endTime);
+  const retreatCheckIn = formatRetreatDateTime(retreatStartDate, getRetreatStartTime(retreat));
+  const retreatCheckOut = formatRetreatDateTime(retreatEndDate, getRetreatEndTime(retreat));
   const retreatDateRangeCompact = [
     retreatStartDate ? retreatStartDate.toLocaleDateString(getDateLocale(), { day: '2-digit', month: '2-digit' }) : null,
     retreatEndDate ? retreatEndDate.toLocaleDateString(getDateLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' }) : null,

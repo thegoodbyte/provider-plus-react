@@ -157,6 +157,24 @@ const getRetreatMapLink = (retreat: any) =>
     ''
   ).trim();
 
+const getRetreatStartTime = (retreat: any) =>
+  String(
+    retreat?.startTime ||
+    retreat?.start_time ||
+    retreat?.dates?.startTime ||
+    retreat?.dates?.start_time ||
+    ''
+  ).trim();
+
+const getRetreatEndTime = (retreat: any) =>
+  String(
+    retreat?.endTime ||
+    retreat?.end_time ||
+    retreat?.dates?.endTime ||
+    retreat?.dates?.end_time ||
+    ''
+  ).trim();
+
 const interpolateTemplate = (template: string, variables: Record<string, any>) =>
   String(template || '').replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_match, path) => {
     const value = String(path).split('.').reduce((current, key) => current?.[key], variables);
@@ -1020,8 +1038,10 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     const contactEmail = 'info@ibogaspirit.cz';
     const bookingNumber = String(booking?.bookingNumber || booking?.booking_number || booking?.display_id || booking?.displayId || 'N/A');
     const bookingType = `${booking?.bookingType === 'booster' ? 'B' : 'F'} / ${getRetreatCode(retreatData)}`;
-    const checkInText = formatLocalizedDateTime(retreatData?.startDate || retreatData?.dates?.startDate, retreatData?.startTime || retreatData?.dates?.startTime);
-    const checkOutText = formatLocalizedDateTime(retreatData?.endDate || retreatData?.dates?.endDate, retreatData?.endTime || retreatData?.dates?.endTime);
+    const retreatStartTime = getRetreatStartTime(retreatData);
+    const retreatEndTime = getRetreatEndTime(retreatData);
+    const checkInText = formatLocalizedDateTime(retreatData?.startDate || retreatData?.dates?.startDate, retreatStartTime);
+    const checkOutText = formatLocalizedDateTime(retreatData?.endDate || retreatData?.dates?.endDate, retreatEndTime);
     const specialRequestsText = booking?.specialRequests || copy.none;
     const rows = [
       [copy.rows.bookingNumber, bookingNumber],
@@ -1054,6 +1074,8 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         dateRange: dateText,
         checkIn: checkInText,
         checkOut: checkOutText,
+        startTime: retreatStartTime,
+        endTime: retreatEndTime,
         address: addressText,
         googleMapLink: mapLinkText,
       },
