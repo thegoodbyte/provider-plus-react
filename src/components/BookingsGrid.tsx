@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { bookingsApi, clientsApi, retreatsApi } from '../services/api';
 import { RetreatClient, Client, Retreat } from '../types';
 import AppleButton from './AppleButton';
-import SearchableClientSelect from './SearchableClientSelect';
 import LoadingSpinner from './LoadingSpinner';
 import { FiPlus, FiEdit2, FiTrash2, FiEye, FiUser, FiCalendar, FiFileText, FiSearch, FiChevronUp, FiChevronDown } from 'react-icons/fi';
 import { generateBookingPDF } from './BookingConfirmationPDF';
@@ -18,6 +17,9 @@ const getRetreatDisplayCode = (retreat?: Retreat | any): string => {
   if (!retreat) return 'Unknown Retreat';
   return retreat.retreatCode || retreat.code || retreat.name || 'Unknown Retreat';
 };
+
+const getBookingRetreatId = (booking: RetreatClient | BookingWithDetails): string =>
+  typeof booking.retreatId === 'string' ? booking.retreatId : ((booking.retreatId as any)?._id || '');
 
 interface BookingWithDetails extends RetreatClient {
   resolvedClientId?: string;
@@ -48,7 +50,6 @@ const BookingsGrid: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingBooking, setEditingBooking] = useState<BookingWithDetails | null>(null);
-  const [clients, setClients] = useState<Client[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
   const [formData, setFormData] = useState<BookingFormData>({
     clientId: '',
@@ -62,6 +63,8 @@ const BookingsGrid: React.FC = () => {
   const [pdfLanguage, setPdfLanguage] = useState<'pl' | 'cz' | 'en'>('en');
   const [generatingPDF, setGeneratingPDF] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const queryRetreatId = useMemo(() => new URLSearchParams(location.search).get('retreatId') || '', [location.search]);
+  const [selectedRetreatId, setSelectedRetreatId] = useState(queryRetreatId);
   const [sortField, setSortField] = useState<SortField>('bookingNumber');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const isMobileViewport = () => window.matchMedia('(max-width: 767px)').matches;
@@ -72,20 +75,40 @@ const BookingsGrid: React.FC = () => {
 
   useEffect(() => {
     fetchBookings();
-    fetchClientsAndRetreats();
+    fetchRetreats();
   }, []);
 
-  const fetchClientsAndRetreats = async () => {
+  useEffect(() => {
+    setSelectedRetreatId(queryRetreatId);
+  }, [queryRetreatId]);
+
+  const fetchRetreats = async () => {
     try {
-      const [clientsResponse, retreatsResponse] = await Promise.all([
-        clientsApi.getAll(),
-        retreatsApi.getAll()
-      ]);
-      setClients(clientsResponse.data || []);
+      const retreatsResponse = await retreatsApi.getAll();
       setRetreats(retreatsResponse.data || []);
     } catch (error) {
-      console.error('Error fetching clients and retreats:', error);
+      console.error('Error fetching retreats:', error);
     }
+  };
+
+  const handleRetreatFilterChange = (retreatId: string) => {
+    setSelectedRetreatId(retreatId);
+
+    const params = new URLSearchParams(location.search);
+    if (retreatId) {
+      params.set('retreatId', retreatId);
+    } else {
+      params.delete('retreatId');
+    }
+
+    const nextSearch = params.toString();
+    navigate(
+      {
+        pathname: location.pathname,
+        search: nextSearch ? `?${nextSearch}` : '',
+      },
+      { replace: true },
+    );
   };
 
   const fetchBookings = async () => {
@@ -284,10 +307,15 @@ const BookingsGrid: React.FC = () => {
   const filteredAndSortedBookings = useMemo(() => {
     let filtered = bookings;
 
+    // Apply retreat filter
+    if (selectedRetreatId) {
+      filtered = filtered.filter((booking) => getBookingRetreatId(booking) === selectedRetreatId);
+    }
+
     // Apply search filter
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
-      filtered = bookings.filter(booking =>
+      filtered = filtered.filter(booking =>
         (booking.bookingNumber?.toString() || '').toLowerCase().includes(searchLower) ||
         (booking.clientName || '').toLowerCase().includes(searchLower) ||
         (booking.clientDisplayId?.toString() || '').toLowerCase().includes(searchLower) ||
@@ -332,7 +360,17 @@ const BookingsGrid: React.FC = () => {
     });
 
     return sorted;
-  }, [bookings, searchTerm, sortField, sortDirection]);
+  }, [bookings, searchTerm, selectedRetreatId, sortField, sortDirection]);
+
+  const retreatFilterOptions = useMemo(() => {
+    return [...retreats].sort((a, b) => getRetreatDisplayCode(a).localeCompare(getRetreatDisplayCode(b)));
+  }, [retreats]);
+
+  const selectedRetreatLabel = useMemo(() => {
+    if (!selectedRetreatId) return '';
+    const selectedRetreat = retreats.find((retreat) => retreat._id === selectedRetreatId);
+    return selectedRetreat ? getRetreatDisplayCode(selectedRetreat) : 'selected retreat';
+  }, [retreats, selectedRetreatId]);
 
   // Memoize computed values to prevent unnecessary re-calculations
   const bookingStats = useMemo(() => ({
@@ -396,19 +434,39 @@ const BookingsGrid: React.FC = () => {
         </div>
       </div>
 
-      {/* Search Bar */}
-      <div className="mb-4">
-        <div className="relative max-w-md">
+      {/* Filters */}
+      <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-end">
+        <div className="relative w-full md:max-w-md">
+          <label htmlFor="booking-search" className="sr-only">Search bookings</label>
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <Icon icon={FiSearch} className="h-5 w-5 text-gray-400" />
           </div>
           <input
+            id="booking-search"
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search by booking number, client name, retreat, or status..."
             className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
           />
+        </div>
+        <div className="w-full md:w-72">
+          <label htmlFor="booking-retreat-filter" className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Retreat
+          </label>
+          <select
+            id="booking-retreat-filter"
+            value={selectedRetreatId}
+            onChange={(e) => handleRetreatFilterChange(e.target.value)}
+            className="block w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm leading-5 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            <option value="">All Retreats</option>
+            {retreatFilterOptions.map((retreat) => (
+              <option key={retreat._id} value={retreat._id}>
+                {getRetreatDisplayCode(retreat)}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -552,7 +610,9 @@ const BookingsGrid: React.FC = () => {
           </table>
           {filteredAndSortedBookings.length === 0 && (
             <div className="text-center py-8 text-gray-500">
-              {searchTerm ? `No bookings found matching "${searchTerm}"` : 'No bookings found'}
+              {searchTerm || selectedRetreatId
+                ? `No bookings found${searchTerm ? ` matching "${searchTerm}"` : ''}${selectedRetreatId ? ` for ${selectedRetreatLabel}` : ''}`
+                : 'No bookings found'}
             </div>
           )}
         </div>
@@ -562,6 +622,7 @@ const BookingsGrid: React.FC = () => {
         <div className="text-sm text-gray-700">
           Showing {bookingStats.total} booking{bookingStats.total !== 1 ? 's' : ''}
           {searchTerm && <span> matching "{searchTerm}"</span>}
+          {selectedRetreatId && <span> for {selectedRetreatLabel}</span>}
         </div>
         <div className="flex items-center gap-4">
           <div className="text-sm text-gray-700">
