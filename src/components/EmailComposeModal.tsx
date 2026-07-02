@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { FiSend, FiX } from 'react-icons/fi';
-import { communicationsApi } from '../services/api';
+import { bookingsApi, communicationsApi } from '../services/api';
 import { EmailTemplate, MailSettings } from '../types';
+import { createBookingConfirmationPdf } from './BookingConfirmationPDF';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
@@ -39,6 +40,20 @@ const formatAttachmentSize = (bytes: number) => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
+const blobToBase64 = (blob: Blob): Promise<string> => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onloadend = () => resolve(String(reader.result || '').split(',')[1] || '');
+  reader.onerror = reject;
+  reader.readAsDataURL(blob);
+});
+
+const normalizeBookingConfirmationLanguage = (language?: string): 'pl' | 'cz' | 'en' => {
+  const normalized = String(language || '').toLowerCase();
+  if (normalized === 'pl' || normalized === 'polish') return 'pl';
+  if (normalized === 'cz' || normalized === 'cs' || normalized === 'czech') return 'cz';
+  return 'en';
+};
+
 export interface EmailComposeInitialValues {
   to?: string;
   cc?: string;
@@ -53,6 +68,9 @@ export interface EmailComposeInitialValues {
   retreatId?: string;
   relatedEntityType?: string;
   relatedEntityId?: string;
+  templateKey?: string;
+  requestedLanguage?: string;
+  resolvedLanguage?: string;
   actionKey?: string;
   actionLabel?: string;
   bookingFlowStepKey?: string;
@@ -83,6 +101,8 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
   const [settings, setSettings] = useState<MailSettings | null>(null);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [preparedAttachments, setPreparedAttachments] = useState(initialValues.attachments || []);
+  const [attachmentPreparationError, setAttachmentPreparationError] = useState('');
   const [sending, setSending] = useState(false);
   const [formData, setFormData] = useState({
     to: initialValues.to || '',
@@ -97,6 +117,8 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
 
   useEffect(() => {
     setSelectedTemplateId(initialValues.templateId || '');
+    setPreparedAttachments(initialValues.attachments || []);
+    setAttachmentPreparationError('');
     setFormData({
       to: initialValues.to || '',
       cc: initialValues.cc || '',
@@ -108,6 +130,49 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
       replyTo: initialValues.replyTo || '',
     });
   }, [initialValues]);
+
+  useEffect(() => {
+    let active = true;
+    const prepareBookingConfirmationAttachment = async () => {
+      const isBookingConfirmation =
+        initialValues.templateKey === 'booking_confirmation' ||
+        initialValues.bookingFlowStepKey === 'booking_confirmation_sent';
+      const bookingId = initialValues.variables?.booking?._id || initialValues.variables?.booking?.id;
+      if (!isBookingConfirmation || preparedAttachments.length > 0 || !bookingId) return;
+
+      try {
+        const language = normalizeBookingConfirmationLanguage(
+          initialValues.resolvedLanguage ||
+          initialValues.requestedLanguage ||
+          initialValues.variables?.client?.language,
+        );
+        const bookingResponse = await bookingsApi.getOne(String(bookingId));
+        const { blob, fileName } = await createBookingConfirmationPdf({ booking: bookingResponse.data, language });
+        const contentBase64 = await blobToBase64(blob);
+        if (!active) return;
+        setPreparedAttachments([{
+          fileName,
+          mimeType: 'application/pdf',
+          contentBase64,
+        }]);
+      } catch (error) {
+        console.error('Unable to prepare booking confirmation PDF attachment:', error);
+        if (active) setAttachmentPreparationError('Unable to prepare booking confirmation PDF attachment.');
+      }
+    };
+
+    prepareBookingConfirmationAttachment();
+    return () => {
+      active = false;
+    };
+  }, [
+    initialValues.bookingFlowStepKey,
+    initialValues.requestedLanguage,
+    initialValues.resolvedLanguage,
+    initialValues.templateKey,
+    initialValues.variables,
+    preparedAttachments.length,
+  ]);
 
   useEffect(() => {
     let active = true;
@@ -155,10 +220,14 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
     handleTemplateChange(initialValues.templateId);
   }, [handleTemplateChange, initialValues.bodyText, initialValues.subject, initialValues.templateId, templates]);
 
-  const attachments = initialValues.attachments || [];
+  const attachments = preparedAttachments;
   const isBookingConfirmationEmail =
-    initialValues.relatedEntityType === 'booking' &&
-    (initialValues.bookingFlowStepKey === 'booking_confirmation_sent' || title.toLowerCase().includes('booking confirmation'));
+    (initialValues.relatedEntityType === 'booking' || initialValues.relatedEntityType === 'booking_flow_item') &&
+    (
+      initialValues.templateKey === 'booking_confirmation' ||
+      initialValues.bookingFlowStepKey === 'booking_confirmation_sent' ||
+      title.toLowerCase().includes('booking confirmation')
+    );
 
   const handleSend = async () => {
     const to = formData.to.trim();
@@ -194,7 +263,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
         bookingFlowStepKey: initialValues.bookingFlowStepKey || undefined,
         bookingFlowStatusOnSend: initialValues.bookingFlowStatusOnSend || undefined,
         variables: initialValues.variables,
-        attachments: initialValues.attachments || undefined,
+        attachments: preparedAttachments.length > 0 ? preparedAttachments : undefined,
       });
       await onSent?.(response.data);
       alert(formatSentEmailReceipt(response.data));
@@ -264,7 +333,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
 
           {attachments.length === 0 && isBookingConfirmationEmail && (
             <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
-              <div className="font-medium">No attachment is ready</div>
+              <div className="font-medium">{attachmentPreparationError || 'No attachment is ready'}</div>
               <div className="mt-1 text-xs">
                 This booking confirmation email will be sent without the PDF unless you close this window and prepare it again.
               </div>
