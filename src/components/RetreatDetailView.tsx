@@ -426,6 +426,11 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       const cleanData: any = {};
 
       if (retreatFormData.name?.trim()) cleanData.name = retreatFormData.name.trim();
+      const retreatCode = String(retreatFormData.code || retreatFormData.retreatCode || '').trim();
+      if (retreatCode) {
+        cleanData.code = retreatCode;
+        cleanData.retreatCode = retreatCode;
+      }
       cleanData.location = 'Default Location'; // Backend requires location
       if (retreatFormData.startDate) cleanData.startDate = retreatFormData.startDate;
       cleanData.startTime = retreatFormData.startTime?.trim() || undefined;
@@ -1540,6 +1545,25 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                   value={retreatFormData.name || ''}
                   onChange={handleRetreatInputChange}
                   required
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="retreat-code">Code:</label>
+                <input
+                  type="text"
+                  id="retreat-code"
+                  name="code"
+                  value={retreatFormData.code || retreatFormData.retreatCode || ''}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setRetreatFormData(prev => ({
+                      ...prev,
+                      code: value,
+                      retreatCode: value,
+                    }));
+                  }}
+                  placeholder="e.g. JNO-09-22-26"
                 />
               </div>
 

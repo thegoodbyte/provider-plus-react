@@ -73,6 +73,7 @@ export interface EmailComposeInitialValues {
   resolvedLanguage?: string;
   actionKey?: string;
   actionLabel?: string;
+  bookingId?: string;
   bookingFlowStepKey?: string;
   bookingFlowStatusOnSend?: string;
   variables?: Record<string, any>;
@@ -137,7 +138,11 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
       const isBookingConfirmation =
         initialValues.templateKey === 'booking_confirmation' ||
         initialValues.bookingFlowStepKey === 'booking_confirmation_sent';
-      const bookingId = initialValues.variables?.booking?._id || initialValues.variables?.booking?.id;
+      const bookingId =
+        initialValues.bookingId ||
+        initialValues.variables?.booking?._id ||
+        initialValues.variables?.booking?.id ||
+        initialValues.variables?.bookingId;
       if (!isBookingConfirmation || preparedAttachments.length > 0 || !bookingId) return;
 
       try {
@@ -167,6 +172,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
     };
   }, [
     initialValues.bookingFlowStepKey,
+    initialValues.bookingId,
     initialValues.requestedLanguage,
     initialValues.resolvedLanguage,
     initialValues.templateKey,
