@@ -117,8 +117,15 @@ const RetreatsGrid: React.FC = () => {
   const getRetreatCodeValue = (retreat: Partial<Retreat>) =>
     retreat.code || retreat.retreatCode || '';
 
-  const getRetreatTown = (retreat: Partial<Retreat>) =>
-    retreat.location_town || retreat.locationTown || retreat.location || '';
+  const getRetreatTown = (retreat: Partial<Retreat>) => {
+    const explicitTown = String(retreat.location_town || retreat.locationTown || retreat.location || '').trim();
+    if (explicitTown && explicitTown !== 'Default Location') return explicitTown;
+    const houseId = getObjectId(retreat.houseId);
+    const house = retreat.houseId && typeof retreat.houseId === 'object'
+      ? retreat.houseId as House
+      : houses.find((item) => item._id === houseId);
+    return house?.generalTown || house?.general_town || house?.city || house?.name || explicitTown;
+  };
 
   const getObjectId = (value: any): string => {
     if (!value) return '';

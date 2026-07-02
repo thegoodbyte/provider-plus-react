@@ -117,6 +117,18 @@ const getHouseIdValue = (houseId?: string | House) => {
   return typeof houseId === 'string' ? houseId : houseId._id || '';
 };
 
+const getHouseTown = (house?: House | null) =>
+  String(house?.generalTown || house?.general_town || house?.city || house?.name || '').trim();
+
+const getRetreatTown = (retreat?: Partial<Retreat> | null, houses: House[] = []) => {
+  const explicitTown = String(retreat?.location_town || retreat?.locationTown || retreat?.location || '').trim();
+  if (explicitTown && explicitTown !== 'Default Location') return explicitTown;
+
+  const houseId = getHouseIdValue(retreat?.houseId as any);
+  const house = houseId ? houses.find((item) => item._id === houseId) : null;
+  return getHouseTown(house) || explicitTown;
+};
+
 const cropImageToHeroBanner = (file: File, width = 1200, height = 250): Promise<File> => {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith('image/')) {
@@ -431,7 +443,13 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         cleanData.code = retreatCode;
         cleanData.retreatCode = retreatCode;
       }
-      cleanData.location = 'Default Location'; // Backend requires location
+      const houseId = getHouseIdValue(retreatFormData.houseId).trim();
+      const selectedHouse = houseId ? houses.find((house) => house._id === houseId) : null;
+      const retreatTown = getRetreatTown(retreatFormData, houses) || getRetreatTown(retreat, houses) || getHouseTown(selectedHouse);
+      if (retreatTown) {
+        cleanData.location = retreatTown;
+        cleanData.location_town = retreatTown;
+      }
       if (retreatFormData.startDate) cleanData.startDate = retreatFormData.startDate;
       cleanData.startTime = retreatFormData.startTime?.trim() || undefined;
       if (retreatFormData.endDate) cleanData.endDate = retreatFormData.endDate;
@@ -441,7 +459,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       }
       if (retreatFormData.helpers?.trim()) cleanData.helpers = retreatFormData.helpers.trim();
       if (retreatFormData.description?.trim()) cleanData.description = retreatFormData.description.trim();
-      const houseId = getHouseIdValue(retreatFormData.houseId).trim();
       if (houseId) cleanData.houseId = houseId;
       if (retreatFormData.status) cleanData.status = retreatFormData.status;
       if (retreatFormData.type) cleanData.type = retreatFormData.type;
@@ -460,6 +477,17 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
 
   const handleRetreatInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
+    if (name === 'houseId') {
+      const selectedHouse = houses.find((house) => house._id === value);
+      const town = getHouseTown(selectedHouse);
+      setRetreatFormData(prev => ({
+        ...prev,
+        houseId: value,
+        ...(town ? { location: town, location_town: town } : {}),
+      }));
+      return;
+    }
+
     setRetreatFormData(prev => ({
       ...prev,
       [name]: name === 'capacity' ? parseInt(value) : value
