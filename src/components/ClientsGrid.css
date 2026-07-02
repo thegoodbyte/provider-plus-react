@@ -26,6 +26,248 @@
   background-clip: text;
 }
 
+.clients-page-header {
+  margin-bottom: 20px;
+}
+
+.clients-page-header h1 {
+  margin: 0;
+  color: #1f2937;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.clients-page-header p {
+  margin: 4px 0 16px;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.clients-page-toolbar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f9fafb;
+}
+
+.clients-toolbar-search {
+  flex: 1 1 220px;
+  max-width: 300px;
+  min-width: 0;
+}
+
+.clients-toolbar-search input,
+.clients-toolbar-select {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #ffffff;
+  font-size: 14px;
+}
+
+.clients-toolbar-select {
+  width: auto;
+  cursor: pointer;
+}
+
+.clients-toolbar-spacer {
+  flex: 1 1 auto;
+}
+
+.clients-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.clients-toolbar-btn-secondary {
+  border: 1px solid #fbbf24;
+  background: #fef3c7;
+  color: #1f2937;
+}
+
+.clients-toolbar-btn-primary {
+  border: 0;
+  background: #4b5563;
+  color: #ffffff;
+}
+
+.clients-mobile-list {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .clients-container {
+    width: 100%;
+    max-width: 100%;
+    padding: 12px;
+    overflow-x: hidden;
+  }
+
+  .clients-page-header {
+    margin-bottom: 14px;
+  }
+
+  .clients-page-header h1 {
+    font-size: 22px;
+  }
+
+  .clients-page-header p {
+    margin-bottom: 12px;
+    font-size: 13px;
+  }
+
+  .clients-page-toolbar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 10px;
+  }
+
+  .clients-toolbar-search {
+    grid-column: 1 / -1;
+    max-width: none;
+  }
+
+  .clients-toolbar-select {
+    width: 100%;
+  }
+
+  .clients-toolbar-spacer {
+    display: none;
+  }
+
+  .clients-toolbar-btn {
+    width: 100%;
+    padding: 9px 10px;
+    font-size: 13px;
+  }
+
+  .clients-table-desktop {
+    display: none;
+  }
+
+  .clients-mobile-list {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .clients-mobile-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    padding: 12px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background: #ffffff;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
+    overflow: hidden;
+  }
+
+  .clients-mobile-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .clients-mobile-card-title {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .clients-mobile-name {
+    display: block;
+    max-width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #111827;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    text-align: left;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+  }
+
+  .clients-mobile-id {
+    color: #2563eb;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .clients-mobile-card .client-retreat-code {
+    flex: 0 1 auto;
+    max-width: 42%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .clients-mobile-meta {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 6px 10px;
+    color: #4b5563;
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .clients-mobile-meta span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  .clients-mobile-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .clients-mobile-actions {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .clients-mobile-actions .icon-action-btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .clients-mobile-empty {
+    padding: 18px;
+    border: 1px dashed #cbd5e1;
+    border-radius: 10px;
+    background: #f8fafc;
+    color: #64748b;
+    text-align: center;
+  }
+}
+
 .header-actions {
   display: flex;
   gap: 16px;

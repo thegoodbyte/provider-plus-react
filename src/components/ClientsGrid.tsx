@@ -114,6 +114,15 @@ const isBookedClient = (client: Client) => (
   (client.status as string) === 'booked' || client.workflowStatus === 'booked'
 );
 
+const getClientFullName = (client: Client) => {
+  const firstName = client.firstName || client.fname || '';
+  const lastName = client.lastName || client.lname || '';
+  return `${firstName} ${lastName}`.trim() || 'Unnamed client';
+};
+
+const getClientDisplayId = (client: Client) =>
+  client.display_id ? `#${client.display_id}` : client._id ? `#${client._id.slice(-6)}` : '';
+
 const ClientNameCell: React.FC<{
   client: Client;
   name: string;
@@ -629,51 +638,29 @@ const ClientsGrid: React.FC = () => {
   }
 
   return (
-    <div className="clients-container" style={{ padding: '24px' }}>
+    <div className="clients-container">
       {/* Page Header */}
-      <div style={{ marginBottom: '20px' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: '600', color: '#1f2937', margin: 0 }}>👥 Clients Management</h1>
-        <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '4px', marginBottom: '16px' }}>Manage your client database and information</p>
+      <div className="clients-page-header">
+        <h1>Clients Management</h1>
+        <p>Manage your client database and information</p>
 
         {/* Toolbar - All Actions in One Line */}
-        <div style={{
-          display: 'flex',
-          gap: '12px',
-          alignItems: 'center',
-          padding: '12px 16px',
-          backgroundColor: '#f9fafb',
-          borderRadius: '8px',
-          border: '1px solid #e5e7eb'
-        }}>
+        <div className="clients-page-toolbar">
           {/* Search */}
-          <div style={{ flex: 1, maxWidth: '300px' }}>
+          <div className="clients-toolbar-search">
             <input
               type="text"
               placeholder="🔍 Search clients..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                borderRadius: '6px',
-                border: '1px solid #e5e7eb',
-                fontSize: '14px'
-              }}
             />
           </div>
 
           {/* Filter */}
           <select
+            className="clients-toolbar-select"
             value={workflowFilter}
             onChange={(e) => setWorkflowFilter(e.target.value)}
-            style={{
-              padding: '8px 12px',
-              borderRadius: '6px',
-              border: '1px solid #e5e7eb',
-              backgroundColor: 'white',
-              fontSize: '14px',
-              cursor: 'pointer'
-            }}
           >
             <option value="all">All Clients</option>
             <option value="potential">Potential Only</option>
@@ -682,42 +669,19 @@ const ClientsGrid: React.FC = () => {
           </select>
 
           {/* Spacer */}
-          <div style={{ flex: 1 }}></div>
+          <div className="clients-toolbar-spacer"></div>
 
           {/* Action Buttons */}
           <button
             onClick={() => setIsQuickAddOpen(true)}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '6px',
-              backgroundColor: '#fef3c7',
-              border: '1px solid #fbbf24',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}
+            className="clients-toolbar-btn clients-toolbar-btn-secondary"
           >
             ⚡ Quick Add
           </button>
 
           <button
             onClick={handleAdd}
-            style={{
-              padding: '8px 16px',
-              borderRadius: '6px',
-              backgroundColor: '#4b5563',
-              color: 'white',
-              border: 'none',
-              fontSize: '14px',
-              fontWeight: '500',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}
+            className="clients-toolbar-btn clients-toolbar-btn-primary"
           >
             ➕ Add New Client
           </button>
@@ -730,20 +694,89 @@ const ClientsGrid: React.FC = () => {
         </div>
       )}
 
-      <SimpleTable
-        key={refreshKey}
-        columns={columns}
-        rows={filteredClients}
-        onRowClick={handleView}
-        loading={isLoading}
-        onRefresh={handleRefresh}
-        searchable={false}
-        pageSize={50}
-        pageSizeOptions={[25, 50, 100]}
-        stickyHeader={true}
-        maxHeight="75vh"
-        showToolbar={false}
-      />
+      <div className="clients-table-desktop">
+        <SimpleTable
+          key={refreshKey}
+          columns={columns}
+          rows={filteredClients}
+          onRowClick={handleView}
+          loading={isLoading}
+          onRefresh={handleRefresh}
+          searchable={false}
+          pageSize={50}
+          pageSizeOptions={[25, 50, 100]}
+          stickyHeader={true}
+          maxHeight="75vh"
+          showToolbar={false}
+        />
+      </div>
+
+      <div className="clients-mobile-list">
+        {isLoading ? (
+          <div className="clients-mobile-empty">Loading clients...</div>
+        ) : filteredClients.length === 0 ? (
+          <div className="clients-mobile-empty">No clients found</div>
+        ) : (
+          filteredClients.map((client) => {
+            const booking = getClientBooking(client);
+            const retreatCode = isBookedClient(client) && booking ? getRetreatCode(getBookingRetreat(booking)) : '';
+            const status = String(client.status || 'active');
+            const workflow = String(client.workflowStatus || 'potential');
+
+            return (
+              <article
+                key={client._id}
+                className="clients-mobile-card"
+                onClick={() => handleView(client)}
+              >
+                <div className="clients-mobile-card-header">
+                  <div className="clients-mobile-card-title">
+                    <button
+                      type="button"
+                      className="clients-mobile-name"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleView(client);
+                      }}
+                    >
+                      {getClientFullName(client)}
+                    </button>
+                    <span className="clients-mobile-id">{getClientDisplayId(client)}</span>
+                  </div>
+                  {retreatCode && <span className="client-retreat-code">{retreatCode}</span>}
+                </div>
+
+                <div className="clients-mobile-meta">
+                  <span>{client.email || 'No email'}</span>
+                  <span>{client.phone || 'No phone'}</span>
+                  <span>{client.country ? getCountryName(client.country) : 'No country'}</span>
+                  <span>{client.language || 'EN'}</span>
+                </div>
+
+                <div className="clients-mobile-badges">
+                  <Chip label={status.toUpperCase()} color={status === 'inactive' ? 'error' : status === 'potential' ? 'info' : 'success'} size="small" />
+                  <Chip label={workflow.toUpperCase()} color={workflow === 'booked' ? 'primary' : workflow === 'blacklisted' ? 'error' : 'warning'} size="small" />
+                </div>
+
+                <div className="clients-mobile-actions">
+                  <button className="icon-action-btn icon-action-btn-view" onClick={(e) => { e.stopPropagation(); handleView(client); }} title="View">
+                    <VisibilityIcon />
+                  </button>
+                  <button className="icon-action-btn icon-action-btn-edit" onClick={(e) => { e.stopPropagation(); handleEdit(client); }} title="Edit">
+                    <EditIcon />
+                  </button>
+                  <button className="icon-action-btn icon-action-btn-view" onClick={(e) => { e.stopPropagation(); handleGenerateDepositLink(client); }} title="Deposit Link">
+                    <LinkIcon />
+                  </button>
+                  <button className="icon-action-btn icon-action-btn-danger" onClick={(e) => { e.stopPropagation(); handleDelete(client._id!); }} title="Delete">
+                    <DeleteIcon />
+                  </button>
+                </div>
+              </article>
+            );
+          })
+        )}
+      </div>
 
       {isModalOpen && (
         <div className="modal-overlay">
