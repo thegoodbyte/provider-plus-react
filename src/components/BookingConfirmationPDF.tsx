@@ -32,6 +32,11 @@ const escapeHtml = (value: any) =>
     "'": '&#39;',
   }[char] || char));
 
+const toFiniteNumber = (value: any, fallback = 0) => {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : fallback;
+};
+
 const getArtifactTime = (artifact: MedicalArtifact) =>
   new Date(artifact.receivedAt || artifact.createdAt || 0).getTime();
 
@@ -162,7 +167,7 @@ const getPaymentReference = (payment: Payment) =>
 
 const getBookingTotalAmount = (booking: any) => {
   const paymentRequest = booking?.paymentRequestId || booking?.paymentRequest;
-  return Number(
+  return toFiniteNumber(
     booking?.totalAmount ??
     booking?.totalCost ??
     paymentRequest?.fullPriceQuote ??
@@ -174,7 +179,7 @@ const getBookingTotalAmount = (booking: any) => {
 
 const getBookingTotalUsdAmount = (booking: any) => {
   const paymentRequest = booking?.paymentRequestId || booking?.paymentRequest;
-  const value = Number(
+  const value = toFiniteNumber(
     booking?.totalAmountUsd ??
     booking?.totalUsdAmount ??
     paymentRequest?.fullPriceUsdAmount ??
@@ -504,16 +509,18 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
     usdRatesByCurrency[currency] = fallbackRate;
     return fallbackRate;
   };
-  const convertToUsdAmount = async (amount: number, currency: Payment['currency']) => {
-    if (!Number.isFinite(amount)) return null;
+  const convertToUsdAmount = async (amount: number | string, currency: Payment['currency']) => {
+    const numericAmount = toFiniteNumber(amount, NaN);
+    if (!Number.isFinite(numericAmount)) return null;
     const rate = await getUsdRate(currency);
-    return Math.round(amount * rate * 100) / 100;
+    return Math.round(numericAmount * rate * 100) / 100;
   };
-  const convertUsdToCurrencyAmount = async (amountUsd: number, currency: Payment['currency']) => {
-    if (!Number.isFinite(amountUsd)) return null;
-    if (currency === 'USD') return Math.round(amountUsd * 100) / 100;
+  const convertUsdToCurrencyAmount = async (amountUsd: number | string, currency: Payment['currency']) => {
+    const numericAmountUsd = toFiniteNumber(amountUsd, NaN);
+    if (!Number.isFinite(numericAmountUsd)) return null;
+    if (currency === 'USD') return Math.round(numericAmountUsd * 100) / 100;
     const rate = await getUsdRate(currency);
-    return rate ? Math.round((amountUsd / rate) * 100) / 100 : null;
+    return rate ? Math.round((numericAmountUsd / rate) * 100) / 100 : null;
   };
   const bookingTotalUsd = getBookingTotalUsdAmount(booking) ?? await convertToUsdAmount(bookingTotal, bookingCurrency);
   const getExchangeNote = (source?: string, date?: Date | null) => {
@@ -525,10 +532,10 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   };
 
   const resolveBookingCurrencyAmount = async (payment: Payment, amountUsd: number | null) => {
-    if (payment.currency === bookingCurrency) return payment.amount;
+    if (payment.currency === bookingCurrency) return toFiniteNumber(payment.amount, 0);
     if (bookingCurrency === 'USD') return amountUsd;
     if (payment.bookingCurrency === bookingCurrency) {
-      const amount = Number(payment.bookingCurrencyAmount ?? 0);
+      const amount = toFiniteNumber(payment.bookingCurrencyAmount, 0);
       return Number.isFinite(amount) && amount > 0 ? amount : null;
     }
 
@@ -536,8 +543,9 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   };
 
   const resolvedCompletedPayments = await Promise.all(completedPayments.map(async (payment) => {
-    const explicitUsdAmount = typeof payment.usd_amount === 'number' && Number.isFinite(payment.usd_amount)
-      ? payment.usd_amount
+    const parsedUsdAmount = toFiniteNumber(payment.usd_amount, NaN);
+    const explicitUsdAmount = Number.isFinite(parsedUsdAmount)
+      ? parsedUsdAmount
       : null;
     const amountUsd = explicitUsdAmount ?? await convertToUsdAmount(payment.amount, payment.currency);
     const bookingCurrencyAmount = await resolveBookingCurrencyAmount(payment, amountUsd);
@@ -553,7 +561,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
     exchangeSource?: string
   ) => {
     if (amount === null) {
-      return '<span style="color: #b91c1c;">Not counted</span>';
+      return '-';
     }
 
     const sourceNote = payment.currency !== bookingCurrency
@@ -564,7 +572,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   };
 
   const formatSettlementAmount = (payment: Payment, amountUsd: number | null) => {
-    const parts = [formatAmount(payment.amount, payment.currency)];
+    const parts = [formatAmount(toFiniteNumber(payment.amount, 0), payment.currency)];
     if (payment.currency !== 'USD' && amountUsd !== null && Number.isFinite(amountUsd)) {
       parts.push(formatAmount(amountUsd, 'USD'));
     }
@@ -573,7 +581,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
 
   const showsSettlementColumn = Boolean(bookingTotalUsd && bookingCurrency !== 'USD') || completedPayments.some((payment) =>
     payment.currency !== bookingCurrency ||
-    (payment.currency !== 'USD' && typeof payment.usd_amount === 'number' && Number.isFinite(payment.usd_amount))
+    (payment.currency !== 'USD' && Number.isFinite(toFiniteNumber(payment.usd_amount, NaN)))
   );
 
   const totalPaid = resolvedCompletedPayments.reduce((sum, resolvedPayment) => {
