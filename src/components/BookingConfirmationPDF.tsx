@@ -147,9 +147,11 @@ const resolveBookingPayments = async (booking: any): Promise<Payment[]> => {
   return [];
 };
 
-const getPaymentUsdAmount = (payment: Payment) => {
-  if (typeof payment.usd_amount === 'number') return payment.usd_amount;
-  return payment.currency === 'USD' ? payment.amount : 0;
+const fallbackUsdRates: Record<Payment['currency'], number> = {
+  CZK: 0.044,
+  EUR: 1.08,
+  PLN: 0.26,
+  USD: 1,
 };
 
 const getPaymentDate = (payment: Payment) =>
@@ -472,60 +474,6 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
     }).format(amount);
   };
 
-  const getBookingCurrencyAmount = (payment: Payment) => {
-    if (payment.currency === bookingCurrency) return payment.amount;
-    if (bookingCurrency === 'USD') return getPaymentUsdAmount(payment);
-    if (payment.bookingCurrency === bookingCurrency) {
-      const amount = Number(payment.bookingCurrencyAmount ?? 0);
-      return Number.isFinite(amount) && amount > 0 ? amount : null;
-    }
-
-    return null;
-  };
-
-  const formatBookingCurrencyAmount = (payment: Payment, amount: number | null) => {
-    if (amount === null) {
-      return '<span style="color: #b91c1c;">Not counted</span>';
-    }
-
-    const source = String(payment.bookingCurrencyExchangeSource || '').trim();
-    const exchangeDate = parseDate(payment.bookingCurrencyExchangeDate);
-    const sourceNote = source || exchangeDate
-      ? `<br><span style="font-size: 10px; color: #6b7280;">${escapeHtml([
-        source ? `Calculated by ${source}` : '',
-        exchangeDate ? `on ${formatDate(exchangeDate)}` : '',
-      ].filter(Boolean).join(' '))}</span>`
-      : '';
-
-    return `${formatAmount(amount, bookingCurrency)}${sourceNote}`;
-  };
-
-  const formatSettlementAmount = (payment: Payment) => {
-    const parts = [formatAmount(payment.amount, payment.currency)];
-    if (payment.currency !== 'USD' && typeof payment.usd_amount === 'number' && Number.isFinite(payment.usd_amount)) {
-      parts.push(formatAmount(payment.usd_amount, 'USD'));
-    }
-    return parts.join(' / ');
-  };
-
-  const showsSettlementColumn = completedPayments.some((payment) =>
-    payment.currency !== bookingCurrency ||
-    (payment.currency !== 'USD' && typeof payment.usd_amount === 'number' && Number.isFinite(payment.usd_amount))
-  );
-
-  const totalPaid = completedPayments.reduce((sum, payment) => {
-    const bookingAmount = getBookingCurrencyAmount(payment);
-    return sum + (bookingAmount || 0);
-  }, 0);
-  const balance = bookingTotal - totalPaid;
-  const bookingTotalUsd = getBookingTotalUsdAmount(booking);
-  const requiredDeposit = bookingTotal > 0 ? bookingTotal * 0.4 : null;
-  const roundUpCurrency = (amount: number) => Math.ceil(amount * 100) / 100;
-  const requiredDepositUsd = requiredDeposit && bookingTotalUsd
-    ? roundUpCurrency((requiredDeposit / bookingTotal) * bookingTotalUsd)
-    : null;
-
-  // Get date locale based on language
   const getDateLocale = () => {
     switch (language) {
       case 'pl': return 'pl-PL';
@@ -535,6 +483,112 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   };
 
   const formatDate = (date: Date) => date.toLocaleDateString(getDateLocale());
+  const generatedConversionDate = new Date();
+  const usdRatesByCurrency: Partial<Record<Payment['currency'], number>> = {};
+  const getUsdRate = async (currency: Payment['currency']) => {
+    if (currency === 'USD') return 1;
+    if (usdRatesByCurrency[currency]) return usdRatesByCurrency[currency]!;
+
+    try {
+      const response = await paymentsApi.convertToUsd(1, currency);
+      const rate = Number(response.data?.usd_amount);
+      if (Number.isFinite(rate) && rate > 0) {
+        usdRatesByCurrency[currency] = rate;
+        return rate;
+      }
+    } catch (error) {
+      console.warn(`Unable to load ${currency}->USD rate for booking PDF:`, error);
+    }
+
+    const fallbackRate = fallbackUsdRates[currency] || 1;
+    usdRatesByCurrency[currency] = fallbackRate;
+    return fallbackRate;
+  };
+  const convertToUsdAmount = async (amount: number, currency: Payment['currency']) => {
+    if (!Number.isFinite(amount)) return null;
+    const rate = await getUsdRate(currency);
+    return Math.round(amount * rate * 100) / 100;
+  };
+  const convertUsdToCurrencyAmount = async (amountUsd: number, currency: Payment['currency']) => {
+    if (!Number.isFinite(amountUsd)) return null;
+    if (currency === 'USD') return Math.round(amountUsd * 100) / 100;
+    const rate = await getUsdRate(currency);
+    return rate ? Math.round((amountUsd / rate) * 100) / 100 : null;
+  };
+  const bookingTotalUsd = getBookingTotalUsdAmount(booking) ?? await convertToUsdAmount(bookingTotal, bookingCurrency);
+  const getExchangeNote = (source?: string, date?: Date | null) => {
+    const parts = [
+      date ? `as of ${formatDate(date)}` : '',
+      source || 'Revolut',
+    ].filter(Boolean);
+    return `<br><span style="font-size: 10px; color: #6b7280;">${escapeHtml(parts.join(' '))}</span>`;
+  };
+
+  const resolveBookingCurrencyAmount = async (payment: Payment, amountUsd: number | null) => {
+    if (payment.currency === bookingCurrency) return payment.amount;
+    if (bookingCurrency === 'USD') return amountUsd;
+    if (payment.bookingCurrency === bookingCurrency) {
+      const amount = Number(payment.bookingCurrencyAmount ?? 0);
+      return Number.isFinite(amount) && amount > 0 ? amount : null;
+    }
+
+    return amountUsd === null ? null : convertUsdToCurrencyAmount(amountUsd, bookingCurrency);
+  };
+
+  const resolvedCompletedPayments = await Promise.all(completedPayments.map(async (payment) => {
+    const explicitUsdAmount = typeof payment.usd_amount === 'number' && Number.isFinite(payment.usd_amount)
+      ? payment.usd_amount
+      : null;
+    const amountUsd = explicitUsdAmount ?? await convertToUsdAmount(payment.amount, payment.currency);
+    const bookingCurrencyAmount = await resolveBookingCurrencyAmount(payment, amountUsd);
+    const exchangeDate = parseDate(payment.bookingCurrencyExchangeDate) || getPaymentDate(payment) || generatedConversionDate;
+    const exchangeSource = String(payment.bookingCurrencyExchangeSource || 'Revolut').trim();
+    return { payment, amountUsd, bookingCurrencyAmount, exchangeDate, exchangeSource };
+  }));
+
+  const formatBookingCurrencyAmount = (
+    payment: Payment,
+    amount: number | null,
+    exchangeDate?: Date | null,
+    exchangeSource?: string
+  ) => {
+    if (amount === null) {
+      return '<span style="color: #b91c1c;">Not counted</span>';
+    }
+
+    const sourceNote = payment.currency !== bookingCurrency
+      ? getExchangeNote(exchangeSource, exchangeDate)
+      : '';
+
+    return `${formatAmount(amount, bookingCurrency)}${sourceNote}`;
+  };
+
+  const formatSettlementAmount = (payment: Payment, amountUsd: number | null) => {
+    const parts = [formatAmount(payment.amount, payment.currency)];
+    if (payment.currency !== 'USD' && amountUsd !== null && Number.isFinite(amountUsd)) {
+      parts.push(formatAmount(amountUsd, 'USD'));
+    }
+    return parts.join(' / ');
+  };
+
+  const showsSettlementColumn = Boolean(bookingTotalUsd && bookingCurrency !== 'USD') || completedPayments.some((payment) =>
+    payment.currency !== bookingCurrency ||
+    (payment.currency !== 'USD' && typeof payment.usd_amount === 'number' && Number.isFinite(payment.usd_amount))
+  );
+
+  const totalPaid = resolvedCompletedPayments.reduce((sum, resolvedPayment) => {
+    return sum + (resolvedPayment.bookingCurrencyAmount || 0);
+  }, 0);
+  const totalPaidUsd = resolvedCompletedPayments.reduce((sum, resolvedPayment) => {
+    return sum + (resolvedPayment.amountUsd || 0);
+  }, 0);
+  const balance = bookingTotal - totalPaid;
+  const balanceUsd = bookingTotalUsd !== null ? bookingTotalUsd - totalPaidUsd : null;
+  const requiredDeposit = bookingTotal > 0 ? bookingTotal * 0.4 : null;
+  const roundUpCurrency = (amount: number) => Math.ceil(amount * 100) / 100;
+  const requiredDepositUsd = requiredDeposit && bookingTotalUsd
+    ? roundUpCurrency((requiredDeposit / bookingTotal) * bookingTotalUsd)
+    : null;
   const retreatStartDate = parseDate(retreat?.startDate || retreat?.dates?.startDate);
   const retreatEndDate = parseDate(retreat?.endDate || retreat?.dates?.endDate);
   const balanceDueDate = retreatStartDate ? addDays(retreatStartDate, -30) : null;
@@ -581,20 +635,25 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
       default: return String(payment.paymentType).replace(/_/g, ' ');
     }
   };
-  const paymentRowsHtml = completedPayments.map((payment) => {
+  const paymentRowsHtml = resolvedCompletedPayments.map((resolvedPayment) => {
+    const { payment, amountUsd, bookingCurrencyAmount, exchangeDate, exchangeSource } = resolvedPayment;
     const paymentDate = getPaymentDate(payment);
-    const bookingCurrencyAmount = getBookingCurrencyAmount(payment);
 
     return `
       <tr>
         <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">${escapeHtml(formatPaymentType(payment))}</td>
         <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">${paymentDate ? formatDate(paymentDate) : '-'}</td>
         <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">${escapeHtml(`${formatPaymentMethod(payment.paymentMethod)}${getPaymentReference(payment) !== '-' ? ` - ${getPaymentReference(payment)}` : ''}`)}</td>
-        <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right;">${formatBookingCurrencyAmount(payment, bookingCurrencyAmount)}</td>
-        ${showsSettlementColumn ? `<td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right;">${escapeHtml(formatSettlementAmount(payment))}</td>` : ''}
+        <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right;">${formatBookingCurrencyAmount(payment, bookingCurrencyAmount, exchangeDate, exchangeSource)}</td>
+        ${showsSettlementColumn ? `<td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right;">${escapeHtml(formatSettlementAmount(payment, amountUsd))}</td>` : ''}
       </tr>
     `;
   }).join('');
+  const bookingTotalSettlementHtml = bookingTotalUsd !== null
+    ? `${formatAmount(bookingTotalUsd, 'USD')}${bookingCurrency !== 'USD' ? getExchangeNote('Revolut', generatedConversionDate) : ''}`
+    : '';
+  const balanceSettlementHtml = balanceUsd !== null ? formatAmount(balanceUsd, 'USD') : '';
+  const settlementColumnHeader = bookingCurrency === 'USD' ? t.paidAmount : 'USD';
 
   // Create a temporary div for PDF content
   const pdfContent = document.createElement('div');
@@ -720,7 +779,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
             <th style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: left; font-weight: 500;">${t.tableDate}</th>
             <th style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: left; font-weight: 500;">${t.reference}</th>
             <th style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right; font-weight: 500;">${t.price}</th>
-            ${showsSettlementColumn ? `<th style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right; font-weight: 500;">${t.paidAmount}</th>` : ''}
+            ${showsSettlementColumn ? `<th style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right; font-weight: 500;">${settlementColumnHeader}</th>` : ''}
           </tr>
         </thead>
         <tbody>
@@ -729,7 +788,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
             <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;"></td>
             <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;"></td>
             <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right;">${formatAmount(bookingTotal)}</td>
-            ${showsSettlementColumn ? '<td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;"></td>' : ''}
+            ${showsSettlementColumn ? `<td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right;">${bookingTotalSettlementHtml}</td>` : ''}
           </tr>
           ${paymentRowsHtml || `
             <tr>
@@ -739,7 +798,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
           <tr>
             <td colspan="3" style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right; font-weight: 600;">${t.balance}</td>
             <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right; font-weight: 600;">${formatAmount(balance)}</td>
-            ${showsSettlementColumn ? '<td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;"></td>' : ''}
+            ${showsSettlementColumn ? `<td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right; font-weight: 600;">${balanceSettlementHtml}</td>` : ''}
           </tr>
         </tbody>
       </table>

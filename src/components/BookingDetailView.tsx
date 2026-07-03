@@ -890,7 +890,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [showClientDetails, setShowClientDetails] = useState(false);
   const [showRetreatInfo, setShowRetreatInfo] = useState(false);
   const [showPayments, setShowPayments] = useState(true);
-  const [showBookingSteps, setShowBookingSteps] = useState(true);
+  const [showBookingSteps, setShowBookingSteps] = useState(false);
   const pdfRef = useRef<HTMLDivElement>(null);
   const routePrefix = useMemo(() => {
     const firstSegment = location.pathname.split('/').filter(Boolean)[0];

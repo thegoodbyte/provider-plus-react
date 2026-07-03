@@ -152,25 +152,21 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       setIsLoading(true);
       const paymentMap = new Map<string, Payment>();
 
-      if (bookingHash) {
-        try {
-          const response = await paymentsApi.getByBookingHash(bookingHash);
-          (response.data || []).forEach((payment: Payment) => {
-            if (payment._id) paymentMap.set(payment._id, payment);
-          });
-        } catch (hashError) {
-          console.warn('getByBookingHash failed:', hashError);
-        }
-      }
+      const paymentRequests = [
+        bookingHash ? paymentsApi.getByBookingHash(bookingHash) : Promise.resolve({ data: [] as Payment[] }),
+        paymentsApi.getByBooking(bookingId),
+      ];
+      const results = await Promise.allSettled(paymentRequests);
 
-      try {
-        const response = await paymentsApi.getByBooking(bookingId);
-        (response.data || []).forEach((payment: Payment) => {
+      results.forEach((result) => {
+        if (result.status !== 'fulfilled') return;
+        (result.value.data || []).forEach((payment: Payment) => {
           if (payment._id) paymentMap.set(payment._id, payment);
         });
-        setPayments(Array.from(paymentMap.values()));
-      } catch (bookingError) {
-        console.warn('getByBooking failed, trying fallback:', bookingError);
+      });
+
+      if (paymentMap.size === 0 && results.some((result) => result.status === 'rejected')) {
+        console.warn('Booking payment lookup failed, trying fallback:', results);
         const response = await paymentsApi.getByClient(clientId);
         const bookingPayments = (response.data || []).filter((payment: any) =>
           resolvePaymentId(payment.bookingId) === bookingId || payment.bookingHash === bookingHash
@@ -178,8 +174,9 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
         bookingPayments.forEach((payment: Payment) => {
           if (payment._id) paymentMap.set(payment._id, payment);
         });
-        setPayments(Array.from(paymentMap.values()));
       }
+
+      setPayments(Array.from(paymentMap.values()));
     } catch (error) {
       console.error('Error fetching payments:', error);
       setPayments([]);
