@@ -399,7 +399,10 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const linkedArtifacts = useMemo(() => {
     if (!selected) return [];
     const populated = (selected.artifactIds || []).filter((artifact): artifact is MedicalArtifact => typeof artifact !== 'string');
-    if (populated.length) return populated;
+    const relatedById = new Map(relatedArtifacts.filter((artifact) => artifact._id).map((artifact) => [artifact._id, artifact]));
+    if (populated.length) {
+      return populated.map((artifact) => (artifact._id && relatedById.get(artifact._id)) || artifact);
+    }
     return relatedArtifacts.filter((artifact) => artifact._id && selectedArtifactIds.has(artifact._id));
   }, [relatedArtifacts, selected, selectedArtifactIds]);
 
