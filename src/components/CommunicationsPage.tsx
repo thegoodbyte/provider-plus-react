@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FiAlertCircle, FiCheckCircle, FiInbox, FiMail, FiPlus, FiRefreshCw, FiSave, FiSend, FiTrash2 } from 'react-icons/fi';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { communicationsApi, clientsApi, retreatsApi } from '../services/api';
 import { Client, EmailTemplate, InboundEmail, MailSettings, Retreat, SentEmail } from '../types';
 import SearchableClientSelect from './SearchableClientSelect';
@@ -96,6 +96,38 @@ const CommunicationsPage: React.FC = () => {
     () => retreats.find((retreat) => retreat._id === composeForm.retreatId) || null,
     [retreats, composeForm.retreatId],
   );
+
+  const getSentEmailClient = (email: SentEmail) => {
+    const clientValue = email.clientId;
+    const clientId = typeof clientValue === 'string' ? clientValue : clientValue?._id || '';
+    const populatedClient = typeof clientValue === 'object' ? clientValue : null;
+    const client = populatedClient || clients.find((item) => item._id === clientId) || null;
+    const displayId = client?.display_id || email.clientDisplayId;
+    const name = [client?.firstName || (client as any)?.fname, client?.lastName || (client as any)?.lname].filter(Boolean).join(' ').trim();
+    return {
+      clientId,
+      displayId,
+      name,
+      email: client?.email || '',
+      label: displayId ? `#${displayId}` : clientId ? `#${clientId.slice(-6)}` : 'No client',
+    };
+  };
+
+  const renderClientLink = (email: SentEmail, compact = false) => {
+    const client = getSentEmailClient(email);
+    if (!client.clientId) {
+      return <span className="text-gray-400">No client</span>;
+    }
+    return (
+      <Link
+        to={`/admin/clients/${client.clientId}`}
+        onClick={(event) => event.stopPropagation()}
+        className="font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+      >
+        {compact ? client.label : `${client.label}${client.name ? ` ${client.name}` : ''}`}
+      </Link>
+    );
+  };
 
   const loadAll = async () => {
     setLoading(true);
@@ -1093,6 +1125,7 @@ const CommunicationsPage: React.FC = () => {
                 <thead className="text-left text-gray-500">
                   <tr className="border-b">
                     <th className="py-2 pr-3">#</th>
+                    <th className="py-2 pr-3">Client</th>
                     <th className="py-2 pr-3">Subject</th>
                     <th className="py-2 pr-3">To</th>
                     <th className="py-2 pr-3">Status</th>
@@ -1107,6 +1140,7 @@ const CommunicationsPage: React.FC = () => {
                       className={`cursor-pointer border-b hover:bg-gray-50 ${selectedSentEmailId === email._id ? 'bg-blue-50' : ''}`}
                     >
                       <td className="py-2 pr-3 font-mono text-gray-700">#{email.display_id || 'n/a'}</td>
+                      <td className="py-2 pr-3">{renderClientLink(email, true)}</td>
                       <td className="py-2 pr-3 font-medium text-gray-900">{email.subject}</td>
                       <td className="py-2 pr-3 text-gray-600">{(email.to || []).join(', ')}</td>
                       <td className="py-2 pr-3 text-gray-600">{email.status}</td>
@@ -1115,7 +1149,7 @@ const CommunicationsPage: React.FC = () => {
                   ))}
                   {sentEmails.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="py-4 text-gray-500">No messages sent yet.</td>
+                      <td colSpan={6} className="py-4 text-gray-500">No messages sent yet.</td>
                     </tr>
                   )}
                 </tbody>
@@ -1138,6 +1172,7 @@ const CommunicationsPage: React.FC = () => {
                   </button>
                 </div>
                 <div><span className="text-gray-500">Message #:</span> <span className="font-mono">#{selectedSentEmail.display_id || 'n/a'}</span></div>
+                <div><span className="text-gray-500">Client:</span> {renderClientLink(selectedSentEmail)}</div>
                 <div><span className="text-gray-500">Status:</span> {selectedSentEmail.status}</div>
                 <div><span className="text-gray-500">To:</span> {(selectedSentEmail.to || []).join(', ')}</div>
                 <div><span className="text-gray-500">CC:</span> {(selectedSentEmail.cc || []).join(', ') || 'None'}</div>
