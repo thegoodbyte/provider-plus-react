@@ -64,7 +64,8 @@ const FULL_MENU_SECTIONS: MenuSection[] = [
       { id: 'retreat-flow', label: 'Retreat Readiness Setup', Icon: Fi.FiCalendar },
       { id: 'retreat-flow-library', label: 'Booking Step Setup', Icon: Fi.FiLayers },
       { id: 'booking-flow', label: 'Booking Step Deadlines', Icon: Fi.FiCheckSquare },
-      { id: 'booking-document-types', label: 'Booking Documents', Icon: Fi.FiFileText },
+      { id: 'booking-documents', label: 'Document Library', Icon: Fi.FiFileText },
+      { id: 'booking-document-types', label: 'Booking Document Types', Icon: Fi.FiSettings },
     ],
   },
   {
@@ -269,7 +270,8 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
               { id: 'retreat-flow', label: 'Retreat Readiness Setup', Icon: Fi.FiCalendar },
               { id: 'retreat-flow-library', label: 'Booking Step Setup', Icon: Fi.FiLayers },
               { id: 'booking-flow', label: 'Booking Step Deadlines', Icon: Fi.FiCheckSquare },
-              { id: 'booking-document-types', label: 'Booking Documents', Icon: Fi.FiFileText },
+              { id: 'booking-documents', label: 'Document Library', Icon: Fi.FiFileText },
+              { id: 'booking-document-types', label: 'Booking Document Types', Icon: Fi.FiSettings },
             ],
           },
           {

@@ -5,7 +5,7 @@ nixPkgs = ["nodejs_22"]
 cmds = ["npm ci --legacy-peer-deps"]
 
 [phases.build]
-cmds = ["CI=false npm run build"]
+cmds = ["CI=false GENERATE_SOURCEMAP=false DISABLE_ESLINT_PLUGIN=true npm run build"]
 
 [start]
 cmd = "npx serve -s build -l $PORT"

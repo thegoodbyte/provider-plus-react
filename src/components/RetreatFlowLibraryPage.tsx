@@ -357,12 +357,12 @@ const RetreatFlowLibraryPage: React.FC = () => {
         ...current.actions,
         {
           key: `action_${current.actions.length + 1}`,
-          label: 'Send email',
-          type: 'email',
+          label: 'Upload file',
+          type: 'upload',
           active: true,
           allowRepeat: true,
-          openComposer: true,
-          statusAfterSuccess: 'sent',
+          openComposer: false,
+          statusAfterSuccess: 'received',
           order: current.actions.length,
         },
       ],
@@ -593,6 +593,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
                   <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Type</span>
                   <select value={action.type} onChange={(e) => updateAction(index, { type: e.target.value as BookingFlowAction['type'] })} className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm">
                     <option value="email">Email</option>
+                    <option value="upload">Upload document</option>
                     <option value="whatsapp">WhatsApp</option>
                     <option value="link">Link</option>
                     <option value="manual">Manual</option>
@@ -622,6 +623,10 @@ const RetreatFlowLibraryPage: React.FC = () => {
                     The selected template is the fallback; matching client-language templates are picked by variant key.
                   </span>
                 </label>
+              ) : action.type === 'upload' ? (
+                <div className="mt-2 rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+                  Shows an upload button on the booking step. Uploaded files are saved into Booking Documents and mark the step received.
+                </div>
               ) : (
                 <label className="mt-2 block">
                   <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">URL template</span>

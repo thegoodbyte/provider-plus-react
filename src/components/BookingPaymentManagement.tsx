@@ -4,7 +4,7 @@ import { Payment, PaymentRequest } from '../types';
 import { paymentsApi } from '../services/api';
 import CurrencyDisplay from './CurrencyDisplay';
 import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
-import { formatCalendarDate, todayDateInputValue } from '../utils/dateFormat';
+import { formatCalendarDate, toDateInputValue, todayDateInputValue } from '../utils/dateFormat';
 import './BookingPaymentManagement.css';
 
 interface BookingPaymentManagementProps {
@@ -55,7 +55,10 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
     description: '',
     transactionReference: '',
     notes: '',
-    paymentDate: todayDateInputValue()
+    paymentDate: todayDateInputValue(),
+    bookingCurrencyAmount: '',
+    bookingCurrencyExchangeSource: '',
+    bookingCurrencyExchangeDate: ''
   });
 
   const paymentMethods = [
@@ -117,6 +120,9 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
     };
   }, [newPayment.amount, newPayment.currency]);
 
+  const bookingCurrency = (currency || 'EUR') as 'EUR' | 'USD' | 'CZK' | 'PLN';
+  const isMixedBookingCurrencyPayment = Boolean(newPayment.currency && bookingCurrency && newPayment.currency !== bookingCurrency);
+
   useEffect(() => {
     if (!Number.isFinite(Number(totalAmount)) || Number(totalAmount) <= 0 || !currency) {
       setTotalCostUsd(null);
@@ -146,25 +152,21 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       setIsLoading(true);
       const paymentMap = new Map<string, Payment>();
 
-      if (bookingHash) {
-        try {
-          const response = await paymentsApi.getByBookingHash(bookingHash);
-          (response.data || []).forEach((payment: Payment) => {
-            if (payment._id) paymentMap.set(payment._id, payment);
-          });
-        } catch (hashError) {
-          console.warn('getByBookingHash failed:', hashError);
-        }
-      }
+      const paymentRequests = [
+        bookingHash ? paymentsApi.getByBookingHash(bookingHash) : Promise.resolve({ data: [] as Payment[] }),
+        paymentsApi.getByBooking(bookingId),
+      ];
+      const results = await Promise.allSettled(paymentRequests);
 
-      try {
-        const response = await paymentsApi.getByBooking(bookingId);
-        (response.data || []).forEach((payment: Payment) => {
+      results.forEach((result) => {
+        if (result.status !== 'fulfilled') return;
+        (result.value.data || []).forEach((payment: Payment) => {
           if (payment._id) paymentMap.set(payment._id, payment);
         });
-        setPayments(Array.from(paymentMap.values()));
-      } catch (bookingError) {
-        console.warn('getByBooking failed, trying fallback:', bookingError);
+      });
+
+      if (paymentMap.size === 0 && results.some((result) => result.status === 'rejected')) {
+        console.warn('Booking payment lookup failed, trying fallback:', results);
         const response = await paymentsApi.getByClient(clientId);
         const bookingPayments = (response.data || []).filter((payment: any) =>
           resolvePaymentId(payment.bookingId) === bookingId || payment.bookingHash === bookingHash
@@ -172,8 +174,9 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
         bookingPayments.forEach((payment: Payment) => {
           if (payment._id) paymentMap.set(payment._id, payment);
         });
-        setPayments(Array.from(paymentMap.values()));
       }
+
+      setPayments(Array.from(paymentMap.values()));
     } catch (error) {
       console.error('Error fetching payments:', error);
       setPayments([]);
@@ -295,6 +298,12 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
         amount: parseFloat(newPayment.amount),
         currency: newPayment.currency as 'EUR' | 'CZK' | 'PLN' | 'USD',
         usd_amount: usdPreview ?? undefined,
+        bookingCurrency: isMixedBookingCurrencyPayment ? bookingCurrency : undefined,
+        bookingCurrencyAmount: isMixedBookingCurrencyPayment && newPayment.bookingCurrencyAmount
+          ? parseFloat(newPayment.bookingCurrencyAmount)
+          : undefined,
+        bookingCurrencyExchangeSource: isMixedBookingCurrencyPayment ? newPayment.bookingCurrencyExchangeSource || undefined : undefined,
+        bookingCurrencyExchangeDate: isMixedBookingCurrencyPayment ? newPayment.bookingCurrencyExchangeDate || undefined : undefined,
         paymentMethod: newPayment.paymentMethod as 'bank_transfer' | 'card' | 'cash' | 'paypal' | 'crypto' | 'stripe' | 'wise' | 'revolut' | 'other',
         paymentType: newPayment.paymentType as 'deposit_non_refundable' | 'deposit_refundable' | 'regular_payment' | 'balance_payment' | 'refund' | 'adjustment',
         description: newPayment.description || `${selectedPaymentType?.label} for booking ${bookingHash || bookingId}`,
@@ -321,7 +330,10 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
         description: '',
         transactionReference: '',
         notes: '',
-        paymentDate: todayDateInputValue()
+        paymentDate: todayDateInputValue(),
+        bookingCurrencyAmount: '',
+        bookingCurrencyExchangeSource: '',
+        bookingCurrencyExchangeDate: ''
       });
 
       setShowAddPayment(false);
@@ -354,7 +366,30 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
         : paymentRequest?.requestType === 'balance'
           ? 'balance_payment'
           : current.paymentType) as typeof current.paymentType,
+      bookingCurrencyAmount: current.bookingCurrencyAmount,
+      bookingCurrencyExchangeSource: current.bookingCurrencyExchangeSource || paymentRequest?.paymentType || '',
+      bookingCurrencyExchangeDate: current.bookingCurrencyExchangeDate || (paymentRequest?.paidDate ? toDateInputValue(paymentRequest.paidDate) : ''),
     }));
+  };
+
+  const formatBookingCurrencyEquivalent = (payment: Payment) => {
+    if (payment.currency === bookingCurrency) return null;
+    if (payment.bookingCurrency === bookingCurrency && Number(payment.bookingCurrencyAmount) > 0) {
+      const parts = [
+        <CurrencyDisplay key="amount" amount={payment.bookingCurrencyAmount || 0} currency={bookingCurrency} />,
+      ];
+      const note = [
+        payment.bookingCurrencyExchangeSource ? `by ${payment.bookingCurrencyExchangeSource}` : '',
+        payment.bookingCurrencyExchangeDate ? `on ${formatCalendarDate(payment.bookingCurrencyExchangeDate)}` : '',
+      ].filter(Boolean).join(' ');
+      return (
+        <div className="booking-currency-equivalent">
+          {parts}
+          {note && <span>{note}</span>}
+        </div>
+      );
+    }
+    return <div className="booking-currency-equivalent missing">Not counted in {bookingCurrency}</div>;
   };
 
   const handleRefundPayment = async (paymentId: string, amount: number) => {
@@ -654,6 +689,40 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
                 </div>
               </div>
 
+              {isMixedBookingCurrencyPayment && (
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>{bookingCurrency} Equivalent *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={newPayment.bookingCurrencyAmount}
+                      onChange={(e) => setNewPayment({...newPayment, bookingCurrencyAmount: e.target.value})}
+                      required={isMixedBookingCurrencyPayment}
+                      placeholder={`Amount counted toward booking in ${bookingCurrency}`}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Conversion Source</label>
+                    <input
+                      type="text"
+                      value={newPayment.bookingCurrencyExchangeSource}
+                      onChange={(e) => setNewPayment({...newPayment, bookingCurrencyExchangeSource: e.target.value})}
+                      placeholder="Revolut, Wise, bank..."
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Conversion Date</label>
+                    <input
+                      type="date"
+                      value={newPayment.bookingCurrencyExchangeDate}
+                      onChange={(e) => setNewPayment({...newPayment, bookingCurrencyExchangeDate: e.target.value})}
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="form-row">
                 <div className="form-group">
                   <label>Payment Method *</label>
@@ -755,6 +824,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
                       <td>{formatCalendarDate(payment.paymentDate)}</td>
                       <td className="amount-cell">
                         <CurrencyDisplay amount={payment.amount} currency={payment.currency} />
+                        {formatBookingCurrencyEquivalent(payment)}
                         {payment.refundedAmount && payment.refundedAmount > 0 && (
                           <div className="refunded-amount">
                             Refunded: <CurrencyDisplay amount={payment.refundedAmount} currency={payment.currency} />

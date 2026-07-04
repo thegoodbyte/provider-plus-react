@@ -464,6 +464,10 @@ export interface Payment {
   amount: number;
   usd_amount?: number;
   currency: 'EUR' | 'USD' | 'CZK' | 'PLN';
+  bookingCurrency?: 'EUR' | 'USD' | 'CZK' | 'PLN';
+  bookingCurrencyAmount?: number;
+  bookingCurrencyExchangeSource?: string;
+  bookingCurrencyExchangeDate?: Date | string;
   status: 'pending' | 'completed' | 'failed' | 'refunded';
   paymentMethod: 'bank_transfer' | 'card' | 'cash' | 'paypal' | 'crypto' | 'stripe' | 'wise' | 'revolut' | 'other';
   paymentType: 'deposit_non_refundable' | 'deposit_refundable' | 'regular_payment' | 'balance_payment' | 'refund' | 'adjustment';
@@ -1122,7 +1126,7 @@ export interface BookingFlowTemplate {
 export interface BookingFlowAction {
   key: string;
   label: string;
-  type: 'email' | 'whatsapp' | 'link' | 'manual';
+  type: 'email' | 'whatsapp' | 'link' | 'manual' | 'upload';
   active?: boolean;
   emailTemplateId?: string | EmailTemplate;
   urlTemplate?: string;
@@ -1243,9 +1247,15 @@ export interface BookingDocument {
   bookingFlowItemId?: string | BookingFlowItem;
   files?: Array<{
     fileName?: string;
+    originalFileName?: string;
     s3Key?: string;
     filePath?: string;
     url?: string;
+    thumbnailS3Key?: string;
+    thumbnailFileName?: string;
+    thumbnailMimeType?: string;
+    thumbnailSize?: number;
+    thumbnailUrl?: string;
     mimeType?: string;
     size?: number;
     uploadedAt?: Date | string;

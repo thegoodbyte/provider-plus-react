@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { bookingsApi, clientsApi, retreatsApi } from '../services/api';
+import { bookingsApi, retreatsApi } from '../services/api';
 import { RetreatClient, Client, Retreat } from '../types';
 import AppleButton from './AppleButton';
 import LoadingSpinner from './LoadingSpinner';
@@ -20,6 +20,15 @@ const getRetreatDisplayCode = (retreat?: Retreat | any): string => {
 
 const getBookingRetreatId = (booking: RetreatClient | BookingWithDetails): string =>
   typeof booking.retreatId === 'string' ? booking.retreatId : ((booking.retreatId as any)?._id || '');
+
+const getBookingClientId = (booking: RetreatClient | BookingWithDetails): string =>
+  typeof booking.clientId === 'string' ? booking.clientId : ((booking.clientId as any)?._id || '');
+
+const getClientDisplayName = (client?: Client | any): string => {
+  const fullName = String(client?.fullName || client?.name || '').trim();
+  if (fullName) return fullName;
+  return [client?.firstName || client?.fname, client?.lastName || client?.lname].filter(Boolean).join(' ').trim();
+};
 
 interface BookingWithDetails extends RetreatClient {
   resolvedClientId?: string;
@@ -114,70 +123,27 @@ const BookingsGrid: React.FC = () => {
   const fetchBookings = async () => {
     try {
       setIsLoading(true);
-
-      // First get bookings
       const bookingsResponse = await bookingsApi.getAll();
+      const loadedBookings = bookingsResponse.data || [];
 
-      if (!bookingsResponse.data || bookingsResponse.data.length === 0) {
+      if (loadedBookings.length === 0) {
         setBookings([]);
         return;
       }
 
-      // Extract unique client and retreat IDs from bookings
-      const clientIdsSet = new Set(
-        bookingsResponse.data
-          .map((booking: RetreatClient) =>
-            typeof booking.clientId === 'string' ? booking.clientId : (booking.clientId as any)?._id
-          )
-          .filter(Boolean)
-      );
-      const clientIds = Array.from(clientIdsSet);
-
-      const retreatIdsSet = new Set(
-        bookingsResponse.data
-          .map((booking: RetreatClient) =>
-            typeof booking.retreatId === 'string' ? booking.retreatId : (booking.retreatId as any)?._id
-          )
-          .filter(Boolean)
-      );
-      const retreatIds = Array.from(retreatIdsSet);
-
-      // Optimize: Only fetch needed data if we have IDs, otherwise use minimal data
-      const [clientsResponse, retreatsResponse] = await Promise.all([
-        clientIds.length > 0 ? clientsApi.getAll() : Promise.resolve({ data: [] }),
-        retreatIds.length > 0 ? retreatsApi.getAll() : Promise.resolve({ data: [] })
-      ]);
-
-      // Create efficient lookups with only needed data
-      const clientsMap = new Map<string, Client>();
-      if (clientsResponse.data && clientIds.length > 0) {
-        clientsResponse.data
-          .filter((client: Client) => client._id && clientIds.includes(client._id))
-          .forEach((client: Client) => clientsMap.set(client._id!, client));
-      }
-
-      const retreatsMap = new Map<string, Retreat>();
-      if (retreatsResponse.data && retreatIds.length > 0) {
-        retreatsResponse.data
-          .filter((retreat: Retreat) => retreat._id && retreatIds.includes(retreat._id))
-          .forEach((retreat: Retreat) => retreatsMap.set(retreat._id!, retreat));
-      }
-
-      // Process bookings with optimized lookups
-      const enrichedBookings: BookingWithDetails[] = bookingsResponse.data.map((booking: RetreatClient) => {
-        const clientId = typeof booking.clientId === 'string' ? booking.clientId : (booking.clientId as any)?._id;
-        const retreatId = typeof booking.retreatId === 'string' ? booking.retreatId : (booking.retreatId as any)?._id;
-
-        const client = clientId ? clientsMap.get(clientId) : undefined;
-        const retreat = retreatId ? retreatsMap.get(retreatId) : undefined;
+      const enrichedBookings: BookingWithDetails[] = loadedBookings.map((booking: RetreatClient) => {
+        const client = typeof booking.clientId === 'object' ? booking.clientId as any : undefined;
+        const retreat = typeof booking.retreatId === 'object' ? booking.retreatId as any : undefined;
+        const clientId = getBookingClientId(booking);
+        const clientName = getClientDisplayName(client);
 
         return {
           ...booking,
           resolvedClientId: clientId,
-          clientName: client ? `${client.firstName} ${client.lastName}` : 'Unknown Client',
-          clientDisplayId: client?.display_id,
-          retreatName: getRetreatDisplayCode(retreat || (typeof booking.retreatId === 'object' ? booking.retreatId : undefined)),
-          retreatCode: getRetreatDisplayCode(retreat || (typeof booking.retreatId === 'object' ? booking.retreatId : undefined)),
+          clientName: clientName || 'Unknown Client',
+          clientDisplayId: client?.display_id || client?.clientNumber,
+          retreatName: getRetreatDisplayCode(retreat),
+          retreatCode: getRetreatDisplayCode(retreat),
           retreatBackgroundColor: retreat?.backgroundColor
         };
       });
