@@ -599,7 +599,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 pb-24">
       <div className="sticky top-0 z-30 -mx-1 rounded-b-xl border-b border-gray-200 bg-white/95 px-1 pb-3 pt-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -685,6 +685,25 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-xl border border-gray-200 bg-white/95 p-2 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-white/85">
+        {isEditing ? (
+          <>
+            <AppleButton onClick={cancelEditing} variant="ghost" className="px-3 py-2" disabled={savingId === 'all'}>
+              Cancel
+            </AppleButton>
+            <AppleButton onClick={saveDrafts} variant="primary" className="px-3 py-2" disabled={savingId === 'all'}>
+              <Icon icon={FiSave} className="mr-2 h-4 w-4" />
+              {savingId === 'all' ? 'Saving...' : 'Save'}
+            </AppleButton>
+          </>
+        ) : (
+          <AppleButton onClick={() => setIsEditing(true)} variant="secondary" className="px-3 py-2">
+            <Icon icon={FiEdit2} className="mr-2 h-4 w-4" />
+            Edit
+          </AppleButton>
+        )}
       </div>
 
       {error && (
