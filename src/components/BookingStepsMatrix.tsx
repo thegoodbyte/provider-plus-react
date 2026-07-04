@@ -314,6 +314,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [dirtyNoteIds, setDirtyNoteIds] = useState<Record<string, true>>({});
+  const [datePickerDrafts, setDatePickerDrafts] = useState<Record<string, string>>({});
   const [composeState, setComposeState] = useState<{
     item: BookingFlowItem;
     action?: BookingFlowAction;
@@ -357,6 +358,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     });
     setNoteDrafts(nextDrafts);
     setDirtyNoteIds({});
+    setDatePickerDrafts({});
   }, [isEditing, items]);
 
   const generateSteps = async () => {
@@ -518,10 +520,24 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
           : currentItem
       )));
       await bookingFlowApi.updateItem(item._id, { [field]: value || null } as Partial<BookingFlowItem>);
+      setDatePickerDrafts((current) => {
+        const nextDrafts = { ...current };
+        delete nextDrafts[item._id!];
+        return nextDrafts;
+      });
       await loadData(false);
     } finally {
       setSaving('');
     }
+  };
+
+  const cancelItemDateDraft = (item: BookingFlowItem | undefined) => {
+    if (!item?._id) return;
+    setDatePickerDrafts((current) => {
+      const nextDrafts = { ...current };
+      delete nextDrafts[item._id!];
+      return nextDrafts;
+    });
   };
 
   const getConfiguredActions = (item?: BookingFlowItem): BookingFlowAction[] => {
@@ -869,6 +885,9 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                       const done = item?.status ? fulfilledStatuses.has(item.status) : false;
                       const dateField = item ? getStatusDateField(item.status) : 'dueDate';
                       const dateValue = item ? item[dateField as keyof BookingFlowItem] as Date | string | null | undefined : undefined;
+                      const confirmedDateInputValue = formatDateInput(dateValue);
+                      const pendingDateInputValue = item?._id ? datePickerDrafts[item._id] : undefined;
+                      const hasPendingDateInput = item?._id && pendingDateInputValue !== undefined && pendingDateInputValue !== confirmedDateInputValue;
                       const itemActionLogs = item?._id ? actionLogMap.get(item._id) || [] : [];
                       const configuredActions = getConfiguredActions(item);
                       const simpleStatus = getSimpleStatus(item);
@@ -904,13 +923,36 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                                 <option key={status} value={status}>{status.replace(/_/g, ' ')}</option>
                               ))}
                             </select>
-                            <input
-                              type="date"
-                              value={formatDateInput(dateValue)}
-                              disabled={!isEditing || saving === `date:${item._id}`}
-                              onChange={(event) => updateItemDate(item, event.target.value)}
-                              className="w-full rounded border border-black/10 bg-white/80 px-1.5 py-1 text-xs text-gray-800 disabled:cursor-not-allowed disabled:bg-white/40"
-                            />
+                            <div className="grid gap-1">
+                              <input
+                                type="date"
+                                value={pendingDateInputValue ?? confirmedDateInputValue}
+                                disabled={!isEditing || saving === `date:${item._id}`}
+                                onChange={(event) => {
+                                  if (!item._id) return;
+                                  setDatePickerDrafts((current) => ({ ...current, [item._id!]: event.target.value }));
+                                }}
+                                className="w-full rounded border border-black/10 bg-white/80 px-1.5 py-1 text-xs text-gray-800 disabled:cursor-not-allowed disabled:bg-white/40"
+                              />
+                              {hasPendingDateInput && (
+                                <div className="flex justify-end gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => cancelItemDateDraft(item)}
+                                    className="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[11px] font-medium text-gray-700 hover:bg-gray-50"
+                                  >
+                                    Cancel
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateItemDate(item, pendingDateInputValue || '')}
+                                    className="rounded bg-blue-600 px-1.5 py-0.5 text-[11px] font-medium text-white hover:bg-blue-700"
+                                  >
+                                    OK
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                               </div>
                               <div className="grid grid-cols-[1fr_auto] gap-1">
                             <textarea
