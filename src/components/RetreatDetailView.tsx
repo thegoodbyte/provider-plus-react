@@ -16,8 +16,13 @@ import { Client } from '../types';
 import {
   FiEdit2,
   FiEye,
+  FiImage,
   FiMail,
+  FiPlus,
+  FiRefreshCw,
   FiTrash2,
+  FiUpload,
+  FiUserPlus,
 } from 'react-icons/fi';
 import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
 import CreditCardRoundedIcon from '@mui/icons-material/CreditCardRounded';
@@ -786,20 +791,26 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           <button
             type="button"
             onClick={() => heroImageInputRef.current?.click()}
-            className="edit-retreat-btn"
+            className="edit-retreat-btn retreat-icon-action"
             disabled={heroImageUploading}
             title={heroImageSource === 'house' ? 'Upload a custom hero image for this retreat' : 'Upload Hero Image'}
+            aria-label={heroImageSource === 'house' ? 'Upload custom hero image' : 'Upload hero image'}
           >
-            {heroImageUploading ? 'Uploading image...' : heroImageSource === 'house' ? 'Override Hero Image' : 'Upload Hero Image'}
+            <Icon icon={FiUpload} className="w-4 h-4" />
+            <span className="retreat-action-label">
+              {heroImageUploading ? 'Uploading image...' : heroImageSource === 'house' ? 'Override Hero Image' : 'Upload Hero Image'}
+            </span>
           </button>
           {retreat.heroImageS3Key && (
             <button
               type="button"
               onClick={handleClearHeroImage}
-              className="edit-retreat-btn"
+              className="edit-retreat-btn retreat-icon-action"
               title="Remove custom retreat hero and use the house default"
+              aria-label="Use house hero image"
             >
-              Use House Hero
+              <Icon icon={FiImage} className="w-4 h-4" />
+              <span className="retreat-action-label">Use House Hero</span>
             </button>
           )}
           <button onClick={async () => {
@@ -822,9 +833,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
               capacity: retreat?.capacity || 0
             });
             setShowRetreatEditModal(true);
-          }} className="edit-retreat-btn">
+          }} className="edit-retreat-btn retreat-icon-action" title="Edit retreat" aria-label="Edit retreat">
             <Icon icon={FiEdit2} className="w-4 h-4" />
-            Edit Retreat
+            <span className="retreat-action-label">Edit Retreat</span>
           </button>
         </div>
         <div
@@ -989,56 +1000,40 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             <div className="section-actions">
               <button
                 onClick={() => setShowQuickBookingModal(true)}
-                className="add-booking-btn"
-                style={{
-                  background: 'linear-gradient(135deg, #28a745 0%, #20c997 100%)',
-                  color: 'white',
-                  border: 'none',
-                  padding: '8px 16px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  marginRight: '8px',
-                  fontWeight: '500'
-                }}
+                className="retreat-client-action retreat-client-action-book"
+                title="Quick book client"
+                aria-label="Quick book client"
               >
-                ➕ Quick Book Client
+                <Icon icon={FiPlus} className="w-4 h-4" />
+                <span>Quick Book Client</span>
               </button>
               <button
                 onClick={() => setShowExistingClientModal(true)}
-                className="add-existing-client-btn"
-                style={{
-                  background: 'linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%)',
-                  color: 'white',
-                  border: 'none',
-                  padding: '8px 16px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  marginRight: '8px',
-                  fontWeight: '500'
-                }}
+                className="retreat-client-action retreat-client-action-existing"
+                title="Add existing client"
+                aria-label="Add existing client"
               >
-                👥 Add Existing Client
+                <Icon icon={FiUserPlus} className="w-4 h-4" />
+                <span>Add Existing Client</span>
               </button>
               <button
                 onClick={openRetreatEmailModal}
-                className="add-existing-client-btn"
+                className="retreat-client-action retreat-client-action-email"
                 disabled={retreatEmailRecipientCount === 0}
-                style={{
-                  background: retreatEmailRecipientCount === 0 ? '#9ca3af' : 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                  color: 'white',
-                  border: 'none',
-                  padding: '8px 16px',
-                  borderRadius: '6px',
-                  cursor: retreatEmailRecipientCount === 0 ? 'not-allowed' : 'pointer',
-                  marginRight: '8px',
-                  fontWeight: '500'
-                }}
                 title={retreatEmailRecipientCount === 0 ? 'No clients with email addresses in this retreat' : 'Send email to all clients in this retreat'}
+                aria-label={`Email retreat clients (${retreatEmailRecipientCount})`}
               >
-                <Icon icon={FiMail} className="w-4 h-4" /> Email Retreat ({retreatEmailRecipientCount})
+                <Icon icon={FiMail} className="w-4 h-4" />
+                <span>Email Retreat ({retreatEmailRecipientCount})</span>
               </button>
-              <button onClick={fetchRetreatData} className="refresh-btn">
-                🔄 Refresh
+              <button
+                onClick={fetchRetreatData}
+                className="retreat-client-action retreat-client-action-refresh"
+                title="Refresh"
+                aria-label="Refresh retreat clients"
+              >
+                <Icon icon={FiRefreshCw} className="w-4 h-4" />
+                <span>Refresh</span>
               </button>
             </div>
           </div>
