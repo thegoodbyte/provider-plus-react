@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Circle, Lock, Mail, RefreshCw, RotateCcw, Save, Unlock, Upload, X } from 'lucide-react';
 import { bookingDocumentsApi, bookingFlowApi, clientsApi, communicationsApi } from '../services/api';
 import { BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, Client } from '../types';
@@ -32,6 +33,10 @@ const getBookingClient = (booking: any): Client | null => {
 
 const getBookingNumber = (booking: any): string => {
   return booking.bookingNumber || booking.displayNumber || getObjectId(booking).slice(-6);
+};
+
+const getBookingClientId = (booking: any): string => {
+  return getObjectId(booking.clientId || booking.client);
 };
 
 const normalizeDocumentKey = (value?: string) => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
@@ -780,8 +785,22 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                     <div className="min-w-0 space-y-1 normal-case">
                       <div className={`${viewMode === 'simple' ? 'max-w-[130px] text-xs' : 'max-w-[210px] text-sm'} truncate font-bold uppercase text-gray-900`}>{getClientName(booking)}</div>
                       <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] font-semibold text-blue-700">
-                        <span>Booking #{getBookingNumber(booking)}</span>
-                        {viewMode === 'detail' && getClientDisplayId(booking) && <span>Client #{getClientDisplayId(booking)}</span>}
+                        {getObjectId(booking) ? (
+                          <Link to={`/admin/bookings/${getObjectId(booking)}`} className="hover:text-blue-900 hover:underline">
+                            Booking #{getBookingNumber(booking)}
+                          </Link>
+                        ) : (
+                          <span>Booking #{getBookingNumber(booking)}</span>
+                        )}
+                        {viewMode === 'detail' && getClientDisplayId(booking) && (
+                          getBookingClientId(booking) ? (
+                            <Link to={`/admin/clients/${getBookingClientId(booking)}`} className="hover:text-blue-900 hover:underline">
+                              Client #{getClientDisplayId(booking)}
+                            </Link>
+                          ) : (
+                            <span>Client #{getClientDisplayId(booking)}</span>
+                          )
+                        )}
                       </div>
                       {viewMode === 'detail' && getClientEmail(booking) && (
                         <div className="max-w-[220px] truncate text-[11px] font-medium text-gray-600" title={getClientEmail(booking)}>
