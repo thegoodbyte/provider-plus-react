@@ -19,6 +19,21 @@ const getRetreatCode = (retreat?: Retreat) => {
   return retreat.retreatCode || retreat.code || retreat.name || 'Unknown Retreat';
 };
 
+const getAssignee = (request: MedicalReviewRequest) => {
+  const assignedUser = typeof request.assignedToUserId === 'object' && request.assignedToUserId
+    ? request.assignedToUserId
+    : null;
+  const name = assignedUser
+    ? [assignedUser.firstName, assignedUser.lastName].filter(Boolean).join(' ') || assignedUser.email
+    : request.assignedTo || request.medicalReviewerName || '';
+  const email = assignedUser?.email || request.assignedToEmail || '';
+
+  return {
+    name: name || 'Unassigned',
+    email,
+  };
+};
+
 const statusClass: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
   in_review: 'bg-blue-100 text-blue-800',
@@ -158,6 +173,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Retreat</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Type</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Attempt</th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Assignee</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Source</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
@@ -174,6 +190,10 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                   <td className="px-6 py-4 text-sm text-gray-900">{request.retreatName}</td>
                   <td className="px-6 py-4 text-sm text-gray-900">{request.requestType}</td>
                   <td className="px-6 py-4 text-sm text-gray-900">{request.attemptNumber || 1}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    <div className="font-medium">{getAssignee(request).name}</div>
+                    {getAssignee(request).email && <div className="text-xs text-gray-500">{getAssignee(request).email}</div>}
+                  </td>
                   <td className="px-6 py-4 text-sm">
                     <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${statusClass[request.status] || 'bg-gray-100 text-gray-700'}`}>
                       {request.status}
