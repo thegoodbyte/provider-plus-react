@@ -1126,7 +1126,7 @@ export interface BookingFlowTemplate {
 export interface BookingFlowAction {
   key: string;
   label: string;
-  type: 'email' | 'whatsapp' | 'link' | 'manual';
+  type: 'email' | 'whatsapp' | 'link' | 'manual' | 'upload';
   active?: boolean;
   emailTemplateId?: string | EmailTemplate;
   urlTemplate?: string;

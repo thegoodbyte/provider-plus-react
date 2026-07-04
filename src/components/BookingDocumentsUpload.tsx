@@ -22,10 +22,12 @@ type DocumentSection = {
 
 const DEFAULT_DOCUMENT_TYPES: BookingDocumentType[] = [
   { key: 'contract', label: 'Contract', description: 'Signed client contract for this booking.', order: 10, bookingFlowReceivedStepKey: 'contract_signed' },
-  { key: 'food_intake', label: 'Food Form', description: 'Food intake, allergies, and kitchen notes.', order: 20 },
-  { key: 'medications_form', label: 'Medications Form', description: 'Initial or follow-up medication information.', order: 30 },
-  { key: 'questionnaire', label: 'Questionnaire Form', description: 'Client questionnaire submitted for this booking.', order: 40 },
-  { key: 'health_assessment', label: 'Health Assessment', description: 'General health assessment for this booking.', order: 50 },
+  { key: 'ekg', label: 'Entry EKG', description: 'Entry EKG uploaded for booking readiness and medical review.', order: 20, bookingFlowReceivedStepKey: 'ekg_received', reviewRequired: true, reviewRequestType: 'ekg_review' },
+  { key: 'liver_panel', label: 'Entry Liver Panel', description: 'Entry liver panel uploaded for booking readiness and medical review.', order: 30, bookingFlowReceivedStepKey: 'liver_received', reviewRequired: true, reviewRequestType: 'liver_panel_review' },
+  { key: 'food_intake', label: 'Food Form', description: 'Food intake, allergies, and kitchen notes.', order: 40 },
+  { key: 'medications_form', label: 'Medications Form', description: 'Initial or follow-up medication information.', order: 50 },
+  { key: 'questionnaire', label: 'Questionnaire Form', description: 'Client questionnaire submitted for this booking.', order: 60 },
+  { key: 'health_assessment', label: 'Health Assessment', description: 'General health assessment for this booking.', order: 70 },
 ];
 
 const SENT_MATCH = /\bsent|send|request(ed)?\b/i;
@@ -197,7 +199,7 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
         clientId,
         retreatId,
         documentType: section.type,
-        title: fileArray[0]?.name || `${section.title}${bookingNumber ? ` - ${bookingNumber}` : ''}`,
+        title: section.title,
         description: section.description,
         bookingFlowItemId: section.receivedItem?._id,
         metadata: {

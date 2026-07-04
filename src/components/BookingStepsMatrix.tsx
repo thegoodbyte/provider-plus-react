@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Circle, Lock, Mail, RefreshCw, RotateCcw, Save, Unlock, X } from 'lucide-react';
-import { bookingFlowApi, clientsApi, communicationsApi } from '../services/api';
+import { AlertTriangle, CheckCircle2, Circle, Lock, Mail, RefreshCw, RotateCcw, Save, Unlock, Upload, X } from 'lucide-react';
+import { bookingDocumentsApi, bookingFlowApi, clientsApi, communicationsApi } from '../services/api';
 import { BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, Client } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
@@ -32,6 +32,23 @@ const getBookingClient = (booking: any): Client | null => {
 
 const getBookingNumber = (booking: any): string => {
   return booking.bookingNumber || booking.displayNumber || getObjectId(booking).slice(-6);
+};
+
+const normalizeDocumentKey = (value?: string) => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+
+const humanizeDocumentKey = (value: string) => value
+  .split(/[_-]+/)
+  .filter(Boolean)
+  .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+  .join(' ');
+
+const bookingDocumentTypeByStep: Record<string, string> = {
+  contract_signed: 'contract',
+  ekg_received: 'ekg',
+  liver_received: 'liver_panel',
+  medications_form_initial_received: 'medications_form',
+  medications_form_30_day_received: 'medications_form',
+  questionnaire_received: 'questionnaire',
 };
 
 const getClientDisplayId = (booking: any): string => {
@@ -544,6 +561,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
 
   const runItemAction = async (item: BookingFlowItem | undefined, action: BookingFlowAction) => {
     if (!item?._id) return;
+    if (action.type === 'upload') return;
     setSaving(`action:${item._id}:${action.key}`);
     try {
       if (action.type === 'email') {
@@ -574,6 +592,67 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     } catch (error: any) {
       console.error('Error running booking step action:', error);
       alert(error?.response?.data?.message || error?.message || 'Unable to run booking step action.');
+    } finally {
+      setSaving('');
+    }
+  };
+
+  const resolveBookingDocumentType = (item: BookingFlowItem): string => {
+    const metadata = item.metadata || {};
+    return normalizeDocumentKey(
+      bookingDocumentTypeByStep[item.key]
+      || metadata.expectedBookingDocument
+      || metadata.expectedDocument
+      || metadata.expectedArtifact
+      || item.key,
+    );
+  };
+
+  const uploadItemDocument = async (booking: any, item: BookingFlowItem | undefined, action: BookingFlowAction, files: FileList | null) => {
+    if (!item?._id || !files?.length) return;
+    const bookingId = getObjectId(booking);
+    const clientId = getObjectId(booking.clientId || booking.client || item.clientId);
+    const currentRetreatId = getObjectId(booking.retreatId || booking.retreat || item.retreatId) || retreatId;
+    const documentType = resolveBookingDocumentType(item);
+    if (!bookingId || !clientId || !currentRetreatId) {
+      alert('This file cannot be uploaded because the booking, client, or retreat link is missing.');
+      return;
+    }
+
+    const savingKey = `upload:${item._id}:${action.key}`;
+    setSaving(savingKey);
+    try {
+      const fileArray = Array.from(files);
+      const created = await bookingDocumentsApi.create({
+        bookingId,
+        clientId,
+        retreatId: currentRetreatId,
+        documentType,
+        title: humanizeDocumentKey(documentType),
+        description: `${humanizeDocumentKey(documentType)} linked to booking ${getBookingNumber(booking)}.`,
+        bookingFlowItemId: item._id,
+        metadata: {
+          bookingNumber: getBookingNumber(booking),
+          bookingFlowItemKey: item.key,
+          actionKey: action.key,
+        },
+      });
+
+      if (created.data._id) {
+        try {
+          await bookingDocumentsApi.uploadFiles(created.data._id, fileArray);
+        } catch (uploadError) {
+          await bookingDocumentsApi.delete(created.data._id).catch((rollbackError) => {
+            console.error('Error rolling back empty booking document:', rollbackError);
+          });
+          throw uploadError;
+        }
+      }
+
+      await loadData(false);
+    } catch (error: any) {
+      console.error('Error uploading booking step document:', error);
+      alert(error?.response?.data?.message || error?.message || 'Unable to upload booking step document.');
     } finally {
       setSaving('');
     }
@@ -830,8 +909,28 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                             {configuredActions.map((action) => {
                               const actionLogs = itemActionLogs.filter((log) => (log.actionKey || 'default_email') === action.key);
                               const actionCount = actionLogs.length;
-                              const savingKey = `action:${item._id}:${action.key}`;
-                              return (
+                              const savingKey = action.type === 'upload' ? `upload:${item._id}:${action.key}` : `action:${item._id}:${action.key}`;
+                              return action.type === 'upload' ? (
+                                <label
+                                  key={action.key}
+                                  className={`inline-flex items-center justify-center gap-1 rounded-md border border-blue-200 bg-white px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50 ${!isEditing || saving === savingKey ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                                  title={isEditing ? 'Upload document for this booking step' : 'Unlock editing to upload documents'}
+                                >
+                                  <Upload className="h-3.5 w-3.5" />
+                                  {saving === savingKey ? '...' : actionCount > 0 && action.allowRepeat !== false ? `${action.label} again` : action.label}
+                                  <input
+                                    type="file"
+                                    className="hidden"
+                                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.heic,.heif"
+                                    multiple
+                                    disabled={!isEditing || Boolean(saving)}
+                                    onChange={(event) => {
+                                      uploadItemDocument(booking, item, action, event.target.files);
+                                      event.target.value = '';
+                                    }}
+                                  />
+                                </label>
+                              ) : (
                                 <button
                                   key={action.key}
                                   type="button"

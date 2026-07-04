@@ -35,6 +35,8 @@ const bookingDocumentUploadsByStep: Record<string, {
   title: string;
 }> = {
   contract_signed: { documentType: 'contract', title: 'Signed Contract' },
+  ekg_received: { documentType: 'ekg', title: 'Entry EKG' },
+  liver_received: { documentType: 'liver_panel', title: 'Entry Liver Panel' },
   medications_form_initial_received: { documentType: 'medications_form', title: 'Medications Form' },
   medications_form_30_day_received: { documentType: 'medications_form', title: '30-Day Medications Form' },
   questionnaire_received: { documentType: 'questionnaire', title: 'Questionnaire' },
@@ -381,7 +383,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
           clientId,
           retreatId,
           documentType: documentConfig.documentType,
-          title: fileArray[0]?.name || documentConfig.title,
+          title: documentConfig.title,
           description: `${documentConfig.title} linked to booking ${selectedBooking.bookingNumber || selectedBookingId}.`,
           bookingFlowItemId: item._id,
           metadata: {
@@ -688,6 +690,8 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                 const linkedBookingDocumentId = item.metadata?.latestBookingDocumentId;
                 const linkedBookingDocumentDisplayId = item.metadata?.latestBookingDocumentDisplayId;
                 const configuredActions = getConfiguredActions(item);
+                const uploadAction = configuredActions.find((action) => action.type === 'upload');
+                const visibleActions = configuredActions.filter((action) => action.type !== 'upload');
                 const itemActionLogs = item._id ? (actionLogsByItem[item._id] || []) : [];
 
                 return (
@@ -735,7 +739,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                         placeholder="Internal note"
                       />
                       <div className="flex items-center gap-2 lg:justify-end">
-                        {configuredActions.map((action) => {
+                        {visibleActions.map((action) => {
                           const savingKey = `${item._id}:${action.key}`;
                           const actionLogs = itemActionLogs.filter((log) => (log.actionKey || 'default_email') === action.key);
                           return (
@@ -770,10 +774,10 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                             Document {linkedBookingDocumentDisplayId ? `#${linkedBookingDocumentDisplayId}` : ''}
                           </span>
                         )}
-                        {uploadConfig && (
+                        {(uploadConfig || uploadAction) && (
                           <label className={`inline-flex items-center rounded-md border border-blue-200 bg-white px-2.5 py-1.5 text-sm font-medium ${isEditing ? 'cursor-pointer text-blue-700 hover:bg-blue-50' : 'cursor-not-allowed text-gray-400'}`}>
                             <Icon icon={FiUpload} className="mr-2 h-4 w-4" />
-                            {uploadingId === item._id ? 'Uploading...' : 'Upload'}
+                            {uploadingId === item._id ? 'Uploading...' : uploadAction?.label || 'Upload'}
                             <input
                               type="file"
                               className="hidden"
