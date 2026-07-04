@@ -235,6 +235,9 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
       if (!form.medicalTrackingId && !selectedArtifact?._id && form.artifactIds.length === 0) {
         throw new Error('Select a medical tracking record or linked medical artifact first');
       }
+      if (!form.assignedToUserId) {
+        throw new Error('Select a medical advisor before creating the review request.');
+      }
 
       if (isEdit && id) {
         await medicalReviewRequestsApi.update(id, {
@@ -283,7 +286,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
       navigate('/admin/medical-review-requests');
     } catch (error) {
       console.error('Error saving medical review request:', error);
-      alert('Error saving medical review request');
+      alert(error instanceof Error ? error.message : 'Error saving medical review request');
     } finally {
       setSaving(false);
     }
@@ -427,9 +430,10 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">Assigned To</label>
+                <label className="mb-2 block text-sm font-medium text-gray-700">Medical Advisor <span className="text-red-600">*</span></label>
                 <select
                   value={form.assignedToUserId}
+                  required
                   onChange={(e) => {
                     const assigned = medicalUsers.find((item) => item._id === e.target.value);
                     setForm({
@@ -440,13 +444,16 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
                   }}
                   className="w-full rounded-md border border-gray-300 px-3 py-2"
                 >
-                  <option value="">Select medical user</option>
+                  <option value="">Select medical advisor</option>
                   {medicalUsers.map((medicalUser) => (
                     <option key={medicalUser._id} value={medicalUser._id}>
                       {[medicalUser.firstName, medicalUser.lastName].filter(Boolean).join(' ') || medicalUser.email} ({medicalUser.email})
                     </option>
                   ))}
                 </select>
+                {medicalUsers.length === 0 && (
+                  <p className="mt-1 text-xs text-red-600">No active medical advisors are available.</p>
+                )}
               </div>
             </div>
           </div>
