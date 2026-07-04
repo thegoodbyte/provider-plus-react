@@ -150,6 +150,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
   const [libraryTemplates, setLibraryTemplates] = useState<BookingFlowTemplate[]>([]);
   const [actionLogsByItem, setActionLogsByItem] = useState<Record<string, BookingFlowActionLog[]>>({});
   const [drafts, setDrafts] = useState<Record<string, StepDraft>>({});
+  const [dateTimePickerDrafts, setDateTimePickerDrafts] = useState<Record<string, string>>({});
   const [stepFilter, setStepFilter] = useState<StepFilter>('all');
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -234,6 +235,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
 
   const hydrateDrafts = (nextItems: BookingFlowItem[]) => {
     setDrafts(Object.fromEntries(nextItems.map((item) => [getItemId(item), makeDraft(item)])));
+    setDateTimePickerDrafts({});
   };
 
   const loadItems = async (bookingId = selectedBookingId) => {
@@ -317,6 +319,36 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
       checked,
       dateTime: checked ? current.dateTime || formatDateTimeInput(new Date()) : '',
     });
+    setDateTimePickerDrafts((currentDrafts) => {
+      const nextDrafts = { ...currentDrafts };
+      delete nextDrafts[getItemId(item)];
+      return nextDrafts;
+    });
+  };
+
+  const setDateTimePickerDraft = (item: BookingFlowItem, value: string) => {
+    const id = getItemId(item);
+    setDateTimePickerDrafts((current) => ({ ...current, [id]: value }));
+  };
+
+  const confirmDateTimePickerDraft = (item: BookingFlowItem) => {
+    const id = getItemId(item);
+    if (dateTimePickerDrafts[id] === undefined) return;
+    setDraft(item, { dateTime: dateTimePickerDrafts[id] });
+    setDateTimePickerDrafts((current) => {
+      const nextDrafts = { ...current };
+      delete nextDrafts[id];
+      return nextDrafts;
+    });
+  };
+
+  const cancelDateTimePickerDraft = (item: BookingFlowItem) => {
+    const id = getItemId(item);
+    setDateTimePickerDrafts((current) => {
+      const nextDrafts = { ...current };
+      delete nextDrafts[id];
+      return nextDrafts;
+    });
   };
 
   const saveDrafts = async () => {
@@ -357,6 +389,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
 
   const cancelEditing = () => {
     hydrateDrafts(items);
+    setDateTimePickerDrafts({});
     setIsEditing(false);
   };
 
@@ -693,6 +726,8 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                 const uploadAction = configuredActions.find((action) => action.type === 'upload');
                 const visibleActions = configuredActions.filter((action) => action.type !== 'upload');
                 const itemActionLogs = item._id ? (actionLogsByItem[item._id] || []) : [];
+                const dateTimePickerDraft = dateTimePickerDrafts[id];
+                const hasPendingDateTime = dateTimePickerDraft !== undefined && dateTimePickerDraft !== draft.dateTime;
 
                 return (
                   <div key={id} className={`grid gap-2 border-l-4 p-3 ${tone.stepStripe} ${isChecked ? 'bg-green-50/60' : overdue ? 'bg-red-50/70' : dueSoon ? 'bg-amber-50/70' : tone.stepCell}`} style={!isChecked && !overdue && !dueSoon ? stepStyle : undefined}>
@@ -719,14 +754,34 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                           </span>
                         </span>
                       </label>
-                      <input
-                        type="datetime-local"
-                        value={draft.dateTime}
-                        disabled={!isEditing || !isChecked || savingId === 'all'}
-                        onChange={(event) => setDraft(item, { dateTime: event.target.value })}
-                        className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        title={isChecked ? 'Action date and time' : 'Check this action before setting the completion date'}
-                      />
+                      <div className="grid gap-1">
+                        <input
+                          type="datetime-local"
+                          value={dateTimePickerDraft ?? draft.dateTime}
+                          disabled={!isEditing || !isChecked || savingId === 'all'}
+                          onChange={(event) => setDateTimePickerDraft(item, event.target.value)}
+                          className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          title={isChecked ? 'Action date and time' : 'Check this action before setting the completion date'}
+                        />
+                        {hasPendingDateTime && (
+                          <div className="flex justify-end gap-1">
+                            <button
+                              type="button"
+                              onClick={() => cancelDateTimePickerDraft(item)}
+                              className="rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => confirmDateTimePickerDraft(item)}
+                              className="rounded-md bg-blue-600 px-2 py-1 text-xs font-medium text-white hover:bg-blue-700"
+                            >
+                              OK
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div className="grid gap-2 lg:grid-cols-[1fr_auto] lg:items-center">
