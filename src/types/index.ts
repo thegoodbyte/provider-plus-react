@@ -1247,9 +1247,15 @@ export interface BookingDocument {
   bookingFlowItemId?: string | BookingFlowItem;
   files?: Array<{
     fileName?: string;
+    originalFileName?: string;
     s3Key?: string;
     filePath?: string;
     url?: string;
+    thumbnailS3Key?: string;
+    thumbnailFileName?: string;
+    thumbnailMimeType?: string;
+    thumbnailSize?: number;
+    thumbnailUrl?: string;
     mimeType?: string;
     size?: number;
     uploadedAt?: Date | string;
