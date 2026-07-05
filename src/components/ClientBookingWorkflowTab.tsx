@@ -74,6 +74,16 @@ const formatDisplayDate = (date?: Date | string | null): string => {
 const getActionLogDate = (log: BookingFlowActionLog) => log.performedAt || log.createdAt;
 
 const describeActionLog = (log: BookingFlowActionLog) => {
+  if (log.actionType === 'deadline_changed') {
+    const previousDueDate = formatDisplayDate(log.metadata?.previousDueDate);
+    const nextDueDate = formatDisplayDate(log.metadata?.nextDueDate);
+    return [
+      getActionLogDate(log) ? formatDisplayDate(getActionLogDate(log)) : '',
+      `Deadline: ${previousDueDate} -> ${nextDueDate}`,
+      log.performedByEmail || '',
+    ].filter(Boolean).join(' • ');
+  }
+
   return [
     getActionLogDate(log) ? formatDisplayDate(getActionLogDate(log)) : '',
     log.metadata?.sentEmailDisplayId ? `Email #${log.metadata.sentEmailDisplayId}` : '',
@@ -137,6 +147,7 @@ interface ClientBookingWorkflowTabProps {
 type StepDraft = {
   checked: boolean;
   dateTime: string;
+  dueDate: string;
   notes: string;
 };
 
@@ -229,6 +240,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
     return {
       checked,
       dateTime: checked ? formatDateTimeInput(actionDate || item.completedAt) : '',
+      dueDate: formatDateTimeInput(item.dueDate),
       notes: item.notes || '',
     };
   };
@@ -343,6 +355,8 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
         const draft = drafts[getItemId(item)] || makeDraft(item);
         const dateField = getActionDateField(item);
         const isoValue = draft.checked ? toIsoFromDateTimeInput(draft.dateTime) || new Date().toISOString() : null;
+        const originalDueDate = formatDateTimeInput(item.dueDate);
+        const dueDateChanged = draft.dueDate !== originalDueDate;
         const patch = draft.checked
           ? {
               status: getCompletedStatus(item),
@@ -356,6 +370,10 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
               completedAt: null,
               notes: draft.notes,
             };
+        if (dueDateChanged) {
+          (patch as Partial<BookingFlowItem>).dueDate = toIsoFromDateTimeInput(draft.dueDate);
+          (patch as Partial<BookingFlowItem>).dueDateManuallyOverridden = true;
+        }
         const response = await bookingFlowApi.updateItem(item._id, patch as Partial<BookingFlowItem>);
         updatedItems.push(response.data);
       }
@@ -727,6 +745,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                 const uploadAction = configuredActions.find((action) => action.type === 'upload');
                 const visibleActions = configuredActions.filter((action) => action.type !== 'upload');
                 const itemActionLogs = item._id ? (actionLogsByItem[item._id] || []) : [];
+                const deadlineLogs = itemActionLogs.filter((log) => log.actionType === 'deadline_changed');
                 const dateTimePickerDraft = dateTimePickerDrafts[id];
                 const hasPendingDateTime = dateTimePickerDraft !== undefined && dateTimePickerDraft !== draft.dateTime;
 
@@ -750,20 +769,40 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                           </span>
                           <span className="block truncate text-xs text-gray-500">
                             {titleizeBookingStepGroup(groupKey)} • {item.dueDate ? `Due ${formatDisplayDate(item.dueDate)}` : item.category}
+                            {item.dueDateManuallyOverridden ? ' • Manual deadline' : ''}
                             {overdue ? ' • Past due' : dueSoon ? ' • Due soon' : ''}
                             {item.metadata?.latestFileName ? ` • ${item.metadata.latestFileName}` : ''}
                           </span>
+                          {deadlineLogs.length > 0 && (
+                            <span className="mt-1 block">
+                              <ActionHistoryHover logs={deadlineLogs} label="Deadline changes" />
+                            </span>
+                          )}
                         </span>
                       </label>
-                      <div className="grid gap-1">
-                        <input
-                          type="datetime-local"
-                          value={dateTimePickerDraft ?? draft.dateTime}
-                          disabled={!isEditing || !isChecked || savingId === 'all'}
-                          onChange={(event) => setDateTimePickerDraft(item, event.target.value)}
-                          className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          title={isChecked ? 'Action date and time' : 'Check this action before setting the completion date'}
-                        />
+                      <div className="grid gap-2">
+                        <label className="grid gap-1">
+                          <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Due date</span>
+                          <input
+                            type="datetime-local"
+                            value={draft.dueDate}
+                            disabled={!isEditing || savingId === 'all'}
+                            onChange={(event) => setDraft(item, { dueDate: event.target.value })}
+                            className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            title="Booking step due date"
+                          />
+                        </label>
+                        <label className="grid gap-1">
+                          <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Action date</span>
+                          <input
+                            type="datetime-local"
+                            value={dateTimePickerDraft ?? draft.dateTime}
+                            disabled={!isEditing || !isChecked || savingId === 'all'}
+                            onChange={(event) => setDateTimePickerDraft(item, event.target.value)}
+                            className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            title={isChecked ? 'Action date and time' : 'Check this action before setting the completion date'}
+                          />
+                        </label>
                         {hasPendingDateTime && (
                           <div className="flex justify-end gap-1">
                             <button
