@@ -1122,7 +1122,7 @@ export const bookingFlowApi = {
     cacheService.clearPattern('communications:sent-emails');
     return api.post<{ item: BookingFlowItem; actionLog: BookingFlowActionLog }>(`/booking-flow/items/${id}/record-email-sent`, { sentEmailId, actionKey });
   },
-  recordItemAction: (id: string, data: { actionKey?: string; actionType?: string; statusAfter?: string; notes?: string; metadata?: Record<string, any> }) => {
+  recordItemAction: (id: string, data: { actionKey?: string; actionLabel?: string; actionType?: string; statusAfter?: string; notes?: string; metadata?: Record<string, any> }) => {
     cacheService.clearPattern('booking-flow:');
     return api.post<{ item: BookingFlowItem; actionLog: BookingFlowActionLog }>(`/booking-flow/items/${id}/record-action`, data);
   },
