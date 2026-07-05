@@ -45,6 +45,11 @@
     background: white;
 }
 
+.booking-document-card-received {
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+}
+
 .booking-document-card-header {
     display: flex;
     gap: 10px;
@@ -89,6 +94,38 @@
     font-size: 13px;
 }
 
+.booking-document-file-item {
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+}
+
+.booking-document-thumb {
+    display: inline-flex;
+    width: 56px;
+    height: 42px;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+    color: #64748b;
+    cursor: pointer;
+}
+
+.booking-document-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.booking-document-thumb:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
 .booking-document-file-link {
     display: inline-flex;
     width: fit-content;
@@ -111,6 +148,70 @@
     color: #9ca3af;
     cursor: not-allowed;
     text-decoration: none;
+}
+
+.booking-document-viewer-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(15, 23, 42, 0.62);
+}
+
+.booking-document-viewer {
+    display: flex;
+    width: min(980px, 100%);
+    max-height: min(86vh, 900px);
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 10px;
+    background: white;
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.35);
+}
+
+.booking-document-viewer-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 14px;
+    border-bottom: 1px solid #e5e7eb;
+    color: #334155;
+    font-size: 13px;
+}
+
+.booking-document-viewer-body {
+    height: min(74vh, 760px);
+    background: #0f172a;
+}
+
+.booking-document-viewer-body iframe,
+.booking-document-viewer-body img {
+    width: 100%;
+    height: 100%;
+    border: 0;
+}
+
+.booking-document-viewer-body img {
+    object-fit: contain;
+}
+
+@media (max-width: 640px) {
+    .booking-document-viewer-backdrop {
+        align-items: stretch;
+        padding: 8px;
+    }
+
+    .booking-document-viewer {
+        max-height: 92vh;
+    }
+
+    .booking-document-viewer-body {
+        height: 78vh;
+    }
 }
 
 .current-medical-section {

@@ -935,7 +935,24 @@ export const backupsApi = {
 };
 
 export const medicalReviewRequestsApi = {
-  getAll: () => cachedGet<MedicalReviewRequest[]>('medical-review-requests:all', () => api.get<MedicalReviewRequest[]>('/medical-review-requests')),
+  getAll: (filters: {
+    clientId?: string;
+    retreatId?: string;
+    medicalTrackingId?: string;
+    artifactId?: string;
+    bookingId?: string;
+    documentStage?: MedicalArtifact['documentStage'];
+    documentType?: MedicalArtifact['documentType'];
+    artifactType?: MedicalArtifact['artifactType'];
+    requestType?: MedicalReviewRequest['requestType'];
+  } = {}) => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) params.set(key, value);
+    });
+    const suffix = params.toString() ? `?${params.toString()}` : '';
+    return cachedGet<MedicalReviewRequest[]>(`medical-review-requests:${suffix || 'all'}`, () => api.get<MedicalReviewRequest[]>(`/medical-review-requests${suffix}`));
+  },
   getQueue: () => cachedGet<MedicalReviewRequest[]>('medical-review-requests:queue', () => api.get<MedicalReviewRequest[]>('/medical-review-requests/queue')),
   getOne: (id: string) => cachedGet<MedicalReviewRequest>(`medical-review-requests:${id}`, () => api.get<MedicalReviewRequest>(`/medical-review-requests/${id}`)),
   getContext: (id: string) => cachedGet<any>(`medical-review-requests:${id}:context`, () => api.get<any>(`/medical-review-requests/${id}/context`)),
@@ -1079,6 +1096,15 @@ export const bookingFlowApi = {
     const key = `booking-flow:items:${query.toString()}`;
     return cachedGet<BookingFlowItem[]>(key, () => api.get<BookingFlowItem[]>(`/booking-flow/items?${query.toString()}`));
   },
+  getBookingRequirements: (bookingId: string) => cachedGet<{
+    items: BookingFlowItem[];
+    templates: BookingFlowTemplate[];
+    libraryTemplates: BookingFlowTemplate[];
+    actionLogs: BookingFlowActionLog[];
+  }>(
+    `booking-flow:booking-requirements:${bookingId}`,
+    () => api.get(`/booking-flow/bookings/${bookingId}/requirements`)
+  ),
   getMatrix: (retreatId: string) => cachedGet<any>(`booking-flow:matrix:${retreatId}`, () => api.get<any>(`/booking-flow/matrix/${retreatId}`)),
   getItem: (id: string) => cachedGet<BookingFlowItem>(`booking-flow:item:${id}`, () => api.get<BookingFlowItem>(`/booking-flow/items/${id}`)),
   createItem: (data: Partial<BookingFlowItem> & { bookingId: string; title: string }) => {
@@ -1183,6 +1209,7 @@ export const bookingDocumentsApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+  getFileViewUrl: (id: string, storedPath: string) => `${api.defaults.baseURL}/booking-documents/${id}/files/view?storedPath=${encodeURIComponent(storedPath)}`,
   delete: (id: string) => {
     cacheService.clearPattern('booking-documents:');
     return api.delete(`/booking-documents/${id}`);

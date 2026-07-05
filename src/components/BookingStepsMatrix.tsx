@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, Circle, Lock, Mail, RefreshCw, RotateCcw, Save, Unlock, Upload, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Circle, FileText, ListPlus, Lock, Mail, RefreshCw, RotateCcw, Save, Unlock, Upload, X } from 'lucide-react';
 import { bookingDocumentsApi, bookingFlowApi, clientsApi, communicationsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
-import { BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, Client, MedicalReviewRequest, Payment } from '../types';
+import { BookingDocument, BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, Client, MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 import {
@@ -59,9 +59,18 @@ const bookingDocumentTypeByStep: Record<string, string> = {
   questionnaire_received: 'questionnaire',
 };
 
-const reviewStepConfigByKey: Record<string, { receivedStepKey: string; requestType: NonNullable<MedicalReviewRequest['requestType']>; label: string }> = {
-  ekg_sent_for_review: { receivedStepKey: 'ekg_received', requestType: 'ekg_review', label: 'Entry EKG review' },
-  liver_panel_sent_for_review: { receivedStepKey: 'liver_received', requestType: 'liver_panel_review', label: 'Liver panel review' },
+type ReviewStepConfig = {
+  receivedStepKey: string;
+  requestType: NonNullable<MedicalReviewRequest['requestType']>;
+  documentStage: MedicalArtifact['documentStage'];
+  documentType: MedicalArtifact['documentType'];
+  artifactType: NonNullable<MedicalArtifact['artifactType']>;
+  label: string;
+};
+
+const reviewStepConfigByKey: Record<string, ReviewStepConfig> = {
+  ekg_sent_for_review: { receivedStepKey: 'ekg_received', requestType: 'ekg_review', documentStage: 'entry', documentType: 'EKG', artifactType: 'ekg', label: 'Entry EKG review' },
+  liver_panel_sent_for_review: { receivedStepKey: 'liver_received', requestType: 'liver_panel_review', documentStage: 'entry', documentType: 'Liver', artifactType: 'liver_panel', label: 'Liver panel review' },
 };
 
 const getReviewStepConfig = (row: Pick<MatrixRow, 'key' | 'title'>) => {
@@ -76,10 +85,10 @@ const getReviewStepConfig = (row: Pick<MatrixRow, 'key' | 'title'>) => {
   );
   if (!isReviewStep) return undefined;
   if (normalized.includes('ekg')) {
-    return { receivedStepKey: 'ekg_received', requestType: 'ekg_review' as const, label: 'Entry EKG review' };
+    return { receivedStepKey: 'ekg_received', requestType: 'ekg_review' as const, documentStage: 'entry' as const, documentType: 'EKG' as const, artifactType: 'ekg' as const, label: 'Entry EKG review' };
   }
   if (normalized.includes('liver')) {
-    return { receivedStepKey: 'liver_received', requestType: 'liver_panel_review' as const, label: 'Liver panel review' };
+    return { receivedStepKey: 'liver_received', requestType: 'liver_panel_review' as const, documentStage: 'entry' as const, documentType: 'Liver' as const, artifactType: 'liver_panel' as const, label: 'Liver panel review' };
   }
   return undefined;
 };
@@ -231,6 +240,22 @@ const getLinkedArtifactIdFromItem = (item?: BookingFlowItem): string => {
   return '';
 };
 
+const getReviewRequestArtifactIds = (request: MedicalReviewRequest): string[] => {
+  return (request.artifactIds || []).map((artifact) => getObjectId(artifact)).filter(Boolean);
+};
+
+const makeReviewContextKey = (bookingId: string, config: ReviewStepConfig) => [
+  bookingId,
+  config.documentStage,
+  config.documentType,
+  config.artifactType,
+  config.requestType,
+].join(':');
+
+const sortReviewRequests = (requests: MedicalReviewRequest[]) => {
+  return [...requests].sort((a, b) => new Date(b.requestedAt || 0).getTime() - new Date(a.requestedAt || 0).getTime());
+};
+
 interface MatrixRow {
   key: string;
   title: string;
@@ -360,6 +385,8 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const [libraryTemplates, setLibraryTemplates] = useState<BookingFlowTemplate[]>([]);
   const [items, setItems] = useState<BookingFlowItem[]>([]);
   const [actionLogs, setActionLogs] = useState<BookingFlowActionLog[]>([]);
+  const [bookingDocuments, setBookingDocuments] = useState<BookingDocument[]>([]);
+  const [reviewRequests, setReviewRequests] = useState<MedicalReviewRequest[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [medicalAdvisors, setMedicalAdvisors] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -386,17 +413,21 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const loadData = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
-      const [response, libraryTemplateResponse, paymentsResponse, usersResponse] = await Promise.all([
+      const [response, libraryTemplateResponse, paymentsResponse, usersResponse, documentsResponse, reviewRequestsResponse] = await Promise.all([
         bookingFlowApi.getMatrix(retreatId),
         bookingFlowApi.getLibraryTemplates().catch(() => ({ data: [] as BookingFlowTemplate[] })),
         paymentsApi.getByRetreat(retreatId).catch(() => ({ data: [] as Payment[] })),
         usersApi.getAll().catch(() => ({ data: [] as User[] })),
+        bookingDocumentsApi.getAll({ retreatId }).catch(() => ({ data: [] as BookingDocument[] })),
+        medicalReviewRequestsApi.getAll({ retreatId }).catch(() => ({ data: [] as MedicalReviewRequest[] })),
       ]);
       setBookings(response.data?.bookings || []);
       setTemplates(response.data?.templates || []);
       setLibraryTemplates(libraryTemplateResponse.data || []);
       setItems(response.data?.items || []);
       setActionLogs(response.data?.actionLogs || []);
+      setBookingDocuments(documentsResponse.data || []);
+      setReviewRequests(reviewRequestsResponse.data || []);
       setPayments(Array.isArray(paymentsResponse.data) ? paymentsResponse.data : []);
       setMedicalAdvisors((usersResponse.data || []).filter((user) => user.role === 'medical_advisor' && user.isActive !== false));
     } finally {
@@ -528,6 +559,65 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     });
     return map;
   }, [actionLogs]);
+
+  const bookingDocumentMap = useMemo(() => {
+    const map = new Map<string, BookingDocument[]>();
+    bookingDocuments.forEach((document) => {
+      const bookingId = getObjectId(document.bookingId);
+      const documentType = normalizeDocumentKey(document.documentType);
+      if (!bookingId || !documentType || (document.files || []).length === 0) return;
+      const key = `${bookingId}:${documentType}`;
+      const current = map.get(key) || [];
+      current.push(document);
+      map.set(key, current);
+    });
+    map.forEach((documents) => {
+      documents.sort((a, b) => new Date(b.receivedAt || b.createdAt || 0).getTime() - new Date(a.receivedAt || a.createdAt || 0).getTime());
+    });
+    return map;
+  }, [bookingDocuments]);
+
+  const reviewRequestsByArtifactId = useMemo(() => {
+    const map = new Map<string, MedicalReviewRequest[]>();
+    reviewRequests.forEach((request) => {
+      getReviewRequestArtifactIds(request).forEach((artifactId) => {
+        const current = map.get(artifactId) || [];
+        current.push(request);
+        map.set(artifactId, current);
+      });
+    });
+    map.forEach((requests, artifactId) => {
+      map.set(artifactId, sortReviewRequests(requests));
+    });
+    return map;
+  }, [reviewRequests]);
+
+  const reviewRequestsByBookingContext = useMemo(() => {
+    const map = new Map<string, MedicalReviewRequest[]>();
+    reviewRequests.forEach((request) => {
+      (request.artifactIds || []).forEach((artifact) => {
+        if (!artifact || typeof artifact === 'string') return;
+        const bookingId = getObjectId(artifact.bookingId);
+        if (!bookingId) return;
+        Object.values(reviewStepConfigByKey).forEach((config) => {
+          if (request.requestType !== config.requestType) return;
+          if (request.documentStage && request.documentStage !== config.documentStage) return;
+          if (request.documentType && request.documentType !== config.documentType) return;
+          if (artifact.documentStage && artifact.documentStage !== config.documentStage) return;
+          if (artifact.documentType && artifact.documentType !== config.documentType) return;
+          if (artifact.artifactType && artifact.artifactType !== config.artifactType) return;
+          const key = makeReviewContextKey(bookingId, config);
+          const current = map.get(key) || [];
+          current.push(request);
+          map.set(key, current);
+        });
+      });
+    });
+    map.forEach((requests, key) => {
+      map.set(key, sortReviewRequests(requests));
+    });
+    return map;
+  }, [reviewRequests]);
 
   const paymentsByClientId = useMemo(() => {
     const map = new Map<string, Payment[]>();
@@ -978,8 +1068,15 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
             <RefreshCw className="h-4 w-4" />
             Refresh
           </button>
-          <button onClick={generateSteps} disabled={saving === 'generate'} className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
-            {saving === 'generate' ? 'Generating...' : 'Generate Missing Steps'}
+          <button
+            type="button"
+            onClick={generateSteps}
+            disabled={saving === 'generate'}
+            title="Generate missing booking steps"
+            aria-label="Generate missing booking steps"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            <ListPlus className={`h-4 w-4 ${saving === 'generate' ? 'animate-pulse' : ''}`} />
           </button>
         </div>
       </div>
@@ -1090,7 +1187,20 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                       const bookingPayments = paymentsByClientId.get(getBookingClientId(booking)) || [];
                       const selectedPaymentId = String(item?.metadata?.paymentId || '');
                       const reviewStepConfig = getReviewStepConfig(row);
-                      const existingReviewRequestId = item?.metadata?.medicalReviewRequestId;
+                      const receivedItem = reviewStepConfig ? itemMap.get(`${getObjectId(booking)}:${reviewStepConfig.receivedStepKey}`) : undefined;
+                      const linkedArtifactId = getLinkedArtifactIdFromItem(item) || getLinkedArtifactIdFromItem(receivedItem);
+                      const metadataReviewRequestId = item?.metadata?.medicalReviewRequestId ? String(item.metadata.medicalReviewRequestId) : '';
+                      const relatedReviewRequests = reviewStepConfig
+                        ? [
+                            ...(linkedArtifactId ? (reviewRequestsByArtifactId.get(linkedArtifactId) || []).filter((request) => request.requestType === reviewStepConfig.requestType) : []),
+                            ...(reviewRequestsByBookingContext.get(makeReviewContextKey(getObjectId(booking), reviewStepConfig)) || []),
+                          ].filter((request, index, requests) => request._id && requests.findIndex((candidate) => candidate._id === request._id) === index)
+                        : [];
+                      const existingReviewRequest = relatedReviewRequests.find((request) => request._id === metadataReviewRequestId) || relatedReviewRequests[0];
+                      const existingReviewRequestId = metadataReviewRequestId || existingReviewRequest?._id || '';
+                      const existingReviewRequestDisplay = item?.metadata?.medicalReviewRequestDisplayId || existingReviewRequest?.display_id || '';
+                      const documentTypeForStep = item ? resolveBookingDocumentType(item) : normalizeDocumentKey(row.key);
+                      const relatedBookingDocument = bookingDocumentMap.get(`${getObjectId(booking)}:${documentTypeForStep}`)?.[0];
                       return (
                         <td key={`${getObjectId(booking)}:${row.key}`} className={`${viewMode === 'simple' ? 'min-w-[150px] px-2 py-2 text-center' : 'min-w-[230px] px-2 py-1 align-top'} border-b border-r border-gray-300 ${item ? getStatusCellClass(item.status) : 'bg-red-50 text-red-900'}`}>
                           {viewMode === 'simple' ? (
@@ -1184,21 +1294,25 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                               className="min-h-[28px] w-full resize-y rounded border border-black/10 bg-white/80 px-1.5 py-1 text-xs text-gray-800 placeholder:text-gray-400 disabled:cursor-not-allowed disabled:bg-white/40"
                             />
                             {reviewStepConfig && (
-                              <button
-                                type="button"
-                                disabled={!isEditing || saving === `mrr:${item._id}` || Boolean(existingReviewRequestId)}
-                                onClick={() => openReviewRequestModal(booking, item, row)}
-                                className="inline-flex items-center justify-center gap-1 rounded-md border border-indigo-200 bg-white px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
-                                title={
-                                  existingReviewRequestId
-                                    ? `Medical review request #${item.metadata?.medicalReviewRequestDisplayId || existingReviewRequestId} already linked`
-                                    : isEditing
-                                      ? `Create ${reviewStepConfig.label}`
-                                      : 'Unlock editing to create medical review request'
-                                }
-                              >
-                                {saving === `mrr:${item._id}` ? '...' : existingReviewRequestId ? `MRR #${item.metadata?.medicalReviewRequestDisplayId || 'linked'}` : 'Create MRR'}
-                              </button>
+                              existingReviewRequestId ? (
+                                <Link
+                                  to={`/admin/medical-review-requests/${existingReviewRequestId}`}
+                                  className="inline-flex items-center justify-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+                                  title={`Open medical review request #${existingReviewRequestDisplay || existingReviewRequestId}`}
+                                >
+                                  MRR #{existingReviewRequestDisplay || 'linked'}
+                                </Link>
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled={!isEditing || saving === `mrr:${item._id}`}
+                                  onClick={() => openReviewRequestModal(booking, item, row)}
+                                  className="inline-flex items-center justify-center gap-1 rounded-md border border-indigo-200 bg-white px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
+                                  title={isEditing ? `Create ${reviewStepConfig.label}` : 'Unlock editing to create medical review request'}
+                                >
+                                  {saving === `mrr:${item._id}` ? '...' : 'Create MRR'}
+                                </button>
+                              )
                             )}
                             {configuredActions.map((action) => {
                               const actionLogs = itemActionLogs.filter((log) => (log.actionKey || 'default_email') === action.key);
@@ -1238,6 +1352,17 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                                 </button>
                               );
                             })}
+                            {relatedBookingDocument?._id && (
+                              <button
+                                type="button"
+                                onClick={() => window.location.assign('/admin/booking-documents')}
+                                className="inline-flex items-center justify-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-800 hover:bg-emerald-100"
+                                title="Open Document Library"
+                              >
+                                <FileText className="h-3.5 w-3.5" />
+                                Document #{relatedBookingDocument.display_id || 'linked'}
+                              </button>
+                            )}
                               </div>
                               {itemActionLogs.length > 0 && (
                                 <div className="space-y-0.5 text-[11px] text-blue-800">
