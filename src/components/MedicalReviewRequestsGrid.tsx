@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FiPlus, FiEdit2, FiTrash2, FiEye, FiRefreshCw } from 'react-icons/fi';
+import { FiCopy, FiEye, FiEdit2, FiLink, FiPlus, FiRefreshCw, FiTrash2, FiX } from 'react-icons/fi';
 import LoadingSpinner from './LoadingSpinner';
 import { medicalReviewRequestsApi, medicalTrackingApi, clientsApi, retreatsApi } from '../services/api';
 import { MedicalItem, MedicalReviewRequest, Client, Retreat } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { usersApi, User } from '../services/usersApi';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
@@ -34,6 +35,12 @@ const getAssignee = (request: MedicalReviewRequest) => {
   };
 };
 
+const getRequestId = (request: MedicalReviewRequest) => request._id || '';
+
+const getRequestRetreatId = (request: MedicalReviewRequest) => (
+  typeof request.retreatId === 'string' ? request.retreatId : request.retreatId?._id
+);
+
 const statusClass: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
   in_review: 'bg-blue-100 text-blue-800',
@@ -53,6 +60,16 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const [requests, setRequests] = useState<EnrichedReviewRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<'all' | MedicalReviewRequest['status']>('all');
+  const [advisors, setAdvisors] = useState<User[]>([]);
+  const [groupModalOpen, setGroupModalOpen] = useState(false);
+  const [groupTitle, setGroupTitle] = useState('');
+  const [groupReviewerUserId, setGroupReviewerUserId] = useState('');
+  const [groupType, setGroupType] = useState<'retreat' | 'ceremony' | 'custom'>('retreat');
+  const [groupCeremonyNumber, setGroupCeremonyNumber] = useState('');
+  const [selectedGroupRequestIds, setSelectedGroupRequestIds] = useState<string[]>([]);
+  const [createdGroupUrl, setCreatedGroupUrl] = useState('');
+  const [groupError, setGroupError] = useState('');
+  const [creatingGroup, setCreatingGroup] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -107,6 +124,16 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     loadData();
   }, [loadData]);
 
+  useEffect(() => {
+    if (!canManageRequests) return;
+    usersApi.getAll()
+      .then((response) => {
+        const activeAdvisors = (response.data || []).filter((advisor) => advisor.role === 'medical_advisor' && advisor.isActive !== false);
+        setAdvisors(activeAdvisors);
+      })
+      .catch(() => setAdvisors([]));
+  }, [canManageRequests]);
+
   const filteredRequests = useMemo(() => {
     if (filterStatus === 'all') return requests;
     return requests.filter((request) => request.status === filterStatus);
@@ -116,6 +143,74 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     if (!window.confirm('Delete this review request?')) return;
     await medicalReviewRequestsApi.delete(id);
     await loadData();
+  };
+
+  const openGroupModal = () => {
+    const visibleIds = filteredRequests.map(getRequestId).filter(Boolean);
+    setSelectedGroupRequestIds(visibleIds);
+    setGroupReviewerUserId(advisors[0]?._id || '');
+    setGroupTitle('');
+    setGroupType('retreat');
+    setGroupCeremonyNumber('');
+    setCreatedGroupUrl('');
+    setGroupError('');
+    setGroupModalOpen(true);
+  };
+
+  const selectedGroupRequests = useMemo(
+    () => requests.filter((request) => selectedGroupRequestIds.includes(getRequestId(request))),
+    [requests, selectedGroupRequestIds]
+  );
+
+  const inferredRetreatId = useMemo(() => {
+    const retreatIds = Array.from(new Set(selectedGroupRequests.map(getRequestRetreatId).filter(Boolean)));
+    return retreatIds.length === 1 ? retreatIds[0] : undefined;
+  }, [selectedGroupRequests]);
+
+  const toggleGroupRequest = (id: string) => {
+    setSelectedGroupRequestIds((current) => (
+      current.includes(id)
+        ? current.filter((existingId) => existingId !== id)
+        : [...current, id]
+    ));
+  };
+
+  const createGroup = async () => {
+    setGroupError('');
+    setCreatedGroupUrl('');
+    if (!groupReviewerUserId) {
+      setGroupError('Select a medical advisor.');
+      return;
+    }
+    if (!selectedGroupRequestIds.length) {
+      setGroupError('Select at least one request.');
+      return;
+    }
+    try {
+      setCreatingGroup(true);
+      const response = await medicalReviewRequestsApi.createGroup({
+        title: groupTitle.trim() || undefined,
+        groupType,
+        retreatId: inferredRetreatId,
+        ceremonyNumber: groupType === 'ceremony' && groupCeremonyNumber ? Number(groupCeremonyNumber) : undefined,
+        reviewRequestIds: selectedGroupRequestIds,
+        reviewerUserId: groupReviewerUserId,
+      });
+      setCreatedGroupUrl(response.data.url || '');
+    } catch (requestError: any) {
+      setGroupError(requestError?.response?.data?.message || requestError?.message || 'Unable to create grouped review link.');
+    } finally {
+      setCreatingGroup(false);
+    }
+  };
+
+  const copyGroupUrl = async () => {
+    if (!createdGroupUrl) return;
+    try {
+      await navigator.clipboard.writeText(createdGroupUrl);
+    } catch (error) {
+      window.prompt('Copy grouped review link', createdGroupUrl);
+    }
   };
 
   if (loading) {
@@ -138,13 +233,22 @@ const MedicalReviewRequestsGrid: React.FC = () => {
             Refresh
           </button>
           {canManageRequests && (
-            <button
-              onClick={() => navigate(`${basePath}/new`)}
-              className="inline-flex w-auto shrink-0 items-center gap-2 whitespace-nowrap rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-            >
-              <Icon icon={FiPlus} className="h-4 w-4" />
-              Add New Request
-            </button>
+            <>
+              <button
+                onClick={openGroupModal}
+                className="inline-flex w-auto shrink-0 items-center gap-2 whitespace-nowrap rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
+              >
+                <Icon icon={FiLink} className="h-4 w-4" />
+                Group Link
+              </button>
+              <button
+                onClick={() => navigate(`${basePath}/new`)}
+                className="inline-flex w-auto shrink-0 items-center gap-2 whitespace-nowrap rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+              >
+                <Icon icon={FiPlus} className="h-4 w-4" />
+                Add New Request
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -235,6 +339,159 @@ const MedicalReviewRequestsGrid: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {groupModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-lg bg-white shadow-xl">
+            <div className="flex items-start justify-between border-b border-gray-200 px-5 py-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Create Grouped Review Link</h2>
+                <p className="mt-1 text-sm text-gray-600">Send one packet link while keeping each medical review request separate.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setGroupModalOpen(false)}
+                className="rounded-md p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                title="Close"
+              >
+                <Icon icon={FiX} className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="max-h-[calc(90vh-150px)] overflow-y-auto px-5 py-4">
+              {groupError && (
+                <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{groupError}</div>
+              )}
+              {createdGroupUrl && (
+                <div className="mb-4 rounded-md border border-green-200 bg-green-50 p-3">
+                  <div className="text-sm font-semibold text-green-800">Grouped review link created</div>
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      value={createdGroupUrl}
+                      readOnly
+                      className="min-w-0 flex-1 rounded-md border border-green-200 bg-white px-3 py-2 text-sm text-gray-800"
+                    />
+                    <button
+                      type="button"
+                      onClick={copyGroupUrl}
+                      className="inline-flex items-center gap-2 rounded-md bg-green-700 px-3 py-2 text-sm font-semibold text-white hover:bg-green-800"
+                    >
+                      <Icon icon={FiCopy} className="h-4 w-4" />
+                      Copy
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <label className="block">
+                  <span className="text-sm font-medium text-gray-700">Title</span>
+                  <input
+                    value={groupTitle}
+                    onChange={(event) => setGroupTitle(event.target.value)}
+                    placeholder="JNO medical review packet"
+                    className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-sm font-medium text-gray-700">Medical advisor</span>
+                  <select
+                    value={groupReviewerUserId}
+                    onChange={(event) => setGroupReviewerUserId(event.target.value)}
+                    className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                  >
+                    <option value="">Select advisor</option>
+                    {advisors.map((advisor) => (
+                      <option key={advisor._id} value={advisor._id}>
+                        {[advisor.firstName, advisor.lastName].filter(Boolean).join(' ') || advisor.email}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="text-sm font-medium text-gray-700">Group type</span>
+                  <select
+                    value={groupType}
+                    onChange={(event) => setGroupType(event.target.value as typeof groupType)}
+                    className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                  >
+                    <option value="retreat">Retreat</option>
+                    <option value="ceremony">Ceremony</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </label>
+                {groupType === 'ceremony' && (
+                  <label className="block">
+                    <span className="text-sm font-medium text-gray-700">Ceremony #</span>
+                    <input
+                      type="number"
+                      min="1"
+                      value={groupCeremonyNumber}
+                      onChange={(event) => setGroupCeremonyNumber(event.target.value)}
+                      className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                    />
+                  </label>
+                )}
+              </div>
+
+              <div className="mt-5">
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="text-sm font-semibold text-gray-800">Requests in packet ({selectedGroupRequestIds.length})</div>
+                  <div className="flex gap-2 text-xs">
+                    <button type="button" onClick={() => setSelectedGroupRequestIds(filteredRequests.map(getRequestId).filter(Boolean))} className="text-blue-700 hover:underline">Select visible</button>
+                    <button type="button" onClick={() => setSelectedGroupRequestIds([])} className="text-gray-600 hover:underline">Clear</button>
+                  </div>
+                </div>
+                <div className="max-h-64 overflow-y-auto rounded-md border border-gray-200">
+                  {filteredRequests.map((request) => {
+                    const id = getRequestId(request);
+                    return (
+                      <label key={id} className="flex cursor-pointer items-start gap-3 border-b border-gray-100 px-3 py-3 last:border-b-0 hover:bg-gray-50">
+                        <input
+                          type="checkbox"
+                          checked={selectedGroupRequestIds.includes(id)}
+                          onChange={() => toggleGroupRequest(id)}
+                          className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
+                        />
+                        <span className="min-w-0 text-sm">
+                          <span className="font-semibold text-gray-900">#{request.display_id || '-'}</span>
+                          <span className="ml-2 text-gray-900">{request.clientName}</span>
+                          <span className="ml-2 text-gray-500">{request.retreatName}</span>
+                          <span className="ml-2 text-gray-500">{request.requestType}</span>
+                        </span>
+                      </label>
+                    );
+                  })}
+                  {!filteredRequests.length && (
+                    <div className="px-3 py-6 text-center text-sm text-gray-500">No requests match the current filter.</div>
+                  )}
+                </div>
+                {!inferredRetreatId && selectedGroupRequestIds.length > 0 && groupType !== 'custom' && (
+                  <div className="mt-2 text-xs text-amber-700">Selected requests span multiple retreats, so this packet will not be attached to one retreat.</div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 border-t border-gray-200 px-5 py-4">
+              <button
+                type="button"
+                onClick={() => setGroupModalOpen(false)}
+                className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={createGroup}
+                disabled={creatingGroup}
+                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {creatingGroup ? 'Creating...' : 'Create Link'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
