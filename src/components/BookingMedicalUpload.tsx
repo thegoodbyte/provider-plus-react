@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Eye, FileText, RefreshCw, Save, Send, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { bookingFlowApi, clientMedicalApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { usersApi, User } from '../services/usersApi';
 import { BookingFlowItem, ClientMedical, MedicalArtifact, MedicalReviewRequest } from '../types';
 import './BookingMedicalUpload.css';
 
@@ -171,6 +172,11 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
   const [uploadingType, setUploadingType] = useState<BookingMedicalTestType | null>(null);
   const [creatingReviewFor, setCreatingReviewFor] = useState<string | null>(null);
   const [savingResultType, setSavingResultType] = useState<BookingMedicalTestType | null>(null);
+  const [medicalAdvisors, setMedicalAdvisors] = useState<User[]>([]);
+  const [advisorSelections, setAdvisorSelections] = useState<Record<BookingMedicalTestType, string>>({
+    ekg: '',
+    liver_panel: '',
+  });
   const [resultDrafts, setResultDrafts] = useState<Record<BookingMedicalTestType, string>>({
     ekg: '',
     liver_panel: '',
@@ -218,6 +224,18 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
 
   useEffect(() => {
     loadMedicalArtifacts();
+    usersApi.getAll()
+      .then((response) => {
+        const advisors = (response.data || []).filter((user) => user.role === 'medical_advisor' && user.isActive !== false);
+        setMedicalAdvisors(advisors);
+        if (advisors.length === 1) {
+          setAdvisorSelections({ ekg: advisors[0]._id, liver_panel: advisors[0]._id });
+        }
+      })
+      .catch((advisorError) => {
+        console.error('Error loading medical advisors:', advisorError);
+        setMedicalAdvisors([]);
+      });
   }, [bookingId, bookingNumber, clientId, retreatId]);
 
   const artifactsByType = useMemo(() => {
@@ -402,13 +420,20 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
     }
   };
 
-  const createReviewRequest = async (artifact: MedicalArtifact, requestType: MedicalReviewRequest['requestType']) => {
+  const createReviewRequest = async (artifact: MedicalArtifact, section: (typeof medicalTestSections)[number]) => {
     if (!artifact._id) return undefined;
+    const advisorId = advisorSelections[section.type];
+    if (!advisorId) {
+      setError('Select a medical advisor before creating the medical review request.');
+      return undefined;
+    }
+    const advisor = medicalAdvisors.find((item) => item._id === advisorId);
     setCreatingReviewFor(artifact._id);
     setError(null);
     try {
-      const response = await medicalReviewRequestsApi.createFromArtifact(artifact._id, requestType, {
-        medicalStaffNotes: `${artifact.title} linked to booking ${bookingNumber || bookingId}.`,
+      const response = await medicalReviewRequestsApi.createFromArtifact(artifact._id, section.requestType, {
+        assignedToUserId: advisorId,
+        medicalStaffNotes: `${artifact.title} linked to booking ${bookingNumber || bookingId}${advisor?.email ? ` and assigned to ${advisor.email}` : ''}.`,
       });
       await loadMedicalArtifacts();
       return response.data;
@@ -458,7 +483,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
           throw uploadError;
         }
         const uploadedArtifact = uploadResponse.data?.artifact || created.data;
-        await createReviewRequest(uploadedArtifact, section.requestType);
+        await createReviewRequest(uploadedArtifact, section);
         await markBookingFlowReceived(section.type, uploadedArtifact);
       }
 
@@ -496,6 +521,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
           const isUploading = uploadingType === section.type;
           const isSavingResult = savingResultType === section.type;
           const isCreatingReview = latestArtifact?._id && creatingReviewFor === latestArtifact._id;
+          const selectedAdvisorId = advisorSelections[section.type] || '';
 
           return (
             <div key={section.type} className="booking-document-card">
@@ -536,6 +562,27 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                     </button>
                   ) : (
                     <span>No review</span>
+                  )}
+                </div>
+                <div>
+                  <span className="booking-medical-required-label">Medical advisor</span>
+                  {latestReview?._id ? (
+                    <span>{typeof latestReview.assignedToUserId === 'object'
+                      ? [latestReview.assignedToUserId.firstName, latestReview.assignedToUserId.lastName].filter(Boolean).join(' ') || latestReview.assignedToUserId.email || 'Assigned'
+                      : 'Assigned'}</span>
+                  ) : (
+                    <select
+                      value={selectedAdvisorId}
+                      onChange={(event) => setAdvisorSelections((current) => ({ ...current, [section.type]: event.target.value }))}
+                      className="booking-medical-advisor-select"
+                    >
+                      <option value="">Select advisor</option>
+                      {medicalAdvisors.map((advisor) => (
+                        <option key={advisor._id} value={advisor._id}>
+                          {[advisor.firstName, advisor.lastName].filter(Boolean).join(' ') || advisor.email}
+                        </option>
+                      ))}
+                    </select>
                   )}
                 </div>
                 <div>
@@ -634,8 +681,8 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                             <button
                               className="btn btn-sm btn-primary"
                               type="button"
-                              disabled={!artifact._id || creatingReviewFor === artifact._id}
-                              onClick={() => createReviewRequest(artifact, section.requestType)}
+                              disabled={!artifact._id || !selectedAdvisorId || creatingReviewFor === artifact._id}
+                              onClick={() => createReviewRequest(artifact, section)}
                             >
                               <Send size={16} /> {creatingReviewFor === artifact._id ? 'Creating...' : 'Create Review'}
                             </button>
