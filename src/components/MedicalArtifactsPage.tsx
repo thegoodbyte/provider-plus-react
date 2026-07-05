@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Eye, FileText, Plus, RefreshCw, Send, XCircle } from 'lucide-react';
 import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
-import { Client, MedicalArtifact, MedicalReviewRequest } from '../types';
+import { Client, MedicalArtifact, MedicalReviewRequest, Retreat, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 
 const artifactTypeLabels: Record<NonNullable<MedicalArtifact['artifactType']>, string> = {
@@ -54,8 +54,40 @@ const getClientName = (client?: string | Client) => {
   return [client.firstName || client.fname, client.lastName || client.lname].filter(Boolean).join(' ') || client.email || 'Unknown client';
 };
 
+const getRetreatLabel = (retreat?: string | Retreat) => {
+  if (!retreat || typeof retreat === 'string') return retreat ? `Retreat ${String(retreat).slice(-6)}` : '';
+  return retreat.name || retreat.retreatCode || retreat.code || getObjectId(retreat);
+};
+
+const getBookingLabel = (booking?: string | RetreatClient) => {
+  if (!booking || typeof booking === 'string') return booking ? `Booking ${String(booking).slice(-6)}` : '';
+  return booking.bookingNumber ? `Booking #${booking.bookingNumber}` : `Booking ${getObjectId(booking).slice(-6)}`;
+};
+
+const getSearchText = (artifact: MedicalArtifact) => [
+  artifact.display_id,
+  artifact._id,
+  artifact.title,
+  artifact.artifactType,
+  artifact.documentStage,
+  artifact.documentType,
+  artifact.status,
+  getClientName(artifact.clientId),
+  typeof artifact.clientId === 'object' ? artifact.clientId.email : '',
+  typeof artifact.clientId === 'object' ? artifact.clientId.display_id : '',
+  getObjectId(artifact.clientId),
+  getBookingLabel(artifact.bookingId),
+  getObjectId(artifact.bookingId),
+  getRetreatLabel(artifact.retreatId),
+  getObjectId(artifact.retreatId),
+  artifact.ceremonyNumber ? `ceremony ${artifact.ceremonyNumber}` : '',
+].filter(Boolean).join(' ').toLowerCase();
+
 const getReviewTime = (review: MedicalReviewRequest) =>
   new Date(review.reviewedAt || review.requestedAt || review.createdAt || 0).getTime();
+
+const getReviewLabel = (review: MedicalReviewRequest) =>
+  `MRR #${review.display_id || review._id?.slice(-6) || 'linked'}`;
 
 const getReviewDecision = (review?: MedicalReviewRequest) => {
   const decision = review?.reviewDecision;
@@ -111,8 +143,15 @@ const MedicalArtifactsPage: React.FC = () => {
   const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
   const [reviewRequests, setReviewRequests] = useState<MedicalReviewRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchFilter, setSearchFilter] = useState('');
+  const [bookingIdFilter, setBookingIdFilter] = useState('');
+  const [clientIdFilter, setClientIdFilter] = useState('');
+  const [retreatIdFilter, setRetreatIdFilter] = useState('');
   const [stageFilter, setStageFilter] = useState<'all' | NonNullable<MedicalArtifact['documentStage']>>('all');
   const [documentTypeFilter, setDocumentTypeFilter] = useState<'all' | NonNullable<MedicalArtifact['documentType']>>('all');
+  const [artifactTypeFilter, setArtifactTypeFilter] = useState<'all' | NonNullable<MedicalArtifact['artifactType']>>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | NonNullable<MedicalArtifact['status']>>('all');
+  const [reviewFilter, setReviewFilter] = useState<'all' | 'has_review' | 'no_review'>('all');
 
   const loadData = async () => {
     setLoading(true);
@@ -132,15 +171,7 @@ const MedicalArtifactsPage: React.FC = () => {
     loadData();
   }, []);
 
-  const filteredArtifacts = useMemo(() => {
-    return artifacts.filter((artifact) => {
-      if (stageFilter !== 'all' && (artifact.documentStage || 'entry') !== stageFilter) return false;
-      if (documentTypeFilter !== 'all' && (artifact.documentType || 'other') !== documentTypeFilter) return false;
-      return true;
-    });
-  }, [artifacts, stageFilter, documentTypeFilter]);
-
-  const latestReviewByArtifactId = useMemo(() => {
+  const reviewsByArtifactId = useMemo(() => {
     const grouped = new Map<string, MedicalReviewRequest[]>();
     reviewRequests.forEach((review) => {
       (review.artifactIds || []).forEach((artifactRef) => {
@@ -152,12 +183,37 @@ const MedicalArtifactsPage: React.FC = () => {
       });
     });
 
-    const latest = new Map<string, MedicalReviewRequest>();
     grouped.forEach((reviews, artifactId) => {
-      latest.set(artifactId, [...reviews].sort((a, b) => getReviewTime(b) - getReviewTime(a))[0]);
+      grouped.set(artifactId, [...reviews].sort((a, b) => getReviewTime(b) - getReviewTime(a)));
     });
-    return latest;
+    return grouped;
   }, [reviewRequests]);
+
+  const filteredArtifacts = useMemo(() => {
+    const search = searchFilter.trim().toLowerCase();
+    const bookingId = bookingIdFilter.trim().toLowerCase();
+    const clientId = clientIdFilter.trim().toLowerCase();
+    const retreatId = retreatIdFilter.trim().toLowerCase();
+
+    return artifacts.filter((artifact) => {
+      const artifactBookingId = String(getObjectId(artifact.bookingId) || '').toLowerCase();
+      const artifactClientId = String(getObjectId(artifact.clientId) || '').toLowerCase();
+      const artifactRetreatId = String(getObjectId(artifact.retreatId) || '').toLowerCase();
+      const artifactReviews = artifact._id ? reviewsByArtifactId.get(artifact._id) || [] : [];
+
+      if (search && !getSearchText(artifact).includes(search)) return false;
+      if (bookingId && !artifactBookingId.includes(bookingId)) return false;
+      if (clientId && !artifactClientId.includes(clientId)) return false;
+      if (retreatId && !artifactRetreatId.includes(retreatId)) return false;
+      if (stageFilter !== 'all' && (artifact.documentStage || 'entry') !== stageFilter) return false;
+      if (documentTypeFilter !== 'all' && (artifact.documentType || 'other') !== documentTypeFilter) return false;
+      if (artifactTypeFilter !== 'all' && artifact.artifactType !== artifactTypeFilter) return false;
+      if (statusFilter !== 'all' && (artifact.status || 'stored') !== statusFilter) return false;
+      if (reviewFilter === 'has_review' && artifactReviews.length === 0) return false;
+      if (reviewFilter === 'no_review' && artifactReviews.length > 0) return false;
+      return true;
+    });
+  }, [artifacts, artifactTypeFilter, bookingIdFilter, clientIdFilter, documentTypeFilter, retreatIdFilter, reviewFilter, reviewsByArtifactId, searchFilter, stageFilter, statusFilter]);
 
   const handleRequestReview = async (artifact: MedicalArtifact) => {
     if (!artifact._id) return;
@@ -187,19 +243,82 @@ const MedicalArtifactsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="mb-4 flex items-center gap-2">
-        <select value={stageFilter} onChange={(event) => setStageFilter(event.target.value as typeof stageFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-          <option value="all">All document stages</option>
-          {Object.entries(documentStageLabels).map(([value, label]) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </select>
-        <select value={documentTypeFilter} onChange={(event) => setDocumentTypeFilter(event.target.value as typeof documentTypeFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-          <option value="all">All document types</option>
-          {Object.entries(documentTypeLabels).map(([value, label]) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </select>
+      <div className="mb-4 rounded-md border border-gray-200 bg-white p-3">
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+          <input
+            value={searchFilter}
+            onChange={(event) => setSearchFilter(event.target.value)}
+            placeholder="Search client, booking, retreat, artifact..."
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+          />
+          <input
+            value={bookingIdFilter}
+            onChange={(event) => setBookingIdFilter(event.target.value)}
+            placeholder="Booking ID"
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+          />
+          <input
+            value={clientIdFilter}
+            onChange={(event) => setClientIdFilter(event.target.value)}
+            placeholder="Client ID"
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+          />
+          <input
+            value={retreatIdFilter}
+            onChange={(event) => setRetreatIdFilter(event.target.value)}
+            placeholder="Retreat ID"
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+          />
+          <select value={stageFilter} onChange={(event) => setStageFilter(event.target.value as typeof stageFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+            <option value="all">All document stages</option>
+            {Object.entries(documentStageLabels).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+          <select value={documentTypeFilter} onChange={(event) => setDocumentTypeFilter(event.target.value as typeof documentTypeFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+            <option value="all">All document types</option>
+            {Object.entries(documentTypeLabels).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+          <select value={artifactTypeFilter} onChange={(event) => setArtifactTypeFilter(event.target.value as typeof artifactTypeFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+            <option value="all">All artifact types</option>
+            {Object.entries(artifactTypeLabels).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+            <option value="all">All statuses</option>
+            {['stored', 'pending_review', 'approved', 'rejected', 'needs_resubmission', 'superseded', 'voided'].map((status) => (
+              <option key={status} value={status}>{status.replace(/_/g, ' ')}</option>
+            ))}
+          </select>
+          <select value={reviewFilter} onChange={(event) => setReviewFilter(event.target.value as typeof reviewFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+            <option value="all">All MRR states</option>
+            <option value="has_review">Has MRR</option>
+            <option value="no_review">No MRR</option>
+          </select>
+          <button
+            type="button"
+            onClick={() => {
+              setSearchFilter('');
+              setBookingIdFilter('');
+              setClientIdFilter('');
+              setRetreatIdFilter('');
+              setStageFilter('all');
+              setDocumentTypeFilter('all');
+              setArtifactTypeFilter('all');
+              setStatusFilter('all');
+              setReviewFilter('all');
+            }}
+            className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Clear filters
+          </button>
+          <div className="flex items-center text-sm text-gray-500">
+            Showing {filteredArtifacts.length} of {artifacts.length}
+          </div>
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-md border border-gray-200">
@@ -222,7 +341,8 @@ const MedicalArtifactsPage: React.FC = () => {
           </thead>
           <tbody className="divide-y divide-gray-100 bg-white">
             {filteredArtifacts.map((artifact) => {
-              const latestReview = artifact._id ? latestReviewByArtifactId.get(artifact._id) : undefined;
+              const artifactReviews = artifact._id ? reviewsByArtifactId.get(artifact._id) || [] : [];
+              const latestReview = artifactReviews[0];
               return (
               <tr key={artifact._id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 font-medium text-gray-900">
@@ -248,14 +368,25 @@ const MedicalArtifactsPage: React.FC = () => {
                     >
                       <Eye className="h-3.5 w-3.5" />
                     </button>
-                    <button
-                      type="button"
-                      title="Send for medical review"
-                      onClick={() => handleRequestReview(artifact)}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-200 bg-white text-blue-700 hover:bg-blue-50"
-                    >
-                      <Send className="h-3.5 w-3.5" />
-                    </button>
+                    {latestReview?._id ? (
+                      <button
+                        type="button"
+                        title={`Open ${getReviewLabel(latestReview)}`}
+                        onClick={() => navigate(`/admin/medical-review-requests/${latestReview._id}`)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        title="Send for medical review"
+                        onClick={() => handleRequestReview(artifact)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-200 bg-white text-blue-700 hover:bg-blue-50"
+                      >
+                        <Send className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                   </div>
                 </td>
                 <td className="px-4 py-3">
@@ -288,7 +419,8 @@ const MedicalArtifactsPage: React.FC = () => {
                 <td className="px-4 py-3">{getClientName(artifact.clientId)}</td>
                 <td className="px-4 py-3">
                   <div className="flex flex-col gap-1 text-xs text-gray-600">
-                    <span>{getObjectId(artifact.bookingId) ? `Booking ${String(getObjectId(artifact.bookingId)).slice(-6)}` : '-'}</span>
+                    <span>{getBookingLabel(artifact.bookingId) || '-'}</span>
+                    {getRetreatLabel(artifact.retreatId) ? <span>{getRetreatLabel(artifact.retreatId)}</span> : null}
                     {artifact.ceremonyNumber ? <span>Ceremony #{artifact.ceremonyNumber}</span> : null}
                   </div>
                 </td>
@@ -298,15 +430,33 @@ const MedicalArtifactsPage: React.FC = () => {
                 <td className="px-4 py-3">
                   <div className="flex flex-col gap-1">
                     {latestReview?._id ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/admin/medical-review-requests/${latestReview._id}`)}
+                          className="w-fit text-xs font-semibold text-blue-700 hover:text-blue-900 hover:underline"
+                        >
+                          Latest {getReviewLabel(latestReview)}
+                        </button>
+                        {artifactReviews.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => navigate(`${artifact._id}`)}
+                            className="w-fit text-[11px] font-medium text-gray-500 hover:text-gray-800 hover:underline"
+                            title="Open artifact to see full medical review history"
+                          >
+                            {artifactReviews.length} MRRs total
+                          </button>
+                        )}
+                      </>
+                    ) : (
                       <button
                         type="button"
-                        onClick={() => navigate(`/admin/medical-review-requests/${latestReview._id}`)}
-                        className="w-fit text-xs font-semibold text-blue-700 hover:text-blue-900"
+                        onClick={() => handleRequestReview(artifact)}
+                        className="w-fit text-xs font-semibold text-blue-700 hover:text-blue-900 hover:underline"
                       >
-                        Review #{latestReview.display_id || latestReview._id.slice(-6)}
+                        Create MRR
                       </button>
-                    ) : (
-                      <span className="text-xs text-gray-400">-</span>
                     )}
                     <ReviewResultBadge review={latestReview} />
                   </div>

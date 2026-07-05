@@ -1337,3 +1337,62 @@ export const screeningApi = {
     };
   },
 };
+
+export type AssistantFinding = {
+  severity: 'high' | 'medium' | 'low';
+  title: string;
+  detail: string;
+  link?: string;
+};
+
+export type AssistantAction = {
+  label: string;
+  reason: string;
+  link?: string;
+  priority: 'high' | 'medium' | 'low';
+};
+
+export type BookingReadinessAssistantResult = {
+  generatedAt: string;
+  generatedBy: 'rules' | 'openai';
+  model?: string;
+  aiUnavailableReason?: string;
+  booking: {
+    id: string;
+    bookingNumber?: number;
+    status?: string;
+    totalAmount?: number;
+    currency?: string;
+    paidAmount?: number;
+    balanceDue?: number;
+    link?: string;
+  };
+  client: {
+    id?: string;
+    displayId?: number;
+    name?: string;
+    email?: string;
+    phone?: string;
+    link?: string;
+  };
+  retreat: {
+    id?: string;
+    name?: string;
+    code?: string;
+    startDate?: string;
+    endDate?: string;
+    location?: string;
+    daysUntilRetreat?: number | null;
+    link?: string;
+  };
+  metrics: Record<string, number | string | null | undefined>;
+  findings: AssistantFinding[];
+  suggestedActions: AssistantAction[];
+  summary: string;
+  aiSummary?: string;
+};
+
+export const assistantApi = {
+  analyzeBookingReadiness: (bookingId: string) =>
+    api.get<BookingReadinessAssistantResult>(`/assistant/booking-readiness/${bookingId}`),
+};
