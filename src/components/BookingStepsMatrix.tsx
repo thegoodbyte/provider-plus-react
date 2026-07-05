@@ -64,6 +64,26 @@ const reviewStepConfigByKey: Record<string, { receivedStepKey: string; requestTy
   liver_panel_sent_for_review: { receivedStepKey: 'liver_received', requestType: 'liver_panel_review', label: 'Liver panel review' },
 };
 
+const getReviewStepConfig = (row: Pick<MatrixRow, 'key' | 'title'>) => {
+  const exact = reviewStepConfigByKey[row.key];
+  if (exact) return exact;
+
+  const normalized = normalizeDocumentKey(`${row.key} ${row.title}`);
+  const isReviewStep = normalized.includes('review') && (
+    normalized.includes('sent') ||
+    normalized.includes('send') ||
+    normalized.includes('medical')
+  );
+  if (!isReviewStep) return undefined;
+  if (normalized.includes('ekg')) {
+    return { receivedStepKey: 'ekg_received', requestType: 'ekg_review' as const, label: 'Entry EKG review' };
+  }
+  if (normalized.includes('liver')) {
+    return { receivedStepKey: 'liver_received', requestType: 'liver_panel_review' as const, label: 'Liver panel review' };
+  }
+  return undefined;
+};
+
 const getClientDisplayId = (booking: any): string => {
   const client = getBookingClient(booking);
   return String(client?.display_id || booking.clientDisplayId || booking.clientDisplayNumber || '');
@@ -634,7 +654,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
 
   const openReviewRequestModal = (booking: any, item: BookingFlowItem | undefined, row: MatrixRow) => {
     if (!item?._id) return;
-    const config = reviewStepConfigByKey[row.key];
+    const config = getReviewStepConfig(row);
     if (!config) return;
     const bookingId = getObjectId(booking);
     const receivedItem = itemMap.get(`${bookingId}:${config.receivedStepKey}`);
@@ -1069,7 +1089,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                       const isPaymentReceivedStep = row.key === 'payment_received';
                       const bookingPayments = paymentsByClientId.get(getBookingClientId(booking)) || [];
                       const selectedPaymentId = String(item?.metadata?.paymentId || '');
-                      const reviewStepConfig = reviewStepConfigByKey[row.key];
+                      const reviewStepConfig = getReviewStepConfig(row);
                       const existingReviewRequestId = item?.metadata?.medicalReviewRequestId;
                       return (
                         <td key={`${getObjectId(booking)}:${row.key}`} className={`${viewMode === 'simple' ? 'min-w-[150px] px-2 py-2 text-center' : 'min-w-[230px] px-2 py-1 align-top'} border-b border-r border-gray-300 ${item ? getStatusCellClass(item.status) : 'bg-red-50 text-red-900'}`}>
