@@ -38,6 +38,8 @@ import MedicalReviewRequestsGrid from './MedicalReviewRequestsGrid';
 import MedicalReviewRequestEditorPage from './MedicalReviewRequestEditorPage';
 import MedicalReviewRequestsPage from './MedicalReviewRequestsPage';
 import MedicalReviewAccessPage from './MedicalReviewAccessPage';
+import MedicalReviewGroupAccessPage from './MedicalReviewGroupAccessPage';
+import MedicalReviewGroupPage from './MedicalReviewGroupPage';
 import MedicalReviewPublicPage from './MedicalReviewPublicPage';
 import RemindersPage from './RemindersPage';
 import PaymentsPage from './PaymentsPage';
@@ -547,6 +549,7 @@ const AppleLayout: React.FC = () => {
                 <Route path="/medical/review-link/:token" element={<MedicalReviewPublicPage />} />
                 <Route path="/medical-review-access/:token/:label" element={<MedicalReviewAccessPage />} />
                 <Route path="/medical-review-access/:token" element={<MedicalReviewAccessPage />} />
+                <Route path="/medical-review-group-access/:token" element={<MedicalReviewGroupAccessPage />} />
                 <Route path="/users/forgot-password" element={<ForgotPassword />} />
                 <Route path="/users/forgot-pasword" element={<ForgotPassword />} />
                 <Route path="/users/change-password/:token" element={<ResetPassword />} />
@@ -652,6 +655,7 @@ const AppleLayout: React.FC = () => {
                         <Route path="review-requests/new" element={<Unauthorized />} />
                         <Route path="review-requests/:id" element={<MedicalReviewRequestsPage />} />
                         <Route path="review-requests/:id/edit" element={<MedicalReviewRequestsPage />} />
+                        <Route path="review-groups/:id" element={<MedicalReviewGroupPage />} />
                         <Route path="medical-review-requests" element={<MedicalReviewRequestsGrid />} />
                         <Route path="medical-review-requests/new" element={<Unauthorized />} />
                         <Route path="medical-review-requests/:id" element={<MedicalReviewRequestsPage />} />
@@ -681,6 +685,7 @@ const AppleLayout: React.FC = () => {
                         <Route path="review-requests/new" element={<MedicalReviewRequestEditorPage />} />
                         <Route path="review-requests/:id" element={<MedicalReviewRequestsPage />} />
                         <Route path="review-requests/:id/edit" element={<MedicalReviewRequestsPage />} />
+                        <Route path="review-groups/:id" element={<MedicalReviewGroupPage />} />
                         <Route path="medical-review-requests" element={<MedicalReviewRequestsGrid />} />
                         <Route path="medical-review-requests/new" element={<MedicalReviewRequestEditorPage />} />
                         <Route path="medical-review-requests/:id" element={<MedicalReviewRequestsPage />} />
@@ -800,10 +805,12 @@ const AppleLayout: React.FC = () => {
                 <Route path="/admin/medical-review-requests/new" element={<ProtectedRoute><MedicalReviewRequestEditorPage /></ProtectedRoute>} />
                 <Route path="/admin/medical-review-requests/:id" element={<ProtectedRoute><MedicalReviewRequestsPage /></ProtectedRoute>} />
                 <Route path="/admin/medical-review-requests/:id/edit" element={<ProtectedRoute><MedicalReviewRequestEditorPage /></ProtectedRoute>} />
+                <Route path="/admin/medical-review-groups/:id" element={<ProtectedRoute requiredRole={['admin', 'medical_staff']}><MedicalReviewGroupPage /></ProtectedRoute>} />
                 <Route path="/medical/review-requests" element={<ProtectedRoute><MedicalReviewRequestsPage /></ProtectedRoute>} />
                 <Route path="/medical/review-requests/new" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><MedicalReviewRequestEditorPage /></ProtectedRoute>} />
                 <Route path="/medical/review-requests/:id" element={<ProtectedRoute><MedicalReviewRequestsPage /></ProtectedRoute>} />
                 <Route path="/medical/review-requests/:id/edit" element={<ProtectedRoute><MedicalReviewRequestsPage /></ProtectedRoute>} />
+                <Route path="/medical/review-groups/:id" element={<ProtectedRoute requiredRole={['medical_staff', 'medical_advisor', 'admin']}><MedicalReviewGroupPage /></ProtectedRoute>} />
                 <Route path="/communications" element={<ProtectedRoute><CommunicationsPage /></ProtectedRoute>} />
                 <Route path="/admin/communications" element={<ProtectedRoute><CommunicationsPage /></ProtectedRoute>} />
                 <Route path="/medical/communications" element={<ProtectedRoute><CommunicationsPage /></ProtectedRoute>} />

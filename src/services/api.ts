@@ -999,6 +999,38 @@ export const medicalReviewRequestsApi = {
   getAccessLinks: (id: string) => api.get<any[]>(`/medical-review-requests/${id}/access-links`),
   createAccessLink: (id: string) => api.post<any>(`/medical-review-requests/${id}/access-links`, {}),
   revokeAccessLink: (accessLinkId: string) => api.patch<any>(`/medical-review-requests/access-links/${accessLinkId}/revoke`, {}),
+  getGroups: () => api.get<any[]>('/medical-review-requests/groups'),
+  getGroup: (id: string) => api.get<any>(`/medical-review-requests/groups/${id}`),
+  createGroup: (data: {
+    title?: string;
+    groupType?: 'retreat' | 'ceremony' | 'custom';
+    retreatId?: string;
+    ceremonyNumber?: number;
+    reviewRequestIds: string[];
+    reviewerUserId: string;
+  }) => {
+    cacheService.clearPattern('medical-review-requests:');
+    return api.post<any>('/medical-review-requests/groups', data);
+  },
+  exchangeGroupAccessLink: (token: string) => api.post<{
+    access_token: string;
+    expiresAt: string;
+    redirectTo: string;
+    reviewGroupId: string;
+    user: {
+      id?: string;
+      email: string;
+      role: string;
+      firstName?: string;
+      lastName?: string;
+      accessType?: string;
+      medicalReviewGroupId?: string;
+    };
+  }>(
+    `/medical-review-public/group-access/${encodeURIComponent(token)}`,
+    {},
+    { suppressAuthRedirect: true, suppressGlobalError: true } as any
+  ),
   update: (id: string, data: Partial<MedicalReviewRequest>) => {
     cacheService.clearPattern('medical-review-requests:');
     return api.patch<MedicalReviewRequest>(`/medical-review-requests/${id}`, data);
