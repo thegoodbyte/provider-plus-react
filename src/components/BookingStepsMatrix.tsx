@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, Circle, Lock, Mail, RefreshCw, RotateCcw, Save, Unlock, Upload, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Circle, ListPlus, Lock, Mail, RefreshCw, RotateCcw, Save, Unlock, Upload, X } from 'lucide-react';
 import { bookingDocumentsApi, bookingFlowApi, clientsApi, communicationsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, Client, MedicalReviewRequest, Payment } from '../types';
@@ -978,8 +978,15 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
             <RefreshCw className="h-4 w-4" />
             Refresh
           </button>
-          <button onClick={generateSteps} disabled={saving === 'generate'} className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
-            {saving === 'generate' ? 'Generating...' : 'Generate Missing Steps'}
+          <button
+            type="button"
+            onClick={generateSteps}
+            disabled={saving === 'generate'}
+            title="Generate missing booking steps"
+            aria-label="Generate missing booking steps"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            <ListPlus className={`h-4 w-4 ${saving === 'generate' ? 'animate-pulse' : ''}`} />
           </button>
         </div>
       </div>
