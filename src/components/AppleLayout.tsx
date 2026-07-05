@@ -47,6 +47,7 @@ import PaymentRequestEditorPage from './PaymentRequestEditorPage';
 import ExpensesPage from './ExpensesPage';
 import CommunicationsPage from './CommunicationsPage';
 import ContactBookPage from './ContactBookPage';
+import AssistantPage from './AssistantPage';
 import HelperCurrentRetreatPage from './HelperCurrentRetreatPage';
 import RequirementsGrid from './RequirementsGrid';
 import CurrencySettings from './CurrencySettings';
@@ -166,6 +167,7 @@ const AppleLayout: React.FC = () => {
     if (route === 'payments') return 'payments';
     if (route === 'payment-requests') return 'payment-requests';
     if (route === 'communications') return 'communications';
+    if (route === 'assistant') return 'assistant';
     if (route === 'requirements') return 'requirements';
     if (route === 'analytics') return 'analytics';
     if (route === 'permissions') return 'permissions';
@@ -620,6 +622,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="payment-requests/:id" element={<PaymentRequestEditorPage />} />
                       <Route path="payment-requests/:id/edit" element={<PaymentRequestEditorPage />} />
                       <Route path="communications" element={<CommunicationsPage />} />
+                      <Route path="assistant" element={<AssistantPage />} />
                       <Route path="contact-book" element={<ContactBookPage />} />
                       <Route path="requirements" element={<RequirementsGrid />} />
                       <Route path="permissions" element={<PermissionsMatrix />} />
@@ -715,6 +718,7 @@ const AppleLayout: React.FC = () => {
                         <Route path="reminders" element={<RemindersPage />} />
                         <Route path="contact-book" element={<ContactBookPage />} />
                         <Route path="communications" element={<CommunicationsPage />} />
+                        <Route path="assistant" element={<AssistantPage />} />
                       </Routes>
                     )}
                   </ProtectedRoute>
@@ -803,6 +807,9 @@ const AppleLayout: React.FC = () => {
                 <Route path="/communications" element={<ProtectedRoute><CommunicationsPage /></ProtectedRoute>} />
                 <Route path="/admin/communications" element={<ProtectedRoute><CommunicationsPage /></ProtectedRoute>} />
                 <Route path="/medical/communications" element={<ProtectedRoute><CommunicationsPage /></ProtectedRoute>} />
+                <Route path="/assistant" element={<ProtectedRoute requiredRole={['admin', 'medical_staff']}><AssistantPage /></ProtectedRoute>} />
+                <Route path="/admin/assistant" element={<ProtectedRoute requiredRole={['admin']}><AssistantPage /></ProtectedRoute>} />
+                <Route path="/medical/assistant" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><AssistantPage /></ProtectedRoute>} />
                 <Route path="/contact-book" element={<ProtectedRoute><ContactBookPage /></ProtectedRoute>} />
                 <Route path="/admin/contact-book" element={<ProtectedRoute><ContactBookPage /></ProtectedRoute>} />
                 <Route path="/medical/contact-book" element={<ProtectedRoute><ContactBookPage /></ProtectedRoute>} />
