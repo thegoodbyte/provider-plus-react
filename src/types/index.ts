@@ -15,6 +15,7 @@ export interface Retreat {
   description?: string;
   houseId?: string | House;
   helpers?: string;
+  retreatStaff?: RetreatStaffAssignment[];
   status?: 'active' | 'completed' | 'cancelled' | 'upcoming';
   type?: 'regular' | 'booster';
   backgroundColor?: string; // Added for custom background color
@@ -32,6 +33,22 @@ export interface Retreat {
     startTime?: string;
     endTime?: string;
   };
+}
+
+export interface RetreatStaffAssignment {
+  _id?: string;
+  contactId?: string | ContactBookEntry;
+  role?: 'helper' | 'cook' | 'second_helper' | string;
+  name?: string;
+  phone?: string;
+  email?: string;
+  startDate?: Date | string;
+  startTime?: string;
+  endDate?: Date | string;
+  endTime?: string;
+  plannedSalary?: number;
+  salaryCurrency?: 'USD' | 'EUR' | 'CZK' | 'PLN' | string;
+  notes?: string;
 }
 
 export interface House {
