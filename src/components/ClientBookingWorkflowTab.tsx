@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { FiCheckCircle, FiEdit2, FiExternalLink, FiMail, FiRefreshCw, FiSave, FiUpload } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { bookingDocumentsApi, bookingFlowApi, medicalArtifactsApi } from '../services/api';
-import { BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, MedicalArtifact } from '../types';
+import { BookingDocument, BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, MedicalArtifact } from '../types';
 import AppleButton from './AppleButton';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 import LoadingSpinner from './LoadingSpinner';
@@ -40,6 +40,17 @@ const bookingDocumentUploadsByStep: Record<string, {
   medications_form_initial_received: { documentType: 'medications_form', title: 'Medications Form' },
   medications_form_30_day_received: { documentType: 'medications_form', title: '30-Day Medications Form' },
   questionnaire_received: { documentType: 'questionnaire', title: 'Questionnaire' },
+};
+
+const getBookingDocumentTypeForStep = (item: BookingFlowItem) => {
+  const explicit = bookingDocumentUploadsByStep[item.key]?.documentType;
+  return String(
+    explicit ||
+    item.metadata?.expectedBookingDocument ||
+    item.metadata?.expectedDocument ||
+    item.metadata?.expectedArtifact ||
+    '',
+  ).trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 };
 
 const getObjectId = (value: any): string => {
@@ -159,6 +170,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
   const [items, setItems] = useState<BookingFlowItem[]>([]);
   const [templates, setTemplates] = useState<BookingFlowTemplate[]>([]);
   const [libraryTemplates, setLibraryTemplates] = useState<BookingFlowTemplate[]>([]);
+  const [bookingDocuments, setBookingDocuments] = useState<BookingDocument[]>([]);
   const [actionLogsByItem, setActionLogsByItem] = useState<Record<string, BookingFlowActionLog[]>>({});
   const [drafts, setDrafts] = useState<Record<string, StepDraft>>({});
   const [dateTimePickerDrafts, setDateTimePickerDrafts] = useState<Record<string, string>>({});
@@ -255,8 +267,12 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
     try {
       setLoading(true);
       setError(null);
-      const response = await bookingFlowApi.getBookingRequirements(bookingId);
+      const [response, documentsResponse] = await Promise.all([
+        bookingFlowApi.getBookingRequirements(bookingId),
+        bookingDocumentsApi.getAll({ bookingId }).catch(() => ({ data: [] as BookingDocument[] })),
+      ]);
       const nextItems = response.data.items || [];
+      setBookingDocuments(documentsResponse.data || []);
       setTemplates(response.data.templates || []);
       setLibraryTemplates(response.data.libraryTemplates || []);
       const logsByItem: Record<string, BookingFlowActionLog[]> = (response.data.actionLogs || []).reduce((acc: Record<string, BookingFlowActionLog[]>, log: BookingFlowActionLog) => {
@@ -741,6 +757,12 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                 const linkedArtifactDisplayId = item.metadata?.latestArtifactDisplayId || item.metadata?.linkedMedicalArtifactDisplayId;
                 const linkedBookingDocumentId = item.metadata?.latestBookingDocumentId;
                 const linkedBookingDocumentDisplayId = item.metadata?.latestBookingDocumentDisplayId;
+                const documentTypeForStep = getBookingDocumentTypeForStep(item);
+                const relatedBookingDocument = documentTypeForStep
+                  ? [...bookingDocuments]
+                      .filter((document) => String(document.documentType || '').toLowerCase() === documentTypeForStep && (document.files || []).length > 0)
+                      .sort((a, b) => new Date(b.receivedAt || b.createdAt || 0).getTime() - new Date(a.receivedAt || a.createdAt || 0).getTime())[0]
+                  : undefined;
                 const configuredActions = getConfiguredActions(item);
                 const uploadAction = configuredActions.find((action) => action.type === 'upload');
                 const visibleActions = configuredActions.filter((action) => action.type !== 'upload');
@@ -863,11 +885,15 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                             Artifact {linkedArtifactDisplayId ? `#${linkedArtifactDisplayId}` : ''}
                           </button>
                         )}
-                        {linkedBookingDocumentId && (
-                          <span className="inline-flex items-center rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-sm font-medium text-gray-700">
+                        {(linkedBookingDocumentId || relatedBookingDocument?._id) && (
+                          <button
+                            type="button"
+                            className="inline-flex items-center rounded-md border border-emerald-200 bg-emerald-50 px-2.5 py-1.5 text-sm font-medium text-emerald-800 hover:bg-emerald-100"
+                            onClick={() => navigate(`/booking-documents`)}
+                          >
                             <Icon icon={FiExternalLink} className="mr-2 h-4 w-4" />
-                            Document {linkedBookingDocumentDisplayId ? `#${linkedBookingDocumentDisplayId}` : ''}
-                          </span>
+                            Document #{linkedBookingDocumentDisplayId || relatedBookingDocument?.display_id || 'linked'}
+                          </button>
                         )}
                         {(uploadConfig || uploadAction) && (
                           <label className={`inline-flex items-center rounded-md border border-blue-200 bg-white px-2.5 py-1.5 text-sm font-medium ${isEditing ? 'cursor-pointer text-blue-700 hover:bg-blue-50' : 'cursor-not-allowed text-gray-400'}`}>

@@ -1192,6 +1192,7 @@ export const bookingDocumentsApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
   },
+  getFileViewUrl: (id: string, storedPath: string) => `${api.defaults.baseURL}/booking-documents/${id}/files/view?storedPath=${encodeURIComponent(storedPath)}`,
   delete: (id: string) => {
     cacheService.clearPattern('booking-documents:');
     return api.delete(`/booking-documents/${id}`);
