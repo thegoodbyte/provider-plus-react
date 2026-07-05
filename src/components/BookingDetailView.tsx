@@ -1393,6 +1393,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const clientDisplayId = getClientDisplayId(client, booking);
   const bookingTypeCode = booking.bookingType === 'booster' ? 'B' : 'F';
   const retreatCode = getRetreatCode(retreat);
+  const retreatId = getObjectId(retreat);
   const retreatAddress = getRetreatAddress(retreat);
   const confirmationHistory = [...(booking.bookingConfirmationHistory || [])].sort((a: any, b: any) => (a.iteration || 0) - (b.iteration || 0));
   const firstConfirmation = confirmationHistory[0];
@@ -1518,7 +1519,18 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
           )}
           <div className="booking-info-item">
             <span>Retreat</span>
-            <strong>{retreatCode}</strong>
+            {retreatId ? (
+              <button
+                type="button"
+                className="booking-info-link"
+                onClick={() => navigate(`${routePrefix}/retreats/${retreatId}`)}
+                title={`Open retreat ${retreatCode}`}
+              >
+                {retreatCode}
+              </button>
+            ) : (
+              <strong>{retreatCode}</strong>
+            )}
           </div>
           <div className="booking-info-item booking-info-type">
             <span>Type</span>
