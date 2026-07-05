@@ -80,7 +80,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Find the matching route prefix
   const matchingRoute = Object.keys(ROUTE_PERMISSIONS).find(route =>
-    currentPath.startsWith(route)
+    currentPath === route || currentPath.startsWith(`${route}/`)
   );
 
   if (matchingRoute) {
