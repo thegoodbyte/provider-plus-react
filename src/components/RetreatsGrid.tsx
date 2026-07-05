@@ -422,28 +422,28 @@ const RetreatsGrid: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="hidden px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider md:table-cell">
                   Name
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider md:px-6">
                   Code
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="hidden px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider md:table-cell">
                   Dates
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="hidden px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider md:table-cell">
                   Location town
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider md:px-6">
                   Capacity
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="hidden px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider md:table-cell">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="hidden px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider lg:table-cell">
                   Type
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider md:px-6 md:text-left">
                   Actions
                 </th>
               </tr>
@@ -451,7 +451,7 @@ const RetreatsGrid: React.FC = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {retreats.map((retreat, index) => (
                 <tr key={retreat._id} className={getRetreatRowColor(retreat._id!, index)}>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="hidden px-6 py-4 whitespace-nowrap md:table-cell">
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
@@ -468,7 +468,7 @@ const RetreatsGrid: React.FC = () => {
                       </div>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold">
+                  <td className="px-3 py-4 whitespace-nowrap text-sm font-semibold md:px-6">
                     {retreat._id ? (
                       <button
                         type="button"
@@ -493,7 +493,7 @@ const RetreatsGrid: React.FC = () => {
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="hidden px-6 py-4 whitespace-nowrap md:table-cell">
                     <div className="flex items-center text-sm text-gray-900">
                       <Icon icon={FiCalendar} className="w-4 h-4 mr-1 text-gray-400" />
                       <div>
@@ -502,25 +502,25 @@ const RetreatsGrid: React.FC = () => {
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="hidden px-6 py-4 whitespace-nowrap md:table-cell">
                     <div className="flex items-center text-sm text-gray-900">
                       <Icon icon={FiMapPin} className="w-4 h-4 mr-1 text-gray-400" />
                       {getRetreatTown(retreat) || 'N/A'}
                     </div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 md:px-6">
                     {retreat.capacity ? `${retreat.currentOccupancy || 0}/${retreat.capacity}` : 'N/A'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="hidden px-6 py-4 whitespace-nowrap md:table-cell">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(retreat.status || 'upcoming')}`}>
                       {retreat.status || 'upcoming'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="hidden px-6 py-4 whitespace-nowrap text-sm text-gray-900 lg:table-cell">
                     {retreat.type || 'regular'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    <div className="flex items-center gap-2">
+                  <td className="px-3 py-4 whitespace-nowrap text-sm font-medium md:px-6">
+                    <div className="flex items-center justify-end gap-2 md:justify-start">
                       <button
                         onClick={() => handleViewRetreat(retreat._id!)}
                         className="icon-action-btn icon-action-btn-view"
@@ -571,7 +571,7 @@ const RetreatsGrid: React.FC = () => {
         <div className="text-sm text-gray-700">
           Showing {retreats.length} retreat{retreats.length !== 1 ? 's' : ''}
         </div>
-        <div className="flex items-center gap-4">
+        <div className="hidden items-center gap-4 md:flex">
           <div className="text-sm text-gray-700">
             Upcoming: {retreats.filter(r => r.status === 'upcoming').length}
           </div>

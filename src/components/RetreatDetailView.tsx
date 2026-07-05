@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { retreatsApi, bookingsApi, retreatExpensesApi, paymentsApi, clientsApi, housesApi, communicationsApi } from '../services/api';
-import { Retreat, ExpenseSummary, House, Payment, EmailTemplate } from '../types';
+import { retreatsApi, bookingsApi, retreatExpensesApi, paymentsApi, clientsApi, housesApi, communicationsApi, contactBookApi } from '../services/api';
+import { Retreat, ExpenseSummary, House, Payment, EmailTemplate, ContactBookEntry, RetreatStaffAssignment } from '../types';
 import ExpensesTab from './ExpensesTab';
 import PaymentsTab from './PaymentsTab';
 import ClientDetailView from './ClientDetailView';
@@ -23,6 +23,7 @@ import {
   FiTrash2,
   FiUpload,
   FiUserPlus,
+  FiX,
 } from 'react-icons/fi';
 import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedInRounded';
 import CreditCardRoundedIcon from '@mui/icons-material/CreditCardRounded';
@@ -134,6 +135,25 @@ const getRetreatTown = (retreat?: Partial<Retreat> | null, houses: House[] = [])
   return getHouseTown(house) || explicitTown;
 };
 
+const staffRoleOptions = [
+  { value: 'helper', label: 'Helper' },
+  { value: 'second_helper', label: 'Second helper' },
+  { value: 'cook', label: 'Cook' },
+];
+
+const formatStaffRole = (role?: string) => {
+  const match = staffRoleOptions.find((option) => option.value === role);
+  if (match) return match.label;
+  return (role || 'Staff').replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+};
+
+const formatDateForInput = (date?: Date | string) => {
+  if (!date) return '';
+  const parsed = new Date(date);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return parsed.toISOString().split('T')[0];
+};
+
 const cropImageToHeroBanner = (file: File, width = 1200, height = 250): Promise<File> => {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith('image/')) {
@@ -213,6 +233,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [heroImageSource, setHeroImageSource] = useState<'retreat' | 'house' | null>(null);
   const [heroImageUploading, setHeroImageUploading] = useState(false);
   const [houses, setHouses] = useState<House[]>([]);
+  const [staffDirectory, setStaffDirectory] = useState<ContactBookEntry[]>([]);
   const [retreatFormData, setRetreatFormData] = useState<Partial<Retreat>>({});
   const [sortField, setSortField] = useState<'bookingNumber' | 'clientName' | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -355,6 +376,25 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     }
   }, [retreatId]);
 
+  const loadStaffDirectory = useCallback(async () => {
+    try {
+      const [helpersResponse, cooksResponse] = await Promise.all([
+        contactBookApi.getAll({ role: 'helper' }),
+        contactBookApi.getAll({ role: 'cook' }),
+      ]);
+      const byId = new Map<string, ContactBookEntry>();
+      [...(helpersResponse.data || []), ...(cooksResponse.data || [])].forEach((contact) => {
+        if (contact._id && contact.isActive !== false) {
+          byId.set(contact._id, contact);
+        }
+      });
+      setStaffDirectory(Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name)));
+    } catch (error) {
+      console.error('Error fetching helper directory:', error);
+      setStaffDirectory([]);
+    }
+  }, []);
+
   useEffect(() => {
     fetchRetreatData();
   }, [fetchRetreatData]);
@@ -463,6 +503,12 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         cleanData.capacity = Number(retreatFormData.capacity);
       }
       if (retreatFormData.helpers?.trim()) cleanData.helpers = retreatFormData.helpers.trim();
+      cleanData.retreatStaff = (retreatFormData.retreatStaff || []).map((assignment) => ({
+        ...assignment,
+        plannedSalary: assignment.plannedSalary === undefined || assignment.plannedSalary === null
+          ? undefined
+          : Number(assignment.plannedSalary),
+      }));
       if (retreatFormData.description?.trim()) cleanData.description = retreatFormData.description.trim();
       if (houseId) cleanData.houseId = houseId;
       if (retreatFormData.status) cleanData.status = retreatFormData.status;
@@ -496,6 +542,72 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     setRetreatFormData(prev => ({
       ...prev,
       [name]: name === 'capacity' ? parseInt(value) : value
+    }));
+  };
+
+  const handleStaffAssignmentChange = (
+    index: number,
+    field: keyof RetreatStaffAssignment,
+    value: string | number
+  ) => {
+    setRetreatFormData((prev) => {
+      const retreatStaff = [...(prev.retreatStaff || [])];
+      const current = { ...(retreatStaff[index] || {}) };
+
+      if (field === 'contactId') {
+        const contact = staffDirectory.find((item) => item._id === value);
+        retreatStaff[index] = {
+          ...current,
+          contactId: String(value || ''),
+          name: contact?.name || current.name || '',
+          phone: contact?.phone || current.phone || '',
+          email: contact?.email || current.email || '',
+        };
+      } else if (field === 'plannedSalary') {
+        retreatStaff[index] = {
+          ...current,
+          plannedSalary: value === '' ? undefined : Number(value),
+        };
+      } else {
+        retreatStaff[index] = {
+          ...current,
+          [field]: value,
+        };
+      }
+
+      return { ...prev, retreatStaff };
+    });
+  };
+
+  const addStaffAssignment = () => {
+    const defaultStartDate = formatDateForInput(retreatFormData.startDate || retreat?.startDate);
+    const defaultEndDate = formatDateForInput(retreatFormData.endDate || retreat?.endDate);
+    setRetreatFormData((prev) => ({
+      ...prev,
+      retreatStaff: [
+        ...(prev.retreatStaff || []),
+        {
+          role: 'helper',
+          contactId: '',
+          name: '',
+          phone: '',
+          email: '',
+          startDate: defaultStartDate,
+          startTime: prev.startTime || retreat?.startTime || '12:00',
+          endDate: defaultEndDate,
+          endTime: prev.endTime || retreat?.endTime || '10:00',
+          plannedSalary: undefined,
+          salaryCurrency: 'CZK',
+          notes: '',
+        },
+      ],
+    }));
+  };
+
+  const removeStaffAssignment = (index: number) => {
+    setRetreatFormData((prev) => ({
+      ...prev,
+      retreatStaff: (prev.retreatStaff || []).filter((_, itemIndex) => itemIndex !== index),
     }));
   };
 
@@ -823,6 +935,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                 console.error('Error fetching houses:', error);
               }
             }
+            if (staffDirectory.length === 0) {
+              await loadStaffDirectory();
+            }
 
             setRetreatFormData({
               ...retreat,
@@ -830,7 +945,14 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
               startTime: retreat?.startTime || '',
               endDate: retreat?.endDate || '',
               endTime: retreat?.endTime || '',
-              capacity: retreat?.capacity || 0
+              capacity: retreat?.capacity || 0,
+              retreatStaff: (retreat?.retreatStaff || []).map((assignment) => ({
+                ...assignment,
+                contactId: typeof assignment.contactId === 'object' ? assignment.contactId._id : assignment.contactId,
+                startDate: formatDateForInput(assignment.startDate),
+                endDate: formatDateForInput(assignment.endDate),
+                salaryCurrency: assignment.salaryCurrency || 'CZK',
+              })),
             });
             setShowRetreatEditModal(true);
           }} className="edit-retreat-btn retreat-icon-action" title="Edit retreat" aria-label="Edit retreat">
@@ -867,6 +989,80 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           </div>
         </div>
       </div>
+
+      <section className="mb-5 rounded-lg border border-gray-200 bg-white px-4 py-4 shadow-sm">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">Helper Directory Assignments</h2>
+            <p className="text-sm text-gray-500">Helpers and cooks assigned from Contact Book.</p>
+          </div>
+          <button
+            type="button"
+            onClick={async () => {
+              if (houses.length === 0) {
+                try {
+                  const housesResponse = await housesApi.getAll();
+                  setHouses(housesResponse.data);
+                } catch (error) {
+                  console.error('Error fetching houses:', error);
+                }
+              }
+              if (staffDirectory.length === 0) {
+                await loadStaffDirectory();
+              }
+              setRetreatFormData({
+                ...retreat,
+                startDate: retreat?.startDate || '',
+                startTime: retreat?.startTime || '',
+                endDate: retreat?.endDate || '',
+                endTime: retreat?.endTime || '',
+                capacity: retreat?.capacity || 0,
+                retreatStaff: (retreat?.retreatStaff || []).map((assignment) => ({
+                  ...assignment,
+                  contactId: typeof assignment.contactId === 'object' ? assignment.contactId._id : assignment.contactId,
+                  startDate: formatDateForInput(assignment.startDate),
+                  endDate: formatDateForInput(assignment.endDate),
+                  salaryCurrency: assignment.salaryCurrency || 'CZK',
+                })),
+              });
+              setShowRetreatEditModal(true);
+            }}
+            className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Edit assignments
+          </button>
+        </div>
+
+        {Boolean(retreat.retreatStaff?.length) ? (
+          <div className="grid gap-3 lg:grid-cols-2">
+            {(retreat.retreatStaff || []).map((assignment, index) => (
+              <div key={`${assignment.contactId || assignment.name || 'staff'}-${index}`} className="rounded-md border border-gray-100 bg-gray-50 p-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <div className="text-sm font-semibold text-gray-900">{assignment.name || 'Unnamed person'}</div>
+                    <div className="text-xs font-medium uppercase tracking-wide text-gray-500">{formatStaffRole(assignment.role)}</div>
+                  </div>
+                  {assignment.plannedSalary !== undefined && assignment.plannedSalary !== null && (
+                    <div className="rounded-full bg-white px-2 py-1 text-xs font-semibold text-gray-700">
+                      {Number(assignment.plannedSalary).toLocaleString()} {assignment.salaryCurrency || 'CZK'}
+                    </div>
+                  )}
+                </div>
+                <div className="mt-2 space-y-1 text-sm text-gray-700">
+                  <div>{formatDate(assignment.startDate || '')} {assignment.startTime || ''} - {formatDate(assignment.endDate || '')} {assignment.endTime || ''}</div>
+                  {assignment.phone && <a className="block hover:underline" href={`tel:${assignment.phone}`}>{assignment.phone}</a>}
+                  {assignment.email && <a className="block hover:underline" href={`mailto:${assignment.email}`}>{assignment.email}</a>}
+                  {assignment.notes && <div className="text-gray-500">{assignment.notes}</div>}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-4 text-sm text-gray-500">
+            No helpers or cooks assigned yet.
+          </div>
+        )}
+      </section>
 
       <Collapse
         activeKey={metricsCollapsed ? [] : ['metrics']}
@@ -1647,17 +1843,162 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
               </div>
 
               <div className="form-group">
-                <label htmlFor="retreat-helpers">Helpers:</label>
-                <select
-                  id="retreat-helpers"
-                  name="helpers"
-                  value={retreatFormData.helpers || ''}
-                  onChange={handleRetreatInputChange}
-                >
-                  <option value="">Select a helper</option>
-                  <option value="Martina">Martina</option>
-                  <option value="Radim">Radim</option>
-                </select>
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <label>Retreat helpers and cooks:</label>
+                  <button
+                    type="button"
+                    onClick={addStaffAssignment}
+                    className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    <Icon icon={FiPlus} className="h-4 w-4" />
+                    Add person
+                  </button>
+                </div>
+
+                <div className="space-y-3">
+                  {(retreatFormData.retreatStaff || []).map((assignment, index) => (
+                    <div key={`${assignment.contactId || 'staff'}-${index}`} className="rounded-md border border-gray-200 bg-gray-50 p-3">
+                      <div className="grid gap-3 md:grid-cols-[150px_1fr_120px]">
+                        <label className="block">
+                          <span className="mb-1 block text-xs font-medium text-gray-600">Role</span>
+                          <select
+                            value={assignment.role || 'helper'}
+                            onChange={(event) => handleStaffAssignmentChange(index, 'role', event.target.value)}
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                          >
+                            {staffRoleOptions.map((option) => (
+                              <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="block">
+                          <span className="mb-1 block text-xs font-medium text-gray-600">Directory person</span>
+                          <select
+                            value={typeof assignment.contactId === 'object' ? assignment.contactId._id || '' : assignment.contactId || ''}
+                            onChange={(event) => handleStaffAssignmentChange(index, 'contactId', event.target.value)}
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                          >
+                            <option value="">Select helper or cook</option>
+                            {staffDirectory.map((contact) => (
+                              <option key={contact._id} value={contact._id}>
+                                {contact.name} ({contact.role}){contact.phone ? ` - ${contact.phone}` : ''}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="block">
+                          <span className="mb-1 block text-xs font-medium text-gray-600">Planned salary</span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={assignment.plannedSalary ?? ''}
+                            onChange={(event) => handleStaffAssignmentChange(index, 'plannedSalary', event.target.value)}
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                          />
+                        </label>
+                      </div>
+
+                      <div className="mt-3 grid gap-3 md:grid-cols-4">
+                        <label className="block">
+                          <span className="mb-1 block text-xs font-medium text-gray-600">From date</span>
+                          <input
+                            type="date"
+                            value={assignment.startDate ? formatDateForInput(assignment.startDate) : ''}
+                            onChange={(event) => handleStaffAssignmentChange(index, 'startDate', event.target.value)}
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="mb-1 block text-xs font-medium text-gray-600">From time</span>
+                          <input
+                            type="time"
+                            value={assignment.startTime || ''}
+                            onChange={(event) => handleStaffAssignmentChange(index, 'startTime', event.target.value)}
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="mb-1 block text-xs font-medium text-gray-600">To date</span>
+                          <input
+                            type="date"
+                            value={assignment.endDate ? formatDateForInput(assignment.endDate) : ''}
+                            onChange={(event) => handleStaffAssignmentChange(index, 'endDate', event.target.value)}
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="mb-1 block text-xs font-medium text-gray-600">To time</span>
+                          <input
+                            type="time"
+                            value={assignment.endTime || ''}
+                            onChange={(event) => handleStaffAssignmentChange(index, 'endTime', event.target.value)}
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                          />
+                        </label>
+                      </div>
+
+                      <div className="mt-3 grid gap-3 md:grid-cols-[1fr_1fr_120px_auto]">
+                        <label className="block">
+                          <span className="mb-1 block text-xs font-medium text-gray-600">Phone</span>
+                          <input
+                            value={assignment.phone || ''}
+                            onChange={(event) => handleStaffAssignmentChange(index, 'phone', event.target.value)}
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="mb-1 block text-xs font-medium text-gray-600">Email</span>
+                          <input
+                            type="email"
+                            value={assignment.email || ''}
+                            onChange={(event) => handleStaffAssignmentChange(index, 'email', event.target.value)}
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="mb-1 block text-xs font-medium text-gray-600">Currency</span>
+                          <select
+                            value={assignment.salaryCurrency || 'CZK'}
+                            onChange={(event) => handleStaffAssignmentChange(index, 'salaryCurrency', event.target.value)}
+                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                          >
+                            <option value="CZK">CZK</option>
+                            <option value="EUR">EUR</option>
+                            <option value="USD">USD</option>
+                            <option value="PLN">PLN</option>
+                          </select>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => removeStaffAssignment(index)}
+                          className="mt-5 inline-flex h-10 items-center justify-center rounded-md border border-red-200 bg-white px-3 text-sm font-medium text-red-700 hover:bg-red-50"
+                          title="Remove assignment"
+                          aria-label="Remove assignment"
+                        >
+                          <Icon icon={FiX} className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      <label className="mt-3 block">
+                        <span className="mb-1 block text-xs font-medium text-gray-600">Notes</span>
+                        <textarea
+                          value={assignment.notes || ''}
+                          onChange={(event) => handleStaffAssignmentChange(index, 'notes', event.target.value)}
+                          rows={2}
+                          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                          placeholder="Arrival details, coverage, agreement notes..."
+                        />
+                      </label>
+                    </div>
+                  ))}
+
+                  {(retreatFormData.retreatStaff || []).length === 0 && (
+                    <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 px-4 py-5 text-sm text-gray-500">
+                      No helpers or cooks assigned yet. Add a person from the Contact Book helper/cook directory.
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="form-group">

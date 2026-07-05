@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { usersApi } from '../../services/usersApi';
+import { useAuth } from '../../context/AuthContext';
 import './Login.css';
 
 const validatePassword = (password: string) => {
@@ -11,12 +12,25 @@ const validatePassword = (password: string) => {
 };
 
 export const ChangeOwnPassword: React.FC = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const isImpersonating = Boolean(user?.impersonatedBy || user?.originalRole);
+
+  useEffect(() => {
+    if (isImpersonating) {
+      navigate('/', { replace: true });
+    }
+  }, [isImpersonating, navigate]);
+
+  if (isImpersonating) {
+    return null;
+  }
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();

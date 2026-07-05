@@ -1113,12 +1113,16 @@ export const bookingFlowApi = {
     `booking-flow:item-action-logs:${id}`,
     () => api.get<BookingFlowActionLog[]>(`/booking-flow/items/${id}/action-logs`)
   ),
+  getBookingActionLogs: (bookingId: string) => cachedGet<BookingFlowActionLog[]>(
+    `booking-flow:booking-action-logs:${bookingId}`,
+    () => api.get<BookingFlowActionLog[]>(`/booking-flow/bookings/${bookingId}/action-logs`)
+  ),
   recordItemEmailSent: (id: string, sentEmailId: string, actionKey?: string) => {
     cacheService.clearPattern('booking-flow:');
     cacheService.clearPattern('communications:sent-emails');
     return api.post<{ item: BookingFlowItem; actionLog: BookingFlowActionLog }>(`/booking-flow/items/${id}/record-email-sent`, { sentEmailId, actionKey });
   },
-  recordItemAction: (id: string, data: { actionKey?: string; actionType?: string; statusAfter?: string; notes?: string; metadata?: Record<string, any> }) => {
+  recordItemAction: (id: string, data: { actionKey?: string; actionLabel?: string; actionType?: string; statusAfter?: string; notes?: string; metadata?: Record<string, any> }) => {
     cacheService.clearPattern('booking-flow:');
     return api.post<{ item: BookingFlowItem; actionLog: BookingFlowActionLog }>(`/booking-flow/items/${id}/record-action`, data);
   },
