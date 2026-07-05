@@ -1392,7 +1392,64 @@ export type BookingReadinessAssistantResult = {
   aiSummary?: string;
 };
 
+export type RetreatReadinessClientRow = {
+  bookingId: string;
+  bookingNumber?: number;
+  bookingStatus?: string;
+  bookingLink: string;
+  clientId?: string;
+  clientDisplayId?: number;
+  clientName: string;
+  clientEmail?: string;
+  clientLink?: string;
+  ekgReceived: boolean;
+  liverReceived: boolean;
+  medicalReviewSent: boolean;
+  medicalApproved: boolean;
+  pendingMedicalReviews: number;
+  openBlockingSteps: number;
+  overdueSteps: number;
+  missingSteps: string[];
+  nextAction: string;
+  severity: 'high' | 'medium' | 'low';
+};
+
+export type RetreatReadinessAssistantResult = {
+  generatedAt: string;
+  generatedBy: 'rules' | 'openai';
+  model?: string;
+  aiUnavailableReason?: string;
+  retreat: {
+    id: string;
+    name?: string;
+    code?: string;
+    startDate?: string;
+    endDate?: string;
+    location?: string;
+    daysUntilRetreat?: number | null;
+    link?: string;
+  };
+  metrics: Record<string, number | string | null | undefined>;
+  findings: AssistantFinding[];
+  suggestedActions: AssistantAction[];
+  clients: RetreatReadinessClientRow[];
+  summary: string;
+  aiSummary?: string;
+};
+
+export type AssistantChatResponse = {
+  answer: string;
+  generatedBy: 'rules' | 'openai';
+  model?: string;
+  aiUnavailableReason?: string;
+  analysis?: BookingReadinessAssistantResult | RetreatReadinessAssistantResult;
+};
+
 export const assistantApi = {
   analyzeBookingReadiness: (bookingId: string) =>
     api.get<BookingReadinessAssistantResult>(`/assistant/booking-readiness/${bookingId}`),
+  analyzeRetreatReadiness: (retreatId: string) =>
+    api.get<RetreatReadinessAssistantResult>(`/assistant/retreat-readiness/${retreatId}`),
+  chat: (data: { scope: 'retreat' | 'booking'; retreatId?: string; bookingId?: string; message: string }) =>
+    api.post<AssistantChatResponse>('/assistant/chat', data),
 };
