@@ -57,6 +57,9 @@ const getClientName = (client?: string | Client) => {
 const getReviewTime = (review: MedicalReviewRequest) =>
   new Date(review.reviewedAt || review.requestedAt || review.createdAt || 0).getTime();
 
+const getReviewLabel = (review: MedicalReviewRequest) =>
+  `MRR #${review.display_id || review._id?.slice(-6) || 'linked'}`;
+
 const getReviewDecision = (review?: MedicalReviewRequest) => {
   const decision = review?.reviewDecision;
   if (decision === 'OK') return 'OK';
@@ -140,7 +143,7 @@ const MedicalArtifactsPage: React.FC = () => {
     });
   }, [artifacts, stageFilter, documentTypeFilter]);
 
-  const latestReviewByArtifactId = useMemo(() => {
+  const reviewsByArtifactId = useMemo(() => {
     const grouped = new Map<string, MedicalReviewRequest[]>();
     reviewRequests.forEach((review) => {
       (review.artifactIds || []).forEach((artifactRef) => {
@@ -152,11 +155,10 @@ const MedicalArtifactsPage: React.FC = () => {
       });
     });
 
-    const latest = new Map<string, MedicalReviewRequest>();
     grouped.forEach((reviews, artifactId) => {
-      latest.set(artifactId, [...reviews].sort((a, b) => getReviewTime(b) - getReviewTime(a))[0]);
+      grouped.set(artifactId, [...reviews].sort((a, b) => getReviewTime(b) - getReviewTime(a)));
     });
-    return latest;
+    return grouped;
   }, [reviewRequests]);
 
   const handleRequestReview = async (artifact: MedicalArtifact) => {
@@ -222,7 +224,8 @@ const MedicalArtifactsPage: React.FC = () => {
           </thead>
           <tbody className="divide-y divide-gray-100 bg-white">
             {filteredArtifacts.map((artifact) => {
-              const latestReview = artifact._id ? latestReviewByArtifactId.get(artifact._id) : undefined;
+              const artifactReviews = artifact._id ? reviewsByArtifactId.get(artifact._id) || [] : [];
+              const latestReview = artifactReviews[0];
               return (
               <tr key={artifact._id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 font-medium text-gray-900">
@@ -248,14 +251,25 @@ const MedicalArtifactsPage: React.FC = () => {
                     >
                       <Eye className="h-3.5 w-3.5" />
                     </button>
-                    <button
-                      type="button"
-                      title="Send for medical review"
-                      onClick={() => handleRequestReview(artifact)}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-200 bg-white text-blue-700 hover:bg-blue-50"
-                    >
-                      <Send className="h-3.5 w-3.5" />
-                    </button>
+                    {latestReview?._id ? (
+                      <button
+                        type="button"
+                        title={`Open ${getReviewLabel(latestReview)}`}
+                        onClick={() => navigate(`/admin/medical-review-requests/${latestReview._id}`)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        title="Send for medical review"
+                        onClick={() => handleRequestReview(artifact)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-200 bg-white text-blue-700 hover:bg-blue-50"
+                      >
+                        <Send className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                   </div>
                 </td>
                 <td className="px-4 py-3">
@@ -298,15 +312,33 @@ const MedicalArtifactsPage: React.FC = () => {
                 <td className="px-4 py-3">
                   <div className="flex flex-col gap-1">
                     {latestReview?._id ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/admin/medical-review-requests/${latestReview._id}`)}
+                          className="w-fit text-xs font-semibold text-blue-700 hover:text-blue-900 hover:underline"
+                        >
+                          Latest {getReviewLabel(latestReview)}
+                        </button>
+                        {artifactReviews.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => navigate(`${artifact._id}`)}
+                            className="w-fit text-[11px] font-medium text-gray-500 hover:text-gray-800 hover:underline"
+                            title="Open artifact to see full medical review history"
+                          >
+                            {artifactReviews.length} MRRs total
+                          </button>
+                        )}
+                      </>
+                    ) : (
                       <button
                         type="button"
-                        onClick={() => navigate(`/admin/medical-review-requests/${latestReview._id}`)}
-                        className="w-fit text-xs font-semibold text-blue-700 hover:text-blue-900"
+                        onClick={() => handleRequestReview(artifact)}
+                        className="w-fit text-xs font-semibold text-blue-700 hover:text-blue-900 hover:underline"
                       >
-                        Review #{latestReview.display_id || latestReview._id.slice(-6)}
+                        Create MRR
                       </button>
-                    ) : (
-                      <span className="text-xs text-gray-400">-</span>
                     )}
                     <ReviewResultBadge review={latestReview} />
                   </div>
