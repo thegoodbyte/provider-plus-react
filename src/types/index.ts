@@ -1201,7 +1201,7 @@ export interface BookingFlowActionLog {
   bookingId: string | RetreatClient;
   clientId: string | Client;
   retreatId: string | Retreat;
-  actionType: 'email_sent' | 'whatsapp' | 'link' | 'manual_mark' | 'artifact_received' | 'system_update' | 'other';
+  actionType: 'email_sent' | 'whatsapp' | 'link' | 'manual_mark' | 'artifact_received' | 'deadline_changed' | 'system_update' | 'other';
   actionKey?: string;
   actionLabel?: string;
   emailTemplateId?: string | EmailTemplate;
