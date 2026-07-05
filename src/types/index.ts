@@ -945,6 +945,54 @@ export type MedicalArtifactCreateInput = Partial<Omit<MedicalArtifact, '_id' | '
   legacyMedicalTrackingId?: string;
 };
 
+export interface RetreatArtifactSubmissionRow {
+  id: string;
+  status: 'missing' | 'received';
+  required: boolean;
+  artifactType: NonNullable<MedicalArtifact['artifactType']>;
+  documentStage: NonNullable<MedicalArtifact['documentStage']>;
+  documentType?: MedicalArtifact['documentType'];
+  label: string;
+  bookingId: string;
+  bookingNumber?: number;
+  bookingStatus?: string;
+  clientId: string;
+  clientDisplayId?: number;
+  clientName: string;
+  clientEmail?: string;
+  retreatId: string;
+  retreatCode?: string;
+  retreatName?: string;
+  artifactId?: string;
+  artifactDisplayId?: number;
+  artifactStatus?: string;
+  receivedAt?: string;
+  fileCount?: number;
+  reviewRequestId?: string;
+  reviewRequestDisplayId?: number;
+  reviewStatus?: string;
+  reviewDecision?: string;
+  requestedAt?: string;
+  reviewedAt?: string;
+}
+
+export interface RetreatArtifactSubmissionsResponse {
+  retreat: {
+    _id: string;
+    code?: string;
+    name?: string;
+    startDate?: string;
+    endDate?: string;
+  } | null;
+  totals: {
+    bookings: number;
+    rows: number;
+    missing: number;
+    received: number;
+  };
+  rows: RetreatArtifactSubmissionRow[];
+}
+
 export interface FileUpload {
   _id?: string;
   fileHash: string;
