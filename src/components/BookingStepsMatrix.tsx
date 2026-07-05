@@ -256,6 +256,23 @@ const sortReviewRequests = (requests: MedicalReviewRequest[]) => {
   return [...requests].sort((a, b) => new Date(b.requestedAt || 0).getTime() - new Date(a.requestedAt || 0).getTime());
 };
 
+const solidifyAlphaHex = (value?: string): string | undefined => {
+  if (!value || !/^#[0-9a-fA-F]{8}$/.test(value)) return value;
+  const red = parseInt(value.slice(1, 3), 16);
+  const green = parseInt(value.slice(3, 5), 16);
+  const blue = parseInt(value.slice(5, 7), 16);
+  const alpha = parseInt(value.slice(7, 9), 16) / 255;
+  const blend = (channel: number) => Math.round(channel * alpha + 255 * (1 - alpha));
+  return `rgb(${blend(red)}, ${blend(green)}, ${blend(blue)})`;
+};
+
+const getStickyActionCellStyle = (style: React.CSSProperties | undefined, fallbackBackground: string): React.CSSProperties => ({
+  ...(style || {}),
+  backgroundColor: solidifyAlphaHex(String(style?.backgroundColor || '')) || style?.backgroundColor || fallbackBackground,
+  backgroundClip: 'padding-box',
+  boxShadow: '4px 0 10px rgba(15, 23, 42, 0.08)',
+});
+
 interface MatrixRow {
   key: string;
   title: string;
@@ -1085,7 +1102,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
         <table className="min-w-full border-separate border-spacing-0 text-sm">
           <thead>
             <tr>
-              <th className={`sticky left-0 top-0 z-30 border-b border-r border-gray-300 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase text-gray-600 ${viewMode === 'simple' ? 'min-w-[240px]' : 'min-w-[220px]'}`}>Action</th>
+              <th className={`sticky left-0 top-0 z-40 border-b border-r border-gray-300 bg-gray-100 bg-clip-padding px-3 py-2 text-left text-xs font-semibold uppercase text-gray-600 shadow-[4px_0_10px_rgba(15,23,42,0.08)] ${viewMode === 'simple' ? 'min-w-[240px]' : 'min-w-[220px]'}`}>Action</th>
               {bookings.map((booking) => (
                 <th key={getObjectId(booking)} className={`sticky top-0 z-20 border-b border-r border-gray-300 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase text-gray-600 ${viewMode === 'simple' ? 'min-w-[150px]' : 'min-w-[260px]'}`}>
                   <div className="flex items-start gap-2">
@@ -1138,7 +1155,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                   return (
                 <>
                 <tr>
-                  <td className={`sticky left-0 z-10 border-b border-r border-gray-300 px-3 py-2 text-xs font-bold uppercase tracking-wide ${tone.groupCell} ${tone.groupText}`} style={groupStyle}>
+                  <td className={`sticky left-0 z-30 border-b border-r border-gray-300 bg-clip-padding px-3 py-2 text-xs font-bold uppercase tracking-wide ${tone.groupCell} ${tone.groupText}`} style={getStickyActionCellStyle(groupStyle, '#f1f5f9')}>
                     <span className="inline-flex items-center gap-2">
                       <span className={`h-2.5 w-2.5 rounded-full ${tone.dot}`} style={dotStyle} />
                       {group.label}
@@ -1152,7 +1169,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                 </tr>
                 {group.rows.map((row, rowIndex) => (
                   <tr key={row.key}>
-                    <td className={`sticky left-0 z-10 border-b border-l-4 border-r border-gray-300 px-3 py-2 font-medium text-gray-900 ${tone.stepCell} ${tone.stepStripe}`} style={stepStyle}>
+                    <td className={`sticky left-0 z-30 border-b border-l-4 border-r border-gray-300 bg-clip-padding px-3 py-2 font-medium text-gray-900 ${tone.stepCell} ${tone.stepStripe}`} style={getStickyActionCellStyle(stepStyle, '#f8fafc')}>
                       <div className="flex items-start gap-2">
                         <span className={`mt-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded px-1 text-[11px] font-semibold ${tone.badge}`} style={badgeStyle}>
                           {rowIndex + 1}
