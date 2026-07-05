@@ -101,6 +101,7 @@ const FULL_MENU_SECTIONS: MenuSection[] = [
     label: 'Operations',
     Icon: Fi.FiBriefcase,
     items: [
+      { id: 'assistant', label: 'Assistant', Icon: Fi.FiCpu },
       { id: 'tasks', label: 'General Tasks', Icon: Fi.FiCheckSquare },
       { id: 'reminders', label: 'Reminders', Icon: Fi.FiBell },
       { id: 'contact-book', label: 'Contact Book', Icon: Fi.FiBook },
@@ -284,6 +285,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
             ],
           },
           { id: 'operations', label: 'Operations', Icon: Fi.FiBriefcase, items: [
+            { id: 'assistant', label: 'Assistant', Icon: Fi.FiCpu },
             { id: 'communications', label: 'Communications', Icon: Fi.FiMail },
             { id: 'reminders', label: 'Reminders', Icon: Fi.FiBell },
           ] },
