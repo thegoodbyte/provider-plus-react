@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Circle, FileText, ListPlus, Lock, Mail, RefreshCw, RotateCcw, Save, Unlock, Upload, X } from 'lucide-react';
-import { bookingDocumentsApi, bookingFlowApi, clientsApi, communicationsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
+import { bookingDocumentsApi, bookingFlowApi, clientsApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { BookingDocument, BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, Client, MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
 import LoadingSpinner from './LoadingSpinner';
@@ -71,6 +71,11 @@ type ReviewStepConfig = {
 const reviewStepConfigByKey: Record<string, ReviewStepConfig> = {
   ekg_sent_for_review: { receivedStepKey: 'ekg_received', requestType: 'ekg_review', documentStage: 'entry', documentType: 'EKG', artifactType: 'ekg', label: 'Entry EKG review' },
   liver_panel_sent_for_review: { receivedStepKey: 'liver_received', requestType: 'liver_panel_review', documentStage: 'entry', documentType: 'Liver', artifactType: 'liver_panel', label: 'Liver panel review' },
+};
+
+const artifactStepConfigByKey: Record<string, Pick<ReviewStepConfig, 'documentStage' | 'documentType' | 'artifactType' | 'label'>> = {
+  ekg_received: { documentStage: 'entry', documentType: 'EKG', artifactType: 'ekg', label: 'Entry EKG' },
+  liver_received: { documentStage: 'entry', documentType: 'Liver', artifactType: 'liver_panel', label: 'Entry liver panel' },
 };
 
 const getReviewStepConfig = (row: Pick<MatrixRow, 'key' | 'title'>) => {
@@ -252,8 +257,19 @@ const makeReviewContextKey = (bookingId: string, config: ReviewStepConfig) => [
   config.requestType,
 ].join(':');
 
+const makeArtifactContextKey = (bookingId: string, config: Pick<ReviewStepConfig, 'documentStage' | 'documentType' | 'artifactType'>) => [
+  bookingId,
+  config.documentStage,
+  config.documentType,
+  config.artifactType,
+].join(':');
+
 const sortReviewRequests = (requests: MedicalReviewRequest[]) => {
   return [...requests].sort((a, b) => new Date(b.requestedAt || 0).getTime() - new Date(a.requestedAt || 0).getTime());
+};
+
+const sortMedicalArtifacts = (artifacts: MedicalArtifact[]) => {
+  return [...artifacts].sort((a, b) => new Date(b.receivedAt || b.createdAt || 0).getTime() - new Date(a.receivedAt || a.createdAt || 0).getTime());
 };
 
 const solidifyAlphaHex = (value?: string): string | undefined => {
@@ -403,6 +419,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const [items, setItems] = useState<BookingFlowItem[]>([]);
   const [actionLogs, setActionLogs] = useState<BookingFlowActionLog[]>([]);
   const [bookingDocuments, setBookingDocuments] = useState<BookingDocument[]>([]);
+  const [medicalArtifacts, setMedicalArtifacts] = useState<MedicalArtifact[]>([]);
   const [reviewRequests, setReviewRequests] = useState<MedicalReviewRequest[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [medicalAdvisors, setMedicalAdvisors] = useState<User[]>([]);
@@ -430,12 +447,13 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const loadData = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
-      const [response, libraryTemplateResponse, paymentsResponse, usersResponse, documentsResponse, reviewRequestsResponse] = await Promise.all([
+      const [response, libraryTemplateResponse, paymentsResponse, usersResponse, documentsResponse, artifactsResponse, reviewRequestsResponse] = await Promise.all([
         bookingFlowApi.getMatrix(retreatId),
         bookingFlowApi.getLibraryTemplates().catch(() => ({ data: [] as BookingFlowTemplate[] })),
         paymentsApi.getByRetreat(retreatId).catch(() => ({ data: [] as Payment[] })),
         usersApi.getAll().catch(() => ({ data: [] as User[] })),
         bookingDocumentsApi.getAll({ retreatId }).catch(() => ({ data: [] as BookingDocument[] })),
+        medicalArtifactsApi.getAll({ retreatId }).catch(() => ({ data: [] as MedicalArtifact[] })),
         medicalReviewRequestsApi.getAll({ retreatId }).catch(() => ({ data: [] as MedicalReviewRequest[] })),
       ]);
       setBookings(response.data?.bookings || []);
@@ -444,6 +462,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       setItems(response.data?.items || []);
       setActionLogs(response.data?.actionLogs || []);
       setBookingDocuments(documentsResponse.data || []);
+      setMedicalArtifacts(artifactsResponse.data || []);
       setReviewRequests(reviewRequestsResponse.data || []);
       setPayments(Array.isArray(paymentsResponse.data) ? paymentsResponse.data : []);
       setMedicalAdvisors((usersResponse.data || []).filter((user) => user.role === 'medical_advisor' && user.isActive !== false));
@@ -593,6 +612,34 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     });
     return map;
   }, [bookingDocuments]);
+
+  const medicalArtifactById = useMemo(() => {
+    const map = new Map<string, MedicalArtifact>();
+    medicalArtifacts.forEach((artifact) => {
+      if (artifact._id) map.set(artifact._id, artifact);
+    });
+    return map;
+  }, [medicalArtifacts]);
+
+  const medicalArtifactsByBookingContext = useMemo(() => {
+    const map = new Map<string, MedicalArtifact[]>();
+    medicalArtifacts.forEach((artifact) => {
+      const bookingId = getObjectId(artifact.bookingId);
+      if (!bookingId || !artifact.documentStage || !artifact.documentType || !artifact.artifactType) return;
+      const key = makeArtifactContextKey(bookingId, {
+        documentStage: artifact.documentStage,
+        documentType: artifact.documentType,
+        artifactType: artifact.artifactType,
+      });
+      const current = map.get(key) || [];
+      current.push(artifact);
+      map.set(key, current);
+    });
+    map.forEach((artifacts, key) => {
+      map.set(key, sortMedicalArtifacts(artifacts));
+    });
+    return map;
+  }, [medicalArtifacts]);
 
   const reviewRequestsByArtifactId = useMemo(() => {
     const map = new Map<string, MedicalReviewRequest[]>();
@@ -1218,6 +1265,13 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                       const existingReviewRequestDisplay = item?.metadata?.medicalReviewRequestDisplayId || existingReviewRequest?.display_id || '';
                       const documentTypeForStep = item ? resolveBookingDocumentType(item) : normalizeDocumentKey(row.key);
                       const relatedBookingDocument = bookingDocumentMap.get(`${getObjectId(booking)}:${documentTypeForStep}`)?.[0];
+                      const artifactStepConfig = artifactStepConfigByKey[row.key] || (reviewStepConfig ? artifactStepConfigByKey[reviewStepConfig.receivedStepKey] : undefined);
+                      const relatedMedicalArtifact = linkedArtifactId
+                        ? medicalArtifactById.get(linkedArtifactId)
+                        : artifactStepConfig
+                          ? medicalArtifactsByBookingContext.get(makeArtifactContextKey(getObjectId(booking), artifactStepConfig))?.[0]
+                          : undefined;
+                      const relatedMedicalArtifactId = relatedMedicalArtifact?._id || linkedArtifactId;
                       return (
                         <td key={`${getObjectId(booking)}:${row.key}`} className={`${viewMode === 'simple' ? 'min-w-[150px] px-2 py-2 text-center' : 'min-w-[230px] px-2 py-1 align-top'} border-b border-r border-gray-300 ${item ? getStatusCellClass(item.status) : 'bg-red-50 text-red-900'}`}>
                           {viewMode === 'simple' ? (
@@ -1379,6 +1433,16 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                                 <FileText className="h-3.5 w-3.5" />
                                 Document #{relatedBookingDocument.display_id || 'linked'}
                               </button>
+                            )}
+                            {relatedMedicalArtifactId && (
+                              <Link
+                                to={`/admin/medical-artifacts/${relatedMedicalArtifactId}`}
+                                className="inline-flex items-center justify-center gap-1 rounded-md border border-purple-200 bg-purple-50 px-2 py-1 text-xs font-medium text-purple-800 hover:bg-purple-100"
+                                title={`Open uploaded ${artifactStepConfig?.label || 'medical artifact'}`}
+                              >
+                                <FileText className="h-3.5 w-3.5" />
+                                Artifact #{relatedMedicalArtifact?.display_id || relatedMedicalArtifactId.slice(-6)}
+                              </Link>
                             )}
                               </div>
                               {itemActionLogs.length > 0 && (
