@@ -89,6 +89,20 @@ const getReviewTime = (review: MedicalReviewRequest) =>
 const getReviewLabel = (review: MedicalReviewRequest) =>
   `MRR #${review.display_id || review._id?.slice(-6) || 'linked'}`;
 
+const getReviewArtifactIds = (review: MedicalReviewRequest): string[] => {
+  const ids = new Set<string>();
+  const addId = (value: any) => {
+    const id = getObjectId(value);
+    if (id) ids.add(String(id));
+  };
+
+  (review.artifactIds || []).forEach(addId);
+  addId((review as any).medicalArtifactId);
+  addId((review as any).artifactId);
+  (review.fileReviews || []).forEach((fileReview) => addId(fileReview.artifactId));
+  return Array.from(ids);
+};
+
 const getReviewDecision = (review?: MedicalReviewRequest) => {
   const decision = review?.reviewDecision;
   if (decision === 'OK') return 'OK';
@@ -174,9 +188,7 @@ const MedicalArtifactsPage: React.FC = () => {
   const reviewsByArtifactId = useMemo(() => {
     const grouped = new Map<string, MedicalReviewRequest[]>();
     reviewRequests.forEach((review) => {
-      (review.artifactIds || []).forEach((artifactRef) => {
-        const artifactId = getObjectId(artifactRef);
-        if (!artifactId) return;
+      getReviewArtifactIds(review).forEach((artifactId) => {
         const existing = grouped.get(artifactId) || [];
         existing.push(review);
         grouped.set(artifactId, existing);
@@ -436,8 +448,11 @@ const MedicalArtifactsPage: React.FC = () => {
                           onClick={() => navigate(`/admin/medical-review-requests/${latestReview._id}`)}
                           className="w-fit text-xs font-semibold text-blue-700 hover:text-blue-900 hover:underline"
                         >
-                          Latest {getReviewLabel(latestReview)}
+                          {getReviewLabel(latestReview)}
                         </button>
+                        <span className="text-[11px] text-gray-500">
+                          {latestReview.requestType?.replace(/_/g, ' ') || 'medical review'} · {latestReview.status || 'pending'}
+                        </span>
                         {artifactReviews.length > 1 && (
                           <button
                             type="button"
