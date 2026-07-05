@@ -20,6 +20,12 @@ type DocumentSection = {
   receivedItem?: BookingFlowItem;
 };
 
+type DocumentFileViewer = {
+  document: BookingDocument;
+  file: NonNullable<BookingDocument['files']>[number];
+  viewUrl: string;
+};
+
 const DEFAULT_DOCUMENT_TYPES: BookingDocumentType[] = [
   { key: 'contract', label: 'Contract', description: 'Signed client contract for this booking.', order: 10, bookingFlowReceivedStepKey: 'contract_signed' },
   { key: 'ekg', label: 'Entry EKG', description: 'Entry EKG uploaded for booking readiness and medical review.', order: 20, bookingFlowReceivedStepKey: 'ekg_received', reviewRequired: true, reviewRequestType: 'ekg_review' },
@@ -85,6 +91,7 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
   const [uploadingType, setUploadingType] = useState<string | null>(null);
   const [sendingItemId, setSendingItemId] = useState<string | null>(null);
   const [markOnUpload, setMarkOnUpload] = useState<Record<string, boolean>>({});
+  const [viewer, setViewer] = useState<DocumentFileViewer | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const sections = useMemo<DocumentSection[]>(() => {
@@ -280,9 +287,10 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
           const historyLogs = [...sentLogs, ...receivedLogs]
             .sort((a, b) => new Date(b.performedAt || b.createdAt || 0).getTime() - new Date(a.performedAt || a.createdAt || 0).getTime())
             .slice(0, 5);
+          const hasReceivedDocument = sectionDocuments.some((document) => (document.files || []).length > 0);
 
           return (
-            <div key={section.type} className="booking-document-card">
+            <div key={section.type} className={`booking-document-card ${hasReceivedDocument ? 'booking-document-card-received' : ''}`}>
               <div className="booking-document-card-header">
                 <FileText size={20} />
                 <div>
@@ -321,16 +329,40 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
                       </div>
                       <div className="booking-document-file-list">
                         {(document.files || []).map((file, index) => (
-                          <button
-                            key={`${file.s3Key || file.filePath || file.fileName}-${index}`}
-                            type="button"
-                            className="booking-document-file-link"
-                            onClick={() => file.url && window.open(file.url, '_blank', 'noopener,noreferrer')}
-                            disabled={!file.url}
-                            title={file.url ? 'Open file' : 'File URL unavailable'}
-                          >
-                            <Eye size={14} /> {file.fileName || 'Uploaded file'} ({formatBytes(file.size)})
-                          </button>
+                          <div key={`${file.s3Key || file.filePath || file.fileName}-${index}`} className="booking-document-file-item">
+                            <button
+                              type="button"
+                              className="booking-document-thumb"
+                              onClick={() => {
+                                const storedPath = file.s3Key || file.filePath;
+                                if (document._id && storedPath) {
+                                  setViewer({ document, file, viewUrl: file.url || bookingDocumentsApi.getFileViewUrl(document._id, storedPath) });
+                                }
+                              }}
+                              disabled={!document._id || !(file.s3Key || file.filePath)}
+                              title="Preview file"
+                            >
+                              {file.thumbnailUrl ? (
+                                <img src={file.thumbnailUrl} alt="" />
+                              ) : (
+                                <FileText size={22} />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              className="booking-document-file-link"
+                              onClick={() => {
+                                const storedPath = file.s3Key || file.filePath;
+                                if (document._id && storedPath) {
+                                  setViewer({ document, file, viewUrl: file.url || bookingDocumentsApi.getFileViewUrl(document._id, storedPath) });
+                                }
+                              }}
+                              disabled={!document._id || !(file.s3Key || file.filePath)}
+                              title="Preview file"
+                            >
+                              <Eye size={14} /> {file.fileName || 'Uploaded file'} ({formatBytes(file.size)})
+                            </button>
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -382,6 +414,26 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
           );
         })}
       </div>
+      {viewer && (
+        <div className="booking-document-viewer-backdrop" role="dialog" aria-modal="true" aria-label="Booking document viewer">
+          <div className="booking-document-viewer">
+            <div className="booking-document-viewer-header">
+              <div>
+                <strong>{viewer.file.fileName || viewer.document.title}</strong>
+                <div>{viewer.document.title} #{viewer.document.display_id || viewer.document._id}</div>
+              </div>
+              <button type="button" className="btn btn-sm btn-secondary" onClick={() => setViewer(null)}>Close</button>
+            </div>
+            <div className="booking-document-viewer-body">
+              {viewer.file.mimeType?.startsWith('image/') ? (
+                <img src={viewer.viewUrl} alt={viewer.file.fileName || viewer.document.title} />
+              ) : (
+                <iframe src={viewer.viewUrl} title={viewer.file.fileName || viewer.document.title} />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

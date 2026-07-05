@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { FiArrowLeft, FiChevronDown, FiDownload, FiEdit3, FiEye, FiMail, FiSend } from 'react-icons/fi';
 import { message } from 'antd';
-import { bookingsApi, bookingFlowApi, ceremoniesApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { bookingsApi, bookingDocumentsApi, bookingFlowApi, ceremoniesApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import BookingPaymentManagement from './BookingPaymentManagement';
 import BookingMedicalUpload from './BookingMedicalUpload';
 import BookingDocumentsUpload from './BookingDocumentsUpload';
@@ -12,7 +12,7 @@ import { TaskList } from './Tasks/TaskList';
 import { TaskForm } from './Tasks/TaskForm';
 import { createBookingConfirmationPdf, generateBookingPDF } from './BookingConfirmationPDF';
 import { Task, CreateTaskDto, taskService } from '../services/taskService';
-import { BookingFlowItem, CeremonyParticipant, MedicalArtifact, MedicalReviewRequest } from '../types';
+import { BookingDocument, BookingFlowItem, CeremonyParticipant, MedicalArtifact, MedicalReviewRequest } from '../types';
 import './BookingDetailView.css';
 
 type RequirementArtifactType = NonNullable<MedicalArtifact['artifactType']>;
@@ -27,6 +27,7 @@ type RequirementDefinition = {
   label: string;
   artifactTypes: RequirementArtifactType[];
   documentTypes?: MedicalArtifact['documentType'][];
+  bookingDocumentTypes?: string[];
   readinessGroups: string[];
 };
 
@@ -38,11 +39,12 @@ interface BookingDetailViewProps {
 const HeaderIcon: React.FC<{ icon: any }> = ({ icon: IconComponent }) => <IconComponent />;
 
 const requirementDefinitions: RequirementDefinition[] = [
+  { key: 'contract', label: 'Contract', artifactTypes: ['contract'], bookingDocumentTypes: ['contract'], readinessGroups: ['contract'] },
   { key: 'ekg', label: 'Entry EKG', artifactTypes: ['ekg'], documentTypes: ['EKG'], readinessGroups: ['ekg'] },
-  { key: 'liver', label: 'Entry Liver Panel', artifactTypes: ['liver_panel'], documentTypes: ['Liver'], readinessGroups: ['liver'] },
-  { key: 'medications', label: 'Medications Form', artifactTypes: ['medications_form', 'medication_list'], documentTypes: ['Medications'], readinessGroups: ['medications'] },
-  { key: 'questionnaire', label: 'Questionnaire', artifactTypes: ['questionnaire'], readinessGroups: ['questionnaire'] },
-  { key: 'food', label: 'Food Form', artifactTypes: ['food_intake'], readinessGroups: ['food'] },
+  { key: 'liver', label: 'Entry Liver Panel', artifactTypes: ['liver_panel'], documentTypes: ['Liver'], bookingDocumentTypes: ['liver_panel'], readinessGroups: ['liver'] },
+  { key: 'medications', label: 'Medications Form', artifactTypes: ['medications_form', 'medication_list'], documentTypes: ['Medications'], bookingDocumentTypes: ['medications_form'], readinessGroups: ['medications'] },
+  { key: 'questionnaire', label: 'Questionnaire', artifactTypes: ['questionnaire'], bookingDocumentTypes: ['questionnaire'], readinessGroups: ['questionnaire'] },
+  { key: 'food', label: 'Food Form', artifactTypes: ['food_intake'], bookingDocumentTypes: ['food_intake'], readinessGroups: ['food'] },
 ];
 
 const completedStatuses = new Set(['received', 'reviewed', 'approved', 'completed', 'caution']);
@@ -103,6 +105,9 @@ const getClientName = (client: any) => {
 
 const getClientDisplayId = (client: any, booking?: any) =>
   client?.display_id || client?.displayId || client?.clientNumber || booking?.clientDisplayId || booking?.clientDetails?.display_id || '';
+
+const normalizeBookingDocumentKey = (value?: string) =>
+  String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 
 const getRetreatCode = (retreat: any) => {
   const explicitCode = String(retreat?.code || retreat?.retreatCode || '').trim();
@@ -376,6 +381,7 @@ const BookingRequirementsPanel: React.FC<{
   }, [location.pathname]);
   const [items, setItems] = useState<BookingFlowItem[]>([]);
   const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
+  const [documents, setDocuments] = useState<BookingDocument[]>([]);
   const [reviewsByArtifact, setReviewsByArtifact] = useState<Record<string, MedicalReviewRequest[]>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -384,13 +390,14 @@ const BookingRequirementsPanel: React.FC<{
     setLoading(true);
     setError('');
     try {
-      const [itemsResponse, artifactsResponse] = await Promise.all([
+      const [itemsResponse, artifactsResponse, documentsResponse] = await Promise.all([
         bookingFlowApi.getItems({ bookingId }),
         Promise.all([
           medicalArtifactsApi.getAll({ bookingId }),
           clientId && retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId }) : Promise.resolve({ data: [] }),
           clientId ? medicalArtifactsApi.getAll({ clientId }) : Promise.resolve({ data: [] }),
         ]),
+        bookingDocumentsApi.getAll({ bookingId }),
       ]);
       const loadedArtifacts: MedicalArtifact[] = mergeArtifacts(artifactsResponse.map((response) => response.data || []))
         .filter((artifact) => isArtifactRelevantToBooking(artifact, bookingId, retreatId));
@@ -408,6 +415,7 @@ const BookingRequirementsPanel: React.FC<{
       );
       setItems(itemsResponse.data || []);
       setArtifacts(loadedArtifacts);
+      setDocuments(documentsResponse.data || []);
       setReviewsByArtifact(Object.fromEntries(reviewEntries));
     } catch (loadError: any) {
       setError(loadError?.response?.data?.message || loadError?.message || 'Unable to load booking requirements.');
@@ -434,10 +442,15 @@ const BookingRequirementsPanel: React.FC<{
         return matchesLegacyType || matchesDocumentType;
       })
       .sort(compareArtifactsForDisplay);
+    const relatedDocuments = documents
+      .filter((document) => definition.bookingDocumentTypes?.includes(normalizeBookingDocumentKey(document.documentType)) && (document.files || []).length > 0)
+      .sort((a, b) => new Date(b.receivedAt || b.createdAt || 0).getTime() - new Date(a.receivedAt || a.createdAt || 0).getTime());
     const latestArtifact = relatedArtifacts[0];
+    const latestDocument = relatedDocuments[0];
     const reviews = latestArtifact?._id ? (reviewsByArtifact[latestArtifact._id] || []) : [];
     const latestReview = [...reviews].sort((a, b) => getReviewTime(b) - getReviewTime(a))[0];
     const uploaded = relatedArtifacts.some((artifact) => (artifact.files || []).length > 0);
+    const documentUploaded = relatedDocuments.length > 0;
     const flowReceived = relatedItems.some((item) => completedStatuses.has(item.status));
     const reviewed = Boolean(latestReview && reviewedStatuses.has(latestReview.status)) ||
       relatedItems.some((item) => item.status === 'reviewed' || item.status === 'approved' || item.status === 'caution');
@@ -446,9 +459,10 @@ const BookingRequirementsPanel: React.FC<{
     return {
       ...definition,
       required,
-      uploaded: uploaded || flowReceived,
+      uploaded: uploaded || documentUploaded || flowReceived,
       reviewed,
       latestArtifact,
+      latestDocument,
       latestReview,
       relatedItems,
     };
@@ -499,12 +513,17 @@ const BookingRequirementsPanel: React.FC<{
                         Artifact #{row.latestArtifact.display_id || row.latestArtifact._id}
                       </button>
                     )}
+                    {row.latestDocument?._id && (
+                      <button type="button" className="text-blue-700 hover:underline" onClick={() => navigate(`${routePrefix}/booking-documents`)}>
+                        Document #{row.latestDocument.display_id || row.latestDocument._id}
+                      </button>
+                    )}
                     {row.latestReview?._id && (
                       <button type="button" className="text-blue-700 hover:underline" onClick={() => navigate(`${routePrefix}/medical-review-requests/${row.latestReview!._id}`)}>
                         Review #{row.latestReview.display_id || row.latestReview._id}
                       </button>
                     )}
-                    {!row.latestArtifact && !row.latestReview && <span className="text-gray-500">No linked record</span>}
+                    {!row.latestArtifact && !row.latestDocument && !row.latestReview && <span className="text-gray-500">No linked record</span>}
                   </div>
                 </td>
               </tr>

@@ -1,9 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, Circle, ListPlus, Lock, Mail, RefreshCw, RotateCcw, Save, Unlock, Upload, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Circle, FileText, ListPlus, Lock, Mail, RefreshCw, RotateCcw, Save, Unlock, Upload, X } from 'lucide-react';
 import { bookingDocumentsApi, bookingFlowApi, clientsApi, communicationsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
-import { BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, Client, MedicalReviewRequest, Payment } from '../types';
+import { BookingDocument, BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, Client, MedicalReviewRequest, Payment } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 import {
@@ -360,6 +360,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const [libraryTemplates, setLibraryTemplates] = useState<BookingFlowTemplate[]>([]);
   const [items, setItems] = useState<BookingFlowItem[]>([]);
   const [actionLogs, setActionLogs] = useState<BookingFlowActionLog[]>([]);
+  const [bookingDocuments, setBookingDocuments] = useState<BookingDocument[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [medicalAdvisors, setMedicalAdvisors] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -386,17 +387,19 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const loadData = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
-      const [response, libraryTemplateResponse, paymentsResponse, usersResponse] = await Promise.all([
+      const [response, libraryTemplateResponse, paymentsResponse, usersResponse, documentsResponse] = await Promise.all([
         bookingFlowApi.getMatrix(retreatId),
         bookingFlowApi.getLibraryTemplates().catch(() => ({ data: [] as BookingFlowTemplate[] })),
         paymentsApi.getByRetreat(retreatId).catch(() => ({ data: [] as Payment[] })),
         usersApi.getAll().catch(() => ({ data: [] as User[] })),
+        bookingDocumentsApi.getAll({ retreatId }).catch(() => ({ data: [] as BookingDocument[] })),
       ]);
       setBookings(response.data?.bookings || []);
       setTemplates(response.data?.templates || []);
       setLibraryTemplates(libraryTemplateResponse.data || []);
       setItems(response.data?.items || []);
       setActionLogs(response.data?.actionLogs || []);
+      setBookingDocuments(documentsResponse.data || []);
       setPayments(Array.isArray(paymentsResponse.data) ? paymentsResponse.data : []);
       setMedicalAdvisors((usersResponse.data || []).filter((user) => user.role === 'medical_advisor' && user.isActive !== false));
     } finally {
@@ -528,6 +531,23 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     });
     return map;
   }, [actionLogs]);
+
+  const bookingDocumentMap = useMemo(() => {
+    const map = new Map<string, BookingDocument[]>();
+    bookingDocuments.forEach((document) => {
+      const bookingId = getObjectId(document.bookingId);
+      const documentType = normalizeDocumentKey(document.documentType);
+      if (!bookingId || !documentType || (document.files || []).length === 0) return;
+      const key = `${bookingId}:${documentType}`;
+      const current = map.get(key) || [];
+      current.push(document);
+      map.set(key, current);
+    });
+    map.forEach((documents) => {
+      documents.sort((a, b) => new Date(b.receivedAt || b.createdAt || 0).getTime() - new Date(a.receivedAt || a.createdAt || 0).getTime());
+    });
+    return map;
+  }, [bookingDocuments]);
 
   const paymentsByClientId = useMemo(() => {
     const map = new Map<string, Payment[]>();
@@ -1098,6 +1118,8 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                       const selectedPaymentId = String(item?.metadata?.paymentId || '');
                       const reviewStepConfig = getReviewStepConfig(row);
                       const existingReviewRequestId = item?.metadata?.medicalReviewRequestId;
+                      const documentTypeForStep = item ? resolveBookingDocumentType(item) : normalizeDocumentKey(row.key);
+                      const relatedBookingDocument = bookingDocumentMap.get(`${getObjectId(booking)}:${documentTypeForStep}`)?.[0];
                       return (
                         <td key={`${getObjectId(booking)}:${row.key}`} className={`${viewMode === 'simple' ? 'min-w-[150px] px-2 py-2 text-center' : 'min-w-[230px] px-2 py-1 align-top'} border-b border-r border-gray-300 ${item ? getStatusCellClass(item.status) : 'bg-red-50 text-red-900'}`}>
                           {viewMode === 'simple' ? (
@@ -1245,6 +1267,17 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                                 </button>
                               );
                             })}
+                            {relatedBookingDocument?._id && (
+                              <button
+                                type="button"
+                                onClick={() => window.location.assign('/admin/booking-documents')}
+                                className="inline-flex items-center justify-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-800 hover:bg-emerald-100"
+                                title="Open Document Library"
+                              >
+                                <FileText className="h-3.5 w-3.5" />
+                                Document #{relatedBookingDocument.display_id || 'linked'}
+                              </button>
+                            )}
                               </div>
                               {itemActionLogs.length > 0 && (
                                 <div className="space-y-0.5 text-[11px] text-blue-800">
