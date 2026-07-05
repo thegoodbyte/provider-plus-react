@@ -135,6 +135,7 @@ const MedicalArtifactCreatePage: React.FC = () => {
   );
 
   const isCeremonyStage = ceremonyStages.has(form.documentStage);
+  const requiresBooking = form.documentStage !== 'entry';
   const isBloodPressure = form.documentType === 'BP';
 
   useEffect(() => {
@@ -180,8 +181,8 @@ const MedicalArtifactCreatePage: React.FC = () => {
   const handleCreate = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!form.clientId) return;
-    if (isCeremonyStage && !form.bookingId) {
-      setError('Select a booking for pre-, in-, or post-ceremony records.');
+    if (requiresBooking && !form.bookingId) {
+      setError('Select a booking. Only entry-level medical records can be saved without a booking.');
       return;
     }
     if (isCeremonyStage && !form.ceremonyNumber) {
@@ -352,9 +353,9 @@ const MedicalArtifactCreatePage: React.FC = () => {
               onChange={(event) => setForm({ ...form, bookingId: event.target.value })}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
               disabled={!form.clientId || loadingBookings}
-              required={isCeremonyStage}
+              required={requiresBooking}
             >
-              <option value="">{loadingBookings ? 'Loading bookings...' : isCeremonyStage ? 'Select booking' : 'No booking link'}</option>
+              <option value="">{loadingBookings ? 'Loading bookings...' : requiresBooking ? 'Select booking' : 'No booking link'}</option>
               {bookings.map((booking) => (
                 <option key={booking._id} value={booking._id}>{getBookingLabel(booking)}</option>
               ))}
@@ -371,7 +372,14 @@ const MedicalArtifactCreatePage: React.FC = () => {
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-600">Document stage</label>
             <select
               value={form.documentStage}
-              onChange={(event) => setForm({ ...form, documentStage: event.target.value as typeof form.documentStage, ceremonyNumber: ceremonyStages.has(event.target.value as DocumentStage) ? form.ceremonyNumber : undefined })}
+              onChange={(event) => {
+                const nextStage = event.target.value as DocumentStage;
+                setForm({
+                  ...form,
+                  documentStage: nextStage,
+                  ceremonyNumber: ceremonyStages.has(nextStage) ? form.ceremonyNumber : undefined,
+                });
+              }}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             >
               {Object.entries(documentStageLabels).map(([value, label]) => (
