@@ -56,7 +56,7 @@ const getClientName = (client?: string | Client) => {
 
 const getRetreatLabel = (retreat?: string | Retreat) => {
   if (!retreat || typeof retreat === 'string') return retreat ? `Retreat ${String(retreat).slice(-6)}` : '';
-  return retreat.name || retreat.retreatCode || retreat.code || getObjectId(retreat);
+  return retreat.retreatCode || retreat.code || retreat.name || getObjectId(retreat);
 };
 
 const getBookingLabel = (booking?: string | RetreatClient) => {
@@ -67,6 +67,17 @@ const getBookingLabel = (booking?: string | RetreatClient) => {
 const getRetreatCode = (retreat?: string | Retreat) => {
   if (!retreat || typeof retreat === 'string') return '';
   return retreat.retreatCode || retreat.code || retreat.name || '';
+};
+
+const getRetreatSearchText = (retreat?: string | Retreat) => {
+  if (!retreat) return '';
+  if (typeof retreat === 'string') return retreat;
+  return [
+    retreat.retreatCode,
+    retreat.code,
+    retreat.name,
+    getObjectId(retreat),
+  ].filter(Boolean).join(' ');
 };
 
 const getCompactDocumentType = (artifact: MedicalArtifact) => {
@@ -96,6 +107,7 @@ const getSearchText = (artifact: MedicalArtifact) => [
   getBookingLabel(artifact.bookingId),
   getObjectId(artifact.bookingId),
   getRetreatLabel(artifact.retreatId),
+  getRetreatSearchText(artifact.retreatId),
   getObjectId(artifact.retreatId),
   artifact.ceremonyNumber ? `ceremony ${artifact.ceremonyNumber}` : '',
 ].filter(Boolean).join(' ').toLowerCase();
@@ -227,13 +239,13 @@ const MedicalArtifactsPage: React.FC = () => {
     return artifacts.filter((artifact) => {
       const artifactBookingId = String(getObjectId(artifact.bookingId) || '').toLowerCase();
       const artifactClientId = String(getObjectId(artifact.clientId) || '').toLowerCase();
-      const artifactRetreatId = String(getObjectId(artifact.retreatId) || '').toLowerCase();
+      const artifactRetreatSearch = getRetreatSearchText(artifact.retreatId).toLowerCase();
       const artifactReviews = artifact._id ? reviewsByArtifactId.get(artifact._id) || [] : [];
 
       if (search && !getSearchText(artifact).includes(search)) return false;
       if (bookingId && !artifactBookingId.includes(bookingId)) return false;
       if (clientId && !artifactClientId.includes(clientId)) return false;
-      if (retreatId && !artifactRetreatId.includes(retreatId)) return false;
+      if (retreatId && !artifactRetreatSearch.includes(retreatId)) return false;
       if (stageFilter !== 'all' && (artifact.documentStage || 'entry') !== stageFilter) return false;
       if (documentTypeFilter !== 'all' && (artifact.documentType || 'other') !== documentTypeFilter) return false;
       if (artifactTypeFilter !== 'all' && artifact.artifactType !== artifactTypeFilter) return false;
@@ -295,7 +307,7 @@ const MedicalArtifactsPage: React.FC = () => {
           <input
             value={retreatIdFilter}
             onChange={(event) => setRetreatIdFilter(event.target.value)}
-            placeholder="Retreat ID"
+            placeholder="Retreat code or ID"
             className="rounded-md border border-gray-300 px-3 py-2 text-sm"
           />
           <select value={stageFilter} onChange={(event) => setStageFilter(event.target.value as typeof stageFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
