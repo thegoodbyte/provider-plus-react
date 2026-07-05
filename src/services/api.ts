@@ -1079,6 +1079,15 @@ export const bookingFlowApi = {
     const key = `booking-flow:items:${query.toString()}`;
     return cachedGet<BookingFlowItem[]>(key, () => api.get<BookingFlowItem[]>(`/booking-flow/items?${query.toString()}`));
   },
+  getBookingRequirements: (bookingId: string) => cachedGet<{
+    items: BookingFlowItem[];
+    templates: BookingFlowTemplate[];
+    libraryTemplates: BookingFlowTemplate[];
+    actionLogs: BookingFlowActionLog[];
+  }>(
+    `booking-flow:booking-requirements:${bookingId}`,
+    () => api.get(`/booking-flow/bookings/${bookingId}/requirements`)
+  ),
   getMatrix: (retreatId: string) => cachedGet<any>(`booking-flow:matrix:${retreatId}`, () => api.get<any>(`/booking-flow/matrix/${retreatId}`)),
   getItem: (id: string) => cachedGet<BookingFlowItem>(`booking-flow:item:${id}`, () => api.get<BookingFlowItem>(`/booking-flow/items/${id}`)),
   createItem: (data: Partial<BookingFlowItem> & { bookingId: string; title: string }) => {
