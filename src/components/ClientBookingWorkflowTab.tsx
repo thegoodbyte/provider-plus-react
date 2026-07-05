@@ -243,37 +243,20 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
     try {
       setLoading(true);
       setError(null);
-      const itemsResponse = await bookingFlowApi.getItems({ bookingId });
-      let nextItems = itemsResponse.data || [];
-      if (nextItems.length === 0) {
-        const generated = await bookingFlowApi.generateForBooking(bookingId);
-        nextItems = generated.data || [];
-      }
-      const retreatId = getRetreatId(selectedBooking) || getObjectId(nextItems[0]?.retreatId);
-      const bookingLogsRequest = bookingFlowApi.getBookingActionLogs(bookingId).catch(() => ({ data: [] as BookingFlowActionLog[] }));
-      if (retreatId) {
-        const [templateResponse, libraryTemplateResponse, logsResponse] = await Promise.all([
-          bookingFlowApi.getTemplates(retreatId),
-          bookingFlowApi.getLibraryTemplates().catch(() => ({ data: [] as BookingFlowTemplate[] })),
-          bookingLogsRequest,
-        ]);
-        setTemplates(templateResponse.data || []);
-        setLibraryTemplates(libraryTemplateResponse.data || []);
-        const logsByItem: Record<string, BookingFlowActionLog[]> = (logsResponse.data || []).reduce((acc: Record<string, BookingFlowActionLog[]>, log: BookingFlowActionLog) => {
-          const itemId = getObjectId(log.bookingFlowItemId);
-          if (!itemId) return acc;
-          acc[itemId] = [...(acc[itemId] || []), log];
-          return acc;
-        }, {});
-        Object.values(logsByItem).forEach((logs) => {
-          logs.sort((a, b) => new Date(getActionLogDate(b) || 0).getTime() - new Date(getActionLogDate(a) || 0).getTime());
-        });
-        setActionLogsByItem(logsByItem);
-      } else {
-        setTemplates([]);
-        setLibraryTemplates([]);
-        setActionLogsByItem({});
-      }
+      const response = await bookingFlowApi.getBookingRequirements(bookingId);
+      const nextItems = response.data.items || [];
+      setTemplates(response.data.templates || []);
+      setLibraryTemplates(response.data.libraryTemplates || []);
+      const logsByItem: Record<string, BookingFlowActionLog[]> = (response.data.actionLogs || []).reduce((acc: Record<string, BookingFlowActionLog[]>, log: BookingFlowActionLog) => {
+        const itemId = getObjectId(log.bookingFlowItemId);
+        if (!itemId) return acc;
+        acc[itemId] = [...(acc[itemId] || []), log];
+        return acc;
+      }, {});
+      Object.values(logsByItem).forEach((logs) => {
+        logs.sort((a, b) => new Date(getActionLogDate(b) || 0).getTime() - new Date(getActionLogDate(a) || 0).getTime());
+      });
+      setActionLogsByItem(logsByItem);
 
       setItems(nextItems);
       hydrateDrafts(nextItems);
