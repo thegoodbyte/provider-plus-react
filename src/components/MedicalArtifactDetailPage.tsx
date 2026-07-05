@@ -409,7 +409,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
           )}
           <button onClick={() => navigate(`${routePrefix}/medical-review-requests/new?artifactId=${artifact._id}`)} className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700">
             <Plus className="h-4 w-4" />
-            Create Medical Review
+            {reviewRequests.length > 0 ? 'Create Another Medical Review' : 'Create Medical Review'}
           </button>
           <button onClick={() => navigate(`${routePrefix}/medical-artifacts`)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
             <ArrowLeft className="h-4 w-4" />
@@ -616,6 +616,41 @@ const MedicalArtifactDetailPage: React.FC = () => {
               <div><dt className="text-gray-500">Source</dt><dd className="font-medium capitalize text-gray-900">{artifact.source || 'manual'}</dd></div>
               <div><dt className="text-gray-500">Version</dt><dd className="font-medium text-gray-900">{artifact.version || 1}</dd></div>
             </dl>
+          </div>
+
+          <div className="rounded-md border border-gray-200 bg-white p-4 text-sm">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">MRR History</h2>
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700">{reviewRequests.length}</span>
+            </div>
+            {reviewRequests.length > 0 ? (
+              <div className="space-y-3">
+                {reviewRequests.slice(0, 4).map((request) => (
+                  <button
+                    key={request._id}
+                    type="button"
+                    onClick={() => navigate(`${routePrefix}/medical-review-requests/${request._id}`)}
+                    className="block w-full rounded-md border border-gray-200 p-3 text-left hover:border-blue-200 hover:bg-blue-50"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold text-blue-700">MRR #{request.display_id || request._id?.slice(-6)}</span>
+                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold capitalize text-gray-700">
+                        {String(getReviewDecision(request)).replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-xs capitalize text-gray-500">{getReviewRequestLabel(request)} · {request.status?.replace(/_/g, ' ') || 'pending'}</div>
+                    <div className="mt-1 text-xs text-gray-500">{formatDateTime(request.reviewedAt || request.requestedAt || request.createdAt)}</div>
+                  </button>
+                ))}
+                {reviewRequests.length > 4 && (
+                  <div className="text-xs text-gray-500">{reviewRequests.length - 4} more shown in full history below.</div>
+                )}
+              </div>
+            ) : (
+              <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-3 text-gray-600">
+                No medical review requests are linked to this artifact.
+              </div>
+            )}
           </div>
 
           <div className="rounded-md border border-gray-200 bg-white p-4 text-sm">
