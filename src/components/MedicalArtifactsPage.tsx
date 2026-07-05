@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Eye, FileText, HeartPulse, Leaf, Plus, RefreshCw, Send, XCircle } from 'lucide-react';
 import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
-import { Client, MedicalArtifact, MedicalReviewRequest, Retreat, RetreatClient } from '../types';
+import { Client, MedicalArtifact, MedicalReviewRequest, Retreat, RetreatArtifactSubmissionRow, RetreatArtifactSubmissionsResponse, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 
 const artifactTypeLabels: Record<NonNullable<MedicalArtifact['artifactType']>, string> = {
@@ -181,6 +181,23 @@ const ReviewResultBadge: React.FC<{ review?: MedicalReviewRequest }> = ({ review
   );
 };
 
+const SubmissionStatusBadge: React.FC<{ row: RetreatArtifactSubmissionRow }> = ({ row }) => {
+  if (row.status === 'received') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-1 text-xs font-semibold text-green-800">
+        <CheckCircle2 className="h-3.5 w-3.5" />
+        Received
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-800">
+      <XCircle className="h-3.5 w-3.5" />
+      Missing
+    </span>
+  );
+};
+
 const MedicalArtifactsPage: React.FC = () => {
   const navigate = useNavigate();
   const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
@@ -195,6 +212,16 @@ const MedicalArtifactsPage: React.FC = () => {
   const [artifactTypeFilter, setArtifactTypeFilter] = useState<'all' | NonNullable<MedicalArtifact['artifactType']>>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | NonNullable<MedicalArtifact['status']>>('all');
   const [reviewFilter, setReviewFilter] = useState<'all' | 'has_review' | 'no_review'>('all');
+  const [activeView, setActiveView] = useState<'artifacts' | 'retreat_submissions'>('artifacts');
+  const [submissionRetreatFilter, setSubmissionRetreatFilter] = useState('');
+  const [submissionArtifactTypeFilter, setSubmissionArtifactTypeFilter] = useState<'all' | NonNullable<MedicalArtifact['artifactType']>>('all');
+  const [submissionStageFilter, setSubmissionStageFilter] = useState<'all' | NonNullable<MedicalArtifact['documentStage']>>('all');
+  const [submissionStatusFilter, setSubmissionStatusFilter] = useState<'all' | 'missing' | 'received'>('missing');
+  const [submissionSearchFilter, setSubmissionSearchFilter] = useState('');
+  const [submissionSort, setSubmissionSort] = useState<'client' | 'type' | 'stage' | 'status'>('client');
+  const [submissionData, setSubmissionData] = useState<RetreatArtifactSubmissionsResponse | null>(null);
+  const [submissionsLoading, setSubmissionsLoading] = useState(false);
+  const [submissionsError, setSubmissionsError] = useState('');
 
   const loadData = async () => {
     setLoading(true);
@@ -213,6 +240,40 @@ const MedicalArtifactsPage: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  const loadRetreatSubmissions = useCallback(async () => {
+    const retreat = submissionRetreatFilter.trim();
+    if (!retreat) {
+      setSubmissionsError('Enter a retreat code or ID.');
+      setSubmissionData(null);
+      return;
+    }
+    setSubmissionsLoading(true);
+    setSubmissionsError('');
+    try {
+      const response = await medicalArtifactsApi.getRetreatSubmissions({
+        retreat,
+        artifactType: submissionArtifactTypeFilter,
+        documentStage: submissionStageFilter,
+        status: submissionStatusFilter,
+        search: submissionSearchFilter,
+      });
+      setSubmissionData(response.data);
+    } catch (error: any) {
+      setSubmissionsError(error?.response?.data?.message || 'Could not load retreat submissions.');
+      setSubmissionData(null);
+    } finally {
+      setSubmissionsLoading(false);
+    }
+  }, [submissionArtifactTypeFilter, submissionRetreatFilter, submissionSearchFilter, submissionStageFilter, submissionStatusFilter]);
+
+  useEffect(() => {
+    if (activeView !== 'retreat_submissions' || !submissionRetreatFilter.trim()) return;
+    const timeout = window.setTimeout(() => {
+      loadRetreatSubmissions();
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [activeView, loadRetreatSubmissions, submissionRetreatFilter]);
 
   const reviewsByArtifactId = useMemo(() => {
     const grouped = new Map<string, MedicalReviewRequest[]>();
@@ -256,9 +317,38 @@ const MedicalArtifactsPage: React.FC = () => {
     });
   }, [artifacts, artifactTypeFilter, bookingIdFilter, clientIdFilter, documentTypeFilter, retreatIdFilter, reviewFilter, reviewsByArtifactId, searchFilter, stageFilter, statusFilter]);
 
+  const sortedSubmissionRows = useMemo(() => {
+    const rows = [...(submissionData?.rows || [])];
+    const compareText = (a = '', b = '') => a.localeCompare(b, undefined, { sensitivity: 'base' });
+    return rows.sort((a, b) => {
+      if (submissionSort === 'type') {
+        return compareText(getArtifactTypeLabel(a.artifactType), getArtifactTypeLabel(b.artifactType)) || compareText(a.clientName, b.clientName);
+      }
+      if (submissionSort === 'stage') {
+        return compareText(getDocumentStageLabel(a.documentStage), getDocumentStageLabel(b.documentStage)) || compareText(a.clientName, b.clientName);
+      }
+      if (submissionSort === 'status') {
+        return compareText(a.status, b.status) || compareText(a.clientName, b.clientName);
+      }
+      return compareText(a.clientName, b.clientName) || compareText(getArtifactTypeLabel(a.artifactType), getArtifactTypeLabel(b.artifactType));
+    });
+  }, [submissionData, submissionSort]);
+
   const handleRequestReview = async (artifact: MedicalArtifact) => {
     if (!artifact._id) return;
     navigate(`/admin/medical-review-requests/new?artifactId=${artifact._id}`);
+  };
+
+  const handleUploadMissingSubmission = (row: RetreatArtifactSubmissionRow) => {
+    const params = new URLSearchParams({
+      clientId: row.clientId,
+      bookingId: row.bookingId,
+      retreatId: row.retreatId,
+      artifactType: row.artifactType,
+      documentStage: row.documentStage,
+    });
+    if (row.documentType) params.set('documentType', row.documentType);
+    navigate(`new?${params.toString()}`);
   };
 
   if (loading) {
@@ -284,6 +374,25 @@ const MedicalArtifactsPage: React.FC = () => {
         </div>
       </div>
 
+      <div className="mb-4 inline-flex rounded-md border border-gray-200 bg-white p-1">
+        <button
+          type="button"
+          onClick={() => setActiveView('artifacts')}
+          className={`rounded px-3 py-2 text-sm font-medium ${activeView === 'artifacts' ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
+        >
+          Uploaded Artifacts
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveView('retreat_submissions')}
+          className={`rounded px-3 py-2 text-sm font-medium ${activeView === 'retreat_submissions' ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
+        >
+          Retreat Submissions
+        </button>
+      </div>
+
+      {activeView === 'artifacts' ? (
+        <>
       <div className="mb-4 rounded-md border border-gray-200 bg-white p-3">
         <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
           <input
@@ -504,6 +613,203 @@ const MedicalArtifactsPage: React.FC = () => {
           </tbody>
         </table>
       </div>
+        </>
+      ) : (
+        <div className="space-y-4">
+          <div className="rounded-md border border-gray-200 bg-white p-3">
+            <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-6">
+              <input
+                value={submissionRetreatFilter}
+                onChange={(event) => setSubmissionRetreatFilter(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') loadRetreatSubmissions();
+                }}
+                placeholder="Retreat code or ID"
+                className="rounded-md border border-gray-300 px-3 py-2 text-sm xl:col-span-2"
+              />
+              <select value={submissionArtifactTypeFilter} onChange={(event) => setSubmissionArtifactTypeFilter(event.target.value as typeof submissionArtifactTypeFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+                <option value="all">All artifact types</option>
+                {Object.entries(artifactTypeLabels).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+              <select value={submissionStageFilter} onChange={(event) => setSubmissionStageFilter(event.target.value as typeof submissionStageFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+                <option value="all">All stages</option>
+                {Object.entries(documentStageLabels).map(([value, label]) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+              <select value={submissionStatusFilter} onChange={(event) => setSubmissionStatusFilter(event.target.value as typeof submissionStatusFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+                <option value="missing">Missing only</option>
+                <option value="received">Received only</option>
+                <option value="all">All submissions</option>
+              </select>
+              <button
+                type="button"
+                onClick={loadRetreatSubmissions}
+                disabled={submissionsLoading}
+                className="inline-flex items-center justify-center gap-2 rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-black disabled:opacity-60"
+              >
+                <RefreshCw className={`h-4 w-4 ${submissionsLoading ? 'animate-spin' : ''}`} />
+                Load
+              </button>
+              <input
+                value={submissionSearchFilter}
+                onChange={(event) => setSubmissionSearchFilter(event.target.value)}
+                placeholder="Search client, booking, artifact..."
+                className="rounded-md border border-gray-300 px-3 py-2 text-sm xl:col-span-2"
+              />
+              <select value={submissionSort} onChange={(event) => setSubmissionSort(event.target.value as typeof submissionSort)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+                <option value="client">Sort by client</option>
+                <option value="type">Sort by type</option>
+                <option value="stage">Sort by stage</option>
+                <option value="status">Sort by status</option>
+              </select>
+              <div className="flex items-center text-sm text-gray-500 xl:col-span-3">
+                {submissionData?.retreat ? (
+                  <span>
+                    {submissionData.retreat.code || submissionData.retreat.name}: {submissionData.totals.bookings} bookings, {submissionData.totals.missing} missing, {submissionData.totals.received} received
+                  </span>
+                ) : (
+                  <span>Enter a retreat code to see missing and received submissions.</span>
+                )}
+              </div>
+            </div>
+            {submissionsError && (
+              <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{submissionsError}</div>
+            )}
+          </div>
+
+          <div className="overflow-hidden rounded-md border border-gray-200">
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <thead className="bg-gray-50 text-left text-xs font-semibold uppercase text-gray-500">
+                <tr>
+                  <th className="px-4 py-3">Client</th>
+                  <th className="px-4 py-3">Booking / Retreat</th>
+                  <th className="px-4 py-3">Stage</th>
+                  <th className="px-4 py-3">Document Type</th>
+                  <th className="px-4 py-3">Submission</th>
+                  <th className="px-4 py-3">Medical Review</th>
+                  <th className="px-4 py-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 bg-white">
+                {sortedSubmissionRows.map((row) => {
+                  const compactDocumentType = getCompactDocumentType({
+                    artifactType: row.artifactType,
+                    documentType: row.documentType || 'other',
+                    documentStage: row.documentStage,
+                    clientId: row.clientId,
+                    title: row.label,
+                  } as MedicalArtifact);
+                  return (
+                    <tr key={row.id} className={row.status === 'missing' ? 'bg-red-50/40 hover:bg-red-50' : 'bg-green-50/40 hover:bg-green-50'}>
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-gray-900">{row.clientName}</div>
+                        <div className="text-xs text-gray-500">
+                          {row.clientDisplayId ? `Client #${row.clientDisplayId}` : row.clientId.slice(-6)}{row.clientEmail ? ` · ${row.clientEmail}` : ''}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-blue-700">Booking #{row.bookingNumber || row.bookingId.slice(-6)}</div>
+                        <div className="text-xs font-semibold text-gray-700">{row.retreatCode || row.retreatName || row.retreatId.slice(-6)}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
+                          {getDocumentStageLabel(row.documentStage)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${compactDocumentType.className}`}>
+                          <compactDocumentType.Icon className="h-3.5 w-3.5" />
+                          {compactDocumentType.label}
+                        </span>
+                        <div className="mt-1 text-xs text-gray-500">{row.label}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col gap-1">
+                          <SubmissionStatusBadge row={row} />
+                          {row.artifactId ? (
+                            <button
+                              type="button"
+                              onClick={() => navigate(`${row.artifactId}`)}
+                              className="w-fit text-xs font-semibold text-blue-700 hover:text-blue-900 hover:underline"
+                            >
+                              Artifact #{row.artifactDisplayId || row.artifactId.slice(-6)}
+                            </button>
+                          ) : null}
+                          {row.receivedAt ? <span className="text-xs text-gray-500">{new Date(row.receivedAt).toLocaleDateString()} · {row.fileCount || 0} file(s)</span> : null}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        {row.reviewRequestId ? (
+                          <div className="flex flex-col gap-1">
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/admin/medical-review-requests/${row.reviewRequestId}`)}
+                              className="w-fit text-xs font-semibold text-blue-700 hover:text-blue-900 hover:underline"
+                            >
+                              MRR #{row.reviewRequestDisplayId || row.reviewRequestId.slice(-6)}
+                            </button>
+                            <span className="text-xs text-gray-500">{row.reviewDecision || row.reviewStatus || 'pending'}</span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-gray-400">No MRR</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex gap-2">
+                          {row.artifactId ? (
+                            <button
+                              type="button"
+                              title="View artifact"
+                              onClick={() => navigate(`${row.artifactId}`)}
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              title="Upload missing document"
+                              onClick={() => handleUploadMissingSubmission(row)}
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-200 bg-white text-blue-700 hover:bg-blue-50"
+                            >
+                              <Plus className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                          {row.artifactId && !row.reviewRequestId ? (
+                            <button
+                              type="button"
+                              title="Create MRR"
+                              onClick={() => navigate(`/admin/medical-review-requests/new?artifactId=${row.artifactId}`)}
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-indigo-200 bg-white text-indigo-700 hover:bg-indigo-50"
+                            >
+                              <Send className="h-3.5 w-3.5" />
+                            </button>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {!submissionsLoading && sortedSubmissionRows.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                      {submissionData ? 'No submissions match these filters.' : 'Load a retreat to see artifact submissions.'}
+                    </td>
+                  </tr>
+                )}
+                {submissionsLoading && (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-8 text-center text-gray-500">Loading retreat submissions...</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

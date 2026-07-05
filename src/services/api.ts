@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, MailSettings, EmailTemplate, SentEmail } from '../types';
+import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, MailSettings, EmailTemplate, SentEmail, RetreatArtifactSubmissionsResponse } from '../types';
 import { authService } from './authService';
 import { cacheService } from './cacheService';
 import { API_BASE_URL } from '../config/api.config';
@@ -716,6 +716,19 @@ export const medicalArtifactsApi = {
     });
     const suffix = params.toString() ? `?${params.toString()}` : '';
     return cachedGet<MedicalArtifact[]>(`medical-artifacts:${suffix || 'all'}`, () => api.get<MedicalArtifact[]>(`/medical-artifacts${suffix}`));
+  },
+  getRetreatSubmissions: (filters: {
+    retreat: string;
+    artifactType?: MedicalArtifact['artifactType'] | 'all';
+    documentStage?: MedicalArtifact['documentStage'] | 'all';
+    status?: 'all' | 'missing' | 'received';
+    search?: string;
+  }) => {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value && value !== 'all') params.set(key, value);
+    });
+    return api.get<RetreatArtifactSubmissionsResponse>(`/medical-artifacts/retreat-submissions?${params.toString()}`);
   },
   getOne: (id: string) => cachedGet<MedicalArtifact>(`medical-artifacts:${id}`, () => api.get<MedicalArtifact>(`/medical-artifacts/${id}`)),
   getNextDisplayId: () => api.get<number>('/medical-artifacts/next-display-id'),
