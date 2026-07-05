@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Circle, Lock, Mail, RefreshCw, RotateCcw, Save, Unlock, Upload, X } from 'lucide-react';
-import { bookingDocumentsApi, bookingFlowApi, clientsApi, communicationsApi, paymentsApi } from '../services/api';
-import { BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, Client, Payment } from '../types';
+import { bookingDocumentsApi, bookingFlowApi, clientsApi, communicationsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
+import { usersApi, User } from '../services/usersApi';
+import { BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, Client, MedicalReviewRequest, Payment } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 import {
@@ -56,6 +57,11 @@ const bookingDocumentTypeByStep: Record<string, string> = {
   medications_form_initial_received: 'medications_form',
   medications_form_30_day_received: 'medications_form',
   questionnaire_received: 'questionnaire',
+};
+
+const reviewStepConfigByKey: Record<string, { receivedStepKey: string; requestType: NonNullable<MedicalReviewRequest['requestType']>; label: string }> = {
+  ekg_sent_for_review: { receivedStepKey: 'ekg_received', requestType: 'ekg_review', label: 'Entry EKG review' },
+  liver_panel_sent_for_review: { receivedStepKey: 'liver_received', requestType: 'liver_panel_review', label: 'Liver panel review' },
 };
 
 const getClientDisplayId = (booking: any): string => {
@@ -196,6 +202,15 @@ const formatPaymentOption = (payment: Payment) => {
   return [displayId, amount, date, method].filter(Boolean).join(' • ') + status;
 };
 
+const getLinkedArtifactIdFromItem = (item?: BookingFlowItem): string => {
+  const metadata = item?.metadata || {};
+  const direct = metadata.latestArtifactId || metadata.linkedMedicalArtifactId || metadata.receivedArtifactId;
+  if (direct) return String(direct);
+  const ids = metadata.linkedMedicalArtifactIds;
+  if (Array.isArray(ids) && ids.length > 0) return String(ids[ids.length - 1]);
+  return '';
+};
+
 interface MatrixRow {
   key: string;
   title: string;
@@ -326,6 +341,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const [items, setItems] = useState<BookingFlowItem[]>([]);
   const [actionLogs, setActionLogs] = useState<BookingFlowActionLog[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [medicalAdvisors, setMedicalAdvisors] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState('');
   const [viewMode, setViewMode] = useState<'detail' | 'simple'>('detail');
@@ -333,6 +349,14 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [dirtyNoteIds, setDirtyNoteIds] = useState<Record<string, true>>({});
   const [datePickerDrafts, setDatePickerDrafts] = useState<Record<string, string>>({});
+  const [reviewRequestModal, setReviewRequestModal] = useState<{
+    item: BookingFlowItem;
+    booking: any;
+    artifactId: string;
+    requestType: NonNullable<MedicalReviewRequest['requestType']>;
+    label: string;
+    advisorId: string;
+  } | null>(null);
   const [composeState, setComposeState] = useState<{
     item: BookingFlowItem;
     action?: BookingFlowAction;
@@ -342,10 +366,11 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const loadData = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
-      const [response, libraryTemplateResponse, paymentsResponse] = await Promise.all([
+      const [response, libraryTemplateResponse, paymentsResponse, usersResponse] = await Promise.all([
         bookingFlowApi.getMatrix(retreatId),
         bookingFlowApi.getLibraryTemplates().catch(() => ({ data: [] as BookingFlowTemplate[] })),
         paymentsApi.getByRetreat(retreatId).catch(() => ({ data: [] as Payment[] })),
+        usersApi.getAll().catch(() => ({ data: [] as User[] })),
       ]);
       setBookings(response.data?.bookings || []);
       setTemplates(response.data?.templates || []);
@@ -353,6 +378,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       setItems(response.data?.items || []);
       setActionLogs(response.data?.actionLogs || []);
       setPayments(Array.isArray(paymentsResponse.data) ? paymentsResponse.data : []);
+      setMedicalAdvisors((usersResponse.data || []).filter((user) => user.role === 'medical_advisor' && user.isActive !== false));
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -601,6 +627,80 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
         metadata,
       }).catch(() => null);
       await loadData(false);
+    } finally {
+      setSaving('');
+    }
+  };
+
+  const openReviewRequestModal = (booking: any, item: BookingFlowItem | undefined, row: MatrixRow) => {
+    if (!item?._id) return;
+    const config = reviewStepConfigByKey[row.key];
+    if (!config) return;
+    const bookingId = getObjectId(booking);
+    const receivedItem = itemMap.get(`${bookingId}:${config.receivedStepKey}`);
+    const artifactId = getLinkedArtifactIdFromItem(item) || getLinkedArtifactIdFromItem(receivedItem);
+    if (!artifactId) {
+      alert(`Upload or link the ${config.label} artifact before creating a medical review request.`);
+      return;
+    }
+
+    setReviewRequestModal({
+      item,
+      booking,
+      artifactId,
+      requestType: config.requestType,
+      label: config.label,
+      advisorId: medicalAdvisors.length === 1 ? medicalAdvisors[0]._id : '',
+    });
+  };
+
+  const createMedicalReviewRequestFromStep = async () => {
+    if (!reviewRequestModal?.item._id || !reviewRequestModal.artifactId || !reviewRequestModal.advisorId) return;
+    const advisor = medicalAdvisors.find((item) => item._id === reviewRequestModal.advisorId);
+    const item = reviewRequestModal.item;
+    const itemId = item._id;
+    if (!itemId) return;
+    const booking = reviewRequestModal.booking;
+    const savingKey = `mrr:${itemId}`;
+    setSaving(savingKey);
+    try {
+      const response = await medicalReviewRequestsApi.createFromArtifact(reviewRequestModal.artifactId, reviewRequestModal.requestType, {
+        assignedToUserId: reviewRequestModal.advisorId,
+        medicalStaffNotes: `${reviewRequestModal.label} created from booking step "${item.title}" for booking #${getBookingNumber(booking)}.`,
+      });
+      const reviewRequest = response.data;
+      await bookingFlowApi.updateItem(itemId, {
+        status: 'sent_for_review',
+        sentAt: new Date().toISOString(),
+        metadata: {
+          ...(item.metadata || {}),
+          medicalReviewRequestId: reviewRequest._id,
+          medicalReviewRequestDisplayId: reviewRequest.display_id,
+          medicalReviewRequestType: reviewRequest.requestType,
+          medicalReviewArtifactId: reviewRequestModal.artifactId,
+          medicalReviewAssignedToUserId: reviewRequestModal.advisorId,
+          medicalReviewAssignedToEmail: advisor?.email,
+        },
+      } as Partial<BookingFlowItem>);
+      await bookingFlowApi.recordItemAction(itemId, {
+        actionType: 'manual_mark',
+        actionKey: 'medical_review_request_created',
+        actionLabel: 'Medical review request created',
+        statusAfter: 'sent_for_review',
+        notes: `Created medical review request #${reviewRequest.display_id || reviewRequest._id} for ${advisor?.email || 'selected medical advisor'}.`,
+        metadata: {
+          medicalReviewRequestId: reviewRequest._id,
+          medicalReviewRequestDisplayId: reviewRequest.display_id,
+          medicalReviewRequestType: reviewRequest.requestType,
+          artifactId: reviewRequestModal.artifactId,
+          assignedToUserId: reviewRequestModal.advisorId,
+          assignedToEmail: advisor?.email,
+        },
+      }).catch(() => null);
+      setReviewRequestModal(null);
+      await loadData(false);
+    } catch (error: any) {
+      alert(error?.response?.data?.message || error?.message || 'Unable to create medical review request.');
     } finally {
       setSaving('');
     }
@@ -969,6 +1069,8 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                       const isPaymentReceivedStep = row.key === 'payment_received';
                       const bookingPayments = paymentsByClientId.get(getBookingClientId(booking)) || [];
                       const selectedPaymentId = String(item?.metadata?.paymentId || '');
+                      const reviewStepConfig = reviewStepConfigByKey[row.key];
+                      const existingReviewRequestId = item?.metadata?.medicalReviewRequestId;
                       return (
                         <td key={`${getObjectId(booking)}:${row.key}`} className={`${viewMode === 'simple' ? 'min-w-[150px] px-2 py-2 text-center' : 'min-w-[230px] px-2 py-1 align-top'} border-b border-r border-gray-300 ${item ? getStatusCellClass(item.status) : 'bg-red-50 text-red-900'}`}>
                           {viewMode === 'simple' ? (
@@ -1061,6 +1163,23 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                               placeholder={item.emailSentAt ? `Email ${formatDate(item.emailSentAt)}` : 'Notes'}
                               className="min-h-[28px] w-full resize-y rounded border border-black/10 bg-white/80 px-1.5 py-1 text-xs text-gray-800 placeholder:text-gray-400 disabled:cursor-not-allowed disabled:bg-white/40"
                             />
+                            {reviewStepConfig && (
+                              <button
+                                type="button"
+                                disabled={!isEditing || saving === `mrr:${item._id}` || Boolean(existingReviewRequestId)}
+                                onClick={() => openReviewRequestModal(booking, item, row)}
+                                className="inline-flex items-center justify-center gap-1 rounded-md border border-indigo-200 bg-white px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
+                                title={
+                                  existingReviewRequestId
+                                    ? `Medical review request #${item.metadata?.medicalReviewRequestDisplayId || existingReviewRequestId} already linked`
+                                    : isEditing
+                                      ? `Create ${reviewStepConfig.label}`
+                                      : 'Unlock editing to create medical review request'
+                                }
+                              >
+                                {saving === `mrr:${item._id}` ? '...' : existingReviewRequestId ? `MRR #${item.metadata?.medicalReviewRequestDisplayId || 'linked'}` : 'Create MRR'}
+                              </button>
+                            )}
                             {configuredActions.map((action) => {
                               const actionLogs = itemActionLogs.filter((log) => (log.actionKey || 'default_email') === action.key);
                               const actionCount = actionLogs.length;
@@ -1139,6 +1258,74 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
           onClose={() => setComposeState(null)}
           onSent={handleComposedEmailSent}
         />
+      )}
+      {reviewRequestModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-lg rounded-lg bg-white p-5 shadow-xl">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Create Medical Review Request</h3>
+                <p className="mt-1 text-sm text-gray-600">
+                  {reviewRequestModal.label} for {getClientName(reviewRequestModal.booking)} · Booking #{getBookingNumber(reviewRequestModal.booking)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReviewRequestModal(null)}
+                className="rounded-md p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                title="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+                <div><span className="font-medium text-gray-900">Artifact:</span> {reviewRequestModal.artifactId}</div>
+                <div><span className="font-medium text-gray-900">Request type:</span> {reviewRequestModal.requestType.replace(/_/g, ' ')}</div>
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium text-gray-700">
+                  Medical Advisor <span className="text-red-600">*</span>
+                </label>
+                <select
+                  value={reviewRequestModal.advisorId}
+                  onChange={(event) => setReviewRequestModal((current) => current ? { ...current, advisorId: event.target.value } : current)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                >
+                  <option value="">Select medical advisor</option>
+                  {medicalAdvisors.map((advisor) => (
+                    <option key={advisor._id} value={advisor._id}>
+                      {[advisor.firstName, advisor.lastName].filter(Boolean).join(' ') || advisor.email} ({advisor.email})
+                    </option>
+                  ))}
+                </select>
+                {medicalAdvisors.length === 0 && (
+                  <p className="mt-1 text-xs text-red-600">No active medical advisors are available.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setReviewRequestModal(null)}
+                disabled={saving === `mrr:${reviewRequestModal.item._id}`}
+                className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={createMedicalReviewRequestFromStep}
+                disabled={!reviewRequestModal.advisorId || saving === `mrr:${reviewRequestModal.item._id}`}
+                className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {saving === `mrr:${reviewRequestModal.item._id}` ? 'Creating...' : 'Create MRR'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
