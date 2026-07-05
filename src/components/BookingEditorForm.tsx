@@ -36,6 +36,7 @@ interface BookingEditorFormProps {
   mode: 'create' | 'edit';
   bookingId?: string;
   initialBooking?: RetreatClient | null;
+  initialRetreats?: Retreat[];
   onCancel: () => void;
   onSaved: () => void;
   submitLabel?: string;
@@ -57,6 +58,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   mode,
   bookingId,
   initialBooking,
+  initialRetreats,
   onCancel,
   onSaved,
   submitLabel,
@@ -65,7 +67,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
-  const [retreats, setRetreats] = useState<Retreat[]>([]);
+  const [retreats, setRetreats] = useState<Retreat[]>(initialRetreats || []);
   const [booking, setBooking] = useState<RetreatClient | null>(initialBooking || null);
   const [formData, setFormData] = useState<BookingFormData>(emptyForm());
   const [bookingNumberError, setBookingNumberError] = useState('');
@@ -78,8 +80,8 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
     try {
       setLoading(true);
       const [clientsResponse, retreatsResponse, nextNumberResponse] = await Promise.all([
-        clientsApi.getAll(),
-        retreatsApi.getAll(),
+        clientsApi.getBookingOptions(),
+        initialRetreats?.length ? Promise.resolve({ data: initialRetreats }) : retreatsApi.getAll(),
         mode === 'create'
           ? bookingsApi.getNextBookingNumber().catch((error) => {
               console.error('Error loading next booking number:', error);
@@ -160,12 +162,8 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       return false;
     }
     try {
-      const allBookings = await bookingsApi.getAll();
-      const duplicate = (allBookings.data || []).some((existing: RetreatClient) => {
-        const existingNumber = Number(existing.bookingNumber);
-        return existingNumber === numericBookingNumber && existing._id !== bookingId;
-      });
-      if (duplicate) {
+      const availability = await bookingsApi.isBookingNumberAvailable(numericBookingNumber, bookingId);
+      if (!availability.data?.available) {
         setBookingNumberError(`Booking number ${numericBookingNumber} is already in use`);
         return false;
       }

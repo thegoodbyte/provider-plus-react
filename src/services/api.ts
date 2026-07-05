@@ -120,6 +120,7 @@ export const housesApi = {
 
 export const clientsApi = {
   getAll: () => cachedGet<Client[]>('clients:all', () => api.get<Client[]>('/clients')),
+  getBookingOptions: () => cachedGet<Client[]>('clients:booking-options', () => api.get<Client[]>('/clients/booking-options'), 30000),
   getOne: (id: string) => cachedGet<Client>(`clients:${id}`, () => api.get<Client>(`/clients/${id}`)),
   create: (data: Omit<Client, '_id'>) => {
     cacheService.clearPattern('clients:');
@@ -256,6 +257,9 @@ export const bookingsApi = {
   getByClient: (clientId: string) => cachedGet<RetreatClient[]>(`bookings:client:${clientId}`, () => api.get<RetreatClient[]>(`/bookings/client/${clientId}`)),
   getByRetreatWithDetails: (retreatId: string) => cachedGet<RetreatClient[]>(`bookings:retreat-details:${retreatId}`, () => api.get<RetreatClient[]>(`/bookings/retreat/${retreatId}/with-details`)),
   getNextBookingNumber: () => api.get<number>('/bookings/next-booking-number'),
+  isBookingNumberAvailable: (bookingNumber: number, excludeId?: string) => api.get<{ available: boolean }>(
+    `/bookings/booking-number-available?bookingNumber=${encodeURIComponent(String(bookingNumber))}${excludeId ? `&excludeId=${encodeURIComponent(excludeId)}` : ''}`
+  ),
   create: (data: Omit<RetreatClient, '_id'>) => {
     cacheService.clearPattern('bookings:');
     cacheService.clearPattern('payments:');

@@ -47,7 +47,8 @@ const SearchableClientSelect: React.FC<SearchableClientSelectProps> = ({
 
   // Filter clients based on search term
   const filteredClients = useMemo(() => {
-    if (!searchTerm) return clients;
+    const maxVisibleClients = 60;
+    if (!searchTerm) return clients.slice(0, maxVisibleClients);
 
     const term = searchTerm.toLowerCase();
     const numericTerm = term.replace(/^#/, '');
@@ -62,7 +63,7 @@ const SearchableClientSelect: React.FC<SearchableClientSelectProps> = ({
              displayId.includes(numericTerm) ||
              displayId.includes(term) ||
              email.includes(term);
-    });
+    }).slice(0, maxVisibleClients);
   }, [clients, searchTerm]);
 
   // Close dropdown when clicking outside

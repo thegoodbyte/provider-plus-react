@@ -610,6 +610,7 @@ const BookingsGrid: React.FC = () => {
             <h2 className="text-lg font-medium mb-4">Add New Booking</h2>
             <BookingEditorForm
               mode="create"
+              initialRetreats={retreats}
               onCancel={() => setShowAddModal(false)}
               onSaved={() => {
                 fetchBookings();
@@ -628,6 +629,7 @@ const BookingsGrid: React.FC = () => {
             <BookingEditorForm
               mode="edit"
               initialBooking={editingBooking}
+              initialRetreats={retreats}
               bookingId={editingBooking._id}
               onCancel={() => {
                 setShowEditModal(false);
