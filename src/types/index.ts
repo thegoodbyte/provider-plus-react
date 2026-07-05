@@ -842,7 +842,7 @@ export interface MedicalArtifact {
   clientId: string | Client;
   clientDisplayId?: number;
   retreatId?: string | Retreat;
-  bookingId?: string;
+  bookingId?: string | RetreatClient;
   ceremonyId?: string;
 
   // New document categorization

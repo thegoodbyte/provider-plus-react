@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Edit, Eye, Plus, Save, Trash2, Upload } from 'lucide-react';
-import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
-import { Client, MedicalArtifact, MedicalReviewRequest } from '../types';
+import { bookingsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { Client, MedicalArtifact, MedicalReviewRequest, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 
 const artifactTypeLabels: Record<NonNullable<MedicalArtifact['artifactType']>, string> = {
@@ -57,11 +57,29 @@ const documentTypeLabels: Record<NonNullable<MedicalArtifact['documentType']>, s
 };
 
 type ArtifactStatus = NonNullable<MedicalArtifact['status']>;
+type DocumentStage = NonNullable<MedicalArtifact['documentStage']>;
+
+const ceremonyStages = new Set<DocumentStage>(['pre_ceremony', 'in_ceremony', 'post_ceremony']);
+
+const getObjectId = (value: any): string => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  return value._id || value.id || '';
+};
 
 const getClientLabel = (client?: string | Client) => {
   if (!client || typeof client === 'string') return client || 'Unknown client';
   const name = [client.firstName || client.fname, client.lastName || client.lname].filter(Boolean).join(' ');
   return [`#${client.display_id || '-'}`, name || client.email || 'Unknown client'].filter(Boolean).join(' ');
+};
+
+const getBookingLabel = (booking: RetreatClient) => {
+  const parts = [
+    booking.bookingNumber ? `Booking #${booking.bookingNumber}` : 'Booking',
+    booking.status,
+    booking.checkInDate ? new Date(booking.checkInDate).toLocaleDateString() : '',
+  ].filter(Boolean);
+  return parts.join(' - ');
 };
 
 const formatBytes = (size?: number) => {
@@ -215,6 +233,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [reviewRequests, setReviewRequests] = useState<MedicalReviewRequest[]>([]);
+  const [bookings, setBookings] = useState<RetreatClient[]>([]);
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -224,6 +243,8 @@ const MedicalArtifactDetailPage: React.FC = () => {
     purpose: 'general' as NonNullable<MedicalArtifact['purpose']>,
     documentStage: 'entry' as NonNullable<MedicalArtifact['documentStage']>,
     documentType: 'additional' as NonNullable<MedicalArtifact['documentType']>,
+    bookingId: '',
+    ceremonyNumber: '' as number | '',
   });
 
   useEffect(() => {
@@ -245,7 +266,14 @@ const MedicalArtifactDetailPage: React.FC = () => {
           purpose: item.purpose || 'general',
           documentStage: item.documentStage || 'entry',
           documentType: item.documentType || 'additional',
+          bookingId: getObjectId(item.bookingId),
+          ceremonyNumber: item.ceremonyNumber || '',
         });
+        const clientId = getObjectId(item.clientId);
+        if (clientId) {
+          const bookingsResponse = await bookingsApi.getByClient(clientId).catch(() => ({ data: [] as RetreatClient[] }));
+          setBookings(bookingsResponse.data || []);
+        }
       } finally {
         setLoading(false);
       }
@@ -264,10 +292,24 @@ const MedicalArtifactDetailPage: React.FC = () => {
   const handleSave = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!id) return;
+    const requiresBooking = form.documentStage !== 'entry';
+    const isCeremonyStage = ceremonyStages.has(form.documentStage);
+    if (requiresBooking && !form.bookingId) {
+      setError('Select a booking. Only entry-level medical records can be saved without a booking.');
+      return;
+    }
+    if (isCeremonyStage && !form.ceremonyNumber) {
+      setError('Pre-, in-, and post-ceremony medical records require a ceremony number.');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
-      const response = await medicalArtifactsApi.update(id, form);
+      const response = await medicalArtifactsApi.update(id, {
+        ...form,
+        bookingId: form.bookingId || undefined,
+        ceremonyNumber: isCeremonyStage && form.ceremonyNumber ? Number(form.ceremonyNumber) : undefined,
+      });
       setArtifact(response.data);
       if (selectedFiles.length > 0) {
         setUploading(true);
@@ -348,6 +390,8 @@ const MedicalArtifactDetailPage: React.FC = () => {
   }
 
   const artifactId = artifact._id || id || '';
+  const requiresBooking = form.documentStage !== 'entry';
+  const isCeremonyStage = ceremonyStages.has(form.documentStage);
 
   return (
     <div className="p-6">
@@ -409,7 +453,18 @@ const MedicalArtifactDetailPage: React.FC = () => {
               </label>
               <label className="block text-sm font-medium text-gray-700">
                 Document stage
-                <select value={form.documentStage} onChange={(event) => setForm({ ...form, documentStage: event.target.value as typeof form.documentStage })} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                <select
+                  value={form.documentStage}
+                  onChange={(event) => {
+                    const nextStage = event.target.value as typeof form.documentStage;
+                    setForm({
+                      ...form,
+                      documentStage: nextStage,
+                      ceremonyNumber: ceremonyStages.has(nextStage) ? form.ceremonyNumber : '',
+                    });
+                  }}
+                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                >
                   {Object.entries(documentStageLabels).map(([value, label]) => (
                     <option key={value} value={value}>{label}</option>
                   ))}
@@ -422,6 +477,33 @@ const MedicalArtifactDetailPage: React.FC = () => {
                     <option key={value} value={value}>{label}</option>
                   ))}
                 </select>
+              </label>
+              <label className="block text-sm font-medium text-gray-700">
+                Booking {requiresBooking && <span className="text-red-600">*</span>}
+                <select
+                  value={form.bookingId}
+                  onChange={(event) => setForm({ ...form, bookingId: event.target.value })}
+                  required={requiresBooking}
+                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                >
+                  <option value="">{requiresBooking ? 'Select booking' : 'No booking link'}</option>
+                  {bookings.map((booking) => (
+                    <option key={booking._id} value={booking._id}>{getBookingLabel(booking)}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block text-sm font-medium text-gray-700">
+                Ceremony # {isCeremonyStage && <span className="text-red-600">*</span>}
+                <input
+                  type="number"
+                  min="1"
+                  value={form.ceremonyNumber}
+                  onChange={(event) => setForm({ ...form, ceremonyNumber: event.target.value ? Number(event.target.value) : '' })}
+                  disabled={!isCeremonyStage}
+                  required={isCeremonyStage}
+                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-100 disabled:text-gray-500"
+                  placeholder="1"
+                />
               </label>
               <label className="block text-sm font-medium text-gray-700">
                 Purpose
@@ -507,6 +589,19 @@ const MedicalArtifactDetailPage: React.FC = () => {
               <div><dt className="text-gray-500">Type</dt><dd className="font-medium text-gray-900">{getArtifactTypeLabel(artifact.artifactType)}</dd></div>
               <div><dt className="text-gray-500">Document stage</dt><dd className="font-medium text-gray-900">{documentStageLabels[artifact.documentStage || 'entry'] || artifact.documentStage || '-'}</dd></div>
               <div><dt className="text-gray-500">Document type</dt><dd className="font-medium text-gray-900">{documentTypeLabels[artifact.documentType || 'additional'] || artifact.documentType || '-'}</dd></div>
+              <div>
+                <dt className="text-gray-500">Booking</dt>
+                <dd className="font-medium text-gray-900">
+                  {getObjectId(artifact.bookingId) ? (
+                    <button type="button" onClick={() => navigate(`${routePrefix}/bookings/${getObjectId(artifact.bookingId)}`)} className="text-blue-700 hover:text-blue-900 hover:underline">
+                      {typeof artifact.bookingId === 'object' ? getBookingLabel(artifact.bookingId as RetreatClient) : artifact.bookingId}
+                    </button>
+                  ) : (
+                    '-'
+                  )}
+                </dd>
+              </div>
+              <div><dt className="text-gray-500">Ceremony #</dt><dd className="font-medium text-gray-900">{artifact.ceremonyNumber || '-'}</dd></div>
               <div><dt className="text-gray-500">Context</dt><dd className="font-medium text-gray-900">{contextTypeLabels[artifact.contextType || 'client']}</dd></div>
               <div><dt className="text-gray-500">Purpose</dt><dd className="font-medium text-gray-900">{purposeLabels[artifact.purpose || 'general']}</dd></div>
               {artifact.reviewFeeAmount ? (
