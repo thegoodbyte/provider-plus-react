@@ -1126,50 +1126,6 @@ const ClientScreening: React.FC = () => {
             )}
           </div>
           <div>
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                name="depression"
-                checked={formData.depression}
-                onChange={handleInputChange}
-                className="rounded"
-              />
-              <span className="text-sm font-medium text-gray-700">Depression</span>
-            </label>
-            {formData.depression && (
-              <textarea
-                name="depressionDetails"
-                value={formData.depressionDetails}
-                onChange={handleInputChange}
-                rows={2}
-                className="w-full mt-2 px-3 py-2 border border-gray-200 rounded-md"
-                placeholder="Current or past depression, treatment, severity, dates, hospitalizations, or notes"
-              />
-            )}
-          </div>
-          <div>
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                name="anxiety"
-                checked={formData.anxiety}
-                onChange={handleInputChange}
-                className="rounded"
-              />
-              <span className="text-sm font-medium text-gray-700">Anxiety</span>
-            </label>
-            {formData.anxiety && (
-              <textarea
-                name="anxietyDetails"
-                value={formData.anxietyDetails}
-                onChange={handleInputChange}
-                rows={2}
-                className="w-full mt-2 px-3 py-2 border border-gray-200 rounded-md"
-                placeholder="Current or past anxiety, panic attacks, treatment, severity, dates, or notes"
-              />
-            )}
-          </div>
-          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Medications/Pills</label>
             <textarea
               name="medications"
