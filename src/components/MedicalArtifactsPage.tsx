@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, Eye, FileText, Plus, RefreshCw, Send, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Eye, FileText, HeartPulse, Leaf, Plus, RefreshCw, Send, XCircle } from 'lucide-react';
 import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { Client, MedicalArtifact, MedicalReviewRequest, Retreat, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
@@ -62,6 +62,23 @@ const getRetreatLabel = (retreat?: string | Retreat) => {
 const getBookingLabel = (booking?: string | RetreatClient) => {
   if (!booking || typeof booking === 'string') return booking ? `Booking ${String(booking).slice(-6)}` : '';
   return booking.bookingNumber ? `Booking #${booking.bookingNumber}` : `Booking ${getObjectId(booking).slice(-6)}`;
+};
+
+const getRetreatCode = (retreat?: string | Retreat) => {
+  if (!retreat || typeof retreat === 'string') return '';
+  return retreat.retreatCode || retreat.code || retreat.name || '';
+};
+
+const getCompactDocumentType = (artifact: MedicalArtifact) => {
+  const artifactType = artifact.artifactType;
+  const documentType = artifact.documentType;
+  if (artifactType === 'ekg' || artifactType === 'ceremony_ekg' || documentType === 'EKG') {
+    return { label: 'EKG', Icon: HeartPulse, className: 'bg-red-50 text-red-700' };
+  }
+  if (artifactType === 'liver_panel' || documentType === 'Liver') {
+    return { label: 'LVR', Icon: Leaf, className: 'bg-emerald-50 text-emerald-700' };
+  }
+  return { label: getDocumentTypeLabel(documentType, artifactType), Icon: FileText, className: 'bg-gray-100 text-gray-700' };
 };
 
 const getSearchText = (artifact: MedicalArtifact) => [
@@ -299,12 +316,6 @@ const MedicalArtifactsPage: React.FC = () => {
               <option key={value} value={value}>{label}</option>
             ))}
           </select>
-          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-            <option value="all">All statuses</option>
-            {['stored', 'pending_review', 'approved', 'rejected', 'needs_resubmission', 'superseded', 'voided'].map((status) => (
-              <option key={status} value={status}>{status.replace(/_/g, ' ')}</option>
-            ))}
-          </select>
           <select value={reviewFilter} onChange={(event) => setReviewFilter(event.target.value as typeof reviewFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
             <option value="all">All MRR states</option>
             <option value="has_review">Has MRR</option>
@@ -342,12 +353,10 @@ const MedicalArtifactsPage: React.FC = () => {
               <th className="px-4 py-3">Preview</th>
               <th className="px-4 py-3">Stage</th>
               <th className="px-4 py-3">Document Type</th>
-              <th className="px-4 py-3">Title</th>
               <th className="px-4 py-3">Client</th>
-              <th className="px-4 py-3">Booking / Ceremony</th>
+              <th className="px-4 py-3">Booking / Retreat</th>
               <th className="px-4 py-3">Received</th>
               <th className="px-4 py-3">Files</th>
-              <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Medical Review</th>
             </tr>
           </thead>
@@ -355,6 +364,8 @@ const MedicalArtifactsPage: React.FC = () => {
             {filteredArtifacts.map((artifact) => {
               const artifactReviews = artifact._id ? reviewsByArtifactId.get(artifact._id) || [] : [];
               const latestReview = artifactReviews[0];
+              const compactDocumentType = getCompactDocumentType(artifact);
+              const retreatCode = getRetreatCode(artifact.retreatId as any);
               return (
               <tr key={artifact._id} className="hover:bg-gray-50">
                 <td className="px-4 py-3 font-medium text-gray-900">
@@ -418,27 +429,21 @@ const MedicalArtifactsPage: React.FC = () => {
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700">
-                    {getDocumentTypeLabel(artifact.documentType, artifact.artifactType)}
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${compactDocumentType.className}`}>
+                    <compactDocumentType.Icon className="h-3.5 w-3.5" />
+                    {compactDocumentType.label}
                   </span>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-gray-400" />
-                    <span>{artifact.title}</span>
-                  </div>
                 </td>
                 <td className="px-4 py-3">{getClientName(artifact.clientId)}</td>
                 <td className="px-4 py-3">
                   <div className="flex flex-col gap-1 text-xs text-gray-600">
                     <span>{getBookingLabel(artifact.bookingId) || '-'}</span>
-                    {getRetreatLabel(artifact.retreatId) ? <span>{getRetreatLabel(artifact.retreatId)}</span> : null}
+                    {retreatCode ? <span className="font-semibold text-gray-800">{retreatCode}</span> : getRetreatLabel(artifact.retreatId) ? <span>{getRetreatLabel(artifact.retreatId)}</span> : null}
                     {artifact.ceremonyNumber ? <span>Ceremony #{artifact.ceremonyNumber}</span> : null}
                   </div>
                 </td>
                 <td className="px-4 py-3">{artifact.receivedAt ? new Date(artifact.receivedAt).toLocaleDateString() : '-'}</td>
                 <td className="px-4 py-3">{artifact.files?.length || 0}</td>
-                <td className="px-4 py-3 capitalize">{artifact.status || 'stored'}</td>
                 <td className="px-4 py-3">
                   <div className="flex flex-col gap-1">
                     {latestReview?._id ? (
@@ -481,7 +486,7 @@ const MedicalArtifactsPage: React.FC = () => {
             })}
             {filteredArtifacts.length === 0 && (
               <tr>
-                <td colSpan={12} className="px-4 py-8 text-center text-gray-500">No medical artifacts yet.</td>
+                <td colSpan={10} className="px-4 py-8 text-center text-gray-500">No medical artifacts yet.</td>
               </tr>
             )}
           </tbody>
