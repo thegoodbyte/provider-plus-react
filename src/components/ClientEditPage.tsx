@@ -54,6 +54,17 @@ const cropImageToProfileSquare = (file: File, size = 200): Promise<File> => {
   });
 };
 
+const CLIENT_WORKFLOW_STATUS_OPTIONS: Array<{ value: NonNullable<Client['workflowStatus']>; label: string }> = [
+  { value: 'potential', label: 'Potential' },
+  { value: 'screening', label: 'Screening' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'booked', label: 'Booked' },
+  { value: 'completed', label: 'Alumni / Completed' },
+  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'rejected', label: 'Rejected' },
+  { value: 'blacklisted', label: 'Blacklisted' },
+];
+
 const ClientEditPage: React.FC = () => {
   const { clientId } = useParams<{ clientId: string }>();
   const navigate = useNavigate();
@@ -232,6 +243,7 @@ const ClientEditPage: React.FC = () => {
         notes: formData.notes,
         source: normalizeOptionalValue(formData.source),
         status: normalizeOptionalValue(formData.status) as 'active' | 'inactive' | 'suspended' | undefined,
+        workflowStatus: normalizeOptionalValue(formData.workflowStatus) as Client['workflowStatus'],
         language: normalizeOptionalValue(formData.language) as Client['language']
       };
 
@@ -357,6 +369,36 @@ const ClientEditPage: React.FC = () => {
                 min="1001"
                 className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+            </div>
+
+            <div>
+              <label htmlFor="workflowStatus" className="block text-sm font-medium text-gray-700 mb-1">Client Status</label>
+              <select
+                id="workflowStatus"
+                name="workflowStatus"
+                value={formData.workflowStatus || 'potential'}
+                onChange={handleInputChange}
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {CLIENT_WORKFLOW_STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">Account Status</label>
+              <select
+                id="status"
+                name="status"
+                value={formData.status || 'active'}
+                onChange={handleInputChange}
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="suspended">Suspended</option>
+              </select>
             </div>
 
             <div>
