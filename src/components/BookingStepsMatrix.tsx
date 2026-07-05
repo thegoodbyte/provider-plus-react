@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Circle, Lock, Mail, RefreshCw, RotateCcw, Save, Unlock, Upload, X } from 'lucide-react';
-import { bookingDocumentsApi, bookingFlowApi, clientsApi, communicationsApi } from '../services/api';
-import { BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, Client } from '../types';
+import { bookingDocumentsApi, bookingFlowApi, clientsApi, communicationsApi, paymentsApi } from '../services/api';
+import { BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, Client, Payment } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 import {
@@ -38,6 +38,8 @@ const getBookingNumber = (booking: any): string => {
 const getBookingClientId = (booking: any): string => {
   return getObjectId(booking.clientId || booking.client);
 };
+
+const getPaymentClientId = (payment: Payment): string => getObjectId(payment.clientId);
 
 const normalizeDocumentKey = (value?: string) => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 
@@ -179,6 +181,21 @@ const formatDateInput = (value?: Date | string | null) => {
   return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
 };
 
+const formatMoney = (amount?: number, currency?: string) => {
+  const numericAmount = Number(amount);
+  if (!Number.isFinite(numericAmount)) return '';
+  return `${numericAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency || ''}`.trim();
+};
+
+const formatPaymentOption = (payment: Payment) => {
+  const displayId = payment.display_id ? `#${payment.display_id}` : payment._id?.slice(-6) || 'Payment';
+  const amount = formatMoney(payment.amount, payment.currency);
+  const date = formatDate(payment.paymentDate);
+  const method = String(payment.paymentMethod || '').replace(/_/g, ' ');
+  const status = payment.status && payment.status !== 'completed' ? ` (${payment.status})` : '';
+  return [displayId, amount, date, method].filter(Boolean).join(' • ') + status;
+};
+
 interface MatrixRow {
   key: string;
   title: string;
@@ -308,6 +325,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const [libraryTemplates, setLibraryTemplates] = useState<BookingFlowTemplate[]>([]);
   const [items, setItems] = useState<BookingFlowItem[]>([]);
   const [actionLogs, setActionLogs] = useState<BookingFlowActionLog[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState('');
   const [viewMode, setViewMode] = useState<'detail' | 'simple'>('detail');
@@ -324,13 +342,17 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const loadData = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
-      const response = await bookingFlowApi.getMatrix(retreatId);
-      const libraryTemplateResponse = await bookingFlowApi.getLibraryTemplates().catch(() => ({ data: [] as BookingFlowTemplate[] }));
+      const [response, libraryTemplateResponse, paymentsResponse] = await Promise.all([
+        bookingFlowApi.getMatrix(retreatId),
+        bookingFlowApi.getLibraryTemplates().catch(() => ({ data: [] as BookingFlowTemplate[] })),
+        paymentsApi.getByRetreat(retreatId).catch(() => ({ data: [] as Payment[] })),
+      ]);
       setBookings(response.data?.bookings || []);
       setTemplates(response.data?.templates || []);
       setLibraryTemplates(libraryTemplateResponse.data || []);
       setItems(response.data?.items || []);
       setActionLogs(response.data?.actionLogs || []);
+      setPayments(Array.isArray(paymentsResponse.data) ? paymentsResponse.data : []);
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -461,6 +483,21 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     return map;
   }, [actionLogs]);
 
+  const paymentsByClientId = useMemo(() => {
+    const map = new Map<string, Payment[]>();
+    payments.forEach((payment) => {
+      const clientId = getPaymentClientId(payment);
+      if (!clientId) return;
+      const current = map.get(clientId) || [];
+      current.push(payment);
+      map.set(clientId, current);
+    });
+    map.forEach((clientPayments) => {
+      clientPayments.sort((a, b) => new Date(b.paymentDate || 0).getTime() - new Date(a.paymentDate || 0).getTime());
+    });
+    return map;
+  }, [payments]);
+
   const toggleItem = async (item: BookingFlowItem | undefined, checked: boolean) => {
     if (!item?._id) return;
     setSaving(item._id);
@@ -525,6 +562,44 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
         delete nextDrafts[item._id!];
         return nextDrafts;
       });
+      await loadData(false);
+    } finally {
+      setSaving('');
+    }
+  };
+
+  const selectPaymentForItem = async (item: BookingFlowItem | undefined, paymentId: string) => {
+    if (!item?._id || !paymentId) return;
+    const payment = payments.find((candidate) => candidate._id === paymentId);
+    if (!payment) return;
+    const paymentDate = payment.paymentDate ? new Date(payment.paymentDate) : new Date();
+    const receivedAt = Number.isNaN(paymentDate.getTime()) ? new Date().toISOString() : paymentDate.toISOString();
+    const metadata = {
+      ...(item.metadata || {}),
+      paymentId: payment._id,
+      paymentDisplayId: payment.display_id,
+      paymentAmount: payment.amount,
+      paymentCurrency: payment.currency,
+      paymentDate: receivedAt,
+      paymentMethod: payment.paymentMethod,
+      paymentStatus: payment.status,
+    };
+
+    setSaving(`payment:${item._id}`);
+    try {
+      await bookingFlowApi.updateItem(item._id, {
+        status: 'received',
+        receivedAt,
+        metadata,
+      } as Partial<BookingFlowItem>);
+      await bookingFlowApi.recordItemAction(item._id, {
+        actionType: 'manual_mark',
+        actionKey: 'payment_selected',
+        actionLabel: 'Payment selected',
+        statusAfter: 'received',
+        notes: `Payment ${payment.display_id ? `#${payment.display_id}` : payment._id} selected for Payment received.`,
+        metadata,
+      }).catch(() => null);
       await loadData(false);
     } finally {
       setSaving('');
@@ -891,6 +966,9 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                       const itemActionLogs = item?._id ? actionLogMap.get(item._id) || [] : [];
                       const configuredActions = getConfiguredActions(item);
                       const simpleStatus = getSimpleStatus(item);
+                      const isPaymentReceivedStep = row.key === 'payment_received';
+                      const bookingPayments = paymentsByClientId.get(getBookingClientId(booking)) || [];
+                      const selectedPaymentId = String(item?.metadata?.paymentId || '');
                       return (
                         <td key={`${getObjectId(booking)}:${row.key}`} className={`${viewMode === 'simple' ? 'min-w-[150px] px-2 py-2 text-center' : 'min-w-[230px] px-2 py-1 align-top'} border-b border-r border-gray-300 ${item ? getStatusCellClass(item.status) : 'bg-red-50 text-red-900'}`}>
                           {viewMode === 'simple' ? (
@@ -954,6 +1032,22 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                               )}
                             </div>
                               </div>
+                              {isPaymentReceivedStep && (
+                                <select
+                                  value={selectedPaymentId}
+                                  disabled={!isEditing || saving === `payment:${item._id}` || bookingPayments.length === 0}
+                                  onChange={(event) => selectPaymentForItem(item, event.target.value)}
+                                  className="w-full rounded border border-emerald-200 bg-white/90 px-1.5 py-1 text-xs font-medium text-emerald-900 disabled:cursor-not-allowed disabled:bg-white/40 disabled:text-gray-500"
+                                  title={bookingPayments.length > 0 ? 'Choose client payment to mark this step received' : 'No payments found for this client in this retreat'}
+                                >
+                                  <option value="">{bookingPayments.length > 0 ? 'Choose payment...' : 'No payments found'}</option>
+                                  {bookingPayments.map((payment) => (
+                                    <option key={payment._id || `${payment.display_id}:${payment.paymentDate}`} value={payment._id || ''}>
+                                      {formatPaymentOption(payment)}
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
                               <div className="grid grid-cols-[1fr_auto] gap-1">
                             <textarea
                               value={noteDrafts[item._id || ''] || ''}
