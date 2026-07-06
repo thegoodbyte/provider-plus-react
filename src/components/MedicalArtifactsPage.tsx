@@ -216,7 +216,7 @@ const MedicalArtifactsPage: React.FC = () => {
   const [submissionRetreatFilter, setSubmissionRetreatFilter] = useState('');
   const [submissionArtifactTypeFilter, setSubmissionArtifactTypeFilter] = useState<'all' | NonNullable<MedicalArtifact['artifactType']>>('all');
   const [submissionStageFilter, setSubmissionStageFilter] = useState<'all' | NonNullable<MedicalArtifact['documentStage']>>('all');
-  const [submissionStatusFilter, setSubmissionStatusFilter] = useState<'all' | 'missing' | 'received'>('missing');
+  const [submissionStatusFilter, setSubmissionStatusFilter] = useState<'all' | 'missing' | 'received'>('all');
   const [submissionSearchFilter, setSubmissionSearchFilter] = useState('');
   const [submissionSort, setSubmissionSort] = useState<'client' | 'type' | 'stage' | 'status'>('client');
   const [submissionData, setSubmissionData] = useState<RetreatArtifactSubmissionsResponse | null>(null);
