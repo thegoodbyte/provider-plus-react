@@ -78,6 +78,13 @@ const artifactStepConfigByKey: Record<string, Pick<ReviewStepConfig, 'documentSt
   liver_received: { documentStage: 'entry', documentType: 'Liver', artifactType: 'liver_panel', label: 'Entry liver panel' },
 };
 
+type ArtifactLinkConfig = {
+  documentStage: MedicalArtifact['documentStage'];
+  documentType: MedicalArtifact['documentType'];
+  artifactType: NonNullable<MedicalArtifact['artifactType']>;
+  label: string;
+};
+
 const getReviewStepConfig = (row: Pick<MatrixRow, 'key' | 'title'>) => {
   const exact = reviewStepConfigByKey[row.key];
   if (exact) return exact;
@@ -96,6 +103,42 @@ const getReviewStepConfig = (row: Pick<MatrixRow, 'key' | 'title'>) => {
     return { receivedStepKey: 'liver_received', requestType: 'liver_panel_review' as const, documentStage: 'entry' as const, documentType: 'Liver' as const, artifactType: 'liver_panel' as const, label: 'Liver panel review' };
   }
   return undefined;
+};
+
+const getArtifactLinkCandidates = (booking: any, artifacts: MedicalArtifact[], config?: ArtifactLinkConfig) => {
+  if (!config) return [];
+  const bookingId = getObjectId(booking);
+  const clientId = getBookingClientId(booking);
+  const retreatId = getObjectId(booking.retreatId || booking.retreat);
+  const bookingNumber = String(getBookingNumber(booking)).trim().toLowerCase();
+
+  return artifacts
+    .filter((artifact) => {
+      if (!artifact._id) return false;
+      const matchesType = artifact.artifactType === config.artifactType
+        || (artifact.documentStage === 'entry' && artifact.documentType === config.documentType);
+      if (!matchesType) return false;
+
+      const artifactBookingId = getObjectId(artifact.bookingId);
+      const artifactClientId = getObjectId(artifact.clientId);
+      const artifactRetreatId = getObjectId(artifact.retreatId);
+      const bookingNumberMatches = [
+        artifact.title,
+        artifact.description,
+        artifact.notes,
+        artifact.textContent,
+        artifact.data?.bookingNumber,
+        artifact.data?.booking_number,
+        artifact.data?.bookingNo,
+      ].some((value) => String(value || '').toLowerCase().includes(bookingNumber));
+
+      return artifactBookingId === bookingId
+        || artifactClientId === clientId
+        || (retreatId && artifactRetreatId === retreatId)
+        || bookingNumberMatches
+        || (!artifactBookingId && !artifactClientId && !artifactRetreatId);
+    })
+    .sort((a, b) => new Date(b.receivedAt || b.createdAt || 0).getTime() - new Date(a.receivedAt || a.createdAt || 0).getTime());
 };
 
 const getClientDisplayId = (booking: any): string => {
@@ -437,6 +480,14 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     requestType: NonNullable<MedicalReviewRequest['requestType']>;
     label: string;
     advisorId: string;
+  } | null>(null);
+  const [artifactLinkModal, setArtifactLinkModal] = useState<{
+    item: BookingFlowItem;
+    booking: any;
+    row: MatrixRow;
+    config: ArtifactLinkConfig;
+    candidates: MedicalArtifact[];
+    selectedArtifactId: string;
   } | null>(null);
   const [composeState, setComposeState] = useState<{
     item: BookingFlowItem;
@@ -880,6 +931,95 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     }
   };
 
+  const openArtifactLinkModal = (booking: any, item: BookingFlowItem, row: MatrixRow, config: ArtifactLinkConfig) => {
+    const candidates = getArtifactLinkCandidates(booking, medicalArtifacts, config);
+    if (candidates.length === 0) {
+      alert(`No existing ${config.label} artifact was found for this booking.`);
+      return;
+    }
+    setArtifactLinkModal({
+      item,
+      booking,
+      row,
+      config,
+      candidates,
+      selectedArtifactId: candidates[0]._id || '',
+    });
+  };
+
+  const linkExistingArtifactToStep = async () => {
+    if (!artifactLinkModal?.item._id || !artifactLinkModal.selectedArtifactId) return;
+    const selectedArtifact = artifactLinkModal.candidates.find((candidate) => candidate._id === artifactLinkModal.selectedArtifactId);
+    if (!selectedArtifact?._id) return;
+
+    const booking = artifactLinkModal.booking;
+    const bookingId = getObjectId(booking);
+    const clientId = getBookingClientId(booking);
+    const retreatId = getObjectId(booking.retreatId || booking.retreat);
+    const item = artifactLinkModal.item;
+    const itemId = item._id!;
+    const savingKey = `link:${itemId}`;
+
+    setSaving(savingKey);
+    try {
+      const linkedArtifactResponse = await medicalArtifactsApi.update(selectedArtifact._id, {
+        bookingId,
+        clientId,
+        retreatId: retreatId || undefined,
+      } as Partial<MedicalArtifact>);
+      const linkedArtifact = linkedArtifactResponse.data;
+      const linkedArtifactId = linkedArtifact._id || selectedArtifact._id;
+
+      await bookingFlowApi.updateItem(itemId, {
+        status: 'received',
+        receivedAt: selectedArtifact.receivedAt || new Date().toISOString(),
+        notes: item.notes?.trim()
+          ? `${item.notes.trim()}\nLinked existing ${artifactLinkModal.config.label} artifact #${linkedArtifact.display_id || selectedArtifact.display_id || linkedArtifactId}.`
+          : `Linked existing ${artifactLinkModal.config.label} artifact #${linkedArtifact.display_id || selectedArtifact.display_id || linkedArtifactId}.`,
+        metadata: {
+          ...(item.metadata || {}),
+          linkedMedicalArtifactId: linkedArtifactId,
+          linkedMedicalArtifactIds: Array.from(new Set([
+            ...((((item as any).metadata || {}).linkedMedicalArtifactIds || []) as string[]),
+            linkedArtifactId,
+          ])),
+          latestArtifactId: linkedArtifactId,
+          linkedMedicalArtifactDisplayId: linkedArtifact.display_id || selectedArtifact.display_id,
+          linkedMedicalArtifactType: linkedArtifact.artifactType || selectedArtifact.artifactType,
+          linkedMedicalArtifactStage: linkedArtifact.documentStage || selectedArtifact.documentStage,
+          linkedMedicalArtifactDocumentType: linkedArtifact.documentType || selectedArtifact.documentType,
+          linkedMedicalArtifactAt: new Date().toISOString(),
+        },
+      } as Partial<BookingFlowItem>);
+
+      await bookingFlowApi.recordItemAction(itemId, {
+        actionType: 'manual_mark',
+        actionKey: 'existing_artifact_linked',
+        actionLabel: 'Existing artifact linked',
+        statusAfter: 'received',
+        notes: `Linked existing artifact #${linkedArtifact.display_id || selectedArtifact.display_id || linkedArtifactId} to ${item.title} for booking #${getBookingNumber(booking)}.`,
+        metadata: {
+          artifactId: linkedArtifactId,
+          artifactDisplayId: linkedArtifact.display_id || selectedArtifact.display_id,
+          artifactType: linkedArtifact.artifactType || selectedArtifact.artifactType,
+          documentStage: linkedArtifact.documentStage || selectedArtifact.documentStage,
+          documentType: linkedArtifact.documentType || selectedArtifact.documentType,
+          bookingId,
+          clientId,
+          retreatId,
+        },
+      }).catch(() => null);
+
+      setArtifactLinkModal(null);
+      await loadData(false);
+    } catch (error: any) {
+      console.error('Error linking existing artifact to booking step:', error);
+      alert(error?.response?.data?.message || error?.message || 'Unable to link existing artifact.');
+    } finally {
+      setSaving('');
+    }
+  };
+
   const cancelItemDateDraft = (item: BookingFlowItem | undefined) => {
     if (!item?._id) return;
     setDatePickerDrafts((current) => {
@@ -1266,6 +1406,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                       const documentTypeForStep = item ? resolveBookingDocumentType(item) : normalizeDocumentKey(row.key);
                       const relatedBookingDocument = bookingDocumentMap.get(`${getObjectId(booking)}:${documentTypeForStep}`)?.[0];
                       const artifactStepConfig = artifactStepConfigByKey[row.key] || (reviewStepConfig ? artifactStepConfigByKey[reviewStepConfig.receivedStepKey] : undefined);
+                      const linkableArtifacts = artifactStepConfig ? getArtifactLinkCandidates(booking, medicalArtifacts, artifactStepConfig) : [];
                       const relatedMedicalArtifact = linkedArtifactId
                         ? medicalArtifactById.get(linkedArtifactId)
                         : artifactStepConfig
@@ -1444,6 +1585,18 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                                 Artifact #{relatedMedicalArtifact?.display_id || relatedMedicalArtifactId.slice(-6)}
                               </Link>
                             )}
+                            {!relatedMedicalArtifactId && artifactStepConfig && linkableArtifacts.length > 0 && (
+                              <button
+                                type="button"
+                                disabled={!isEditing}
+                                onClick={() => openArtifactLinkModal(booking, item, row, artifactStepConfig)}
+                                className="inline-flex items-center justify-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                                title={isEditing ? `Link an existing ${artifactStepConfig.label} artifact to this step` : 'Unlock editing to link an existing artifact'}
+                              >
+                                <FileText className="h-3.5 w-3.5" />
+                                Link existing
+                              </button>
+                            )}
                               </div>
                               {itemActionLogs.length > 0 && (
                                 <div className="space-y-0.5 text-[11px] text-blue-800">
@@ -1484,6 +1637,73 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
           onClose={() => setComposeState(null)}
           onSent={handleComposedEmailSent}
         />
+      )}
+      {artifactLinkModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-2xl rounded-lg bg-white p-5 shadow-xl">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Link existing artifact</h3>
+                <p className="mt-1 text-sm text-gray-600">
+                  Select an existing {artifactLinkModal.config.label.toLowerCase()} artifact for {artifactLinkModal.row.title} on booking #{getBookingNumber(artifactLinkModal.booking)}.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setArtifactLinkModal(null)}
+                className="rounded-md p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                title="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="max-h-[60vh] overflow-auto rounded-md border border-gray-200">
+              <table className="min-w-full divide-y divide-gray-200 text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600">Select</th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600">Artifact</th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600">Details</th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 bg-white">
+                  {artifactLinkModal.candidates.map((artifact) => (
+                    <tr key={artifact._id} className={artifactLinkModal.selectedArtifactId === artifact._id ? 'bg-amber-50' : ''}>
+                      <td className="px-3 py-2 align-top">
+                        <input
+                          type="radio"
+                          name="artifact-link-selection"
+                          checked={artifactLinkModal.selectedArtifactId === artifact._id}
+                          onChange={() => setArtifactLinkModal((current) => (current ? { ...current, selectedArtifactId: artifact._id || '' } : current))}
+                        />
+                      </td>
+                      <td className="px-3 py-2 align-top font-medium text-gray-900">
+                        #{artifact.display_id || artifact._id?.slice(-6)} {artifact.title || artifact.documentType || artifact.artifactType}
+                      </td>
+                      <td className="px-3 py-2 align-top text-gray-600">
+                        <div>{artifact.documentStage || 'entry'} · {artifact.documentType || artifact.artifactType}</div>
+                        <div>{formatDateTime(artifact.receivedAt || artifact.createdAt)}</div>
+                        <div>{(artifact.files || []).length} file(s)</div>
+                      </td>
+                      <td className="px-3 py-2 align-top">
+                        <button
+                          type="button"
+                          disabled={saving === `link:${artifactLinkModal.item._id}` || artifactLinkModal.selectedArtifactId !== artifact._id}
+                          onClick={linkExistingArtifactToStep}
+                          className="inline-flex items-center gap-2 rounded-md bg-amber-600 px-3 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
+                        >
+                          {saving === `link:${artifactLinkModal.item._id}` ? 'Linking...' : 'Link to step'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       )}
       {reviewRequestModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
