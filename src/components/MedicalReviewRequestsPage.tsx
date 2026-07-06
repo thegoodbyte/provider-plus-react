@@ -288,7 +288,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const isEditRoute = location.pathname.endsWith('/edit');
   const isAdvisorReviewRoute = isMedicalRoute || user?.role === 'medical_advisor';
   const isMagicReviewSession = user?.accessType === 'medical_review_magic_link';
-  const canManageAccessLinks = user?.role === 'admin' || user?.role === 'medical_staff';
+  const canManageAccessLinks = user?.role === 'admin';
   const canEditReview = isEditRoute;
   const routeId = id === 'new' ? undefined : id;
   const [loading, setLoading] = useState(true);
@@ -1001,87 +1001,95 @@ const MedicalReviewRequestsPage: React.FC = () => {
               )}
 
               {canManageAccessLinks && selected._id && (
-                <div className="rounded-md border border-gray-200 p-3">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold text-gray-900">WhatsApp reviewer access</div>
-                      <div className="text-xs text-gray-500">Magic links open only this medical review and require full login for any other page.</div>
-                    </div>
-                    <button
-                      type="button"
-                      disabled={accessLinkBusy}
-                      onClick={handleGenerateAccessLink}
-                      className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-                    >
-                      Generate Link
-                    </button>
-                  </div>
-                  {generatedAccessUrl && (
-                    <div className="mt-3 rounded-md border border-blue-200 bg-blue-50 p-2">
-                      <div className="mb-1 text-xs font-semibold text-blue-900">New access link</div>
-                      <div className="break-all text-xs text-blue-900">{generatedAccessUrl}</div>
+                <details className="rounded-md border border-gray-200 bg-white">
+                  <summary className="flex cursor-pointer items-center justify-between gap-3 px-3 py-2 text-sm font-semibold text-gray-900">
+                    <span>Admin access codes</span>
+                    <span className="rounded-full bg-gray-100 px-2 py-1 text-[11px] font-semibold text-gray-600">
+                      {accessLinks.length} link{accessLinks.length === 1 ? '' : 's'}
+                    </span>
+                  </summary>
+                  <div className="border-t border-gray-200 p-3">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="text-sm font-semibold text-gray-900">WhatsApp reviewer access</div>
+                        <div className="text-xs text-gray-500">Magic links open only this medical review and require full login for any other page.</div>
+                      </div>
                       <button
                         type="button"
-                        onClick={() => handleCopyAccessLink(generatedAccessUrl)}
-                        className="mt-2 rounded-md border border-blue-300 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+                        disabled={accessLinkBusy}
+                        onClick={handleGenerateAccessLink}
+                        className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
                       >
-                        Copy for WhatsApp
+                        Generate Link
                       </button>
                     </div>
-                  )}
-                  <div className="mt-3 space-y-2">
-                    {accessLinks.length ? accessLinks.map((link) => (
-                      <div key={link._id} className="rounded-md border border-gray-200 bg-gray-50 p-2 text-xs">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="font-semibold text-gray-900">
-                            {link.reviewerName || link.reviewerEmail || 'Assigned reviewer'} · {link.label || 'review'}
+                    {generatedAccessUrl && (
+                      <div className="mt-3 rounded-md border border-blue-200 bg-blue-50 p-2">
+                        <div className="mb-1 text-xs font-semibold text-blue-900">New access link</div>
+                        <div className="break-all text-xs text-blue-900">{generatedAccessUrl}</div>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyAccessLink(generatedAccessUrl)}
+                          className="mt-2 rounded-md border border-blue-300 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+                        >
+                          Copy for WhatsApp
+                        </button>
+                      </div>
+                    )}
+                    <div className="mt-3 space-y-2">
+                      {accessLinks.length ? accessLinks.map((link) => (
+                        <div key={link._id} className="rounded-md border border-gray-200 bg-gray-50 p-2 text-xs">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="font-semibold text-gray-900">
+                              {link.reviewerName || link.reviewerEmail || 'Assigned reviewer'} · {link.label || 'review'}
+                            </div>
+                            <span className="rounded-full bg-white px-2 py-1 font-semibold text-gray-700">{link.status || 'not_accessed'}</span>
                           </div>
-                          <span className="rounded-full bg-white px-2 py-1 font-semibold text-gray-700">{link.status || 'not_accessed'}</span>
-                        </div>
-                        <div className="mt-1 grid gap-1 text-gray-600 sm:grid-cols-2">
-                          <div>Created: {formatDateTime(link.createdAt)}</div>
-                          <div>First access: {link.firstAccessedAt ? formatDateTime(link.firstAccessedAt) : 'Not accessed yet'}</div>
-                          <div>
-                            Expires: {link.expiresAt
-                              ? formatDateTime(link.expiresAt)
-                              : 'One hour after first successful access'}
+                          <div className="mt-1 grid gap-1 text-gray-600 sm:grid-cols-2">
+                            <div>Created: {formatDateTime(link.createdAt)}</div>
+                            <div>First access: {link.firstAccessedAt ? formatDateTime(link.firstAccessedAt) : 'Not accessed yet'}</div>
+                            <div>
+                              Expires: {link.expiresAt
+                                ? formatDateTime(link.expiresAt)
+                                : 'One hour after first successful access'}
+                            </div>
+                            <div>Access count: {link.accessCount || 0}</div>
+                            <div>First IP: {link.firstAccessIp || '-'}</div>
+                            <div>Last IP: {link.lastAccessIp || '-'}</div>
                           </div>
-                          <div>Access count: {link.accessCount || 0}</div>
-                          <div>First IP: {link.firstAccessIp || '-'}</div>
-                          <div>Last IP: {link.lastAccessIp || '-'}</div>
-                        </div>
-                        {link.url ? (
-                          <div className="mt-2 rounded-md border border-blue-100 bg-white p-2">
-                            <div className="break-all text-[11px] font-medium text-blue-900">{link.url}</div>
+                          {link.url ? (
+                            <div className="mt-2 rounded-md border border-blue-100 bg-white p-2">
+                              <div className="break-all text-[11px] font-medium text-blue-900">{link.url}</div>
+                              <button
+                                type="button"
+                                onClick={() => handleCopyAccessLink(link.url!)}
+                                className="mt-2 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                              >
+                                Copy link
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-[11px] text-amber-800">
+                              This older link was stored as a hash only. Generate a new one if you need to copy it again.
+                            </div>
+                          )}
+                          {!link.revokedAt && (
                             <button
                               type="button"
-                              onClick={() => handleCopyAccessLink(link.url!)}
-                              className="mt-2 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-100"
+                              disabled={accessLinkBusy}
+                              onClick={() => handleRevokeAccessLink(link._id)}
+                              className="mt-2 rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
                             >
-                              Copy link
+                              Revoke
                             </button>
-                          </div>
-                        ) : (
-                          <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-[11px] text-amber-800">
-                            This older link was stored as a hash only. Generate a new one if you need to copy it again.
-                          </div>
-                        )}
-                        {!link.revokedAt && (
-                          <button
-                            type="button"
-                            disabled={accessLinkBusy}
-                            onClick={() => handleRevokeAccessLink(link._id)}
-                            className="mt-2 rounded-md border border-red-200 bg-white px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
-                          >
-                            Revoke
-                          </button>
-                        )}
-                      </div>
-                    )) : (
-                      <div className="text-xs text-gray-500">No WhatsApp access links generated yet.</div>
-                    )}
+                          )}
+                        </div>
+                      )) : (
+                        <div className="text-xs text-gray-500">No WhatsApp access links generated yet.</div>
+                      )}
+                    </div>
                   </div>
-                </div>
+                </details>
               )}
 
               <div className={isDetailView ? 'space-y-2' : 'rounded-md border border-gray-200 bg-gray-50 p-3'}>
