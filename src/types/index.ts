@@ -1408,6 +1408,19 @@ export interface EmailTemplate {
   updatedAt?: string;
 }
 
+export interface EmailTemplateSeedOption {
+  key: string;
+  name: string;
+  subject?: string;
+  category?: string;
+  templateKey?: string;
+  language?: string;
+  bookingFlowStepKey?: string;
+  bookingFlowStatusOnSend?: string;
+  description?: string;
+  active?: boolean;
+}
+
 export interface SentEmail {
   _id?: string;
   display_id?: number;

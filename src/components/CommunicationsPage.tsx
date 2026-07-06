@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { FiAlertCircle, FiCheckCircle, FiInbox, FiMail, FiPlus, FiRefreshCw, FiSave, FiSend, FiTrash2 } from 'react-icons/fi';
 import { Link, useLocation } from 'react-router-dom';
 import { communicationsApi, clientsApi, retreatsApi } from '../services/api';
-import { Client, EmailTemplate, InboundEmail, MailSettings, Retreat, SentEmail } from '../types';
+import { Client, EmailTemplate, EmailTemplateSeedOption, InboundEmail, MailSettings, Retreat, SentEmail } from '../types';
 import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 
@@ -72,6 +72,10 @@ const CommunicationsPage: React.FC = () => {
   const [composeForm, setComposeForm] = useState(defaultComposeForm);
   const [savingTemplate, setSavingTemplate] = useState(false);
   const [seedingTemplates, setSeedingTemplates] = useState(false);
+  const [seedOptions, setSeedOptions] = useState<EmailTemplateSeedOption[]>([]);
+  const [showSeedOptions, setShowSeedOptions] = useState(false);
+  const [selectedSeedKeys, setSelectedSeedKeys] = useState<string[]>([]);
+  const [overwriteSeedTemplates, setOverwriteSeedTemplates] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [processingInbound, setProcessingInbound] = useState(false);
@@ -81,6 +85,14 @@ const CommunicationsPage: React.FC = () => {
     () => templates.find((template) => template._id === selectedTemplateId) || null,
     [templates, selectedTemplateId],
   );
+
+  const groupedSeedOptions = useMemo(() => {
+    return seedOptions.reduce((groups: Record<string, EmailTemplateSeedOption[]>, option) => {
+      const groupKey = option.templateKey || option.category || 'other';
+      groups[groupKey] = [...(groups[groupKey] || []), option];
+      return groups;
+    }, {});
+  }, [seedOptions]);
 
   const selectedSentEmail = useMemo(
     () => sentEmails.find((email) => email._id === selectedSentEmailId) || null,
@@ -134,13 +146,14 @@ const CommunicationsPage: React.FC = () => {
     setLoadWarnings([]);
     try {
       const quietRequest = { suppressGlobalError: true };
-      const [settingsRes, templatesRes, sentRes, inboundRes, clientsRes, retreatsRes] = await Promise.allSettled([
+      const [settingsRes, templatesRes, sentRes, inboundRes, clientsRes, retreatsRes, seedOptionsRes] = await Promise.allSettled([
         communicationsApi.getSettings(quietRequest),
         communicationsApi.getTemplates(),
         communicationsApi.getSentEmails(quietRequest),
         communicationsApi.getInboundEmails({ limit: 100 }, quietRequest),
         clientsApi.getAll(),
         retreatsApi.getAll(),
+        communicationsApi.getTemplateSeedOptions(),
       ]);
       const warnings: string[] = [];
       if (settingsRes.status === 'fulfilled') setSettings(settingsRes.value.data);
@@ -160,6 +173,18 @@ const CommunicationsPage: React.FC = () => {
       else warnings.push('Client list could not be loaded.');
       if (retreatsRes.status === 'fulfilled') setRetreats(Array.isArray(retreatsRes.value.data) ? retreatsRes.value.data : []);
       else warnings.push('Retreat list could not be loaded.');
+      if (seedOptionsRes.status === 'fulfilled') {
+        const options = Array.isArray(seedOptionsRes.value.data) ? seedOptionsRes.value.data : [];
+        setSeedOptions(options);
+        setSelectedSeedKeys((current) => current.length > 0
+          ? current.filter((key) => options.some((option) => option.key === key))
+          : options
+            .filter((option) => option.templateKey === 'questionnaire_request' && ['en', 'cz', 'pl'].includes(option.language || ''))
+            .map((option) => option.key)
+        );
+      } else {
+        warnings.push('Template seed options could not be loaded.');
+      }
       setLoadWarnings(warnings);
     } catch (error) {
       console.error('Error loading communications data:', error);
@@ -277,15 +302,41 @@ const CommunicationsPage: React.FC = () => {
     }
   };
 
-  const handleSeedDefaultTemplates = async () => {
-    const overwrite = window.confirm(
-      'Seed default templates?\n\nOK: reset existing default templates back to code defaults and create missing templates.\nCancel: create only missing default templates and keep existing edits unchanged.',
+  const toggleSeedOption = (key: string) => {
+    setSelectedSeedKeys((current) => current.includes(key)
+      ? current.filter((item) => item !== key)
+      : [...current, key]
     );
+  };
+
+  const selectQuestionnaireSeedOptions = () => {
+    setSelectedSeedKeys(seedOptions
+      .filter((option) => option.templateKey === 'questionnaire_request' && ['en', 'cz', 'pl'].includes(option.language || ''))
+      .map((option) => option.key)
+    );
+  };
+
+  const handleSeedDefaultTemplates = async () => {
+    const selectedOptions = seedOptions.filter((option) => selectedSeedKeys.includes(option.key));
+    if (selectedOptions.length === 0) {
+      alert('Select at least one template to seed.');
+      return;
+    }
+    const confirmed = window.confirm(
+      `${overwriteSeedTemplates ? 'Overwrite' : 'Create missing'} ${selectedOptions.length} selected template variant(s)?`,
+    );
+    if (!confirmed) return;
     setSeedingTemplates(true);
     try {
-      const response = await communicationsApi.seedDefaultTemplates({ overwrite });
+      const response = await communicationsApi.seedDefaultTemplates({
+        overwrite: overwriteSeedTemplates,
+        templateSelections: selectedOptions.map((option) => ({
+          templateKey: option.templateKey,
+          language: option.language,
+        })),
+      });
       await loadAll();
-      alert(`Default templates seeded. Created: ${response.data.created}. Updated: ${response.data.updated}. Skipped unchanged existing templates: ${response.data.skipped || 0}.`);
+      alert(`Selected templates seeded. Created: ${response.data.created}. Updated: ${response.data.updated}. Skipped unchanged existing templates: ${response.data.skipped || 0}.`);
     } catch (error: any) {
       console.error('Error seeding default templates:', error);
       alert(error?.response?.data?.message || error?.message || 'Unable to seed default templates.');
@@ -652,12 +703,12 @@ const CommunicationsPage: React.FC = () => {
               <div className="flex gap-2">
                 <button
                   type="button"
-                  onClick={handleSeedDefaultTemplates}
+                  onClick={() => setShowSeedOptions((current) => !current)}
                   disabled={seedingTemplates}
                   className="inline-flex items-center gap-2 rounded-md border border-blue-200 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
                 >
                   <Icon icon={FiRefreshCw} />
-                  {seedingTemplates ? 'Seeding...' : 'Seed Defaults'}
+                  {seedingTemplates ? 'Seeding...' : 'Reseed'}
                 </button>
                 <button
                   type="button"
@@ -669,6 +720,66 @@ const CommunicationsPage: React.FC = () => {
                 </button>
               </div>
             </div>
+            {showSeedOptions && (
+              <div className="rounded-md border border-blue-100 bg-blue-50 p-3 text-sm">
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <div className="font-semibold text-blue-950">Reseed default templates</div>
+                    <div className="text-xs text-blue-800">Questionnaire templates include the dynamic Jotform link placeholder <code>{'{{links.questionnaire}}'}</code>.</div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={selectQuestionnaireSeedOptions}
+                    className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+                  >
+                    Questionnaire EN/CZ/PL
+                  </button>
+                </div>
+                <label className="mb-3 inline-flex items-center gap-2 text-xs font-medium text-blue-900">
+                  <input
+                    type="checkbox"
+                    checked={overwriteSeedTemplates}
+                    onChange={(event) => setOverwriteSeedTemplates(event.target.checked)}
+                  />
+                  Overwrite selected existing templates with code defaults
+                </label>
+                <div className="max-h-64 space-y-3 overflow-y-auto rounded-md bg-white p-2">
+                  {Object.entries(groupedSeedOptions).map(([groupKey, options]) => (
+                    <div key={groupKey} className="rounded border border-gray-100 p-2">
+                      <div className="mb-2 text-xs font-semibold uppercase text-gray-500">{groupKey}</div>
+                      <div className="space-y-1">
+                        {options.map((option) => (
+                          <label key={option.key} className="flex items-start gap-2 rounded px-2 py-1 hover:bg-gray-50">
+                            <input
+                              type="checkbox"
+                              checked={selectedSeedKeys.includes(option.key)}
+                              onChange={() => toggleSeedOption(option.key)}
+                              className="mt-1"
+                            />
+                            <span className="min-w-0">
+                              <span className="block truncate font-medium text-gray-900">{option.name}</span>
+                              <span className="block truncate text-xs text-gray-500">
+                                {(option.language || 'en').toUpperCase()} · {option.category || 'general'}{option.bookingFlowStepKey ? ` · step ${option.bookingFlowStepKey}` : ''}
+                              </span>
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  {seedOptions.length === 0 && <div className="p-2 text-xs text-gray-500">No seed options loaded.</div>}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleSeedDefaultTemplates}
+                  disabled={seedingTemplates || selectedSeedKeys.length === 0}
+                  className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  <Icon icon={FiRefreshCw} />
+                  {seedingTemplates ? 'Seeding selected...' : `Seed ${selectedSeedKeys.length} selected`}
+                </button>
+              </div>
+            )}
             <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-1">
               {templates.map((template) => (
                 <button

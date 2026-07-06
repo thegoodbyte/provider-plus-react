@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, MailSettings, EmailTemplate, SentEmail, RetreatArtifactSubmissionsResponse } from '../types';
+import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, MailSettings, EmailTemplate, EmailTemplateSeedOption, SentEmail, RetreatArtifactSubmissionsResponse } from '../types';
 import { authService } from './authService';
 import { cacheService } from './cacheService';
 import { API_BASE_URL } from '../config/api.config';
@@ -417,8 +417,9 @@ export const communicationsApi = {
     `communications:templates:${category}:${language}`,
     () => api.get<EmailTemplate>(`/communications/templates/category/${category}/${language}`)
   ),
+  getTemplateSeedOptions: () => api.get<EmailTemplateSeedOption[]>('/communications/templates/seed-options'),
   getNextTemplateDisplayId: () => api.get<number>('/communications/templates/next-display-id'),
-  seedDefaultTemplates: (options: { overwrite?: boolean; templateKey?: string; language?: string } = {}) => {
+  seedDefaultTemplates: (options: { overwrite?: boolean; templateKey?: string; language?: string; templateSelections?: Array<{ templateKey?: string; language?: string }> } = {}) => {
     cacheService.clearPattern('communications:templates');
     return api.post<{ created: number; updated: number; skipped: number; templates: EmailTemplate[] }>('/communications/templates/seed-defaults', options);
   },
