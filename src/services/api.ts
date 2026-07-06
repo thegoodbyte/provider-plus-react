@@ -1247,6 +1247,10 @@ export const bookingDocumentsApi = {
     cacheService.clearPattern('booking-documents:');
     return api.post<BookingDocument>('/booking-documents', data);
   },
+  update: (id: string, data: Partial<BookingDocument> & { bookingId?: string; documentType?: string }) => {
+    cacheService.clearPattern('booking-documents:');
+    return api.patch<BookingDocument>(`/booking-documents/${id}`, data);
+  },
   uploadFiles: (id: string, files: File[]) => {
     cacheService.clearPattern('booking-documents:');
     const formData = new FormData();

@@ -90,6 +90,7 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
   const [loading, setLoading] = useState(false);
   const [uploadingType, setUploadingType] = useState<string | null>(null);
   const [sendingItemId, setSendingItemId] = useState<string | null>(null);
+  const [linkingDocumentId, setLinkingDocumentId] = useState<string | null>(null);
   const [markOnUpload, setMarkOnUpload] = useState<Record<string, boolean>>({});
   const [viewer, setViewer] = useState<DocumentFileViewer | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -263,6 +264,41 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
     }
   };
 
+  const handleLinkExistingDocument = async (document: BookingDocument, section: DocumentSection) => {
+    if (!document._id || !section.receivedItem?._id) return;
+    setLinkingDocumentId(document._id);
+    setError(null);
+    try {
+      await bookingDocumentsApi.update(document._id, {
+        bookingFlowItemId: section.receivedItem._id,
+        metadata: {
+          ...(document.metadata || {}),
+          manualLinkSource: 'booking-documents-section',
+          manualLinkedAt: new Date().toISOString(),
+          markBookingStepOnUpload: true,
+        },
+      } as any);
+      await bookingFlowApi.recordItemAction(section.receivedItem._id, {
+        actionType: 'artifact_received',
+        actionKey: `${section.type}_manual_linked`,
+        statusAfter: 'received',
+        notes: `${section.title} manually linked from an existing booking document.`,
+        metadata: {
+          documentType: section.type,
+          bookingDocumentId: document._id,
+          fileNames: (document.files || []).map((file) => file.fileName).filter(Boolean),
+          source: 'manual_link',
+        },
+      });
+      await loadDocuments();
+      onUploadComplete?.();
+    } catch (linkError: any) {
+      setError(linkError?.response?.data?.message || linkError?.message || 'Unable to link existing document.');
+    } finally {
+      setLinkingDocumentId(null);
+    }
+  };
+
   return (
     <div className="booking-medical-upload">
       <div className="booking-documents-header">
@@ -328,6 +364,16 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
                         <div className="upload-date">Received: {formatDate(document.receivedAt || document.createdAt)}</div>
                       </div>
                       <div className="booking-document-file-list">
+                        {section.receivedItem && (
+                          <button
+                            type="button"
+                            className="btn btn-xs btn-outline-primary mb-2"
+                            disabled={linkingDocumentId === document._id || Boolean(document.bookingFlowItemId)}
+                            onClick={() => handleLinkExistingDocument(document, section)}
+                          >
+                            {document.bookingFlowItemId ? 'Linked to step' : linkingDocumentId === document._id ? 'Linking...' : 'Link to step'}
+                          </button>
+                        )}
                         {(document.files || []).map((file, index) => (
                           <div key={`${file.s3Key || file.filePath || file.fileName}-${index}`} className="booking-document-file-item">
                             <button

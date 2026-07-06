@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Eye, FileText, RefreshCw, Save, Send, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { bookingFlowApi, clientMedicalApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { bookingDocumentsApi, bookingFlowApi, clientMedicalApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { BookingFlowItem, ClientMedical, MedicalArtifact, MedicalReviewRequest } from '../types';
 import './BookingMedicalUpload.css';
@@ -86,6 +86,21 @@ const mergeArtifacts = (artifactGroups: MedicalArtifact[][]) => {
     return true;
   });
 };
+
+const mapArtifactFilesToBookingDocumentFiles = (artifact?: MedicalArtifact) =>
+  (artifact?.files || [])
+    .map((file) => ({
+      fileName: file.fileName,
+      originalFileName: file.fileName,
+      s3Key: file.s3Key || file.filePath,
+      filePath: file.filePath || file.s3Key,
+      thumbnailS3Key: file.thumbnailS3Key,
+      thumbnailFileName: file.thumbnailFileName,
+      thumbnailMimeType: file.thumbnailMimeType,
+      size: file.size,
+      uploadedAt: file.uploadedAt,
+    }))
+    .filter((file) => file.s3Key || file.filePath);
 
 const getLatestReview = (reviews: MedicalReviewRequest[] = []) =>
   [...reviews].sort((a, b) => reviewDate(b) - reviewDate(a))[0];
@@ -336,6 +351,34 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
     } as Partial<BookingFlowItem>);
   };
 
+  const ensureBookingDocument = async (artifact: MedicalArtifact, section: (typeof medicalTestSections)[number]) => {
+    if (!artifact._id) return;
+    const files = mapArtifactFilesToBookingDocumentFiles(artifact);
+    if (!files.length) return;
+
+    try {
+      await bookingDocumentsApi.create({
+        bookingId,
+        clientId,
+        retreatId,
+        documentType: section.documentType,
+        title: `${section.title}${bookingNumber ? ` - Booking ${bookingNumber}` : ''}`,
+        description: section.description,
+        metadata: {
+          source: 'medical_artifact',
+          linkedMedicalArtifactId: artifact._id,
+          linkedMedicalArtifactDisplayId: artifact.display_id,
+          linkedMedicalArtifactType: artifact.artifactType,
+          linkedMedicalArtifactDocumentStage: artifact.documentStage,
+          bookingNumber,
+        },
+        files,
+      });
+    } catch (documentError) {
+      console.error(`Unable to create booking document for ${section.title}:`, documentError);
+    }
+  };
+
   useEffect(() => {
     const candidates = medicalTestSections
       .map((section) => {
@@ -483,6 +526,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
           throw uploadError;
         }
         const uploadedArtifact = uploadResponse.data?.artifact || created.data;
+        await ensureBookingDocument(uploadedArtifact, section);
         await createReviewRequest(uploadedArtifact, section);
         await markBookingFlowReceived(section.type, uploadedArtifact);
       }
