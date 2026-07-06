@@ -166,10 +166,74 @@
 }
 
 .retreat-options-section h2 {
-  margin: 0 0 24px 0;
+  margin: 0;
   font-size: 20px;
   font-weight: 600;
   color: #1f2937;
+}
+
+.waiting-list-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.waiting-list-toolbar p {
+  margin: 4px 0 0 0;
+  color: #6b7280;
+  font-size: 14px;
+}
+
+.waiting-list-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.reset-selections-btn,
+.save-selections-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.reset-selections-btn {
+  border: 1px solid #d1d5db;
+  background: white;
+  color: #374151;
+}
+
+.reset-selections-btn:hover:not(:disabled) {
+  background: #f9fafb;
+  border-color: #9ca3af;
+}
+
+.save-selections-btn {
+  border: 1px solid #111827;
+  background: #111827;
+  color: white;
+}
+
+.save-selections-btn:hover:not(:disabled) {
+  background: #374151;
+  border-color: #374151;
+}
+
+.reset-selections-btn:disabled,
+.save-selections-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .empty-state {
@@ -197,6 +261,108 @@
 .retreat-options-grid {
   display: grid;
   gap: 16px;
+}
+
+.retreat-selection-table {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+  background: white;
+}
+
+.retreat-selection-header,
+.retreat-selection-row {
+  display: grid;
+  grid-template-columns: 88px minmax(220px, 1.4fr) minmax(170px, 1fr) minmax(150px, 0.9fr) minmax(130px, 0.7fr) minmax(150px, 0.8fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.retreat-selection-header {
+  padding: 12px 16px;
+  background: #f9fafb;
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.retreat-selection-row {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid #f3f4f6;
+  background: white;
+  padding: 14px 16px;
+  text-align: left;
+  cursor: pointer;
+  color: #1f2937;
+  transition: background-color 0.2s;
+}
+
+.retreat-selection-row:last-child {
+  border-bottom: 0;
+}
+
+.retreat-selection-row:hover {
+  background: #f9fafb;
+}
+
+.retreat-selection-row.selected {
+  background: #f0fdf4;
+}
+
+.retreat-selection-row.on-waiting-list {
+  border-left: 4px solid #10b981;
+}
+
+.retreat-selection-row:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.retreat-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 700;
+  color: #047857;
+}
+
+.retreat-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.retreat-main strong {
+  color: #111827;
+}
+
+.retreat-main span {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.retreat-table-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #4b5563;
+  font-size: 13px;
+}
+
+.retreat-status-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.not-listed {
+  color: #6b7280;
+  font-size: 12px;
 }
 
 .retreat-option {
@@ -346,6 +512,28 @@
   color: #92400e;
 }
 
+.status-interested,
+.status-waiting {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.status-offered {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-confirmed {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-declined,
+.status-removed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 .priority {
   font-size: 11px;
   font-weight: 500;
@@ -367,6 +555,11 @@
 .priority-low {
   background: #f0fdf4;
   color: #059669;
+}
+
+.priority-urgent {
+  background: #7f1d1d;
+  color: white;
 }
 
 .entry-notes {
@@ -406,6 +599,39 @@
 @media (max-width: 768px) {
   .client-waiting-lists {
     padding: 16px;
+  }
+
+  .waiting-list-toolbar {
+    flex-direction: column;
+  }
+
+  .waiting-list-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .reset-selections-btn,
+  .save-selections-btn {
+    flex: 1;
+  }
+
+  .retreat-selection-header {
+    display: none;
+  }
+
+  .retreat-selection-row {
+    grid-template-columns: 42px minmax(0, 1fr);
+    gap: 8px 12px;
+  }
+
+  .retreat-check {
+    align-self: flex-start;
+  }
+
+  .retreat-main,
+  .retreat-table-meta,
+  .retreat-status-cell {
+    grid-column: 2;
   }
 
   .retreat-header {

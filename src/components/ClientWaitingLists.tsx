@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Calendar, MapPin, Users, Clock, CheckSquare, Square, Plus, Trash2 } from 'lucide-react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { Search, Calendar, MapPin, Users, Clock, CheckSquare, Square, Plus, Save, RotateCcw } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
 import { waitingListApi, clientsApi, retreatsApi } from '../services/api';
 import './ClientWaitingLists.css';
@@ -44,8 +44,10 @@ const ClientWaitingLists: React.FC = () => {
   const [clientSearchQuery, setClientSearchQuery] = useState('');
   const [clientSearchResults, setClientSearchResults] = useState<Client[]>([]);
   const [retreatOptions, setRetreatOptions] = useState<RetreatOption[]>([]);
+  const [pendingRetreatIds, setPendingRetreatIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [updatingRetreat, setUpdatingRetreat] = useState<string | null>(null);
+  const [savingSelections, setSavingSelections] = useState(false);
 
   useEffect(() => {
     if (selectedClient) {
@@ -108,6 +110,13 @@ const ClientWaitingLists: React.FC = () => {
       });
 
       setRetreatOptions(options);
+      setPendingRetreatIds(
+        new Set(
+          options
+            .filter((option: RetreatOption) => option.isOnWaitingList)
+            .map((option: RetreatOption) => option.retreat._id)
+        )
+      );
     } catch (error) {
       console.error('Error fetching retreat options:', error);
     } finally {
@@ -115,41 +124,65 @@ const ClientWaitingLists: React.FC = () => {
     }
   };
 
-  const toggleWaitingList = async (retreatId: string, isCurrentlyOnList: boolean) => {
+  const toggleRetreatSelection = (retreatId: string) => {
+    setPendingRetreatIds((current) => {
+      const next = new Set(current);
+      if (next.has(retreatId)) {
+        next.delete(retreatId);
+      } else {
+        next.add(retreatId);
+      }
+      return next;
+    });
+  };
+
+  const resetPendingSelections = () => {
+    setPendingRetreatIds(
+      new Set(
+        retreatOptions
+          .filter((option) => option.isOnWaitingList)
+          .map((option) => option.retreat._id)
+      )
+    );
+  };
+
+  const hasSelectionChanges = useMemo(() => {
+    return retreatOptions.some(
+      (option) => pendingRetreatIds.has(option.retreat._id) !== option.isOnWaitingList
+    );
+  }, [pendingRetreatIds, retreatOptions]);
+
+  const saveWaitingListSelections = async () => {
     if (!selectedClient) return;
 
-    setUpdatingRetreat(retreatId);
+    setSavingSelections(true);
 
     try {
-      if (isCurrentlyOnList) {
-        // Remove from waiting list
-        const entry = retreatOptions.find(opt =>
-          opt.retreat._id === retreatId
-        )?.waitingListEntry;
+      for (const option of retreatOptions) {
+        const shouldBeOnList = pendingRetreatIds.has(option.retreat._id);
+        if (shouldBeOnList === option.isOnWaitingList) continue;
 
-        if (entry) {
-          await waitingListApi.removeFromWaitingList(entry._id);
+        setUpdatingRetreat(option.retreat._id);
+
+        if (shouldBeOnList) {
+          await waitingListApi.addToWaitingList({
+            clientId: selectedClient._id,
+            retreatId: option.retreat._id,
+            priority: 'medium',
+            notes: ''
+          });
+        } else if (option.waitingListEntry?._id) {
+          await waitingListApi.removeFromWaitingList(option.waitingListEntry._id);
         }
-      } else {
-        // Add to waiting list
-        await waitingListApi.addToWaitingList({
-          clientId: selectedClient._id,
-          retreatId: retreatId,
-          priority: 'medium',
-          notes: ''
-        });
       }
 
-      // Refresh the options
       await fetchRetreatOptions();
     } catch (error) {
       console.error('Error updating waiting list:', error);
-      alert(isCurrentlyOnList
-        ? 'Error removing from waiting list'
-        : 'Error adding to waiting list. The client may already be on the list.'
-      );
+      alert('Error saving waiting list selections. One of the selected retreats may already have a duplicate waiting-list entry.');
     } finally {
       setUpdatingRetreat(null);
+      setSavingSelections(false);
     }
   };
 
@@ -233,6 +266,7 @@ const ClientWaitingLists: React.FC = () => {
               onClick={() => {
                 setSelectedClient(null);
                 setRetreatOptions([]);
+                setPendingRetreatIds(new Set());
               }}
             >
               Change Client
@@ -244,7 +278,32 @@ const ClientWaitingLists: React.FC = () => {
       {/* Retreat Options */}
       {selectedClient && (
         <div className="retreat-options-section">
-          <h2>Waiting List Options</h2>
+          <div className="waiting-list-toolbar">
+            <div>
+              <h2>Waiting List Options</h2>
+              <p>Check every retreat this client wants to wait for, then save the changes.</p>
+            </div>
+            <div className="waiting-list-actions">
+              <button
+                type="button"
+                className="reset-selections-btn"
+                onClick={resetPendingSelections}
+                disabled={!hasSelectionChanges || savingSelections}
+              >
+                <RotateCcw size={16} />
+                Reset
+              </button>
+              <button
+                type="button"
+                className="save-selections-btn"
+                onClick={saveWaitingListSelections}
+                disabled={!hasSelectionChanges || savingSelections}
+              >
+                <Save size={16} />
+                {savingSelections ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
 
           {retreatOptions.length === 0 ? (
             <div className="empty-state">
@@ -253,92 +312,87 @@ const ClientWaitingLists: React.FC = () => {
               <p>There are no upcoming retreats available for waiting lists.</p>
             </div>
           ) : (
-            <div className="retreat-options-grid">
+            <div className="retreat-selection-table">
+              <div className="retreat-selection-header">
+                <span>Selected</span>
+                <span>Retreat</span>
+                <span>Dates</span>
+                <span>Location</span>
+                <span>Capacity</span>
+                <span>Status</span>
+              </div>
               {retreatOptions.map((option) => (
-                <div
+                <button
+                  type="button"
                   key={option.retreat._id}
-                  className={`retreat-option ${option.isOnWaitingList ? 'on-waiting-list' : ''}`}
+                  className={[
+                    'retreat-selection-row',
+                    pendingRetreatIds.has(option.retreat._id) ? 'selected' : '',
+                    option.isOnWaitingList ? 'on-waiting-list' : ''
+                  ].filter(Boolean).join(' ')}
+                  onClick={() => toggleRetreatSelection(option.retreat._id)}
+                  disabled={savingSelections}
                 >
-                  <div className="retreat-header">
-                    <div className="retreat-info">
-                      <h3>{option.retreat.name}</h3>
-                      <div className="retreat-details">
-                        <div className="detail-row">
-                          <Calendar size={14} />
-                          <span>{formatDateRange(option.retreat.startDate, option.retreat.endDate)}</span>
-                        </div>
-                        <div className="detail-row">
-                          <MapPin size={14} />
-                          <span>{option.retreat.location}</span>
-                        </div>
-                        <div className="detail-row">
-                          <Users size={14} />
-                          <span>
-                            {option.retreat.currentOccupancy}/{option.retreat.capacity} occupied
-                            {getAvailableSpots(option.retreat) > 0 && (
-                              <span className="available-spots">
-                                ({getAvailableSpots(option.retreat)} available)
-                              </span>
-                            )}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
+                  <span className="retreat-check">
+                    {updatingRetreat === option.retreat._id ? (
+                      <Clock size={18} />
+                    ) : pendingRetreatIds.has(option.retreat._id) ? (
+                      <CheckSquare size={18} />
+                    ) : (
+                      <Square size={18} />
+                    )}
+                    {pendingRetreatIds.has(option.retreat._id) ? 'Yes' : 'No'}
+                  </span>
 
-                    <div className="waiting-list-toggle">
-                      <button
-                        className={`toggle-btn ${option.isOnWaitingList ? 'active' : ''}`}
-                        onClick={() => toggleWaitingList(option.retreat._id, option.isOnWaitingList)}
-                        disabled={updatingRetreat === option.retreat._id}
-                      >
-                        {updatingRetreat === option.retreat._id ? (
-                          <Clock size={16} />
-                        ) : option.isOnWaitingList ? (
-                          <CheckSquare size={16} />
-                        ) : (
-                          <Square size={16} />
-                        )}
-                        {option.isOnWaitingList ? 'On Waiting List' : 'Join Waiting List'}
-                      </button>
-                    </div>
-                  </div>
+                  <span className="retreat-main">
+                    <strong>{option.retreat.name}</strong>
+                    {option.isOnWaitingList && option.waitingListEntry ? (
+                      <span>
+                        Position #{option.waitingListEntry.position} - Joined {formatDate(option.waitingListEntry.joinedDate)}
+                      </span>
+                    ) : (
+                      <span>Not currently on this waiting list</span>
+                    )}
+                  </span>
 
-                  {option.isOnWaitingList && option.waitingListEntry && (
-                    <div className="waiting-list-details">
-                      <div className="position-info">
-                        <div className="position-badge">
-                          Position #{option.waitingListEntry.position}
-                        </div>
-                        <div className="joined-date">
-                          <Clock size={12} />
-                          Joined {formatDate(option.waitingListEntry.joinedDate)}
-                        </div>
-                      </div>
+                  <span className="retreat-table-meta">
+                    <Calendar size={14} />
+                    {formatDateRange(option.retreat.startDate, option.retreat.endDate)}
+                  </span>
 
-                      <div className="status-priority">
+                  <span className="retreat-table-meta">
+                    <MapPin size={14} />
+                    {option.retreat.location || 'No location'}
+                  </span>
+
+                  <span className="retreat-table-meta">
+                    <Users size={14} />
+                    {option.retreat.currentOccupancy}/{option.retreat.capacity}
+                    {getAvailableSpots(option.retreat) > 0 && (
+                      <span className="available-spots">
+                        {getAvailableSpots(option.retreat)} open
+                      </span>
+                    )}
+                    {getAvailableSpots(option.retreat) === 0 && (
+                      <span className="full-badge">FULL</span>
+                    )}
+                  </span>
+
+                  <span className="retreat-status-cell">
+                    {option.isOnWaitingList && option.waitingListEntry ? (
+                      <>
                         <span className={`status status-${option.waitingListEntry.status}`}>
                           {option.waitingListEntry.status}
                         </span>
                         <span className={`priority priority-${option.waitingListEntry.priority}`}>
-                          {option.waitingListEntry.priority} priority
+                          {option.waitingListEntry.priority}
                         </span>
-                      </div>
-
-                      {option.waitingListEntry.notes && (
-                        <div className="entry-notes">
-                          <strong>Notes:</strong> {option.waitingListEntry.notes}
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {getAvailableSpots(option.retreat) === 0 && (
-                    <div className="full-notice">
-                      <span className="full-badge">FULL</span>
-                      <span>Join waiting list for cancellations</span>
-                    </div>
-                  )}
-                </div>
+                      </>
+                    ) : (
+                      <span className="not-listed">Not listed</span>
+                    )}
+                  </span>
+                </button>
               ))}
             </div>
           )}
