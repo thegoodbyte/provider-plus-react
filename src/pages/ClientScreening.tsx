@@ -30,12 +30,21 @@ interface ScreeningData {
   asthmaConditionOk: boolean;
   asthmaCondition: string;
   depression: boolean;
+  depressionSince: string;
   depressionDetails: string;
   anxiety: boolean;
+  anxietySince: string;
   anxietyDetails: string;
+  psychiatristCare: boolean;
+  psychiatristCareDetails: string;
   medications: string;
   ssris: string;
   drugsHistory: string;
+  nicotineCurrent: boolean;
+  nicotineWantsToQuit: boolean;
+  nicotineSince: string;
+  nicotinePerDay: string;
+  nicotineNotes: string;
   marijuana: boolean;
   marijuanaDetails: string;
   cocaine: boolean;
@@ -256,12 +265,21 @@ const ClientScreening: React.FC = () => {
     asthmaConditionOk: false,
     asthmaCondition: '',
     depression: false,
+    depressionSince: '',
     depressionDetails: '',
     anxiety: false,
+    anxietySince: '',
     anxietyDetails: '',
+    psychiatristCare: false,
+    psychiatristCareDetails: '',
     medications: '',
     ssris: '',
     drugsHistory: '',
+    nicotineCurrent: false,
+    nicotineWantsToQuit: false,
+    nicotineSince: '',
+    nicotinePerDay: '',
+    nicotineNotes: '',
     marijuana: false,
     marijuanaDetails: '',
     cocaine: false,
@@ -446,11 +464,20 @@ const ClientScreening: React.FC = () => {
         asthmaConditionOk: existingScreening.asthmaConditionOk === true || asthmaCondition === 'OK',
         asthmaCondition,
         depression: existingScreening.depression === true,
+        depressionSince: existingValue('depressionSince', 'depressionDiagnosedSince', 'depressionDate') ?? prev.depressionSince,
         depressionDetails: existingValue('depressionDetails') ?? prev.depressionDetails,
         anxiety: existingScreening.anxiety === true,
+        anxietySince: existingValue('anxietySince', 'anxietyDiagnosedSince', 'anxietyDate') ?? prev.anxietySince,
         anxietyDetails: existingValue('anxietyDetails') ?? prev.anxietyDetails,
+        psychiatristCare: existingScreening.psychiatristCare === true,
+        psychiatristCareDetails: existingValue('psychiatristCareDetails', 'psychiatristDetails') ?? prev.psychiatristCareDetails,
         medications: existingValue('medications', 'currentMedications') ?? prev.medications,
         drugsHistory: existingValue('drugsHistory', 'recreationalDrugs', 'addictionHistory') ?? prev.drugsHistory,
+        nicotineCurrent: existingScreening.nicotineCurrent === true,
+        nicotineWantsToQuit: existingScreening.nicotineWantsToQuit === true,
+        nicotineSince: existingValue('nicotineSince', 'nicotineDuration', 'smokingSince') ?? prev.nicotineSince,
+        nicotinePerDay: existingValue('nicotinePerDay', 'nicotineAmountPerDay', 'cigarettesPerDay') ?? prev.nicotinePerDay,
+        nicotineNotes: existingValue('nicotineNotes', 'nicotineDetails') ?? prev.nicotineNotes,
         alcoholHistory: existingValue('alcoholHistory', 'alcoholConsumption') ?? prev.alcoholHistory,
         alcoholSober: existingScreening.alcoholSober === true,
         alcoholUse: {
@@ -536,6 +563,36 @@ const ClientScreening: React.FC = () => {
         }));
         return;
       }
+      if (name === 'depression') {
+        setFormData(prev => ({
+          ...prev,
+          depression: checked,
+          ...(checked ? {} : {
+            depressionSince: '',
+            depressionDetails: '',
+          }),
+        }));
+        return;
+      }
+      if (name === 'anxiety') {
+        setFormData(prev => ({
+          ...prev,
+          anxiety: checked,
+          ...(checked ? {} : {
+            anxietySince: '',
+            anxietyDetails: '',
+          }),
+        }));
+        return;
+      }
+      if (name === 'psychiatristCare') {
+        setFormData(prev => ({
+          ...prev,
+          psychiatristCare: checked,
+          ...(checked ? {} : { psychiatristCareDetails: '' }),
+        }));
+        return;
+      }
       if (name === 'alcoholSober') {
         setFormData(prev => ({
           ...prev,
@@ -548,6 +605,19 @@ const ClientScreening: React.FC = () => {
               vodka: { selected: false, frequency: '', amount: '' },
             },
           } : {}),
+        }));
+        return;
+      }
+      if (name === 'nicotineCurrent') {
+        setFormData(prev => ({
+          ...prev,
+          nicotineCurrent: checked,
+          ...(checked ? {} : {
+            nicotineWantsToQuit: false,
+            nicotineSince: '',
+            nicotinePerDay: '',
+            nicotineNotes: '',
+          }),
         }));
         return;
       }
@@ -728,20 +798,30 @@ const ClientScreening: React.FC = () => {
       whiskey: 'Whiskey',
       vodka: 'Vodka',
     };
-    const alcoholUseSummary = Object.entries(formData.alcoholUse)
-      .filter(([, entry]) => entry.selected)
-      .map(([type, entry]) => {
-        const details = [entry.frequency, entry.amount].filter(Boolean).join(', ');
-        return `${alcoholLabels[type as keyof ScreeningData['alcoholUse']]}${details ? `: ${details}` : ''}`;
-      });
+    const alcoholUseSummary = formData.alcoholSober
+      ? []
+      : Object.entries(formData.alcoholUse)
+          .filter(([, entry]) => entry.selected)
+          .map(([type, entry]) => {
+            const details = [entry.frequency, entry.amount].filter(Boolean).join(', ');
+            return `${alcoholLabels[type as keyof ScreeningData['alcoholUse']]}${details ? `: ${details}` : ''}`;
+          });
+    const nicotineSummary = [
+      formData.nicotineCurrent ? 'Currently smokes / uses nicotine' : '',
+      formData.nicotineWantsToQuit ? 'Wants to quit' : '',
+      formData.nicotineSince ? `Smoking since: ${formData.nicotineSince}` : '',
+      formData.nicotinePerDay ? `Per day: ${formData.nicotinePerDay}` : '',
+      formData.nicotineNotes,
+    ].filter(Boolean).join('\n');
     const alcoholSummary = [
       formData.alcoholSober ? 'Sober / does not drink alcohol' : '',
       ...alcoholUseSummary,
       formData.alcoholHistory,
     ].filter(Boolean).join('\n');
     const mentalHealthParts = [
-      formData.depression ? `Depression: ${formData.depressionDetails || 'yes'}` : '',
-      formData.anxiety ? `Anxiety: ${formData.anxietyDetails || 'yes'}` : '',
+      formData.depression ? `Depression diagnosed${formData.depressionSince ? ` since ${formData.depressionSince}` : ''}${formData.depressionDetails ? `: ${formData.depressionDetails}` : ''}` : '',
+      formData.anxiety ? `Anxiety diagnosed${formData.anxietySince ? ` since ${formData.anxietySince}` : ''}${formData.anxietyDetails ? `: ${formData.anxietyDetails}` : ''}` : '',
+      formData.psychiatristCare ? `In care of psychiatrist${formData.psychiatristCareDetails ? `: ${formData.psychiatristCareDetails}` : ''}` : '',
     ].filter(Boolean);
 
     return screeningApi.create({
@@ -751,6 +831,7 @@ const ClientScreening: React.FC = () => {
       asthmaCondition: formData.asthmaConditionOk ? 'OK' : formData.asthmaCondition,
       bloodPressure: bloodPressure || formData.bloodPressure,
       alcoholConsumption: alcoholSummary,
+      nicotineHistory: nicotineSummary,
       mentalHealthHistory: mentalHealthParts.join('\n'),
     });
   };
@@ -1144,17 +1225,27 @@ const ClientScreening: React.FC = () => {
                 onChange={handleInputChange}
                 className="rounded"
               />
-              <span className="text-sm font-medium text-gray-700">Depression</span>
+              <span className="text-sm font-medium text-gray-700">Depression diagnosed</span>
             </label>
             {formData.depression && (
-              <textarea
-                name="depressionDetails"
-                value={formData.depressionDetails}
-                onChange={handleInputChange}
-                rows={2}
-                className="w-full mt-2 px-3 py-2 border border-gray-200 rounded-md"
-                placeholder="Current or past depression, treatment, severity, dates, hospitalizations, or notes"
-              />
+              <div className="mt-2 space-y-2">
+                <input
+                  type="text"
+                  name="depressionSince"
+                  value={formData.depressionSince}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-md"
+                  placeholder="Diagnosed since / date (text)"
+                />
+                <textarea
+                  name="depressionDetails"
+                  value={formData.depressionDetails}
+                  onChange={handleInputChange}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-md"
+                  placeholder="Current or past depression, treatment, severity, hospitalizations, former diagnosis, or notes"
+                />
+              </div>
             )}
           </div>
           <div>
@@ -1166,16 +1257,48 @@ const ClientScreening: React.FC = () => {
                 onChange={handleInputChange}
                 className="rounded"
               />
-              <span className="text-sm font-medium text-gray-700">Anxiety</span>
+              <span className="text-sm font-medium text-gray-700">Anxiety diagnosed</span>
             </label>
             {formData.anxiety && (
+              <div className="mt-2 space-y-2">
+                <input
+                  type="text"
+                  name="anxietySince"
+                  value={formData.anxietySince}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-md"
+                  placeholder="Diagnosed since / date (text)"
+                />
+                <textarea
+                  name="anxietyDetails"
+                  value={formData.anxietyDetails}
+                  onChange={handleInputChange}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-md"
+                  placeholder="Current or past anxiety, panic attacks, treatment, severity, former diagnosis, or notes"
+                />
+              </div>
+            )}
+          </div>
+          <div>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                name="psychiatristCare"
+                checked={formData.psychiatristCare}
+                onChange={handleInputChange}
+                className="rounded"
+              />
+              <span className="text-sm font-medium text-gray-700">In care of psychiatrist</span>
+            </label>
+            {formData.psychiatristCare && (
               <textarea
-                name="anxietyDetails"
-                value={formData.anxietyDetails}
+                name="psychiatristCareDetails"
+                value={formData.psychiatristCareDetails}
                 onChange={handleInputChange}
                 rows={2}
                 className="w-full mt-2 px-3 py-2 border border-gray-200 rounded-md"
-                placeholder="Current or past anxiety, panic attacks, treatment, severity, dates, or notes"
+                placeholder="Psychiatrist name, treatment plan, medication, dates, or details"
               />
             )}
           </div>
@@ -1346,6 +1469,69 @@ const ClientScreening: React.FC = () => {
           />
         </div>
 
+        <div className="mb-4 rounded-md border border-gray-200 bg-white p-4">
+          <div className="mb-3 text-sm font-semibold text-gray-800">Nicotine</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                name="nicotineCurrent"
+                checked={formData.nicotineCurrent}
+                onChange={handleInputChange}
+                className="rounded"
+              />
+              <span className="text-sm font-medium text-gray-700">Currently smoking / vaping</span>
+            </label>
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                name="nicotineWantsToQuit"
+                checked={formData.nicotineWantsToQuit}
+                onChange={handleInputChange}
+                disabled={!formData.nicotineCurrent}
+                className="rounded"
+              />
+              <span className="text-sm font-medium text-gray-700">Wants to quit</span>
+            </label>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">How long smoking / using nicotine</label>
+              <input
+                type="text"
+                name="nicotineSince"
+                value={formData.nicotineSince}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-200 rounded-md"
+                placeholder="e.g. 10 years / since 2012"
+                disabled={!formData.nicotineCurrent}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">How many per day</label>
+              <input
+                type="text"
+                name="nicotinePerDay"
+                value={formData.nicotinePerDay}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-200 rounded-md"
+                placeholder="e.g. 10 cigarettes, 1 vape pod"
+                disabled={!formData.nicotineCurrent}
+              />
+            </div>
+          </div>
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nicotine notes</label>
+            <textarea
+              name="nicotineNotes"
+              value={formData.nicotineNotes}
+              onChange={handleInputChange}
+              rows={2}
+              className="w-full px-3 py-2 border border-gray-200 rounded-md"
+              placeholder="Withdrawal history, quit attempts, cravings, or other notes"
+              disabled={!formData.nicotineCurrent}
+            />
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[
             { name: 'marijuana', label: 'Marijuana' },
@@ -1379,12 +1565,12 @@ const ClientScreening: React.FC = () => {
           ))}
         </div>
 
-        <div className="mt-6 space-y-4">
-          <div>
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                name="alcoholSober"
+          <div className="mt-6 space-y-4">
+            <div>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  name="alcoholSober"
                 checked={formData.alcoholSober}
                 onChange={handleInputChange}
                 className="rounded"
@@ -1393,61 +1579,69 @@ const ClientScreening: React.FC = () => {
             </label>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[
-              { name: 'wine', label: 'Wine' },
-              { name: 'beer', label: 'Beer' },
-              { name: 'whiskey', label: 'Whiskey' },
-              { name: 'vodka', label: 'Vodka' },
-            ].map(alcohol => {
-              const alcoholKey = alcohol.name as keyof ScreeningData['alcoholUse'];
-              const alcoholEntry = formData.alcoholUse[alcoholKey];
+          {!formData.alcoholSober && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                { name: 'wine', label: 'Wine' },
+                { name: 'beer', label: 'Beer' },
+                { name: 'whiskey', label: 'Whiskey' },
+                { name: 'vodka', label: 'Vodka' },
+              ].map(alcohol => {
+                const alcoholKey = alcohol.name as keyof ScreeningData['alcoholUse'];
+                const alcoholEntry = formData.alcoholUse[alcoholKey];
 
-              return (
-                <div key={alcohol.name} className="rounded-md border border-gray-200 bg-white p-3">
-                  <label className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={alcoholEntry.selected}
-                      onChange={(e) => handleAlcoholTypeChange(alcoholKey, e.target.checked)}
-                      className="rounded"
-                    />
-                    <span className="text-sm font-medium text-gray-700">{alcohol.label}</span>
-                  </label>
+                return (
+                  <div key={alcohol.name} className="rounded-md border border-gray-200 bg-white p-3">
+                    <label className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={alcoholEntry.selected}
+                        onChange={(e) => handleAlcoholTypeChange(alcoholKey, e.target.checked)}
+                        className="rounded"
+                      />
+                      <span className="text-sm font-medium text-gray-700">{alcohol.label}</span>
+                    </label>
 
-                  {alcoholEntry.selected && (
-                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">Frequency</label>
-                        <select
-                          value={alcoholEntry.frequency}
-                          onChange={(e) => handleAlcoholUseFieldChange(alcoholKey, 'frequency', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm"
-                        >
-                          <option value="">Select frequency</option>
-                          <option value="daily">Daily</option>
-                          <option value="few-times-a-week">Few times a week</option>
-                          <option value="weekly">Weekly</option>
-                          <option value="bimonthly">Bimonthly</option>
-                          <option value="monthly">Monthly</option>
-                        </select>
+                    {alcoholEntry.selected && (
+                      <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Frequency</label>
+                          <select
+                            value={alcoholEntry.frequency}
+                            onChange={(e) => handleAlcoholUseFieldChange(alcoholKey, 'frequency', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm"
+                          >
+                            <option value="">Select frequency</option>
+                            <option value="daily">Daily</option>
+                            <option value="few-times-a-week">Few times a week</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="bimonthly">Bimonthly</option>
+                            <option value="monthly">Monthly</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">How much</label>
+                          <input
+                            type="text"
+                            value={alcoholEntry.amount}
+                            onChange={(e) => handleAlcoholUseFieldChange(alcoholKey, 'amount', e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm"
+                            placeholder="e.g. 2 glasses"
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">How much</label>
-                        <input
-                          type="text"
-                          value={alcoholEntry.amount}
-                          onChange={(e) => handleAlcoholUseFieldChange(alcoholKey, 'amount', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm"
-                          placeholder="e.g. 2 glasses"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {formData.alcoholSober && (
+            <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800">
+              Alcohol selections are hidden because sobriety is checked.
+            </div>
+          )}
 
           <label className="block text-sm font-medium text-gray-700 mb-1">Alcohol History / Notes</label>
           <textarea

@@ -144,6 +144,12 @@ export interface Client {
   childhood?: string;
   traumaHistory?: string;
   mentalHealthHistory?: string;
+  depressionSince?: string;
+  depressionDetails?: string;
+  anxietySince?: string;
+  anxietyDetails?: string;
+  psychiatristCare?: boolean;
+  psychiatristCareDetails?: string;
   addictionHistory?: string;
   heartConditions?: string;
   liverConditions?: string;
@@ -156,6 +162,12 @@ export interface Client {
   psychoticEpisodes?: string;
   currentMedications?: string;
   recreationalDrugs?: string;
+  nicotineHistory?: string;
+  nicotineCurrent?: boolean;
+  nicotineWantsToQuit?: boolean;
+  nicotineSince?: string;
+  nicotinePerDay?: string;
+  nicotineNotes?: string;
   vitaminsSupplements?: string | {
     vitaminD?: boolean;
     vitaminB12?: boolean;

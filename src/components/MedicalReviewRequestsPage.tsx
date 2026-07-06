@@ -754,6 +754,9 @@ const MedicalReviewRequestsPage: React.FC = () => {
   };
 
   const formatAlcoholUse = (screening: any) => {
+    if (getScreeningValue(screening, 'alcoholSober')) {
+      return 'Sober / does not drink alcohol';
+    }
     const alcoholUse = getScreeningValue(screening, 'alcoholUse');
     if (!alcoholUse || typeof alcoholUse !== 'object') return '';
 
@@ -772,6 +775,17 @@ const MedicalReviewRequestsPage: React.FC = () => {
         return details ? `${label}: ${details}` : label;
       })
       .join('\n');
+  };
+
+  const formatNicotine = (screening: any) => {
+    const parts = [
+      getScreeningValue(screening, 'nicotineCurrent') ? 'Currently smoking / vaping' : '',
+      getScreeningValue(screening, 'nicotineWantsToQuit') ? 'Wants to quit' : '',
+      getScreeningValue(screening, 'nicotineSince') ? `Smoking since: ${getScreeningValue(screening, 'nicotineSince')}` : '',
+      getScreeningValue(screening, 'nicotinePerDay') ? `Per day: ${getScreeningValue(screening, 'nicotinePerDay')}` : '',
+      getScreeningValue(screening, 'nicotineNotes'),
+    ].filter(Boolean);
+    return parts.join('\n');
   };
 
   const renderScreeningItems = (screening: any, items: Array<{ label: string; keys?: string[]; value?: any }>) => {
@@ -841,6 +855,11 @@ const MedicalReviewRequestsPage: React.FC = () => {
           { label: 'Sexual abuse', value: getScreeningBooleanDetails(screening, 'sexualAbuse', 'sexualAbuseDetails') },
           { label: 'Physical abuse', value: getScreeningBooleanDetails(screening, 'physicalAbuse', 'physicalAbuseDetails') },
           { label: 'Psychological abuse', value: getScreeningBooleanDetails(screening, 'psychologicalAbuse', 'psychologicalAbuseDetails') },
+          { label: 'Depression diagnosed since', keys: ['depressionSince'] },
+          { label: 'Depression details', value: getScreeningBooleanDetails(screening, 'depression', 'depressionDetails') },
+          { label: 'Anxiety diagnosed since', keys: ['anxietySince'] },
+          { label: 'Anxiety details', value: getScreeningBooleanDetails(screening, 'anxiety', 'anxietyDetails') },
+          { label: 'In care of psychiatrist', value: getScreeningBooleanDetails(screening, 'psychiatristCare', 'psychiatristCareDetails') },
           { label: 'Trauma history', keys: ['traumaHistory'] },
           { label: 'Mental health history', keys: ['mentalHealthHistory'] },
         ])}
@@ -863,6 +882,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
 
         {renderScreeningSection(screening, 'Substances', [
           { label: 'Drug history', keys: ['drugsHistory', 'addictionHistory'] },
+          { label: 'Nicotine', value: formatNicotine(screening) },
           { label: 'Recreational drugs', keys: ['recreationalDrugs'] },
           { label: 'Marijuana', value: getScreeningBooleanDetails(screening, 'marijuana', 'marijuanaDetails') },
           { label: 'Cocaine', value: getScreeningBooleanDetails(screening, 'cocaine', 'cocaineDetails') },

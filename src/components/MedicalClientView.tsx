@@ -422,6 +422,12 @@ const MedicalClientView: React.FC = () => {
                           <div><span className="font-medium">Spiritual background:</span> {renderValue(latestScreening?.spiritualBackground)}</div>
                           <div><span className="font-medium">Trauma:</span> {renderValue(latestScreening?.traumaHistory)}</div>
                           <div><span className="font-medium">Mental health:</span> {renderValue(latestScreening?.mentalHealthHistory)}</div>
+                          <div><span className="font-medium">Nicotine:</span> {renderValue([
+                            latestScreening?.nicotineCurrent ? 'Currently smoking / vaping' : '',
+                            latestScreening?.nicotineWantsToQuit ? 'Wants to quit' : '',
+                            latestScreening?.nicotineSince ? `Since ${latestScreening.nicotineSince}` : '',
+                            latestScreening?.nicotinePerDay ? `${latestScreening.nicotinePerDay} per day` : '',
+                          ].filter(Boolean).join(', '))}</div>
                         </div>
                       </div>
                       <div className="rounded-lg bg-white p-3">
@@ -443,7 +449,7 @@ const MedicalClientView: React.FC = () => {
                           <span className="font-medium">Supplements:</span> {renderValue(supplementFlags)}
                         </div>
                         <div className="mt-3 text-sm text-gray-700">
-                          <span className="font-medium">Alcohol:</span> {renderValue(latestScreening?.alcoholConsumption)}
+                          <span className="font-medium">Alcohol:</span> {renderValue(latestScreening?.alcoholSober ? 'Sober / does not drink alcohol' : latestScreening?.alcoholConsumption)}
                         </div>
                       </div>
                     </div>

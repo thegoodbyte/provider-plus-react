@@ -699,6 +699,17 @@ const ClientDetailsPage: React.FC = () => {
     ].filter(Boolean).join('\n') || '';
   };
 
+  const formatNicotineSummary = () => {
+    const parts = [
+      getScreeningValue('nicotineCurrent') ? 'Currently smoking / vaping' : '',
+      getScreeningValue('nicotineWantsToQuit') ? 'Wants to quit' : '',
+      getScreeningValue('nicotineSince') ? `Smoking since: ${getScreeningValue('nicotineSince')}` : '',
+      getScreeningValue('nicotinePerDay') ? `Per day: ${getScreeningValue('nicotinePerDay')}` : '',
+      getScreeningValue('nicotineNotes'),
+    ].filter(Boolean);
+    return parts.join('\n');
+  };
+
   const getBooleanDetailValue = (flagKey: string, detailKey: string) => {
     const flag = getScreeningValue(flagKey);
     const details = getScreeningValue(detailKey);
@@ -1309,11 +1320,16 @@ const ClientDetailsPage: React.FC = () => {
                 { label: 'Observations / General Notes', value: getScreeningValue('observations', 'generalNotes', 'notes') },
               ])}
 
-              {renderScreeningGrid([
-                { label: 'Sexual Abuse', value: getBooleanDetailValue('sexualAbuse', 'sexualAbuseDetails') },
-                { label: 'Physical Abuse', value: getBooleanDetailValue('physicalAbuse', 'physicalAbuseDetails') },
-                { label: 'Psychological Abuse', value: getBooleanDetailValue('psychologicalAbuse', 'psychologicalAbuseDetails') },
-              ])}
+        {renderScreeningGrid([
+          { label: 'Sexual Abuse', value: getBooleanDetailValue('sexualAbuse', 'sexualAbuseDetails') },
+          { label: 'Physical Abuse', value: getBooleanDetailValue('physicalAbuse', 'physicalAbuseDetails') },
+          { label: 'Psychological Abuse', value: getBooleanDetailValue('psychologicalAbuse', 'psychologicalAbuseDetails') },
+          { label: 'Depression diagnosed since', value: getScreeningValue('depressionSince') },
+          { label: 'Depression details', value: getBooleanDetailValue('depression', 'depressionDetails') },
+          { label: 'Anxiety diagnosed since', value: getScreeningValue('anxietySince') },
+          { label: 'Anxiety details', value: getBooleanDetailValue('anxiety', 'anxietyDetails') },
+          { label: 'In care of psychiatrist', value: getBooleanDetailValue('psychiatristCare', 'psychiatristCareDetails') },
+        ])}
 
               {renderScreeningGrid([
                 { label: 'Heart', value: getScreeningValue('heartConditions', 'heartCondition') },
@@ -1324,7 +1340,7 @@ const ClientDetailsPage: React.FC = () => {
                 { label: 'Blood Pressure', value: getScreeningValue('bloodPressureIssues', 'bloodPressure') },
                 { label: 'Blood Pressure Details', value: [getScreeningValue('bloodPressureStatus'), getScreeningValue('bloodPressureValue')].filter(Boolean).join(' - ') },
                 { label: 'Sober', value: getScreeningValue('alcoholSober') ? 'Yes' : '' },
-                { label: 'Alcohol Use', value: getScreeningValue('alcoholUse') },
+                { label: 'Alcohol Use', value: getScreeningValue('alcoholSober') ? 'Sober / does not drink alcohol' : getScreeningValue('alcoholUse') },
                 { label: 'Alcohol History', value: getScreeningValue('alcoholHistory') },
                 { label: 'Health Complications', value: getScreeningValue('healthComplications') },
                 { label: 'EKG Requested', value: getScreeningValue('ekgRequested') ? 'Yes' : 'No' },
@@ -1335,6 +1351,7 @@ const ClientDetailsPage: React.FC = () => {
 
               {renderScreeningGrid([
                 { label: 'Drug History', value: getScreeningValue('drugsHistory') },
+                { label: 'Nicotine', value: formatNicotineSummary() },
                 { label: 'Marijuana', value: getBooleanDetailValue('marijuana', 'marijuanaDetails') },
                 { label: 'Cocaine', value: getBooleanDetailValue('cocaine', 'cocaineDetails') },
                 { label: 'Meth', value: getBooleanDetailValue('meth', 'methDetails') },
