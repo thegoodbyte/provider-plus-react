@@ -860,9 +860,10 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     (sum, client) => sum + convertAmountToUSD(client.totalAmount || 0, client.currency),
     0
   );
-  const totalExpensesUSD = expensesSummary?.totalExpensesUSD || 0;
-  const profitUSD = totalRevenueUSD - totalExpensesUSD;
-  const expectedProfitUSD = totalExpectedUSD - totalExpensesUSD;
+  const plannedExpensesUSD = expensesSummary?.plannedExpensesUSD ?? expensesSummary?.totalExpensesUSD ?? 0;
+  const actualExpensesUSD = expensesSummary?.actualExpensesUSD ?? expensesSummary?.totalExpensesUSD ?? 0;
+  const profitUSD = totalRevenueUSD - actualExpensesUSD;
+  const expectedProfitUSD = totalExpectedUSD - plannedExpensesUSD;
   const occupancyRate = retreat.capacity ? Math.round((clients.length / retreat.capacity) * 100) : 0;
   const retreatCode = retreat.code || retreat.retreatCode || retreat.name || 'Retreat';
   const retreatCodeColor = retreat.backgroundColor || retreat.textColor || '#111827';
@@ -1092,8 +1093,12 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
               <div className="stat-label">Confirmed</div>
             </div>
             <div className="stat-card">
-              <div className="stat-number">{formatUSD(totalExpensesUSD)}</div>
-              <div className="stat-label">Total Expenses</div>
+              <div className="stat-number">{formatUSD(plannedExpensesUSD)}</div>
+              <div className="stat-label">Planned Expenses</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number">{formatUSD(actualExpensesUSD)}</div>
+              <div className="stat-label">Actual Expenses</div>
             </div>
             <div className="stat-card">
               <div className={`stat-number ${profitUSD >= 0 ? 'profit-positive' : 'profit-negative'}`}>
