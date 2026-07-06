@@ -579,10 +579,8 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
     return parts.join(' / ');
   };
 
-  const showsSettlementColumn = Boolean(bookingTotalUsd && bookingCurrency !== 'USD') || completedPayments.some((payment) =>
-    payment.currency !== bookingCurrency ||
-    (payment.currency !== 'USD' && Number.isFinite(toFiniteNumber(payment.usd_amount, NaN)))
-  );
+  const hasMixedPaymentCurrencies = completedPayments.some((payment) => payment.currency !== bookingCurrency);
+  const showsSettlementColumn = hasMixedPaymentCurrencies;
 
   const totalPaid = resolvedCompletedPayments.reduce((sum, resolvedPayment) => {
     return sum + (resolvedPayment.bookingCurrencyAmount || 0);
