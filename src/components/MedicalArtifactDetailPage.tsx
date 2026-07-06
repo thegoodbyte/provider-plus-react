@@ -230,6 +230,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [deletingPath, setDeletingPath] = useState('');
+  const [deletingArtifact, setDeletingArtifact] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [reviewRequests, setReviewRequests] = useState<MedicalReviewRequest[]>([]);
@@ -373,6 +374,23 @@ const MedicalArtifactDetailPage: React.FC = () => {
     }
   };
 
+  const handleDeleteArtifact = async () => {
+    if (!id || !artifact?._id) return;
+    const label = `#${artifact.display_id || artifact._id.slice(-6)} ${artifact.title || getArtifactTypeLabel(artifact.artifactType)}`;
+    const confirmed = window.confirm(`Delete medical artifact ${label}? This removes the artifact record from Provider Plus.`);
+    if (!confirmed) return;
+
+    setDeletingArtifact(true);
+    setError(null);
+    try {
+      await medicalArtifactsApi.delete(artifact._id);
+      navigate(`${routePrefix}/medical-artifacts`);
+    } catch (deleteError: any) {
+      setError(deleteError?.response?.data?.message || deleteError?.message || 'Failed to delete this medical artifact.');
+      setDeletingArtifact(false);
+    }
+  };
+
   if (loading) {
     return <LoadingSpinner message="Loading medical artifact..." />;
   }
@@ -411,6 +429,17 @@ const MedicalArtifactDetailPage: React.FC = () => {
             <Plus className="h-4 w-4" />
             {reviewRequests.length > 0 ? 'Create Another Medical Review' : 'Create Medical Review'}
           </button>
+          {routePrefix === '/admin' && (
+            <button
+              type="button"
+              onClick={handleDeleteArtifact}
+              disabled={deletingArtifact}
+              className="inline-flex items-center gap-2 rounded-md border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+            >
+              <Trash2 className="h-4 w-4" />
+              {deletingArtifact ? 'Deleting...' : 'Delete'}
+            </button>
+          )}
           <button onClick={() => navigate(`${routePrefix}/medical-artifacts`)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
             <ArrowLeft className="h-4 w-4" />
             Back
