@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { FiCopy, FiEye, FiEdit2, FiLink, FiPlus, FiRefreshCw, FiTrash2, FiX } from 'react-icons/fi';
 import LoadingSpinner from './LoadingSpinner';
+import MedicalReviewTypeBadge from './MedicalReviewTypeBadge';
 import { medicalReviewRequestsApi, medicalTrackingApi, clientsApi, retreatsApi } from '../services/api';
 import { MedicalItem, MedicalReviewRequest, Client, Retreat } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -292,7 +293,9 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                     <div className="text-xs text-gray-500">#{request.clientDisplayId || '—'}</div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">{request.retreatName}</td>
-                  <td className="px-6 py-4 text-sm text-gray-900">{request.requestType}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    <MedicalReviewTypeBadge requestType={request.requestType} />
+                  </td>
                   <td className="px-6 py-4 text-sm text-gray-900">{request.attemptNumber || 1}</td>
                   <td className="px-6 py-4 text-sm text-gray-900">
                     <div className="font-medium">{getAssignee(request).name}</div>
@@ -457,7 +460,9 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                           <span className="font-semibold text-gray-900">#{request.display_id || '-'}</span>
                           <span className="ml-2 text-gray-900">{request.clientName}</span>
                           <span className="ml-2 text-gray-500">{request.retreatName}</span>
-                          <span className="ml-2 text-gray-500">{request.requestType}</span>
+                          <span className="ml-2 inline-flex align-middle">
+                            <MedicalReviewTypeBadge requestType={request.requestType} />
+                          </span>
                         </span>
                       </label>
                     );

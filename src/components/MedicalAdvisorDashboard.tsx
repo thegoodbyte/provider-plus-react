@@ -6,6 +6,7 @@ import { MedicalReviewRequest } from '../types';
 import { useAuth } from '../context/AuthContext';
 import LoadingSpinner from './LoadingSpinner';
 import './MedicalAdvisorDashboard.css';
+import MedicalReviewTypeBadge from './MedicalReviewTypeBadge';
 
 type ReviewFilter = 'open' | 'all' | 'pending' | 'in_review' | 'needs_resubmission' | 'approved' | 'rejected' | 'caution' | 'completed';
 
@@ -44,11 +45,6 @@ const getRetreatName = (request: MedicalReviewRequest) => {
 
 const getAssignedName = (request: MedicalReviewRequest) => {
   return getPersonName(request.assignedToUserId || request.medicalReviewerId || request.assignedTo, 'Unassigned');
-};
-
-const getReviewType = (request: MedicalReviewRequest) => {
-  const type = request.requestType || request.documentType || request.artifactSnapshot?.documentType || 'medical review';
-  return String(type).replace(/_/g, ' ');
 };
 
 const getRequestedDate = (request: MedicalReviewRequest) => {
@@ -248,7 +244,7 @@ const MedicalAdvisorDashboard: React.FC = () => {
                     <span>{getClientName(request)}</span>
                   </span>
                   <span className="medical-review-meta">
-                    <span>{getReviewType(request)}</span>
+                    <MedicalReviewTypeBadge requestType={request.requestType || request.documentType || request.artifactSnapshot?.documentType} />
                     <span>{getRetreatName(request)}</span>
                     {!isMedicalAdvisor && (
                       <span className="medical-assignee">

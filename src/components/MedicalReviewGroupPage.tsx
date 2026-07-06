@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner';
 import { medicalReviewRequestsApi } from '../services/api';
+import MedicalReviewTypeBadge from './MedicalReviewTypeBadge';
 
 const statusClass: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
@@ -71,7 +72,9 @@ const MedicalReviewGroupPage: React.FC = () => {
               <tr key={request._id}>
                 <td className="px-4 py-3 font-semibold text-blue-700">#{request.display_id || '-'}</td>
                 <td className="px-4 py-3">{getClientName(request)}</td>
-                <td className="px-4 py-3">{request.requestType}</td>
+                <td className="px-4 py-3">
+                  <MedicalReviewTypeBadge requestType={request.requestType} />
+                </td>
                 <td className="px-4 py-3">
                   <span className={`rounded-full px-2 py-1 text-xs font-semibold ${statusClass[request.status] || 'bg-gray-100 text-gray-700'}`}>
                     {request.status}
