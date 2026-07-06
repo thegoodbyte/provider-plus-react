@@ -4,7 +4,7 @@ import LoadingSpinner from './LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
 import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
-import { Client, MedicalArtifact, MedicalReviewRequest } from '../types';
+import { Client, MedicalArtifact, MedicalReviewRequest, Retreat } from '../types';
 
 const reviewStatusStyle: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
@@ -40,6 +40,29 @@ const requestTypeLabels: Record<string, string> = {
 
 const getRequestTypeLabel = (requestType?: MedicalReviewRequest['requestType']) =>
   requestType ? requestTypeLabels[requestType] || requestType : 'Medical Review';
+
+const medicalReviewTypeFilters = [
+  { value: 'all', label: 'All review types' },
+  { value: 'ekg', label: 'EKG' },
+  { value: 'liver', label: 'Liver' },
+  { value: 'blood_pressure', label: 'Blood pressure' },
+  { value: 'medications', label: 'Medications' },
+  { value: 'questionnaire', label: 'Questionnaire' },
+  { value: 'food', label: 'Food intake' },
+  { value: 'general', label: 'General / question' },
+] as const;
+
+type MedicalReviewTypeFilter = typeof medicalReviewTypeFilters[number]['value'];
+
+const requestTypeFilterGroups: Record<Exclude<MedicalReviewTypeFilter, 'all'>, string[]> = {
+  ekg: ['ekg', 'ekg_review', 'ceremony_ekg_review'],
+  liver: ['liver', 'liver_panel_review'],
+  blood_pressure: ['blood_pressure_review'],
+  medications: ['medications_review'],
+  questionnaire: ['questionnaire_review'],
+  food: ['food_review'],
+  general: ['medical_question', 'general_clearance'],
+};
 
 const artifactTypeLabels: Record<string, string> = {
   ekg: 'Entry EKG',
@@ -81,6 +104,47 @@ const getId = (value: any): string | undefined => {
   if (!value) return undefined;
   if (typeof value === 'string') return value;
   return value._id;
+};
+
+const getRetreatSearchText = (retreat?: string | Retreat | null) => {
+  if (!retreat) return '';
+  if (typeof retreat === 'string') return retreat;
+  return [
+    retreat._id,
+    retreat.name,
+    retreat.code,
+    retreat.retreatCode,
+    retreat.location_town,
+    retreat.location,
+  ].filter(Boolean).join(' ');
+};
+
+const getClientSearchText = (client?: string | Client | null) => {
+  if (!client) return '';
+  if (typeof client === 'string') return client;
+  return [
+    client._id,
+    client.display_id,
+    client.firstName,
+    client.lastName,
+    client.fname,
+    client.lname,
+    client.email,
+    client.phone,
+  ].filter(Boolean).join(' ');
+};
+
+const requestMatchesTypeFilter = (request: MedicalReviewRequest, filter: MedicalReviewTypeFilter) => {
+  if (filter === 'all') return true;
+  const requestType = String(request.requestType || '').toLowerCase();
+  const artifactTypes = (request.artifactIds || [])
+    .filter((artifact): artifact is MedicalArtifact => typeof artifact !== 'string')
+    .map((artifact) => String(artifact.artifactType || '').toLowerCase());
+  const documentType = String(request.documentType || request.artifactSnapshot?.documentType || '').toLowerCase();
+  const haystack = [requestType, documentType, ...artifactTypes];
+  return requestTypeFilterGroups[filter].some((value) => haystack.includes(value))
+    || (filter === 'ekg' && haystack.some((value) => value.includes('ekg')))
+    || (filter === 'liver' && haystack.some((value) => value.includes('liver')));
 };
 
 type ArtifactFile = NonNullable<MedicalArtifact['files']>[number];
@@ -304,6 +368,9 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [generatedAccessUrl, setGeneratedAccessUrl] = useState('');
   const [accessLinkBusy, setAccessLinkBusy] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | MedicalReviewRequest['status']>('all');
+  const [typeFilter, setTypeFilter] = useState<MedicalReviewTypeFilter>('all');
+  const [retreatFilter, setRetreatFilter] = useState('');
+  const [requestSearchFilter, setRequestSearchFilter] = useState('');
   const [validationError, setValidationError] = useState('');
   const reviewDecisionSectionRef = useRef<HTMLDivElement | null>(null);
 
@@ -380,9 +447,40 @@ const MedicalReviewRequestsPage: React.FC = () => {
   }, [loadRequests]);
 
   const filteredRequests = useMemo(() => {
-    if (statusFilter === 'all') return requests;
-    return requests.filter((request) => request.status === statusFilter);
-  }, [requests, statusFilter]);
+    const retreatSearch = retreatFilter.trim().toLowerCase();
+    const requestSearch = requestSearchFilter.trim().toLowerCase();
+    return requests.filter((request) => {
+      if (statusFilter !== 'all' && request.status !== statusFilter) return false;
+      if (!requestMatchesTypeFilter(request, typeFilter)) return false;
+      if (retreatSearch && !getRetreatSearchText(request.retreatId).toLowerCase().includes(retreatSearch)) return false;
+      if (requestSearch) {
+        const text = [
+          request.display_id,
+          request._id,
+          request.requestType,
+          request.status,
+          request.source,
+          request.documentStage,
+          request.documentType,
+          request.reviewDecision,
+          request.assignedTo,
+          request.assignedToEmail,
+          getClientSearchText(request.clientId),
+          getRetreatSearchText(request.retreatId),
+          ...(request.artifactIds || []).map((artifact) => typeof artifact === 'string' ? artifact : [
+            artifact._id,
+            artifact.display_id,
+            artifact.title,
+            artifact.artifactType,
+            artifact.documentStage,
+            artifact.documentType,
+          ].filter(Boolean).join(' ')),
+        ].filter(Boolean).join(' ').toLowerCase();
+        if (!text.includes(requestSearch)) return false;
+      }
+      return true;
+    });
+  }, [requests, requestSearchFilter, retreatFilter, statusFilter, typeFilter]);
 
   const selectedHistory = useMemo(() => {
     if (!selected) return [];
@@ -905,18 +1003,58 @@ const MedicalReviewRequestsPage: React.FC = () => {
       </div>
 
       {!isDetailView && (
-        <div className="mb-4 flex items-center justify-end gap-2">
-          <label htmlFor="review-request-status-filter" className="text-sm font-medium text-gray-700">Status</label>
-          <select
-            id="review-request-status-filter"
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
-            className="w-full max-w-xs rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-          >
-            {(['all', 'pending', 'in_review', 'approved', 'rejected', 'caution', 'needs_resubmission', 'completed'] as const).map((status) => (
-              <option key={status} value={status}>{status}</option>
-            ))}
-          </select>
+        <div className="mb-4 rounded-lg border border-gray-200 bg-white p-3">
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-5">
+            <select
+              id="review-request-type-filter"
+              value={typeFilter}
+              onChange={(event) => setTypeFilter(event.target.value as MedicalReviewTypeFilter)}
+              className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              {medicalReviewTypeFilters.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+            <select
+              id="review-request-status-filter"
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
+              className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              {(['all', 'pending', 'in_review', 'approved', 'rejected', 'caution', 'needs_resubmission', 'completed'] as const).map((status) => (
+                <option key={status} value={status}>{status}</option>
+              ))}
+            </select>
+            <input
+              value={retreatFilter}
+              onChange={(event) => setRetreatFilter(event.target.value)}
+              placeholder="Retreat code or name"
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            <input
+              value={requestSearchFilter}
+              onChange={(event) => setRequestSearchFilter(event.target.value)}
+              placeholder="Search client, request, artifact..."
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setTypeFilter('all');
+                  setStatusFilter('all');
+                  setRetreatFilter('');
+                  setRequestSearchFilter('');
+                }}
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Clear filters
+              </button>
+            </div>
+          </div>
+          <div className="mt-2 text-xs text-gray-500">
+            Showing {filteredRequests.length} of {requests.length} review request{requests.length === 1 ? '' : 's'}
+          </div>
         </div>
       )}
 
