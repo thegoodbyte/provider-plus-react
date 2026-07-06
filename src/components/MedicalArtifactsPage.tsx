@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Eye, FileText, HeartPulse, Leaf, Plus, RefreshCw, Send, Trash2, XCircle } from 'lucide-react';
-import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { medicalArtifactsApi, medicalReviewRequestsApi, retreatsApi } from '../services/api';
 import { Client, MedicalArtifact, MedicalReviewRequest, Retreat, RetreatArtifactSubmissionRow, RetreatArtifactSubmissionsResponse, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 
@@ -213,6 +213,7 @@ const MedicalArtifactsPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<'all' | NonNullable<MedicalArtifact['status']>>('all');
   const [reviewFilter, setReviewFilter] = useState<'all' | 'has_review' | 'no_review'>('all');
   const [activeView, setActiveView] = useState<'artifacts' | 'retreat_submissions'>('artifacts');
+  const [retreats, setRetreats] = useState<Retreat[]>([]);
   const [submissionRetreatFilter, setSubmissionRetreatFilter] = useState('');
   const [submissionArtifactTypeFilter, setSubmissionArtifactTypeFilter] = useState<'all' | NonNullable<MedicalArtifact['artifactType']>>('all');
   const [submissionStageFilter, setSubmissionStageFilter] = useState<'all' | NonNullable<MedicalArtifact['documentStage']>>('all');
@@ -227,11 +228,13 @@ const MedicalArtifactsPage: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [artifactsResponse, reviewsResponse] = await Promise.all([
+      const [artifactsResponse, retreatsResponse, reviewsResponse] = await Promise.all([
         medicalArtifactsApi.getAll(),
+        retreatsApi.getAll().catch(() => ({ data: [] as Retreat[] })),
         medicalReviewRequestsApi.getAll(),
       ]);
       setArtifacts(artifactsResponse.data || []);
+      setRetreats(retreatsResponse.data || []);
       setReviewRequests(reviewsResponse.data || []);
     } finally {
       setLoading(false);
@@ -317,6 +320,34 @@ const MedicalArtifactsPage: React.FC = () => {
       return true;
     });
   }, [artifacts, artifactTypeFilter, bookingIdFilter, clientIdFilter, documentTypeFilter, retreatIdFilter, reviewFilter, reviewsByArtifactId, searchFilter, stageFilter, statusFilter]);
+
+  const retreatOptions = useMemo(() => {
+    const map = new Map<string, { value: string; label: string }>();
+    retreats.forEach((retreat) => {
+      const value = String(retreat._id || '').trim();
+      if (!value) return;
+      const label = getRetreatCode(retreat) || retreat.name || value;
+      map.set(value, { value, label });
+    });
+
+    artifacts.forEach((artifact) => {
+      const retreat = artifact.retreatId;
+      if (!retreat) return;
+      if (typeof retreat === 'string') {
+        const value = retreat.trim();
+        if (value && !map.has(value)) {
+          map.set(value, { value, label: `Retreat ${value.slice(-6)}` });
+        }
+        return;
+      }
+      const value = String(retreat._id || '').trim();
+      if (!value) return;
+      const label = getRetreatCode(retreat) || retreat.name || value;
+      map.set(value, { value, label });
+    });
+
+    return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [artifacts, retreats]);
 
   const sortedSubmissionRows = useMemo(() => {
     const rows = [...(submissionData?.rows || [])];
@@ -433,12 +464,18 @@ const MedicalArtifactsPage: React.FC = () => {
             placeholder="Client ID"
             className="rounded-md border border-gray-300 px-3 py-2 text-sm"
           />
-          <input
+          <select
             value={retreatIdFilter}
             onChange={(event) => setRetreatIdFilter(event.target.value)}
-            placeholder="Retreat code or ID"
             className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-          />
+          >
+            <option value="">All retreats</option>
+            {retreatOptions.map((retreat) => (
+              <option key={retreat.value} value={retreat.value}>
+                {retreat.label}
+              </option>
+            ))}
+          </select>
           <select value={stageFilter} onChange={(event) => setStageFilter(event.target.value as typeof stageFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
             <option value="all">All document stages</option>
             {Object.entries(documentStageLabels).map(([value, label]) => (
