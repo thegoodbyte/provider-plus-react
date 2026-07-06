@@ -792,9 +792,9 @@ export const medicalArtifactsApi = {
   getFileBlob: (id: string, storedPath: string) => {
     const legacyFileUploadMatch = storedPath.match(/(?:^|\/)file-uploads\/view\/([^/?#]+)/);
     if (legacyFileUploadMatch?.[1]) {
-      return api.get(`/file-uploads/view/${encodeURIComponent(legacyFileUploadMatch[1])}`, { responseType: 'blob' });
+      return api.get(`/file-uploads/view/${encodeURIComponent(legacyFileUploadMatch[1])}`, { responseType: 'blob', suppressGlobalError: true } as any);
     }
-    return api.get(`/medical-artifacts/${id}/files/view?storedPath=${encodeURIComponent(storedPath)}`, { responseType: 'blob' });
+    return api.get(`/medical-artifacts/${id}/files/view?storedPath=${encodeURIComponent(storedPath)}`, { responseType: 'blob', suppressGlobalError: true } as any);
   },
   update: (id: string, data: Partial<MedicalArtifact>) => {
     cacheService.clearPattern('medical-artifacts:');
@@ -862,7 +862,7 @@ export const fileUploadsApi = {
   },
   getStats: () => cachedGet<any>('file-uploads:stats', () => api.get('/file-uploads/stats')),
   getViewBlob: (fileHash: string) =>
-    api.get(`/file-uploads/view/${fileHash}`, { responseType: 'blob' }),
+    api.get(`/file-uploads/view/${fileHash}`, { responseType: 'blob', suppressGlobalError: true } as any),
 };
 
 export const configSummaryApi = {

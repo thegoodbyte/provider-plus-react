@@ -19,7 +19,7 @@ const isPdfFile = (file: FileUpload) =>
 
 const FilePreview: React.FC<{ file: FileUpload }> = ({ file }) => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [previewError, setPreviewError] = useState('');
   const canPreview = isImageFile(file) || isPdfFile(file);
 
   useEffect(() => {
@@ -29,12 +29,15 @@ const FilePreview: React.FC<{ file: FileUpload }> = ({ file }) => {
     const loadPreview = async () => {
       if (!canPreview || !file.fileHash) return;
       try {
+        setPreviewError('');
         const response = await fileUploadsApi.getViewBlob(file.fileHash);
         objectUrl = URL.createObjectURL(response.data as Blob);
         if (active) setPreviewUrl(objectUrl);
-      } catch (previewError) {
-        console.error('Error loading file preview:', previewError);
-        if (active) setFailed(true);
+      } catch (error: any) {
+        console.error('Error loading file preview:', error);
+        if (active) {
+          setPreviewError(error?.response?.data?.message || error?.message || 'Preview unavailable');
+        }
       }
     };
 
@@ -50,8 +53,12 @@ const FilePreview: React.FC<{ file: FileUpload }> = ({ file }) => {
     return <div className="text-xs text-gray-400">No preview</div>;
   }
 
-  if (failed) {
-    return <div className="text-xs text-red-500">Preview failed</div>;
+  if (previewError) {
+    return (
+      <div className="max-w-[120px] text-xs text-red-500" title={previewError}>
+        Preview unavailable
+      </div>
+    );
   }
 
   if (!previewUrl) {
