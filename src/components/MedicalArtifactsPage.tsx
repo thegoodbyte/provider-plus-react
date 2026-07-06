@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, Eye, FileText, HeartPulse, Leaf, Plus, RefreshCw, Send, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Eye, FileText, HeartPulse, Leaf, Plus, RefreshCw, Send, Trash2, XCircle } from 'lucide-react';
 import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { Client, MedicalArtifact, MedicalReviewRequest, Retreat, RetreatArtifactSubmissionRow, RetreatArtifactSubmissionsResponse, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
@@ -222,6 +222,7 @@ const MedicalArtifactsPage: React.FC = () => {
   const [submissionData, setSubmissionData] = useState<RetreatArtifactSubmissionsResponse | null>(null);
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
   const [submissionsError, setSubmissionsError] = useState('');
+  const [deletingArtifactId, setDeletingArtifactId] = useState('');
 
   const loadData = async () => {
     setLoading(true);
@@ -337,6 +338,25 @@ const MedicalArtifactsPage: React.FC = () => {
   const handleRequestReview = async (artifact: MedicalArtifact) => {
     if (!artifact._id) return;
     navigate(`/admin/medical-review-requests/new?artifactId=${artifact._id}`);
+  };
+
+  const handleDeleteArtifact = async (artifact: MedicalArtifact) => {
+    if (!artifact._id) return;
+    const label = `#${artifact.display_id || artifact._id.slice(-6)} ${artifact.title || getArtifactTypeLabel(artifact.artifactType)}`;
+    const confirmed = window.confirm(`Delete medical artifact ${label}? This removes the artifact record from Provider Plus.`);
+    if (!confirmed) return;
+
+    setDeletingArtifactId(artifact._id);
+    try {
+      await medicalArtifactsApi.delete(artifact._id);
+      setArtifacts((current) => current.filter((item) => item._id !== artifact._id));
+      const reviewsResponse = await medicalReviewRequestsApi.getAll().catch(() => ({ data: reviewRequests }));
+      setReviewRequests(reviewsResponse.data || []);
+    } catch (error: any) {
+      alert(error?.response?.data?.message || error?.message || 'Unable to delete this medical artifact.');
+    } finally {
+      setDeletingArtifactId('');
+    }
   };
 
   const handleUploadMissingSubmission = (row: RetreatArtifactSubmissionRow) => {
@@ -531,6 +551,15 @@ const MedicalArtifactsPage: React.FC = () => {
                         <Send className="h-3.5 w-3.5" />
                       </button>
                     )}
+                    <button
+                      type="button"
+                      title="Delete artifact"
+                      onClick={() => handleDeleteArtifact(artifact)}
+                      disabled={!artifact._id || deletingArtifactId === artifact._id}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-200 bg-white text-red-700 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   </div>
                 </td>
                 <td className="px-4 py-3">
