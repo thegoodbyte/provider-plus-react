@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Circle, FileText, ListPlus, Lock, Mail, RefreshCw, RotateCcw, Save, Unlock, Upload, X } from 'lucide-react';
 import { bookingDocumentsApi, bookingFlowApi, clientsApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
@@ -156,7 +156,7 @@ const getClientPhone = (booking: any): string => {
   return phoneParts.join(' ');
 };
 
-const ClientAvatar: React.FC<{ client: Client | null; name: string }> = ({ client, name }) => {
+const RetreatMatrixClientAvatar: React.FC<{ client: Client | null; name: string }> = ({ client, name }) => {
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(client?.profilePictureUrl || null);
   const hasProfilePicture = Boolean(client?.profilePictureUrl || client?.profilePictureS3Key || client?.profilePictureFileUploadId);
 
@@ -185,15 +185,9 @@ const ClientAvatar: React.FC<{ client: Client | null; name: string }> = ({ clien
     };
   }, [client?._id, client?.profilePictureFileUploadId, client?.profilePictureS3Key, client?.profilePictureUrl, hasProfilePicture]);
 
-  if (!hasProfilePicture) return null;
-
   return (
-    <span className="mr-2 inline-flex h-10 w-10 flex-none items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-gray-100 text-sm font-semibold text-gray-600">
-      {profilePictureUrl ? (
-        <img src={profilePictureUrl} alt="" className="h-full w-full object-cover" />
-      ) : (
-        <span>{name.charAt(0).toUpperCase()}</span>
-      )}
+    <span className="mr-2 inline-flex h-8 w-8 flex-none items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-gray-100 text-xs font-semibold text-gray-600">
+      {profilePictureUrl ? <img src={profilePictureUrl} alt="" className="h-full w-full object-cover" /> : <span>{name.charAt(0).toUpperCase()}</span>}
     </span>
   );
 };
@@ -456,6 +450,7 @@ const getItemGroup = (item?: Partial<BookingFlowItem> | null, template?: Partial
 };
 
 const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
+  const location = useLocation();
   const [bookings, setBookings] = useState<any[]>([]);
   const [templates, setTemplates] = useState<BookingFlowTemplate[]>([]);
   const [libraryTemplates, setLibraryTemplates] = useState<BookingFlowTemplate[]>([]);
@@ -494,6 +489,10 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     action?: BookingFlowAction;
     initialValues: EmailComposeInitialValues;
   } | null>(null);
+  const routePrefix = useMemo(() => {
+    const firstSegment = location.pathname.split('/').filter(Boolean)[0];
+    return ['admin', 'medical', 'staff', 'user', 'helper'].includes(firstSegment) ? firstSegment : 'admin';
+  }, [location.pathname]);
 
   const loadData = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
@@ -1293,9 +1292,21 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
               {bookings.map((booking) => (
                 <th key={getObjectId(booking)} className={`sticky top-0 z-20 border-b border-r border-gray-300 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase text-gray-600 ${viewMode === 'simple' ? 'min-w-[150px]' : 'min-w-[260px]'}`}>
                   <div className="flex items-start gap-2">
-                    {viewMode === 'detail' && <ClientAvatar client={getBookingClient(booking)} name={getClientName(booking)} />}
+                    {viewMode === 'detail' && <RetreatMatrixClientAvatar client={getBookingClient(booking)} name={getClientName(booking)} />}
                     <div className="min-w-0 space-y-1 normal-case">
-                      <div className={`${viewMode === 'simple' ? 'max-w-[130px] text-xs' : 'max-w-[210px] text-sm'} truncate font-bold uppercase text-gray-900`}>{getClientName(booking)}</div>
+                      {getBookingClientId(booking) ? (
+                        <Link
+                          to={`/${routePrefix}/clients/${getBookingClientId(booking)}`}
+                          className={`${viewMode === 'simple' ? 'max-w-[130px] text-xs' : 'max-w-[210px] text-sm'} block truncate font-bold uppercase text-gray-900 hover:text-blue-700 hover:underline`}
+                          title="View client profile"
+                        >
+                          {getClientName(booking)}
+                        </Link>
+                      ) : (
+                        <div className={`${viewMode === 'simple' ? 'max-w-[130px] text-xs' : 'max-w-[210px] text-sm'} truncate font-bold uppercase text-gray-900`}>
+                          {getClientName(booking)}
+                        </div>
+                      )}
                       <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] font-semibold text-blue-700">
                         {getObjectId(booking) ? (
                           <Link to={`/admin/bookings/${getObjectId(booking)}`} className="hover:text-blue-900 hover:underline">
@@ -1306,7 +1317,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                         )}
                         {viewMode === 'detail' && getClientDisplayId(booking) && (
                           getBookingClientId(booking) ? (
-                            <Link to={`/admin/clients/${getBookingClientId(booking)}`} className="hover:text-blue-900 hover:underline">
+                            <Link to={`/${routePrefix}/clients/${getBookingClientId(booking)}`} className="hover:text-blue-900 hover:underline">
                               Client #{getClientDisplayId(booking)}
                             </Link>
                           ) : (

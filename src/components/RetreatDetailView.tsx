@@ -74,6 +74,9 @@ interface RetreatClientData {
   clientName: string;
   clientEmail?: string;
   clientPhone: string;
+  clientProfilePictureUrl?: string;
+  clientProfilePictureS3Key?: string;
+  clientProfilePictureFileUploadId?: string;
   registrationDate: string;
   checkInDate?: string;
   checkOutDate?: string;
@@ -152,6 +155,56 @@ const formatDateForInput = (date?: Date | string) => {
   const parsed = new Date(date);
   if (Number.isNaN(parsed.getTime())) return '';
   return parsed.toISOString().split('T')[0];
+};
+
+const RetreatClientAvatar: React.FC<{ clientId: string; name: string; profilePictureUrl?: string; profilePictureS3Key?: string; profilePictureFileUploadId?: string }> = ({
+  clientId,
+  name,
+  profilePictureUrl,
+  profilePictureS3Key,
+  profilePictureFileUploadId,
+}) => {
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(profilePictureUrl || null);
+  const hasProfilePicture = Boolean(profilePictureUrl || profilePictureS3Key || profilePictureFileUploadId);
+
+  useEffect(() => {
+    if (!clientId || profilePictureUrl || !hasProfilePicture) {
+      setAvatarUrl(profilePictureUrl || null);
+      return;
+    }
+
+    let active = true;
+    let objectUrl: string | null = null;
+
+    clientsApi.getProfilePictureBlob(clientId)
+      .then((response) => {
+        if (!active) return;
+        objectUrl = URL.createObjectURL(response.data);
+        setAvatarUrl(objectUrl);
+      })
+      .catch(() => {
+        if (active) setAvatarUrl(null);
+      });
+
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [clientId, hasProfilePicture, profilePictureUrl]);
+
+  if (!hasProfilePicture) {
+    return (
+      <span className="inline-flex h-8 w-8 flex-none items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-gray-100 text-xs font-semibold text-gray-600">
+        {name.charAt(0).toUpperCase() || '?'}
+      </span>
+    );
+  }
+
+  return (
+    <span className="inline-flex h-8 w-8 flex-none items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-gray-100 text-xs font-semibold text-gray-600">
+      {avatarUrl ? <img src={avatarUrl} alt="" className="h-full w-full object-cover" /> : <span>{name.charAt(0).toUpperCase() || '?'}</span>}
+    </span>
+  );
 };
 
 const cropImageToHeroBanner = (file: File, width = 1200, height = 250): Promise<File> => {
@@ -351,6 +404,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             : 'Unknown Client',
           clientEmail: booking.clientId?.email || '',
           clientPhone: booking.clientId?.phone || '',
+          clientProfilePictureUrl: booking.clientId?.profilePictureUrl || '',
+          clientProfilePictureS3Key: booking.clientId?.profilePictureS3Key || '',
+          clientProfilePictureFileUploadId: booking.clientId?.profilePictureFileUploadId || '',
           registrationDate: booking.registrationDate,
           checkInDate: booking.checkInDate,
           checkOutDate: booking.checkOutDate,
@@ -1244,6 +1300,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Order
+                    </th>
                     <th
                       className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                       onClick={() => handleSort('bookingNumber')}
@@ -1284,8 +1343,11 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {sortedClients.map((client) => (
+                  {sortedClients.map((client, index) => (
                     <tr key={client._id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-700">
+                        {index + 1}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         <Link
                           to={`/${routePrefix}/bookings/${client._id}`}
@@ -1296,12 +1358,31 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                         </Link>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        <div>{client.clientName}</div>
-                        {client.clientDisplayId && (
-                          <div className="mt-1 text-xs font-semibold text-gray-500">
-                            Client #{client.clientDisplayId}
+                        <div className="flex items-center gap-3">
+                          <RetreatClientAvatar
+                            clientId={client.clientId}
+                            name={client.clientName}
+                            profilePictureUrl={client.clientProfilePictureUrl}
+                            profilePictureS3Key={client.clientProfilePictureS3Key}
+                            profilePictureFileUploadId={client.clientProfilePictureFileUploadId}
+                          />
+                          <div className="min-w-0">
+                            <Link
+                              to={`/${routePrefix}/clients/${client.clientId}`}
+                              className="block truncate font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+                              title="View client profile"
+                            >
+                              {client.clientName}
+                            </Link>
+                            <Link
+                              to={`/${routePrefix}/clients/${client.clientId}`}
+                              className="mt-0.5 block text-xs font-semibold text-gray-500 hover:text-gray-700 hover:underline"
+                              title="View client profile"
+                            >
+                              Client #{client.clientDisplayId || client.clientId.slice(-6)}
+                            </Link>
                           </div>
-                        )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {client.clientPhone}
