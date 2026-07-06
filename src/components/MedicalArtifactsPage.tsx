@@ -49,6 +49,24 @@ const getDocumentTypeLabel = (type?: MedicalArtifact['documentType'], artifactTy
 
 const getObjectId = (value: any) => typeof value === 'object' ? value?._id || value?.id : value;
 
+const clientNameBackgrounds = [
+  'bg-blue-100 text-blue-900 ring-blue-200',
+  'bg-emerald-100 text-emerald-900 ring-emerald-200',
+  'bg-amber-100 text-amber-900 ring-amber-200',
+  'bg-violet-100 text-violet-900 ring-violet-200',
+  'bg-cyan-100 text-cyan-900 ring-cyan-200',
+  'bg-rose-100 text-rose-900 ring-rose-200',
+];
+
+const getClientNameBackgroundClass = (clientId?: string) => {
+  if (!clientId) return clientNameBackgrounds[0];
+  let hash = 0;
+  for (let index = 0; index < clientId.length; index += 1) {
+    hash = (hash * 31 + clientId.charCodeAt(index)) % clientNameBackgrounds.length;
+  }
+  return clientNameBackgrounds[Math.abs(hash) % clientNameBackgrounds.length];
+};
+
 const getClientName = (client?: string | Client) => {
   if (!client || typeof client === 'string') return 'Unknown client';
   return [client.firstName || client.fname, client.lastName || client.lname].filter(Boolean).join(' ') || client.email || 'Unknown client';
@@ -768,10 +786,13 @@ const MedicalArtifactsPage: React.FC = () => {
                     clientId: row.clientId,
                     title: row.label,
                   } as MedicalArtifact);
+                  const clientNameClass = getClientNameBackgroundClass(row.clientId);
                   return (
                     <tr key={row.id} className={row.status === 'missing' ? 'bg-red-50/40 hover:bg-red-50' : 'bg-green-50/40 hover:bg-green-50'}>
                       <td className="px-4 py-3">
-                        <div className="font-medium text-gray-900">{row.clientName}</div>
+                        <div className={`inline-flex max-w-full items-center rounded px-2 py-1 text-sm font-medium ring-1 ring-inset ${clientNameClass}`}>
+                          <span className="truncate">{row.clientName}</span>
+                        </div>
                         <div className="text-xs text-gray-500">
                           {row.clientDisplayId ? `Client #${row.clientDisplayId}` : row.clientId.slice(-6)}{row.clientEmail ? ` · ${row.clientEmail}` : ''}
                         </div>
