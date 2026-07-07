@@ -156,22 +156,22 @@ const getTextColor = (isActive: boolean = false): string => {
 
 const BOOKING_STEP_NAV_ACCENTS: Record<string, { border: string; background: string; activeBackground: string; color: string }> = {
   'retreat-flow': {
-    border: 'rgb(14, 165, 233)',
-    background: 'rgba(14, 165, 233, 0.08)',
-    activeBackground: 'rgba(14, 165, 233, 0.16)',
-    color: 'rgb(3, 105, 161)',
+    border: 'rgb(125, 211, 252)',
+    background: 'rgba(219, 234, 254, 0.9)',
+    activeBackground: 'rgba(191, 219, 254, 1)',
+    color: 'rgb(30, 64, 175)',
   },
   'retreat-flow-library': {
-    border: 'rgb(124, 58, 237)',
-    background: 'rgba(124, 58, 237, 0.08)',
-    activeBackground: 'rgba(124, 58, 237, 0.16)',
+    border: 'rgb(196, 181, 253)',
+    background: 'rgba(237, 233, 254, 0.92)',
+    activeBackground: 'rgba(221, 214, 254, 1)',
     color: 'rgb(91, 33, 182)',
   },
   'booking-flow': {
-    border: 'rgb(16, 185, 129)',
-    background: 'rgba(16, 185, 129, 0.08)',
-    activeBackground: 'rgba(16, 185, 129, 0.16)',
-    color: 'rgb(4, 120, 87)',
+    border: 'rgb(134, 239, 172)',
+    background: 'rgba(220, 252, 231, 0.92)',
+    activeBackground: 'rgba(187, 247, 208, 1)',
+    color: 'rgb(22, 101, 52)',
   },
 };
 

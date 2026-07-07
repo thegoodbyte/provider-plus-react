@@ -13,6 +13,46 @@ export type BookingStepTone = {
   customColor?: string;
 };
 
+export type BookingStepColorPreset = {
+  label: string;
+  value: string;
+};
+
+export const BOOKING_STEP_COLOR_PRESETS: BookingStepColorPreset[] = [
+  { label: 'Sky', value: '#dbeafe' },
+  { label: 'Mint', value: '#dcfce7' },
+  { label: 'Lavender', value: '#ede9fe' },
+  { label: 'Peach', value: '#ffedd5' },
+  { label: 'Lemon', value: '#fef3c7' },
+  { label: 'Rose', value: '#ffe4e6' },
+  { label: 'Teal', value: '#ccfbf1' },
+  { label: 'Indigo', value: '#e0e7ff' },
+  { label: 'Slate', value: '#f1f5f9' },
+];
+
+const BOOKING_STEP_DEFAULT_COLOR_BY_GROUP: Record<string, string> = {
+  admin: '#dbeafe',
+  booking: '#dbeafe',
+  booking_admin: '#dbeafe',
+  medical: '#dcfce7',
+  questionnaire: '#ede9fe',
+  questionnaires: '#ede9fe',
+  questionaires: '#ede9fe',
+  payment: '#fef3c7',
+  payments: '#fef3c7',
+  contract: '#e0e7ff',
+  document: '#e0e7ff',
+  documents: '#e0e7ff',
+  dietary: '#dcfce7',
+  message: '#ccfbf1',
+  access: '#f5d0fe',
+  approval: '#ccfbf1',
+  reminder: '#ffe4e6',
+  travel: '#dbeafe',
+  preparation: '#f1f5f9',
+  other: '#f1f5f9',
+};
+
 export const BOOKING_STEP_TONES: Record<string, BookingStepTone> = {
   booking: {
     label: 'Booking Admin',
@@ -218,6 +258,11 @@ export const normalizeBookingStepColor = (value?: string | null) => {
   if (/^#[0-9a-fA-F]{6}$/.test(normalized)) return normalized.toLowerCase();
   if (/^[0-9a-fA-F]{6}$/.test(normalized)) return `#${normalized.toLowerCase()}`;
   return '';
+};
+
+export const getBookingStepDefaultColor = (groupKey?: string | null) => {
+  const normalized = normalizeBookingStepGroup(groupKey);
+  return BOOKING_STEP_DEFAULT_COLOR_BY_GROUP[normalized] || BOOKING_STEP_DEFAULT_COLOR_BY_GROUP.other;
 };
 
 export const getBookingStepToneWithColor = (groupKey?: string | null, customColor?: string | null): BookingStepTone => {

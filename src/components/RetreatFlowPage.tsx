@@ -5,11 +5,13 @@ import LoadingSpinner from './LoadingSpinner';
 import { bookingFlowApi, communicationsApi, retreatsApi } from '../services/api';
 import { BookingFlowTemplate, EmailTemplate, Retreat } from '../types';
 import {
+  getBookingStepDefaultColor,
   getBookingStepColorStyles,
   getBookingStepToneWithColor,
   normalizeBookingStepColor,
   titleizeBookingStepGroup,
 } from '../utils/bookingStepColors';
+import BookingStepColorField from './BookingStepColorField';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
@@ -203,7 +205,7 @@ const RetreatFlowPage: React.FC = () => {
       taskTitle: template.taskTitle || '',
       taskPriority: template.taskPriority || 'medium',
       readinessGroup: template.readinessGroup || '',
-      readinessGroupColor: template.readinessGroupColor || groupColorByKey[groupKey] || '',
+      readinessGroupColor: template.readinessGroupColor || groupColorByKey[groupKey] || getBookingStepDefaultColor(groupKey),
       expectedArtifact: template.expectedArtifact || '',
       emailEnabled: !!template.emailEnabled,
       emailTemplateId: typeof template.emailTemplateId === 'string' ? template.emailTemplateId : template.emailTemplateId?._id || '',
@@ -392,21 +394,11 @@ const RetreatFlowPage: React.FC = () => {
           className="rounded-md border border-gray-300 px-3 py-2 text-sm"
           placeholder="Readiness group (ekg, liver...)"
         />
-        <div className="flex gap-2">
-          <input
-            type="color"
-            value={normalizeBookingStepColor(form.readinessGroupColor) || '#e2e8f0'}
-            onChange={(e) => setForm({ ...form, readinessGroupColor: e.target.value })}
-            className="h-[38px] w-12 rounded-md border border-gray-300 bg-white p-1"
-            title="Section background color"
-          />
-          <input
-            value={form.readinessGroupColor}
-            onChange={(e) => setForm({ ...form, readinessGroupColor: e.target.value })}
-            className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
-            placeholder="Section color #dbeafe"
-          />
-        </div>
+        <BookingStepColorField
+          groupKey={form.readinessGroup || form.category}
+          value={form.readinessGroupColor}
+          onChange={(value) => setForm({ ...form, readinessGroupColor: value })}
+        />
         <input
           value={form.expectedArtifact}
           onChange={(e) => setForm({ ...form, expectedArtifact: e.target.value })}

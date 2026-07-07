@@ -6,11 +6,13 @@ import SearchableRetreatSelect from './SearchableRetreatSelect';
 import { bookingFlowApi, communicationsApi, retreatsApi } from '../services/api';
 import { BookingFlowAction, BookingFlowTemplate, EmailTemplate, Retreat } from '../types';
 import {
+  getBookingStepDefaultColor,
   getBookingStepColorStyles,
   getBookingStepToneWithColor,
   normalizeBookingStepColor,
   titleizeBookingStepGroup,
 } from '../utils/bookingStepColors';
+import BookingStepColorField from './BookingStepColorField';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
@@ -191,7 +193,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
       taskTitle: template.taskTitle || '',
       taskPriority: template.taskPriority || 'medium',
       readinessGroup: template.readinessGroup || '',
-      readinessGroupColor: template.readinessGroupColor || groupColorByKey[groupKey] || '',
+      readinessGroupColor: template.readinessGroupColor || groupColorByKey[groupKey] || getBookingStepDefaultColor(groupKey),
       expectedArtifact: template.expectedArtifact || '',
       expectedDocumentStage: template.expectedDocumentStage || '',
       expectedDocumentType: template.expectedDocumentType || '',
@@ -481,24 +483,11 @@ const RetreatFlowLibraryPage: React.FC = () => {
             <option value="other" />
           </datalist>
         </label>
-        <label className="block">
-          <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Section background color</span>
-          <div className="flex gap-2">
-            <input
-              type="color"
-              value={normalizeBookingStepColor(form.readinessGroupColor) || '#e2e8f0'}
-              onChange={(e) => setForm({ ...form, readinessGroupColor: e.target.value })}
-              className="h-[38px] w-12 rounded-md border border-gray-300 bg-white p-1"
-              title="Section background color"
-            />
-            <input
-              value={form.readinessGroupColor}
-              onChange={(e) => setForm({ ...form, readinessGroupColor: e.target.value })}
-              className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
-              placeholder="#dbeafe"
-            />
-          </div>
-        </label>
+        <BookingStepColorField
+          groupKey={form.readinessGroup || form.category}
+          value={form.readinessGroupColor}
+          onChange={(value) => setForm({ ...form, readinessGroupColor: value })}
+        />
         <label className="block">
           <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Expected artifact</span>
           <input value={form.expectedArtifact} onChange={(e) => setForm({ ...form, expectedArtifact: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="ekg" />
