@@ -410,7 +410,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
               <option value="ekg">EKG</option>
               <option value="liver">Liver</option>
               <option value="both">Both</option>
-              <option value="ekg_review">Entry EKG Review</option>
+              <option value="ekg_review">EKG</option>
               <option value="ceremony_ekg_review">Ceremony EKG Review</option>
               <option value="blood_pressure_review">Blood Pressure Review</option>
               <option value="liver_panel_review">Liver Panel Review</option>

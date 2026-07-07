@@ -43,7 +43,7 @@ const requestTypeLabels: Record<string, string> = {
   ekg: 'EKG',
   liver: 'Liver Panel',
   both: 'EKG + Liver Panel',
-  ekg_review: 'Entry EKG Review',
+  ekg_review: 'EKG',
   ceremony_ekg_review: 'Ceremony EKG Review',
   blood_pressure_review: 'Blood Pressure Review',
   liver_panel_review: 'Liver Panel Review',
@@ -288,7 +288,7 @@ const getMedicationPdfUrl = (filePath?: string) => {
   return /^https?:\/\//i.test(filePath) ? filePath : `${API_BASE_URL}${filePath}`;
 };
 
-const ArtifactInlinePreview: React.FC<{ artifactId?: string; file: ArtifactFile; index: number }> = ({ artifactId, file, index }) => {
+const ArtifactInlinePreview: React.FC<{ artifactId?: string; file: ArtifactFile; index: number; frame?: boolean }> = ({ artifactId, file, index, frame = true }) => {
   const storedPath = file.s3Key || file.filePath || '';
   const fallbackUrl = getArtifactFileUrl(file);
   const [previewUrl, setPreviewUrl] = useState('');
@@ -339,6 +339,32 @@ const ArtifactInlinePreview: React.FC<{ artifactId?: string; file: ArtifactFile;
   const previewFile = { ...file, mimeType: contentType || file.mimeType, fileName };
   const url = previewUrl || fallbackUrl;
 
+  if (!frame) {
+    return (
+      <div className="mt-2 space-y-2">
+        {isLoading && <div className="text-xs text-gray-500">Loading preview...</div>}
+        {!isLoading && previewError && !url && <div className="text-xs text-red-600">{previewError}</div>}
+        {!isLoading && url && isImageFile(previewFile) && (
+          <img src={url} alt={fileName} className="w-full rounded-md bg-white object-contain" />
+        )}
+        {!isLoading && url && isPdfFile(previewFile) && (
+          <iframe src={url} title={fileName} className="h-[520px] w-full rounded-md bg-white" />
+        )}
+        {!isLoading && (!url || (!isImageFile(previewFile) && !isPdfFile(previewFile))) && (
+          <div className="text-xs text-gray-600">Preview unavailable for this file type.</div>
+        )}
+        <div className="flex items-center justify-between gap-3 text-xs">
+          <span className="truncate text-gray-700">{fileName}</span>
+          {url && (
+            <a href={url} target="_blank" rel="noreferrer" className="shrink-0 font-semibold text-blue-700 hover:text-blue-900">
+              Open
+            </a>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="mt-2 rounded-md border border-gray-200 bg-gray-50">
       {isLoading && (
@@ -378,7 +404,6 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const isAdvisorReviewRoute = isMedicalRoute || user?.role === 'medical_advisor';
   const isMagicReviewSession = user?.accessType === 'medical_review_magic_link';
   const canManageAccessLinks = user?.role === 'admin';
-  const canEditReview = isEditRoute;
   const routeId = id === 'new' ? undefined : id;
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState<MedicalReviewRequest[]>([]);
@@ -398,6 +423,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [requestSearchFilter, setRequestSearchFilter] = useState('');
   const [validationError, setValidationError] = useState('');
   const reviewDecisionSectionRef = useRef<HTMLDivElement | null>(null);
+  const canEditReview = isEditRoute || (isAdvisorReviewRoute && selected?.status === 'pending' && !isMagicReviewSession);
 
   const loadRequests = useCallback(async () => {
     try {
@@ -662,7 +688,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
         {artifact.data && Object.keys(artifact.data).length > 0 && (
           <pre className="mt-2 max-h-28 overflow-auto rounded bg-gray-50 p-2 text-[11px] text-gray-600">{JSON.stringify(artifact.data, null, 2)}</pre>
         )}
-        {hasRealFile && <ArtifactInlinePreview artifactId={artifact._id} file={target.file} index={0} />}
+        {hasRealFile && <ArtifactInlinePreview artifactId={artifact._id} file={target.file} index={0} frame={false} />}
         {isReadOnlyView ? (
           <div className="mt-2 rounded-md bg-gray-50 p-2 text-xs">
             <div className="font-semibold text-gray-900">{fileReview.decision || 'Not reviewed'}</div>
@@ -823,44 +849,27 @@ const MedicalReviewRequestsPage: React.FC = () => {
     );
   };
 
-  const renderScreeningSection = (screening: any, title: string, items: Array<{ label: string; keys?: string[]; value?: any }>) => {
-    const content = renderScreeningItems(screening, items);
-    if (!content) return null;
-    return (
-      <div className="space-y-2">
-        <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{title}</div>
-        {content}
-      </div>
-    );
-  };
-
   const renderReadOnlyScreening = (screening: any) => {
     const fileUrl = getScreeningValue(screening, 'handwritingImageUrl');
-    const fileName = fileUrl ? decodeURIComponent(String(fileUrl).split('/').pop() || 'Screening file') : '';
 
     return (
-      <div key={screening._id || screening.createdAt || 'screening'} className="space-y-3 rounded-md border border-gray-200 bg-white p-3 text-sm">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="font-semibold text-gray-900">
-              {getScreeningValue(screening, 'status') || 'screening'} • {formatDateTime(getScreeningValue(screening, 'screeningCompletedDate', 'screeningDate', 'updatedAt', 'createdAt'))}
-            </div>
-            <div className="mt-1 text-xs font-medium text-blue-700">Read-only screening view</div>
+      <div key={screening._id || screening.createdAt || 'screening'} className="space-y-3 text-sm">
+        {reviewContext?.client && (
+          <div className="rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-700">
+            <span className="font-semibold text-gray-900">Client:</span>{' '}
+            {reviewContext.client.firstName} {reviewContext.client.lastName}
+            {reviewContext.client.display_id ? ` #${reviewContext.client.display_id}` : ''}
           </div>
-          {fileUrl && (
-            <a href={String(fileUrl)} target="_blank" rel="noreferrer" className="shrink-0 rounded-full border border-gray-200 px-2 py-1 text-xs font-semibold text-blue-700">
-              File
-            </a>
-          )}
-        </div>
+        )}
+        {fileUrl && (
+          <a href={String(fileUrl)} target="_blank" rel="noreferrer" className="inline-flex items-center text-xs font-semibold text-blue-700">
+            Open screening file
+          </a>
+        )}
         <div className="grid gap-2 sm:grid-cols-2">
           {[
-            { label: 'Age', keys: ['age'] },
-            { label: 'Risk level', keys: ['riskLevel'] },
-            { label: 'Desired retreat', keys: ['desiredRetreat'] },
-            { label: 'Screened by', keys: ['screenedBy'] },
-            { label: 'Phone number', keys: ['phoneNumber'] },
             { label: 'Why seeking iboga', keys: ['whySeekingIboga', 'mainIntent'] },
+            { label: 'Medical conditions', keys: ['medicalConditions', 'healthConditions', 'generalConditions'] },
             { label: 'Observations', keys: ['observations', 'generalNotes', 'notes'] },
             { label: 'Anxiety diagnosed since', keys: ['anxietySince'] },
             { label: 'Depression diagnosed since', keys: ['depressionSince'] },
@@ -903,7 +912,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 {artifact.files.map((file, index) => {
                   const url = getArtifactFileUrl(file);
                   return (artifact._id && (file.s3Key || file.filePath)) || url ? (
-                    <ArtifactInlinePreview key={`${file.fileName || url}-${index}`} artifactId={artifact._id} file={file} index={index} />
+                    <ArtifactInlinePreview key={`${file.fileName || url}-${index}`} artifactId={artifact._id} file={file} index={index} frame={false} />
                   ) : (
                     <span key={`${file.fileName || index}`} className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-500">{file.fileName || `File ${index + 1}`}</span>
                   );
@@ -1227,7 +1236,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 <div className="space-y-2">
                   <details className="rounded-md border border-gray-200 bg-white p-3" open>
                     <summary className="cursor-pointer text-sm font-semibold text-gray-900">
-                      Screening • {contextSummary(reviewContext?.screenings?.length || 0)}
+                      Screening
                     </summary>
                     <div className="mt-3 space-y-3">
                       {reviewContext?.client && (
@@ -1354,15 +1363,15 @@ const MedicalReviewRequestsPage: React.FC = () => {
                               {artifact.files.map((file, index) => {
                                 const fileReview = getFileReview(artifact, file);
                                 return (
-                                  <div key={`${file.fileName || file.s3Key || index}`} className="rounded-md border border-gray-200 bg-white p-3">
-                                    <ArtifactInlinePreview artifactId={artifact._id} file={file} index={index} />
+                                  <div key={`${file.fileName || file.s3Key || index}`} className="space-y-3">
+                                    <ArtifactInlinePreview artifactId={artifact._id} file={file} index={index} frame={false} />
                                     {isReadOnlyView ? (
-                                      <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm">
+                                      <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm">
                                         <div className="font-medium text-gray-900">File decision: {fileReview.decision || 'Not reviewed'}</div>
                                         <div className="mt-1 whitespace-pre-wrap text-gray-600">{fileReview.notes || 'No file notes.'}</div>
                                       </div>
                                     ) : (
-                                      <div className="mt-3 grid gap-3">
+                                      <div className="grid gap-3">
                                         <div className="flex flex-wrap gap-2">
                                           {decisionOptions.map((option) => (
                                             <button
