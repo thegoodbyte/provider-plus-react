@@ -95,13 +95,15 @@ const getStatusIcon = (status: string) => {
   return <Clock3 size={18} />;
 };
 
+const reviewFilters: ReviewFilter[] = ['pending', 'open', 'all', 'in_review', 'needs_resubmission', 'caution', 'approved', 'rejected', 'completed'];
+
 const MedicalAdvisorDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isMedicalAdvisor = user?.role === 'medical_advisor';
   const [requests, setRequests] = useState<MedicalReviewRequest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<ReviewFilter>('open');
+  const [filter, setFilter] = useState<ReviewFilter>('pending');
   const [sortBy, setSortBy] = useState<'urgency' | 'requested' | 'due'>('urgency');
 
   const loadData = async () => {
@@ -120,6 +122,10 @@ const MedicalAdvisorDashboard: React.FC = () => {
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    setFilter(isMedicalAdvisor ? 'pending' : 'open');
+  }, [isMedicalAdvisor]);
 
   const stats = useMemo(() => {
     const open = requests.filter((request) => openStatuses.has(request.status)).length;
@@ -162,7 +168,7 @@ const MedicalAdvisorDashboard: React.FC = () => {
           <h1>{isMedicalAdvisor ? 'Medical Review Queue' : 'Medical Dashboard'}</h1>
           <p>
             {isMedicalAdvisor
-              ? 'Reviews assigned to you, sorted by urgency.'
+              ? 'Reviews assigned to you. Pending items first.'
               : 'Operational view of medical reviews, advisor progress, and review outcomes.'}
           </p>
         </div>
@@ -197,7 +203,7 @@ const MedicalAdvisorDashboard: React.FC = () => {
 
       <div className="medical-dashboard-controls">
         <div className="medical-filter-tabs">
-          {(['open', 'all', 'pending', 'in_review', 'needs_resubmission', 'caution', 'approved', 'rejected', 'completed'] as ReviewFilter[]).map((status) => (
+          {reviewFilters.map((status) => (
             <button
               key={status}
               type="button"
@@ -208,6 +214,14 @@ const MedicalAdvisorDashboard: React.FC = () => {
             </button>
           ))}
         </div>
+        <label className="medical-mobile-filter">
+          <span>View</span>
+          <select value={filter} onChange={(event) => setFilter(event.target.value as ReviewFilter)}>
+            {reviewFilters.map((status) => (
+              <option key={status} value={status}>{status.replace(/_/g, ' ')}</option>
+            ))}
+          </select>
+        </label>
         <label className="medical-sort-control">
           <span>Sort</span>
           <select value={sortBy} onChange={(event) => setSortBy(event.target.value as typeof sortBy)}>
@@ -222,7 +236,10 @@ const MedicalAdvisorDashboard: React.FC = () => {
         {visibleRequests.length === 0 ? (
           <div className="medical-empty-state">
             <FileText size={28} />
-            <p>No medical review requests match this view.</p>
+            <p>{isMedicalAdvisor && filter === 'pending'
+              ? `You are all caught up ${user?.firstName || ''}`.trim()
+              : 'No medical review requests match this view.'}
+            </p>
           </div>
         ) : (
           visibleRequests.map((request) => {

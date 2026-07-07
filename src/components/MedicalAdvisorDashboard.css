@@ -118,6 +118,24 @@
   gap: 8px;
 }
 
+.medical-mobile-filter {
+  display: none;
+  flex-direction: column;
+  gap: 6px;
+  color: #4b5563;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.medical-mobile-filter select {
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: #fff;
+  color: #111827;
+  padding: 11px 12px;
+  font-size: 15px;
+}
+
 .medical-filter-tabs button {
   border: 1px solid #d1d5db;
   border-radius: 999px;
@@ -318,6 +336,14 @@
     align-items: stretch;
   }
 
+  .medical-filter-tabs {
+    display: none;
+  }
+
+  .medical-mobile-filter {
+    display: flex;
+  }
+
   .medical-review-card {
     grid-template-columns: 36px minmax(0, 1fr);
   }
@@ -326,5 +352,16 @@
     grid-column: 1 / -1;
     align-items: flex-start;
     flex-direction: row;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .medical-review-main {
+    gap: 4px;
+  }
+
+  .medical-review-meta,
+  .medical-review-dates {
+    gap: 6px;
   }
 }
