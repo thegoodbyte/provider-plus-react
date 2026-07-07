@@ -1235,10 +1235,6 @@ const MedicalReviewRequestsPage: React.FC = () => {
                           <span className="font-semibold text-gray-900">Client:</span>{' '}
                           {reviewContext.client.firstName} {reviewContext.client.lastName}
                           {reviewContext.client.display_id ? ` #${reviewContext.client.display_id}` : ''}
-                          {' • '}
-                          <span className="font-semibold text-gray-900">Medical:</span> {renderValue(reviewContext.client.medicalConditions)}
-                          {' • '}
-                          <span className="font-semibold text-gray-900">Meds:</span> {renderValue(reviewContext.client.currentMedications)}
                         </div>
                       )}
                       {contextScreenings.length
