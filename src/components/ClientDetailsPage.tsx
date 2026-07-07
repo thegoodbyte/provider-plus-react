@@ -4,8 +4,9 @@ import { clientsApi, paymentsApi, clientMedicalApi, bookingsApi, paymentRequests
 import LoadingSpinner from './LoadingSpinner';
 import AppleButton from './AppleButton';
 import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
+import EmailHistoryPanel from './EmailHistoryPanel';
 import { PaymentRequest } from '../types';
-import { FiArrowLeft, FiCamera, FiEdit2, FiTrash2, FiUser, FiMapPin, FiCalendar, FiDollarSign, FiActivity, FiFileText, FiAlertCircle, FiPlus, FiMessageSquare, FiCheckSquare, FiHeart, FiEye, FiEyeOff } from 'react-icons/fi';
+import { FiArrowLeft, FiCamera, FiEdit2, FiTrash2, FiUser, FiMapPin, FiCalendar, FiDollarSign, FiActivity, FiFileText, FiAlertCircle, FiPlus, FiMessageSquare, FiCheckSquare, FiHeart, FiEye, FiEyeOff, FiMail } from 'react-icons/fi';
 import MedicalRecordsManager from './MedicalRecordsManager';
 import { formatCalendarDate, toDateInputValue } from '../utils/dateFormat';
 import { CreateTaskDto, Task, taskService } from '../services/taskService';
@@ -1108,6 +1109,12 @@ const ClientDetailsPage: React.FC = () => {
             onClick={() => setActiveTab('payments')}
           />
           <Tab
+            label="Emails"
+            icon={FiMail}
+            isActive={activeTab === 'emails'}
+            onClick={() => setActiveTab('emails')}
+          />
+          <Tab
             label="Notes"
             icon={FiMessageSquare}
             isActive={activeTab === 'notes'}
@@ -1916,6 +1923,14 @@ const ClientDetailsPage: React.FC = () => {
               <p className="text-sm text-gray-500">No payment history available</p>
             )}
           </div>
+        )}
+
+        {activeTab === 'emails' && (
+          <EmailHistoryPanel
+            clientId={clientId}
+            title="Client emails"
+            subtitle="Sent and received emails for this client."
+          />
         )}
 
         {/* Notes Tab */}

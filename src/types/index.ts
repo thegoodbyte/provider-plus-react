@@ -458,7 +458,7 @@ export interface ExpenseType {
 export interface RetreatExpense {
   _id?: string;
   expenseKind?: 'planned' | 'actual';
-  retreatId: string;
+  retreatId?: string | Retreat;
   expenseTypeId: string | ExpenseType;
   amount: number;
   usd_amount?: number;
@@ -1098,6 +1098,7 @@ export interface MedicalReviewRequest {
   clientId?: string | Client;
   clientDisplayId?: number;
   retreatId?: string | Retreat;
+  bookingFlowItemId?: string | BookingFlowItem;
   medicalTrackingId?: string | MedicalItem | ClientMedical;
   artifactIds?: Array<string | MedicalArtifact>;
   documentStage?: MedicalArtifact['documentStage'];
@@ -1167,6 +1168,53 @@ export interface MedicalReviewRequest {
   updatedAt?: string;
 }
 
+export interface MedicalReviewGroupAccessLink {
+  tokenHash?: string;
+  label?: string;
+  url?: string;
+  createdAt?: string | Date;
+  createdByUserId?: string;
+  createdByName?: string;
+  firstAccessedAt?: string | Date;
+  lastAccessedAt?: string | Date;
+  accessCount?: number;
+  revokedAt?: string | Date;
+  status?: 'active' | 'revoked';
+}
+
+type MedicalReviewGroupUserRef = string | {
+  _id?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  role?: string;
+};
+
+export interface MedicalReviewGroup {
+  _id?: string;
+  title: string;
+  groupType?: 'retreat' | 'ceremony' | 'custom';
+  retreatId?: string | Retreat;
+  retreatName?: string;
+  ceremonyNumber?: number;
+  reviewRequestIds?: string[];
+  requests?: MedicalReviewRequest[];
+  requestCount?: number;
+  reviewerUserId?: MedicalReviewGroupUserRef;
+  reviewerName?: string;
+  reviewerEmail?: string;
+  createdByUserId?: MedicalReviewGroupUserRef;
+  createdByName?: string;
+  url?: string;
+  accessLinks?: MedicalReviewGroupAccessLink[];
+  firstAccessedAt?: string | Date;
+  expiresAt?: string | Date;
+  accessCount?: number;
+  revokedAt?: string | Date;
+  createdAt?: string | Date;
+  status?: 'active' | 'expired' | 'revoked' | 'not_accessed';
+}
+
 export interface BookingFlowTemplate {
   _id?: string;
   display_id?: number;
@@ -1208,7 +1256,7 @@ export interface BookingFlowTemplate {
 export interface BookingFlowAction {
   key: string;
   label: string;
-  type: 'email' | 'whatsapp' | 'link' | 'manual' | 'upload';
+  type: 'email' | 'whatsapp' | 'link' | 'manual' | 'upload' | 'link_mrr';
   active?: boolean;
   emailTemplateId?: string | EmailTemplate;
   urlTemplate?: string;
@@ -1462,6 +1510,7 @@ export interface SentEmail {
   gmailMessageId?: string;
   clientId?: string | Client;
   retreatId?: string | Retreat;
+  bookingId?: string | RetreatClient;
   clientDisplayId?: number;
   relatedEntityType?: string;
   relatedEntityId?: string;

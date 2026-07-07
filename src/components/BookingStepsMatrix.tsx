@@ -1,16 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, Circle, FileText, ListPlus, Lock, Mail, RefreshCw, RotateCcw, Save, Unlock, Upload, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Circle, FileText, Link2, ListPlus, Lock, Mail, RefreshCw, RotateCcw, Save, Unlock, Upload, X } from 'lucide-react';
 import { bookingDocumentsApi, bookingFlowApi, clientsApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { BookingDocument, BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, Client, MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
+import { resolveBookingStepUploadTarget, shouldShowArtifactUploadFallback } from './BookingStepsMatrix.helpers';
 import {
   getBookingStepColorStyles,
   getBookingStepToneWithColor,
   titleizeBookingStepGroup,
 } from '../utils/bookingStepColors';
+import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
 
 const getObjectId = (value: any): string => {
   if (!value) return '';
@@ -139,6 +141,63 @@ const getArtifactLinkCandidates = (booking: any, artifacts: MedicalArtifact[], c
         || (!artifactBookingId && !artifactClientId && !artifactRetreatId);
     })
     .sort((a, b) => new Date(b.receivedAt || b.createdAt || 0).getTime() - new Date(a.receivedAt || a.createdAt || 0).getTime());
+};
+
+const reviewRequestStatusToItemStatus = (status?: MedicalReviewRequest['status']): BookingFlowItem['status'] => {
+  switch (status) {
+    case 'in_review':
+      return 'in_review';
+    case 'approved':
+      return 'approved';
+    case 'rejected':
+      return 'rejected';
+    case 'caution':
+      return 'caution';
+    case 'needs_resubmission':
+      return 'needs_resubmission';
+    case 'completed':
+      return 'completed';
+    case 'pending':
+    default:
+      return 'sent_for_review';
+  }
+};
+
+const getReviewRequestLinkCandidates = (
+  booking: any,
+  requests: MedicalReviewRequest[],
+  config?: ReviewStepConfig,
+  itemId?: string,
+) => {
+  const bookingClientId = getBookingClientId(booking);
+  const bookingRetreatId = getObjectId(booking.retreatId || booking.retreat);
+  const bookingId = getObjectId(booking);
+  return requests
+    .filter((request) => {
+      const linkedItemId = getObjectId(request.bookingFlowItemId);
+      if (linkedItemId && itemId && linkedItemId !== itemId) return false;
+      const requestClientId = getObjectId(request.clientId);
+      const requestRetreatId = getObjectId(request.retreatId);
+      const matchesBooking = [
+        requestClientId && requestClientId === bookingClientId,
+        requestRetreatId && requestRetreatId === bookingRetreatId,
+        getObjectId(request.bookingFlowItemId) === itemId,
+      ].some(Boolean);
+      if (!matchesBooking) return false;
+      if (!config) return true;
+      if (request.requestType !== config.requestType) return false;
+      if (request.documentStage && request.documentStage !== config.documentStage) return false;
+      if (request.documentType && request.documentType !== config.documentType) return false;
+      const artifact = (request.artifactIds || []).find((candidate): candidate is MedicalArtifact => typeof candidate !== 'string');
+      if (artifact) {
+        if (artifact.bookingId && getObjectId(artifact.bookingId) && getObjectId(artifact.bookingId) !== bookingId) return false;
+        if (artifact.documentStage && artifact.documentStage !== config.documentStage) return false;
+        if (artifact.documentType && artifact.documentType !== config.documentType) return false;
+        if (artifact.artifactType && artifact.artifactType !== config.artifactType) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => new Date(b.requestedAt || b.createdAt || 0).getTime() - new Date(a.requestedAt || a.createdAt || 0).getTime());
 };
 
 const getClientDisplayId = (booking: any): string => {
@@ -484,6 +543,15 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     candidates: MedicalArtifact[];
     selectedArtifactId: string;
   } | null>(null);
+  const [reviewRequestLinkModal, setReviewRequestLinkModal] = useState<{
+    item: BookingFlowItem;
+    booking: any;
+    row: MatrixRow;
+    config?: ReviewStepConfig;
+    action?: BookingFlowAction;
+    candidates: MedicalReviewRequest[];
+    selectedRequestId: string;
+  } | null>(null);
   const [composeState, setComposeState] = useState<{
     item: BookingFlowItem;
     action?: BookingFlowAction;
@@ -497,13 +565,14 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const loadData = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
-      const [response, libraryTemplateResponse, paymentsResponse, usersResponse, documentsResponse, artifactsResponse, reviewRequestsResponse] = await Promise.all([
-        bookingFlowApi.getMatrix(retreatId),
+      const response = await bookingFlowApi.getMatrix(retreatId);
+      const bookingFlowFilters = buildBookingFlowArtifactFilters(response.data?.items || []);
+      const [libraryTemplateResponse, paymentsResponse, usersResponse, documentsResponse, artifactsResponse, reviewRequestsResponse] = await Promise.all([
         bookingFlowApi.getLibraryTemplates().catch(() => ({ data: [] as BookingFlowTemplate[] })),
         paymentsApi.getByRetreat(retreatId).catch(() => ({ data: [] as Payment[] })),
         usersApi.getAll().catch(() => ({ data: [] as User[] })),
         bookingDocumentsApi.getAll({ retreatId }).catch(() => ({ data: [] as BookingDocument[] })),
-        medicalArtifactsApi.getAll({ retreatId }).catch(() => ({ data: [] as MedicalArtifact[] })),
+        medicalArtifactsApi.getAll({ retreatId, ...bookingFlowFilters }).catch(() => ({ data: [] as MedicalArtifact[] })),
         medicalReviewRequestsApi.getAll({ retreatId }).catch(() => ({ data: [] as MedicalReviewRequest[] })),
       ]);
       setBookings(response.data?.bookings || []);
@@ -930,6 +999,89 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     }
   };
 
+  const openExistingReviewRequestLinkModal = (booking: any, item: BookingFlowItem, row: MatrixRow, action?: BookingFlowAction) => {
+    if (!item?._id) return;
+    const config = getReviewStepConfig(row);
+    const candidates = getReviewRequestLinkCandidates(booking, reviewRequests, config, item._id);
+    if (!candidates.length) {
+      alert(`No existing medical review requests were found for ${row.title}.`);
+      return;
+    }
+
+    setReviewRequestLinkModal({
+      item,
+      booking,
+      row,
+      config,
+      action,
+      candidates,
+      selectedRequestId: candidates[0]?._id || '',
+    });
+  };
+
+  const linkExistingReviewRequestToStep = async () => {
+    if (!reviewRequestLinkModal?.item._id || !reviewRequestLinkModal.selectedRequestId) return;
+    const selectedRequest = reviewRequestLinkModal.candidates.find((candidate) => candidate._id === reviewRequestLinkModal.selectedRequestId);
+    if (!selectedRequest?._id) return;
+
+    const booking = reviewRequestLinkModal.booking;
+    const item = reviewRequestLinkModal.item;
+    const itemId = item._id!;
+    const savingKey = `link-mrr:${itemId}`;
+
+    setSaving(savingKey);
+    try {
+      const updatedRequest = await medicalReviewRequestsApi.update(selectedRequest._id, {
+        bookingFlowItemId: itemId,
+        retreatId: getObjectId(booking.retreatId || booking.retreat) || undefined,
+        clientId: getBookingClientId(booking) || undefined,
+      });
+
+      const nextStatus = reviewRequestStatusToItemStatus(updatedRequest.data.status);
+      const nextMetadata = {
+        ...(item.metadata || {}),
+        medicalReviewRequestId: updatedRequest.data._id,
+        medicalReviewRequestDisplayId: updatedRequest.data.display_id,
+        medicalReviewRequestType: updatedRequest.data.requestType,
+        medicalReviewBookingFlowItemId: itemId,
+        medicalReviewAssignedToUserId: updatedRequest.data.assignedToUserId || item.metadata?.medicalReviewAssignedToUserId,
+        medicalReviewAssignedToEmail: updatedRequest.data.assignedToEmail || item.metadata?.medicalReviewAssignedToEmail,
+      };
+
+      await bookingFlowApi.updateItem(itemId, {
+        status: nextStatus,
+        sentAt: nextStatus === 'sent_for_review' || nextStatus === 'in_review' ? new Date().toISOString() : item.sentAt,
+        reviewedAt: nextStatus === 'approved' || nextStatus === 'rejected' || nextStatus === 'caution' || nextStatus === 'needs_resubmission' || nextStatus === 'completed'
+          ? new Date().toISOString()
+          : item.reviewedAt,
+        approvedAt: nextStatus === 'approved' ? new Date().toISOString() : item.approvedAt,
+        metadata: nextMetadata,
+      } as Partial<BookingFlowItem>);
+
+      await bookingFlowApi.recordItemAction(itemId, {
+        actionType: 'manual_mark',
+        actionKey: reviewRequestLinkModal.action?.key || 'link_existing_mrr',
+        actionLabel: reviewRequestLinkModal.action?.label || 'Link existing MRR',
+        statusAfter: nextStatus,
+        notes: `Linked existing medical review request #${updatedRequest.data.display_id || updatedRequest.data._id} to booking #${getBookingNumber(booking)}.`,
+        metadata: {
+          medicalReviewRequestId: updatedRequest.data._id,
+          medicalReviewRequestDisplayId: updatedRequest.data.display_id,
+          medicalReviewRequestType: updatedRequest.data.requestType,
+          medicalReviewBookingFlowItemId: itemId,
+        },
+      }).catch(() => null);
+
+      setReviewRequestLinkModal(null);
+      await loadData(false);
+    } catch (error: any) {
+      console.error('Error linking existing medical review request:', error);
+      alert(error?.response?.data?.message || error?.message || 'Unable to link existing medical review request.');
+    } finally {
+      setSaving('');
+    }
+  };
+
   const openArtifactLinkModal = (booking: any, item: BookingFlowItem, row: MatrixRow, config: ArtifactLinkConfig) => {
     const candidates = getArtifactLinkCandidates(booking, medicalArtifacts, config);
     if (candidates.length === 0) {
@@ -1071,6 +1223,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const runItemAction = async (item: BookingFlowItem | undefined, action: BookingFlowAction) => {
     if (!item?._id) return;
     if (action.type === 'upload') return;
+    if (action.type === 'link_mrr') return;
     setSaving(`action:${item._id}:${action.key}`);
     try {
       if (action.type === 'email') {
@@ -1123,6 +1276,12 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     const clientId = getObjectId(booking.clientId || booking.client || item.clientId);
     const currentRetreatId = getObjectId(booking.retreatId || booking.retreat || item.retreatId) || retreatId;
     const documentType = resolveBookingDocumentType(item);
+    const artifactConfig = artifactStepConfigByKey[item.key];
+    const documentConfig = bookingDocumentTypeByStep[item.key] ? {
+      documentType: bookingDocumentTypeByStep[item.key],
+      title: humanizeDocumentKey(bookingDocumentTypeByStep[item.key]),
+    } : undefined;
+    const uploadTarget = resolveBookingStepUploadTarget(artifactConfig, documentConfig);
     if (!bookingId || !clientId || !currentRetreatId) {
       alert('This file cannot be uploaded because the booking, client, or retreat link is missing.');
       return;
@@ -1132,33 +1291,90 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     setSaving(savingKey);
     try {
       const fileArray = Array.from(files);
-      const created = await bookingDocumentsApi.create({
-        bookingId,
-        clientId,
-        retreatId: currentRetreatId,
-        documentType,
-        title: humanizeDocumentKey(documentType),
-        description: `${humanizeDocumentKey(documentType)} linked to booking ${getBookingNumber(booking)}.`,
-        bookingFlowItemId: item._id,
-        metadata: {
-          bookingNumber: getBookingNumber(booking),
-          bookingFlowItemKey: item.key,
-          actionKey: action.key,
-        },
-      });
+      if (uploadTarget === 'medical_artifact' && artifactConfig) {
+        const created = await medicalArtifactsApi.create({
+          clientId,
+          retreatId: currentRetreatId,
+          bookingId,
+          artifactType: artifactConfig.artifactType,
+          documentStage: artifactConfig.documentStage,
+          documentType: artifactConfig.documentType,
+          title: fileArray[0]?.name || artifactConfig.label,
+          description: `${artifactConfig.label} linked to booking ${getBookingNumber(booking)}.`,
+          contextType: 'booking',
+          purpose: 'booking_requirement',
+          source: 'admin_upload',
+          status: 'stored',
+          data: {
+            bookingId,
+            bookingNumber: getBookingNumber(booking),
+            bookingFlowItemId: item._id,
+            bookingFlowItemKey: item.key,
+            actionKey: action.key,
+          },
+          tags: [
+            'booking-requirement',
+            item.key,
+            getBookingNumber(booking) ? `booking-${getBookingNumber(booking)}` : '',
+          ].filter(Boolean),
+        });
 
-      if (created.data._id) {
-        try {
-          await bookingDocumentsApi.uploadFiles(created.data._id, fileArray);
-        } catch (uploadError) {
-          await bookingDocumentsApi.delete(created.data._id).catch((rollbackError) => {
-            console.error('Error rolling back empty booking document:', rollbackError);
-          });
-          throw uploadError;
+        if (created.data._id) {
+          try {
+            await medicalArtifactsApi.uploadFiles(created.data._id, fileArray);
+          } catch (uploadError) {
+            await medicalArtifactsApi.delete(created.data._id).catch((rollbackError) => {
+              console.error('Error rolling back empty medical artifact:', rollbackError);
+            });
+            throw uploadError;
+          }
         }
-      }
 
-      await loadData(false);
+        await bookingFlowApi.updateItem(item._id, {
+          status: 'received',
+          receivedAt: new Date().toISOString(),
+          metadata: {
+            ...(item.metadata || {}),
+            latestArtifactId: created.data._id,
+            latestArtifactDisplayId: created.data.display_id,
+            latestFileName: fileArray[0]?.name,
+            linkedMedicalArtifactId: created.data._id,
+            linkedMedicalArtifactDisplayId: created.data.display_id,
+            linkedMedicalArtifactType: artifactConfig.artifactType,
+            linkedMedicalArtifactStage: artifactConfig.documentStage,
+            linkedMedicalArtifactDocumentType: artifactConfig.documentType,
+            linkedMedicalArtifactAt: new Date().toISOString(),
+          },
+        } as Partial<BookingFlowItem>);
+      } else {
+        const created = await bookingDocumentsApi.create({
+          bookingId,
+          clientId,
+          retreatId: currentRetreatId,
+          documentType,
+          title: humanizeDocumentKey(documentType),
+          description: `${humanizeDocumentKey(documentType)} linked to booking ${getBookingNumber(booking)}.`,
+          bookingFlowItemId: item._id,
+          metadata: {
+            bookingNumber: getBookingNumber(booking),
+            bookingFlowItemKey: item.key,
+            actionKey: action.key,
+          },
+        });
+
+        if (created.data._id) {
+          try {
+            await bookingDocumentsApi.uploadFiles(created.data._id, fileArray);
+          } catch (uploadError) {
+            await bookingDocumentsApi.delete(created.data._id).catch((rollbackError) => {
+              console.error('Error rolling back empty booking document:', rollbackError);
+            });
+            throw uploadError;
+          }
+        }
+
+        await loadData(false);
+      }
     } catch (error: any) {
       console.error('Error uploading booking step document:', error);
       alert(error?.response?.data?.message || error?.message || 'Unable to upload booking step document.');
@@ -1405,12 +1621,16 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                       const receivedItem = reviewStepConfig ? itemMap.get(`${getObjectId(booking)}:${reviewStepConfig.receivedStepKey}`) : undefined;
                       const linkedArtifactId = getLinkedArtifactIdFromItem(item) || getLinkedArtifactIdFromItem(receivedItem);
                       const metadataReviewRequestId = item?.metadata?.medicalReviewRequestId ? String(item.metadata.medicalReviewRequestId) : '';
+                      const requestsLinkedToThisStep = item?._id
+                        ? reviewRequests.filter((request) => getObjectId(request.bookingFlowItemId) === item._id)
+                        : [];
                       const relatedReviewRequests = reviewStepConfig
                         ? [
+                            ...requestsLinkedToThisStep,
                             ...(linkedArtifactId ? (reviewRequestsByArtifactId.get(linkedArtifactId) || []).filter((request) => request.requestType === reviewStepConfig.requestType) : []),
                             ...(reviewRequestsByBookingContext.get(makeReviewContextKey(getObjectId(booking), reviewStepConfig)) || []),
                           ].filter((request, index, requests) => request._id && requests.findIndex((candidate) => candidate._id === request._id) === index)
-                        : [];
+                        : requestsLinkedToThisStep;
                       const existingReviewRequest = relatedReviewRequests.find((request) => request._id === metadataReviewRequestId) || relatedReviewRequests[0];
                       const existingReviewRequestId = metadataReviewRequestId || existingReviewRequest?._id || '';
                       const existingReviewRequestDisplay = item?.metadata?.medicalReviewRequestDisplayId || existingReviewRequest?.display_id || '';
@@ -1537,6 +1757,18 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                                 </button>
                               )
                             )}
+                            {reviewStepConfig && isEditing && !configuredActions.some((action) => action.type === 'link_mrr') && (
+                              <button
+                                type="button"
+                                disabled={saving === `link-mrr:${item._id}`}
+                                onClick={() => openExistingReviewRequestLinkModal(booking, item, row)}
+                                className="inline-flex items-center justify-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-100 disabled:opacity-50"
+                                title="Link an existing medical review request to this step"
+                              >
+                                <Link2 className="h-3.5 w-3.5" />
+                                Link existing MRR
+                              </button>
+                            )}
                             {configuredActions.map((action) => {
                               const actionLogs = itemActionLogs.filter((log) => (log.actionKey || 'default_email') === action.key);
                               const actionCount = actionLogs.length;
@@ -1560,7 +1792,19 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                                       event.target.value = '';
                                     }}
                                   />
-                                </label>
+                                  </label>
+                              ) : action.type === 'link_mrr' ? (
+                                <button
+                                  key={action.key}
+                                  type="button"
+                                  disabled={!isEditing || saving === savingKey}
+                                  onClick={() => openExistingReviewRequestLinkModal(booking, item, row, action)}
+                                  className="inline-flex items-center justify-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-100 disabled:opacity-50"
+                                  title={isEditing ? 'Link an existing medical review request' : 'Unlock editing to link a medical review request'}
+                                >
+                                  <Link2 className="h-3.5 w-3.5" />
+                                  {saving === savingKey ? '...' : actionCount > 0 && action.allowRepeat !== false ? `${action.label} again` : action.label}
+                                </button>
                               ) : (
                                 <button
                                   key={action.key}
@@ -1575,6 +1819,30 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                                 </button>
                               );
                             })}
+                            {shouldShowArtifactUploadFallback(artifactStepConfig, isEditing, configuredActions.some((action) => action.type === 'upload')) && (
+                              <label
+                                className={`inline-flex items-center justify-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 ${!isEditing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+                                title={isEditing ? `Upload a new ${artifactStepConfig?.label || 'artifact'} document` : 'Unlock editing to upload documents'}
+                              >
+                                <Upload className="h-3.5 w-3.5" />
+                                Upload new
+                                <input
+                                  type="file"
+                                  className="hidden"
+                                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.heic,.heif"
+                                  multiple
+                                  disabled={!isEditing || Boolean(saving)}
+                                  onChange={(event) => {
+                                    uploadItemDocument(booking, item, {
+                                      key: `artifact-upload:${item._id || row.key}`,
+                                      label: `Upload ${artifactStepConfig?.label || 'artifact'}`,
+                                      type: 'upload',
+                                    }, event.target.files);
+                                    event.target.value = '';
+                                  }}
+                                />
+                              </label>
+                            )}
                             {relatedBookingDocument?._id && (
                               <button
                                 type="button"
@@ -1648,6 +1916,76 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
           onClose={() => setComposeState(null)}
           onSent={handleComposedEmailSent}
         />
+      )}
+      {reviewRequestLinkModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-3xl rounded-lg bg-white p-5 shadow-xl">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">Link existing medical review request</h3>
+                <p className="mt-1 text-sm text-gray-600">
+                  {reviewRequestLinkModal.row.title} for {getClientName(reviewRequestLinkModal.booking)} · Booking #{getBookingNumber(reviewRequestLinkModal.booking)}
+                </p>
+                <p className="mt-1 text-xs text-gray-500">
+                  Select an existing request, then link it to this booking step.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setReviewRequestLinkModal(null)}
+                className="rounded-md p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+                title="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="max-h-[60vh] overflow-auto rounded-md border border-gray-200">
+              <table className="min-w-full divide-y divide-gray-200 text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600">Select</th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600">Request</th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600">Details</th>
+                    <th className="px-3 py-2 text-left font-medium text-gray-600">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 bg-white">
+                  {reviewRequestLinkModal.candidates.map((request) => (
+                    <tr key={request._id} className={reviewRequestLinkModal.selectedRequestId === request._id ? 'bg-indigo-50' : ''}>
+                      <td className="px-3 py-2 align-top">
+                        <input
+                          type="radio"
+                          name="review-request-link-selection"
+                          checked={reviewRequestLinkModal.selectedRequestId === request._id}
+                          onChange={() => setReviewRequestLinkModal((current) => (current ? { ...current, selectedRequestId: request._id || '' } : current))}
+                        />
+                      </td>
+                      <td className="px-3 py-2 align-top font-medium text-gray-900">
+                        MRR #{request.display_id || request._id?.slice(-6)} {request.requestType ? `· ${request.requestType}` : ''}
+                      </td>
+                      <td className="px-3 py-2 align-top text-gray-600">
+                        <div>{request.status?.replace(/_/g, ' ') || 'pending'}{request.reviewDecision ? ` · ${request.reviewDecision}` : ''}</div>
+                        <div>{request.assignedToEmail || request.assignedTo || 'Unassigned'}</div>
+                        <div>{formatDateTime(request.requestedAt || request.createdAt)}</div>
+                      </td>
+                      <td className="px-3 py-2 align-top">
+                        <button
+                          type="button"
+                          disabled={saving === `link-mrr:${reviewRequestLinkModal.item._id}` || reviewRequestLinkModal.selectedRequestId !== request._id}
+                          onClick={linkExistingReviewRequestToStep}
+                          className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                        >
+                          {saving === `link-mrr:${reviewRequestLinkModal.item._id}` ? 'Linking...' : 'Link to step'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       )}
       {artifactLinkModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">

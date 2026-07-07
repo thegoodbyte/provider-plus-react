@@ -594,6 +594,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
                   <select value={action.type} onChange={(e) => updateAction(index, { type: e.target.value as BookingFlowAction['type'] })} className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm">
                     <option value="email">Email</option>
                     <option value="upload">Upload document</option>
+                    <option value="link_mrr">Link existing MRR</option>
                     <option value="whatsapp">WhatsApp</option>
                     <option value="link">Link</option>
                     <option value="manual">Manual</option>
@@ -626,6 +627,10 @@ const RetreatFlowLibraryPage: React.FC = () => {
               ) : action.type === 'upload' ? (
                 <div className="mt-2 rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-800">
                   Shows an upload button on the booking step. Uploaded files are saved into Booking Documents and mark the step received.
+                </div>
+              ) : action.type === 'link_mrr' ? (
+                <div className="mt-2 rounded-md border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs text-indigo-800">
+                  Shows a button to link an existing medical review request to this booking step.
                 </div>
               ) : (
                 <label className="mt-2 block">

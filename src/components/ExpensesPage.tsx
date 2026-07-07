@@ -4,6 +4,7 @@ import { RetreatExpense, ExpenseType, Retreat } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import AppleButton from './AppleButton';
 import { FiPlus, FiEdit2, FiTrash2, FiDollarSign, FiCalendar, FiTag, FiFilter } from 'react-icons/fi';
+import { ExpenseScope, getCurrentRetreatForDate, resolveExpenseTypeIdForCategory } from './expensesQuickAdd';
 
 // Icon wrapper component for consistent icon rendering
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -28,20 +29,33 @@ const getRetreatReferenceCode = (retreatRef: RetreatReference) => {
   return getRetreatCode(retreatRef as Retreat);
 };
 
+const QUICK_EXPENSE_CATEGORIES: { value: ExpenseType['category']; label: string }[] = [
+  { value: 'accommodation', label: 'Accommodation' },
+  { value: 'transport', label: 'Transport' },
+  { value: 'food', label: 'Food' },
+  { value: 'activities', label: 'Activities' },
+  { value: 'staff', label: 'Staff' },
+  { value: 'utilities', label: 'Utilities' },
+  { value: 'general', label: 'General' },
+];
+
 const ExpensesPage: React.FC = () => {
   const [expenses, setExpenses] = useState<RetreatExpense[]>([]);
   const [expenseTypes, setExpenseTypes] = useState<ExpenseType[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isQuickSubmitting, setIsQuickSubmitting] = useState(false);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingExpense, setEditingExpense] = useState<RetreatExpense | null>(null);
   const [filterRetreatId, setFilterRetreatId] = useState<string>('');
   const [filterType, setFilterType] = useState<'all' | 'retreat' | 'general'>('all');
+  const [quickScope, setQuickScope] = useState<ExpenseScope>('retreat');
+  const [quickRetreatTouched, setQuickRetreatTouched] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState<Partial<RetreatExpense> & { expenseDate?: string }>({
     amount: 0,
-    currency: 'EUR',
+    currency: 'CZK',
     description: '',
     vendor: '',
     expenseDate: new Date().toISOString().split('T')[0],
@@ -49,10 +63,35 @@ const ExpensesPage: React.FC = () => {
     retreatId: '',
     expenseTypeId: ''
   });
+  const [quickFormData, setQuickFormData] = useState({
+    expenseDate: new Date().toISOString().split('T')[0],
+    amount: '',
+    currency: 'CZK' as 'EUR' | 'USD' | 'CZK' | 'PLN',
+    category: 'general' as ExpenseType['category'],
+    vendor: '',
+    retreatId: ''
+  });
 
   useEffect(() => {
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (quickScope !== 'retreat') {
+      return;
+    }
+
+    if (!quickRetreatTouched) {
+      const currentRetreat = getCurrentRetreatForDate(retreats, new Date(`${quickFormData.expenseDate}T12:00:00`));
+      const suggestedRetreatId = currentRetreat?._id || '';
+      if (quickFormData.retreatId !== suggestedRetreatId) {
+        setQuickFormData((current) => ({
+          ...current,
+          retreatId: suggestedRetreatId
+        }));
+      }
+    }
+  }, [quickScope, quickFormData.expenseDate, quickFormData.retreatId, quickRetreatTouched, retreats]);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -90,6 +129,57 @@ const ExpensesPage: React.FC = () => {
     }
   };
 
+  const handleQuickSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isQuickSubmitting) return;
+
+    const amount = Number(quickFormData.amount || 0);
+    if (!amount || amount <= 0) {
+      alert('Please enter a valid amount');
+      return;
+    }
+
+    const expenseTypeId = resolveExpenseTypeIdForCategory(expenseTypes, quickFormData.category);
+    if (!expenseTypeId) {
+      alert('Please create an expense type first');
+      return;
+    }
+
+    setIsQuickSubmitting(true);
+    try {
+      const payload: Partial<RetreatExpense> & { expenseDate?: string } = {
+        amount,
+        currency: quickFormData.currency,
+        vendor: quickFormData.vendor.trim(),
+        expenseDate: quickFormData.expenseDate,
+        status: 'pending',
+        expenseTypeId
+      };
+
+      if (quickScope === 'retreat' && quickFormData.retreatId) {
+        payload.retreatId = quickFormData.retreatId;
+      }
+
+      await retreatExpensesApi.create(payload as Omit<RetreatExpense, '_id'>);
+      await fetchData();
+      setQuickFormData({
+        expenseDate: new Date().toISOString().split('T')[0],
+        amount: '',
+        currency: 'CZK',
+        category: 'general',
+        vendor: '',
+        retreatId: ''
+      });
+      setQuickScope('retreat');
+      setQuickRetreatTouched(false);
+    } catch (error) {
+      console.error('Error saving quick expense:', error);
+      alert('Error saving expense');
+    } finally {
+      setIsQuickSubmitting(false);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this expense?')) {
       try {
@@ -122,7 +212,7 @@ const ExpensesPage: React.FC = () => {
   const resetForm = () => {
     setFormData({
       amount: 0,
-      currency: 'EUR',
+      currency: 'CZK',
       description: '',
       vendor: '',
       expenseDate: new Date().toISOString().split('T')[0],
@@ -207,6 +297,170 @@ const ExpensesPage: React.FC = () => {
       <div className="mb-6">
         <h1 className="text-2xl font-semibold text-gray-900 mb-2">Expense Management</h1>
         <p className="text-gray-600">Track retreat and general company expenses</p>
+      </div>
+
+      {/* Quick Add */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Quick Add Expense</h2>
+              <p className="text-sm text-gray-500">Fast mobile entry for small expenses.</p>
+            </div>
+            <AppleButton type="button" onClick={() => setShowAddForm((value) => !value)} variant="ghost">
+              <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
+              {showAddForm ? 'Hide details' : 'More details'}
+            </AppleButton>
+          </div>
+
+          <form onSubmit={handleQuickSubmit} className="grid grid-cols-1 md:grid-cols-6 gap-3">
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Scope</label>
+              <div className="inline-flex w-full rounded-md border border-gray-200 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuickScope('retreat');
+                    setQuickRetreatTouched(false);
+                    if (!quickFormData.retreatId) {
+                      const currentRetreat = getCurrentRetreatForDate(retreats, new Date(`${quickFormData.expenseDate}T12:00:00`));
+                      setQuickFormData((current) => ({ ...current, retreatId: currentRetreat?._id || '' }));
+                    }
+                  }}
+                  className={`flex-1 px-3 py-2 text-sm font-medium ${quickScope === 'retreat' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                >
+                  Retreat
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQuickScope('general');
+                    setQuickRetreatTouched(false);
+                    setQuickFormData((current) => ({ ...current, retreatId: '' }));
+                  }}
+                  className={`flex-1 px-3 py-2 text-sm font-medium border-l border-gray-200 ${quickScope === 'general' ? 'bg-blue-600 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}`}
+                >
+                  General company
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="quick-expense-date" className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+              <input
+                id="quick-expense-date"
+                type="date"
+                value={quickFormData.expenseDate}
+                onChange={(e) => {
+                  const expenseDate = e.target.value;
+                  const currentRetreat = quickScope === 'retreat' && !quickRetreatTouched
+                    ? getCurrentRetreatForDate(retreats, new Date(`${expenseDate}T12:00:00`))
+                    : null;
+                  setQuickFormData((current) => ({
+                    ...current,
+                    expenseDate,
+                    retreatId: currentRetreat ? currentRetreat._id || '' : current.retreatId
+                  }));
+                }}
+                className="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="quick-expense-amount" className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+              <input
+                id="quick-expense-amount"
+                type="number"
+                step="0.01"
+                min="0"
+                inputMode="decimal"
+                value={quickFormData.amount}
+                onChange={(e) => setQuickFormData((current) => ({ ...current, amount: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="0.00"
+                required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="quick-expense-currency" className="block text-sm font-medium text-gray-700 mb-1">Currency</label>
+              <select
+                id="quick-expense-currency"
+                value={quickFormData.currency}
+                onChange={(e) => setQuickFormData((current) => ({ ...current, currency: e.target.value as 'EUR' | 'USD' | 'CZK' | 'PLN' }))}
+                className="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="CZK">CZK</option>
+                <option value="PLN">PLN</option>
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="quick-expense-category" className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+              <select
+                id="quick-expense-category"
+                value={quickFormData.category}
+                onChange={(e) => setQuickFormData((current) => ({ ...current, category: e.target.value as ExpenseType['category'] }))}
+                className="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {QUICK_EXPENSE_CATEGORIES.map((category) => (
+                  <option key={category.value} value={category.value}>
+                    {category.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="md:col-span-2">
+              <label htmlFor="quick-expense-vendor" className="block text-sm font-medium text-gray-700 mb-1">Merchant</label>
+              <input
+                id="quick-expense-vendor"
+                type="text"
+                value={quickFormData.vendor}
+                onChange={(e) => setQuickFormData((current) => ({ ...current, vendor: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Store or merchant"
+              />
+            </div>
+
+            {quickScope === 'retreat' && (
+              <div className="md:col-span-2">
+                <label htmlFor="quick-expense-retreat" className="block text-sm font-medium text-gray-700 mb-1">Retreat</label>
+                <select
+                  id="quick-expense-retreat"
+                  value={quickFormData.retreatId}
+                  onChange={(e) => {
+                    setQuickRetreatTouched(true);
+                    setQuickFormData((current) => ({ ...current, retreatId: e.target.value }));
+                  }}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">No retreat matched</option>
+                  {retreats.map((retreat) => (
+                    <option key={retreat._id} value={retreat._id}>
+                      {getRetreatCode(retreat)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="md:col-span-6 flex items-center justify-end gap-2 pt-1">
+              {quickScope === 'retreat' && quickFormData.retreatId && (
+                <span className="hidden sm:inline-flex text-sm text-gray-500 mr-auto">
+                  Current retreat: {getRetreatCode(retreats.find((retreat) => retreat._id === quickFormData.retreatId))}
+                </span>
+              )}
+              <AppleButton type="submit" variant="primary" disabled={isQuickSubmitting}>
+                <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
+                {isQuickSubmitting ? 'Saving...' : 'Save Expense'}
+              </AppleButton>
+            </div>
+          </form>
+        </div>
       </div>
 
       {/* Quick Stats */}

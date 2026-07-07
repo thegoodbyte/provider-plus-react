@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FiCopy, FiEye, FiEdit2, FiLink, FiPlus, FiRefreshCw, FiTrash2, FiX } from 'react-icons/fi';
+import { FiChevronDown, FiChevronRight, FiCopy, FiEye, FiEdit2, FiFolder, FiLink, FiPlus, FiRefreshCw, FiTrash2, FiX } from 'react-icons/fi';
 import LoadingSpinner from './LoadingSpinner';
 import MedicalReviewTypeBadge from './MedicalReviewTypeBadge';
 import { medicalReviewRequestsApi, medicalTrackingApi, clientsApi, retreatsApi } from '../services/api';
-import { MedicalItem, MedicalReviewRequest, Client, Retreat } from '../types';
+import { MedicalItem, MedicalReviewGroup, MedicalReviewRequest, Client, Retreat } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { usersApi, User } from '../services/usersApi';
 
@@ -36,11 +36,24 @@ const getAssignee = (request: MedicalReviewRequest) => {
   };
 };
 
+const getAssigneeId = (request: MedicalReviewRequest) => {
+  if (!request.assignedToUserId) return '';
+  if (typeof request.assignedToUserId === 'string') return request.assignedToUserId;
+  return request.assignedToUserId._id || request.assignedToUserId.id || '';
+};
+
 const getRequestId = (request: MedicalReviewRequest) => request._id || '';
 
 const getRequestRetreatId = (request: MedicalReviewRequest) => (
   typeof request.retreatId === 'string' ? request.retreatId : request.retreatId?._id
 );
+
+const getCompactDisplayName = (name?: string) => {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return 'Unknown client';
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]} ${parts[parts.length - 1][0].toUpperCase()}.`;
+};
 
 const statusClass: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
@@ -59,8 +72,10 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const basePath = location.pathname.startsWith('/medical') ? '/medical/review-requests' : '/admin/medical-review-requests';
   const canManageRequests = user?.role === 'admin' || user?.role === 'medical_staff';
   const [requests, setRequests] = useState<EnrichedReviewRequest[]>([]);
+  const [groups, setGroups] = useState<MedicalReviewGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<'all' | MedicalReviewRequest['status']>('all');
+  const [filterAdvisorId, setFilterAdvisorId] = useState('all');
   const [advisors, setAdvisors] = useState<User[]>([]);
   const [groupModalOpen, setGroupModalOpen] = useState(false);
   const [groupTitle, setGroupTitle] = useState('');
@@ -75,11 +90,12 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [requestsResponse, trackingResponse, clientsResponse, retreatsResponse] = await Promise.all([
+      const [requestsResponse, trackingResponse, clientsResponse, retreatsResponse, groupsResponse] = await Promise.all([
         medicalReviewRequestsApi.getAll(),
         medicalTrackingApi.getAll(),
         clientsApi.getAll(),
         retreatsApi.getAll(),
+        medicalReviewRequestsApi.getGroups().catch(() => ({ data: [] })),
       ]);
 
       const trackingMapValue = (trackingResponse.data || []).reduce((acc: Record<string, MedicalItem>, item: MedicalItem) => {
@@ -113,9 +129,14 @@ const MedicalReviewRequestsGrid: React.FC = () => {
       });
 
       setRequests(enriched);
+      setGroups((groupsResponse.data || []).map((group: MedicalReviewGroup) => ({
+        ...group,
+        requests: group.requests || [],
+      })));
     } catch (error) {
       console.error('Error loading medical review requests:', error);
       setRequests([]);
+      setGroups([]);
     } finally {
       setLoading(false);
     }
@@ -136,9 +157,78 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   }, [canManageRequests]);
 
   const filteredRequests = useMemo(() => {
-    if (filterStatus === 'all') return requests;
-    return requests.filter((request) => request.status === filterStatus);
-  }, [requests, filterStatus]);
+    return requests.filter((request) => {
+      if (filterStatus !== 'all' && request.status !== filterStatus) return false;
+      if (filterAdvisorId !== 'all' && getAssigneeId(request) !== filterAdvisorId) return false;
+      return true;
+    });
+  }, [requests, filterAdvisorId, filterStatus]);
+
+  const requestById = useMemo(() => new Map(filteredRequests.map((request) => [getRequestId(request), request])), [filteredRequests]);
+  const groupedRequestIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const group of groups) {
+      for (const requestId of group.reviewRequestIds || []) {
+        if (requestId) ids.add(requestId);
+      }
+    }
+    return ids;
+  }, [groups]);
+  const requestGroupMap = useMemo(() => {
+    const map = new Map<string, MedicalReviewGroup>();
+    for (const group of groups) {
+      for (const requestId of group.reviewRequestIds || []) {
+        if (requestId && !map.has(requestId)) {
+          map.set(requestId, group);
+        }
+      }
+    }
+    return map;
+  }, [groups]);
+  const groupedRows = useMemo(() => {
+    const rows: Array<{ kind: 'group'; group: MedicalReviewGroup; requests: EnrichedReviewRequest[] } | { kind: 'request'; request: EnrichedReviewRequest }> = [];
+    const seen = new Set<string>();
+
+    for (const group of groups) {
+      const groupRequests = (group.reviewRequestIds || [])
+        .map((requestId) => requestById.get(requestId))
+        .filter((request): request is EnrichedReviewRequest => Boolean(request));
+
+      if (!groupRequests.length) continue;
+
+      rows.push({ kind: 'group', group, requests: groupRequests });
+      groupRequests.forEach((request) => {
+        const requestId = getRequestId(request);
+        if (requestId) seen.add(requestId);
+        rows.push({ kind: 'request', request });
+      });
+    }
+
+    filteredRequests.forEach((request) => {
+      const requestId = getRequestId(request);
+      if (requestId && !seen.has(requestId) && !groupedRequestIds.has(requestId)) {
+        rows.push({ kind: 'request', request });
+      }
+    });
+
+    return rows;
+  }, [filteredRequests, groups, groupedRequestIds, requestById]);
+  const [expandedGroupIds, setExpandedGroupIds] = useState<string[]>([]);
+
+  useEffect(() => {
+      setExpandedGroupIds((current) => {
+      const groupIds = groups.map((group) => group._id).filter((id): id is string => Boolean(id));
+      if (!groupIds.length) return current;
+      const next = new Set(current);
+      groupIds.forEach((id) => next.add(id));
+      return Array.from(next);
+    });
+  }, [groups]);
+
+  const openGroupPacket = (groupId?: string) => {
+    if (!groupId) return;
+    navigate(location.pathname.startsWith('/medical') ? `/medical/review-groups/${groupId}` : `/admin/medical-review-groups/${groupId}`);
+  };
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Delete this review request?')) return;
@@ -151,16 +241,37 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     setSelectedGroupRequestIds(visibleIds);
     setGroupReviewerUserId(advisors[0]?._id || '');
     setGroupTitle('');
-    setGroupType('retreat');
-    setGroupCeremonyNumber('');
-    setCreatedGroupUrl('');
-    setGroupError('');
+      setGroupType('retreat');
+      setGroupCeremonyNumber('');
+      setCreatedGroupUrl('');
+      setGroupError('');
     setGroupModalOpen(true);
   };
 
   const selectedGroupRequests = useMemo(
     () => requests.filter((request) => selectedGroupRequestIds.includes(getRequestId(request))),
     [requests, selectedGroupRequestIds]
+  );
+
+  const renderRequestActions = (request: EnrichedReviewRequest) => (
+    <div className="flex items-center gap-2">
+      <button
+        onClick={() => navigate(`${basePath}/${request._id}`)}
+        className="icon-action-btn icon-action-btn-view"
+        title="View"
+      >
+        <Icon icon={FiEye} />
+      </button>
+      {canManageRequests && (
+        <button
+          onClick={() => navigate(`${basePath}/${request._id}/edit`)}
+          className="icon-action-btn icon-action-btn-edit"
+          title="Edit"
+        >
+          <Icon icon={FiEdit2} />
+        </button>
+      )}
+    </div>
   );
 
   const inferredRetreatId = useMemo(() => {
@@ -266,9 +377,69 @@ const MedicalReviewRequestsGrid: React.FC = () => {
             <option key={status} value={status}>{status}</option>
           ))}
         </select>
+        {canManageRequests && (
+          <>
+            <label htmlFor="review-advisor-filter" className="text-sm font-medium text-gray-700">Advisor</label>
+            <select
+              id="review-advisor-filter"
+              value={filterAdvisorId}
+              onChange={(event) => setFilterAdvisorId(event.target.value)}
+              className="w-full max-w-xs rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="all">All advisors</option>
+              <option value="">Unassigned</option>
+              {advisors.map((advisor) => (
+                <option key={advisor._id} value={advisor._id}>
+                  {[advisor.firstName, advisor.lastName].filter(Boolean).join(' ') || advisor.email}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+      <div className="space-y-3 md:hidden">
+        {filteredRequests.map((request) => {
+          const group = request._id ? requestGroupMap.get(request._id) : undefined;
+          const isGrouped = Boolean(group);
+          return (
+            <div key={`mobile-${request._id}`} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`${basePath}/${request._id}`)}
+                    className="text-left text-lg font-semibold text-blue-700 hover:underline"
+                  >
+                    #{request.display_id || '—'}
+                  </button>
+                  <div className="mt-1 text-sm font-medium text-gray-900">{getCompactDisplayName(request.clientName)}</div>
+                  <div className="text-xs text-gray-500">{request.retreatName}</div>
+                  {isGrouped && group?._id && (
+                    <button
+                      type="button"
+                      onClick={() => openGroupPacket(group._id)}
+                      className="mt-2 inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700"
+                    >
+                      <Icon icon={FiFolder} className="h-3.5 w-3.5" />
+                      Packet: {group.title}
+                    </button>
+                  )}
+                </div>
+                <div className="shrink-0">{renderRequestActions(request)}</div>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <MedicalReviewTypeBadge requestType={request.requestType} />
+                <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${statusClass[request.status] || 'bg-gray-100 text-gray-700'}`}>
+                  {request.status}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="hidden overflow-hidden rounded-lg border border-gray-200 bg-white md:block">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
@@ -285,8 +456,122 @@ const MedicalReviewRequestsGrid: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {filteredRequests.map((request) => (
-                <tr key={request._id} className="hover:bg-gray-50">
+              {groupedRows.map((row) => {
+                if (row.kind === 'group') {
+                  const groupId = row.group._id || row.group.title;
+                  const expanded = expandedGroupIds.includes(groupId);
+                  return (
+                    <React.Fragment key={`group-${groupId}`}>
+                      <tr className="bg-slate-50">
+                        <td className="px-6 py-4 text-sm font-semibold text-slate-900">
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setExpandedGroupIds((current) => (
+                                current.includes(groupId)
+                                  ? current.filter((id) => id !== groupId)
+                                  : [...current, groupId]
+                              ))}
+                              className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white p-1 text-slate-600 hover:bg-slate-100"
+                              title={expanded ? 'Collapse group' : 'Expand group'}
+                            >
+                              <Icon icon={expanded ? FiChevronDown : FiChevronRight} className="h-4 w-4" />
+                            </button>
+                            <Icon icon={FiFolder} className="h-4 w-4 text-blue-600" />
+                            <span>{row.group.title}</span>
+                          </div>
+                          <div className="mt-1 text-xs font-normal text-slate-500">
+                            {row.group.retreatName || 'No retreat'}{row.group.ceremonyNumber ? ` • Ceremony #${row.group.ceremonyNumber}` : ''} • {row.requests.length} requests
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-slate-700" colSpan={8}>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700">Grouped packet</span>
+                            {row.group.reviewerName && <span className="text-xs text-slate-500">Advisor: {row.group.reviewerName}</span>}
+                            {row.group.url && (
+                              <button
+                                type="button"
+                                onClick={() => navigator.clipboard.writeText(row.group.url || '').catch(() => window.prompt('Copy link', row.group.url || ''))}
+                                className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-white px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50"
+                              >
+                                <Icon icon={FiCopy} className="h-3.5 w-3.5" />
+                                Copy link
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => navigate(location.pathname.startsWith('/medical') ? `/medical/review-groups/${row.group._id}` : `/admin/medical-review-groups/${row.group._id}`)}
+                              className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                            >
+                              Open packet
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {expanded && row.requests.map((request) => (
+                        <tr key={request._id} className="bg-white hover:bg-gray-50">
+                          <td className="px-6 py-4 text-sm font-semibold text-blue-600">
+                            <div className="flex items-center gap-2 pl-6">
+                              <span className="text-slate-400">↳</span>
+                              #{request.display_id || '—'}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-900">
+                            {request.clientName}
+                            <div className="text-xs text-gray-500">#{request.clientDisplayId || '—'}</div>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-900">{request.retreatName}</td>
+                          <td className="px-6 py-4 text-sm text-gray-900">
+                            <MedicalReviewTypeBadge requestType={request.requestType} />
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-900">{request.attemptNumber || 1}</td>
+                          <td className="px-6 py-4 text-sm text-gray-900">
+                            <div className="font-medium">{getAssignee(request).name}</div>
+                            {getAssignee(request).email && <div className="text-xs text-gray-500">{getAssignee(request).email}</div>}
+                          </td>
+                          <td className="px-6 py-4 text-sm">
+                            <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${statusClass[request.status] || 'bg-gray-100 text-gray-700'}`}>
+                              {request.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-sm text-gray-900">{request.source || 'Provider Plus CRM'}</td>
+                          <td className="px-6 py-4 text-sm font-medium">
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => navigate(`${basePath}/${request._id}`)}
+                                className="icon-action-btn icon-action-btn-view"
+                                title="View"
+                              >
+                                <Icon icon={FiEye} />
+                              </button>
+                              {canManageRequests && (
+                                <button
+                                  onClick={() => navigate(`${basePath}/${request._id}/edit`)}
+                                  className="icon-action-btn icon-action-btn-edit"
+                                  title="Edit"
+                                >
+                                  <Icon icon={FiEdit2} />
+                                </button>
+                              )}
+                              {canManageRequests && (
+                                <button
+                                  onClick={() => handleDelete(request._id!)}
+                                  className="icon-action-btn icon-action-btn-danger"
+                                  title="Delete"
+                                >
+                                  <Icon icon={FiTrash2} />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </React.Fragment>
+                  );
+                }
+                const request = row.request;
+                return (
+                  <tr key={request._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 text-sm font-semibold text-blue-600">#{request.display_id || '—'}</td>
                   <td className="px-6 py-4 text-sm text-gray-900">
                     {request.clientName}
@@ -336,8 +621,9 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                       )}
                     </div>
                   </td>
-                </tr>
-              ))}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

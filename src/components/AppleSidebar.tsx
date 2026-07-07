@@ -37,10 +37,6 @@ type RolePermissions = Record<string, string[]>;
 
 const NAVIGATION_PERMISSIONS_STORAGE_KEY = 'navigationPermissions:v1';
 
-const NAVIGATION_ROLE_OVERRIDES: Record<string, string> = {
-  admin: 'admin',
-};
-
 const FULL_MENU_SECTIONS: MenuSection[] = [
   { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: 'Home', Icon: Fi.FiGrid }] },
   {
@@ -150,14 +146,7 @@ const filterMenuSections = (sections: MenuSection[], allowedItems: string[]) => 
     .filter((section) => section.items.length > 0);
 };
 
-const getNavigationRole = (userRole?: string, user?: AppleSidebarProps['user']) => {
-  const originalRole = user?.originalRole;
-  if (user?.impersonationType === 'medical_staff_preview' && originalRole && NAVIGATION_ROLE_OVERRIDES[originalRole]) {
-    return NAVIGATION_ROLE_OVERRIDES[originalRole];
-  }
-  if (userRole && NAVIGATION_ROLE_OVERRIDES[userRole]) {
-    return NAVIGATION_ROLE_OVERRIDES[userRole];
-  }
+const getNavigationRole = (userRole?: string) => {
   return userRole;
 };
 
@@ -230,7 +219,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
     };
   }, []);
 
-  const navigationRole = getNavigationRole(userRole, user);
+  const navigationRole = getNavigationRole(userRole);
 
   const getMenuSectionsForRole = useCallback((): MenuSection[] => {
     void permissionVersion;

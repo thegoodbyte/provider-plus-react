@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { bookingDocumentsApi, bookingFlowApi, clientMedicalApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { BookingFlowItem, ClientMedical, MedicalArtifact, MedicalReviewRequest } from '../types';
+import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
 import './BookingMedicalUpload.css';
 
 interface BookingMedicalUploadProps {
@@ -203,9 +204,11 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
     setLoading(true);
     setError(null);
     try {
+      const itemsResponse = await bookingFlowApi.getItems({ bookingId });
+      const bookingFlowFilters = buildBookingFlowArtifactFilters(itemsResponse.data || []);
       const responses = await Promise.all([
-        medicalArtifactsApi.getAll({ bookingId }),
-        clientId && retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId }) : Promise.resolve({ data: [] }),
+        medicalArtifactsApi.getAll({ bookingId, ...bookingFlowFilters }),
+        clientId && retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId, ...bookingFlowFilters }) : Promise.resolve({ data: [] }),
       ]);
       const directBookingArtifacts: MedicalArtifact[] = responses[0].data || [];
       const clientRetreatArtifacts: MedicalArtifact[] = responses[1].data || [];

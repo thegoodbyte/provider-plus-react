@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ClientMedical } from '../types';
-import { clientMedicalApi } from '../services/api';
+import { ClientMedical, MedicalArtifact } from '../types';
+import { clientMedicalApi, medicalArtifactsApi } from '../services/api';
 import './ClientsGrid.css';
 
 interface ComprehensiveMedicalTrackingTabProps {
@@ -26,6 +26,7 @@ interface MedicalAction {
 
 const ComprehensiveMedicalTrackingTab: React.FC<ComprehensiveMedicalTrackingTabProps> = ({ clientId, retreatId }) => {
   const [medicalData, setMedicalData] = useState<ClientMedical | null>(null);
+  const [medicalArtifacts, setMedicalArtifacts] = useState<MedicalArtifact[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [uploading, setUploading] = useState<string>('');
 
@@ -36,8 +37,56 @@ const ComprehensiveMedicalTrackingTab: React.FC<ComprehensiveMedicalTrackingTabP
   const fetchMedicalData = async () => {
     try {
       setIsLoading(true);
-      const response = await clientMedicalApi.getByClientAndRetreat(clientId, retreatId);
-      setMedicalData(response.data);
+      const [response, artifactsResponse] = await Promise.all([
+        clientMedicalApi.getByClientAndRetreat(clientId, retreatId),
+        medicalArtifactsApi.getAll({ clientId, retreatId }).catch(() => ({ data: [] as MedicalArtifact[] })),
+      ]);
+      const loadedArtifacts = (artifactsResponse.data || []) as MedicalArtifact[];
+      setMedicalArtifacts(loadedArtifacts);
+
+      const latestByType = (predicate: (artifact: MedicalArtifact) => boolean) =>
+        [...loadedArtifacts]
+          .filter(predicate)
+          .sort((a, b) => new Date(b.receivedAt || b.createdAt || 0).getTime() - new Date(a.receivedAt || a.createdAt || 0).getTime())[0];
+
+      const ekgArtifact = latestByType((artifact) => artifact.artifactType === 'ekg' || artifact.documentType === 'EKG');
+      const liverArtifact = latestByType((artifact) => artifact.artifactType === 'liver_panel' || artifact.documentType === 'Liver');
+      const latestRecord = response.data || null;
+
+      setMedicalData({
+        ...latestRecord,
+        clientId,
+        retreatId,
+        ekgStatus: latestRecord?.ekgStatus || (ekgArtifact ? 'received' : 'pending'),
+        ekgReceivedDate: latestRecord?.ekgReceivedDate || ekgArtifact?.receivedAt,
+        ekgFilePath: latestRecord?.ekgFilePath || ekgArtifact?.files?.[0]?.filePath || ekgArtifact?.files?.[0]?.s3Key,
+        ekgFileName: latestRecord?.ekgFileName || ekgArtifact?.files?.[0]?.fileName || ekgArtifact?.title,
+        ekgAdvisorNotes: latestRecord?.ekgAdvisorNotes || ekgArtifact?.notes || ekgArtifact?.description,
+        liverPanelStatus: latestRecord?.liverPanelStatus || (liverArtifact ? 'received' : 'pending'),
+        liverPanelReceivedDate: latestRecord?.liverPanelReceivedDate || liverArtifact?.receivedAt,
+        liverPanelFilePath: latestRecord?.liverPanelFilePath || liverArtifact?.files?.[0]?.filePath || liverArtifact?.files?.[0]?.s3Key,
+        liverPanelFileName: latestRecord?.liverPanelFileName || liverArtifact?.files?.[0]?.fileName || liverArtifact?.title,
+        liverPanelAdvisorNotes: latestRecord?.liverPanelAdvisorNotes || liverArtifact?.notes || liverArtifact?.description,
+        questionnaireStatus: latestRecord?.questionnaireStatus,
+        questionnaireReceivedDate: latestRecord?.questionnaireReceivedDate,
+        questionnaireNotes: latestRecord?.questionnaireNotes,
+        medicationsFormStatus: latestRecord?.medicationsFormStatus,
+        medicationsFormReceivedDate: latestRecord?.medicationsFormReceivedDate,
+        medicationsFormFilePath: latestRecord?.medicationsFormFilePath,
+        medicationsFormFileName: latestRecord?.medicationsFormFileName,
+        medicationsFormNotes: latestRecord?.medicationsFormNotes,
+        foodIntakeStatus: latestRecord?.foodIntakeStatus,
+        foodIntakeReceivedDate: latestRecord?.foodIntakeReceivedDate,
+        foodIntakeFilePath: latestRecord?.foodIntakeFilePath,
+        foodIntakeFileName: latestRecord?.foodIntakeFileName,
+        foodIntakeNotes: latestRecord?.foodIntakeNotes,
+        finalMedicalClearance: latestRecord?.finalMedicalClearance,
+        medicalClearanceDate: latestRecord?.medicalClearanceDate,
+        medicalClearanceNotes: latestRecord?.medicalClearanceNotes,
+        medicalAdvisorName: latestRecord?.medicalAdvisorName,
+        medicalAdvisorEmail: latestRecord?.medicalAdvisorEmail,
+        generalNotes: latestRecord?.generalNotes,
+      });
     } catch (error) {
       console.error('Error fetching medical data:', error);
       // Create initial record if none exists
@@ -87,6 +136,12 @@ const ComprehensiveMedicalTrackingTab: React.FC<ComprehensiveMedicalTrackingTabP
 
   const getMedicalActions = (): MedicalAction[] => {
     if (!medicalData) return [];
+    const getArtifactStatus = (type: 'ekg' | 'liver_panel') =>
+      medicalArtifacts
+        .filter((artifact) => artifact.artifactType === type || (type === 'ekg' ? artifact.documentType === 'EKG' : artifact.documentType === 'Liver'))
+        .sort((a, b) => new Date(b.receivedAt || b.createdAt || 0).getTime() - new Date(a.receivedAt || a.createdAt || 0).getTime())[0];
+    const ekgArtifact = getArtifactStatus('ekg');
+    const liverArtifact = getArtifactStatus('liver_panel');
 
     return [
       {
@@ -102,12 +157,12 @@ const ComprehensiveMedicalTrackingTab: React.FC<ComprehensiveMedicalTrackingTabP
       {
         id: 'liver_panel',
         title: 'Liver Panel Received',
-        status: medicalData.liverPanelStatus || 'pending',
-        receivedDate: medicalData.liverPanelReceivedDate,
+        status: medicalData.liverPanelStatus || (liverArtifact ? 'received' : 'pending'),
+        receivedDate: medicalData.liverPanelReceivedDate || liverArtifact?.receivedAt,
         reviewedDate: medicalData.liverPanelSentToAdvisorDate,
-        notes: medicalData.liverPanelAdvisorNotes,
-        filePath: medicalData.liverPanelFilePath,
-        fileName: medicalData.liverPanelFileName,
+        notes: medicalData.liverPanelAdvisorNotes || liverArtifact?.notes || liverArtifact?.description,
+        filePath: medicalData.liverPanelFilePath || liverArtifact?.files?.[0]?.filePath || liverArtifact?.files?.[0]?.s3Key,
+        fileName: medicalData.liverPanelFileName || liverArtifact?.files?.[0]?.fileName || liverArtifact?.title,
         canReceive: true,
         canReview: medicalData.liverPanelStatus === 'received',
         canApprove: medicalData.liverPanelStatus === 'reviewed'
@@ -130,11 +185,11 @@ const ComprehensiveMedicalTrackingTab: React.FC<ComprehensiveMedicalTrackingTabP
       {
         id: 'ekg',
         title: 'EKG Received',
-        status: medicalData.ekgStatus || 'pending',
-        receivedDate: medicalData.ekgReceivedDate,
-        notes: medicalData.ekgAdvisorNotes,
-        filePath: medicalData.ekgFilePath,
-        fileName: medicalData.ekgFileName,
+        status: medicalData.ekgStatus || (ekgArtifact ? 'received' : 'pending'),
+        receivedDate: medicalData.ekgReceivedDate || ekgArtifact?.receivedAt,
+        notes: medicalData.ekgAdvisorNotes || ekgArtifact?.notes || ekgArtifact?.description,
+        filePath: medicalData.ekgFilePath || ekgArtifact?.files?.[0]?.filePath || ekgArtifact?.files?.[0]?.s3Key,
+        fileName: medicalData.ekgFileName || ekgArtifact?.files?.[0]?.fileName || ekgArtifact?.title,
         canReceive: true,
         canReview: medicalData.ekgStatus === 'received',
         canApprove: medicalData.ekgStatus === 'reviewed'

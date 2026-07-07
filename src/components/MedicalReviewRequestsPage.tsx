@@ -205,6 +205,15 @@ const getArtifactReviewTargets = (artifact: MedicalArtifact) => {
   } as ArtifactFile;
   return [{ artifact, file: pseudoFile, fileKey: getArtifactFileKey(pseudoFile) }];
 };
+const sanitizeFileReviewDraft = (review: Partial<FileReviewDraft> & { reviewedAt?: string | Date; reviewedBy?: string }) => ({
+  artifactId: review.artifactId || undefined,
+  fileKey: review.fileKey || undefined,
+  fileName: review.fileName || undefined,
+  decision: review.decision || undefined,
+  notes: review.notes || undefined,
+  reviewedAt: review.reviewedAt || undefined,
+  reviewedBy: review.reviewedBy || undefined,
+});
 const isImageFile = (file: ArtifactFile) => Boolean(file.mimeType?.startsWith('image/')) || /\.(png|jpe?g|gif|webp|bmp|heic|heif)$/i.test(file.fileName || '');
 const isPdfFile = (file: ArtifactFile) => file.mimeType === 'application/pdf' || /\.pdf($|\?)/i.test(file.fileName || '');
 const getPopulatedArtifacts = (request: MedicalReviewRequest) =>
@@ -420,7 +429,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
         setReviewDecision(selectedItem.reviewDecision || '');
         setMedicalStaffNotes(selectedItem.medicalStaffNotes || selectedItem.overallNotes || selectedItem.reviewNotes || '');
         setFileReviews((selectedItem.fileReviews || []).map((review: NonNullable<MedicalReviewRequest['fileReviews']>[number]) => ({
-          ...review,
+          ...sanitizeFileReviewDraft(review),
           decision: review.decision || '',
         })));
       } else {
@@ -536,10 +545,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
     }
     const cleanedFileReviews = fileReviews
       .filter((review) => review.fileKey || review.fileName || review.notes || review.decision)
-      .map((review) => ({
-        ...review,
-        decision: review.decision || undefined,
-      }));
+      .map((review) => sanitizeFileReviewDraft(review));
     await medicalReviewRequestsApi.review(selected._id, {
       status: reviewDecision === 'OK' ? 'approved' : reviewDecision === 'NOT OK' ? 'rejected' : reviewDecision === 'caution' ? 'caution' : 'in_review',
       reviewDecision: reviewDecision || undefined,

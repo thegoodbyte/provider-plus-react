@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, MailSettings, EmailTemplate, EmailTemplateSeedOption, SentEmail, RetreatArtifactSubmissionsResponse } from '../types';
+import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, MedicalReviewGroup, MedicalReviewGroupAccessLink, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, MailSettings, EmailTemplate, EmailTemplateSeedOption, SentEmail, RetreatArtifactSubmissionsResponse } from '../types';
 import { authService } from './authService';
 import { cacheService } from './cacheService';
 import { API_BASE_URL } from '../config/api.config';
@@ -435,9 +435,16 @@ export const communicationsApi = {
     cacheService.clearPattern('communications:templates');
     return api.delete(`/communications/templates/${id}`);
   },
-  getSentEmails: (config: any = {}) => {
-    if (config?.suppressGlobalError) return api.get<SentEmail[]>('/communications/sent-emails', config);
-    return cachedGet<SentEmail[]>('communications:sent-emails', () => api.get<SentEmail[]>('/communications/sent-emails'));
+  getSentEmails: (params: { clientId?: string; bookingId?: string; retreatId?: string; relatedEntityType?: string; relatedEntityId?: string } = {}, config: any = {}) => {
+    const query = new URLSearchParams();
+    if (params.clientId) query.set('clientId', params.clientId);
+    if (params.bookingId) query.set('bookingId', params.bookingId);
+    if (params.retreatId) query.set('retreatId', params.retreatId);
+    if (params.relatedEntityType) query.set('relatedEntityType', params.relatedEntityType);
+    if (params.relatedEntityId) query.set('relatedEntityId', params.relatedEntityId);
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    if (config?.suppressGlobalError) return api.get<SentEmail[]>(`/communications/sent-emails${suffix}`, config);
+    return cachedGet<SentEmail[]>(`communications:sent-emails${suffix}`, () => api.get<SentEmail[]>(`/communications/sent-emails${suffix}`));
   },
   getSentEmail: (id: string) => cachedGet<SentEmail>(`communications:sent-emails:${id}`, () => api.get<SentEmail>(`/communications/sent-emails/${id}`)),
   deleteSentEmail: (id: string) => {
@@ -445,10 +452,11 @@ export const communicationsApi = {
     return api.delete(`/communications/sent-emails/${id}`);
   },
   setupGmailWatch: () => api.post('/communications/gmail/watch', {}),
-  getInboundEmails: (params: { status?: string; limit?: number } = {}, config: any = {}) => {
+  getInboundEmails: (params: { status?: string; limit?: number; clientId?: string } = {}, config: any = {}) => {
     const query = new URLSearchParams();
     if (params.status) query.set('status', params.status);
     if (params.limit) query.set('limit', String(params.limit));
+    if (params.clientId) query.set('clientId', params.clientId);
     const suffix = query.toString() ? `?${query.toString()}` : '';
     return api.get(`/communications/inbound-emails${suffix}`, config);
   },
@@ -703,6 +711,8 @@ export const medicalArtifactsApi = {
     clientId?: string;
     retreatId?: string;
     bookingId?: string;
+    bookingFlowItemId?: string;
+    bookingFlowItemKey?: string;
     ceremonyId?: string;
     artifactType?: MedicalArtifact['artifactType'];
     status?: MedicalArtifact['status'];
@@ -865,6 +875,12 @@ export const fileUploadsApi = {
     api.get(`/file-uploads/view/${fileHash}`, { responseType: 'blob', suppressGlobalError: true } as any),
 };
 
+export const jotformApi = {
+  resolveContractLink: (bookingId: string) => api.get<{ redirectUrl: string }>(`/jotform/contracts/link/${bookingId}`, {
+    suppressAuthRedirect: true,
+  } as any),
+};
+
 export const configSummaryApi = {
   get: () => api.get('/config-summary'),
 };
@@ -952,6 +968,7 @@ export const medicalReviewRequestsApi = {
   getAll: (filters: {
     clientId?: string;
     retreatId?: string;
+    bookingFlowItemId?: string;
     medicalTrackingId?: string;
     artifactId?: string;
     bookingId?: string;
@@ -986,6 +1003,10 @@ export const medicalReviewRequestsApi = {
     cacheService.clearPattern('medical-review-requests:');
     return api.post<MedicalReviewRequest>(`/medical-review-requests/from-artifact/${artifactId}`, { ...data, requestType });
   },
+  update: (id: string, data: Partial<MedicalReviewRequest>) => {
+    cacheService.clearPattern('medical-review-requests:');
+    return api.patch<MedicalReviewRequest>(`/medical-review-requests/${id}`, data);
+  },
   getPublic: (token: string) => api.get<{ request: MedicalReviewRequest; artifacts: MedicalArtifact[] }>(
     `/medical-review-public/${encodeURIComponent(token)}`,
     { suppressAuthRedirect: true, suppressGlobalError: true } as any
@@ -1013,8 +1034,10 @@ export const medicalReviewRequestsApi = {
   getAccessLinks: (id: string) => api.get<any[]>(`/medical-review-requests/${id}/access-links`),
   createAccessLink: (id: string) => api.post<any>(`/medical-review-requests/${id}/access-links`, {}),
   revokeAccessLink: (accessLinkId: string) => api.patch<any>(`/medical-review-requests/access-links/${accessLinkId}/revoke`, {}),
-  getGroups: () => api.get<any[]>('/medical-review-requests/groups'),
-  getGroup: (id: string) => api.get<any>(`/medical-review-requests/groups/${id}`),
+  getGroups: () => api.get<MedicalReviewGroup[]>('/medical-review-requests/groups'),
+  getGroup: (id: string) => api.get<MedicalReviewGroup>(`/medical-review-requests/groups/${id}`),
+  getGroupAccessLinks: (id: string) => api.get<MedicalReviewGroupAccessLink[]>(`/medical-review-requests/groups/${id}/access-links`),
+  issueGroupAccessLink: (id: string) => api.post<MedicalReviewGroupAccessLink>(`/medical-review-requests/groups/${id}/access-links`, {}),
   createGroup: (data: {
     title?: string;
     groupType?: 'retreat' | 'ceremony' | 'custom';
@@ -1045,10 +1068,6 @@ export const medicalReviewRequestsApi = {
     {},
     { suppressAuthRedirect: true, suppressGlobalError: true } as any
   ),
-  update: (id: string, data: Partial<MedicalReviewRequest>) => {
-    cacheService.clearPattern('medical-review-requests:');
-    return api.patch<MedicalReviewRequest>(`/medical-review-requests/${id}`, data);
-  },
   review: (id: string, reviewData: {
     status?: string;
     reviewDecision?: 'OK' | 'caution' | 'NOT OK';

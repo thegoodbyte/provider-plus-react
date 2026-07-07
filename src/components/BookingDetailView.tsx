@@ -8,8 +8,10 @@ import BookingMedicalUpload from './BookingMedicalUpload';
 import BookingDocumentsUpload from './BookingDocumentsUpload';
 import ClientBookingWorkflowTab from './ClientBookingWorkflowTab';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
+import EmailHistoryPanel from './EmailHistoryPanel';
 import { TaskList } from './Tasks/TaskList';
 import { TaskForm } from './Tasks/TaskForm';
+import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
 import { createBookingConfirmationPdf, generateBookingPDF } from './BookingConfirmationPDF';
 import { Task, CreateTaskDto, taskService } from '../services/taskService';
 import { BookingDocument, BookingFlowItem, CeremonyParticipant, MedicalArtifact, MedicalReviewRequest } from '../types';
@@ -390,12 +392,13 @@ const BookingRequirementsPanel: React.FC<{
     setLoading(true);
     setError('');
     try {
-      const [itemsResponse, artifactsResponse, documentsResponse] = await Promise.all([
-        bookingFlowApi.getItems({ bookingId }),
+      const itemsResponse = await bookingFlowApi.getItems({ bookingId });
+      const bookingFlowFilters = buildBookingFlowArtifactFilters(itemsResponse.data || []);
+      const [artifactsResponse, documentsResponse] = await Promise.all([
         Promise.all([
-          medicalArtifactsApi.getAll({ bookingId }),
-          clientId && retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId }) : Promise.resolve({ data: [] }),
-          clientId ? medicalArtifactsApi.getAll({ clientId }) : Promise.resolve({ data: [] }),
+          medicalArtifactsApi.getAll({ bookingId, ...bookingFlowFilters }),
+          clientId && retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId, ...bookingFlowFilters }) : Promise.resolve({ data: [] }),
+          clientId ? medicalArtifactsApi.getAll({ clientId, ...bookingFlowFilters }) : Promise.resolve({ data: [] }),
         ]),
         bookingDocumentsApi.getAll({ bookingId }),
       ]);
@@ -585,10 +588,12 @@ const BookingMedicalOverviewPanel: React.FC<{
     setLoading(true);
     setError('');
     try {
+      const itemsResponse = await bookingFlowApi.getItems({ bookingId });
+      const bookingFlowFilters = buildBookingFlowArtifactFilters(itemsResponse.data || []);
       const artifactResponses = await Promise.all([
-        medicalArtifactsApi.getAll({ bookingId }),
-        clientId && retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId }) : Promise.resolve({ data: [] }),
-        clientId ? medicalArtifactsApi.getAll({ clientId }) : Promise.resolve({ data: [] }),
+        medicalArtifactsApi.getAll({ bookingId, ...bookingFlowFilters }),
+        clientId && retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId, ...bookingFlowFilters }) : Promise.resolve({ data: [] }),
+        clientId ? medicalArtifactsApi.getAll({ clientId, ...bookingFlowFilters }) : Promise.resolve({ data: [] }),
       ]);
       const loadedArtifacts = mergeArtifacts(artifactResponses.map((response) => response.data || []))
         .filter((artifact) => isArtifactRelevantToBooking(artifact, bookingId, retreatId))
@@ -757,13 +762,15 @@ const BookingCeremoniesPanel: React.FC<{
     setLoading(true);
     setError('');
     try {
-      const [participationResponse, artifactResponses] = await Promise.all([
+      const [participationResponse, itemsResponse] = await Promise.all([
         ceremoniesApi.getClientParticipations(clientId),
-        Promise.all([
-          medicalArtifactsApi.getAll({ bookingId }),
-          retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId }) : Promise.resolve({ data: [] }),
-          medicalArtifactsApi.getAll({ clientId }),
-        ]),
+        bookingFlowApi.getItems({ bookingId }),
+      ]);
+      const bookingFlowFilters = buildBookingFlowArtifactFilters(itemsResponse.data || []);
+      const artifactResponses = await Promise.all([
+        medicalArtifactsApi.getAll({ bookingId, ...bookingFlowFilters }),
+        retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId, ...bookingFlowFilters }) : Promise.resolve({ data: [] }),
+        medicalArtifactsApi.getAll({ clientId, ...bookingFlowFilters }),
       ]);
       const allParticipations = participationResponse.data || [];
       const loadedArtifacts = mergeArtifacts(artifactResponses.map((response) => response.data || []))
@@ -899,7 +906,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [confirmationEmailDraft, setConfirmationEmailDraft] = useState<EmailComposeInitialValues | null>(null);
   const [showQuickSendConfirm, setShowQuickSendConfirm] = useState(false);
   const [confirmationHistoryReason, setConfirmationHistoryReason] = useState('');
-  const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'requirements' | 'medical' | 'ceremonies' | 'documents' | 'tasks' | 'workflow' | 'notes'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'requirements' | 'medical' | 'ceremonies' | 'documents' | 'emails' | 'tasks' | 'workflow' | 'notes'>('overview');
   const [bookingTasks, setBookingTasks] = useState<Task[]>([]);
   const [loadingBookingTasks, setLoadingBookingTasks] = useState(false);
   const [bookingTasksError, setBookingTasksError] = useState<string | null>(null);
@@ -1327,6 +1334,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         bodyText: email.bodyText,
         bodyHtml: email.bodyHtml,
         templateId: email.templateId,
+        bookingId,
         clientId: clientData?._id,
         retreatId: retreatData?._id,
         relatedEntityType: 'booking',
@@ -1405,6 +1413,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     { key: 'medical', label: 'Medical' },
     { key: 'ceremonies', label: 'Ceremonies' },
     { key: 'documents', label: 'Documents' },
+    { key: 'emails', label: 'Emails' },
     { key: 'tasks', label: 'Tasks' },
     { key: 'workflow', label: 'Booking Requirements' },
     { key: 'notes', label: 'Notes' },
@@ -1837,6 +1846,16 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
             clientId={typeof client === 'object' ? client._id : client}
             retreatId={typeof retreat === 'object' ? retreat._id : retreat}
             onUploadComplete={handleBookingRelatedUpdate}
+          />
+        )}
+
+        {activeTab === 'emails' && (
+          <EmailHistoryPanel
+            bookingId={bookingId}
+            clientId={getObjectId(booking?.clientId || booking?.clientDetails)}
+            retreatId={getObjectId(booking?.retreatId || booking?.retreat)}
+            title="Booking emails"
+            subtitle="Only emails related to this booking and client."
           />
         )}
 

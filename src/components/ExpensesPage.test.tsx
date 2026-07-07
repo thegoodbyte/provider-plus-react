@@ -25,6 +25,8 @@ const benRetreat = {
   code: 'BEN-06-17-26',
   retreatCode: 'BEN-06-17-26',
   location: 'Default Location',
+  startDate: '2026-06-10T00:00:00.000Z',
+  endDate: '2026-06-25T23:59:59.000Z',
 };
 
 const otherRetreat = {
@@ -33,6 +35,8 @@ const otherRetreat = {
   code: 'JNO-07-25-26',
   retreatCode: 'JNO-07-25-26',
   location: 'Default Location',
+  startDate: '2026-07-25T00:00:00.000Z',
+  endDate: '2026-08-01T23:59:59.000Z',
 };
 
 const expenseType = {
@@ -124,5 +128,50 @@ describe('ExpensesPage retreat filtering', () => {
     expect(within(legacyRow as HTMLTableRowElement).getByText('BEN-06-17-26')).toBeInTheDocument();
     expect(screen.getByText('Total Expenses')).toBeInTheDocument();
     expect(within(screen.getByText('Total Expenses').closest('.bg-white') as HTMLElement).getByText('1')).toBeInTheDocument();
+  });
+
+  it('auto-links the quick expense form to the retreat that matches the selected date', async () => {
+    setupMocks([]);
+
+    render(<ExpensesPage />);
+    await waitForLoadedExpenses();
+
+    const user = userEvent.setup();
+    await user.clear(screen.getByLabelText('Date'));
+    await user.type(screen.getByLabelText('Date'), '2026-06-20');
+    await user.clear(screen.getByLabelText('Amount'));
+    await user.type(screen.getByLabelText('Amount'), '42.50');
+    await user.type(screen.getByLabelText('Merchant'), 'Gas station');
+    await user.click(screen.getByRole('button', { name: /save expense/i }));
+
+    await waitFor(() => {
+      expect(retreatExpensesApi.create).toHaveBeenCalled();
+    });
+
+    const payload = (retreatExpensesApi.create as jest.Mock).mock.calls[0][0];
+    expect(payload.retreatId).toBe('retreat-ben');
+    expect(payload.currency).toBe('CZK');
+    expect(payload.amount).toBe(42.5);
+  });
+
+  it('lets the quick expense form save a general expense without a retreat id', async () => {
+    setupMocks([]);
+
+    render(<ExpensesPage />);
+    await waitForLoadedExpenses();
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /general company/i }));
+    await user.clear(screen.getByLabelText('Amount'));
+    await user.type(screen.getByLabelText('Amount'), '15');
+    await user.click(screen.getByRole('button', { name: /save expense/i }));
+
+    await waitFor(() => {
+      expect(retreatExpensesApi.create).toHaveBeenCalled();
+    });
+
+    const payload = (retreatExpensesApi.create as jest.Mock).mock.calls[0][0];
+    expect(payload.retreatId).toBeUndefined();
+    expect(payload.currency).toBe('CZK');
   });
 });

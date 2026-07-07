@@ -149,7 +149,7 @@ const CommunicationsPage: React.FC = () => {
       const [settingsRes, templatesRes, sentRes, inboundRes, clientsRes, retreatsRes, seedOptionsRes] = await Promise.allSettled([
         communicationsApi.getSettings(quietRequest),
         communicationsApi.getTemplates(),
-        communicationsApi.getSentEmails(quietRequest),
+        communicationsApi.getSentEmails({}, quietRequest),
         communicationsApi.getInboundEmails({ limit: 100 }, quietRequest),
         clientsApi.getAll(),
         retreatsApi.getAll(),

@@ -560,6 +560,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
 
   const runItemAction = async (item: BookingFlowItem, action: BookingFlowAction) => {
     if (!item._id) return;
+    if (action.type === 'link_mrr') return;
     const savingKey = `${item._id}:${action.key}`;
     setActionSavingKey(savingKey);
     setError(null);
@@ -765,7 +766,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                   : undefined;
                 const configuredActions = getConfiguredActions(item);
                 const uploadAction = configuredActions.find((action) => action.type === 'upload');
-                const visibleActions = configuredActions.filter((action) => action.type !== 'upload');
+                const visibleActions = configuredActions.filter((action) => action.type !== 'upload' && action.type !== 'link_mrr');
                 const itemActionLogs = item._id ? (actionLogsByItem[item._id] || []) : [];
                 const deadlineLogs = itemActionLogs.filter((log) => log.actionType === 'deadline_changed');
                 const dateTimePickerDraft = dateTimePickerDrafts[id];
