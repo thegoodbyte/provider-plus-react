@@ -1231,17 +1231,18 @@ const MedicalReviewRequestsPage: React.FC = () => {
                     </summary>
                     <div className="mt-3 space-y-3">
                       {reviewContext?.client && (
-                        <div className="grid gap-3 text-sm sm:grid-cols-2">
-                          <div><span className="font-medium text-gray-700">Client:</span> {reviewContext.client.firstName} {reviewContext.client.lastName} {reviewContext.client.display_id ? `#${reviewContext.client.display_id}` : ''}</div>
-                          <div><span className="font-medium text-gray-700">Medical conditions:</span> {renderValue(reviewContext.client.medicalConditions)}</div>
-                          <div><span className="font-medium text-gray-700">Allergies:</span> {renderValue(reviewContext.client.allergies)}</div>
-                          <div><span className="font-medium text-gray-700">Current medications:</span> {renderValue(reviewContext.client.currentMedications)}</div>
-                          <div><span className="font-medium text-gray-700">Heart:</span> {renderValue(reviewContext.client.heartConditions)}</div>
-                          <div><span className="font-medium text-gray-700">Liver:</span> {renderValue(reviewContext.client.liverConditions)}</div>
+                        <div className="rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-700">
+                          <span className="font-semibold text-gray-900">Client:</span>{' '}
+                          {reviewContext.client.firstName} {reviewContext.client.lastName}
+                          {reviewContext.client.display_id ? ` #${reviewContext.client.display_id}` : ''}
+                          {' • '}
+                          <span className="font-semibold text-gray-900">Medical:</span> {renderValue(reviewContext.client.medicalConditions)}
+                          {' • '}
+                          <span className="font-semibold text-gray-900">Meds:</span> {renderValue(reviewContext.client.currentMedications)}
                         </div>
                       )}
                       {contextScreenings.length
-                        ? contextScreenings.slice(0, 3).map((screening) => renderReadOnlyScreening(screening))
+                        ? contextScreenings.slice(0, 1).map((screening) => renderReadOnlyScreening(screening))
                         : <div className="text-sm text-gray-500">No screening record found.</div>}
                     </div>
                   </details>
