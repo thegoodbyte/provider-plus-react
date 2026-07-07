@@ -23,6 +23,22 @@ const decisionLabels: Record<typeof decisionOptions[number], string> = {
   'NOT OK': 'No good',
 };
 
+const getDecisionButtonClass = (option: typeof decisionOptions[number], selected: boolean, size: 'sm' | 'lg' = 'sm') => {
+  const base = size === 'lg'
+    ? 'min-h-12 w-full rounded-xl px-4 py-3 text-sm font-semibold'
+    : 'rounded-full px-3 py-1 text-xs font-semibold';
+
+  if (selected) {
+    if (option === 'OK') return `${base} bg-green-600 text-white`;
+    if (option === 'caution') return `${base} bg-yellow-500 text-white`;
+    return `${base} bg-red-600 text-white`;
+  }
+
+  if (option === 'OK') return `${base} border border-green-200 bg-green-50 text-green-800 hover:bg-green-100`;
+  if (option === 'caution') return `${base} border border-yellow-200 bg-yellow-50 text-yellow-800 hover:bg-yellow-100`;
+  return `${base} border border-red-200 bg-red-50 text-red-700 hover:bg-red-100`;
+};
+
 const requestTypeLabels: Record<string, string> = {
   ekg: 'EKG',
   liver: 'Liver Panel',
@@ -528,19 +544,10 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const handleSaveReview = async () => {
     if (!selected?._id) return;
     setValidationError('');
-    const reviewTargets = linkedArtifacts.flatMap((artifact) => getArtifactReviewTargets(artifact));
-    const missingFileReview = reviewTargets.find(({ artifact, fileKey }) => {
-      const review = fileReviews.find((item) => item.artifactId === artifact._id && item.fileKey === fileKey);
-      return !review?.decision || !review?.notes?.trim();
-    });
     const overallMedicalNotes = medicalStaffNotes.trim();
     if (!reviewDecision || !overallMedicalNotes) {
       setValidationError('Choose an overall decision and add medical staff notes before saving.');
       reviewDecisionSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      return;
-    }
-    if (missingFileReview) {
-      setValidationError('Each linked file needs a decision and a comment before saving.');
       return;
     }
     const cleanedFileReviews = fileReviews
@@ -663,13 +670,13 @@ const MedicalReviewRequestsPage: React.FC = () => {
           </div>
         ) : (
           <div className="mt-2 space-y-2">
-            <div className="flex flex-wrap gap-1">
+            <div className="grid gap-2 sm:grid-cols-3">
               {decisionOptions.map((option) => (
                 <button
                   key={option}
                   type="button"
                   onClick={() => updateFileReview(artifact, target.file, { decision: option })}
-                  className={`rounded-full px-2 py-1 text-[11px] font-semibold ${fileReview.decision === option ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+                  className={getDecisionButtonClass(option, fileReview.decision === option, 'sm')}
                 >
                   {decisionLabels[option]}
                 </button>
@@ -680,7 +687,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
               onChange={(event) => updateFileReview(artifact, target.file, { notes: event.target.value })}
               rows={2}
               className="w-full rounded-md border border-gray-300 px-2 py-1 text-xs"
-              placeholder="Required comment"
+              placeholder="Optional comment"
             />
           </div>
         )}
@@ -832,97 +839,51 @@ const MedicalReviewRequestsPage: React.FC = () => {
     const fileName = fileUrl ? decodeURIComponent(String(fileUrl).split('/').pop() || 'Screening file') : '';
 
     return (
-      <div key={screening._id || screening.createdAt || 'screening'} className="space-y-4 rounded-md border border-gray-200 p-3 text-sm">
-        <div>
-          <div className="font-semibold text-gray-900">
-            {getScreeningValue(screening, 'status') || 'screening'} • {formatDateTime(getScreeningValue(screening, 'screeningCompletedDate', 'screeningDate', 'updatedAt', 'createdAt'))}
+      <div key={screening._id || screening.createdAt || 'screening'} className="space-y-3 rounded-md border border-gray-200 bg-white p-3 text-sm">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="font-semibold text-gray-900">
+              {getScreeningValue(screening, 'status') || 'screening'} • {formatDateTime(getScreeningValue(screening, 'screeningCompletedDate', 'screeningDate', 'updatedAt', 'createdAt'))}
+            </div>
+            <div className="mt-1 text-xs font-medium text-blue-700">Read-only screening view</div>
           </div>
-          <div className="mt-1 text-xs font-medium text-blue-700">Read-only screening view</div>
-        </div>
-
-        {renderScreeningSection(screening, 'Screening basics', [
-          { label: 'Age', keys: ['age'] },
-          { label: 'Year of birth', keys: ['year_of_birth', 'yearOfBirth'] },
-          { label: 'Risk level', keys: ['riskLevel'] },
-          { label: 'Desired retreat', keys: ['desiredRetreat'] },
-          { label: 'Quoted price', keys: ['quotedPrice'] },
-          { label: 'Screened by', keys: ['screenedBy'] },
-          { label: 'Phone number', keys: ['phoneNumber'] },
-        ])}
-
-        {renderScreeningSection(screening, 'Motivation and notes', [
-          { label: 'Why seeking iboga', keys: ['whySeekingIboga', 'mainIntent'] },
-          { label: 'What to change / risk notes', keys: ['whatToChange', 'riskNotes'] },
-          { label: 'Childhood', keys: ['childhood'] },
-          { label: 'Observations / general notes', keys: ['observations', 'generalNotes', 'notes'] },
-        ])}
-
-        {renderScreeningSection(screening, 'Trauma', [
-          { label: 'Sexual abuse', value: getScreeningBooleanDetails(screening, 'sexualAbuse', 'sexualAbuseDetails') },
-          { label: 'Physical abuse', value: getScreeningBooleanDetails(screening, 'physicalAbuse', 'physicalAbuseDetails') },
-          { label: 'Psychological abuse', value: getScreeningBooleanDetails(screening, 'psychologicalAbuse', 'psychologicalAbuseDetails') },
-          { label: 'Depression diagnosed since', keys: ['depressionSince'] },
-          { label: 'Depression details', value: getScreeningBooleanDetails(screening, 'depression', 'depressionDetails') },
-          { label: 'Anxiety diagnosed since', keys: ['anxietySince'] },
-          { label: 'Anxiety details', value: getScreeningBooleanDetails(screening, 'anxiety', 'anxietyDetails') },
-          { label: 'In care of psychiatrist', value: getScreeningBooleanDetails(screening, 'psychiatristCare', 'psychiatristCareDetails') },
-          { label: 'Trauma history', keys: ['traumaHistory'] },
-          { label: 'Mental health history', keys: ['mentalHealthHistory'] },
-        ])}
-
-        {renderScreeningSection(screening, 'Health', [
-          { label: 'Heart', keys: ['heartConditions', 'heartCondition'] },
-          { label: 'Liver', keys: ['liverConditions', 'liverCondition'] },
-          { label: 'Asthma', keys: ['asthmaConditions', 'asthmaCondition'] },
-          { label: 'Medications', keys: ['currentMedications', 'medications'] },
-          { label: 'SSRIs', keys: ['ssris'] },
-          { label: 'Blood pressure', keys: ['bloodPressureIssues', 'bloodPressure'] },
-          { label: 'Blood pressure details', value: [getScreeningValue(screening, 'bloodPressureStatus'), getScreeningValue(screening, 'bloodPressureValue')].filter(Boolean).join(' - ') },
-          { label: 'Sober', value: getScreeningValue(screening, 'alcoholSober') ? 'Yes' : '' },
-          { label: 'Alcohol use', value: formatAlcoholUse(screening) },
-          { label: 'Alcohol history', keys: ['alcoholHistory', 'alcoholConsumption'] },
-          { label: 'Health complications', keys: ['healthComplications'] },
-          { label: 'Medical tests details', keys: ['medicalTestsDetails'] },
-          { label: 'Vitamins & supplements', keys: ['vitaminsSupplements'] },
-        ])}
-
-        {renderScreeningSection(screening, 'Substances', [
-          { label: 'Drug history', keys: ['drugsHistory', 'addictionHistory'] },
-          { label: 'Nicotine', value: formatNicotine(screening) },
-          { label: 'Recreational drugs', keys: ['recreationalDrugs'] },
-          { label: 'Marijuana', value: getScreeningBooleanDetails(screening, 'marijuana', 'marijuanaDetails') },
-          { label: 'Cocaine', value: getScreeningBooleanDetails(screening, 'cocaine', 'cocaineDetails') },
-          { label: 'Meth', value: getScreeningBooleanDetails(screening, 'meth', 'methDetails') },
-          { label: 'Heroin', value: getScreeningBooleanDetails(screening, 'heroin', 'heroinDetails') },
-          { label: 'Benzos', value: getScreeningBooleanDetails(screening, 'benzos', 'benzosDetails') },
-        ])}
-
-        {renderScreeningSection(screening, 'Plant medicines', [
-          { label: 'Previous plant medicines', keys: ['previousPlantMedicines'] },
-          { label: 'Ayahuasca', value: getScreeningBooleanDetails(screening, 'ayahuasca', 'ayahuascaDetails') },
-          { label: 'Iboga', value: getScreeningBooleanDetails(screening, 'iboga', 'ibogaDetails') },
-          { label: 'Psilocybin', value: getScreeningBooleanDetails(screening, 'psilocybin', 'psilocybinDetails') },
-          { label: 'Bufo', value: getScreeningBooleanDetails(screening, 'bufo', 'bufoDetails') },
-          { label: 'Kambo', value: getScreeningBooleanDetails(screening, 'kambo', 'kamboDetails') },
-          { label: 'San Pedro', value: getScreeningBooleanDetails(screening, 'sanPedro', 'sanPedroDetails') },
-          { label: 'Mescaline', value: getScreeningBooleanDetails(screening, 'mescaline', 'mescalineDetails') },
-          { label: 'DMT', value: getScreeningBooleanDetails(screening, 'dmt', 'dmtDetails') },
-          { label: 'Ketamine', value: getScreeningBooleanDetails(screening, 'ketamine', 'ketamineDetails') },
-          { label: 'MDMA', value: getScreeningBooleanDetails(screening, 'mdma', 'mdmaDetails') },
-          { label: 'Sassafras', value: getScreeningBooleanDetails(screening, 'sassafras', 'sassafrasDetails') },
-          { label: 'Amanita mochomur', value: getScreeningBooleanDetails(screening, 'amanitaMochomur', 'amanitaMochomurDetails') },
-          { label: 'Rappe', value: getScreeningBooleanDetails(screening, 'rappe', 'rappeDetails') },
-          { label: 'Other plant medicine', value: getScreeningBooleanDetails(screening, 'otherPlantMedicine', 'otherPlantMedicineDetails') },
-        ])}
-
-        {fileUrl && (
-          <div className="rounded-md bg-gray-50 p-3">
-            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Uploaded screening file</div>
-            <a href={String(fileUrl)} target="_blank" rel="noreferrer" className="mt-1 inline-block text-sm font-semibold text-blue-700 hover:text-blue-900">
-              {fileName || 'Open screening file'}
+          {fileUrl && (
+            <a href={String(fileUrl)} target="_blank" rel="noreferrer" className="shrink-0 rounded-full border border-gray-200 px-2 py-1 text-xs font-semibold text-blue-700">
+              File
             </a>
-          </div>
-        )}
+          )}
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {[
+            { label: 'Age', keys: ['age'] },
+            { label: 'Risk level', keys: ['riskLevel'] },
+            { label: 'Desired retreat', keys: ['desiredRetreat'] },
+            { label: 'Screened by', keys: ['screenedBy'] },
+            { label: 'Phone number', keys: ['phoneNumber'] },
+            { label: 'Why seeking iboga', keys: ['whySeekingIboga', 'mainIntent'] },
+            { label: 'Observations', keys: ['observations', 'generalNotes', 'notes'] },
+            { label: 'Anxiety diagnosed since', keys: ['anxietySince'] },
+            { label: 'Depression diagnosed since', keys: ['depressionSince'] },
+            { label: 'Psychiatrist care', value: getScreeningBooleanDetails(screening, 'psychiatristCare', 'psychiatristCareDetails') },
+            { label: 'Heart', keys: ['heartConditions', 'heartCondition'] },
+            { label: 'Liver', keys: ['liverConditions', 'liverCondition'] },
+            { label: 'Medications', keys: ['currentMedications', 'medications'] },
+            { label: 'Blood pressure', keys: ['bloodPressureIssues', 'bloodPressure'] },
+            { label: 'Alcohol use', value: formatAlcoholUse(screening) },
+            { label: 'Nicotine', value: formatNicotine(screening) },
+            { label: 'Drug history', keys: ['drugsHistory', 'addictionHistory'] },
+            { label: 'Previous plant medicines', keys: ['previousPlantMedicines'] },
+          ].map((item) => {
+            const value = item.value !== undefined ? item.value : getScreeningValue(screening, ...(item.keys || []));
+            if (!value) return null;
+            return (
+              <div key={item.label} className="rounded-md bg-gray-50 px-3 py-2">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{item.label}</div>
+                <div className="mt-1 whitespace-pre-wrap text-sm text-gray-900">{String(value)}</div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     );
   };
@@ -1422,7 +1383,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                                           onChange={(event) => updateFileReview(artifact, file, { notes: event.target.value })}
                                           rows={2}
                                           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                                          placeholder="Required comment on this file"
+                                          placeholder="Optional comment on this file"
                                         />
                                       </div>
                                     )}
@@ -1477,7 +1438,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
               >
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <div className="text-sm font-semibold text-gray-900">Review decision</div>
-                  {!isReadOnlyView && <div className="text-xs font-medium text-red-700">Decision and medical staff notes are required</div>}
+                  {!isReadOnlyView && <div className="text-xs font-medium text-red-700">Overall decision and notes are required. File-level review is optional.</div>}
                 </div>
                 {isReadOnlyView ? (
                   <div className="rounded-md bg-gray-50 p-3 text-sm">
@@ -1486,7 +1447,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   </div>
                 ) : (
                   <>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="grid gap-2 sm:grid-cols-3">
                       {decisionOptions.map((option) => (
                         <button
                           key={option}
@@ -1495,20 +1456,14 @@ const MedicalReviewRequestsPage: React.FC = () => {
                             setReviewDecision(option);
                             if (validationError && medicalStaffNotes.trim()) setValidationError('');
                           }}
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                            reviewDecision === option
-                              ? 'bg-blue-600 text-white'
-                              : isMissingOverallDecision
-                                ? 'border border-red-300 bg-white text-red-700 hover:bg-red-50'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
+                          className={getDecisionButtonClass(option, reviewDecision === option, 'lg')}
                         >
                           {decisionLabels[option]}
                         </button>
                       ))}
                     </div>
                     {isMissingOverallDecision && (
-                      <div className="mt-2 text-xs font-medium text-red-700">Select OK, Need more info, or No good.</div>
+                      <div className="mt-2 text-xs font-medium text-red-700">Pick one decision before saving.</div>
                     )}
                     <label htmlFor="medical-staff-notes" className="mt-4 block text-sm font-semibold text-gray-900">
                       Medical staff notes <span className="text-red-600">*</span>
