@@ -174,17 +174,6 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     }
     return ids;
   }, [groups]);
-  const requestGroupMap = useMemo(() => {
-    const map = new Map<string, MedicalReviewGroup>();
-    for (const group of groups) {
-      for (const requestId of group.reviewRequestIds || []) {
-        if (requestId && !map.has(requestId)) {
-          map.set(requestId, group);
-        }
-      }
-    }
-    return map;
-  }, [groups]);
   const groupedRows = useMemo(() => {
     const rows: Array<{ kind: 'group'; group: MedicalReviewGroup; requests: EnrichedReviewRequest[] } | { kind: 'request'; request: EnrichedReviewRequest }> = [];
     const seen = new Set<string>();
@@ -225,11 +214,6 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     });
   }, [groups]);
 
-  const openGroupPacket = (groupId?: string) => {
-    if (!groupId) return;
-    navigate(location.pathname.startsWith('/medical') ? `/medical/review-groups/${groupId}` : `/admin/medical-review-groups/${groupId}`);
-  };
-
   const handleDelete = async (id: string) => {
     if (!window.confirm('Delete this review request?')) return;
     await medicalReviewRequestsApi.delete(id);
@@ -251,27 +235,6 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const selectedGroupRequests = useMemo(
     () => requests.filter((request) => selectedGroupRequestIds.includes(getRequestId(request))),
     [requests, selectedGroupRequestIds]
-  );
-
-  const renderRequestActions = (request: EnrichedReviewRequest) => (
-    <div className="flex items-center gap-2">
-      <button
-        onClick={() => navigate(`${basePath}/${request._id}`)}
-        className="icon-action-btn icon-action-btn-view"
-        title="View"
-      >
-        <Icon icon={FiEye} />
-      </button>
-      {canManageRequests && (
-        <button
-          onClick={() => navigate(`${basePath}/${request._id}/edit`)}
-          className="icon-action-btn icon-action-btn-edit"
-          title="Edit"
-        >
-          <Icon icon={FiEdit2} />
-        </button>
-      )}
-    </div>
   );
 
   const inferredRetreatId = useMemo(() => {
@@ -330,7 +293,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   }
 
   return (
-    <div className="p-6 h-full">
+    <div className="h-full overflow-x-hidden p-6">
       <div className="mb-6 flex flex-wrap items-start gap-4">
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-semibold text-gray-900">Medical Review Requests</h1>
@@ -398,41 +361,41 @@ const MedicalReviewRequestsGrid: React.FC = () => {
         )}
       </div>
 
-      <div className="space-y-3 md:hidden">
+      <div className="space-y-3 overflow-x-hidden md:hidden">
         {filteredRequests.map((request) => {
-          const group = request._id ? requestGroupMap.get(request._id) : undefined;
-          const isGrouped = Boolean(group);
+          const retreatLabel = request.retreatName || 'Unknown Retreat';
           return (
-            <div key={`mobile-${request._id}`} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
+            <div key={`mobile-${request._id}`} className="w-full overflow-hidden rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="grid w-full grid-cols-[88px_minmax(0,1fr)_44px] gap-3">
+                <div className="min-w-0 space-y-2">
                   <button
                     type="button"
                     onClick={() => navigate(`${basePath}/${request._id}`)}
-                    className="text-left text-lg font-semibold text-blue-700 hover:underline"
+                    className="block max-w-full text-left text-lg font-semibold leading-tight text-blue-700 hover:underline"
                   >
                     #{request.display_id || '—'}
                   </button>
-                  <div className="mt-1 text-sm font-medium text-gray-900">{getCompactDisplayName(request.clientName)}</div>
-                  <div className="text-xs text-gray-500">{request.retreatName}</div>
-                  {isGrouped && group?._id && (
-                    <button
-                      type="button"
-                      onClick={() => openGroupPacket(group._id)}
-                      className="mt-2 inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700"
-                    >
-                      <Icon icon={FiFolder} className="h-3.5 w-3.5" />
-                      Packet: {group.title}
-                    </button>
-                  )}
+                  <MedicalReviewTypeBadge requestType={request.requestType} className="max-w-full justify-start text-[11px]" />
                 </div>
-                <div className="shrink-0">{renderRequestActions(request)}</div>
-              </div>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                <MedicalReviewTypeBadge requestType={request.requestType} />
-                <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${statusClass[request.status] || 'bg-gray-100 text-gray-700'}`}>
-                  {request.status}
-                </span>
+
+                <div className="min-w-0">
+                  <div className="truncate text-base font-semibold text-gray-900">{getCompactDisplayName(request.clientName)}</div>
+                  <div className="truncate text-sm text-gray-500">{retreatLabel}</div>
+                </div>
+
+                <div className="flex flex-col items-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`${basePath}/${request._id}`)}
+                    className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gray-200 text-gray-700 hover:bg-gray-50"
+                    title="View"
+                  >
+                    <Icon icon={FiEye} className="h-5 w-5" />
+                  </button>
+                  <span className={`inline-flex rounded-full px-2 py-1 text-[11px] font-semibold ${statusClass[request.status] || 'bg-gray-100 text-gray-700'}`}>
+                    {request.status}
+                  </span>
+                </div>
               </div>
             </div>
           );

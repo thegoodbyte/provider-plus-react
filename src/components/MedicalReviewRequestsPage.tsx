@@ -984,7 +984,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const isMissingMedicalStaffNotes = Boolean(validationError && !medicalStaffNotes.trim());
 
   return (
-    <div className="p-3 sm:p-6">
+    <div className="overflow-x-hidden p-3 sm:p-6">
       <div className="mb-4 flex items-start justify-between gap-4 sm:mb-6">
         <div>
           <h1 className="text-xl font-semibold leading-tight text-gray-900 sm:text-2xl">
