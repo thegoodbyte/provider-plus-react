@@ -10,6 +10,7 @@ import { FiArrowLeft, FiCamera, FiEdit2, FiTrash2, FiUser, FiMapPin, FiCalendar,
 import MedicalRecordsManager from './MedicalRecordsManager';
 import { formatCalendarDate, toDateInputValue } from '../utils/dateFormat';
 import { CreateTaskDto, Task, taskService } from '../services/taskService';
+import { cacheService } from '../services/cacheService';
 import { TaskForm } from './Tasks/TaskForm';
 import { TaskList } from './Tasks/TaskList';
 import './ClientsGrid.css';
@@ -131,6 +132,7 @@ const ClientDetailsPage: React.FC = () => {
   });
   const [showEKGUploadModal, setShowEKGUploadModal] = useState(false);
   const [showLiverPanelUploadModal, setShowLiverPanelUploadModal] = useState(false);
+  const [medicalRecordsRefreshKey, setMedicalRecordsRefreshKey] = useState(0);
   const [ekgFiles, setEkgFiles] = useState<any[]>([]);
   const [liverPanelFiles, setLiverPanelFiles] = useState<any[]>([]);
   const [uploadingEKG, setUploadingEKG] = useState(false);
@@ -941,6 +943,9 @@ const ClientDetailsPage: React.FC = () => {
 
       setShowEKGUploadModal(false);
       // Optionally refresh client data to get updated medical info
+      cacheService.clearPattern('medical:');
+      cacheService.clearPattern('medical-artifacts:');
+      setMedicalRecordsRefreshKey((value) => value + 1);
       fetchClientData();
     } catch (error) {
       console.error('Error uploading EKG files:', error);
@@ -984,6 +989,9 @@ const ClientDetailsPage: React.FC = () => {
       }))]);
 
       setShowLiverPanelUploadModal(false);
+      cacheService.clearPattern('medical:');
+      cacheService.clearPattern('medical-artifacts:');
+      setMedicalRecordsRefreshKey((value) => value + 1);
       // Optionally refresh client data to get updated medical info
       fetchClientData();
     } catch (error) {
@@ -1658,6 +1666,7 @@ const ClientDetailsPage: React.FC = () => {
                 clientName={`${client.firstName} ${client.lastName}`}
                 retreatId={getDefaultRetreatId()}
                 retreatOptions={getRetreatOptions()}
+                refreshKey={medicalRecordsRefreshKey}
               />
             </div>
           </div>
@@ -1670,6 +1679,7 @@ const ClientDetailsPage: React.FC = () => {
               clientName={`${client.firstName} ${client.lastName}`}
               retreatId={getDefaultRetreatId()}
               retreatOptions={getRetreatOptions()}
+              refreshKey={medicalRecordsRefreshKey}
             />
           </div>
         )}

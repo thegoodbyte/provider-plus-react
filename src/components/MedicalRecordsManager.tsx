@@ -21,6 +21,7 @@ interface MedicalRecordsManagerProps {
   retreatId?: string;
   clientName?: string;
   retreatOptions?: Array<{ id: string; label: string }>;
+  refreshKey?: number;
 }
 
 // Helper to get record type label
@@ -157,7 +158,8 @@ const MedicalRecordsManager: React.FC<MedicalRecordsManagerProps> = ({
   clientId,
   retreatId,
   clientName = 'Client',
-  retreatOptions = []
+  retreatOptions = [],
+  refreshKey = 0,
 }) => {
   const [records, setRecords] = useState<MedicalRecord[]>([]);
   const [loading, setLoading] = useState(false);
@@ -249,7 +251,7 @@ const MedicalRecordsManager: React.FC<MedicalRecordsManagerProps> = ({
 
   useEffect(() => {
     loadRecords();
-  }, [loadRecords]);
+  }, [loadRecords, refreshKey]);
 
   // Add new record
   const handleAddRecord = () => {

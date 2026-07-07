@@ -410,15 +410,330 @@ const MedicalArtifactDetailPage: React.FC = () => {
   const artifactId = artifact._id || id || '';
   const requiresBooking = form.documentStage !== 'entry';
   const isCeremonyStage = ceremonyStages.has(form.documentStage);
+  const clientLabel = getClientLabel(artifact.clientId);
+  const bookingLabel = getObjectId(artifact.bookingId)
+    ? (typeof artifact.bookingId === 'object' ? getBookingLabel(artifact.bookingId as RetreatClient) : `Booking #${getObjectId(artifact.bookingId)}`)
+    : '-';
+  const detailItems = [
+    { label: 'Title', value: artifact.title || '-' },
+    { label: 'Description', value: artifact.description || '-' },
+    { label: 'Type', value: getArtifactTypeLabel(artifact.artifactType) },
+    { label: 'Stage', value: documentStageLabels[artifact.documentStage || 'entry'] || artifact.documentStage || '-' },
+    { label: 'Client', value: clientLabel },
+    { label: 'Retreat', value: artifact.retreatId ? String(typeof artifact.retreatId === 'object' ? (artifact.retreatId as any).name || (artifact.retreatId as any).code || artifact.retreatId._id : artifact.retreatId) : '-' },
+    { label: 'Booking', value: bookingLabel },
+  ];
+
+  const renderRecordSummary = () => (
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      {detailItems.map((item) => (
+        <div key={item.label} className="rounded-md border border-gray-200 bg-white p-3">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{item.label}</div>
+          <div className="mt-1 text-sm font-medium text-gray-900">{item.value}</div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderFilesSection = (mobile = false) => (
+    <div className={mobile ? 'md:hidden' : 'hidden md:block'}>
+      {mobile ? (
+        <details className="border-y border-gray-200 bg-white">
+          <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-semibold text-gray-900">
+            <span>Files</span>
+            <span className="text-xs font-medium text-gray-500">{artifact.files?.length || 0} file(s)</span>
+          </summary>
+          <div className="px-4 pb-4">
+            {artifact.files?.length ? (
+              <div className="space-y-3">
+                {artifact.files.map((file, index) => {
+                  const storedPath = getFileStoredPath(file);
+                  return (
+                    <div key={`${file.fileName || storedPath || index}`} className="rounded-md border border-gray-200 p-3">
+                      <div className="font-medium text-gray-900">{getFileName(file) || `File ${index + 1}`}</div>
+                      <div className="mt-1 text-xs text-gray-500">{file.mimeType || 'Unknown type'} · {formatBytes(file.size)}</div>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => navigate(`${routePrefix}/medical-artifacts/${artifact._id}/files/${index}`)}
+                          disabled={!storedPath}
+                          className="inline-flex items-center gap-1 rounded-md border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+                        >
+                          <Eye className="h-3 w-3" />
+                          View File
+                        </button>
+                        {isEditMode && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteFile(file)}
+                            disabled={!storedPath || deletingPath === storedPath}
+                            className="inline-flex items-center gap-1 rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                            {deletingPath === storedPath ? 'Deleting...' : 'Delete'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-4 text-center text-gray-500">No files attached.</div>
+            )}
+          </div>
+        </details>
+      ) : (
+        <div className="rounded-md border border-gray-200 bg-white p-4 text-sm">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Files</h2>
+          {isEditMode && (
+            <div className="mb-4 rounded-md border border-dashed border-gray-300 bg-gray-50 p-3">
+              <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
+                <Upload className="h-4 w-4" />
+                Upload more files
+              </label>
+              <input
+                type="file"
+                multiple
+                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.heic,.heif"
+                onChange={(event) => setSelectedFiles(Array.from(event.target.files || []))}
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-xs"
+              />
+              {selectedFiles.length > 0 && (
+                <div className="mt-2 space-y-1 text-xs text-gray-600">
+                  {selectedFiles.map((file) => (
+                    <div key={`${file.name}-${file.size}`}>{file.name} ({formatBytes(file.size)})</div>
+                  ))}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={handleUploadFiles}
+                disabled={uploading || selectedFiles.length === 0}
+                className="mt-3 inline-flex items-center gap-2 rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-black disabled:opacity-50"
+              >
+                <Upload className="h-3.5 w-3.5" />
+                {uploading ? 'Uploading...' : 'Upload Selected'}
+              </button>
+            </div>
+          )}
+          {artifact.files?.length ? (
+            <div className="space-y-3">
+              {artifact.files.map((file, index) => {
+                const storedPath = getFileStoredPath(file);
+                return (
+                  <div key={`${file.fileName || storedPath || index}`} className="rounded-md border border-gray-200 p-3">
+                    <div className="font-medium text-gray-900">{getFileName(file) || `File ${index + 1}`}</div>
+                    <div className="mt-1 text-xs text-gray-500">{file.mimeType || 'Unknown type'} · {formatBytes(file.size)}</div>
+                    <div className="mt-2 break-all rounded bg-gray-50 p-2 text-xs text-gray-600">
+                      <div className="font-semibold text-gray-500">S3 path</div>
+                      {storedPath || 'No storage path recorded'}
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => navigate(`${routePrefix}/medical-artifacts/${artifact._id}/files/${index}`)}
+                        disabled={!storedPath}
+                        className="inline-flex items-center gap-1 rounded-md border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+                      >
+                        <Eye className="h-3 w-3" />
+                        View File
+                      </button>
+                      {isEditMode && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteFile(file)}
+                        disabled={!storedPath || deletingPath === storedPath}
+                        className="inline-flex items-center gap-1 rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        {deletingPath === storedPath ? 'Deleting...' : 'Delete'}
+                      </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-4 text-center text-gray-500">No files attached.</div>
+          )}
+          {storagePaths.length > 0 && (
+            <div className="mt-3 text-xs text-gray-500">Storage paths are recorded from the upload response, so the app does not guess bucket paths later.</div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderHistorySection = (mobile = false) => (
+    <div className={mobile ? 'md:hidden' : 'hidden md:block'}>
+      {mobile ? (
+        <details className="border-y border-gray-200 bg-white">
+          <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-semibold text-gray-900">
+            <span>History</span>
+            <span className="text-xs font-medium text-gray-500">{reviewRequests.length} review(s)</span>
+          </summary>
+          <div className="px-4 pb-4">
+            {reviewRequests.length > 0 ? (
+              <div className="space-y-3">
+                {reviewRequests.map((request) => (
+                  <div key={request._id} className="rounded-md border border-gray-200 p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => navigate(`${routePrefix}/medical-review-requests/${request._id}`)}
+                        className="text-left text-sm font-semibold text-blue-700 hover:text-blue-900"
+                      >
+                        Medical Review #{request.display_id || request._id}
+                      </button>
+                      <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
+                        {String(getReviewDecision(request)).replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-xs capitalize text-gray-500">
+                      {getReviewRequestLabel(request)} · {request.status?.replace(/_/g, ' ') || 'pending'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-3 text-gray-600">
+                No medical review requests are linked to this artifact.
+              </div>
+            )}
+          </div>
+        </details>
+      ) : (
+        <section className="mt-6 rounded-md border border-gray-200 bg-white p-4">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-gray-900">Medical Review History</h2>
+              <p className="text-sm text-gray-500">All medical review requests linked to this artifact.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate(`${routePrefix}/medical-review-requests/new?artifactId=${artifact._id}`)}
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              <Plus className="h-4 w-4" />
+              Create MRR
+            </button>
+          </div>
+
+          {reviewRequests.length > 0 ? (
+            <div className="space-y-4">
+              {reviewRequests.map((request) => (
+                <div key={request._id} className="rounded-md border border-gray-200 p-4">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`${routePrefix}/medical-review-requests/${request._id}`)}
+                        className="text-left text-base font-semibold text-blue-700 hover:text-blue-900"
+                      >
+                        Medical Review #{request.display_id || request._id}
+                      </button>
+                      <div className="mt-1 text-sm capitalize text-gray-600">
+                        {getReviewRequestLabel(request)} · Attempt {request.attemptNumber || 1}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold capitalize text-gray-700">
+                        {request.status?.replace(/_/g, ' ') || 'pending'}
+                      </span>
+                      <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                        {String(getReviewDecision(request)).replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                  </div>
+
+                  <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                    <div>
+                      <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Requested</dt>
+                      <dd className="mt-1 text-gray-900">{formatDateTime(request.requestedAt || request.createdAt)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Assigned</dt>
+                      <dd className="mt-1 text-gray-900">{request.assignedToEmail || request.medicalReviewerName || request.assignedTo || '-'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Reviewed</dt>
+                      <dd className="mt-1 text-gray-900">{formatDateTime(request.reviewedAt || request.decisionDate)}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Reviewer</dt>
+                      <dd className="mt-1 text-gray-900">{request.reviewedBy || '-'}</dd>
+                    </div>
+                  </dl>
+
+                  {(request.reviewNotes || request.overallNotes || request.medicalStaffNotes) && (
+                    <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
+                      {request.reviewNotes && (
+                        <div>
+                          <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Review Notes</div>
+                          <div className="mt-1 whitespace-pre-wrap text-gray-800">{request.reviewNotes}</div>
+                        </div>
+                      )}
+                      {request.overallNotes && (
+                        <div>
+                          <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Overall Notes</div>
+                          <div className="mt-1 whitespace-pre-wrap text-gray-800">{request.overallNotes}</div>
+                        </div>
+                      )}
+                      {request.medicalStaffNotes && (
+                        <div>
+                          <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Medical Staff Notes</div>
+                          <div className="mt-1 whitespace-pre-wrap text-gray-800">{request.medicalStaffNotes}</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {request.decisionHistory?.length ? (
+                    <div className="mt-4">
+                      <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Decision History</div>
+                      <div className="space-y-2">
+                        {request.decisionHistory.map((entry, index) => (
+                          <div key={`${entry.reviewedAt || index}`} className="rounded-md bg-gray-50 p-3 text-sm">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-semibold capitalize text-gray-900">{entry.status?.replace(/_/g, ' ') || 'updated'}</span>
+                              {entry.decision && <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-gray-700">{entry.decision}</span>}
+                              <span className="text-xs text-gray-500">{formatDateTime(entry.reviewedAt)}</span>
+                              {entry.reviewedBy && <span className="text-xs text-gray-500">by {entry.reviewedBy}</span>}
+                            </div>
+                            {(entry.notes || entry.overallNotes || entry.medicalStaffNotes) && (
+                              <div className="mt-2 whitespace-pre-wrap text-gray-700">
+                                {[entry.notes, entry.overallNotes, entry.medicalStaffNotes].filter(Boolean).join('\n')}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-6 text-center">
+              <div className="font-medium text-gray-700">No medical reviews yet.</div>
+              <div className="mt-1 text-sm text-gray-500">Create a medical review request to send this artifact for review.</div>
+            </div>
+          )}
+        </section>
+      )}
+    </div>
+  );
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Medical Artifact #{artifact.display_id || '-'}</h1>
-          <p className="text-sm text-gray-600">{getArtifactTypeLabel(artifact.artifactType)} for {getClientLabel(artifact.clientId)}</p>
-        </div>
-        <div className="flex items-center gap-2">
+    <div className="-mx-4 px-4 pb-6 sm:mx-0 sm:p-6">
+      <div className="mb-4 flex items-start justify-between gap-3 sm:mb-6">
+        <button onClick={() => navigate(`${routePrefix}/medical-artifacts`)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </button>
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {!isEditMode && (
             <button onClick={() => navigate(`${routePrefix}/medical-artifacts/${artifact._id}/edit`)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
               <Edit className="h-4 w-4" />
@@ -427,7 +742,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
           )}
           <button onClick={() => navigate(`${routePrefix}/medical-review-requests/new?artifactId=${artifact._id}`)} className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700">
             <Plus className="h-4 w-4" />
-            {reviewRequests.length > 0 ? 'Create Another Medical Review' : 'Create Medical Review'}
+            Create MRR
           </button>
           {routePrefix === '/admin' && (
             <button
@@ -440,11 +755,11 @@ const MedicalArtifactDetailPage: React.FC = () => {
               {deletingArtifact ? 'Deleting...' : 'Delete'}
             </button>
           )}
-          <button onClick={() => navigate(`${routePrefix}/medical-artifacts`)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </button>
         </div>
+      </div>
+      <div className="mb-5 space-y-2">
+        <h1 className="text-2xl font-semibold text-gray-900">Medical Artifact #{artifact.display_id || '-'}</h1>
+        <p className="text-sm text-gray-600">{getArtifactTypeLabel(artifact.artifactType)} for {clientLabel}</p>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -453,8 +768,14 @@ const MedicalArtifactDetailPage: React.FC = () => {
             {error}
           </div>
         )}
+        <div className="md:hidden lg:col-span-2">
+          <div className="border-y border-gray-200 bg-white px-4 py-4">
+            <div className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">Quick Info</div>
+            {renderRecordSummary()}
+          </div>
+        </div>
         {isEditMode ? (
-          <form onSubmit={handleSave} className="space-y-4 rounded-md border border-gray-200 bg-white p-4">
+          <form onSubmit={handleSave} className="space-y-4 rounded-none border-x-0 border-y border-gray-200 bg-white p-4 md:rounded-md md:border">
             <div className="grid gap-4 md:grid-cols-2">
               <label className="block text-sm font-medium text-gray-700">
                 Title
@@ -578,8 +899,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
                 ))}
               </div>
             )}
-
-            <div className="space-y-4 rounded-md border border-gray-200 bg-white p-4 text-sm">
+            <div className="space-y-4 rounded-none border-x-0 border-y border-gray-200 bg-white p-4 text-sm md:rounded-md md:border">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Title</div>
                 <div className="mt-1 text-base font-semibold text-gray-900">{artifact.title || '-'}</div>
@@ -610,7 +930,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
           </div>
         )}
 
-        <aside className="space-y-4">
+        <aside className="hidden space-y-4 md:block">
           <div className="rounded-md border border-gray-200 bg-gray-50 p-4 text-sm">
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Record</h2>
             <dl className="space-y-2">
@@ -646,240 +966,12 @@ const MedicalArtifactDetailPage: React.FC = () => {
               <div><dt className="text-gray-500">Version</dt><dd className="font-medium text-gray-900">{artifact.version || 1}</dd></div>
             </dl>
           </div>
-
-          <div className="rounded-md border border-gray-200 bg-white p-4 text-sm">
-            <div className="mb-3 flex items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">MRR History</h2>
-              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-700">{reviewRequests.length}</span>
-            </div>
-            {reviewRequests.length > 0 ? (
-              <div className="space-y-3">
-                {reviewRequests.slice(0, 4).map((request) => (
-                  <button
-                    key={request._id}
-                    type="button"
-                    onClick={() => navigate(`${routePrefix}/medical-review-requests/${request._id}`)}
-                    className="block w-full rounded-md border border-gray-200 p-3 text-left hover:border-blue-200 hover:bg-blue-50"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-semibold text-blue-700">MRR #{request.display_id || request._id?.slice(-6)}</span>
-                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold capitalize text-gray-700">
-                        {String(getReviewDecision(request)).replace(/_/g, ' ')}
-                      </span>
-                    </div>
-                    <div className="mt-1 text-xs capitalize text-gray-500">{getReviewRequestLabel(request)} · {request.status?.replace(/_/g, ' ') || 'pending'}</div>
-                    <div className="mt-1 text-xs text-gray-500">{formatDateTime(request.reviewedAt || request.requestedAt || request.createdAt)}</div>
-                  </button>
-                ))}
-                {reviewRequests.length > 4 && (
-                  <div className="text-xs text-gray-500">{reviewRequests.length - 4} more shown in full history below.</div>
-                )}
-              </div>
-            ) : (
-              <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-3 text-gray-600">
-                No medical review requests are linked to this artifact.
-              </div>
-            )}
-          </div>
-
-          <div className="rounded-md border border-gray-200 bg-white p-4 text-sm">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Files</h2>
-            {isEditMode && (
-              <div className="mb-4 rounded-md border border-dashed border-gray-300 bg-gray-50 p-3">
-                <label className="mb-2 flex items-center gap-2 text-sm font-medium text-gray-700">
-                  <Upload className="h-4 w-4" />
-                  Upload more files
-                </label>
-                <input
-                  type="file"
-                  multiple
-                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.heic,.heif"
-                  onChange={(event) => setSelectedFiles(Array.from(event.target.files || []))}
-                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-xs"
-                />
-                {selectedFiles.length > 0 && (
-                  <div className="mt-2 space-y-1 text-xs text-gray-600">
-                    {selectedFiles.map((file) => (
-                      <div key={`${file.name}-${file.size}`}>{file.name} ({formatBytes(file.size)})</div>
-                    ))}
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={handleUploadFiles}
-                  disabled={uploading || selectedFiles.length === 0}
-                  className="mt-3 inline-flex items-center gap-2 rounded-md bg-gray-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-black disabled:opacity-50"
-                >
-                  <Upload className="h-3.5 w-3.5" />
-                  {uploading ? 'Uploading...' : 'Upload Selected'}
-                </button>
-              </div>
-            )}
-            {artifact.files?.length ? (
-              <div className="space-y-3">
-                {artifact.files.map((file, index) => {
-                  const storedPath = getFileStoredPath(file);
-                  return (
-                    <div key={`${file.fileName || storedPath || index}`} className="rounded-md border border-gray-200 p-3">
-                      <div className="font-medium text-gray-900">{getFileName(file) || `File ${index + 1}`}</div>
-                      <div className="mt-1 text-xs text-gray-500">{file.mimeType || 'Unknown type'} · {formatBytes(file.size)}</div>
-                      <div className="mt-2 break-all rounded bg-gray-50 p-2 text-xs text-gray-600">
-                        <div className="font-semibold text-gray-500">S3 path</div>
-                        {storedPath || 'No storage path recorded'}
-                      </div>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          onClick={() => navigate(`${routePrefix}/medical-artifacts/${artifact._id}/files/${index}`)}
-                          disabled={!storedPath}
-                          className="inline-flex items-center gap-1 rounded-md border border-blue-200 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
-                        >
-                          <Eye className="h-3 w-3" />
-                          View File
-                        </button>
-                        {isEditMode && (
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteFile(file)}
-                          disabled={!storedPath || deletingPath === storedPath}
-                          className="inline-flex items-center gap-1 rounded-md border border-red-200 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
-                        >
-                          <Trash2 className="h-3 w-3" />
-                          {deletingPath === storedPath ? 'Deleting...' : 'Delete'}
-                        </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-4 text-center text-gray-500">No files attached.</div>
-            )}
-            {storagePaths.length > 0 && (
-              <div className="mt-3 text-xs text-gray-500">Storage paths are recorded from the upload response, so the app does not guess bucket paths later.</div>
-            )}
-          </div>
         </aside>
       </div>
-
-      <section className="mt-6 rounded-md border border-gray-200 bg-white p-4">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-gray-900">Medical Review History</h2>
-            <p className="text-sm text-gray-500">All medical review requests linked to this artifact.</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => navigate(`${routePrefix}/medical-review-requests/new?artifactId=${artifact._id}`)}
-            className="inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            <Plus className="h-4 w-4" />
-            Create Medical Review
-          </button>
-        </div>
-
-        {reviewRequests.length > 0 ? (
-          <div className="space-y-4">
-            {reviewRequests.map((request) => (
-              <div key={request._id} className="rounded-md border border-gray-200 p-4">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                  <div>
-                    <button
-                      type="button"
-                      onClick={() => navigate(`${routePrefix}/medical-review-requests/${request._id}`)}
-                      className="text-left text-base font-semibold text-blue-700 hover:text-blue-900"
-                    >
-                      Medical Review #{request.display_id || request._id}
-                    </button>
-                    <div className="mt-1 text-sm capitalize text-gray-600">
-                      {getReviewRequestLabel(request)} · Attempt {request.attemptNumber || 1}
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold capitalize text-gray-700">
-                      {request.status?.replace(/_/g, ' ') || 'pending'}
-                    </span>
-                    <span className="rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
-                      {String(getReviewDecision(request)).replace(/_/g, ' ')}
-                    </span>
-                  </div>
-                </div>
-
-                <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
-                  <div>
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Requested</dt>
-                    <dd className="mt-1 text-gray-900">{formatDateTime(request.requestedAt || request.createdAt)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Assigned</dt>
-                    <dd className="mt-1 text-gray-900">{request.assignedToEmail || request.medicalReviewerName || request.assignedTo || '-'}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Reviewed</dt>
-                    <dd className="mt-1 text-gray-900">{formatDateTime(request.reviewedAt || request.decisionDate)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">Reviewer</dt>
-                    <dd className="mt-1 text-gray-900">{request.reviewedBy || '-'}</dd>
-                  </div>
-                </dl>
-
-                {(request.reviewNotes || request.overallNotes || request.medicalStaffNotes) && (
-                  <div className="mt-4 grid gap-3 text-sm md:grid-cols-3">
-                    {request.reviewNotes && (
-                      <div>
-                        <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Review Notes</div>
-                        <div className="mt-1 whitespace-pre-wrap text-gray-800">{request.reviewNotes}</div>
-                      </div>
-                    )}
-                    {request.overallNotes && (
-                      <div>
-                        <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Overall Notes</div>
-                        <div className="mt-1 whitespace-pre-wrap text-gray-800">{request.overallNotes}</div>
-                      </div>
-                    )}
-                    {request.medicalStaffNotes && (
-                      <div>
-                        <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Medical Staff Notes</div>
-                        <div className="mt-1 whitespace-pre-wrap text-gray-800">{request.medicalStaffNotes}</div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {request.decisionHistory?.length ? (
-                  <div className="mt-4">
-                    <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Decision History</div>
-                    <div className="space-y-2">
-                      {request.decisionHistory.map((entry, index) => (
-                        <div key={`${entry.reviewedAt || index}`} className="rounded-md bg-gray-50 p-3 text-sm">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="font-semibold capitalize text-gray-900">{entry.status?.replace(/_/g, ' ') || 'updated'}</span>
-                            {entry.decision && <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-gray-700">{entry.decision}</span>}
-                            <span className="text-xs text-gray-500">{formatDateTime(entry.reviewedAt)}</span>
-                            {entry.reviewedBy && <span className="text-xs text-gray-500">by {entry.reviewedBy}</span>}
-                          </div>
-                          {(entry.notes || entry.overallNotes || entry.medicalStaffNotes) && (
-                            <div className="mt-2 whitespace-pre-wrap text-gray-700">
-                              {[entry.notes, entry.overallNotes, entry.medicalStaffNotes].filter(Boolean).join('\n')}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 p-6 text-center">
-            <div className="font-medium text-gray-700">No medical reviews yet.</div>
-            <div className="mt-1 text-sm text-gray-500">Create a medical review request to send this artifact for review.</div>
-          </div>
-        )}
-      </section>
+      {renderFilesSection(true)}
+      {renderHistorySection(true)}
+      {renderFilesSection(false)}
+      {renderHistorySection(false)}
     </div>
   );
 };
