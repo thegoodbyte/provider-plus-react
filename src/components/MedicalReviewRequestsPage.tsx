@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
 import { Client, MedicalArtifact, MedicalReviewRequest, Retreat } from '../types';
+import { ThumbsUp } from 'lucide-react';
 
 const reviewStatusStyle: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
@@ -567,11 +568,12 @@ const MedicalReviewRequestsPage: React.FC = () => {
     navigate(`${isMedicalRoute ? '/medical/review-requests' : '/admin/medical-review-requests'}/${request._id}`);
   };
 
-  const handleSaveReview = async () => {
+  const handleSaveReview = async (options?: { quickApprove?: boolean; redirectAfterSave?: boolean }) => {
     if (!selected?._id) return;
     setValidationError('');
-    const overallMedicalNotes = medicalStaffNotes.trim();
-    if (!reviewDecision || !overallMedicalNotes) {
+    const effectiveDecision = options?.quickApprove ? 'OK' : reviewDecision;
+    const effectiveNotes = options?.quickApprove ? (medicalStaffNotes.trim() || 'no comment') : medicalStaffNotes.trim();
+    if (!effectiveDecision || !effectiveNotes) {
       setValidationError('Choose an overall decision and add medical staff notes before saving.');
       reviewDecisionSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
@@ -580,15 +582,26 @@ const MedicalReviewRequestsPage: React.FC = () => {
       .filter((review) => review.fileKey || review.fileName || review.notes || review.decision)
       .map((review) => sanitizeFileReviewDraft(review));
     await medicalReviewRequestsApi.review(selected._id, {
-      status: reviewDecision === 'OK' ? 'approved' : reviewDecision === 'NOT OK' ? 'rejected' : reviewDecision === 'caution' ? 'caution' : 'in_review',
-      reviewDecision: reviewDecision || undefined,
-      reviewNotes: overallMedicalNotes,
-      overallNotes: overallMedicalNotes,
-      medicalStaffNotes: overallMedicalNotes,
+      status: effectiveDecision === 'OK' ? 'approved' : effectiveDecision === 'NOT OK' ? 'rejected' : effectiveDecision === 'caution' ? 'caution' : 'in_review',
+      reviewDecision: effectiveDecision || undefined,
+      reviewNotes: effectiveNotes,
+      overallNotes: effectiveNotes,
+      medicalStaffNotes: effectiveNotes,
       fileReviews: cleanedFileReviews,
       reviewedBy: [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || 'medical_staff',
     });
     await loadRequests();
+    if (options?.redirectAfterSave) {
+      navigate('/medical-dashboard');
+    }
+  };
+
+  const handleQuickApprove = async () => {
+    setReviewDecision('OK');
+    if (!medicalStaffNotes.trim()) {
+      setMedicalStaffNotes('no comment');
+    }
+    await handleSaveReview({ quickApprove: true, redirectAfterSave: true });
   };
 
   const handleGenerateAccessLink = async () => {
@@ -827,28 +840,6 @@ const MedicalReviewRequestsPage: React.FC = () => {
     return parts.join('\n');
   };
 
-  const renderScreeningItems = (screening: any, items: Array<{ label: string; keys?: string[]; value?: any }>) => {
-    const visibleItems = items
-      .map((item) => ({
-        label: item.label,
-        value: item.value !== undefined ? item.value : getScreeningValue(screening, ...(item.keys || [])),
-      }))
-      .filter((item) => item.value !== undefined && item.value !== null && item.value !== '');
-
-    if (!visibleItems.length) return null;
-
-    return (
-      <div className="grid gap-2 sm:grid-cols-2">
-        {visibleItems.map((item) => (
-          <div key={item.label} className="rounded-md bg-gray-50 p-3">
-            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{item.label}</div>
-            <div className="mt-1 whitespace-pre-wrap text-sm text-gray-800">{renderValue(item.value)}</div>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
   const renderReadOnlyScreening = (screening: any) => {
     const fileUrl = getScreeningValue(screening, 'handwritingImageUrl');
 
@@ -954,7 +945,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const isMissingMedicalStaffNotes = Boolean(validationError && !medicalStaffNotes.trim());
 
   return (
-    <div className="overflow-x-hidden p-3 sm:p-6">
+    <div className="overflow-x-hidden p-0 sm:p-6">
       <div className="mb-4 flex items-start justify-between gap-4 sm:mb-6">
         <div>
           <h1 className="text-xl font-semibold leading-tight text-gray-900 sm:text-2xl">
@@ -1091,7 +1082,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
           </div>
         )}
 
-        <div className={isDetailView ? 'bg-white' : 'rounded-lg border border-gray-200 bg-white p-4'}>
+        <div className={isDetailView ? 'bg-white sm:rounded-lg sm:border sm:border-gray-200 sm:p-4' : 'rounded-lg border border-gray-200 bg-white p-4'}>
           {!selected ? (
             <div className="p-4 text-sm text-gray-500">Select a request to review it.</div>
           ) : (
@@ -1453,20 +1444,43 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   </div>
                 ) : (
                   <>
-                    <div className="grid gap-2 sm:grid-cols-3">
-                      {decisionOptions.map((option) => (
-                        <button
-                          key={option}
-                          type="button"
-                          onClick={() => {
-                            setReviewDecision(option);
-                            if (validationError && medicalStaffNotes.trim()) setValidationError('');
-                          }}
-                          className={getDecisionButtonClass(option, reviewDecision === option, 'lg')}
-                        >
-                          {decisionLabels[option]}
-                        </button>
-                      ))}
+                    <div className="grid gap-2 sm:grid-cols-4">
+                      <button
+                        type="button"
+                        onClick={handleQuickApprove}
+                        className="min-h-12 w-full rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700 hover:bg-green-100"
+                        aria-label="Quick approve"
+                        title="Quick approve"
+                      >
+                        <ThumbsUp className="mx-auto h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleQuickApprove}
+                        className="min-h-12 w-full rounded-xl border border-green-200 bg-green-600 px-4 py-3 text-sm font-semibold text-white hover:bg-green-700"
+                      >
+                        OK
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReviewDecision('caution');
+                          if (validationError && medicalStaffNotes.trim()) setValidationError('');
+                        }}
+                        className={getDecisionButtonClass('caution', reviewDecision === 'caution', 'lg')}
+                      >
+                        Need more info
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReviewDecision('NOT OK');
+                          if (validationError && medicalStaffNotes.trim()) setValidationError('');
+                        }}
+                        className={getDecisionButtonClass('NOT OK', reviewDecision === 'NOT OK', 'lg')}
+                      >
+                        No good
+                      </button>
                     </div>
                     {isMissingOverallDecision && (
                       <div className="mt-2 text-xs font-medium text-red-700">Pick one decision before saving.</div>
@@ -1525,7 +1539,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   ) : (
                     <button
                       type="button"
-                      onClick={handleSaveReview}
+                      onClick={() => handleSaveReview()}
                       className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
                     >
                       Save Review
