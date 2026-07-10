@@ -1120,6 +1120,7 @@ export interface MedicalReviewRequest {
     | 'general_clearance';
   requestedAt?: Date | string;
   requestedBy?: string;
+  sentForReviewAt?: Date | string;
   requestedByUserId?: string | any;
   assignedTo?: string;
   assignedToUserId?: string | any;
@@ -1242,6 +1243,7 @@ export interface BookingFlowTemplate {
   expectedDocumentStage?: string;
   expectedDocumentType?: string;
   expectedArtifactPurpose?: string;
+  clientTagOnComplete?: string;
   autoCompleteOnArtifact?: boolean;
   autoCompleteStatus?: string;
   isRequirement?: boolean;

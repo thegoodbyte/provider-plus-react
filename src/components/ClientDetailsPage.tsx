@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { clientsApi, paymentsApi, clientMedicalApi, bookingsApi, paymentRequestsApi, retreatsApi } from '../services/api';
+import { clientsApi, paymentsApi, clientMedicalApi, bookingsApi, paymentRequestsApi, retreatsApi, medicalArtifactsApi } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
 import AppleButton from './AppleButton';
 import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
 import EmailHistoryPanel from './EmailHistoryPanel';
-import { PaymentRequest } from '../types';
+import { MedicalArtifact, PaymentRequest } from '../types';
 import { FiArrowLeft, FiCamera, FiEdit2, FiTrash2, FiUser, FiMapPin, FiCalendar, FiDollarSign, FiActivity, FiFileText, FiAlertCircle, FiPlus, FiMessageSquare, FiCheckSquare, FiHeart, FiEye, FiEyeOff, FiMail } from 'react-icons/fi';
 import MedicalRecordsManager from './MedicalRecordsManager';
 import { formatCalendarDate, toDateInputValue } from '../utils/dateFormat';
@@ -13,6 +13,7 @@ import { CreateTaskDto, Task, taskService } from '../services/taskService';
 import { cacheService } from '../services/cacheService';
 import { TaskForm } from './Tasks/TaskForm';
 import { TaskList } from './Tasks/TaskList';
+import { buildClientMedicalArtifactInput, getClientMedicalArtifactUploadContext } from './clientMedicalArtifactUpload';
 import './ClientsGrid.css';
 
 // Simple wrapper to fix TypeScript icon issues
@@ -908,98 +909,63 @@ const ClientDetailsPage: React.FC = () => {
     'handwritingImageUrl',
   ].some((key) => Boolean(getScreeningValue(key)));
 
-  const handleEKGFileUpload = async (files: File[]) => {
+  const uploadClientMedicalArtifact = async (
+    files: File[],
+    artifactType: NonNullable<MedicalArtifact['artifactType']>,
+  ) => {
     if (!clientId || files.length === 0) return;
 
-    setUploadingEKG(true);
+    const isEkg = artifactType === 'ekg';
+    const setUploading = isEkg ? setUploadingEKG : setUploadingLiverPanel;
+    const setFiles = isEkg ? setEkgFiles : setLiverPanelFiles;
+    const closeModal = isEkg ? setShowEKGUploadModal : setShowLiverPanelUploadModal;
+    const title = isEkg ? 'Entry EKG' : 'Entry Liver Panel';
+    const documentType = isEkg ? 'EKG' : 'Liver';
+    const context = getClientMedicalArtifactUploadContext(bookings, medicalInfo);
 
-    // Get retreat ID from medicalInfo or bookings
-    const retreatId = (Array.isArray(medicalInfo) ? medicalInfo[0]?.retreatId : medicalInfo?.retreatId) ||
-                      bookings[0]?.retreatId || bookings[0]?.retreat?._id;
-
-    if (!retreatId) {
-      alert('Unable to determine retreat context for this client. Please ensure the client has a booking or medical record.');
-      setUploadingEKG(false);
-      return;
-    }
+    setUploading(true);
 
     try {
-      // Upload files one by one (backend only accepts single file)
-      for (const file of files) {
-        const formData = new FormData();
-        formData.append('file', file);  // Changed from 'files' to 'file'
-        formData.append('clientId', clientId);
-        formData.append('retreatId', retreatId);
-
-        await clientMedicalApi.uploadFile(formData, 'ekg');
+      const artifactInput = buildClientMedicalArtifactInput({
+        clientId,
+        title,
+        artifactType,
+        documentType,
+        context,
+      });
+      const created = await medicalArtifactsApi.create(artifactInput);
+      if (!created.data?._id) {
+        throw new Error('Medical artifact was created without an id.');
       }
+      await medicalArtifactsApi.uploadFiles(created.data._id, files);
 
       // Add files to state for UI display
-      setEkgFiles(prevFiles => [...prevFiles, ...files.map(file => ({
+      setFiles((prevFiles) => [...prevFiles, ...files.map(file => ({
         name: file.name,
         size: file.size,
         type: file.type
       }))]);
 
-      setShowEKGUploadModal(false);
+      closeModal(false);
       // Optionally refresh client data to get updated medical info
       cacheService.clearPattern('medical:');
       cacheService.clearPattern('medical-artifacts:');
       setMedicalRecordsRefreshKey((value) => value + 1);
       fetchClientData();
     } catch (error) {
-      console.error('Error uploading EKG files:', error);
+      console.error(`Error uploading ${artifactType} files:`, error);
       alert('Error uploading files. Please try again.');
     } finally {
-      setUploadingEKG(false);
+      setUploading(false);
     }
   };
 
+  const handleEKGFileUpload = async (files: File[]) => {
+    return uploadClientMedicalArtifact(files, 'ekg');
+  };
+
   const handleLiverPanelFileUpload = async (files: File[]) => {
-    if (!clientId || files.length === 0) return;
-
-    setUploadingLiverPanel(true);
-
-    // Get retreat ID from medicalInfo or bookings
-    const retreatId = (Array.isArray(medicalInfo) ? medicalInfo[0]?.retreatId : medicalInfo?.retreatId) ||
-                      bookings[0]?.retreatId || bookings[0]?.retreat?._id;
-
-    if (!retreatId) {
-      alert('Unable to determine retreat context for this client. Please ensure the client has a booking or medical record.');
-      setUploadingLiverPanel(false);
-      return;
-    }
-
-    try {
-      // Upload files one by one (backend only accepts single file)
-      for (const file of files) {
-        const formData = new FormData();
-        formData.append('file', file);  // Changed from 'files' to 'file'
-        formData.append('clientId', clientId);
-        formData.append('retreatId', retreatId);
-
-        await clientMedicalApi.uploadFile(formData, 'liver-panel');
-      }
-
-      // Add files to state for UI display
-      setLiverPanelFiles(prevFiles => [...prevFiles, ...files.map(file => ({
-        name: file.name,
-        size: file.size,
-        type: file.type
-      }))]);
-
-      setShowLiverPanelUploadModal(false);
-      cacheService.clearPattern('medical:');
-      cacheService.clearPattern('medical-artifacts:');
-      setMedicalRecordsRefreshKey((value) => value + 1);
-      // Optionally refresh client data to get updated medical info
-      fetchClientData();
-    } catch (error) {
-      console.error('Error uploading Liver Panel files:', error);
-      alert('Error uploading files. Please try again.');
-    } finally {
-      setUploadingLiverPanel(false);
-    }
+    return uploadClientMedicalArtifact(files, 'liver_panel');
   };
 
   if (isLoading) {
@@ -1278,7 +1244,25 @@ const ClientDetailsPage: React.FC = () => {
                 {hasScreeningDetails && (
                   <button
                     type="button"
-                    onClick={() => window.open(`/api/screening/${clientId}/download-pdf`, '_blank')}
+                    onClick={() => {
+                      if (!clientId) return;
+                      clientsApi.downloadScreeningPdf(clientId)
+                        .then((response) => {
+                          const blob = response.data as Blob;
+                          const url = URL.createObjectURL(blob);
+                          const link = document.createElement('a');
+                          link.href = url;
+                          link.target = '_blank';
+                          link.rel = 'noopener noreferrer';
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                          window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+                        })
+                        .catch((error) => {
+                          console.error('Error downloading screening PDF:', error);
+                        });
+                    }}
                     className="inline-flex h-10 px-3 items-center justify-center rounded-md bg-green-600 text-white shadow-sm hover:bg-green-700"
                     aria-label="Download screening PDF"
                     title="Download screening PDF"
@@ -1860,6 +1844,9 @@ const ClientDetailsPage: React.FC = () => {
                         Date
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Payment ID
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Amount
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1889,6 +1876,16 @@ const ClientDetailsPage: React.FC = () => {
                             {formatDate(payment.paymentDate)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/admin/payments/${payment._id}`, { state: { returnTo: location.pathname } })}
+                              className="inline-flex items-center text-blue-700 hover:underline"
+                              title="View payment"
+                            >
+                              {payment.display_id ? `#${payment.display_id}` : payment._id?.slice(-8) || 'N/A'}
+                            </button>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {formatPaymentAmount(payment)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -1905,6 +1902,14 @@ const ClientDetailsPage: React.FC = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div className="flex justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => navigate(`/admin/payments/${payment._id}`, { state: { returnTo: location.pathname } })}
+                                className="inline-flex items-center rounded-md border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                              >
+                                <Icon icon={FiEye} className="mr-1 h-3.5 w-3.5" />
+                                View
+                              </button>
                               <button
                                 type="button"
                                 onClick={() => openEditPaymentModal(payment)}

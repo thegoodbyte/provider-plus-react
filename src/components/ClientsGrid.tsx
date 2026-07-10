@@ -7,6 +7,7 @@ import QuickAddClient from './QuickAddClient';
 import SimpleTable, { Column } from './SimpleTable';
 import { Chip } from '@mui/material';
 import { Edit as EditIcon, Delete as DeleteIcon, Visibility as VisibilityIcon, Link as LinkIcon } from '@mui/icons-material';
+import { normalizeClientTag } from '../utils/clientTags';
 import './ClientsGrid.css';
 
 // Countries list with codes for storage and full names for display
@@ -195,6 +196,7 @@ const ClientsGrid: React.FC = () => {
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [isQuickAddOpen, setIsQuickAddOpen] = useState(false);
   const [workflowFilter, setWorkflowFilter] = useState<string>('all');
+  const [tagFilter, setTagFilter] = useState<string>('all');
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Helper function to get country name from code
@@ -276,6 +278,18 @@ const ClientsGrid: React.FC = () => {
       return bookingClientId === client._id && activeStatuses.has(String(booking.status || 'pending'));
     });
   }, [bookings]);
+
+  const allTags = useMemo(
+    () => Array.from(
+      new Set(
+        clients
+          .flatMap((client) => client.tags || [])
+          .map((tag) => normalizeClientTag(String(tag || '')))
+          .filter(Boolean),
+      ),
+    ).sort((a, b) => a.localeCompare(b)),
+    [clients],
+  );
 
   const columns: Column[] = useMemo(() => [
     {
@@ -362,6 +376,26 @@ const ClientsGrid: React.FC = () => {
         return <Chip label={value?.toUpperCase() || 'POTENTIAL'} color={color} size="small" />;
       },
       sortable: true
+    },
+    {
+      field: 'tags',
+      headerName: 'Tags',
+      width: 220,
+      renderCell: (_, row) => {
+        const tags = (row.tags || []).filter(Boolean);
+        if (!tags.length) return '';
+        const visibleTags = tags.slice(0, 2);
+        const remaining = tags.length - visibleTags.length;
+        return (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+            {visibleTags.map((tag: string) => (
+              <Chip key={tag} label={tag} size="small" variant="outlined" />
+            ))}
+            {remaining > 0 && <Chip label={`+${remaining}`} size="small" variant="outlined" />}
+          </div>
+        );
+      },
+      sortable: false
     },
     {
       field: 'retreatCode',
@@ -501,12 +535,17 @@ const ClientsGrid: React.FC = () => {
         c.lastName?.toLowerCase().includes(term) ||
         c.email?.toLowerCase().includes(term) ||
         c.phone?.toLowerCase().includes(term) ||
-        c.country?.toLowerCase().includes(term)
+        c.country?.toLowerCase().includes(term) ||
+        (c.tags || []).some((tag) => String(tag || '').toLowerCase().includes(term))
       );
     }
 
+    if (tagFilter !== 'all') {
+      result = result.filter((client) => (client.tags || []).some((tag) => normalizeClientTag(String(tag || '')) === tagFilter));
+    }
+
     return result;
-  }, [clients, workflowFilter, searchTerm, bookings, getClientBooking]);
+  }, [clients, workflowFilter, searchTerm, tagFilter, bookings, getClientBooking]);
 
   const handleAdd = () => {
     setEditingClient(null);
@@ -666,6 +705,17 @@ const ClientsGrid: React.FC = () => {
             <option value="potential">Potential Only</option>
             <option value="booked">Booked Only</option>
             <option value="blacklisted">Blacklisted</option>
+          </select>
+
+          <select
+            className="clients-toolbar-select"
+            value={tagFilter}
+            onChange={(e) => setTagFilter(e.target.value)}
+          >
+            <option value="all">All Tags</option>
+            {allTags.map((tag) => (
+              <option key={tag} value={tag}>{tag}</option>
+            ))}
           </select>
 
           {/* Spacer */}

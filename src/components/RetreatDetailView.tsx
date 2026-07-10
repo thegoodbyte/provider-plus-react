@@ -1199,7 +1199,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           aria-selected={activeTab === 'tracking'}
         >
           <FactCheckRoundedIcon className="retreat-tab-icon" />
-          <span>Tracking Grid</span>
+          <span>Medical Grid</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'expenses' ? 'active' : ''}`}

@@ -1,4 +1,4 @@
-import { resolveBookingStepUploadTarget, shouldShowArtifactUploadFallback } from './BookingStepsMatrix.helpers';
+import { resolveBookingStepUploadTarget, reviewRequestStatusToBookingStepStatus, shouldShowArtifactUploadFallback } from './BookingStepsMatrix.helpers';
 
 describe('BookingStepsMatrix helpers', () => {
   it('shows the artifact upload fallback only when editing and no upload action exists', () => {
@@ -17,5 +17,13 @@ describe('BookingStepsMatrix helpers', () => {
     expect(resolveBookingStepUploadTarget(artifactStepConfig, documentConfig)).toBe('medical_artifact');
     expect(resolveBookingStepUploadTarget(undefined, documentConfig)).toBe('booking_document');
     expect(resolveBookingStepUploadTarget(undefined, undefined)).toBeNull();
+  });
+
+  it('maps reviewed MRR statuses to completed booking steps', () => {
+    expect(reviewRequestStatusToBookingStepStatus('approved')).toBe('completed');
+    expect(reviewRequestStatusToBookingStepStatus('rejected')).toBe('completed');
+    expect(reviewRequestStatusToBookingStepStatus('caution')).toBe('completed');
+    expect(reviewRequestStatusToBookingStepStatus('in_review')).toBe('in_review');
+    expect(reviewRequestStatusToBookingStepStatus('pending')).toBe('sent_for_review');
   });
 });

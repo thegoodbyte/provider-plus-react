@@ -1,0 +1,95 @@
+import { BookingFlowItem } from '../types';
+
+export const fulfilledBookingFlowStatuses = new Set<BookingFlowItem['status']>([
+  'received',
+  'reviewed',
+  'approved',
+  'caution',
+  'completed',
+]);
+
+export interface BookingConfirmationRequirementRow {
+  label: string;
+  complete: boolean;
+  deadline: Date | null;
+  itemKey?: string;
+  itemStatus?: BookingFlowItem['status'];
+  manualDeadline?: boolean;
+}
+
+type RequirementMatch = {
+  keys: string[];
+  titleIncludes: string[];
+  label: string;
+  fallbackComplete: boolean;
+  fallbackDeadline: Date | null;
+};
+
+const findMatchingItem = (items: BookingFlowItem[], matcher: Pick<RequirementMatch, 'keys' | 'titleIncludes'>) => {
+  const normalizedKeys = matcher.keys.map((key) => key.trim().toLowerCase());
+  const normalizedTitleIncludes = matcher.titleIncludes.map((value) => value.trim().toLowerCase());
+
+  return items.find((item) => {
+    const key = String(item.key || '').trim().toLowerCase();
+    const title = String(item.title || '').trim().toLowerCase();
+    const description = String(item.description || '').trim().toLowerCase();
+    const metadataRequirementType = String(item.metadata?.requirementType || '').trim().toLowerCase();
+
+    return (
+      normalizedKeys.includes(key)
+      || normalizedKeys.includes(metadataRequirementType)
+      || normalizedTitleIncludes.some((needle) => title.includes(needle) || description.includes(needle))
+    );
+  });
+};
+
+export const buildBookingConfirmationRequirementRows = (
+  items: BookingFlowItem[] = [],
+  fallbackDates?: {
+    ekg?: Date | null;
+    liver?: Date | null;
+    contract?: Date | null;
+  },
+  fallbackCompletion?: {
+    ekg?: boolean;
+    liver?: boolean;
+    contract?: boolean;
+  },
+): BookingConfirmationRequirementRow[] => {
+  const matchers: RequirementMatch[] = [
+    {
+      keys: ['ekg_received', 'entry_ekg'],
+      titleIncludes: ['ekg received', 'entry ekg'],
+      label: 'EKG',
+      fallbackComplete: !!fallbackCompletion?.ekg,
+      fallbackDeadline: fallbackDates?.ekg ?? null,
+    },
+    {
+      keys: ['liver_received', 'entry_liver_panel'],
+      titleIncludes: ['liver panel received', 'entry liver panel'],
+      label: 'Panel wątroby',
+      fallbackComplete: !!fallbackCompletion?.liver,
+      fallbackDeadline: fallbackDates?.liver ?? null,
+    },
+    {
+      keys: ['contract_signed'],
+      titleIncludes: ['contract received', 'signed participant agreement'],
+      label: 'Umowa uczestnika',
+      fallbackComplete: !!fallbackCompletion?.contract,
+      fallbackDeadline: fallbackDates?.contract ?? null,
+    },
+  ];
+
+  return matchers.map((matcher) => {
+    const item = findMatchingItem(items, matcher);
+    const deadline = item?.dueDate ? new Date(item.dueDate) : matcher.fallbackDeadline;
+    return {
+      label: matcher.label,
+      complete: item ? fulfilledBookingFlowStatuses.has(item.status) : matcher.fallbackComplete,
+      deadline: deadline && !Number.isNaN(deadline.getTime()) ? deadline : null,
+      itemKey: item?.key,
+      itemStatus: item?.status,
+      manualDeadline: !!item?.dueDateManuallyOverridden,
+    };
+  });
+};

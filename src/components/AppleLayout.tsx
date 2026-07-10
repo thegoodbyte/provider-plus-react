@@ -51,6 +51,7 @@ import CommunicationsPage from './CommunicationsPage';
 import ContactBookPage from './ContactBookPage';
 import AssistantPage from './AssistantPage';
 import HelperCurrentRetreatPage from './HelperCurrentRetreatPage';
+import RetreatFocusModePage from './RetreatFocusModePage';
 import RequirementsGrid from './RequirementsGrid';
 import CurrencySettings from './CurrencySettings';
 import MedicalAdvisorDashboard from './MedicalAdvisorDashboard';
@@ -113,6 +114,7 @@ const HeaderIcon: React.FC<{ icon: any; className?: string }> = ({ icon: IconCom
 const AppleLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [quickMenuOpen, setQuickMenuOpen] = useState(false);
+  const [retreatFocusMode, setRetreatFocusMode] = useState(() => localStorage.getItem('appFocusMode') === 'true');
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     const saved = localStorage.getItem('sidebarCollapsed');
     return saved === 'true';
@@ -144,6 +146,7 @@ const AppleLayout: React.FC = () => {
     if (route === 'clients' || route === 'potential-clients') return 'clients';
     if (route === 'launcher') return 'launcher';
     if (route === 'current-retreat') return 'current-retreat';
+    if (route === 'retreat-focus') return 'current-retreat';
     if (route === 'medical-dashboard') return 'medical-dashboard';
     if (route === 'medical-review') return 'medical-dashboard';
     if (route === 'medical-retreats') return 'medical-retreats';
@@ -225,6 +228,10 @@ const AppleLayout: React.FC = () => {
   const canChangeOwnPassword = Boolean(user) && !isImpersonating && !isMedicalQuickAccessSession;
 
   useEffect(() => {
+    localStorage.setItem('appFocusMode', retreatFocusMode ? 'true' : 'false');
+  }, [retreatFocusMode]);
+
+  useEffect(() => {
     if (isMedicalQuickAccessSession) {
       const allowedPath = `/medical/review-requests/${user.medicalReviewRequestId}/edit`;
       if (location.pathname !== allowedPath) {
@@ -261,6 +268,12 @@ const AppleLayout: React.FC = () => {
   const handleQuickMenuClick = (route: string) => {
     navigate(`/${getRoutePrefix()}/${route}`);
     setQuickMenuOpen(false);
+  };
+
+  const toggleRetreatFocusMode = () => {
+    const next = !retreatFocusMode;
+    setRetreatFocusMode(next);
+    navigate(`/${getRoutePrefix()}/${next ? 'retreat-focus' : getDefaultRoute()}`);
   };
 
   useEffect(() => {
@@ -466,6 +479,16 @@ const AppleLayout: React.FC = () => {
                     Medical View
                   </button>
                 )}
+                <button
+                  onClick={toggleRetreatFocusMode}
+                  className={`hidden md:inline-flex px-3 py-1.5 text-sm font-medium rounded-apple transition-all ${
+                    retreatFocusMode
+                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                      : 'text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100'
+                  }`}
+                >
+                  {retreatFocusMode ? 'Exit Retreat Mode' : 'Retreat Mode'}
+                </button>
                 {isImpersonating && (
                   <button
                     onClick={() => {
@@ -576,6 +599,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="retreat/ceremonies" element={<CeremoniesPage />} />
                       <Route path="retreat/bookings" element={<BookingsGrid />} />
                       <Route path="retreat/houses" element={<HousesGrid />} />
+                      <Route path="retreat-focus" element={<RetreatFocusModePage />} />
                       <Route path="ceremonies" element={<CeremoniesPage />} />
                       <Route path="houses" element={<HousesGrid />} />
                       <Route path="bookings" element={<BookingsGrid />} />
@@ -647,10 +671,10 @@ const AppleLayout: React.FC = () => {
                   <ProtectedRoute requiredRole={['medical_staff', 'medical_advisor', 'admin']}>
                     {isMedicalAdvisor ? (
                       <Routes>
-                        <Route index element={<MedicalReviewRequestsGrid />} />
-                        <Route path="launcher" element={<MedicalReviewRequestsGrid />} />
-                        <Route path="dashboard" element={<MedicalReviewRequestsGrid />} />
-                        <Route path="medical-dashboard" element={<MedicalReviewRequestsGrid />} />
+                        <Route index element={<MedicalAdvisorDashboard />} />
+                        <Route path="launcher" element={<MedicalAdvisorDashboard />} />
+                        <Route path="dashboard" element={<MedicalAdvisorDashboard />} />
+                        <Route path="medical-dashboard" element={<MedicalAdvisorDashboard />} />
                         <Route path="review-requests" element={<MedicalReviewRequestsGrid />} />
                         <Route path="review-requests/new" element={<Unauthorized />} />
                         <Route path="review-requests/:id" element={<MedicalReviewRequestsPage />} />
@@ -719,6 +743,7 @@ const AppleLayout: React.FC = () => {
                         <Route path="retreat/:retreatId/:tab" element={<RetreatDetailRoute />} />
                         <Route path="retreat/ceremonies" element={<CeremoniesPage />} />
                         <Route path="retreat/bookings" element={<BookingsGrid />} />
+                        <Route path="retreat-focus" element={<RetreatFocusModePage />} />
                         <Route path="ceremonies" element={<CeremoniesPage />} />
                         <Route path="reminders" element={<RemindersPage />} />
                         <Route path="contact-book" element={<ContactBookPage />} />
@@ -735,6 +760,7 @@ const AppleLayout: React.FC = () => {
                     <Routes>
                       <Route index element={<HelperCurrentRetreatPage />} />
                       <Route path="current-retreat" element={<HelperCurrentRetreatPage />} />
+                      <Route path="retreat-focus" element={<RetreatFocusModePage />} />
                     </Routes>
                   </ProtectedRoute>
                 } />
@@ -754,6 +780,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="retreat/ceremonies" element={<CeremoniesPage />} />
                       <Route path="retreat/bookings" element={<BookingsGrid />} />
                       <Route path="retreat/houses" element={<HousesGrid />} />
+                      <Route path="retreat-focus" element={<RetreatFocusModePage />} />
                       <Route path="ceremonies" element={<CeremoniesPage />} />
                       <Route path="houses" element={<HousesGrid />} />
                       <Route path="clients" element={<UnifiedClientManager />} />
@@ -774,6 +801,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="launcher" element={<ModuleLauncherPage />} />
                       <Route path="clients" element={<UnifiedClientManager />} />
                       <Route path="clients/add" element={<AddClient />} />
+                      <Route path="retreat-focus" element={<RetreatFocusModePage />} />
                       <Route path="reminders" element={<RemindersPage />} />
                       <Route path="contact-book" element={<ContactBookPage />} />
                       <Route path="communications" element={<CommunicationsPage />} />
@@ -782,8 +810,8 @@ const AppleLayout: React.FC = () => {
                 } />
 
                 {/* Legacy routes for backwards compatibility - redirect to appropriate prefixed routes */}
-                <Route path="/medical-dashboard" element={<ProtectedRoute requiredRole={['medical_staff', 'medical_advisor', 'admin']}><MedicalReviewRequestsGrid /></ProtectedRoute>} />
-                <Route path="/launcher" element={<ProtectedRoute>{isMedicalAdvisor ? <MedicalReviewRequestsGrid /> : <ModuleLauncherPage />}</ProtectedRoute>} />
+                <Route path="/medical-dashboard" element={<ProtectedRoute requiredRole={['medical_staff', 'medical_advisor', 'admin']}><MedicalAdvisorDashboard /></ProtectedRoute>} />
+                <Route path="/launcher" element={<ProtectedRoute>{isMedicalAdvisor ? <MedicalAdvisorDashboard /> : <ModuleLauncherPage />}</ProtectedRoute>} />
                 <Route path="/medical-review/:bookingId" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><MedicalReviewDetail /></ProtectedRoute>} />
                 <Route path="/medical-retreats" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><MedicalRetreats /></ProtectedRoute>} />
                 <Route path="/medical-tracking" element={<ProtectedRoute><MedicalTrackingNew /></ProtectedRoute>} />

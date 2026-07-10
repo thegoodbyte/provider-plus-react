@@ -13,6 +13,7 @@ import {
   titleizeBookingStepGroup,
 } from '../utils/bookingStepColors';
 import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
+import { reviewRequestStatusToBookingStepStatus } from './BookingStepsMatrix.helpers';
 
 const getObjectId = (value: any): string => {
   if (!value) return '';
@@ -143,24 +144,25 @@ const getArtifactLinkCandidates = (booking: any, artifacts: MedicalArtifact[], c
     .sort((a, b) => new Date(b.receivedAt || b.createdAt || 0).getTime() - new Date(a.receivedAt || a.createdAt || 0).getTime());
 };
 
-const reviewRequestStatusToItemStatus = (status?: MedicalReviewRequest['status']): BookingFlowItem['status'] => {
-  switch (status) {
-    case 'in_review':
-      return 'in_review';
-    case 'approved':
-      return 'approved';
-    case 'rejected':
-      return 'rejected';
-    case 'caution':
-      return 'caution';
-    case 'needs_resubmission':
-      return 'needs_resubmission';
-    case 'completed':
-      return 'completed';
-    case 'pending':
-    default:
-      return 'sent_for_review';
-  }
+const reviewStatusToDecision = (status?: MedicalReviewRequest['status']) => {
+  if (status === 'approved') return 'OK';
+  if (status === 'rejected') return 'NOT OK';
+  if (status === 'caution') return 'caution';
+  return '';
+};
+
+const reviewDecisionToLabel = (decision?: string) => {
+  if (decision === 'OK') return 'OK';
+  if (decision === 'NOT OK') return 'Declined';
+  if (decision === 'caution') return 'Caution';
+  return '';
+};
+
+const reviewDecisionToClassName = (decision?: string) => {
+  if (decision === 'OK') return 'border-green-300 bg-green-200 text-green-950';
+  if (decision === 'NOT OK') return 'border-red-300 bg-red-200 text-red-950';
+  if (decision === 'caution') return 'border-yellow-300 bg-yellow-200 text-yellow-950';
+  return '';
 };
 
 const getReviewRequestLinkCandidates = (
@@ -1037,7 +1039,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
         clientId: getBookingClientId(booking) || undefined,
       });
 
-      const nextStatus = reviewRequestStatusToItemStatus(updatedRequest.data.status);
+      const nextStatus = reviewRequestStatusToBookingStepStatus(updatedRequest.data.status) as BookingFlowItem['status'];
       const nextMetadata = {
         ...(item.metadata || {}),
         medicalReviewRequestId: updatedRequest.data._id,
@@ -1051,9 +1053,10 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       await bookingFlowApi.updateItem(itemId, {
         status: nextStatus,
         sentAt: nextStatus === 'sent_for_review' || nextStatus === 'in_review' ? new Date().toISOString() : item.sentAt,
-        reviewedAt: nextStatus === 'approved' || nextStatus === 'rejected' || nextStatus === 'caution' || nextStatus === 'needs_resubmission' || nextStatus === 'completed'
+        reviewedAt: nextStatus === 'completed' || nextStatus === 'needs_resubmission' || nextStatus === 'in_review'
           ? new Date().toISOString()
           : item.reviewedAt,
+        completedAt: nextStatus === 'completed' ? new Date().toISOString() : item.completedAt,
         approvedAt: nextStatus === 'approved' ? new Date().toISOString() : item.approvedAt,
         metadata: nextMetadata,
       } as Partial<BookingFlowItem>);
@@ -1631,6 +1634,15 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                             ...(reviewRequestsByBookingContext.get(makeReviewContextKey(getObjectId(booking), reviewStepConfig)) || []),
                           ].filter((request, index, requests) => request._id && requests.findIndex((candidate) => candidate._id === request._id) === index)
                         : requestsLinkedToThisStep;
+                      const finalReviewRequest = relatedReviewRequests.find((request) => Boolean(request.reviewDecision || reviewStatusToDecision(request.status as MedicalReviewRequest['status'])));
+                      const resolvedReviewDecision = item?.reviewDecision
+                        || finalReviewRequest?.reviewDecision
+                        || reviewStatusToDecision(finalReviewRequest?.status as MedicalReviewRequest['status']);
+                      const resolvedReviewNotes = item?.reviewNotes
+                        || finalReviewRequest?.reviewNotes
+                        || (finalReviewRequest as any)?.overallNotes
+                        || '';
+                      const resolvedReviewReviewedAt = item?.reviewedAt || finalReviewRequest?.reviewedAt;
                       const existingReviewRequest = relatedReviewRequests.find((request) => request._id === metadataReviewRequestId) || relatedReviewRequests[0];
                       const existingReviewRequestId = metadataReviewRequestId || existingReviewRequest?._id || '';
                       const existingReviewRequestDisplay = item?.metadata?.medicalReviewRequestDisplayId || existingReviewRequest?.display_id || '';
@@ -1645,7 +1657,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                           : undefined;
                       const relatedMedicalArtifactId = relatedMedicalArtifact?._id || linkedArtifactId;
                       return (
-                        <td key={`${getObjectId(booking)}:${row.key}`} className={`${viewMode === 'simple' ? 'min-w-[150px] px-2 py-2 text-center' : 'min-w-[230px] px-2 py-1 align-top'} border-b border-r border-gray-300 ${item ? getStatusCellClass(item.status) : 'bg-red-50 text-red-900'}`}>
+                        <td key={`${getObjectId(booking)}:${row.key}`} className={`${viewMode === 'simple' ? 'min-w-[150px] px-2 py-2 text-center' : 'min-w-[230px] px-2 py-1 align-top'} border-b border-r border-gray-300 ${item ? (reviewStepConfig && resolvedReviewDecision ? reviewDecisionToClassName(resolvedReviewDecision) : getStatusCellClass(item.status)) : 'bg-red-50 text-red-900'}`}>
                           {viewMode === 'simple' ? (
                             <div
                               className={`mx-auto flex h-9 w-9 items-center justify-center rounded-full ${simpleStatus.className}`}
@@ -1768,6 +1780,21 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                                 <Link2 className="h-3.5 w-3.5" />
                                 Link existing MRR
                               </button>
+                            )}
+                            {reviewStepConfig && resolvedReviewDecision && (
+                              <div className={`rounded-md border px-2 py-1 text-[11px] font-semibold ${reviewDecisionToClassName(resolvedReviewDecision)}`}>
+                                <div className="flex items-center justify-between gap-2">
+                                  <span>{reviewDecisionToLabel(resolvedReviewDecision) || 'Reviewed'}</span>
+                                  {resolvedReviewReviewedAt && (
+                                    <span className="font-normal opacity-80">{formatDateTime(resolvedReviewReviewedAt)}</span>
+                                  )}
+                                </div>
+                                {resolvedReviewNotes && (
+                                  <div className="mt-1 font-normal leading-snug">
+                                    {resolvedReviewNotes}
+                                  </div>
+                                )}
+                              </div>
                             )}
                             {configuredActions.map((action) => {
                               const actionLogs = itemActionLogs.filter((log) => (log.actionKey || 'default_email') === action.key);

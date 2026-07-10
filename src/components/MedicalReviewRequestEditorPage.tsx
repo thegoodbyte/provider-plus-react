@@ -18,6 +18,7 @@ type FormState = {
   requestType: NonNullable<MedicalReviewRequest['requestType']>;
   status: MedicalReviewRequest['status'];
   requestedBy: string;
+  sentForReviewAt: string;
   assignedTo: string;
   assignedToUserId: string;
   reviewDecision: 'OK' | 'caution' | 'NOT OK' | '';
@@ -112,6 +113,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
     requestType: 'both',
     status: 'pending',
     requestedBy: 'Provider Plus CRM',
+    sentForReviewAt: '',
     assignedTo: '',
     assignedToUserId: '',
     reviewDecision: '',
@@ -170,6 +172,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           requestType: record.requestType,
           status: record.status,
           requestedBy: record.requestedBy || '',
+          sentForReviewAt: record.sentForReviewAt ? new Date(record.sentForReviewAt).toISOString() : '',
           assignedTo: record.assignedTo || '',
           assignedToUserId: typeof record.assignedToUserId === 'string' ? record.assignedToUserId : record.assignedToUserId?._id || '',
           reviewDecision: record.reviewDecision || '',
@@ -251,6 +254,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           requestType: form.requestType,
           status: form.status,
           requestedBy: form.requestedBy,
+          ...(form.sentForReviewAt ? { sentForReviewAt: form.sentForReviewAt } : {}),
           assignedTo: form.assignedTo,
           assignedToUserId: form.assignedToUserId,
           reviewDecision: form.reviewDecision || undefined,
@@ -274,6 +278,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           reviewNotes: form.reviewNotes,
           overallNotes: form.overallNotes,
           medicalStaffNotes: form.medicalStaffNotes,
+          ...(form.sentForReviewAt ? { sentForReviewAt: form.sentForReviewAt } : {}),
         };
         if (selectedArtifact?._id) {
           await medicalReviewRequestsApi.createFromArtifact(selectedArtifact._id, form.requestType, payload);
@@ -456,6 +461,23 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
                 )}
               </div>
             </div>
+            <label className="mt-4 flex items-start gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={Boolean(form.sentForReviewAt)}
+                onChange={(e) => setForm((prev) => ({
+                  ...prev,
+                  sentForReviewAt: e.target.checked ? prev.sentForReviewAt || new Date().toISOString() : '',
+                }))}
+                className="mt-1 h-4 w-4"
+              />
+              <span>
+                <span className="block font-medium text-gray-900">Medical review request sent for review</span>
+                <span className="block text-xs text-gray-500">
+                  {form.sentForReviewAt ? `Marked on ${new Date(form.sentForReviewAt).toLocaleString()}` : 'Check this when the request has been sent to the medical reviewer.'}
+                </span>
+              </span>
+            </label>
           </div>
         </div>
 

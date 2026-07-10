@@ -40,6 +40,7 @@ type TemplateForm = {
   expectedDocumentStage: string;
   expectedDocumentType: string;
   expectedArtifactPurpose: string;
+  clientTagOnComplete: string;
   autoCompleteOnArtifact: boolean;
   autoCompleteStatus: string;
   emailEnabled: boolean;
@@ -71,6 +72,7 @@ const emptyForm = (): TemplateForm => ({
   expectedDocumentStage: '',
   expectedDocumentType: '',
   expectedArtifactPurpose: '',
+  clientTagOnComplete: '',
   autoCompleteOnArtifact: false,
   autoCompleteStatus: 'received',
   emailEnabled: false,
@@ -198,6 +200,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
       expectedDocumentStage: template.expectedDocumentStage || '',
       expectedDocumentType: template.expectedDocumentType || '',
       expectedArtifactPurpose: template.expectedArtifactPurpose || '',
+      clientTagOnComplete: template.clientTagOnComplete || '',
       autoCompleteOnArtifact: !!template.autoCompleteOnArtifact,
       autoCompleteStatus: template.autoCompleteStatus || 'received',
       emailEnabled: !!template.emailEnabled,
@@ -244,6 +247,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
         expectedDocumentStage: form.expectedDocumentStage || undefined,
         expectedDocumentType: form.expectedDocumentType || undefined,
         expectedArtifactPurpose: form.expectedArtifactPurpose || undefined,
+        clientTagOnComplete: form.clientTagOnComplete || undefined,
         autoCompleteOnArtifact: form.autoCompleteOnArtifact,
         autoCompleteStatus: form.autoCompleteStatus || 'received',
         emailEnabled: Boolean(primaryEmailAction),
@@ -271,6 +275,29 @@ const RetreatFlowLibraryPage: React.FC = () => {
     if (!window.confirm('Delete this library step?')) return;
     await bookingFlowApi.deleteLibraryTemplate(selectedTemplateId);
     await loadData();
+  };
+
+  const applyColorToGroup = async () => {
+    const groupKey = normalizeGroupKey(form.readinessGroup || form.category);
+    const color = normalizeBookingStepColor(form.readinessGroupColor) || getBookingStepDefaultColor(groupKey);
+    const sameGroupTemplates = templates.filter((template) => normalizeGroupKey(template.readinessGroup || template.category) === groupKey);
+    if (!sameGroupTemplates.length) return;
+
+    try {
+      setSaving(true);
+      await Promise.all(
+        sameGroupTemplates
+          .filter((template) => template._id)
+          .map((template) => bookingFlowApi.updateLibraryTemplate(template._id!, { readinessGroupColor: color })),
+      );
+      await loadData();
+      setForm((prev) => ({ ...prev, readinessGroupColor: color }));
+    } catch (error) {
+      console.error('Error applying color to library group:', error);
+      alert('Unable to apply this color to the whole section.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleNewStep = () => {
@@ -483,14 +510,29 @@ const RetreatFlowLibraryPage: React.FC = () => {
             <option value="other" />
           </datalist>
         </label>
-        <BookingStepColorField
-          groupKey={form.readinessGroup || form.category}
-          value={form.readinessGroupColor}
-          onChange={(value) => setForm({ ...form, readinessGroupColor: value })}
-        />
+        <div className="space-y-2">
+          <BookingStepColorField
+            groupKey={form.readinessGroup || form.category}
+            value={form.readinessGroupColor}
+            onChange={(value) => setForm({ ...form, readinessGroupColor: value })}
+          />
+          <button
+            type="button"
+            onClick={applyColorToGroup}
+            disabled={saving}
+            className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            Apply this color to the whole section
+          </button>
+          <p className="text-xs text-gray-500">This updates every step in the same readiness group at once.</p>
+        </div>
         <label className="block">
           <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Expected artifact</span>
           <input value={form.expectedArtifact} onChange={(e) => setForm({ ...form, expectedArtifact: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="ekg" />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Client tag on complete</span>
+          <input value={form.clientTagOnComplete} onChange={(e) => setForm({ ...form, clientTagOnComplete: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="medically-approved" />
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Expected stage</span>

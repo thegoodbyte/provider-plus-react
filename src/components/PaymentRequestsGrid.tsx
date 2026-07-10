@@ -58,7 +58,7 @@ const PaymentRequestsGrid: React.FC = () => {
   const fetchPaymentRequests = async () => {
     try {
       setLoading(true);
-      const response = await paymentRequestsApi.getAll();
+      const response = await paymentRequestsApi.getAllFresh();
       setPaymentRequests(Array.isArray(response.data) ? response.data : []);
     } catch (error) {
       console.error('Error fetching payment requests:', error);

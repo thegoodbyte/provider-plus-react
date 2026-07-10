@@ -34,6 +34,7 @@ type TemplateForm = {
   readinessGroup: string;
   readinessGroupColor: string;
   expectedArtifact: string;
+  clientTagOnComplete: string;
   emailEnabled: boolean;
   emailTemplateId: string;
 };
@@ -57,6 +58,7 @@ const emptyForm = (): TemplateForm => ({
   readinessGroup: '',
   readinessGroupColor: '',
   expectedArtifact: '',
+  clientTagOnComplete: '',
   emailEnabled: false,
   emailTemplateId: '',
 });
@@ -158,6 +160,7 @@ const RetreatFlowPage: React.FC = () => {
           readinessGroup: firstTemplate.readinessGroup || '',
           readinessGroupColor: firstTemplate.readinessGroupColor || '',
           expectedArtifact: firstTemplate.expectedArtifact || '',
+          clientTagOnComplete: firstTemplate.clientTagOnComplete || '',
           emailEnabled: !!firstTemplate.emailEnabled,
           emailTemplateId: typeof firstTemplate.emailTemplateId === 'string' ? firstTemplate.emailTemplateId : firstTemplate.emailTemplateId?._id || '',
         });
@@ -207,6 +210,7 @@ const RetreatFlowPage: React.FC = () => {
       readinessGroup: template.readinessGroup || '',
       readinessGroupColor: template.readinessGroupColor || groupColorByKey[groupKey] || getBookingStepDefaultColor(groupKey),
       expectedArtifact: template.expectedArtifact || '',
+      clientTagOnComplete: template.clientTagOnComplete || '',
       emailEnabled: !!template.emailEnabled,
       emailTemplateId: typeof template.emailTemplateId === 'string' ? template.emailTemplateId : template.emailTemplateId?._id || '',
     });
@@ -252,6 +256,29 @@ const RetreatFlowPage: React.FC = () => {
     if (!window.confirm('Delete this flow step?')) return;
     await bookingFlowApi.deleteTemplate(selectedTemplateId);
     await loadFlow(selectedRetreatId);
+  };
+
+  const applyColorToGroup = async () => {
+    const groupKey = normalizeGroupKey(form.readinessGroup || form.category);
+    const color = normalizeBookingStepColor(form.readinessGroupColor) || getBookingStepDefaultColor(groupKey);
+    const sameGroupTemplates = templates.filter((template) => normalizeGroupKey(template.readinessGroup || template.category) === groupKey);
+    if (!sameGroupTemplates.length) return;
+
+    try {
+      setSaving(true);
+      await Promise.all(
+        sameGroupTemplates
+          .filter((template) => template._id)
+          .map((template) => bookingFlowApi.updateTemplate(template._id!, { readinessGroupColor: color })),
+      );
+      await loadFlow(selectedRetreatId);
+      setForm((prev) => ({ ...prev, readinessGroupColor: color }));
+    } catch (error) {
+      console.error('Error applying color to retreat group:', error);
+      alert('Unable to apply this color to the whole section.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSeed = async () => {
@@ -394,16 +421,33 @@ const RetreatFlowPage: React.FC = () => {
           className="rounded-md border border-gray-300 px-3 py-2 text-sm"
           placeholder="Readiness group (ekg, liver...)"
         />
-        <BookingStepColorField
-          groupKey={form.readinessGroup || form.category}
-          value={form.readinessGroupColor}
-          onChange={(value) => setForm({ ...form, readinessGroupColor: value })}
-        />
+        <div className="space-y-2">
+          <BookingStepColorField
+            groupKey={form.readinessGroup || form.category}
+            value={form.readinessGroupColor}
+            onChange={(value) => setForm({ ...form, readinessGroupColor: value })}
+          />
+          <button
+            type="button"
+            onClick={applyColorToGroup}
+            disabled={saving}
+            className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            Apply this color to the whole section
+          </button>
+          <p className="text-xs text-gray-500">This updates every step in the same readiness group at once.</p>
+        </div>
         <input
           value={form.expectedArtifact}
           onChange={(e) => setForm({ ...form, expectedArtifact: e.target.value })}
           className="rounded-md border border-gray-300 px-3 py-2 text-sm"
           placeholder="Expected artifact"
+        />
+        <input
+          value={form.clientTagOnComplete}
+          onChange={(e) => setForm({ ...form, clientTagOnComplete: e.target.value })}
+          className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+          placeholder="Client tag on complete"
         />
       </div>
 

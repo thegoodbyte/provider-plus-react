@@ -7,6 +7,7 @@ import ComprehensiveMedicalTrackingTab from './ComprehensiveMedicalTrackingTab';
 import ClientCeremoniesTab from './ClientCeremoniesTab';
 import { TasksWidget } from './Tasks/TasksWidget';
 import { generateBookingPDF } from './BookingConfirmationPDF';
+import { normalizeClientTag } from '../utils/clientTags';
 import './ClientsGrid.css';
 import './ComprehensiveMedicalTrackingTab.css';
 
@@ -46,6 +47,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
   const [uploadingProfilePicture, setUploadingProfilePicture] = useState(false);
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [editingNote, setEditingNote] = useState<any | null>(null);
+  const [clientTagInput, setClientTagInput] = useState('');
   const [noteFormData, setNoteFormData] = useState({
     title: '',
     content: '',
@@ -202,6 +204,48 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
       fetchClientData(); // Refresh data
     } catch (error) {
       console.error('Error updating requirement:', error);
+    }
+  };
+
+  const handleAddClientTag = async () => {
+    const nextTag = normalizeClientTag(clientTagInput);
+    if (!nextTag || !client) return;
+    const currentTags = Array.isArray(client.tags) ? client.tags : [];
+    if (currentTags.includes(nextTag)) {
+      setClientTagInput('');
+      return;
+    }
+
+    try {
+      const response = await clientsApi.update(clientId, { tags: [...currentTags, nextTag] });
+      setClient(response.data || { ...client, tags: [...currentTags, nextTag] });
+      setClientTagInput('');
+    } catch (error) {
+      console.error('Error adding client tag:', error);
+      alert('Unable to add the tag.');
+    }
+  };
+
+  const handleRemoveClientTag = async (tagToRemove: string) => {
+    if (!client) return;
+    const nextTags = (client.tags || []).filter((tag) => tag !== tagToRemove);
+    try {
+      const response = await clientsApi.update(clientId, { tags: nextTags });
+      setClient(response.data || { ...client, tags: nextTags });
+    } catch (error) {
+      console.error('Error removing client tag:', error);
+      alert('Unable to remove the tag.');
+    }
+  };
+
+  const handleClearClientTags = async () => {
+    if (!client || !window.confirm('Remove all tags from this client?')) return;
+    try {
+      const response = await clientsApi.update(clientId, { tags: [] });
+      setClient(response.data || { ...client, tags: [] });
+    } catch (error) {
+      console.error('Error clearing client tags:', error);
+      alert('Unable to clear tags.');
     }
   };
 
@@ -373,6 +417,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
   }
 
   const overallStatus = getOverallStatus();
+  const clientTags = client.tags || [];
 
   return (
     <div className="client-detail-container">
@@ -491,6 +536,101 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                   </div>
                   <div className="info-row">
                     <strong>Occupation:</strong> {client.occupation || 'N/A'}
+                  </div>
+                </div>
+
+                <div className="info-card">
+                  <h3>🏷️ Client Tags</h3>
+                  <div className="info-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {clientTags.length > 0 ? (
+                        clientTags.map((tag) => (
+                          <span
+                            key={tag}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 6,
+                              padding: '6px 10px',
+                              borderRadius: 999,
+                              background: '#eef2ff',
+                              color: '#3730a3',
+                              fontSize: 12,
+                              fontWeight: 600,
+                            }}
+                          >
+                            {tag}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveClientTag(tag)}
+                              style={{
+                                border: 'none',
+                                background: 'transparent',
+                                color: 'inherit',
+                                cursor: 'pointer',
+                                padding: 0,
+                                fontSize: 14,
+                                lineHeight: 1,
+                              }}
+                              aria-label={`Remove tag ${tag}`}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))
+                      ) : (
+                        <span style={{ color: '#6b7280', fontSize: 13 }}>No tags yet.</span>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <input
+                        value={clientTagInput}
+                        onChange={(e) => setClientTagInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            void handleAddClientTag();
+                          }
+                        }}
+                        placeholder="Add tag, e.g. medically-approved"
+                        style={{
+                          flex: '1 1 220px',
+                          padding: '8px 10px',
+                          borderRadius: 6,
+                          border: '1px solid #d1d5db',
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => void handleAddClientTag()}
+                        style={{
+                          padding: '8px 12px',
+                          borderRadius: 6,
+                          border: 'none',
+                          background: '#1d4ed8',
+                          color: 'white',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Add tag
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleClearClientTags()}
+                        disabled={clientTags.length === 0}
+                        style={{
+                          padding: '8px 12px',
+                          borderRadius: 6,
+                          border: '1px solid #d1d5db',
+                          background: '#fff',
+                          color: '#374151',
+                          cursor: 'pointer',
+                          opacity: clientTags.length === 0 ? 0.5 : 1,
+                        }}
+                      >
+                        Clear all
+                      </button>
+                    </div>
                   </div>
                 </div>
 

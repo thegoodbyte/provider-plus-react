@@ -10,6 +10,13 @@ type BookingStepDocumentConfig = {
   title?: string;
 };
 
+export const reviewRequestStatusToBookingStepStatus = (status?: string) => {
+  if (status === 'in_review') return 'in_review';
+  if (status === 'needs_resubmission') return 'needs_resubmission';
+  if (status === 'approved' || status === 'rejected' || status === 'caution' || status === 'completed') return 'completed';
+  return 'sent_for_review';
+};
+
 export const shouldShowArtifactUploadFallback = (
   artifactStepConfig: ReviewStepArtifactConfig | undefined,
   isEditing: boolean,

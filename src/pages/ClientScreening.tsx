@@ -13,6 +13,7 @@ interface ScreeningData {
   phoneNumber: string;
   mainIntent: string;
   childhood: string;
+  occupation: string;
   sexualAbuse: boolean;
   sexualAbuseDetails: string;
   physicalAbuse: boolean;
@@ -30,9 +31,11 @@ interface ScreeningData {
   asthmaConditionOk: boolean;
   asthmaCondition: string;
   depression: boolean;
+  depressionDiagnosed: boolean;
   depressionSince: string;
   depressionDetails: string;
   anxiety: boolean;
+  anxietyDiagnosed: boolean;
   anxietySince: string;
   anxietyDetails: string;
   psychiatristCare: boolean;
@@ -41,6 +44,7 @@ interface ScreeningData {
   ssris: string;
   drugsHistory: string;
   nicotineCurrent: boolean;
+  nicotineDoesNotSmoke: boolean;
   nicotineWantsToQuit: boolean;
   nicotineSince: string;
   nicotinePerDay: string;
@@ -248,6 +252,7 @@ const ClientScreening: React.FC = () => {
     phoneNumber: '',
     mainIntent: '',
     childhood: '',
+    occupation: '',
     sexualAbuse: false,
     sexualAbuseDetails: '',
     physicalAbuse: false,
@@ -265,9 +270,11 @@ const ClientScreening: React.FC = () => {
     asthmaConditionOk: false,
     asthmaCondition: '',
     depression: false,
+    depressionDiagnosed: false,
     depressionSince: '',
     depressionDetails: '',
     anxiety: false,
+    anxietyDiagnosed: false,
     anxietySince: '',
     anxietyDetails: '',
     psychiatristCare: false,
@@ -276,6 +283,7 @@ const ClientScreening: React.FC = () => {
     ssris: '',
     drugsHistory: '',
     nicotineCurrent: false,
+    nicotineDoesNotSmoke: false,
     nicotineWantsToQuit: false,
     nicotineSince: '',
     nicotinePerDay: '',
@@ -457,6 +465,7 @@ const ClientScreening: React.FC = () => {
         mainIntent: existingValue('mainIntent', 'whySeekingIboga') ?? prev.mainIntent,
         riskNotes: existingValue('riskNotes', 'whatToChange') ?? prev.riskNotes,
         childhood: existingValue('childhood', 'childhood') ?? prev.childhood,
+        occupation: existingValue('occupation') ?? prev.occupation,
         heartConditionOk: existingScreening.heartConditionOk === true || heartCondition === 'OK',
         heartCondition,
         liverConditionOk: existingScreening.liverConditionOk === true || liverCondition === 'OK',
@@ -464,9 +473,11 @@ const ClientScreening: React.FC = () => {
         asthmaConditionOk: existingScreening.asthmaConditionOk === true || asthmaCondition === 'OK',
         asthmaCondition,
         depression: existingScreening.depression === true,
+        depressionDiagnosed: existingScreening.depressionDiagnosed === true || existingScreening.depression === true,
         depressionSince: existingValue('depressionSince', 'depressionDiagnosedSince', 'depressionDate') ?? prev.depressionSince,
         depressionDetails: existingValue('depressionDetails') ?? prev.depressionDetails,
         anxiety: existingScreening.anxiety === true,
+        anxietyDiagnosed: existingScreening.anxietyDiagnosed === true || existingScreening.anxiety === true,
         anxietySince: existingValue('anxietySince', 'anxietyDiagnosedSince', 'anxietyDate') ?? prev.anxietySince,
         anxietyDetails: existingValue('anxietyDetails') ?? prev.anxietyDetails,
         psychiatristCare: existingScreening.psychiatristCare === true,
@@ -474,6 +485,7 @@ const ClientScreening: React.FC = () => {
         medications: existingValue('medications', 'currentMedications') ?? prev.medications,
         drugsHistory: existingValue('drugsHistory', 'recreationalDrugs', 'addictionHistory') ?? prev.drugsHistory,
         nicotineCurrent: existingScreening.nicotineCurrent === true,
+        nicotineDoesNotSmoke: existingScreening.nicotineDoesNotSmoke === true,
         nicotineWantsToQuit: existingScreening.nicotineWantsToQuit === true,
         nicotineSince: existingValue('nicotineSince', 'nicotineDuration', 'smokingSince') ?? prev.nicotineSince,
         nicotinePerDay: existingValue('nicotinePerDay', 'nicotineAmountPerDay', 'cigarettesPerDay') ?? prev.nicotinePerDay,
@@ -568,6 +580,18 @@ const ClientScreening: React.FC = () => {
           ...prev,
           depression: checked,
           ...(checked ? {} : {
+            depressionDiagnosed: false,
+            depressionSince: '',
+            depressionDetails: '',
+          }),
+        }));
+        return;
+      }
+      if (name === 'depressionDiagnosed') {
+        setFormData(prev => ({
+          ...prev,
+          depressionDiagnosed: checked,
+          ...(checked ? {} : {
             depressionSince: '',
             depressionDetails: '',
           }),
@@ -578,6 +602,18 @@ const ClientScreening: React.FC = () => {
         setFormData(prev => ({
           ...prev,
           anxiety: checked,
+          ...(checked ? {} : {
+            anxietyDiagnosed: false,
+            anxietySince: '',
+            anxietyDetails: '',
+          }),
+        }));
+        return;
+      }
+      if (name === 'anxietyDiagnosed') {
+        setFormData(prev => ({
+          ...prev,
+          anxietyDiagnosed: checked,
           ...(checked ? {} : {
             anxietySince: '',
             anxietyDetails: '',
@@ -618,6 +654,20 @@ const ClientScreening: React.FC = () => {
             nicotinePerDay: '',
             nicotineNotes: '',
           }),
+        }));
+        return;
+      }
+      if (name === 'nicotineDoesNotSmoke') {
+        setFormData(prev => ({
+          ...prev,
+          nicotineDoesNotSmoke: checked,
+          ...(checked ? {
+            nicotineCurrent: false,
+            nicotineWantsToQuit: false,
+            nicotineSince: '',
+            nicotinePerDay: '',
+            nicotineNotes: '',
+          } : {}),
         }));
         return;
       }
@@ -807,7 +857,8 @@ const ClientScreening: React.FC = () => {
             return `${alcoholLabels[type as keyof ScreeningData['alcoholUse']]}${details ? `: ${details}` : ''}`;
           });
     const nicotineSummary = [
-      formData.nicotineCurrent ? 'Currently smokes / uses nicotine' : '',
+      formData.nicotineDoesNotSmoke ? 'Does not smoke / use nicotine' : '',
+      !formData.nicotineDoesNotSmoke && formData.nicotineCurrent ? 'Currently smokes / uses nicotine' : '',
       formData.nicotineWantsToQuit ? 'Wants to quit' : '',
       formData.nicotineSince ? `Smoking since: ${formData.nicotineSince}` : '',
       formData.nicotinePerDay ? `Per day: ${formData.nicotinePerDay}` : '',
@@ -819,18 +870,24 @@ const ClientScreening: React.FC = () => {
       formData.alcoholHistory,
     ].filter(Boolean).join('\n');
     const mentalHealthParts = [
-      formData.depression ? `Depression diagnosed${formData.depressionSince ? ` since ${formData.depressionSince}` : ''}${formData.depressionDetails ? `: ${formData.depressionDetails}` : ''}` : '',
-      formData.anxiety ? `Anxiety diagnosed${formData.anxietySince ? ` since ${formData.anxietySince}` : ''}${formData.anxietyDetails ? `: ${formData.anxietyDetails}` : ''}` : '',
+      formData.depression
+        ? `Depression${formData.depressionDiagnosed ? ' diagnosed' : ''}${formData.depressionSince ? ` since ${formData.depressionSince}` : ''}${formData.depressionDetails ? `: ${formData.depressionDetails}` : ''}`
+        : '',
+      formData.anxiety
+        ? `Anxiety${formData.anxietyDiagnosed ? ' diagnosed' : ''}${formData.anxietySince ? ` since ${formData.anxietySince}` : ''}${formData.anxietyDetails ? `: ${formData.anxietyDetails}` : ''}`
+        : '',
       formData.psychiatristCare ? `In care of psychiatrist${formData.psychiatristCareDetails ? `: ${formData.psychiatristCareDetails}` : ''}` : '',
     ].filter(Boolean);
 
     return screeningApi.create({
       ...formData,
+      occupation: formData.occupation.trim(),
       heartCondition: formData.heartConditionOk ? 'OK' : formData.heartCondition,
       liverCondition: formData.liverConditionOk ? 'OK' : formData.liverCondition,
       asthmaCondition: formData.asthmaConditionOk ? 'OK' : formData.asthmaCondition,
       bloodPressure: bloodPressure || formData.bloodPressure,
       alcoholConsumption: alcoholSummary,
+      nicotineCurrent: formData.nicotineDoesNotSmoke ? false : formData.nicotineCurrent,
       nicotineHistory: nicotineSummary,
       mentalHealthHistory: mentalHealthParts.join('\n'),
     });
@@ -860,6 +917,26 @@ const ClientScreening: React.FC = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleDownloadPdf = () => {
+    if (!clientId) return;
+    clientsApi.downloadScreeningPdf(clientId)
+      .then((response) => {
+        const blob = response.data as Blob;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      })
+      .catch((error) => {
+        console.error('Error downloading screening PDF:', error);
+      });
   };
 
   const getClientProfilePath = () => {
@@ -909,6 +986,9 @@ const ClientScreening: React.FC = () => {
       <div className="mb-6 flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-900">Client Screening Form</h1>
         <div className="flex gap-3">
+          <AppleButton variant="secondary" onClick={handleDownloadPdf} disabled={!clientId}>
+            PDF
+          </AppleButton>
           <AppleButton variant="secondary" onClick={() => navigate(-1)}>
             Cancel
           </AppleButton>
@@ -956,6 +1036,17 @@ const ClientScreening: React.FC = () => {
               value={formData.phoneNumber}
               readOnly
               className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50"
+            />
+          </div>
+          <div className="md:col-span-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Occupation</label>
+            <input
+              type="text"
+              name="occupation"
+              value={formData.occupation}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border border-gray-200 rounded-md"
+              placeholder="Occupation, role, work situation, or daily structure"
             />
           </div>
         </div>
@@ -1225,26 +1316,40 @@ const ClientScreening: React.FC = () => {
                 onChange={handleInputChange}
                 className="rounded"
               />
-              <span className="text-sm font-medium text-gray-700">Depression diagnosed</span>
+              <span className="text-sm font-medium text-gray-700">Depression</span>
             </label>
             {formData.depression && (
               <div className="mt-2 space-y-2">
-                <input
-                  type="text"
-                  name="depressionSince"
-                  value={formData.depressionSince}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-md"
-                  placeholder="Diagnosed since / date (text)"
-                />
-                <textarea
-                  name="depressionDetails"
-                  value={formData.depressionDetails}
-                  onChange={handleInputChange}
-                  rows={2}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-md"
-                  placeholder="Current or past depression, treatment, severity, hospitalizations, former diagnosis, or notes"
-                />
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    name="depressionDiagnosed"
+                    checked={formData.depressionDiagnosed}
+                    onChange={handleInputChange}
+                    className="rounded"
+                  />
+                  <span className="text-sm font-medium text-gray-700">Diagnosed depression</span>
+                </label>
+                {formData.depressionDiagnosed && (
+                  <input
+                    type="text"
+                    name="depressionSince"
+                    value={formData.depressionSince}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md"
+                    placeholder="Diagnosed since / date (text)"
+                  />
+                )}
+                {formData.depressionDiagnosed && (
+                  <textarea
+                    name="depressionDetails"
+                    value={formData.depressionDetails}
+                    onChange={handleInputChange}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md"
+                    placeholder="Current or past depression, treatment, severity, hospitalizations, former diagnosis, or notes"
+                  />
+                )}
               </div>
             )}
           </div>
@@ -1257,26 +1362,40 @@ const ClientScreening: React.FC = () => {
                 onChange={handleInputChange}
                 className="rounded"
               />
-              <span className="text-sm font-medium text-gray-700">Anxiety diagnosed</span>
+              <span className="text-sm font-medium text-gray-700">Anxiety</span>
             </label>
             {formData.anxiety && (
               <div className="mt-2 space-y-2">
-                <input
-                  type="text"
-                  name="anxietySince"
-                  value={formData.anxietySince}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-md"
-                  placeholder="Diagnosed since / date (text)"
-                />
-                <textarea
-                  name="anxietyDetails"
-                  value={formData.anxietyDetails}
-                  onChange={handleInputChange}
-                  rows={2}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-md"
-                  placeholder="Current or past anxiety, panic attacks, treatment, severity, former diagnosis, or notes"
-                />
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    name="anxietyDiagnosed"
+                    checked={formData.anxietyDiagnosed}
+                    onChange={handleInputChange}
+                    className="rounded"
+                  />
+                  <span className="text-sm font-medium text-gray-700">Diagnosed anxiety</span>
+                </label>
+                {formData.anxietyDiagnosed && (
+                  <input
+                    type="text"
+                    name="anxietySince"
+                    value={formData.anxietySince}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md"
+                    placeholder="Diagnosed since / date (text)"
+                  />
+                )}
+                {formData.anxietyDiagnosed && (
+                  <textarea
+                    name="anxietyDetails"
+                    value={formData.anxietyDetails}
+                    onChange={handleInputChange}
+                    rows={2}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md"
+                    placeholder="Current or past anxiety, panic attacks, treatment, severity, former diagnosis, or notes"
+                  />
+                )}
               </div>
             )}
           </div>
@@ -1471,53 +1590,65 @@ const ClientScreening: React.FC = () => {
 
         <div className="mb-4 rounded-md border border-gray-200 bg-white p-4">
           <div className="mb-3 text-sm font-semibold text-gray-800">Nicotine</div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-4">
             <label className="flex items-center space-x-2">
               <input
                 type="checkbox"
-                name="nicotineCurrent"
-                checked={formData.nicotineCurrent}
+                name="nicotineDoesNotSmoke"
+                checked={formData.nicotineDoesNotSmoke}
                 onChange={handleInputChange}
                 className="rounded"
               />
-              <span className="text-sm font-medium text-gray-700">Currently smoking / vaping</span>
+              <span className="text-sm font-medium text-gray-700">Does not smoke / use nicotine</span>
             </label>
-            <label className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                name="nicotineWantsToQuit"
-                checked={formData.nicotineWantsToQuit}
-                onChange={handleInputChange}
-                disabled={!formData.nicotineCurrent}
-                className="rounded"
-              />
-              <span className="text-sm font-medium text-gray-700">Wants to quit</span>
-            </label>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">How long smoking / using nicotine</label>
-              <input
-                type="text"
-                name="nicotineSince"
-                value={formData.nicotineSince}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-200 rounded-md"
-                placeholder="e.g. 10 years / since 2012"
-                disabled={!formData.nicotineCurrent}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">How many per day</label>
-              <input
-                type="text"
-                name="nicotinePerDay"
-                value={formData.nicotinePerDay}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border border-gray-200 rounded-md"
-                placeholder="e.g. 10 cigarettes, 1 vape pod"
-                disabled={!formData.nicotineCurrent}
-              />
-            </div>
-          </div>
+
+            {!formData.nicotineDoesNotSmoke && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    name="nicotineCurrent"
+                    checked={formData.nicotineCurrent}
+                    onChange={handleInputChange}
+                    className="rounded"
+                  />
+                  <span className="text-sm font-medium text-gray-700">Currently smoking / vaping</span>
+                </label>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    name="nicotineWantsToQuit"
+                    checked={formData.nicotineWantsToQuit}
+                    onChange={handleInputChange}
+                    disabled={!formData.nicotineCurrent}
+                    className="rounded"
+                  />
+                  <span className="text-sm font-medium text-gray-700">Wants to quit</span>
+                </label>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">How long smoking / using nicotine</label>
+                  <input
+                    type="text"
+                    name="nicotineSince"
+                    value={formData.nicotineSince}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md"
+                    placeholder="e.g. 10 years / since 2012"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">How many per day</label>
+                  <input
+                    type="text"
+                    name="nicotinePerDay"
+                    value={formData.nicotinePerDay}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-200 rounded-md"
+                    placeholder="e.g. 10 cigarettes, 1 vape pod"
+                  />
+                </div>
+              </div>
+            )}
           <div className="mt-4">
             <label className="block text-sm font-medium text-gray-700 mb-1">Nicotine notes</label>
             <textarea
@@ -1527,8 +1658,8 @@ const ClientScreening: React.FC = () => {
               rows={2}
               className="w-full px-3 py-2 border border-gray-200 rounded-md"
               placeholder="Withdrawal history, quit attempts, cravings, or other notes"
-              disabled={!formData.nicotineCurrent}
             />
+          </div>
           </div>
         </div>
 

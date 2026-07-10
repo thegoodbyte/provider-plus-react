@@ -62,7 +62,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
         const [clientsResponse, retreatsResponse, nextIdResponse] = await Promise.all([
           clientsApi.getAll(),
           retreatsApi.getAll(),
-          isEdit ? Promise.resolve(null) : paymentRequestsApi.getNextDisplayId().catch((error) => {
+          isEdit ? Promise.resolve(null) : paymentRequestsApi.getNextDisplayIdFresh().catch((error) => {
             console.error('Error fetching next payment request display ID:', error);
             return null;
           }),
@@ -145,7 +145,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
 
     setLoading(true);
     try {
-      const existingRequests = await paymentRequestsApi.getAll();
+      const existingRequests = await paymentRequestsApi.getAllFresh();
       const normalizedInvoice = invoiceNumber.toLowerCase();
       const duplicate = (existingRequests.data || []).find((request: PaymentRequest) => {
         const requestId = request._id || '';

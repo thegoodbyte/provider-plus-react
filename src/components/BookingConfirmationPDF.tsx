@@ -1,7 +1,8 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import { housesApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
+import { bookingFlowApi, housesApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import { MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
+import { buildBookingConfirmationRequirementRows } from './BookingConfirmationPDF.helpers';
 
 interface BookingConfirmationPDFProps {
   booking: any;
@@ -284,6 +285,28 @@ const buildRequirementStatus = async (booking: any) => {
   }
 };
 
+const resolveBookingRequirementRows = async (booking: any, fallbackInitialPaymentDate: Date | null) => {
+  const bookingId = booking?._id || booking?.id;
+  const fallbackDeadline = {
+    ekg: fallbackInitialPaymentDate ? addDays(fallbackInitialPaymentDate, 21) : null,
+    liver: fallbackInitialPaymentDate ? addDays(fallbackInitialPaymentDate, 21) : null,
+    contract: fallbackInitialPaymentDate ? addDays(fallbackInitialPaymentDate, 3) : null,
+  };
+
+  try {
+    if (!bookingId) {
+      return buildBookingConfirmationRequirementRows([], fallbackDeadline);
+    }
+
+    const response = await bookingFlowApi.getBookingRequirements(String(bookingId));
+    const items = response.data?.items || [];
+    return buildBookingConfirmationRequirementRows(items, fallbackDeadline);
+  } catch (error) {
+    console.warn('Unable to load booking flow requirements for PDF deadlines:', error);
+    return buildBookingConfirmationRequirementRows([], fallbackDeadline);
+  }
+};
+
 // Translation object for all supported languages
 const translations = {
   pl: {
@@ -331,7 +354,7 @@ const translations = {
     balanceDueNote: (date: string) => `Pozostałe saldo należy uregulować najpóźniej 30 dni przed rozpoczęciem pobytu, czyli do ${date}.`,
     requiredDepositNote: (amount: string, usdAmount?: string) => `Wymagana zaliczka do potwierdzenia rezerwacji wynosi 40% ceny pobytu: ${amount}${usdAmount ? ` (około ${usdAmount}, zaokrąglone w górę)` : ''}. Płatności w innej walucie są zaliczane według faktycznej kwoty przeliczonej przez Revolut/Wise/bank w dniu rozliczenia.`,
     footerNote3: 'Należy pamiętać, że żadna usługa nie będzie świadczona, dopóki nie zostanie ona w pełni opłacona. Dziękuję za zrozumienie',
-    footerNote4: 'Aby potwierdzić rezerwację, każdy uczestnik musi dostarczyć EKG i panel wątroby w ciągu 21 dni od pierwszej płatności oraz podpisać umowę uczestnika w ciągu 3 dni od pierwszej płatności.',
+    footerNote4: 'Aby potwierdzić rezerwację, każdy uczestnik musi dostarczyć EKG, panel wątroby i podpisać umowę uczestnika zgodnie z terminami pokazanymi powyżej.',
     footerNote5: 'Jednocześnie każdy uczestnik musi być czysty od wszelkich leków i niektórych leków (takich jak leki przeciwdepresyjne itp.) przez co najmniej 30 dni przed leczeniem.',
     footerNote6: 'Dziękuję za zrozumienie, Martin Haila',
     polska: 'Polska'
@@ -381,7 +404,7 @@ const translations = {
     balanceDueNote: (date: string) => `Zbývající částka je splatná nejpozději 30 dní před začátkem pobytu, tedy do ${date}.`,
     requiredDepositNote: (amount: string, usdAmount?: string) => `Požadovaná záloha pro potvrzení rezervace je 40 % ceny pobytu: ${amount}${usdAmount ? ` (přibližně ${usdAmount}, zaokrouhleno nahoru)` : ''}. Platby v jiné měně se započítávají podle skutečné částky přepočtené přes Revolut/Wise/banku v den zúčtování.`,
     footerNote3: 'Pamatujte, že žádná služba nebude poskytována, dokud nebude plně uhrazena. Děkuji za pochopení',
-    footerNote4: 'Pro potvrzení rezervace musí každý účastník dodat EKG a jaterní panel do 21 dnů od první platby a podepsat smlouvu účastníka do 3 dnů od první platby.',
+    footerNote4: 'Pro potvrzení rezervace musí každý účastník dodat EKG, jaterní panel a podepsat smlouvu účastníka podle termínů uvedených výše.',
     footerNote5: 'Současně musí být každý účastník čistý od všech léků a některých léků (jako jsou antidepresiva atd.) po dobu nejméně 30 dnů před léčbou.',
     footerNote6: 'Děkuji za pochopení, Martin Haila',
     polska: 'Česká republika'
@@ -431,7 +454,7 @@ const translations = {
     balanceDueNote: (date: string) => `The remaining balance is due no later than 30 days before the retreat begins, by ${date}.`,
     requiredDepositNote: (amount: string, usdAmount?: string) => `The deposit required to confirm the booking is 40% of the retreat price: ${amount}${usdAmount ? ` (about ${usdAmount}, rounded up)` : ''}. Payments in another currency are counted by the actual amount converted by Revolut/Wise/bank on the settlement date.`,
     footerNote3: 'Please note that no service will be provided until it is fully paid. Thank you for understanding',
-    footerNote4: 'To confirm the reservation, each participant must provide EKG and liver panel results within 21 days of the initial payment and sign the participant agreement within 3 days of the initial payment.',
+    footerNote4: 'To confirm the reservation, each participant must provide EKG, liver panel results, and sign the participant agreement according to the deadlines shown above.',
     footerNote5: 'At the same time, each participant must be clean of all drugs and certain medications (such as antidepressants, etc.) for at least 30 days before treatment.',
     footerNote6: 'Thank you for understanding, Martin Haila',
     polska: 'USA'
@@ -444,21 +467,20 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   const house = await resolveHouseForRetreat(retreat);
   const requirementStatus = await buildRequirementStatus(booking);
   const initialPaymentDate = await resolveInitialPaymentDate(booking);
+  const requirementRows = await resolveBookingRequirementRows(booking, initialPaymentDate);
   const payments = await resolveBookingPayments(booking);
 
   // Get translations for selected language
   const t = translations[language];
-  const medicalDeadlineDate = addDays(initialPaymentDate, 21);
-  const contractDeadlineDate = addDays(initialPaymentDate, 3);
+  const requirementLabels = [t.ekgStatus, t.liverStatus, t.contractStatus];
+  const requirementRowsWithLabels = requirementRows.map((row, index) => ({
+    ...row,
+    label: requirementLabels[index] || row.label,
+  }));
   const bookingStatusText = requirementStatus.status === 'confirmed' ? t.confirmedStatus : t.conditionalStatus;
   const bookingStatusColor = requirementStatus.status === 'confirmed' ? '#047857' : '#92400e';
   const bookingStatusBg = requirementStatus.status === 'confirmed' ? '#d1fae5' : '#fef3c7';
-  const requirementRows = [
-    { label: t.ekgStatus, complete: requirementStatus.ekgVerified, deadline: medicalDeadlineDate },
-    { label: t.liverStatus, complete: requirementStatus.liverVerified, deadline: medicalDeadlineDate },
-    { label: t.contractStatus, complete: requirementStatus.contractSigned, deadline: contractDeadlineDate },
-  ];
-  const missingRequirementsText = requirementStatus.missingRequirements.map(escapeHtml).join(', ');
+  const missingRequirementsText = requirementRowsWithLabels.filter((row) => !row.complete).map((row) => escapeHtml(row.label)).join(', ');
 
   const bookingCurrency = (booking.currency || 'USD') as Payment['currency'];
   const bookingTotal = getBookingTotalAmount(booking);
@@ -833,10 +855,10 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
           <table style="width: 100%; border-collapse: collapse; font-size: 9px; line-height: 1.25;">
             <tbody>
               <tr>
-                ${requirementRows.map((row) => `
+                ${requirementRowsWithLabels.map((row) => `
                   <td style="width: 33.33%; border-top: 1px solid rgba(31,41,55,0.10); border-right: 1px solid rgba(31,41,55,0.10); padding: 5px 6px; color: #4b5563; vertical-align: top;">
                     <strong>${row.label}</strong><br>
-                    ${t.deadline}: ${formatDate(row.deadline)}<br>
+                    ${t.deadline}: ${row.deadline ? formatDate(row.deadline) : '-'}<br>
                     <span style="color: ${row.complete ? '#047857' : '#92400e'}; font-weight: 600;">${row.complete ? t.verified : t.pending}</span>
                   </td>
                 `).join('')}

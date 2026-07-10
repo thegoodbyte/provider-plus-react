@@ -1,487 +1,306 @@
-import React, { useState, useEffect } from 'react';
-import { Check, RefreshCw, X } from 'lucide-react';
-import { bookingsApi, paymentsApi, clientMedicalApi } from '../services/api';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { HeartPulse, Leaf, RefreshCw } from 'lucide-react';
+import { bookingsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { Retreat, RetreatClient } from '../types';
+import LoadingSpinner from './LoadingSpinner';
+import {
+  buildRetreatMedicalGridData,
+  RetreatMedicalCell,
+  RetreatMedicalGridData,
+} from './RetreatMedicalGrid.helpers';
 import './RetreatTrackingGrid.css';
 
 interface RetreatTrackingGridProps {
   retreatId: string;
 }
 
-interface ClientTrackingData {
-  clientId: string;
-  clientName: string;
-  email: string;
-  displayNumber: string; // ISCZ-P number
-  bookingId: string;
-  payments: {
-    date?: string;
-    amount?: number;
-    currency?: string;
-    type?: 'revolut' | 'paypal' | 'transfer' | 'other';
-  }[];
-  ekg: {
-    received?: boolean;
-    receivedDate?: string;
-    sentToReview?: boolean;
-    sentToReviewDate?: string;
-    reviewResult?: 'OK' | 'NOT OK' | 'caution';
-    reviewNotes?: string;
-  };
-  liver: {
-    received?: boolean;
-    receivedDate?: string;
-    sentToReview?: boolean;
-    sentToReviewDate?: string;
-    reviewResult?: 'OK' | 'NOT OK' | 'caution';
-    reviewNotes?: string;
-  };
-  questionnaire: {
-    sent?: boolean;
-    sentDate?: string;
-    received?: boolean;
-    receivedDate?: string;
-  };
-  medForm: {
-    sent?: boolean;
-    sentDate?: string;
-    received?: boolean;
-    receivedDate?: string;
-    reviewed?: boolean;
-    reviewedDate?: string;
-    result?: 'approved' | 'rejected' | 'pending';
-    notes?: string;
-  };
-  foodForm: {
-    sent?: boolean;
-    sentDate?: string;
-    received?: boolean;
-    receivedDate?: string;
-    reviewed?: boolean;
-    reviewedDate?: string;
-    result?: 'approved' | 'rejected' | 'pending';
-    notes?: string;
-  };
-}
+const getClientInitials = (name: string) => {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
+  return `${parts[0].slice(0, 1)}${parts[parts.length - 1].slice(0, 1)}`.toUpperCase();
+};
+
+const getLocationPrefix = (pathname: string) => {
+  const firstRouteSegment = pathname.split('/').filter(Boolean)[0];
+  return ['admin', 'medical', 'staff', 'user', 'helper'].includes(firstRouteSegment) ? firstRouteSegment : 'admin';
+};
+
+const getStageIcon = (stageKey: 'ekg' | 'liver') => {
+  if (stageKey === 'ekg') return <HeartPulse className="h-4 w-4" />;
+  return <Leaf className="h-4 w-4" />;
+};
+
+const getStageToneClass = (cell: RetreatMedicalCell) => {
+  if (cell.status === 'missing') return 'medical-cell-missing';
+  if (cell.status === 'artifact_only') return 'medical-cell-artifact';
+  if (cell.decisionTone === 'green') return 'medical-cell-green';
+  if (cell.decisionTone === 'yellow') return 'medical-cell-yellow';
+  if (cell.decisionTone === 'red') return 'medical-cell-red';
+  return 'medical-cell-neutral';
+};
+
+const getStageStatusLabel = (cell: RetreatMedicalCell) => {
+  if (cell.status === 'missing') return 'Missing';
+  if (cell.status === 'artifact_only') return 'Artifact only';
+  if (cell.status === 'pending') return cell.decisionLabel || 'Pending';
+  return cell.decisionLabel || 'Reviewed';
+};
+
+const getCellNotes = (cell: RetreatMedicalCell) => {
+  if (cell.notes && cell.notes.trim()) return cell.notes.trim();
+  return 'No notes yet.';
+};
 
 const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) => {
-  const [trackingData, setTrackingData] = useState<ClientTrackingData[]>([]);
+  const location = useLocation();
+  const routePrefix = getLocationPrefix(location.pathname);
+  const [gridData, setGridData] = useState<RetreatMedicalGridData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [retreat, setRetreat] = useState<Retreat | null>(null);
 
-  useEffect(() => {
-    fetchTrackingData();
-  }, [retreatId]);
-
-  const fetchTrackingData = async () => {
+  const fetchGridData = useCallback(async () => {
     try {
       setIsLoading(true);
+      const [bookingsResponse, artifactsResponse, reviewsResponse] = await Promise.all([
+        bookingsApi.getByRetreatWithDetails(retreatId),
+        medicalArtifactsApi.getAll({ retreatId }),
+        medicalReviewRequestsApi.getAll({ retreatId }),
+      ]);
 
-      // Fetch bookings with client details
-      const bookingsResponse = await bookingsApi.getByRetreatWithDetails(retreatId);
-      const bookings = bookingsResponse.data;
+      const bookings = (bookingsResponse.data || []) as RetreatClient[];
+      const retreatFromBookings = bookings
+        .map((booking: any) => booking.retreatId)
+        .find((value) => value && typeof value === 'object') as Retreat | undefined;
 
-      // For each booking, fetch additional tracking data
-      const trackingPromises = bookings.map(async (booking: any) => {
-        const clientId = booking.clientId?._id || booking.clientId;
-
-        // Fetch payments for this client and retreat
-        let payments: any[] = [];
-        try {
-          const paymentsResponse = await paymentsApi.getByClientAndRetreat(clientId, retreatId);
-          payments = paymentsResponse.data || [];
-        } catch (error) {
-          console.error('Error fetching payments:', error);
-        }
-
-        // Fetch medical tracking data
-        let medicalData: any = {};
-        try {
-          const medicalResponse = await clientMedicalApi.getByClientAndRetreat(clientId, retreatId);
-          if (medicalResponse.data) {
-            medicalData = medicalResponse.data;
-          }
-        } catch (error) {
-          console.error('Error fetching medical data:', error);
-        }
-
-        // Build tracking data object
-        const tracking: ClientTrackingData = {
-          clientId,
-          bookingId: booking._id,
-          clientName: booking.clientId
-            ? `${booking.clientId.firstName || ''} ${booking.clientId.lastName || ''}`.trim()
-            : 'Unknown Client',
-          email: booking.clientId?.email || '',
-          displayNumber: booking.clientId?.display_id || booking.clientId?.displayNumber || `ISCZ-P-${booking._id?.slice(-4) || '0000'}`,
-          payments: payments.map(p => ({
-            date: p.paymentDate,
-            amount: p.amount,
-            currency: p.currency,
-            type: p.paymentMethod as any || 'other'
-          })),
-          ekg: {
-            received: medicalData.ekgReceived,
-            receivedDate: medicalData.ekgReceivedDate,
-            sentToReview: medicalData.ekgSentToReview,
-            sentToReviewDate: medicalData.ekgSentToReviewDate,
-            reviewResult: medicalData.ekgReviewResult,
-            reviewNotes: medicalData.ekgReviewNotes
-          },
-          liver: {
-            received: medicalData.liverPanelReceived,
-            receivedDate: medicalData.liverPanelReceivedDate,
-            sentToReview: medicalData.liverPanelSentToReview,
-            sentToReviewDate: medicalData.liverPanelSentToReviewDate,
-            reviewResult: medicalData.liverPanelReviewResult,
-            reviewNotes: medicalData.liverPanelReviewNotes
-          },
-          questionnaire: {
-            sent: medicalData.questionnaireSent,
-            sentDate: medicalData.questionnaireSentDate,
-            received: medicalData.questionnaireReceived,
-            receivedDate: medicalData.questionnaireReceivedDate
-          },
-          medForm: {
-            sent: medicalData.medFormSent,
-            sentDate: medicalData.medFormSentDate,
-            received: medicalData.medFormReceived,
-            receivedDate: medicalData.medFormReceivedDate,
-            reviewed: medicalData.medFormReviewed,
-            reviewedDate: medicalData.medFormReviewedDate,
-            result: medicalData.medFormResult,
-            notes: medicalData.medFormNotes
-          },
-          foodForm: {
-            sent: medicalData.foodFormSent,
-            sentDate: medicalData.foodFormSentDate,
-            received: medicalData.foodFormReceived,
-            receivedDate: medicalData.foodFormReceivedDate,
-            reviewed: medicalData.foodFormReviewed,
-            reviewedDate: medicalData.foodFormReviewedDate,
-            result: medicalData.foodFormResult,
-            notes: medicalData.foodFormNotes
-          }
-        };
-
-        return tracking;
-      });
-
-      const allTrackingData = await Promise.all(trackingPromises);
-
-      setTrackingData(allTrackingData);
+      setRetreat(retreatFromBookings || null);
+      setGridData(
+        buildRetreatMedicalGridData(
+          bookings,
+          artifactsResponse.data || [],
+          reviewsResponse.data || [],
+          retreatFromBookings || { retreatCode: retreatId, code: retreatId, name: retreatId },
+        ),
+      );
     } catch (error) {
-      console.error('Error fetching tracking data:', error);
-      setTrackingData([]);
+      console.error('Error fetching retreat medical grid:', error);
+      setGridData(null);
+      setRetreat(null);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [retreatId]);
 
-  const formatDate = (date?: string) => {
-    if (!date) return '-';
-    return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  };
+  useEffect(() => {
+    fetchGridData();
+  }, [fetchGridData]);
 
-  const formatPayment = (payments: any[]) => {
-    if (!payments || payments.length === 0) return '-';
-    const total = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
-    const latestPayment = payments[payments.length - 1];
+  const summaryCards = useMemo(() => {
+    if (!gridData) return [];
+
+    const reviewed = gridData.rows.reduce((sum, row) => sum + row.cells.filter((cell) => cell.status === 'reviewed').length, 0);
+    const pending = gridData.rows.reduce((sum, row) => sum + row.cells.filter((cell) => cell.status === 'pending').length, 0);
+    const missing = gridData.rows.reduce((sum, row) => sum + row.cells.filter((cell) => cell.status === 'missing').length, 0);
+
+    return [
+      { label: 'Clients', value: gridData.totals.clients },
+      { label: 'MRRs', value: reviewed },
+      { label: 'Pending', value: pending },
+      { label: 'Missing', value: missing },
+    ];
+  }, [gridData]);
+
+  const renderCell = (stageKey: 'ekg' | 'liver', cell: RetreatMedicalCell, client: any, clientIndex: number) => {
+    const bookingId = client.bookingId || '';
+    const clientId = client.clientId || '';
+    const artifactId = cell.artifact?._id || '';
+    const reviewId = cell.review?._id || '';
+    const toneClass = getStageToneClass(cell);
+    const notes = getCellNotes(cell);
+
     return (
-      <div className="payment-info">
-        <div className="payment-total">{total.toFixed(0)} {latestPayment?.currency || 'EUR'}</div>
-        <div className="payment-type">{latestPayment?.type || '-'}</div>
-        <div className="payment-date">{formatDate(latestPayment?.date)}</div>
+      <div className={`medical-cell ${toneClass}`}>
+        <div className="medical-cell-top">
+          <div className="medical-cell-title">
+            {reviewId ? (
+              <Link to={`/${routePrefix}/medical-review-requests/${reviewId}`} className="medical-cell-link">
+                {cell.reviewLabel}
+              </Link>
+            ) : cell.artifactLabel ? (
+              <Link to={`/${routePrefix}/medical-artifacts/${artifactId}`} className="medical-cell-link">
+                {cell.artifactLabel}
+              </Link>
+            ) : (
+              <span className="medical-cell-empty">No MRR yet</span>
+            )}
+          </div>
+          <span className={`medical-status-pill ${toneClass}`}>{getStageStatusLabel(cell)}</span>
+        </div>
+
+        <div className="medical-cell-subline">
+          Submitted {cell.submittedAt || '—'}
+        </div>
+
+        <div className="medical-cell-notes" title={notes}>
+          {notes}
+        </div>
+
+        <div className="medical-cell-links">
+          {artifactId ? (
+            <Link to={`/${routePrefix}/medical-artifacts/${artifactId}`} className="medical-cell-mini-link">
+              Artifact #{cell.artifact?.display_id || artifactId.slice(-6)}
+            </Link>
+          ) : (
+            <span className="medical-cell-mini-muted">No artifact</span>
+          )}
+          {clientId ? (
+            <Link to={`/${routePrefix}/bookings/${bookingId}`} className="medical-cell-mini-link">
+              Booking #{client.bookingNumber || bookingId.slice(-6)}
+            </Link>
+          ) : null}
+        </div>
       </div>
     );
   };
 
-  const formatStatus = (status?: boolean, date?: string) => {
-    if (!status) return <span className="status-pending"><X size={16} /></span>;
+  const renderClientHeader = (client: any, index: number) => {
+    const displayId = client.clientDisplayId ? `#${client.clientDisplayId}` : '';
+    const initials = getClientInitials(client.clientName);
+
     return (
-      <span className="status-complete">
-        <Check size={16} /> {formatDate(date)}
-      </span>
+      <th key={client.clientId || client.bookingId || index} className={`medical-client-header medical-client-header-${index % 6}`}>
+        <div className="medical-client-header-inner">
+          <div className="medical-client-avatar" aria-hidden="true">
+            {initials}
+          </div>
+          <div className="medical-client-meta">
+            <Link to={`/${routePrefix}/clients/${client.clientId}`} className="medical-client-name">
+              {client.clientName}
+            </Link>
+            <Link to={`/${routePrefix}/bookings/${client.bookingId}`} className="medical-client-booking">
+              Booking #{client.bookingNumber}
+            </Link>
+            {displayId ? (
+              <Link to={`/${routePrefix}/clients/${client.clientId}`} className="medical-client-id">
+                Client {displayId}
+              </Link>
+            ) : null}
+          </div>
+        </div>
+      </th>
     );
   };
-
-  const formatReviewResult = (result?: string, notes?: string) => {
-    if (!result) return '-';
-    const colorClass = result === 'OK' ? 'review-ok' : result === 'NOT OK' ? 'review-notok' : 'review-caution';
-    return (
-      <div className={`review-result ${colorClass}`}>
-        <div>{result}</div>
-        {notes && <div className="review-notes">{notes}</div>}
-      </div>
-    );
-  };
-
-  const sectionColSpan = Math.max(1, trackingData.length) + 1;
 
   if (isLoading) {
+    return <LoadingSpinner message="Loading medical grid..." />;
+  }
+
+  if (!gridData || gridData.clients.length === 0) {
     return (
-      <div className="tracking-grid-loading">
-        <div className="loading-spinner" />
-        <p>Loading tracking data...</p>
+      <div className="retreat-medical-grid">
+        <div className="medical-grid-empty">
+          No bookings found for this retreat yet.
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="retreat-tracking-grid">
-      <div className="grid-header">
-        <h3>Client Tracking Grid</h3>
-        <button onClick={fetchTrackingData} className="refresh-btn">
-          <RefreshCw size={16} /> Refresh
+    <div className="retreat-medical-grid">
+      <div className="medical-grid-header">
+        <div>
+          <h3>
+            Medical Grid {gridData.retreatCode || retreat?.retreatCode || retreat?.code || retreatId}
+          </h3>
+          <p>
+            EKG and liver review requests with MRR numbers, submitted dates, decisions, and notes.
+          </p>
+        </div>
+        <button type="button" onClick={fetchGridData} className="medical-grid-refresh-btn">
+          <RefreshCw className="h-4 w-4" />
+          Refresh
         </button>
       </div>
 
-      {trackingData.length === 0 ? (
-        <div className="tracking-empty-state">
-          No clients are booked for this retreat yet.
-        </div>
-      ) : (
-
-      <div className="grid-container">
-        <table className="tracking-table">
-          <thead>
-            <tr>
-              <th className="row-header" aria-label="Tracking item"></th>
-              {trackingData.map((client) => (
-                <th key={client.bookingId} className="client-header">
-                  <div className="client-header-name">{client.clientName || 'Unknown Client'}</div>
-                  <div className="client-header-meta">{client.displayNumber}</div>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {/* Client Info Rows */}
-            <tr className="section-row">
-              <td className="row-label">Name</td>
-              {trackingData.map(client => (
-                <td key={`name-${client.bookingId}`} className="data-cell">
-                  <strong>{client.clientName}</strong>
-                </td>
-              ))}
-            </tr>
-
-            <tr>
-              <td className="row-label">ID</td>
-              {trackingData.map(client => (
-                <td key={`id-${client.bookingId}`} className="data-cell">
-                  {client.clientId.slice(-6)}
-                </td>
-              ))}
-            </tr>
-
-            <tr>
-              <td className="row-label">Display Number</td>
-              {trackingData.map(client => (
-                <td key={`display-${client.bookingId}`} className="data-cell">
-                  <span className="display-number">{client.displayNumber}</span>
-                </td>
-              ))}
-            </tr>
-
-            <tr>
-              <td className="row-label">Email</td>
-              {trackingData.map(client => (
-                <td key={`email-${client.bookingId}`} className="data-cell email">
-                  {client.email}
-                </td>
-              ))}
-            </tr>
-
-            {/* Payment Section */}
-            <tr className="section-divider">
-              <td colSpan={sectionColSpan} className="section-title">Payments</td>
-            </tr>
-
-            <tr>
-              <td className="row-label">Payment Info</td>
-              {trackingData.map(client => (
-                <td key={`payment-${client.bookingId}`} className="data-cell">
-                  {formatPayment(client.payments)}
-                </td>
-              ))}
-            </tr>
-
-            {/* EKG Section */}
-            <tr className="section-divider">
-              <td colSpan={sectionColSpan} className="section-title">EKG</td>
-            </tr>
-
-            <tr>
-              <td className="row-label">EKG Received</td>
-              {trackingData.map(client => (
-                <td key={`ekg-received-${client.bookingId}`} className="data-cell">
-                  {formatStatus(client.ekg.received, client.ekg.receivedDate)}
-                </td>
-              ))}
-            </tr>
-
-            <tr>
-              <td className="row-label">EKG Sent to Review</td>
-              {trackingData.map(client => (
-                <td key={`ekg-sent-${client.bookingId}`} className="data-cell">
-                  {formatStatus(client.ekg.sentToReview, client.ekg.sentToReviewDate)}
-                </td>
-              ))}
-            </tr>
-
-            <tr>
-              <td className="row-label">EKG Review Result</td>
-              {trackingData.map(client => (
-                <td key={`ekg-result-${client.bookingId}`} className="data-cell">
-                  {formatReviewResult(client.ekg.reviewResult, client.ekg.reviewNotes)}
-                </td>
-              ))}
-            </tr>
-
-            {/* Liver Panel Section */}
-            <tr className="section-divider">
-              <td colSpan={sectionColSpan} className="section-title">Liver Panel</td>
-            </tr>
-
-            <tr>
-              <td className="row-label">Liver Panel Received</td>
-              {trackingData.map(client => (
-                <td key={`liver-received-${client.bookingId}`} className="data-cell">
-                  {formatStatus(client.liver.received, client.liver.receivedDate)}
-                </td>
-              ))}
-            </tr>
-
-            <tr>
-              <td className="row-label">Liver Sent to Review</td>
-              {trackingData.map(client => (
-                <td key={`liver-sent-${client.bookingId}`} className="data-cell">
-                  {formatStatus(client.liver.sentToReview, client.liver.sentToReviewDate)}
-                </td>
-              ))}
-            </tr>
-
-            <tr>
-              <td className="row-label">Liver Review Result</td>
-              {trackingData.map(client => (
-                <td key={`liver-result-${client.bookingId}`} className="data-cell">
-                  {formatReviewResult(client.liver.reviewResult, client.liver.reviewNotes)}
-                </td>
-              ))}
-            </tr>
-
-            {/* Forms Section */}
-            <tr className="section-divider">
-              <td colSpan={sectionColSpan} className="section-title">Forms</td>
-            </tr>
-
-            {/* Questionnaire */}
-            <tr>
-              <td className="row-label">Questionnaire Sent</td>
-              {trackingData.map(client => (
-                <td key={`quest-sent-${client.bookingId}`} className="data-cell">
-                  {formatStatus(client.questionnaire.sent, client.questionnaire.sentDate)}
-                </td>
-              ))}
-            </tr>
-
-            <tr>
-              <td className="row-label">Questionnaire Received</td>
-              {trackingData.map(client => (
-                <td key={`quest-received-${client.bookingId}`} className="data-cell">
-                  {formatStatus(client.questionnaire.received, client.questionnaire.receivedDate)}
-                </td>
-              ))}
-            </tr>
-
-            {/* Medical Form */}
-            <tr>
-              <td className="row-label">Med Form Sent</td>
-              {trackingData.map(client => (
-                <td key={`med-sent-${client.bookingId}`} className="data-cell">
-                  {formatStatus(client.medForm.sent, client.medForm.sentDate)}
-                </td>
-              ))}
-            </tr>
-
-            <tr>
-              <td className="row-label">Med Form Received</td>
-              {trackingData.map(client => (
-                <td key={`med-received-${client.bookingId}`} className="data-cell">
-                  {formatStatus(client.medForm.received, client.medForm.receivedDate)}
-                </td>
-              ))}
-            </tr>
-
-            <tr>
-              <td className="row-label">Med Form Reviewed</td>
-              {trackingData.map(client => (
-                <td key={`med-reviewed-${client.bookingId}`} className="data-cell">
-                  {formatStatus(client.medForm.reviewed, client.medForm.reviewedDate)}
-                </td>
-              ))}
-            </tr>
-
-            <tr>
-              <td className="row-label">Med Form Result</td>
-              {trackingData.map(client => (
-                <td key={`med-result-${client.bookingId}`} className="data-cell">
-                  {client.medForm.result ? (
-                    <span className={`form-result ${client.medForm.result}`}>
-                      {client.medForm.result.toUpperCase()}
-                    </span>
-                  ) : '-'}
-                </td>
-              ))}
-            </tr>
-
-            {/* Food Form */}
-            <tr>
-              <td className="row-label">Food Form Sent</td>
-              {trackingData.map(client => (
-                <td key={`food-sent-${client.bookingId}`} className="data-cell">
-                  {formatStatus(client.foodForm.sent, client.foodForm.sentDate)}
-                </td>
-              ))}
-            </tr>
-
-            <tr>
-              <td className="row-label">Food Form Received</td>
-              {trackingData.map(client => (
-                <td key={`food-received-${client.bookingId}`} className="data-cell">
-                  {formatStatus(client.foodForm.received, client.foodForm.receivedDate)}
-                </td>
-              ))}
-            </tr>
-
-            <tr>
-              <td className="row-label">Food Form Reviewed</td>
-              {trackingData.map(client => (
-                <td key={`food-reviewed-${client.bookingId}`} className="data-cell">
-                  {formatStatus(client.foodForm.reviewed, client.foodForm.reviewedDate)}
-                </td>
-              ))}
-            </tr>
-          </tbody>
-        </table>
+      <div className="medical-grid-summary">
+        {summaryCards.map((card) => (
+          <div key={card.label} className="medical-grid-summary-card">
+            <div className="medical-grid-summary-value">{card.value}</div>
+            <div className="medical-grid-summary-label">{card.label}</div>
+          </div>
+        ))}
       </div>
-      )}
 
-      <div className="grid-legend">
-        <div className="legend-item">
-          <span className="status-complete"><Check size={16} /></span> Complete
+      <div className="medical-grid-desktop">
+        <div className="medical-grid-table-wrap">
+          <table className="medical-grid-table">
+            <thead>
+              <tr>
+                <th className="medical-row-header">Stage</th>
+                {gridData.clients.map((client, index) => renderClientHeader(client, index))}
+              </tr>
+            </thead>
+            <tbody>
+              {gridData.rows.map((row) => (
+                <tr key={row.key} className={`medical-row ${row.accentClass}`}>
+                  <td className="medical-row-label">
+                    <div className="medical-row-label-inner">
+                      <span className="medical-row-icon">{getStageIcon(row.key)}</span>
+                      <div>
+                        <div className="medical-row-title">{row.label}</div>
+                        <div className="medical-row-subtitle">MRR · submitted · result · notes</div>
+                      </div>
+                    </div>
+                  </td>
+                  {row.cells.map((cell, index) => (
+                    <td key={`${row.key}-${gridData.clients[index].bookingId}`} className="medical-grid-cell-td">
+                      {renderCell(row.key, cell, gridData.clients[index], index)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        <div className="legend-item">
-          <span className="status-pending"><X size={16} /></span> Pending
-        </div>
-        <div className="legend-item">
-          <span className="review-ok">OK</span> Review Passed
-        </div>
-        <div className="legend-item">
-          <span className="review-notok">NOT OK</span> Review Failed
-        </div>
-        <div className="legend-item">
-          <span className="review-caution">CAUTION</span> Review Needs Attention
-        </div>
+      </div>
+
+      <div className="medical-grid-mobile">
+        {gridData.clients.map((client, clientIndex) => (
+          <article key={client.bookingId} className={`medical-mobile-card medical-client-header-${clientIndex % 6}`}>
+            <div className="medical-mobile-card-header">
+              <div className="medical-client-avatar" aria-hidden="true">
+                {getClientInitials(client.clientName)}
+              </div>
+              <div className="medical-mobile-card-meta">
+                <Link to={`/${routePrefix}/clients/${client.clientId}`} className="medical-client-name">
+                  {client.clientName}
+                </Link>
+                <Link to={`/${routePrefix}/bookings/${client.bookingId}`} className="medical-client-booking">
+                  Booking #{client.bookingNumber}
+                </Link>
+                <span className="medical-client-id">
+                  {client.clientDisplayId ? `Client #${client.clientDisplayId}` : client.clientId.slice(-6)}
+                </span>
+              </div>
+            </div>
+
+            <div className="medical-mobile-stage-stack">
+              {gridData.rows.map((row) => {
+                const cell = row.cells[clientIndex];
+                return (
+                  <section key={`${client.bookingId}-${row.key}`} className="medical-mobile-stage">
+                    <div className="medical-mobile-stage-header">
+                      <span className="medical-row-icon">{getStageIcon(row.key)}</span>
+                      <span>{row.label}</span>
+                    </div>
+                    {renderCell(row.key, cell, client, clientIndex)}
+                  </section>
+                );
+              })}
+            </div>
+          </article>
+        ))}
       </div>
     </div>
   );

@@ -54,7 +54,7 @@ const SearchablePaymentRequestSelect: React.FC<Props> = ({
   useEffect(() => {
     const loadPaymentRequests = async () => {
       try {
-        const response = await paymentRequestsApi.getAll();
+        const response = await paymentRequestsApi.getAllFresh();
         setPaymentRequests(Array.isArray(response.data) ? response.data : []);
       } catch (error) {
         console.error('Error loading payment requests:', error);

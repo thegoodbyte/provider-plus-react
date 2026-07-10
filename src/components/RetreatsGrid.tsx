@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner';
 import { retreatsApi, housesApi, bookingsApi } from '../services/api';
 import { Retreat, House, RetreatClient } from '../types';
@@ -146,6 +146,14 @@ const RetreatsGrid: React.FC = () => {
       return [client.firstName || client.fname, client.lastName || client.lname].filter(Boolean).join(' ') || client.email || 'Unknown client';
     }
     return 'Unknown client';
+  };
+
+  const getClientEmail = (booking: any) => {
+    const client = booking.clientId;
+    if (client && typeof client === 'object') {
+      return String(client.email || '').trim();
+    }
+    return '';
   };
 
   const getClientDisplayId = (booking: any) => {
@@ -390,10 +398,27 @@ const RetreatsGrid: React.FC = () => {
                               </button>
                             </td>
                             <td className="whitespace-nowrap px-4 py-2 text-sm font-semibold text-gray-900">
-                              {getClientDisplayId(booking)}
+                              <Link
+                                to={`/${routePrefix}/clients/${getObjectId(booking.clientId)}`}
+                                className="text-blue-700 hover:underline"
+                                title="View client profile"
+                              >
+                                Client #{getClientDisplayId(booking)}
+                              </Link>
                             </td>
                             <td className="whitespace-nowrap px-4 py-2 text-sm text-gray-900">
-                              {getClientName(booking)}
+                              <Link
+                                to={`/${routePrefix}/clients/${getObjectId(booking.clientId)}`}
+                                className="block font-medium text-blue-700 hover:underline"
+                                title="View client profile"
+                              >
+                                {getClientName(booking)}
+                              </Link>
+                              {!getClientEmail(booking) && (
+                                <div className="mt-0.5 text-xs font-semibold text-red-600">
+                                  No email
+                                </div>
+                              )}
                             </td>
                             <td className="whitespace-nowrap px-4 py-2 text-sm text-gray-700">
                               {getClientLanguage(booking)}

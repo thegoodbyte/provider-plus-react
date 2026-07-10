@@ -159,6 +159,11 @@ export const clientsApi = {
     cacheService.clearPattern('clients:');
     return api.put(`/clients/${id}/workflow-status`, { status, reason });
   },
+  downloadScreeningPdf: (id: string) =>
+    api.get(`/clients/${id}/screening/download-pdf`, {
+      responseType: 'blob',
+      suppressGlobalError: true,
+    } as any),
   updateScreening: (id: string, screeningData: any) => {
     cacheService.clearPattern('clients:');
     return api.put(`/clients/${id}/screening`, screeningData);
@@ -372,10 +377,13 @@ export const paymentsApi = {
 
 export const paymentRequestsApi = {
   getAll: () => cachedGet<PaymentRequest[]>('payment-requests:all', () => api.get<PaymentRequest[]>('/payment-requests')),
+  getAllFresh: () => api.get<PaymentRequest[]>('/payment-requests'),
   getOne: (id: string) => cachedGet<PaymentRequest>(`payment-requests:${id}`, () => api.get<PaymentRequest>(`/payment-requests/${id}`)),
+  getOneFresh: (id: string) => api.get<PaymentRequest>(`/payment-requests/${id}`),
   getPublicDeposit: (hash: string) => api.get(`/payment-requests/public/deposit/${hash}`),
   getPublicInvoice: (hash: string) => api.get(`/public/invoices/${hash}`),
   getNextDisplayId: () => api.get<number>('/payment-requests/next-display-id'),
+  getNextDisplayIdFresh: () => api.get<number>('/payment-requests/next-display-id'),
   getByRetreat: (retreatId: string) => cachedGet<PaymentRequest[]>(`payment-requests:retreat:${retreatId}`, () => api.get<PaymentRequest[]>(`/payment-requests?retreatId=${retreatId}`)),
   getByClient: (clientId: string) => cachedGet<PaymentRequest[]>(`payment-requests:client:${clientId}`, () => api.get<PaymentRequest[]>(`/payment-requests?clientId=${clientId}`)),
   create: (data: Omit<PaymentRequest, '_id'>) => {
@@ -990,6 +998,16 @@ export const medicalReviewRequestsApi = {
   getByClientAndRetreat: (clientId: string, retreatId: string) => cachedGet<MedicalReviewRequest[]>(`medical-review-requests:${clientId}:${retreatId}`, () => api.get<MedicalReviewRequest[]>(`/medical-review-requests?clientId=${clientId}&retreatId=${retreatId}`)),
   getByMedicalTracking: (medicalTrackingId: string) => cachedGet<MedicalReviewRequest[]>(`medical-review-requests:tracking:${medicalTrackingId}`, () => api.get<MedicalReviewRequest[]>(`/medical-review-requests?medicalTrackingId=${medicalTrackingId}`)),
   getByArtifact: (artifactId: string) => cachedGet<MedicalReviewRequest[]>(`medical-review-requests:artifact:${artifactId}`, () => api.get<MedicalReviewRequest[]>(`/medical-review-requests?artifactId=${artifactId}`)),
+  getByArtifacts: (artifactIds: string[]) => {
+    const normalizedIds = Array.from(new Set(artifactIds.filter(Boolean))).sort();
+    if (!normalizedIds.length) {
+      return Promise.resolve({ data: [] as MedicalReviewRequest[] });
+    }
+    return cachedGet<MedicalReviewRequest[]>(
+      `medical-review-requests:artifacts:${normalizedIds.join(',')}`,
+      () => api.get<MedicalReviewRequest[]>(`/medical-review-requests/by-artifacts?artifactIds=${encodeURIComponent(normalizedIds.join(','))}`)
+    );
+  },
   getNextDisplayId: () => api.get<number>('/medical-review-requests/next-display-id'),
   create: (data: Omit<MedicalReviewRequest, '_id'>) => {
     cacheService.clearPattern('medical-review-requests:');
@@ -1038,6 +1056,17 @@ export const medicalReviewRequestsApi = {
   getGroup: (id: string) => api.get<MedicalReviewGroup>(`/medical-review-requests/groups/${id}`),
   getGroupAccessLinks: (id: string) => api.get<MedicalReviewGroupAccessLink[]>(`/medical-review-requests/groups/${id}/access-links`),
   issueGroupAccessLink: (id: string) => api.post<MedicalReviewGroupAccessLink>(`/medical-review-requests/groups/${id}/access-links`, {}),
+  updateGroup: (id: string, data: {
+    title?: string;
+    groupType?: 'retreat' | 'ceremony' | 'custom';
+    retreatId?: string;
+    ceremonyNumber?: number;
+    reviewRequestIds?: string[];
+    reviewerUserId?: string;
+  }) => {
+    cacheService.clearPattern('medical-review-requests:');
+    return api.patch<MedicalReviewGroup>(`/medical-review-requests/groups/${id}`, data);
+  },
   createGroup: (data: {
     title?: string;
     groupType?: 'retreat' | 'ceremony' | 'custom';

@@ -349,6 +349,55 @@ const getLatestReviewForArtifact = (artifact: MedicalArtifact, reviewsByArtifact
   return [...(reviewsByArtifact[artifact._id] || [])].sort((a, b) => getReviewTime(b) - getReviewTime(a))[0];
 };
 
+const indexReviewsByArtifact = (reviews: MedicalReviewRequest[]) => {
+  const result: Record<string, MedicalReviewRequest[]> = {};
+  for (const review of reviews || []) {
+    const artifactIds = Array.from(new Set([
+      ...(review.artifactIds || []),
+      (review as any).artifactId,
+      ...((review.fileReviews || []).map((fileReview) => fileReview.artifactId)),
+    ]
+      .map((value) => getObjectId(value))
+      .filter(Boolean)));
+    artifactIds.forEach((artifactId) => {
+      result[artifactId] = [...(result[artifactId] || []), review];
+    });
+  }
+  Object.keys(result).forEach((artifactId) => {
+    result[artifactId] = [...result[artifactId]].sort((a, b) => getReviewTime(b) - getReviewTime(a));
+  });
+  return result;
+};
+
+const logLoadTimings = (label: string, timings: Record<string, number>) => {
+  const total = Math.round(timings.total || 0);
+  const breakdown = Object.fromEntries(
+    Object.entries(timings)
+      .filter(([key]) => key !== 'total')
+      .map(([key, value]) => [key, Math.round(value)])
+  );
+  console.info(`[${label}] load timings`, { total, ...breakdown });
+};
+
+const loadReviewsByArtifactIds = async (artifactIds: string[]) => {
+  const start = performance.now();
+  try {
+    const response = await medicalReviewRequestsApi.getByArtifacts(artifactIds);
+    const reviews = response.data || [];
+    return {
+      reviewsByArtifact: indexReviewsByArtifact(reviews),
+      duration: performance.now() - start,
+      count: reviews.length,
+    };
+  } catch {
+    return {
+      reviewsByArtifact: {},
+      duration: performance.now() - start,
+      count: 0,
+    };
+  }
+};
+
 const mergeArtifacts = (artifactGroups: MedicalArtifact[][]) => {
   const seen = new Set<string>();
   return artifactGroups.flat().filter((artifact) => {
@@ -389,11 +438,16 @@ const BookingRequirementsPanel: React.FC<{
   const [error, setError] = useState('');
 
   const loadRequirements = async () => {
+    const loadStart = performance.now();
+    const timings: Record<string, number> = {};
     setLoading(true);
     setError('');
     try {
+      const itemsStart = performance.now();
       const itemsResponse = await bookingFlowApi.getItems({ bookingId });
+      timings.items = performance.now() - itemsStart;
       const bookingFlowFilters = buildBookingFlowArtifactFilters(itemsResponse.data || []);
+      const artifactsStart = performance.now();
       const [artifactsResponse, documentsResponse] = await Promise.all([
         Promise.all([
           medicalArtifactsApi.getAll({ bookingId, ...bookingFlowFilters }),
@@ -402,24 +456,20 @@ const BookingRequirementsPanel: React.FC<{
         ]),
         bookingDocumentsApi.getAll({ bookingId }),
       ]);
+      timings.artifacts = performance.now() - artifactsStart;
       const loadedArtifacts: MedicalArtifact[] = mergeArtifacts(artifactsResponse.map((response) => response.data || []))
         .filter((artifact) => isArtifactRelevantToBooking(artifact, bookingId, retreatId));
-      const reviewEntries = await Promise.all(
-        loadedArtifacts
-          .filter((artifact) => artifact._id)
-          .map(async (artifact) => {
-            try {
-              const reviewsResponse = await medicalReviewRequestsApi.getByArtifact(artifact._id!);
-              return [artifact._id!, reviewsResponse.data || []] as const;
-            } catch {
-              return [artifact._id!, []] as const;
-            }
-          })
-      );
+      const artifactIds = loadedArtifacts.map((artifact) => artifact._id).filter(Boolean) as string[];
+      const reviewLoad = await loadReviewsByArtifactIds(artifactIds);
+      timings.reviews = reviewLoad.duration;
       setItems(itemsResponse.data || []);
       setArtifacts(loadedArtifacts);
       setDocuments(documentsResponse.data || []);
-      setReviewsByArtifact(Object.fromEntries(reviewEntries));
+      setReviewsByArtifact(reviewLoad.reviewsByArtifact);
+      timings.total = performance.now() - loadStart;
+      timings.reviewCount = reviewLoad.count;
+      timings.artifactCount = loadedArtifacts.length;
+      logLoadTimings('booking requirements', timings);
     } catch (loadError: any) {
       setError(loadError?.response?.data?.message || loadError?.message || 'Unable to load booking requirements.');
     } finally {
@@ -585,33 +635,33 @@ const BookingMedicalOverviewPanel: React.FC<{
   const [error, setError] = useState('');
 
   const loadMedicalOverview = async () => {
+    const loadStart = performance.now();
+    const timings: Record<string, number> = {};
     setLoading(true);
     setError('');
     try {
+      const itemsStart = performance.now();
       const itemsResponse = await bookingFlowApi.getItems({ bookingId });
+      timings.items = performance.now() - itemsStart;
       const bookingFlowFilters = buildBookingFlowArtifactFilters(itemsResponse.data || []);
+      const artifactsStart = performance.now();
       const artifactResponses = await Promise.all([
         medicalArtifactsApi.getAll({ bookingId, ...bookingFlowFilters }),
         clientId && retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId, ...bookingFlowFilters }) : Promise.resolve({ data: [] }),
         clientId ? medicalArtifactsApi.getAll({ clientId, ...bookingFlowFilters }) : Promise.resolve({ data: [] }),
       ]);
+      timings.artifacts = performance.now() - artifactsStart;
       const loadedArtifacts = mergeArtifacts(artifactResponses.map((response) => response.data || []))
         .filter((artifact) => isArtifactRelevantToBooking(artifact, bookingId, retreatId))
         .sort(compareArtifactsForDisplay);
-      const reviewEntries = await Promise.all(
-        loadedArtifacts
-          .filter((artifact) => artifact._id)
-          .map(async (artifact) => {
-            try {
-              const reviewsResponse = await medicalReviewRequestsApi.getByArtifact(artifact._id!);
-              return [artifact._id!, reviewsResponse.data || []] as const;
-            } catch {
-              return [artifact._id!, []] as const;
-            }
-          })
-      );
+      const reviewLoad = await loadReviewsByArtifactIds(loadedArtifacts.map((artifact) => artifact._id).filter(Boolean) as string[]);
+      timings.reviews = reviewLoad.duration;
       setArtifacts(loadedArtifacts);
-      setReviewsByArtifact(Object.fromEntries(reviewEntries));
+      setReviewsByArtifact(reviewLoad.reviewsByArtifact);
+      timings.total = performance.now() - loadStart;
+      timings.reviewCount = reviewLoad.count;
+      timings.artifactCount = loadedArtifacts.length;
+      logLoadTimings('booking medical overview', timings);
     } catch (loadError: any) {
       setError(loadError?.response?.data?.message || loadError?.message || 'Unable to load booking medical records.');
     } finally {
@@ -759,40 +809,40 @@ const BookingCeremoniesPanel: React.FC<{
 
   const loadCeremonies = async () => {
     if (!clientId) return;
+    const loadStart = performance.now();
+    const timings: Record<string, number> = {};
     setLoading(true);
     setError('');
     try {
+      const participationStart = performance.now();
       const [participationResponse, itemsResponse] = await Promise.all([
         ceremoniesApi.getClientParticipations(clientId),
         bookingFlowApi.getItems({ bookingId }),
       ]);
+      timings.participation = performance.now() - participationStart;
       const bookingFlowFilters = buildBookingFlowArtifactFilters(itemsResponse.data || []);
+      const artifactsStart = performance.now();
       const artifactResponses = await Promise.all([
         medicalArtifactsApi.getAll({ bookingId, ...bookingFlowFilters }),
         retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId, ...bookingFlowFilters }) : Promise.resolve({ data: [] }),
         medicalArtifactsApi.getAll({ clientId, ...bookingFlowFilters }),
       ]);
+      timings.artifacts = performance.now() - artifactsStart;
       const allParticipations = participationResponse.data || [];
       const loadedArtifacts = mergeArtifacts(artifactResponses.map((response) => response.data || []))
         .filter((artifact) => isArtifactRelevantToBooking(artifact, bookingId, retreatId))
         .sort(compareArtifactsForDisplay);
-      const reviewEntries = await Promise.all(
-        loadedArtifacts
-          .filter((artifact) => artifact._id)
-          .map(async (artifact) => {
-            try {
-              const reviewsResponse = await medicalReviewRequestsApi.getByArtifact(artifact._id!);
-              return [artifact._id!, reviewsResponse.data || []] as const;
-            } catch {
-              return [artifact._id!, []] as const;
-            }
-          })
-      );
+      const reviewLoad = await loadReviewsByArtifactIds(loadedArtifacts.map((artifact) => artifact._id).filter(Boolean) as string[]);
+      timings.reviews = reviewLoad.duration;
       setParticipations(retreatId
         ? allParticipations.filter((participation: any) => getObjectId(participation.retreatId) === retreatId)
         : allParticipations);
       setArtifacts(loadedArtifacts);
-      setReviewsByArtifact(Object.fromEntries(reviewEntries));
+      setReviewsByArtifact(reviewLoad.reviewsByArtifact);
+      timings.total = performance.now() - loadStart;
+      timings.reviewCount = reviewLoad.count;
+      timings.artifactCount = loadedArtifacts.length;
+      logLoadTimings('booking ceremonies', timings);
     } catch (loadError: any) {
       setError(loadError?.response?.data?.message || loadError?.message || 'Unable to load ceremony information.');
     } finally {
