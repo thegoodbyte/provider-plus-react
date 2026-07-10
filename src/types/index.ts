@@ -117,7 +117,22 @@ export interface Client {
   medicalConditions?: string;
   dietaryRestrictions?: string;
   status?: 'active' | 'inactive' | 'suspended';
-  workflowStatus?: 'potential' | 'screening' | 'approved' | 'rejected' | 'booked' | 'cancelled' | 'completed' | 'blacklisted';
+  workflowStatus?:
+    | 'entered'
+    | 'screening_scheduled'
+    | 'screened_accepted'
+    | 'screened_declined'
+    | 'payment_request_sent'
+    | 'booked_paid'
+    | 'retreat_completed'
+    | 'cancelled'
+    | 'blacklisted'
+    | 'potential'
+    | 'screening'
+    | 'approved'
+    | 'rejected'
+    | 'booked'
+    | 'completed';
   blacklistReason?: string;
   blacklistDate?: Date | string;
   display_id?: number;

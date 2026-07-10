@@ -5,6 +5,7 @@ import AppleInput from '../components/AppleInput';
 import { clientsApi } from '../services/api';
 import { Client } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { clientWorkflowStatusLabels, clientWorkflowStatusValues, normalizeClientWorkflowStatus } from '../utils/clientWorkflowStatus';
 
 const cropImageToProfileSquare = (file: File, size = 200): Promise<File> => {
   return new Promise((resolve, reject) => {
@@ -53,7 +54,7 @@ const AddClient: React.FC = () => {
   const location = useLocation();
   const { user } = useAuth();
   const [formData, setFormData] = useState<Partial<Client>>({
-    workflowStatus: new URLSearchParams(location.search).get('workflowStatus') as any || 'potential',
+    workflowStatus: normalizeClientWorkflowStatus(new URLSearchParams(location.search).get('workflowStatus')) as Partial<Client>['workflowStatus'],
     country: 'CZ',
     language: 'EN'
   });
@@ -377,14 +378,14 @@ const AddClient: React.FC = () => {
                   <label className="block text-sm font-medium text-apple-gray-700 mb-1">Workflow Status</label>
                   <select
                     className="w-full px-3 py-2 border border-apple-gray-200 rounded-apple focus:outline-none focus:ring-2 focus:ring-apple-blue/20 bg-white text-sm"
-                    value={formData.workflowStatus || 'potential'}
+                    value={normalizeClientWorkflowStatus(formData.workflowStatus)}
                     onChange={(e) => setFormData({ ...formData, workflowStatus: e.target.value as any })}
                   >
-                    <option value="potential">Potential</option>
-                    <option value="screening">Screening</option>
-                    <option value="approved">Approved</option>
-                    <option value="rejected">Rejected</option>
-                    <option value="booked">Booked</option>
+                    {clientWorkflowStatusValues.filter((status) => !['potential', 'screening', 'approved', 'rejected', 'booked', 'completed'].includes(status)).map((status) => (
+                      <option key={status} value={status}>
+                        {clientWorkflowStatusLabels[status] || status}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>

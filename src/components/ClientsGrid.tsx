@@ -8,6 +8,11 @@ import SimpleTable, { Column } from './SimpleTable';
 import { Chip } from '@mui/material';
 import { Edit as EditIcon, Delete as DeleteIcon, Visibility as VisibilityIcon, Link as LinkIcon } from '@mui/icons-material';
 import { normalizeClientTag } from '../utils/clientTags';
+import {
+  clientWorkflowStatusLabels,
+  clientWorkflowStatusValues,
+  normalizeClientWorkflowStatus,
+} from '../utils/clientWorkflowStatus';
 import './ClientsGrid.css';
 
 // Countries list with codes for storage and full names for display
@@ -112,8 +117,30 @@ const getRetreatCode = (retreat: any) => {
 };
 
 const isBookedClient = (client: Client) => (
-  (client.status as string) === 'booked' || client.workflowStatus === 'booked'
+  (client.status as string) === 'booked' || normalizeClientWorkflowStatus(client.workflowStatus || undefined) === 'booked_paid'
 );
+
+const getWorkflowChipColor = (workflow: string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
+  switch (workflow) {
+    case 'entered':
+      return 'info';
+    case 'screening_scheduled':
+      return 'warning';
+    case 'screened_accepted':
+    case 'booked_paid':
+      return 'success';
+    case 'screened_declined':
+    case 'cancelled':
+    case 'blacklisted':
+      return 'error';
+    case 'payment_request_sent':
+      return 'secondary';
+    case 'retreat_completed':
+      return 'primary';
+    default:
+      return 'default';
+  }
+};
 
 const getClientFullName = (client: Client) => {
   const firstName = client.firstName || client.fname || '';
@@ -360,20 +387,10 @@ const ClientsGrid: React.FC = () => {
       field: 'workflowStatus',
       headerName: 'Workflow',
       width: 130,
-      valueGetter: (row) => row.workflowStatus || 'potential',
+      valueGetter: (row) => normalizeClientWorkflowStatus(row.workflowStatus || undefined),
       renderCell: (value) => {
-        let color: 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' = 'default';
-        switch(value) {
-          case 'booked':
-            color = 'primary';
-            break;
-          case 'blacklisted':
-            color = 'error';
-            break;
-          default:
-            color = 'warning';
-        }
-        return <Chip label={value?.toUpperCase() || 'POTENTIAL'} color={color} size="small" />;
+        const normalized = normalizeClientWorkflowStatus(String(value || ''));
+        return <Chip label={clientWorkflowStatusLabels[normalized] || normalized.replace(/_/g, ' ')} color={getWorkflowChipColor(normalized)} size="small" />;
       },
       sortable: true
     },
@@ -525,6 +542,8 @@ const ClientsGrid: React.FC = () => {
       result = result.filter(c => {
         return isBookedClient(c) || Boolean(getClientBooking(c));
       });
+    } else if (workflowFilter !== 'all') {
+      result = result.filter((c) => normalizeClientWorkflowStatus(c.workflowStatus || undefined) === normalizeClientWorkflowStatus(workflowFilter));
     }
 
     // Apply search filter
@@ -702,9 +721,9 @@ const ClientsGrid: React.FC = () => {
             onChange={(e) => setWorkflowFilter(e.target.value)}
           >
             <option value="all">All Clients</option>
-            <option value="potential">Potential Only</option>
-            <option value="booked">Booked Only</option>
-            <option value="blacklisted">Blacklisted</option>
+            {clientWorkflowStatusValues.filter((status) => !['potential', 'screening', 'approved', 'rejected', 'booked', 'completed'].includes(status)).map((status) => (
+              <option key={status} value={status}>{clientWorkflowStatusLabels[status] || status}</option>
+            ))}
           </select>
 
           <select
@@ -771,7 +790,7 @@ const ClientsGrid: React.FC = () => {
             const booking = getClientBooking(client);
             const retreatCode = isBookedClient(client) && booking ? getRetreatCode(getBookingRetreat(booking)) : '';
             const status = String(client.status || 'active');
-            const workflow = String(client.workflowStatus || 'potential');
+            const workflow = normalizeClientWorkflowStatus(client.workflowStatus || undefined);
 
             return (
               <article
@@ -805,7 +824,7 @@ const ClientsGrid: React.FC = () => {
 
                 <div className="clients-mobile-badges">
                   <Chip label={status.toUpperCase()} color={status === 'inactive' ? 'error' : status === 'potential' ? 'info' : 'success'} size="small" />
-                  <Chip label={workflow.toUpperCase()} color={workflow === 'booked' ? 'primary' : workflow === 'blacklisted' ? 'error' : 'warning'} size="small" />
+                  <Chip label={clientWorkflowStatusLabels[workflow] || workflow.toUpperCase()} color={getWorkflowChipColor(workflow)} size="small" />
                 </div>
 
                 <div className="clients-mobile-actions">
@@ -951,7 +970,9 @@ const ClientsGrid: React.FC = () => {
                     >
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>
-                      <option value="potential">Potential</option>
+                      {clientWorkflowStatusValues.filter((status) => !['potential', 'screening', 'approved', 'rejected', 'booked', 'completed'].includes(status)).map((status) => (
+                        <option key={status} value={status}>{clientWorkflowStatusLabels[status] || status}</option>
+                      ))}
                     </select>
                   </div>
                 </div>

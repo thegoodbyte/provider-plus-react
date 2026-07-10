@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Client } from '../types';
+import { clientWorkflowStatusLabels, normalizeClientWorkflowStatus } from '../utils/clientWorkflowStatus';
 
 interface SearchableClientDropdownProps {
   clients: Client[];
@@ -137,7 +138,7 @@ export const SearchableClientDropdown: React.FC<SearchableClientDropdownProps> =
                     </div>
                   </div>
                   <div className="text-xs text-gray-400 capitalize">
-                    {client.workflowStatus || 'potential'}
+                    {clientWorkflowStatusLabels[normalizeClientWorkflowStatus(client.workflowStatus)] || normalizeClientWorkflowStatus(client.workflowStatus)}
                   </div>
                 </div>
               </div>

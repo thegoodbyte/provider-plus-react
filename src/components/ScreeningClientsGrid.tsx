@@ -4,6 +4,12 @@ import { clientsApi } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
 import AppleButton from './AppleButton';
 import { FiPlus, FiEdit2, FiTrash2, FiUser, FiPhone, FiMail, FiEye, FiUserCheck } from 'react-icons/fi';
+import {
+  clientWorkflowStatusLabels,
+  clientWorkflowStatusTone,
+  leadWorkflowStatuses,
+  normalizeClientWorkflowStatus,
+} from '../utils/clientWorkflowStatus';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -25,8 +31,8 @@ const ScreeningClientsGrid: React.FC = () => {
       // Filter for clients that are in the screening workflow
       const allClients = response.data || [];
       const screeningClients = allClients.filter((client: any) =>
-        client.workflowStatus &&
-        ['potential', 'screening', 'approved', 'rejected'].includes(client.workflowStatus)
+        leadWorkflowStatuses.has(normalizeClientWorkflowStatus(client.workflowStatus)) ||
+        ['screened_accepted', 'screened_declined'].includes(normalizeClientWorkflowStatus(client.workflowStatus))
       );
       setScreeningClients(screeningClients);
     } catch (error: any) {
@@ -57,7 +63,7 @@ const ScreeningClientsGrid: React.FC = () => {
     if (window.confirm('Are you sure you want to promote this screening client to a full client?')) {
       try {
         // Update the client's workflowStatus to 'active' to promote them
-        await clientsApi.update(id, { workflowStatus: 'completed' } as any);
+        await clientsApi.update(id, { workflowStatus: 'screened_accepted' } as any);
         alert('Successfully promoted to active client!');
         fetchScreeningClients();
       } catch (error: any) {
@@ -69,7 +75,7 @@ const ScreeningClientsGrid: React.FC = () => {
 
   const filteredClients = screeningClients.filter(client => {
     if (filterStatus === 'all') return true;
-    return client.workflowStatus === filterStatus;
+    return normalizeClientWorkflowStatus(client.workflowStatus) === normalizeClientWorkflowStatus(filterStatus);
   });
 
   const formatDate = (date: Date | string | undefined) => {
@@ -85,7 +91,7 @@ const ScreeningClientsGrid: React.FC = () => {
     <div className="p-6 h-full">
       <div className="mb-6 flex justify-between items-center">
         <h1 className="text-2xl font-semibold text-gray-900">Screening Clients</h1>
-        <AppleButton onClick={() => navigate('/admin/clients/add?workflowStatus=screening')} className="apple-button-primary">
+        <AppleButton onClick={() => navigate('/admin/clients/add?workflowStatus=screening_scheduled')} className="apple-button-primary">
           <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
           Add New Screening
         </AppleButton>
@@ -99,10 +105,10 @@ const ScreeningClientsGrid: React.FC = () => {
           className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="all">All Status</option>
-          <option value="potential">Potential</option>
-          <option value="screening">Screening</option>
-          <option value="approved">Approved</option>
-          <option value="rejected">Rejected</option>
+          <option value="entered">Entered</option>
+          <option value="screening_scheduled">Screening scheduled</option>
+          <option value="screened_accepted">Screened accepted</option>
+          <option value="screened_declined">Screened declined</option>
         </select>
       </div>
 
@@ -185,16 +191,14 @@ const ScreeningClientsGrid: React.FC = () => {
                     ) : 'N/A'}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      client.status === 'approved' ? 'bg-green-100 text-green-800' :
-                      client.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                      client.status === 'converted' ? 'bg-blue-100 text-blue-800' :
-                      client.status === 'completed' ? 'bg-purple-100 text-purple-800' :
-                      client.status === 'in_progress' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {client.status || 'initial'}
-                    </span>
+                    {(() => {
+                      const normalized = normalizeClientWorkflowStatus(client.workflowStatus);
+                      return (
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${clientWorkflowStatusTone[normalized] || 'bg-gray-100 text-gray-800'}`}>
+                          {clientWorkflowStatusLabels[normalized] || normalized}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td className="px-3 py-2 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
@@ -240,7 +244,7 @@ const ScreeningClientsGrid: React.FC = () => {
                           <Icon icon={FiEdit2} />
                         </button>
                       </div>
-                      {client.status === 'approved' && (
+                      {normalizeClientWorkflowStatus(client.workflowStatus) === 'screened_accepted' && (
                         <div title="Promote to Client">
                           <button
                             onClick={() => handlePromote(client._id!)}
@@ -308,7 +312,7 @@ const ScreeningClientsGrid: React.FC = () => {
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 truncate">In Progress</dt>
                     <dd className="text-lg font-medium text-gray-900">
-                      {screeningClients.filter(c => c.status === 'in_progress').length}
+                      {screeningClients.filter(c => normalizeClientWorkflowStatus(c.workflowStatus) === 'screening_scheduled').length}
                     </dd>
                   </dl>
                 </div>
@@ -325,7 +329,7 @@ const ScreeningClientsGrid: React.FC = () => {
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 truncate">Approved</dt>
                     <dd className="text-lg font-medium text-gray-900">
-                      {screeningClients.filter(c => c.status === 'approved').length}
+                      {screeningClients.filter(c => normalizeClientWorkflowStatus(c.workflowStatus) === 'screened_accepted').length}
                     </dd>
                   </dl>
                 </div>
@@ -342,7 +346,7 @@ const ScreeningClientsGrid: React.FC = () => {
                   <dl>
                     <dt className="text-sm font-medium text-gray-500 truncate">Converted</dt>
                     <dd className="text-lg font-medium text-gray-900">
-                      {screeningClients.filter(c => c.status === 'converted').length}
+                      {screeningClients.filter(c => normalizeClientWorkflowStatus(c.workflowStatus) === 'retreat_completed').length}
                     </dd>
                   </dl>
                 </div>

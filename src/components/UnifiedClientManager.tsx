@@ -6,6 +6,14 @@ import LoadingSpinner from './LoadingSpinner';
 import { bookingsApi, clientsApi, retreatsApi } from '../services/api';
 import { Client, Retreat, RetreatClient } from '../types';
 import {
+  bookedWorkflowStatuses,
+  clientWorkflowStatusLabels,
+  clientWorkflowStatusTone,
+  leadWorkflowStatuses,
+  normalizeClientWorkflowStatus,
+  clientWorkflowStatusValues,
+} from '../utils/clientWorkflowStatus';
+import {
   FiPlus,
   FiSearch,
   FiChevronDown,
@@ -25,7 +33,6 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
 
 type ClientSortField = keyof Client | 'retreatCode';
 const LEADS_FILTER = 'leads';
-const LEAD_STATUSES = new Set(['potential', 'screening']);
 
 const getInitialClientFilter = (pathname: string, search: string) => {
   const params = new URLSearchParams(search);
@@ -162,7 +169,7 @@ const UnifiedClientManager: React.FC = () => {
     address: '',
     country: 'CZ',
     language: 'EN',
-    workflowStatus: 'potential',
+    workflowStatus: 'entered',
     signupDate: new Date().toISOString().split('T')[0],
     status: 'active'
   } as Partial<Client>);
@@ -216,7 +223,7 @@ const UnifiedClientManager: React.FC = () => {
       address: '',
       country: 'CZ',
       language: 'EN',
-      workflowStatus: 'potential',
+      workflowStatus: 'entered',
       signupDate: new Date().toISOString().split('T')[0],
       status: 'active'
     } as Partial<Client>);
@@ -279,8 +286,8 @@ const UnifiedClientManager: React.FC = () => {
   }, [retreats]);
 
   const getClientRetreatCode = useCallback((client: Client) => {
-    const status = client.workflowStatus || (client.status as string);
-    if (status !== 'booked') return '';
+    const status = normalizeClientWorkflowStatus(client.workflowStatus || undefined);
+    if (!bookedWorkflowStatuses.has(status)) return '';
     const retreat = getBookingRetreat(getClientBooking(client));
     return retreat ? getRetreatCode(retreat) : '';
   }, [getBookingRetreat, getClientBooking]);
@@ -291,9 +298,9 @@ const UnifiedClientManager: React.FC = () => {
 
     // Filter by status
     if (filterStatus === LEADS_FILTER) {
-      filtered = filtered.filter((client) => LEAD_STATUSES.has(client.workflowStatus || 'potential'));
+      filtered = filtered.filter((client) => leadWorkflowStatuses.has(normalizeClientWorkflowStatus(client.workflowStatus || undefined)));
     } else if (filterStatus !== 'all') {
-      filtered = filtered.filter((client) => (client.workflowStatus || 'potential') === filterStatus);
+      filtered = filtered.filter((client) => normalizeClientWorkflowStatus(client.workflowStatus || undefined) === normalizeClientWorkflowStatus(filterStatus));
     }
 
     // Search
@@ -523,19 +530,11 @@ const UnifiedClientManager: React.FC = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    const statusColors: { [key: string]: string } = {
-      potential: 'bg-blue-100 text-blue-800',
-      screening: 'bg-yellow-100 text-yellow-800',
-      approved: 'bg-green-100 text-green-800',
-      rejected: 'bg-red-100 text-red-800',
-      booked: 'bg-purple-100 text-purple-800',
-      completed: 'bg-gray-100 text-gray-800',
-      blacklisted: 'bg-black text-white'
-    };
+    const normalized = normalizeClientWorkflowStatus(status);
 
     return (
-      <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${statusColors[status] || 'bg-gray-100 text-gray-800'}`}>
-        {status}
+      <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${clientWorkflowStatusTone[normalized] || 'bg-gray-100 text-gray-800'}`}>
+        {clientWorkflowStatusLabels[normalized] || normalized.replace(/_/g, ' ')}
       </span>
     );
   };
@@ -590,12 +589,9 @@ const UnifiedClientManager: React.FC = () => {
         >
           <option value="all">All Statuses</option>
           <option value="leads">Potential + Screening</option>
-          <option value="potential">Potential</option>
-          <option value="screening">Screening</option>
-          <option value="approved">Approved</option>
-          <option value="rejected">Rejected</option>
-          <option value="booked">Booked</option>
-          <option value="completed">Completed</option>
+          {clientWorkflowStatusValues.filter((status) => !['potential', 'screening', 'approved', 'rejected', 'booked', 'completed'].includes(status)).map((status) => (
+            <option key={status} value={status}>{clientWorkflowStatusLabels[status] || status}</option>
+          ))}
         </select>
       </div>
 
@@ -696,7 +692,7 @@ const UnifiedClientManager: React.FC = () => {
                     </div>
                   </td>
                   <td className="hidden px-3 py-1.5 whitespace-nowrap sm:table-cell">
-                    {getStatusBadge(client.workflowStatus || 'potential')}
+                    {getStatusBadge(client.workflowStatus || 'entered')}
                   </td>
                   <td className="hidden px-3 py-1.5 whitespace-nowrap sm:table-cell">
                     {getClientRetreatCode(client) ? (
@@ -728,26 +724,26 @@ const UnifiedClientManager: React.FC = () => {
                       >
                         <Icon icon={FiEdit2} />
                       </button>
-                      {client.workflowStatus === 'potential' && (
+                      {normalizeClientWorkflowStatus(client.workflowStatus || undefined) === 'entered' && (
                         <button
-                          onClick={() => handleWorkflowStatusUpdate(client._id!, 'screening')}
+                          onClick={() => handleWorkflowStatusUpdate(client._id!, 'screening_scheduled')}
                           className="icon-action-btn icon-action-btn-view"
                           title="Start Screening"
                         >
                           <Icon icon={FiUserCheck} />
                         </button>
                       )}
-                      {client.workflowStatus === 'screening' && (
+                      {normalizeClientWorkflowStatus(client.workflowStatus || undefined) === 'screening_scheduled' && (
                         <>
                           <button
-                            onClick={() => handleWorkflowStatusUpdate(client._id!, 'approved')}
+                            onClick={() => handleWorkflowStatusUpdate(client._id!, 'screened_accepted')}
                             className="icon-action-btn icon-action-btn-success"
                             title="Approve"
                           >
                             <Icon icon={FiCheck} />
                           </button>
                           <button
-                            onClick={() => handleWorkflowStatusUpdate(client._id!, 'rejected', 'Not suitable')}
+                            onClick={() => handleWorkflowStatusUpdate(client._id!, 'screened_declined', 'Not suitable')}
                             className="icon-action-btn icon-action-btn-danger"
                             title="Reject"
                           >
@@ -912,14 +908,14 @@ const UnifiedClientManager: React.FC = () => {
                     <label className="block text-sm font-medium text-slate-700 mb-1">Workflow Status</label>
                     <select
                       className="w-full px-3 py-2 border border-apple-gray-200 rounded-apple focus:outline-none focus:ring-2 focus:ring-apple-blue/20 bg-white text-sm"
-                      value={formData.workflowStatus || 'potential'}
+                      value={normalizeClientWorkflowStatus(formData.workflowStatus || undefined)}
                       onChange={(e) => setFormData({ ...formData, workflowStatus: e.target.value as any })}
                     >
-                      <option value="potential">Potential</option>
-                      <option value="screening">Screening</option>
-                      <option value="approved">Approved</option>
-                      <option value="rejected">Rejected</option>
-                      <option value="booked">Booked</option>
+                      {clientWorkflowStatusValues.filter((status) => !['potential', 'screening', 'approved', 'rejected', 'booked', 'completed'].includes(status)).map((status) => (
+                        <option key={status} value={status}>
+                          {clientWorkflowStatusLabels[status] || status}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <div>
