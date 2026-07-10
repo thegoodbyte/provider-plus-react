@@ -6,6 +6,7 @@ import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
 import { Client, MedicalArtifact, MedicalReviewRequest, Retreat } from '../types';
 import { ThumbsUp } from 'lucide-react';
+import { splitMedicalReviewRequestsByTimeline } from './MedicalReviewRequestsPage.helpers';
 
 const reviewStatusStyle: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
@@ -534,13 +535,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
     });
   }, [requests, requestSearchFilter, retreatFilter, statusFilter, typeFilter]);
 
-  const selectedHistory = useMemo(() => {
-    if (!selected) return [];
-    const currentId = selected._id;
-    return history
-      .filter((item) => item._id !== currentId)
-      .sort((a, b) => (b.attemptNumber || 0) - (a.attemptNumber || 0));
-  }, [history, selected]);
+  const reviewTimeline = useMemo(() => splitMedicalReviewRequestsByTimeline(selected, history), [history, selected]);
 
   const selectedArtifactIds = useMemo(() => {
     return new Set((selected?.artifactIds || []).map((artifact) => getId(artifact)));
@@ -916,6 +911,32 @@ const MedicalReviewRequestsPage: React.FC = () => {
     );
   };
 
+  const renderRelatedRequestCard = (item: MedicalReviewRequest, label: string) => (
+    <button
+      key={item._id}
+      type="button"
+      onClick={() => handleSelect(item)}
+      className="block w-full rounded-md border border-gray-200 bg-white p-3 text-left transition hover:border-blue-300 hover:bg-blue-50"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="font-semibold text-gray-900">
+          #{item.display_id || '—'} • Attempt {item.attemptNumber || 1}
+        </div>
+        <span className={`rounded-full px-2 py-1 text-xs font-semibold ${reviewStatusStyle[item.status] || 'bg-gray-100 text-gray-700'}`}>
+          {item.status}
+        </span>
+      </div>
+      <div className="mt-1 text-xs uppercase tracking-wide text-gray-500">{label}</div>
+      <div className="mt-1 text-sm text-gray-600">
+        {getRequestTypeLabel(item.requestType)}
+        {item.reviewDecision ? ` • ${item.reviewDecision}` : ''}
+      </div>
+      <div className="mt-1 text-xs text-gray-500">
+        {item.reviewNotes || item.medicalStaffNotes || item.overallNotes || 'No notes saved yet.'}
+      </div>
+    </button>
+  );
+
   const contextSummary = (count: number, empty = 'No records') => count ? `${count} record${count === 1 ? '' : 's'}` : empty;
 
   if (loading) {
@@ -951,15 +972,15 @@ const MedicalReviewRequestsPage: React.FC = () => {
           <h1 className="text-xl font-semibold leading-tight text-gray-900 sm:text-2xl">
             {isDetailView && selected ? 'Medical Review' : 'Medical Review Requests'}
           </h1>
-          {isDetailView && selected ? (
-            <div className="mt-1">
-              <div className="text-base font-medium text-gray-900 sm:text-lg">{selectedClientName}</div>
-              <div className="text-sm text-gray-600">{getRequestTypeLabel(selected.requestType)}</div>
-              {formatDocumentMeta(selected) && (
-                <div className="text-xs font-medium text-blue-700 sm:text-sm">{formatDocumentMeta(selected)}</div>
-              )}
-            </div>
-          ) : (
+              {isDetailView && selected ? (
+                <div className="mt-1">
+                  <div className="text-base font-medium text-gray-900 sm:text-lg">{selectedClientName}</div>
+                  <div className="text-sm text-gray-600">{getRequestTypeLabel(selected.requestType)}</div>
+                  {formatDocumentMeta(selected) && (
+                    <div className="text-xs font-medium text-blue-700 sm:text-sm">{formatDocumentMeta(selected)}</div>
+                  )}
+                </div>
+              ) : (
             <p className="text-sm text-gray-600">
               {isMedicalRoute ? 'Queue for review requests. Open Review to change decisions and comments.' : 'Administrative review request queue and history.'}
             </p>
@@ -1122,6 +1143,33 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   <div className="text-xs uppercase tracking-wide text-gray-500">Attempt</div>
                   <div className="mt-1 text-sm text-gray-900">{selected.attemptNumber || 1}</div>
                 </div>
+                </div>
+              )}
+
+              {selected && (reviewTimeline.previousRequests.length > 0 || reviewTimeline.followingRequests.length > 0) && (
+                <div className="space-y-3">
+                  {reviewTimeline.previousRequests.length > 0 && (
+                    <details className="rounded-md border border-gray-200 bg-white" open={false}>
+                      <summary className="flex cursor-pointer items-center justify-between gap-3 px-3 py-2 text-sm font-semibold text-gray-900">
+                        <span>Previous Medical Reviews ({reviewTimeline.previousRequests.length})</span>
+                        <span className="text-xs font-medium text-gray-500">View history</span>
+                      </summary>
+                      <div className="border-t border-gray-200 p-3 space-y-2">
+                        {reviewTimeline.previousRequests.map((item) => renderRelatedRequestCard(item, 'Previous review'))}
+                      </div>
+                    </details>
+                  )}
+                  {reviewTimeline.followingRequests.length > 0 && (
+                    <details className="rounded-md border border-gray-200 bg-white" open={false}>
+                      <summary className="flex cursor-pointer items-center justify-between gap-3 px-3 py-2 text-sm font-semibold text-gray-900">
+                        <span>Following Requests ({reviewTimeline.followingRequests.length})</span>
+                        <span className="text-xs font-medium text-gray-500">View next items</span>
+                      </summary>
+                      <div className="border-t border-gray-200 p-3 space-y-2">
+                        {reviewTimeline.followingRequests.map((item) => renderRelatedRequestCard(item, 'Following request'))}
+                      </div>
+                    </details>
+                  )}
                 </div>
               )}
 
@@ -1584,28 +1632,6 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 </div>
               </div>
 
-              {!isDetailView && (
-                <div className="rounded-md border border-gray-200 p-3">
-                <div className="text-sm font-semibold text-gray-900">Previous requests</div>
-                <div className="mt-3 space-y-2">
-                  {selectedHistory.length === 0 ? (
-                    <div className="text-sm text-gray-500">No previous requests found.</div>
-                  ) : (
-                    selectedHistory.map((item) => (
-                      <div key={item._id} className="rounded-md border border-gray-200 p-3 text-sm">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="font-semibold text-gray-900">#{item.display_id || '—'} • Attempt {item.attemptNumber || 1}</div>
-                          <span className={`rounded-full px-2 py-1 text-xs font-semibold ${reviewStatusStyle[item.status] || 'bg-gray-100 text-gray-700'}`}>{item.status}</span>
-                        </div>
-                        <div className="mt-1 text-gray-600">
-                          {item.reviewDecision || 'No decision'} • {item.reviewNotes || 'No notes'}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-                </div>
-              )}
             </div>
           )}
         </div>
