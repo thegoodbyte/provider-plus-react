@@ -93,3 +93,12 @@ export const buildBookingConfirmationRequirementRows = (
     };
   });
 };
+
+export const formatPaymentRequestDisplayLabel = (
+  paymentRequest?: { invoiceNumber?: string; display_id?: number; _id?: string } | string | null
+) => {
+  if (!paymentRequest) return '';
+  if (typeof paymentRequest === 'string') return paymentRequest.trim();
+
+  return String(paymentRequest.invoiceNumber || paymentRequest.display_id || paymentRequest._id || '').trim();
+};

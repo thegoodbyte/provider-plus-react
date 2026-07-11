@@ -1,4 +1,4 @@
-import { buildBookingConfirmationRequirementRows, fulfilledBookingFlowStatuses } from './BookingConfirmationPDF.helpers';
+import { buildBookingConfirmationRequirementRows, formatPaymentRequestDisplayLabel, fulfilledBookingFlowStatuses } from './BookingConfirmationPDF.helpers';
 
 describe('BookingConfirmationPDF helpers', () => {
   it('prefers booking flow step deadlines over fallback payment-based dates', () => {
@@ -43,5 +43,13 @@ describe('BookingConfirmationPDF helpers', () => {
     expect(fulfilledBookingFlowStatuses.has('received')).toBe(true);
     expect(fulfilledBookingFlowStatuses.has('reviewed')).toBe(true);
     expect(fulfilledBookingFlowStatuses.has('pending')).toBe(false);
+  });
+
+  it('formats a payment request label from invoice number, display id, or raw string', () => {
+    expect(formatPaymentRequestDisplayLabel({ invoiceNumber: 'PR-1042' })).toBe('PR-1042');
+    expect(formatPaymentRequestDisplayLabel({ display_id: 1042 })).toBe('1042');
+    expect(formatPaymentRequestDisplayLabel({ _id: '507f1f77bcf86cd799439011' })).toBe('507f1f77bcf86cd799439011');
+    expect(formatPaymentRequestDisplayLabel(' custom-id ')).toBe('custom-id');
+    expect(formatPaymentRequestDisplayLabel(null)).toBe('');
   });
 });

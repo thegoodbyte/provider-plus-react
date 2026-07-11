@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { bookingFlowApi, housesApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import { MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
-import { buildBookingConfirmationRequirementRows } from './BookingConfirmationPDF.helpers';
+import { buildBookingConfirmationRequirementRows, formatPaymentRequestDisplayLabel } from './BookingConfirmationPDF.helpers';
 
 interface BookingConfirmationPDFProps {
   booking: any;
@@ -344,6 +344,7 @@ const translations = {
     presentation: 'Prezentacja',
     tableDate: 'Data',
     reference: 'Reference',
+    paymentRequest: 'Payment request',
     price: 'Cena',
     paidAmount: 'Zapłacono',
     deposit: 'Zaliczka',
@@ -394,6 +395,7 @@ const translations = {
     presentation: 'Prezentace',
     tableDate: 'Datum',
     reference: 'Reference',
+    paymentRequest: 'Payment request',
     price: 'Cena',
     paidAmount: 'Zaplaceno',
     deposit: 'Záloha',
@@ -444,6 +446,7 @@ const translations = {
     presentation: 'Description',
     tableDate: 'Date',
     reference: 'Reference',
+    paymentRequest: 'Payment request',
     price: 'Price',
     paidAmount: 'Paid',
     deposit: 'Deposit',
@@ -481,6 +484,8 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   const bookingStatusColor = requirementStatus.status === 'confirmed' ? '#047857' : '#92400e';
   const bookingStatusBg = requirementStatus.status === 'confirmed' ? '#d1fae5' : '#fef3c7';
   const missingRequirementsText = requirementRowsWithLabels.filter((row) => !row.complete).map((row) => escapeHtml(row.label)).join(', ');
+  const paymentRequest = booking?.paymentRequestId || booking?.paymentRequest;
+  const paymentRequestLabel = formatPaymentRequestDisplayLabel(paymentRequest);
 
   const bookingCurrency = (booking.currency || 'USD') as Payment['currency'];
   const bookingTotal = getBookingTotalAmount(booking);
@@ -682,6 +687,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
     : '';
   const balanceSettlementHtml = balanceUsd !== null ? formatAmount(balanceUsd, 'USD') : '';
   const settlementColumnHeader = bookingCurrency === 'USD' ? t.paidAmount : 'USD';
+  const bookingReferenceText = paymentRequestLabel ? `${t.paymentRequest} #${paymentRequestLabel}` : '';
 
   // Create a temporary div for PDF content
   const pdfContent = document.createElement('div');
@@ -814,7 +820,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
           <tr>
             <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">${escapeHtml(paymentDescription)}</td>
             <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;"></td>
-            <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;"></td>
+            <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">${escapeHtml(bookingReferenceText)}</td>
             <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right;">${formatAmount(bookingTotal)}</td>
             ${showsSettlementColumn ? `<td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right;">${bookingTotalSettlementHtml}</td>` : ''}
           </tr>
