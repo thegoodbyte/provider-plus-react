@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner';
-import { retreatsApi, housesApi, bookingsApi } from '../services/api';
-import { Retreat, House, RetreatClient } from '../types';
+import { retreatsApi, housesApi, bookingsApi, bookingFlowApi } from '../services/api';
+import { Retreat, House, RetreatClient, BookingFlowItem, BookingFlowTemplate } from '../types';
 import AppleButton from './AppleButton';
 import { FiPlus, FiEdit2, FiTrash2, FiEye, FiCalendar, FiMapPin } from 'react-icons/fi';
+import { buildBookingStepOptions, getSelectedStepCellTone, isBookingStepComplete } from './RetreatsGrid.helpers';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -19,6 +20,9 @@ const RetreatsGrid: React.FC = () => {
   const [houses, setHouses] = useState<House[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'holistic'>('list');
+  const [isLoadingStepData, setIsLoadingStepData] = useState(false);
+  const [retreatMatrices, setRetreatMatrices] = useState<Record<string, { items: BookingFlowItem[]; templates: BookingFlowTemplate[] }>>({});
+  const [selectedBookingStepKey, setSelectedBookingStepKey] = useState('');
   const [editingRetreat, setEditingRetreat] = useState<Retreat | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -138,6 +142,77 @@ const RetreatsGrid: React.FC = () => {
     return bookings
       .filter((booking: any) => getObjectId(booking.retreatId) === retreatId && booking.status !== 'cancelled')
       .sort((a, b) => Number(a.bookingNumber || 0) - Number(b.bookingNumber || 0));
+  };
+
+  const loadStepData = async () => {
+    const retreatIds = retreats.map((retreat) => getObjectId(retreat)).filter(Boolean);
+    if (retreatIds.length === 0) {
+      setRetreatMatrices({});
+      return;
+    }
+
+    setIsLoadingStepData(true);
+    try {
+      const results = await Promise.all(
+        retreatIds.map(async (retreatId) => {
+          try {
+            const response = await bookingFlowApi.getMatrix(retreatId);
+            return [
+              retreatId,
+              {
+                items: response.data?.items || [],
+                templates: response.data?.templates || [],
+              },
+            ] as const;
+          } catch (error) {
+            console.error('Error loading retreat booking step data:', error);
+            return [retreatId, { items: [], templates: [] }] as const;
+          }
+        })
+      );
+      setRetreatMatrices(Object.fromEntries(results));
+    } finally {
+      setIsLoadingStepData(false);
+    }
+  };
+
+  useEffect(() => {
+    if (viewMode !== 'holistic' || retreats.length === 0) return;
+    loadStepData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode, retreats]);
+
+  const bookingStepOptions = useMemo(() => {
+    return buildBookingStepOptions(Object.values(retreatMatrices));
+  }, [retreatMatrices]);
+
+  useEffect(() => {
+    if (viewMode !== 'holistic') return;
+    if (bookingStepOptions.length === 0) {
+      setSelectedBookingStepKey('');
+      return;
+    }
+
+    setSelectedBookingStepKey((current) => {
+      if (current && bookingStepOptions.some((option) => option.key === current)) {
+        return current;
+      }
+      const contractOption = bookingStepOptions.find((option) => option.key.toLowerCase().includes('contract'));
+      return contractOption?.key || bookingStepOptions[0].key;
+    });
+  }, [bookingStepOptions, viewMode]);
+
+  const selectedBookingStepOption = useMemo(
+    () => bookingStepOptions.find((option) => option.key === selectedBookingStepKey) || null,
+    [bookingStepOptions, selectedBookingStepKey]
+  );
+
+  const getStepStatusForBooking = (retreatId: string, bookingId: string) => {
+    if (!selectedBookingStepOption) return null;
+    const matrix = retreatMatrices[retreatId];
+    if (!matrix?.items?.length) return null;
+    const item = matrix.items.find((candidate) => getObjectId(candidate.bookingId) === bookingId && candidate.key === selectedBookingStepOption.key);
+    return item || null;
   };
 
   const getClientName = (booking: any) => {
@@ -334,6 +409,32 @@ const RetreatsGrid: React.FC = () => {
 
       {viewMode === 'holistic' ? (
         <div className="space-y-6">
+          <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Holistic retreat status</h2>
+                <p className="text-sm text-gray-500">
+                  {selectedBookingStepOption
+                    ? `Showing who has ${selectedBookingStepOption.label} completed across every retreat.`
+                    : 'Choose a booking step to see who has completed it across every retreat.'}
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 sm:min-w-[320px]">
+                <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Booking step</label>
+                <select
+                  value={selectedBookingStepKey}
+                  onChange={(event) => setSelectedBookingStepKey(event.target.value)}
+                  className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700"
+                >
+                  <option value="">{isLoadingStepData ? 'Loading booking steps...' : 'Select a booking step'}</option>
+                  {bookingStepOptions.map((option) => (
+                    <option key={option.key} value={option.key}>{option.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
           {retreats.map((retreat, index) => {
             const retreatBookings = getRetreatBookings(retreat);
             const retreatCode = getRetreatCodeValue(retreat) || retreat.name;
@@ -377,17 +478,24 @@ const RetreatsGrid: React.FC = () => {
                         <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Name</th>
                         <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Language</th>
                         <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Status</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
+                          {selectedBookingStepOption ? selectedBookingStepOption.label : 'Selected step'}
+                        </th>
                         <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Amount</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 bg-white">
                       {retreatBookings.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="px-4 py-4 text-sm text-gray-500">No bookings for this retreat.</td>
+                          <td colSpan={7} className="px-4 py-4 text-sm text-gray-500">No bookings for this retreat.</td>
                         </tr>
                       ) : (
-                        retreatBookings.map((booking: any) => (
-                          <tr key={booking._id} className="hover:bg-gray-50">
+                        retreatBookings.map((booking: any) => {
+                          const selectedStepItem = getStepStatusForBooking(getObjectId(retreat), getObjectId(booking));
+                          const completed = isBookingStepComplete(selectedStepItem);
+                          const tone = getSelectedStepCellTone(completed);
+                          return (
+                            <tr key={booking._id} className="hover:bg-gray-50">
                             <td className="whitespace-nowrap px-4 py-2 text-sm font-semibold text-gray-900">
                               <button
                                 type="button"
@@ -428,11 +536,21 @@ const RetreatsGrid: React.FC = () => {
                                 {booking.status || 'pending'}
                               </span>
                             </td>
+                            <td className="whitespace-nowrap px-4 py-2 text-sm">
+                              {selectedBookingStepOption ? (
+                                <span className={`inline-flex items-center rounded-full border px-2 py-1 text-xs font-semibold ${tone.badge}`}>
+                                  {completed ? 'Yes' : 'No'}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </td>
                             <td className="whitespace-nowrap px-4 py-2 text-sm text-gray-700">
                               {booking.totalAmount ? `${booking.totalAmount} ${booking.currency || ''}` : '-'}
                             </td>
                           </tr>
-                        ))
+                          );
+                        })
                       )}
                     </tbody>
                   </table>
