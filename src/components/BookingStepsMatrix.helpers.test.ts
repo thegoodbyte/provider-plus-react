@@ -1,4 +1,4 @@
-import { resolveBookingStepUploadTarget, reviewRequestStatusToBookingStepStatus, shouldShowArtifactUploadFallback } from './BookingStepsMatrix.helpers';
+import { hasBookingActionLog, resolveBookingStepUploadTarget, reviewRequestStatusToBookingStepStatus, shouldShowArtifactUploadFallback } from './BookingStepsMatrix.helpers';
 
 describe('BookingStepsMatrix helpers', () => {
   it('shows the artifact upload fallback only when editing and no upload action exists', () => {
@@ -25,5 +25,19 @@ describe('BookingStepsMatrix helpers', () => {
     expect(reviewRequestStatusToBookingStepStatus('caution')).toBe('completed');
     expect(reviewRequestStatusToBookingStepStatus('in_review')).toBe('in_review');
     expect(reviewRequestStatusToBookingStepStatus('pending')).toBe('sent_for_review');
+  });
+
+  it('detects whether a booking action log exists for a selected action key', () => {
+    const logs = [
+      { actionKey: 'send_confirmation' },
+      { actionKey: null },
+      { actionKey: 'link_existing_mrr' },
+    ];
+
+    expect(hasBookingActionLog(logs, 'send_confirmation')).toBe(true);
+    expect(hasBookingActionLog(logs, 'link_existing_mrr')).toBe(true);
+    expect(hasBookingActionLog(logs, 'missing_action')).toBe(false);
+    expect(hasBookingActionLog([], 'send_confirmation')).toBe(false);
+    expect(hasBookingActionLog(undefined, 'send_confirmation')).toBe(false);
   });
 });

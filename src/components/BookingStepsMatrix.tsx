@@ -13,7 +13,7 @@ import {
   titleizeBookingStepGroup,
 } from '../utils/bookingStepColors';
 import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
-import { reviewRequestStatusToBookingStepStatus } from './BookingStepsMatrix.helpers';
+import { hasBookingActionLog, reviewRequestStatusToBookingStepStatus } from './BookingStepsMatrix.helpers';
 
 const getObjectId = (value: any): string => {
   if (!value) return '';
@@ -526,6 +526,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const [saving, setSaving] = useState('');
   const [viewMode, setViewMode] = useState<'detail' | 'simple'>('detail');
   const [isEditing, setIsEditing] = useState(false);
+  const [selectedBookingAction, setSelectedBookingAction] = useState('');
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [dirtyNoteIds, setDirtyNoteIds] = useState<Record<string, true>>({});
   const [datePickerDrafts, setDatePickerDrafts] = useState<Record<string, string>>({});
@@ -1413,6 +1414,42 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
 
   const rowCanSendEmail = (row: MatrixRow) => Boolean(row.templateId && row.emailEnabled && row.emailTemplateId);
 
+  const bookingActionOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const options: Array<{ value: string; label: string; rowKey: string; actionKey: string }> = [];
+
+    items.forEach((item) => {
+      const actions = getConfiguredActions(item);
+      actions.forEach((action) => {
+        const value = `${item.key}::${action.key}`;
+        if (seen.has(value)) return;
+        seen.add(value);
+        options.push({
+          value,
+          rowKey: item.key,
+          actionKey: action.key,
+          label: `${item.title} · ${action.label}`,
+        });
+      });
+    });
+
+    return options;
+  }, [items, getConfiguredActions]);
+
+  const selectedBookingActionOption = useMemo(
+    () => bookingActionOptions.find((option) => option.value === selectedBookingAction) || null,
+    [bookingActionOptions, selectedBookingAction]
+  );
+
+  useEffect(() => {
+    setSelectedBookingAction((current) => {
+      if (current && bookingActionOptions.some((option) => option.value === current)) {
+        return current;
+      }
+      return bookingActionOptions[0]?.value || '';
+    });
+  }, [bookingActionOptions]);
+
   if (loading) {
     return <LoadingSpinner message="Loading retreat readiness..." />;
   }
@@ -1561,6 +1598,49 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
             </tr>
           </thead>
           <tbody>
+            {viewMode === 'detail' && (
+              <tr>
+                <td className="sticky left-0 z-30 border-b border-r border-gray-300 bg-blue-50 px-3 py-2 font-medium text-blue-900 shadow-[4px_0_10px_rgba(15,23,42,0.06)]" style={getStickyActionCellStyle(undefined, '#eff6ff')}>
+                  <div className="space-y-2">
+                    <div className="text-xs font-bold uppercase tracking-wide text-blue-900">Booking action check</div>
+                    <select
+                      value={selectedBookingAction}
+                      onChange={(event) => setSelectedBookingAction(event.target.value)}
+                      className="w-full rounded border border-blue-200 bg-white px-2 py-1 text-xs font-medium text-gray-700"
+                    >
+                      {bookingActionOptions.length === 0 ? (
+                        <option value="">No booking actions available</option>
+                      ) : (
+                        bookingActionOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))
+                      )}
+                    </select>
+                    <div className="text-[11px] text-blue-700">Check bookings for the selected action.</div>
+                  </div>
+                </td>
+                {bookings.map((booking) => {
+                  const selectedItem = selectedBookingActionOption
+                    ? itemMap.get(`${getObjectId(booking)}:${selectedBookingActionOption.rowKey}`)
+                    : undefined;
+                  const selectedItemLogs = selectedItem?._id ? actionLogMap.get(selectedItem._id) || [] : [];
+                  const completed = Boolean(selectedBookingActionOption && selectedItem && hasBookingActionLog(selectedItemLogs, selectedBookingActionOption.actionKey));
+                  return (
+                    <td
+                      key={`selected-action:${getObjectId(booking)}`}
+                      className={`border-b border-r border-gray-300 px-2 py-2 text-center ${completed ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-700'}`}
+                    >
+                      <div className="flex items-center justify-center gap-1 text-xs font-semibold">
+                        {completed ? <CheckCircle2 className="h-4 w-4" /> : <X className="h-4 w-4" />}
+                        <span>{completed ? 'Yes' : 'No'}</span>
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            )}
             {groupedRows.map((group) => (
               <React.Fragment key={group.key}>
                 {(() => {
@@ -1652,9 +1732,9 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                       const linkableArtifacts = artifactStepConfig ? getArtifactLinkCandidates(booking, medicalArtifacts, artifactStepConfig) : [];
                       const relatedMedicalArtifact = linkedArtifactId
                         ? medicalArtifactById.get(linkedArtifactId)
-                        : artifactStepConfig
-                          ? medicalArtifactsByBookingContext.get(makeArtifactContextKey(getObjectId(booking), artifactStepConfig))?.[0]
-                          : undefined;
+                          : artifactStepConfig
+                            ? medicalArtifactsByBookingContext.get(makeArtifactContextKey(getObjectId(booking), artifactStepConfig))?.[0]
+                            : undefined;
                       const relatedMedicalArtifactId = relatedMedicalArtifact?._id || linkedArtifactId;
                       return (
                         <td key={`${getObjectId(booking)}:${row.key}`} className={`${viewMode === 'simple' ? 'min-w-[150px] px-2 py-2 text-center' : 'min-w-[230px] px-2 py-1 align-top'} border-b border-r border-gray-300 ${item ? (reviewStepConfig && resolvedReviewDecision ? reviewDecisionToClassName(resolvedReviewDecision) : getStatusCellClass(item.status)) : 'bg-red-50 text-red-900'}`}>

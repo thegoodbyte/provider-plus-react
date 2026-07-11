@@ -10,6 +10,10 @@ type BookingStepDocumentConfig = {
   title?: string;
 };
 
+type BookingActionLogLike = {
+  actionKey?: string | null;
+};
+
 export const reviewRequestStatusToBookingStepStatus = (status?: string) => {
   if (status === 'in_review') return 'in_review';
   if (status === 'needs_resubmission') return 'needs_resubmission';
@@ -30,4 +34,10 @@ export const resolveBookingStepUploadTarget = (
   if (artifactStepConfig) return 'medical_artifact' as const;
   if (documentConfig) return 'booking_document' as const;
   return null;
+};
+
+export const hasBookingActionLog = (logs: BookingActionLogLike[] | undefined, actionKey?: string) => {
+  const normalizedActionKey = String(actionKey || '').trim();
+  if (!normalizedActionKey || !Array.isArray(logs) || logs.length === 0) return false;
+  return logs.some((log) => String(log.actionKey || 'default_email').trim() === normalizedActionKey);
 };
