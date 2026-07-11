@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { FiChevronDown, FiChevronRight, FiCopy, FiFolder, FiLink, FiPlus, FiRefreshCw } from 'react-icons/fi';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { FiChevronDown, FiChevronRight, FiCopy, FiEdit2, FiFolder, FiLink, FiPlus, FiRefreshCw, FiTrash2 } from 'react-icons/fi';
 import LoadingSpinner from './LoadingSpinner';
 import MedicalReviewTypeBadge from './MedicalReviewTypeBadge';
 import { medicalReviewRequestsApi } from '../services/api';
 import { MedicalReviewGroup, MedicalReviewRequest } from '../types';
+import { useAuth } from '../context/AuthContext';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
@@ -36,6 +37,12 @@ const getPacketRetreatLabel = (group: MedicalReviewGroup | null, request: Medica
 const isPendingReview = (request: MedicalReviewRequest) => request.status === 'pending' || request.status === 'in_review';
 
 const getRequestKey = (request: MedicalReviewRequest) => request._id || '';
+
+const getGroupUserId = (value?: string | { _id?: string; id?: string } | null) => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  return value._id || value.id || '';
+};
 
 type PacketSection = {
   key: string;
@@ -82,18 +89,26 @@ const buildPacketSections = (group: MedicalReviewGroup | null, requests: Medical
 
 const MedicalReviewGroupPage: React.FC = () => {
   const { id = '' } = useParams();
+  const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const basePath = location.pathname.startsWith('/medical') ? '/medical/review-requests' : '/admin/medical-review-requests';
   const [group, setGroup] = useState<MedicalReviewGroup | null>(null);
   const [accessLinks, setAccessLinks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [issuingLink, setIssuingLink] = useState(false);
   const [savingGroup, setSavingGroup] = useState(false);
   const [error, setError] = useState('');
+  const [titleDraft, setTitleDraft] = useState('');
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [moveModalOpen, setMoveModalOpen] = useState(false);
   const [allRequests, setAllRequests] = useState<MedicalReviewRequest[]>([]);
   const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]);
+  const [moveTargetGroupId, setMoveTargetGroupId] = useState('');
+  const [availableGroups, setAvailableGroups] = useState<MedicalReviewGroup[]>([]);
   const [requestSearch, setRequestSearch] = useState('');
   const [expandedSections, setExpandedSections] = useState<string[]>([]);
+  const canManageGroup = user?.role === 'admin' || user?.role === 'medical_staff';
 
   const loadGroup = useCallback(async () => {
     const [groupResponse, linksResponse] = await Promise.all([
@@ -122,6 +137,10 @@ const MedicalReviewGroupPage: React.FC = () => {
       mounted = false;
     };
   }, [loadGroup]);
+
+  useEffect(() => {
+    setTitleDraft(group?.title || '');
+  }, [group?.title]);
 
   const copyToClipboard = async (value: string) => {
     if (!value) return;
@@ -184,6 +203,84 @@ const MedicalReviewGroupPage: React.FC = () => {
     }
   };
 
+  const saveTitle = async () => {
+    if (!group?._id) return;
+    try {
+      setSavingGroup(true);
+      const response = await medicalReviewRequestsApi.updateGroup(group._id, { title: titleDraft.trim() || group.title });
+      setGroup((current) => current ? { ...current, title: response.data.title || titleDraft.trim() || current.title } : current);
+    } catch (requestError: any) {
+      setError(requestError?.response?.data?.message || 'Unable to rename the packet.');
+    } finally {
+      setSavingGroup(false);
+    }
+  };
+
+  const deletePacket = async () => {
+    if (!group?._id) return;
+    if (!window.confirm(`Delete packet "${group.title}"? This will not delete the MRRs.`)) return;
+    try {
+      setSavingGroup(true);
+      await medicalReviewRequestsApi.deleteGroup(group._id);
+      navigate(basePath, { replace: true });
+    } catch (requestError: any) {
+      setError(requestError?.response?.data?.message || 'Unable to delete the packet.');
+    } finally {
+      setSavingGroup(false);
+    }
+  };
+
+  const openMoveModal = async () => {
+    setMoveModalOpen(true);
+    setMoveTargetGroupId('');
+    try {
+      const response = await medicalReviewRequestsApi.getGroups();
+      setAvailableGroups((response.data || []).filter((packet) => packet._id && packet._id !== group?._id));
+    } catch {
+      setAvailableGroups([]);
+    }
+  };
+
+  const moveSelectedToExistingPacket = async () => {
+    if (!group?._id || !moveTargetGroupId || !selectedRequestIds.length) return;
+    try {
+      setSavingGroup(true);
+      await medicalReviewRequestsApi.updateGroup(moveTargetGroupId, { reviewRequestIds: selectedRequestIds });
+      const remaining = (group.reviewRequestIds || []).filter((id) => !selectedRequestIds.includes(id));
+      await medicalReviewRequestsApi.updateGroup(group._id, { replaceReviewRequestIds: remaining });
+      setMoveModalOpen(false);
+      await loadGroup();
+    } catch (requestError: any) {
+      setError(requestError?.response?.data?.message || 'Unable to move requests to the selected packet.');
+    } finally {
+      setSavingGroup(false);
+    }
+  };
+
+  const createPacketFromSelected = async () => {
+    if (!group?._id || !selectedRequestIds.length) return;
+    try {
+      setSavingGroup(true);
+      const retreatId = typeof group.retreatId === 'string' ? group.retreatId : group.retreatId?._id;
+      const response = await medicalReviewRequestsApi.createGroup({
+        title: `${group.title} copy`,
+        groupType: group.groupType || 'custom',
+        retreatId,
+        ceremonyNumber: group.ceremonyNumber,
+        reviewRequestIds: selectedRequestIds,
+        reviewerUserId: getGroupUserId(group.reviewerUserId),
+      } as any);
+      const remaining = (group.reviewRequestIds || []).filter((id) => !selectedRequestIds.includes(id));
+      await medicalReviewRequestsApi.updateGroup(group._id, { replaceReviewRequestIds: remaining });
+      setMoveModalOpen(false);
+      navigate(`/medical/review-groups/${response.data._id}`);
+    } catch (requestError: any) {
+      setError(requestError?.response?.data?.message || 'Unable to create a new packet from the selected requests.');
+    } finally {
+      setSavingGroup(false);
+    }
+  };
+
   const sections = useMemo(() => {
     const groupRequests = ((group?.requests || []) as MedicalReviewRequest[]).filter(isPendingReview);
     return buildPacketSections(group, groupRequests);
@@ -212,41 +309,79 @@ const MedicalReviewGroupPage: React.FC = () => {
             <div className="min-w-0 flex-1">
               <div className="text-xs font-semibold uppercase tracking-wide text-blue-700">Grouped medical review packet</div>
               <h1 className="mt-1 text-2xl font-semibold text-gray-900">{group?.title || 'Medical review packet'}</h1>
+              {canManageGroup && (
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <input
+                    value={titleDraft}
+                    onChange={(event) => setTitleDraft(event.target.value)}
+                    className="min-w-[260px] rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+                  />
+                  <button
+                    type="button"
+                    onClick={saveTitle}
+                    disabled={savingGroup}
+                    className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-60"
+                  >
+                    <Icon icon={FiEdit2} className="h-4 w-4" />
+                    Save title
+                  </button>
+                  <button
+                    type="button"
+                    onClick={deletePacket}
+                    disabled={savingGroup}
+                    className="inline-flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-60"
+                  >
+                    <Icon icon={FiTrash2} className="h-4 w-4" />
+                    Delete packet
+                  </button>
+                </div>
+              )}
               <p className="mt-2 max-w-3xl text-sm text-gray-600">
                 {group?.retreatName || 'No retreat'}{group?.ceremonyNumber ? ` • Ceremony #${group.ceremonyNumber}` : ''} • {(group?.requests || []).filter(isPendingReview).length} pending request{(group?.requests || []).filter(isPendingReview).length === 1 ? '' : 's'}
               </p>
               <p className="mt-1 text-sm text-gray-500">
                 Use the permanent link below. It only shows pending reviews in this packet.
               </p>
-              <div className="mt-3 flex flex-wrap items-center gap-2">
-                {group?.url && (
+              {canManageGroup && (
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {group?.url && (
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(group.url || '')}
+                      className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
+                    >
+                      <Icon icon={FiCopy} className="h-4 w-4" />
+                      Copy permanent link
+                    </button>
+                  )}
                   <button
                     type="button"
-                    onClick={() => copyToClipboard(group.url || '')}
-                    className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
+                    onClick={issueNewLink}
+                    disabled={issuingLink}
+                    className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
                   >
-                    <Icon icon={FiCopy} className="h-4 w-4" />
-                    Copy permanent link
+                    <Icon icon={FiLink} className="h-4 w-4" />
+                    {issuingLink ? 'Issuing...' : 'Issue new link'}
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={issueNewLink}
-                  disabled={issuingLink}
-                  className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-                >
-                  <Icon icon={FiLink} className="h-4 w-4" />
-                  {issuingLink ? 'Issuing...' : 'Issue new link'}
-                </button>
-                <button
-                  type="button"
-                  onClick={openAddModal}
-                  className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-white px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50"
-                >
-                  <Icon icon={FiPlus} className="h-4 w-4" />
-                  Add requests
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    onClick={openAddModal}
+                    className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-white px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50"
+                  >
+                    <Icon icon={FiPlus} className="h-4 w-4" />
+                    Add requests
+                  </button>
+                  <button
+                    type="button"
+                    onClick={openMoveModal}
+                    disabled={!selectedRequestIds.length}
+                    className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                  >
+                    <Icon icon={FiFolder} className="h-4 w-4" />
+                    Move selected
+                  </button>
+                </div>
+              )}
             </div>
             <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700">
               <div className="font-semibold text-gray-900">{group?.groupType || 'custom'} packet</div>
@@ -255,44 +390,46 @@ const MedicalReviewGroupPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-sm font-semibold text-gray-900">Issued links</h2>
-              <p className="text-xs text-gray-500">The permanent packet link stays valid while you issue additional access links for the same packet.</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => loadGroup().then(() => undefined)}
-              className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
-            >
-              <Icon icon={FiRefreshCw} className="h-3.5 w-3.5" />
-              Refresh
-            </button>
-          </div>
-          <div className="mt-3 space-y-2">
-            {accessLinks.length > 0 ? accessLinks.map((link) => (
-              <div key={`${link.tokenHash || link.url || link.createdAt}`} className="flex flex-wrap items-center gap-3 rounded-md border border-gray-200 px-3 py-2 text-sm">
-                <div className="min-w-0 flex-1">
-                  <div className="font-medium text-gray-900">{link.label || 'Group link'}</div>
-                  <div className="text-xs text-gray-500">
-                    {link.status || 'active'}{link.accessCount ? ` • accessed ${link.accessCount}x` : ''}{link.createdAt ? ` • created ${new Date(link.createdAt).toLocaleString()}` : ''}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => copyToClipboard(link.url || '')}
-                  className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
-                >
-                  <Icon icon={FiCopy} className="h-4 w-4" />
-                  Copy
-                </button>
+        {canManageGroup && (
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900">Issued links</h2>
+                <p className="text-xs text-gray-500">The permanent packet link stays valid while you issue additional access links for the same packet.</p>
               </div>
-            )) : (
-              <div className="text-sm text-gray-500">No issued links yet.</div>
-            )}
+              <button
+                type="button"
+                onClick={() => loadGroup().then(() => undefined)}
+                className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50"
+              >
+                <Icon icon={FiRefreshCw} className="h-3.5 w-3.5" />
+                Refresh
+              </button>
+            </div>
+            <div className="mt-3 space-y-2">
+              {accessLinks.length > 0 ? accessLinks.map((link) => (
+                <div key={`${link.tokenHash || link.url || link.createdAt}`} className="flex flex-wrap items-center gap-3 rounded-md border border-gray-200 px-3 py-2 text-sm">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium text-gray-900">{link.label || 'Group link'}</div>
+                    <div className="text-xs text-gray-500">
+                      {link.status || 'active'}{link.accessCount ? ` • accessed ${link.accessCount}x` : ''}{link.createdAt ? ` • created ${new Date(link.createdAt).toLocaleString()}` : ''}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(link.url || '')}
+                    className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                  >
+                    <Icon icon={FiCopy} className="h-4 w-4" />
+                    Copy
+                  </button>
+                </div>
+              )) : (
+                <div className="text-sm text-gray-500">No issued links yet.</div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="space-y-3">
           {sections.length > 0 ? sections.map((section) => {
@@ -322,7 +459,20 @@ const MedicalReviewGroupPage: React.FC = () => {
                 {expanded && (
                   <div className="divide-y divide-gray-100">
                     {section.requests.map((request) => (
-                      <div key={request._id} className="grid gap-3 px-4 py-4 md:grid-cols-[150px_minmax(0,1fr)_220px_150px_130px] md:items-center">
+                      <div
+                        key={request._id}
+                        className={`grid gap-3 px-4 py-4 md:items-center ${canManageGroup ? 'md:grid-cols-[36px_150px_minmax(0,1fr)_220px_150px_130px]' : 'md:grid-cols-[150px_minmax(0,1fr)_220px_150px_130px]'}`}
+                      >
+                        {canManageGroup && (
+                          <div className="flex items-start justify-center">
+                            <input
+                              type="checkbox"
+                              checked={selectedRequestIds.includes(request._id || '')}
+                              onChange={() => toggleSelectedRequest(request._id || '')}
+                              className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
+                            />
+                          </div>
+                        )}
                         <div className="min-w-0">
                           <button
                             type="button"
@@ -429,6 +579,65 @@ const MedicalReviewGroupPage: React.FC = () => {
                 className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {savingGroup ? 'Saving...' : `Add ${selectedRequestIds.length || ''} request${selectedRequestIds.length === 1 ? '' : 's'}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {moveModalOpen && canManageGroup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
+          <div className="w-full max-w-2xl rounded-xl bg-white shadow-xl">
+            <div className="flex items-start justify-between border-b border-gray-200 px-5 py-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Move or copy selected requests</h2>
+                <p className="mt-1 text-sm text-gray-600">Move them to an existing packet or create a new packet from the selected requests.</p>
+              </div>
+              <button type="button" onClick={() => setMoveModalOpen(false)} className="rounded-md p-2 text-gray-500 hover:bg-gray-100">✕</button>
+            </div>
+            <div className="space-y-4 px-5 py-4">
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">Destination packet</span>
+                <select
+                  value={moveTargetGroupId}
+                  onChange={(event) => setMoveTargetGroupId(event.target.value)}
+                  className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                >
+                  <option value="">Select existing packet</option>
+                  {availableGroups.map((packet) => (
+                    <option key={packet._id} value={packet._id}>
+                      {packet.title} ({packet.retreatName || 'No retreat'})
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="rounded-md border border-gray-200 p-3 text-sm text-gray-600">
+                {selectedRequestIds.length} request{selectedRequestIds.length === 1 ? '' : 's'} selected
+              </div>
+            </div>
+            <div className="flex flex-wrap justify-end gap-2 border-t border-gray-200 px-5 py-4">
+              <button
+                type="button"
+                onClick={createPacketFromSelected}
+                disabled={savingGroup || !selectedRequestIds.length}
+                className="rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-60"
+              >
+                Create new packet
+              </button>
+              <button
+                type="button"
+                onClick={moveSelectedToExistingPacket}
+                disabled={savingGroup || !selectedRequestIds.length || !moveTargetGroupId}
+                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+              >
+                Move to packet
+              </button>
+              <button
+                type="button"
+                onClick={() => setMoveModalOpen(false)}
+                className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
               </button>
             </div>
           </div>

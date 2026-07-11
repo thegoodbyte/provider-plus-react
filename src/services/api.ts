@@ -1063,10 +1063,15 @@ export const medicalReviewRequestsApi = {
     retreatId?: string;
     ceremonyNumber?: number;
     reviewRequestIds?: string[];
+    replaceReviewRequestIds?: string[];
     reviewerUserId?: string;
   }) => {
     cacheService.clearPattern('medical-review-requests:');
     return api.patch<MedicalReviewGroup>(`/medical-review-requests/groups/${id}`, data);
+  },
+  deleteGroup: (id: string) => {
+    cacheService.clearPattern('medical-review-requests:');
+    return api.delete<{ deleted: boolean; groupId: string; removedRequestIds: string[] }>(`/medical-review-requests/groups/${id}`);
   },
   createGroup: (data: {
     title?: string;
