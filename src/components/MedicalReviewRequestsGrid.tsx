@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FiChevronDown, FiChevronRight, FiCopy, FiEye, FiEdit2, FiFolder, FiLink, FiPlus, FiRefreshCw, FiTrash2, FiX } from 'react-icons/fi';
+import { FiChevronDown, FiChevronRight, FiCopy, FiEye, FiEdit2, FiFolder, FiLink, FiPlus, FiRefreshCw, FiSend, FiTrash2, FiX } from 'react-icons/fi';
 import LoadingSpinner from './LoadingSpinner';
 import MedicalReviewTypeBadge from './MedicalReviewTypeBadge';
 import { medicalReviewRequestsApi, medicalTrackingApi, clientsApi, retreatsApi } from '../services/api';
 import { MedicalItem, MedicalReviewGroup, MedicalReviewRequest, Client, Retreat } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { usersApi, User } from '../services/usersApi';
+import { MedicalReviewTypeFilter, matchesReviewRequestFilters } from './MedicalReviewRequestsGrid.helpers';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
@@ -74,8 +75,13 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const [requests, setRequests] = useState<EnrichedReviewRequest[]>([]);
   const [groups, setGroups] = useState<MedicalReviewGroup[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState<MedicalReviewTypeFilter>('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | MedicalReviewRequest['status']>('all');
   const [filterAdvisorId, setFilterAdvisorId] = useState('all');
+  const [activeView, setActiveView] = useState<'grouped' | 'all'>('grouped');
   const [advisors, setAdvisors] = useState<User[]>([]);
   const [groupModalOpen, setGroupModalOpen] = useState(false);
   const [groupTitle, setGroupTitle] = useState('');
@@ -158,13 +164,13 @@ const MedicalReviewRequestsGrid: React.FC = () => {
 
   const filteredRequests = useMemo(() => {
     return requests.filter((request) => {
+      if (!matchesReviewRequestFilters(request, { searchTerm, typeFilter, dateFrom, dateTo })) return false;
       if (filterStatus !== 'all' && request.status !== filterStatus) return false;
       if (filterAdvisorId !== 'all' && getAssigneeId(request) !== filterAdvisorId) return false;
       return true;
     });
-  }, [requests, filterAdvisorId, filterStatus]);
+  }, [requests, dateFrom, dateTo, filterAdvisorId, filterStatus, searchTerm, typeFilter]);
 
-  const requestById = useMemo(() => new Map(filteredRequests.map((request) => [getRequestId(request), request])), [filteredRequests]);
   const groupedRequestIds = useMemo(() => {
     const ids = new Set<string>();
     for (const group of groups) {
@@ -174,45 +180,53 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     }
     return ids;
   }, [groups]);
-  const groupedRows = useMemo(() => {
-    const rows: Array<{ kind: 'group'; group: MedicalReviewGroup; requests: EnrichedReviewRequest[] } | { kind: 'request'; request: EnrichedReviewRequest }> = [];
-    const seen = new Set<string>();
 
-    for (const group of groups) {
-      const groupRequests = (group.reviewRequestIds || [])
-        .map((requestId) => requestById.get(requestId))
-        .filter((request): request is EnrichedReviewRequest => Boolean(request));
+  const requestById = useMemo(() => new Map(filteredRequests.map((request) => [getRequestId(request), request])), [filteredRequests]);
 
-      if (!groupRequests.length) continue;
+  const visibleGroups = useMemo(() => {
+    return groups
+      .map((group) => {
+        const requestsForGroup = (group.reviewRequestIds || [])
+          .map((requestId) => requestById.get(requestId))
+          .filter((request): request is EnrichedReviewRequest => Boolean(request));
+        return {
+          ...group,
+          requests: requestsForGroup,
+        };
+      })
+      .filter((group) => (group.requests || []).length > 0);
+  }, [groups, requestById]);
 
-      rows.push({ kind: 'group', group, requests: groupRequests });
-      groupRequests.forEach((request) => {
-        const requestId = getRequestId(request);
-        if (requestId) seen.add(requestId);
-        rows.push({ kind: 'request', request });
-      });
-    }
-
-    filteredRequests.forEach((request) => {
+  const ungroupedRequests = useMemo(
+    () => filteredRequests.filter((request) => {
       const requestId = getRequestId(request);
-      if (requestId && !seen.has(requestId) && !groupedRequestIds.has(requestId)) {
-        rows.push({ kind: 'request', request });
-      }
-    });
-
-    return rows;
-  }, [filteredRequests, groups, groupedRequestIds, requestById]);
+      return requestId ? !groupedRequestIds.has(requestId) : true;
+    }),
+    [filteredRequests, groupedRequestIds]
+  );
   const [expandedGroupIds, setExpandedGroupIds] = useState<string[]>([]);
 
   useEffect(() => {
-      setExpandedGroupIds((current) => {
-      const groupIds = groups.map((group) => group._id).filter((id): id is string => Boolean(id));
-      if (!groupIds.length) return current;
-      const next = new Set(current);
-      groupIds.forEach((id) => next.add(id));
-      return Array.from(next);
+    setExpandedGroupIds((current) => {
+      const groupIds = new Set(groups.map((group) => group._id).filter((id): id is string => Boolean(id)));
+      return current.filter((id) => groupIds.has(id));
     });
   }, [groups]);
+
+  const copyText = async (value: string) => {
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch {
+      window.prompt('Copy link', value);
+    }
+  };
+
+  const openWhatsAppShare = (url?: string, label?: string) => {
+    if (!url) return;
+    const text = encodeURIComponent(`${label || 'Medical review packet'}: ${url}`);
+    window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener,noreferrer');
+  };
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('Delete this review request?')) return;
@@ -298,6 +312,22 @@ const MedicalReviewRequestsGrid: React.FC = () => {
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-semibold text-gray-900">Medical Review Requests</h1>
           <p className="text-sm text-gray-600">Queue and audit trail for EKG and liver panel review rounds.</p>
+          <div className="mt-3 inline-flex rounded-lg border border-gray-200 bg-white p-1 shadow-sm">
+            <button
+              type="button"
+              onClick={() => setActiveView('grouped')}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium ${activeView === 'grouped' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
+            >
+              Grouped
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveView('all')}
+              className={`rounded-md px-3 py-1.5 text-sm font-medium ${activeView === 'all' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
+            >
+              All
+            </button>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -314,7 +344,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                 className="inline-flex w-auto shrink-0 items-center gap-2 whitespace-nowrap rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
               >
                 <Icon icon={FiLink} className="h-4 w-4" />
-                Group Link
+                Create Group
               </button>
               <button
                 onClick={() => navigate(`${basePath}/new`)}
@@ -329,6 +359,41 @@ const MedicalReviewRequestsGrid: React.FC = () => {
       </div>
 
       <div className="mb-4 flex items-center justify-end gap-2">
+        <div className="grid w-full flex-1 gap-2 lg:grid-cols-[minmax(280px,1fr)_160px_170px_170px]">
+          <input
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Search client, retreat, request #, type, notes..."
+            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+          <select
+            value={typeFilter}
+            onChange={(event) => setTypeFilter(event.target.value as MedicalReviewTypeFilter)}
+            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          >
+            <option value="all">All types</option>
+            <option value="ekg">EKG</option>
+            <option value="liver">Liver</option>
+            <option value="both">EKG + Liver</option>
+            <option value="questionnaire">Questionnaire</option>
+            <option value="general">General</option>
+          </select>
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(event) => setDateFrom(event.target.value)}
+            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(event) => setDateTo(event.target.value)}
+            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+          />
+        </div>
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center justify-end gap-2">
         <label htmlFor="review-status-filter" className="text-sm font-medium text-gray-700">Status</label>
         <select
           id="review-status-filter"
@@ -361,6 +426,195 @@ const MedicalReviewRequestsGrid: React.FC = () => {
         )}
       </div>
 
+      {activeView === 'grouped' ? (
+        <div className="space-y-4">
+          {canManageRequests && (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
+              <div>
+                <div className="text-sm font-semibold text-gray-900">Grouped reviews</div>
+                <div className="text-xs text-gray-500">Collapse a packet, copy the permanent link, or send it directly in WhatsApp.</div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={openGroupModal}
+                  className="inline-flex w-auto shrink-0 items-center gap-2 whitespace-nowrap rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
+                >
+                  <Icon icon={FiLink} className="h-4 w-4" />
+                  Create Group
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-3">
+            {visibleGroups.map((group) => {
+              const groupId = group._id || group.title;
+              const expanded = expandedGroupIds.includes(groupId || '');
+              const groupUrl = group.url || '';
+              return (
+                <div key={`group-${groupId}`} className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedGroupIds((current) => (
+                      groupId && current.includes(groupId)
+                        ? current.filter((id) => id !== groupId)
+                        : [...current, groupId || '']
+                    ).filter(Boolean))}
+                    className="flex w-full items-center justify-between gap-3 border-b border-gray-200 px-4 py-4 text-left"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-700">
+                        <Icon icon={FiFolder} className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-gray-900">{group.title}</div>
+                        <div className="text-xs text-gray-500">
+                          {group.retreatName || 'No retreat'}{group.ceremonyNumber ? ` • Ceremony #${group.ceremonyNumber}` : ''} • {group.requests?.length || 0} requests
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {groupUrl && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              copyText(groupUrl);
+                            }}
+                            className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-white px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50"
+                            title="Copy permanent link"
+                          >
+                            <Icon icon={FiCopy} className="h-3.5 w-3.5" />
+                            Link
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              openWhatsAppShare(groupUrl, group.title);
+                            }}
+                            className="inline-flex items-center gap-1 rounded-md border border-green-200 bg-green-50 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-100"
+                            title="Send link in WhatsApp"
+                          >
+                            <Icon icon={FiSend} className="h-3.5 w-3.5" />
+                            WhatsApp
+                          </button>
+                        </>
+                      )}
+                      <Icon icon={expanded ? FiChevronDown : FiChevronRight} className="h-5 w-5 shrink-0 text-gray-500" />
+                    </div>
+                  </button>
+                  {expanded && (
+                    <div className="divide-y divide-gray-100">
+                      {group.requests?.length ? group.requests.map((request) => (
+                        <div key={request._id} className="grid gap-3 px-4 py-4 md:grid-cols-[150px_minmax(0,1fr)_220px_150px_130px] md:items-center">
+                          <div className="min-w-0">
+                            <button
+                              type="button"
+                              onClick={() => navigate(`${basePath}/${request._id}`)}
+                              className="text-left text-sm font-semibold text-blue-700 hover:underline"
+                            >
+                              #{request.display_id || '-'}
+                            </button>
+                            <div className="mt-1 text-xs text-gray-500">{request.requestType || 'review'}</div>
+                          </div>
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-medium text-gray-900">{getCompactDisplayName(request.clientName)}</div>
+                            <div className="truncate text-xs text-gray-500">{request.retreatName}</div>
+                          </div>
+                          <div className="min-w-0">
+                            <MedicalReviewTypeBadge requestType={request.requestType} />
+                          </div>
+                          <div>
+                            <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${statusClass[request.status] || 'bg-gray-100 text-gray-700'}`}>
+                              {request.status}
+                            </span>
+                          </div>
+                          <div className="flex justify-start md:justify-end">
+                            <button
+                              type="button"
+                              onClick={() => navigate(`${basePath}/${request._id}`)}
+                              className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+                            >
+                              Open review
+                            </button>
+                          </div>
+                        </div>
+                      )) : (
+                        <div className="px-4 py-4 text-sm text-gray-500">No visible requests in this packet.</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {ungroupedRequests.length > 0 && (
+              <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between gap-3 border-b border-gray-200 px-4 py-4 text-left"
+                  onClick={() => setExpandedGroupIds((current) => (
+                    current.includes('ungrouped') ? current.filter((id) => id !== 'ungrouped') : [...current, 'ungrouped']
+                  ))}
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-gray-50 text-gray-700">
+                      <Icon icon={FiFolder} className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-semibold text-gray-900">Ungrouped requests</div>
+                      <div className="text-xs text-gray-500">{ungroupedRequests.length} requests</div>
+                    </div>
+                  </div>
+                  <Icon icon={expandedGroupIds.includes('ungrouped') ? FiChevronDown : FiChevronRight} className="h-5 w-5 shrink-0 text-gray-500" />
+                </button>
+                {expandedGroupIds.includes('ungrouped') && (
+                  <div className="divide-y divide-gray-100">
+                    {ungroupedRequests.map((request) => (
+                      <div key={`ungrouped-${request._id}`} className="grid gap-3 px-4 py-4 md:grid-cols-[150px_minmax(0,1fr)_220px_150px_130px] md:items-center">
+                        <div className="min-w-0">
+                          <button
+                            type="button"
+                            onClick={() => navigate(`${basePath}/${request._id}`)}
+                            className="text-left text-sm font-semibold text-blue-700 hover:underline"
+                          >
+                            #{request.display_id || '-'}
+                          </button>
+                          <div className="mt-1 text-xs text-gray-500">{request.requestType || 'review'}</div>
+                        </div>
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-medium text-gray-900">{getCompactDisplayName(request.clientName)}</div>
+                          <div className="truncate text-xs text-gray-500">{request.retreatName}</div>
+                        </div>
+                        <div className="min-w-0">
+                          <MedicalReviewTypeBadge requestType={request.requestType} />
+                        </div>
+                        <div>
+                          <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${statusClass[request.status] || 'bg-gray-100 text-gray-700'}`}>
+                            {request.status}
+                          </span>
+                        </div>
+                        <div className="flex justify-start md:justify-end">
+                          <button
+                            type="button"
+                            onClick={() => navigate(`${basePath}/${request._id}`)}
+                            className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+                          >
+                            Open review
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <>
       <div className="space-y-3 overflow-x-hidden md:hidden">
         {filteredRequests.map((request) => {
           const retreatLabel = request.retreatName || 'Unknown Retreat';
@@ -419,122 +673,8 @@ const MedicalReviewRequestsGrid: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
-              {groupedRows.map((row) => {
-                if (row.kind === 'group') {
-                  const groupId = row.group._id || row.group.title;
-                  const expanded = expandedGroupIds.includes(groupId);
-                  return (
-                    <React.Fragment key={`group-${groupId}`}>
-                      <tr className="bg-slate-50">
-                        <td className="px-6 py-4 text-sm font-semibold text-slate-900">
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setExpandedGroupIds((current) => (
-                                current.includes(groupId)
-                                  ? current.filter((id) => id !== groupId)
-                                  : [...current, groupId]
-                              ))}
-                              className="inline-flex items-center justify-center rounded-md border border-slate-200 bg-white p-1 text-slate-600 hover:bg-slate-100"
-                              title={expanded ? 'Collapse group' : 'Expand group'}
-                            >
-                              <Icon icon={expanded ? FiChevronDown : FiChevronRight} className="h-4 w-4" />
-                            </button>
-                            <Icon icon={FiFolder} className="h-4 w-4 text-blue-600" />
-                            <span>{row.group.title}</span>
-                          </div>
-                          <div className="mt-1 text-xs font-normal text-slate-500">
-                            {row.group.retreatName || 'No retreat'}{row.group.ceremonyNumber ? ` • Ceremony #${row.group.ceremonyNumber}` : ''} • {row.requests.length} requests
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-slate-700" colSpan={8}>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700">Grouped packet</span>
-                            {row.group.reviewerName && <span className="text-xs text-slate-500">Advisor: {row.group.reviewerName}</span>}
-                            {row.group.url && (
-                              <button
-                                type="button"
-                                onClick={() => navigator.clipboard.writeText(row.group.url || '').catch(() => window.prompt('Copy link', row.group.url || ''))}
-                                className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-white px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50"
-                              >
-                                <Icon icon={FiCopy} className="h-3.5 w-3.5" />
-                                Copy link
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              onClick={() => navigate(location.pathname.startsWith('/medical') ? `/medical/review-groups/${row.group._id}` : `/admin/medical-review-groups/${row.group._id}`)}
-                              className="inline-flex items-center gap-1 rounded-md border border-slate-300 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
-                            >
-                              Open packet
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                      {expanded && row.requests.map((request) => (
-                        <tr key={request._id} className="bg-white hover:bg-gray-50">
-                          <td className="px-6 py-4 text-sm font-semibold text-blue-600">
-                            <div className="flex items-center gap-2 pl-6">
-                              <span className="text-slate-400">↳</span>
-                              #{request.display_id || '—'}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-900">
-                            {request.clientName}
-                            <div className="text-xs text-gray-500">#{request.clientDisplayId || '—'}</div>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-900">{request.retreatName}</td>
-                          <td className="px-6 py-4 text-sm text-gray-900">
-                            <MedicalReviewTypeBadge requestType={request.requestType} />
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-900">{request.attemptNumber || 1}</td>
-                          <td className="px-6 py-4 text-sm text-gray-900">
-                            <div className="font-medium">{getAssignee(request).name}</div>
-                            {getAssignee(request).email && <div className="text-xs text-gray-500">{getAssignee(request).email}</div>}
-                          </td>
-                          <td className="px-6 py-4 text-sm">
-                            <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${statusClass[request.status] || 'bg-gray-100 text-gray-700'}`}>
-                              {request.status}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 text-sm text-gray-900">{request.source || 'Provider Plus CRM'}</td>
-                          <td className="px-6 py-4 text-sm font-medium">
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => navigate(`${basePath}/${request._id}`)}
-                                className="icon-action-btn icon-action-btn-view"
-                                title="View"
-                              >
-                                <Icon icon={FiEye} />
-                              </button>
-                              {canManageRequests && (
-                                <button
-                                  onClick={() => navigate(`${basePath}/${request._id}/edit`)}
-                                  className="icon-action-btn icon-action-btn-edit"
-                                  title="Edit"
-                                >
-                                  <Icon icon={FiEdit2} />
-                                </button>
-                              )}
-                              {canManageRequests && (
-                                <button
-                                  onClick={() => handleDelete(request._id!)}
-                                  className="icon-action-btn icon-action-btn-danger"
-                                  title="Delete"
-                                >
-                                  <Icon icon={FiTrash2} />
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </React.Fragment>
-                  );
-                }
-                const request = row.request;
-                return (
-                  <tr key={request._id} className="hover:bg-gray-50">
+              {filteredRequests.map((request) => (
+                <tr key={request._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 text-sm font-semibold text-blue-600">#{request.display_id || '—'}</td>
                   <td className="px-6 py-4 text-sm text-gray-900">
                     {request.clientName}
@@ -584,13 +724,14 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                       )}
                     </div>
                   </td>
-                  </tr>
-                );
-              })}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
       </div>
+        </>
+      )}
 
       {groupModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
