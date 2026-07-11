@@ -9,6 +9,7 @@ import {
   RetreatReadinessAssistantResult,
 } from '../services/api';
 import { Retreat, RetreatClient } from '../types';
+import { getAssistantIntroMessage, getAssistantQuickQuestions } from './AssistantPage.helpers';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon, className }) => React.createElement(icon as any, { className });
 
@@ -62,7 +63,7 @@ const AssistantPage: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
-      text: 'Select a retreat and ask me things like: who is missing EKG, who is missing liver, who has no MRR, who is medically approved, or what steps are blocking this retreat.',
+      text: getAssistantIntroMessage('retreat'),
       generatedBy: 'rules',
     },
   ]);
@@ -164,9 +165,15 @@ const AssistantPage: React.FC = () => {
   };
 
   const activeAnalysis = mode === 'retreat' ? retreatAnalysis : bookingAnalysis;
+  const quickQuestions = useMemo(() => getAssistantQuickQuestions(mode), [mode]);
+
+  const resetAssistantConversation = (nextMode: Mode) => {
+    setMessages([{ role: 'assistant', text: getAssistantIntroMessage(nextMode), generatedBy: 'rules' }]);
+    setChatInput('');
+  };
 
   return (
-    <div className="p-4 sm:p-6">
+    <div className="p-3 sm:p-6">
       <div className="mb-5 flex flex-col gap-3 border-b border-gray-200 pb-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-blue-700">
@@ -179,10 +186,10 @@ const AssistantPage: React.FC = () => {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => setMode('retreat')} className={`rounded-apple px-4 py-2 text-sm font-semibold ${mode === 'retreat' ? 'bg-gray-950 text-white' : 'border border-gray-200 bg-white text-gray-700'}`}>
+          <button type="button" onClick={() => { setMode('retreat'); resetAssistantConversation('retreat'); }} className={`rounded-apple px-4 py-2 text-sm font-semibold ${mode === 'retreat' ? 'bg-gray-950 text-white' : 'border border-gray-200 bg-white text-gray-700'}`}>
             Retreat
           </button>
-          <button type="button" onClick={() => setMode('booking')} className={`rounded-apple px-4 py-2 text-sm font-semibold ${mode === 'booking' ? 'bg-gray-950 text-white' : 'border border-gray-200 bg-white text-gray-700'}`}>
+          <button type="button" onClick={() => { setMode('booking'); resetAssistantConversation('booking'); }} className={`rounded-apple px-4 py-2 text-sm font-semibold ${mode === 'booking' ? 'bg-gray-950 text-white' : 'border border-gray-200 bg-white text-gray-700'}`}>
             Booking
           </button>
           <button type="button" onClick={runAnalysis} disabled={loadingAnalysis} className="inline-flex items-center justify-center gap-2 rounded-apple bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300">
@@ -196,59 +203,97 @@ const AssistantPage: React.FC = () => {
 
       <div className="grid gap-5 xl:grid-cols-[360px_1fr]">
         <section className="rounded-apple border border-gray-200 bg-white p-4 shadow-sm">
-          <label className="mb-2 block text-sm font-semibold text-gray-900">{mode === 'retreat' ? 'Retreat' : 'Booking'}</label>
-          <div className="mb-3 flex items-center gap-2 rounded-apple border border-gray-200 px-3 py-2">
-            <Icon icon={FiSearch} className="h-4 w-4 text-gray-400" />
-            <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder={mode === 'retreat' ? 'Search retreat' : 'Search booking, client, retreat'} className="w-full border-0 bg-transparent text-sm outline-none" />
-          </div>
+          <details className="xl:hidden">
+            <summary className="cursor-pointer list-none rounded-apple border border-gray-200 bg-gray-50 px-3 py-3 text-sm font-semibold text-gray-900">
+              {mode === 'retreat' ? 'Retreat selector' : 'Booking selector'}
+            </summary>
+            <div className="mt-3">
+              <label className="mb-2 block text-sm font-semibold text-gray-900">{mode === 'retreat' ? 'Retreat' : 'Booking'}</label>
+              <div className="mb-3 flex items-center gap-2 rounded-apple border border-gray-200 px-3 py-2">
+                <Icon icon={FiSearch} className="h-4 w-4 text-gray-400" />
+                <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder={mode === 'retreat' ? 'Search retreat' : 'Search booking, client, retreat'} className="w-full border-0 bg-transparent text-sm outline-none" />
+              </div>
+              <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
+                {loadingOptions ? <div className="py-8 text-center text-sm text-gray-500">Loading...</div> : null}
+                {!loadingOptions && mode === 'retreat' && filteredRetreats.map((retreat) => {
+                  const id = getObjectId(retreat);
+                  const active = id === selectedRetreatId;
+                  return (
+                    <button key={id} type="button" onClick={() => { setSelectedRetreatId(id); setRetreatAnalysis(null); resetAssistantConversation('retreat'); }} className={`w-full rounded-apple border px-3 py-3 text-left transition-colors ${active ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
+                      <div className="text-sm font-semibold text-blue-700">{formatRetreatName(retreat)}</div>
+                      <div className="mt-1 text-xs text-gray-500">{String(retreat.startDate || '').slice(0, 10)} {retreat.location_town || retreat.locationTown || retreat.location || ''}</div>
+                    </button>
+                  );
+                })}
+                {!loadingOptions && mode === 'booking' && filteredBookings.map((booking) => {
+                  const id = getObjectId(booking);
+                  const active = id === selectedBookingId;
+                  return (
+                    <button key={id} type="button" onClick={() => { setSelectedBookingId(id); setBookingAnalysis(null); resetAssistantConversation('booking'); }} className={`w-full rounded-apple border px-3 py-3 text-left transition-colors ${active ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-sm font-semibold text-blue-700">#{booking.bookingNumber || '-'}</span>
+                        <span className="text-xs font-medium text-gray-500">{booking.status || 'pending'}</span>
+                      </div>
+                      <div className="mt-1 text-sm font-semibold text-gray-950">{getClientName(booking)}</div>
+                      <div className="mt-1 text-xs text-gray-500">{getRetreatName(booking)}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </details>
 
-          <div className="max-h-[620px] space-y-2 overflow-y-auto pr-1">
-            {loadingOptions ? <div className="py-8 text-center text-sm text-gray-500">Loading...</div> : null}
-            {!loadingOptions && mode === 'retreat' && filteredRetreats.map((retreat) => {
-              const id = getObjectId(retreat);
-              const active = id === selectedRetreatId;
-              return (
-                <button key={id} type="button" onClick={() => { setSelectedRetreatId(id); setRetreatAnalysis(null); setMessages([{ role: 'assistant', text: 'Ask me about EKGs, liver panels, MRRs, approvals, or missing steps for this retreat.', generatedBy: 'rules' }]); }} className={`w-full rounded-apple border px-3 py-3 text-left transition-colors ${active ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
-                  <div className="text-sm font-semibold text-blue-700">{formatRetreatName(retreat)}</div>
-                  <div className="mt-1 text-xs text-gray-500">{String(retreat.startDate || '').slice(0, 10)} {retreat.location_town || retreat.locationTown || retreat.location || ''}</div>
-                </button>
-              );
-            })}
-            {!loadingOptions && mode === 'booking' && filteredBookings.map((booking) => {
-              const id = getObjectId(booking);
-              const active = id === selectedBookingId;
-              return (
-                <button key={id} type="button" onClick={() => { setSelectedBookingId(id); setBookingAnalysis(null); }} className={`w-full rounded-apple border px-3 py-3 text-left transition-colors ${active ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-semibold text-blue-700">#{booking.bookingNumber || '-'}</span>
-                    <span className="text-xs font-medium text-gray-500">{booking.status || 'pending'}</span>
-                  </div>
-                  <div className="mt-1 text-sm font-semibold text-gray-950">{getClientName(booking)}</div>
-                  <div className="mt-1 text-xs text-gray-500">{getRetreatName(booking)}</div>
-                </button>
-              );
-            })}
+          <div className="hidden xl:block">
+            <label className="mb-2 block text-sm font-semibold text-gray-900">{mode === 'retreat' ? 'Retreat' : 'Booking'}</label>
+            <div className="mb-3 flex items-center gap-2 rounded-apple border border-gray-200 px-3 py-2">
+              <Icon icon={FiSearch} className="h-4 w-4 text-gray-400" />
+              <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder={mode === 'retreat' ? 'Search retreat' : 'Search booking, client, retreat'} className="w-full border-0 bg-transparent text-sm outline-none" />
+            </div>
+
+            <div className="max-h-[620px] space-y-2 overflow-y-auto pr-1">
+              {loadingOptions ? <div className="py-8 text-center text-sm text-gray-500">Loading...</div> : null}
+              {!loadingOptions && mode === 'retreat' && filteredRetreats.map((retreat) => {
+                const id = getObjectId(retreat);
+                const active = id === selectedRetreatId;
+                return (
+                  <button key={id} type="button" onClick={() => { setSelectedRetreatId(id); setRetreatAnalysis(null); resetAssistantConversation('retreat'); }} className={`w-full rounded-apple border px-3 py-3 text-left transition-colors ${active ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
+                    <div className="text-sm font-semibold text-blue-700">{formatRetreatName(retreat)}</div>
+                    <div className="mt-1 text-xs text-gray-500">{String(retreat.startDate || '').slice(0, 10)} {retreat.location_town || retreat.locationTown || retreat.location || ''}</div>
+                  </button>
+                );
+              })}
+              {!loadingOptions && mode === 'booking' && filteredBookings.map((booking) => {
+                const id = getObjectId(booking);
+                const active = id === selectedBookingId;
+                return (
+                  <button key={id} type="button" onClick={() => { setSelectedBookingId(id); setBookingAnalysis(null); resetAssistantConversation('booking'); }} className={`w-full rounded-apple border px-3 py-3 text-left transition-colors ${active ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white hover:bg-gray-50'}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold text-blue-700">#{booking.bookingNumber || '-'}</span>
+                      <span className="text-xs font-medium text-gray-500">{booking.status || 'pending'}</span>
+                    </div>
+                    <div className="mt-1 text-sm font-semibold text-gray-950">{getClientName(booking)}</div>
+                    <div className="mt-1 text-xs text-gray-500">{getRetreatName(booking)}</div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </section>
 
         <section className="min-h-[680px] rounded-apple border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
-          <div className="grid gap-5 2xl:grid-cols-[1fr_420px]">
-            <div className="space-y-5">
-              <SummaryPanel analysis={activeAnalysis} selectedBooking={selectedBooking} mode={mode} />
-              {mode === 'retreat' && retreatAnalysis && <RetreatClientTable analysis={retreatAnalysis} onOpen={openLink} />}
-              {mode === 'booking' && bookingAnalysis && <BookingDetails analysis={bookingAnalysis} onOpen={openLink} />}
-            </div>
+          <div className="space-y-5">
+            <SummaryPanel analysis={activeAnalysis} selectedBooking={selectedBooking} mode={mode} />
 
-            <aside className="rounded-apple border border-gray-200 bg-gray-50 p-4">
+            <section className="rounded-apple border border-gray-200 bg-gray-50 p-4 xl:hidden">
               <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Chat</h2>
               <div className="mb-3 flex flex-wrap gap-2">
-                {['Who is missing EKG?', 'Who is missing liver?', 'Who has no MRR?', 'Who is medically approved?', 'What steps are missing?'].map((question) => (
-                  <button key={question} type="button" onClick={() => sendChat(question)} className="rounded-apple border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100">
+                {quickQuestions.map((question) => (
+                  <button key={question} type="button" onClick={() => sendChat(question)} className="rounded-apple border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100">
                     {question}
                   </button>
                 ))}
               </div>
-              <div className="mb-3 max-h-[440px] space-y-3 overflow-y-auto pr-1">
+              <div className="mb-3 max-h-[320px] space-y-3 overflow-y-auto pr-1">
                 {messages.map((message, index) => (
                   <div key={`${message.role}-${index}`} className={`rounded-apple border p-3 text-sm leading-6 ${message.role === 'user' ? 'border-blue-200 bg-blue-50 text-blue-950' : 'border-gray-200 bg-white text-gray-800'}`}>
                     <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">{message.role === 'user' ? 'You' : message.generatedBy === 'openai' ? 'Assistant AI' : 'Assistant'}</div>
@@ -263,8 +308,37 @@ const AssistantPage: React.FC = () => {
                   <Icon icon={FiSend} className="h-4 w-4" />
                 </button>
               </div>
-            </aside>
+            </section>
+
+            {mode === 'retreat' && retreatAnalysis && <RetreatClientTable analysis={retreatAnalysis} onOpen={openLink} />}
+            {mode === 'booking' && bookingAnalysis && <BookingDetails analysis={bookingAnalysis} onOpen={openLink} />}
           </div>
+
+          <aside className="hidden xl:mt-5 xl:block xl:rounded-apple xl:border xl:border-gray-200 xl:bg-gray-50 xl:p-4">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Chat</h2>
+            <div className="mb-3 flex flex-wrap gap-2">
+              {quickQuestions.map((question) => (
+                <button key={question} type="button" onClick={() => sendChat(question)} className="rounded-apple border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100">
+                  {question}
+                </button>
+              ))}
+            </div>
+            <div className="mb-3 max-h-[440px] space-y-3 overflow-y-auto pr-1">
+              {messages.map((message, index) => (
+                <div key={`${message.role}-${index}`} className={`rounded-apple border p-3 text-sm leading-6 ${message.role === 'user' ? 'border-blue-200 bg-blue-50 text-blue-950' : 'border-gray-200 bg-white text-gray-800'}`}>
+                  <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">{message.role === 'user' ? 'You' : message.generatedBy === 'openai' ? 'Assistant AI' : 'Assistant'}</div>
+                  <div className="whitespace-pre-line">{message.text}</div>
+                </div>
+              ))}
+              {loadingChat && <div className="rounded-apple border border-gray-200 bg-white p-3 text-sm text-gray-500">Thinking...</div>}
+            </div>
+            <div className="flex gap-2">
+              <input value={chatInput} onChange={(event) => setChatInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') sendChat(); }} placeholder="Ask about this retreat..." className="min-w-0 flex-1 rounded-apple border border-gray-200 px-3 py-2 text-sm outline-none focus:border-blue-400" />
+              <button type="button" onClick={() => sendChat()} disabled={loadingChat || !chatInput.trim()} className="inline-flex h-10 w-10 items-center justify-center rounded-apple bg-blue-600 text-white disabled:bg-gray-300">
+                <Icon icon={FiSend} className="h-4 w-4" />
+              </button>
+            </div>
+          </aside>
         </section>
       </div>
     </div>
