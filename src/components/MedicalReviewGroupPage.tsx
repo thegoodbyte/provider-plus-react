@@ -28,6 +28,13 @@ const getRetreatLabel = (request: any) => {
   return retreat.code || retreat.retreatCode || retreat.name || 'Unknown retreat';
 };
 
+const getPacketRetreatLabel = (group: MedicalReviewGroup | null, request: MedicalReviewRequest) => {
+  const retreatLabel = getRetreatLabel(request);
+  return retreatLabel !== 'Unknown retreat' ? retreatLabel : (group?.retreatName || 'Unknown retreat');
+};
+
+const isPendingReview = (request: MedicalReviewRequest) => request.status === 'pending' || request.status === 'in_review';
+
 const getRequestKey = (request: MedicalReviewRequest) => request._id || '';
 
 type PacketSection = {
@@ -40,7 +47,7 @@ type PacketSection = {
 const buildPacketSections = (group: MedicalReviewGroup | null, requests: MedicalReviewRequest[]): PacketSection[] => {
   const byKey = new Map<string, MedicalReviewRequest[]>();
   for (const request of requests || []) {
-    const retreatLabel = getRetreatLabel(request);
+    const retreatLabel = getPacketRetreatLabel(group, request);
     const ceremonyNumber = request.ceremonyNumber || (request as any).ceremonyNumber;
     const sectionKey = group?.groupType === 'ceremony'
       ? `ceremony:${ceremonyNumber || 'unknown'}`
@@ -95,7 +102,7 @@ const MedicalReviewGroupPage: React.FC = () => {
     ]);
     setGroup(groupResponse.data);
     setAccessLinks(linksResponse.data || []);
-    const currentRequests = (groupResponse.data?.requests || []) as MedicalReviewRequest[];
+    const currentRequests = ((groupResponse.data?.requests || []) as MedicalReviewRequest[]).filter(isPendingReview);
     setExpandedSections((current) => {
       const sections = buildPacketSections(groupResponse.data || null, currentRequests).map((section) => section.key);
       return Array.from(new Set([...current, ...sections]));
@@ -178,7 +185,7 @@ const MedicalReviewGroupPage: React.FC = () => {
   };
 
   const sections = useMemo(() => {
-    const groupRequests = (group?.requests || []) as MedicalReviewRequest[];
+    const groupRequests = ((group?.requests || []) as MedicalReviewRequest[]).filter(isPendingReview);
     return buildPacketSections(group, groupRequests);
   }, [group]);
   const filteredCandidates = useMemo(() => {
@@ -206,10 +213,10 @@ const MedicalReviewGroupPage: React.FC = () => {
               <div className="text-xs font-semibold uppercase tracking-wide text-blue-700">Grouped medical review packet</div>
               <h1 className="mt-1 text-2xl font-semibold text-gray-900">{group?.title || 'Medical review packet'}</h1>
               <p className="mt-2 max-w-3xl text-sm text-gray-600">
-                {group?.retreatName || 'No retreat'}{group?.ceremonyNumber ? ` • Ceremony #${group.ceremonyNumber}` : ''} • {group?.requestCount || group?.requests?.length || 0} requests
+                {group?.retreatName || 'No retreat'}{group?.ceremonyNumber ? ` • Ceremony #${group.ceremonyNumber}` : ''} • {(group?.requests || []).filter(isPendingReview).length} pending request{(group?.requests || []).filter(isPendingReview).length === 1 ? '' : 's'}
               </p>
               <p className="mt-1 text-sm text-gray-500">
-                Use the permanent link below. When you add new requests to this packet later, the same link still opens the updated packet.
+                Use the permanent link below. It only shows pending reviews in this packet.
               </p>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 {group?.url && (
@@ -288,7 +295,7 @@ const MedicalReviewGroupPage: React.FC = () => {
         </div>
 
         <div className="space-y-3">
-          {sections.map((section) => {
+          {sections.length > 0 ? sections.map((section) => {
             const expanded = expandedSections.includes(section.key);
             return (
               <div key={section.key} className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
@@ -353,7 +360,11 @@ const MedicalReviewGroupPage: React.FC = () => {
                 )}
               </div>
             );
-          })}
+          }) : (
+            <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-500 shadow-sm">
+              No pending reviews in this packet.
+            </div>
+          )}
         </div>
       </div>
 
