@@ -112,8 +112,8 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
     if (formData.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
       errors.push('Email must be a valid email address or left blank');
     }
-    if (formData.loginPin && !/^\d{4,6}$/.test(formData.loginPin)) {
-      errors.push('Client portal PIN must be 4-6 digits');
+    if (formData.loginPin && !/^\d{6}$/.test(formData.loginPin)) {
+      errors.push('Client portal PIN must be 6 digits');
     }
 
     // Check if state is required for US customers
@@ -270,7 +270,7 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
                       loginPin: value
                     }));
                   }}
-                  placeholder="4-6 digit login PIN"
+                  placeholder="6-digit secure PIN"
                   inputMode="numeric"
                   maxLength={6}
                 />

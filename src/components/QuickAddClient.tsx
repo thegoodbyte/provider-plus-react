@@ -26,7 +26,6 @@ const QuickAddClient: React.FC<QuickAddClientProps> = ({ visible, onClose, onSuc
                 lastName: values.lastName,
                 phone: values.phone,
                 email: values.email || '',
-                loginPin: values.loginPin || undefined,
                 country: values.country || 'USA',
                 source: values.source || '',
                 notes: values.notes || '',

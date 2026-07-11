@@ -134,8 +134,7 @@ export const clientsApi = {
   },
   update: (id: string, data: Partial<Client>) => {
     cacheService.clearPattern('clients:');
-    const { loginPin: _loginPin, ...safeData } = data as Partial<Client> & { loginPin?: string };
-    return api.patch<Client>(`/clients/${id}`, safeData);
+    return api.patch<Client>(`/clients/${id}`, data);
   },
   delete: (id: string) => {
     cacheService.clearPattern('clients:');
@@ -178,6 +177,8 @@ export const clientsApi = {
       },
     });
   },
+  resetLoginPin: (id: string) =>
+    api.post<{ client: Client; loginPin: string; emailSent: boolean }>(`/clients/${id}/login-pin/reset`, {}),
   getProfilePictureBlob: (id: string) =>
     api.get(`/clients/${id}/profile-picture`, { responseType: 'blob', suppressGlobalError: true } as any),
 };

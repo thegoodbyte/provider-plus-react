@@ -199,8 +199,8 @@ const ClientEditPage: React.FC = () => {
     if (displayIdValue !== undefined && displayIdValue !== null && Number.isNaN(Number(displayIdValue))) {
       errors.push('Client ID must be a number');
     }
-    if (formData.loginPin && !/^\d{4,6}$/.test(formData.loginPin)) {
-      errors.push('Client portal PIN must be 4-6 digits');
+    if (formData.loginPin && !/^\d{6}$/.test(formData.loginPin)) {
+      errors.push('Client portal PIN must be 6 digits');
     }
 
     // Check if state is required for US customers
@@ -487,7 +487,7 @@ const ClientEditPage: React.FC = () => {
                     loginPin: value
                   }));
                 }}
-                placeholder="4-6 digit login PIN"
+                placeholder="6-digit secure PIN"
                 inputMode="numeric"
                 maxLength={6}
                 className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"

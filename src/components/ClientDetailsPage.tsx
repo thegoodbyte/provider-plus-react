@@ -109,6 +109,8 @@ const ClientDetailsPage: React.FC = () => {
   const [taskError, setTaskError] = useState<string | null>(null);
   const [showAddMedicalModal, setShowAddMedicalModal] = useState(false);
   const [showLoginPin, setShowLoginPin] = useState(false);
+  const [resettingLoginPin, setResettingLoginPin] = useState(false);
+  const [loginPinMessage, setLoginPinMessage] = useState<string | null>(null);
   const [notes, setNotes] = useState<any[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
@@ -140,6 +142,24 @@ const ClientDetailsPage: React.FC = () => {
   const [uploadingLiverPanel, setUploadingLiverPanel] = useState(false);
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
   const [uploadingProfilePicture, setUploadingProfilePicture] = useState(false);
+
+  const handleResetLoginPin = async () => {
+    if (!client?._id) return;
+    if (!window.confirm('Generate a new client portal PIN and email it to the client?')) return;
+
+    try {
+      setResettingLoginPin(true);
+      setLoginPinMessage(null);
+      const response = await clientsApi.resetLoginPin(client._id);
+      setClient((current: any) => current ? { ...current, loginPin: response.data.loginPin } : current);
+      setLoginPinMessage(response.data.emailSent ? 'A new PIN was generated and emailed to the client.' : 'A new PIN was generated. Email delivery was not confirmed.');
+    } catch (error: any) {
+      console.error('Error resetting client PIN:', error);
+      setLoginPinMessage(error?.response?.data?.message || error?.message || 'Failed to reset client PIN.');
+    } finally {
+      setResettingLoginPin(false);
+    }
+  };
 
   useEffect(() => {
     if (clientId) {
@@ -1141,8 +1161,21 @@ const ClientDetailsPage: React.FC = () => {
                           <Icon icon={showLoginPin ? FiEyeOff : FiEye} className="w-4 h-4" />
                         </button>
                       )}
+                      <button
+                        type="button"
+                        onClick={handleResetLoginPin}
+                        disabled={resettingLoginPin}
+                        className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-60"
+                      >
+                        {resettingLoginPin ? 'Resetting...' : 'Reset PIN'}
+                      </button>
                     </dd>
                   </div>
+                  {loginPinMessage && (
+                    <div className="rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+                      {loginPinMessage}
+                    </div>
+                  )}
                   <div className="flex flex-wrap justify-between gap-2">
                     <dt className="text-sm text-gray-600">Country:</dt>
                     <dd className="text-sm font-medium">{client.country || 'N/A'}</dd>

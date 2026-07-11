@@ -120,18 +120,12 @@ const AddClient: React.FC = () => {
       return;
     }
 
-    if (formData.loginPin && !/^\d{4,6}$/.test(formData.loginPin)) {
-      setError('Client portal PIN must be 4-6 digits');
-      return;
-    }
-
     setSaving(true);
     setError('');
 
     try {
       const dataToSave = {
         ...formData,
-        loginPin: formData.loginPin || undefined,
         signupDate: formData.signupDate || new Date()
       };
 
@@ -320,17 +314,8 @@ const AddClient: React.FC = () => {
                   type="email"
                 />
 
-                <div>
-                  <label className="block text-sm font-medium text-apple-gray-700 mb-1">Client Portal PIN</label>
-                  <input
-                    type="text"
-                    value="Generated automatically on save"
-                    readOnly
-                    className="w-full px-3 py-2 border border-apple-gray-200 rounded-apple bg-apple-gray-50 text-apple-gray-500 text-sm"
-                  />
-                  <p className="mt-1 text-xs text-apple-gray-500">
-                    A secure 6-digit PIN is assigned by the server when the client is created.
-                  </p>
+                <div className="rounded-apple border border-apple-gray-200 bg-apple-gray-50 px-3 py-2 text-sm text-apple-gray-600">
+                  A secure client portal PIN is generated automatically after save and can be resent from the client profile.
                 </div>
 
                 <AppleInput

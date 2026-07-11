@@ -345,8 +345,8 @@ const UnifiedClientManager: React.FC = () => {
         'display_id', 'signupDate', 'workflowStatus', 'language'
       ];
 
-      if (formData.loginPin && !/^\d{4,6}$/.test(formData.loginPin)) {
-        alert('Client portal PIN must be 4-6 digits');
+      if (formData.loginPin && !/^\d{6}$/.test(formData.loginPin)) {
+        alert('Client portal PIN must be 6 digits');
         return;
       }
 
@@ -384,7 +384,7 @@ const UnifiedClientManager: React.FC = () => {
       }, {} as any);
 
       if (selectedClient?._id && !formData.loginPin?.trim()) {
-        cleanData.loginPin = null;
+        delete cleanData.loginPin;
       }
 
       console.log('Cleaned data being sent:', JSON.stringify(cleanData, null, 2));
@@ -857,7 +857,7 @@ const UnifiedClientManager: React.FC = () => {
                           ...formData,
                           loginPin: value.replace(/\D/g, '').slice(0, 6)
                         })}
-                        placeholder="4-6 digit login PIN"
+                        placeholder="6-digit secure PIN"
                         type="text"
                       />
 
