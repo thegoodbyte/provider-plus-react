@@ -5,6 +5,7 @@ import { Client } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import AppleButton from './AppleButton';
 import { FiArrowLeft, FiCamera, FiSave, FiUser } from 'react-icons/fi';
+import { clientWorkflowStatusLabels, clientWorkflowStatusSelectOptions, type ClientWorkflowStatus } from '../config/clientWorkflowStatus';
 import './ClientEditPage.css';
 
 // Icon wrapper component for consistent icon rendering
@@ -54,16 +55,10 @@ const cropImageToProfileSquare = (file: File, size = 200): Promise<File> => {
   });
 };
 
-const CLIENT_WORKFLOW_STATUS_OPTIONS: Array<{ value: NonNullable<Client['workflowStatus']>; label: string }> = [
-  { value: 'potential', label: 'Potential' },
-  { value: 'screening', label: 'Screening' },
-  { value: 'approved', label: 'Approved' },
-  { value: 'booked', label: 'Booked' },
-  { value: 'completed', label: 'Alumni / Completed' },
-  { value: 'cancelled', label: 'Cancelled' },
-  { value: 'rejected', label: 'Rejected' },
-  { value: 'blacklisted', label: 'Blacklisted' },
-];
+const CLIENT_WORKFLOW_STATUS_OPTIONS: Array<{ value: ClientWorkflowStatus; label: string }> = clientWorkflowStatusSelectOptions.map((value) => ({
+  value,
+  label: clientWorkflowStatusLabels[value] || value,
+}));
 
 const ClientEditPage: React.FC = () => {
   const { clientId } = useParams<{ clientId: string }>();
@@ -376,7 +371,7 @@ const ClientEditPage: React.FC = () => {
               <select
                 id="workflowStatus"
                 name="workflowStatus"
-                value={formData.workflowStatus || 'potential'}
+                value={formData.workflowStatus || 'entered'}
                 onChange={handleInputChange}
                 className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >

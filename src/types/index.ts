@@ -1,3 +1,5 @@
+import type { ClientWorkflowStatus } from '../config/clientWorkflowStatus';
+
 export interface Retreat {
   _id?: string;
   name: string;
@@ -117,22 +119,7 @@ export interface Client {
   medicalConditions?: string;
   dietaryRestrictions?: string;
   status?: 'active' | 'inactive' | 'suspended';
-  workflowStatus?:
-    | 'entered'
-    | 'screening_scheduled'
-    | 'screened_accepted'
-    | 'screened_declined'
-    | 'payment_request_sent'
-    | 'booked_paid'
-    | 'retreat_completed'
-    | 'cancelled'
-    | 'blacklisted'
-    | 'potential'
-    | 'screening'
-    | 'approved'
-    | 'rejected'
-    | 'booked'
-    | 'completed';
+  workflowStatus?: ClientWorkflowStatus;
   blacklistReason?: string;
   blacklistDate?: Date | string;
   display_id?: number;

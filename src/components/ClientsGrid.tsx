@@ -9,84 +9,13 @@ import { Chip } from '@mui/material';
 import { Edit as EditIcon, Delete as DeleteIcon, Visibility as VisibilityIcon, Link as LinkIcon } from '@mui/icons-material';
 import { normalizeClientTag } from '../utils/clientTags';
 import {
+  clientWorkflowStatusSelectOptions,
   clientWorkflowStatusLabels,
-  clientWorkflowStatusValues,
+  isBookedClient,
   normalizeClientWorkflowStatus,
-} from '../utils/clientWorkflowStatus';
+} from '../config/clientWorkflowStatus';
+import { COUNTRIES_WITH_CODES, getCountryName } from '../config/countries';
 import './ClientsGrid.css';
-
-// Countries list with codes for storage and full names for display
-const COUNTRIES_WITH_CODES = [
-  { code: 'US', name: 'United States' },
-  { code: 'CZ', name: 'Czech Republic' },
-  { code: 'PL', name: 'Poland' },
-  { code: 'GB', name: 'United Kingdom' },
-  { code: 'CA', name: 'Canada' },
-  { code: 'DE', name: 'Germany' },
-  { code: 'FR', name: 'France' },
-  { code: 'ES', name: 'Spain' },
-  { code: 'IT', name: 'Italy' },
-  { code: 'NL', name: 'Netherlands' },
-  { code: 'BE', name: 'Belgium' },
-  { code: 'CH', name: 'Switzerland' },
-  { code: 'AT', name: 'Austria' },
-  { code: 'DK', name: 'Denmark' },
-  { code: 'SE', name: 'Sweden' },
-  { code: 'NO', name: 'Norway' },
-  { code: 'FI', name: 'Finland' },
-  { code: 'PT', name: 'Portugal' },
-  { code: 'IE', name: 'Ireland' },
-  { code: 'GR', name: 'Greece' },
-  { code: 'TR', name: 'Turkey' },
-  { code: 'RU', name: 'Russia' },
-  { code: 'UA', name: 'Ukraine' },
-  { code: 'AU', name: 'Australia' },
-  { code: 'NZ', name: 'New Zealand' },
-  { code: 'JP', name: 'Japan' },
-  { code: 'CN', name: 'China' },
-  { code: 'KR', name: 'South Korea' },
-  { code: 'IN', name: 'India' },
-  { code: 'BR', name: 'Brazil' },
-  { code: 'MX', name: 'Mexico' },
-  { code: 'AR', name: 'Argentina' },
-  { code: 'IL', name: 'Israel' },
-  { code: 'AE', name: 'United Arab Emirates' },
-  { code: 'SA', name: 'Saudi Arabia' },
-  { code: 'EG', name: 'Egypt' },
-  { code: 'ZA', name: 'South Africa' },
-  { code: 'NG', name: 'Nigeria' },
-  { code: 'KE', name: 'Kenya' },
-  { code: 'MA', name: 'Morocco' },
-  { code: 'TN', name: 'Tunisia' },
-  { code: 'SG', name: 'Singapore' },
-  { code: 'MY', name: 'Malaysia' },
-  { code: 'TH', name: 'Thailand' },
-  { code: 'ID', name: 'Indonesia' },
-  { code: 'PH', name: 'Philippines' },
-  { code: 'VN', name: 'Vietnam' },
-  { code: 'HK', name: 'Hong Kong' },
-  { code: 'TW', name: 'Taiwan' },
-  { code: 'CL', name: 'Chile' },
-  { code: 'CO', name: 'Colombia' },
-  { code: 'PE', name: 'Peru' },
-  { code: 'VE', name: 'Venezuela' },
-  { code: 'HR', name: 'Croatia' },
-  { code: 'RS', name: 'Serbia' },
-  { code: 'SI', name: 'Slovenia' },
-  { code: 'SK', name: 'Slovakia' },
-  { code: 'HU', name: 'Hungary' },
-  { code: 'RO', name: 'Romania' },
-  { code: 'BG', name: 'Bulgaria' },
-  { code: 'LT', name: 'Lithuania' },
-  { code: 'LV', name: 'Latvia' },
-  { code: 'EE', name: 'Estonia' },
-  { code: 'IS', name: 'Iceland' },
-  { code: 'LU', name: 'Luxembourg' },
-  { code: 'MT', name: 'Malta' },
-  { code: 'CY', name: 'Cyprus' }
-].sort((a, b) => a.name.localeCompare(b.name));
-
-// Common country codes
 interface ClientFormData extends Partial<Client> {
   totalAmount?: number;
   currency?: string;
@@ -115,10 +44,6 @@ const getRetreatCode = (retreat: any) => {
   const two = (value: number) => String(value).padStart(2, '0');
   return `${initials}-${two(date.getUTCMonth() + 1)}-${two(date.getUTCDate())}-${two(date.getUTCFullYear() % 100)}`;
 };
-
-const isBookedClient = (client: Client) => (
-  (client.status as string) === 'booked' || normalizeClientWorkflowStatus(client.workflowStatus || undefined) === 'booked_paid'
-);
 
 const getWorkflowChipColor = (workflow: string): 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' => {
   switch (workflow) {
@@ -227,11 +152,6 @@ const ClientsGrid: React.FC = () => {
   const [refreshKey, setRefreshKey] = useState(0);
 
   // Helper function to get country name from code
-  const getCountryName = (code: string) => {
-    const country = COUNTRIES_WITH_CODES.find(c => c.code === code);
-    return country ? country.name : code;
-  };
-
   const handleRefresh = () => {
     fetchClients();
     setRefreshKey(prev => prev + 1);
@@ -721,7 +641,7 @@ const ClientsGrid: React.FC = () => {
             onChange={(e) => setWorkflowFilter(e.target.value)}
           >
             <option value="all">All Clients</option>
-            {clientWorkflowStatusValues.filter((status) => !['potential', 'screening', 'approved', 'rejected', 'booked', 'completed'].includes(status)).map((status) => (
+            {clientWorkflowStatusSelectOptions.map((status) => (
               <option key={status} value={status}>{clientWorkflowStatusLabels[status] || status}</option>
             ))}
           </select>
@@ -970,7 +890,7 @@ const ClientsGrid: React.FC = () => {
                     >
                       <option value="active">Active</option>
                       <option value="inactive">Inactive</option>
-                      {clientWorkflowStatusValues.filter((status) => !['potential', 'screening', 'approved', 'rejected', 'booked', 'completed'].includes(status)).map((status) => (
+                      {clientWorkflowStatusSelectOptions.map((status) => (
                         <option key={status} value={status}>{clientWorkflowStatusLabels[status] || status}</option>
                       ))}
                     </select>

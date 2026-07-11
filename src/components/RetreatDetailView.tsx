@@ -681,7 +681,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         source: values.source,
         notes: values.notes,
         address: 'TBD',
-        workflowStatus: 'booked' as const
+        workflowStatus: 'booked_paid' as const
       };
 
       const clientResponse = await clientsApi.create(clientData);

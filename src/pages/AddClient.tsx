@@ -5,7 +5,7 @@ import AppleInput from '../components/AppleInput';
 import { clientsApi } from '../services/api';
 import { Client } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { clientWorkflowStatusLabels, clientWorkflowStatusValues, normalizeClientWorkflowStatus } from '../utils/clientWorkflowStatus';
+import { clientWorkflowStatusLabels, clientWorkflowStatusSelectOptions, normalizeClientWorkflowStatus } from '../config/clientWorkflowStatus';
 
 const cropImageToProfileSquare = (file: File, size = 200): Promise<File> => {
   return new Promise((resolve, reject) => {
@@ -381,7 +381,7 @@ const AddClient: React.FC = () => {
                     value={normalizeClientWorkflowStatus(formData.workflowStatus)}
                     onChange={(e) => setFormData({ ...formData, workflowStatus: e.target.value as any })}
                   >
-                    {clientWorkflowStatusValues.filter((status) => !['potential', 'screening', 'approved', 'rejected', 'booked', 'completed'].includes(status)).map((status) => (
+                    {clientWorkflowStatusSelectOptions.map((status) => (
                       <option key={status} value={status}>
                         {clientWorkflowStatusLabels[status] || status}
                       </option>

@@ -8,11 +8,11 @@ import { Client, Retreat, RetreatClient } from '../types';
 import {
   bookedWorkflowStatuses,
   clientWorkflowStatusLabels,
+  clientWorkflowStatusSelectOptions,
   clientWorkflowStatusTone,
   leadWorkflowStatuses,
   normalizeClientWorkflowStatus,
-  clientWorkflowStatusValues,
-} from '../utils/clientWorkflowStatus';
+} from '../config/clientWorkflowStatus';
 import {
   FiPlus,
   FiSearch,
@@ -589,7 +589,7 @@ const UnifiedClientManager: React.FC = () => {
         >
           <option value="all">All Statuses</option>
           <option value="leads">Potential + Screening</option>
-          {clientWorkflowStatusValues.filter((status) => !['potential', 'screening', 'approved', 'rejected', 'booked', 'completed'].includes(status)).map((status) => (
+          {clientWorkflowStatusSelectOptions.map((status) => (
             <option key={status} value={status}>{clientWorkflowStatusLabels[status] || status}</option>
           ))}
         </select>
@@ -911,7 +911,7 @@ const UnifiedClientManager: React.FC = () => {
                       value={normalizeClientWorkflowStatus(formData.workflowStatus || undefined)}
                       onChange={(e) => setFormData({ ...formData, workflowStatus: e.target.value as any })}
                     >
-                      {clientWorkflowStatusValues.filter((status) => !['potential', 'screening', 'approved', 'rejected', 'booked', 'completed'].includes(status)).map((status) => (
+                      {clientWorkflowStatusSelectOptions.map((status) => (
                         <option key={status} value={status}>
                           {clientWorkflowStatusLabels[status] || status}
                         </option>
