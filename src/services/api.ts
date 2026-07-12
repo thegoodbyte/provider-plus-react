@@ -1063,6 +1063,7 @@ export const medicalReviewRequestsApi = {
     retreatId?: string;
     ceremonyNumber?: number;
     reviewRequestIds?: string[];
+    removeReviewRequestIds?: string[];
     replaceReviewRequestIds?: string[];
     reviewerUserId?: string;
   }) => {

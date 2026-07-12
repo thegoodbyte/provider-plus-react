@@ -203,6 +203,20 @@ const MedicalReviewGroupPage: React.FC = () => {
     }
   };
 
+  const removeRequestFromGroup = async (requestId: string) => {
+    if (!group?._id || !requestId) return;
+    if (!window.confirm('Remove this MRR from the packet? The review request will stay in the system.')) return;
+    try {
+      setSavingGroup(true);
+      await medicalReviewRequestsApi.updateGroup(group._id, { removeReviewRequestIds: [requestId] });
+      await loadGroup();
+    } catch (requestError: any) {
+      setError(requestError?.response?.data?.message || 'Unable to remove the request from the packet.');
+    } finally {
+      setSavingGroup(false);
+    }
+  };
+
   const saveTitle = async () => {
     if (!group?._id) return;
     try {
@@ -496,13 +510,25 @@ const MedicalReviewGroupPage: React.FC = () => {
                           </span>
                         </div>
                         <div className="flex justify-start md:justify-end">
-                          <button
-                            type="button"
-                            onClick={() => navigate(`/medical/review-requests/${request._id}/edit`)}
-                            className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
-                          >
-                            Open review
-                          </button>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/medical/review-requests/${request._id}/edit`)}
+                              className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+                            >
+                              Open review
+                            </button>
+                            {canManageGroup && (
+                              <button
+                                type="button"
+                                onClick={() => removeRequestFromGroup(request._id || '')}
+                                disabled={savingGroup}
+                                className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:opacity-60"
+                              >
+                                Remove
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
