@@ -92,6 +92,9 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const [createdGroupUrl, setCreatedGroupUrl] = useState('');
   const [groupError, setGroupError] = useState('');
   const [creatingGroup, setCreatingGroup] = useState(false);
+  const [editingGroupId, setEditingGroupId] = useState('');
+  const [editingGroupTitle, setEditingGroupTitle] = useState('');
+  const [editingGroupSaving, setEditingGroupSaving] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -242,8 +245,46 @@ const MedicalReviewRequestsGrid: React.FC = () => {
       setGroupType('retreat');
       setGroupCeremonyNumber('');
       setCreatedGroupUrl('');
-      setGroupError('');
+    setGroupError('');
     setGroupModalOpen(true);
+  };
+
+  const openEditGroupModal = (group: MedicalReviewGroup) => {
+    setEditingGroupId(group._id || '');
+    setEditingGroupTitle(group.title || '');
+    setGroupError('');
+  };
+
+  const saveEditedGroup = async () => {
+    if (!editingGroupId) return;
+    const title = editingGroupTitle.trim();
+    if (!title) {
+      setGroupError('Packet title is required.');
+      return;
+    }
+    try {
+      setEditingGroupSaving(true);
+      await medicalReviewRequestsApi.updateGroup(editingGroupId, { title });
+      setGroups((current) => current.map((group) => (
+        group._id === editingGroupId ? { ...group, title } : group
+      )));
+      setEditingGroupId('');
+    } catch (requestError: any) {
+      setGroupError(requestError?.response?.data?.message || 'Unable to rename the packet.');
+    } finally {
+      setEditingGroupSaving(false);
+    }
+  };
+
+  const deleteGroup = async (group: MedicalReviewGroup) => {
+    if (!group._id) return;
+    if (!window.confirm(`Delete packet "${group.title}"? The MRRs will remain in the system.`)) return;
+    try {
+      await medicalReviewRequestsApi.deleteGroup(group._id);
+      setGroups((current) => current.filter((item) => item._id !== group._id));
+    } catch (requestError: any) {
+      setGroupError(requestError?.response?.data?.message || 'Unable to delete the packet.');
+    }
   };
 
   const selectedGroupRequests = useMemo(
@@ -474,11 +515,11 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                      {groupUrl && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={(event) => {
+                    {groupUrl && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={(event) => {
                               event.stopPropagation();
                               copyText(groupUrl);
                             }}
@@ -499,6 +540,34 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                           >
                             <Icon icon={FiSend} className="h-3.5 w-3.5" />
                             WhatsApp
+                          </button>
+                        </>
+                      )}
+                      {canManageRequests && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              openEditGroupModal(group);
+                            }}
+                            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                            title="Rename packet"
+                          >
+                            <Icon icon={FiEdit2} className="h-3.5 w-3.5" />
+                            Rename
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              deleteGroup(group);
+                            }}
+                            className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100"
+                            title="Delete packet"
+                          >
+                            <Icon icon={FiTrash2} className="h-3.5 w-3.5" />
+                            Delete
                           </button>
                         </>
                       )}
@@ -882,6 +951,47 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                 className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {creatingGroup ? 'Creating...' : 'Create Link'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editingGroupId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
+          <div className="w-full max-w-md rounded-lg bg-white shadow-xl">
+            <div className="border-b border-gray-200 px-5 py-4">
+              <h2 className="text-lg font-semibold text-gray-900">Rename packet</h2>
+              <p className="mt-1 text-sm text-gray-600">Change the packet title without affecting the MRRs inside it.</p>
+            </div>
+            <div className="space-y-4 px-5 py-4">
+              {groupError && (
+                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{groupError}</div>
+              )}
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">Packet title</span>
+                <input
+                  value={editingGroupTitle}
+                  onChange={(event) => setEditingGroupTitle(event.target.value)}
+                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                />
+              </label>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-gray-200 px-5 py-4">
+              <button
+                type="button"
+                onClick={() => setEditingGroupId('')}
+                className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={saveEditedGroup}
+                disabled={editingGroupSaving}
+                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+              >
+                {editingGroupSaving ? 'Saving...' : 'Save title'}
               </button>
             </div>
           </div>
