@@ -181,7 +181,6 @@ const pickMatchingReview = (
   artifact?: MedicalArtifact | null,
 ) => {
   const bookingClientId = getObjectId(booking.clientId);
-  const bookingRetreatId = getObjectId(booking.retreatId);
   const bookingId = getObjectId(booking);
   const artifactId = getObjectId(artifact);
 
@@ -189,17 +188,15 @@ const pickMatchingReview = (
     if (!matchesStageReview(request, stage)) return false;
 
     const requestClientId = getObjectId(request.clientId);
-    const requestRetreatId = getObjectId(request.retreatId);
     const requestBookingId = getObjectId((request as any).bookingId);
     const requestMedicalArtifactId = getObjectId(request.medicalArtifactId);
     const reviewArtifactIds = (request.artifactIds || []).map(getObjectId);
 
     const sameClient = requestClientId && requestClientId === bookingClientId;
-    const sameRetreat = requestRetreatId && requestRetreatId === bookingRetreatId;
     const sameBooking = requestBookingId && requestBookingId === bookingId;
     const linkedArtifact = artifactId && (requestMedicalArtifactId === artifactId || reviewArtifactIds.includes(artifactId));
 
-    return sameClient || sameRetreat || sameBooking || linkedArtifact;
+    return sameClient || sameBooking || linkedArtifact;
   });
 
   if (artifactId) {
@@ -228,11 +225,9 @@ const pickMatchingArtifact = (
     if (!matchesStageArtifact(artifact, stage)) return false;
 
     const artifactClientId = getObjectId(artifact.clientId);
-    const artifactRetreatId = getObjectId(artifact.retreatId);
     const artifactBookingId = getObjectId(artifact.bookingId);
 
     return artifactClientId === bookingClientId
-      || artifactRetreatId === bookingRetreatId
       || artifactBookingId === bookingId;
   });
 

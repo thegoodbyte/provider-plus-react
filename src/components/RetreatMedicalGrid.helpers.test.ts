@@ -139,5 +139,60 @@ describe('RetreatMedicalGrid helpers', () => {
     expect(data.rows.find((row) => row.key === 'ekg')?.cells[0].status).toBe('artifact_only');
     expect(data.rows.find((row) => row.key === 'ekg')?.cells[0].reviewLabel).toBe('');
   });
-});
 
+  it('does not reuse one retreat review across every client column', () => {
+    const bookings = [
+      {
+        _id: 'booking-a',
+        bookingNumber: 1,
+        retreatId: 'retreat-1',
+        clientId: {
+          _id: 'client-a',
+          firstName: 'Anna',
+          lastName: 'Blue',
+        },
+      },
+      {
+        _id: 'booking-b',
+        bookingNumber: 2,
+        retreatId: 'retreat-1',
+        clientId: {
+          _id: 'client-b',
+          firstName: 'Ben',
+          lastName: 'Green',
+        },
+      },
+    ] as any;
+
+    const reviews = [
+      {
+        _id: 'review-a',
+        display_id: 7001,
+        clientId: 'client-a',
+        retreatId: 'retreat-1',
+        requestType: 'ekg_review',
+        status: 'approved',
+        reviewDecision: 'OK',
+        requestedAt: '2026-07-01T10:00:00.000Z',
+      },
+      {
+        _id: 'review-b',
+        display_id: 7002,
+        clientId: 'client-b',
+        retreatId: 'retreat-1',
+        requestType: 'ekg_review',
+        status: 'caution',
+        reviewDecision: 'caution',
+        requestedAt: '2026-07-02T10:00:00.000Z',
+      },
+    ] as any;
+
+    const data = buildRetreatMedicalGridData(bookings, [], reviews, { retreatCode: 'JNO-07-25-26' } as any);
+    const ekgRow = data.rows.find((row) => row.key === 'ekg');
+
+    expect(ekgRow?.cells[0].reviewLabel).toBe('MRR #7001');
+    expect(ekgRow?.cells[0].decisionLabel).toBe('OK');
+    expect(ekgRow?.cells[1].reviewLabel).toBe('MRR #7002');
+    expect(ekgRow?.cells[1].decisionLabel).toBe('Caution');
+  });
+});
