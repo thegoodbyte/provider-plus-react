@@ -72,6 +72,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const { user } = useAuth();
   const basePath = location.pathname.startsWith('/medical') ? '/medical/review-requests' : '/admin/medical-review-requests';
   const canManageRequests = user?.role === 'admin' || user?.role === 'medical_staff';
+  const canDeleteRequests = user?.role === 'admin';
   const [requests, setRequests] = useState<EnrichedReviewRequest[]>([]);
   const [groups, setGroups] = useState<MedicalReviewGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -782,7 +783,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                           <Icon icon={FiEdit2} />
                         </button>
                       )}
-                      {canManageRequests && (
+                      {canDeleteRequests && (
                         <button
                           onClick={() => handleDelete(request._id!)}
                           className="icon-action-btn icon-action-btn-danger"
