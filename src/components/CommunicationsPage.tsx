@@ -179,7 +179,7 @@ const CommunicationsPage: React.FC = () => {
         setSelectedSeedKeys((current) => current.length > 0
           ? current.filter((key) => options.some((option) => option.key === key))
           : options
-            .filter((option) => option.templateKey === 'questionnaire_request' && ['en', 'cz', 'pl'].includes(option.language || ''))
+            .filter((option) => ['questionnaire_request', 'medical_form_request'].includes(option.templateKey || '') && ['en', 'cz', 'pl'].includes(option.language || ''))
             .map((option) => option.key)
         );
       } else {
@@ -311,7 +311,7 @@ const CommunicationsPage: React.FC = () => {
 
   const selectQuestionnaireSeedOptions = () => {
     setSelectedSeedKeys(seedOptions
-      .filter((option) => option.templateKey === 'questionnaire_request' && ['en', 'cz', 'pl'].includes(option.language || ''))
+      .filter((option) => ['questionnaire_request', 'medical_form_request'].includes(option.templateKey || '') && ['en', 'cz', 'pl'].includes(option.language || ''))
       .map((option) => option.key)
     );
   };
@@ -725,14 +725,14 @@ const CommunicationsPage: React.FC = () => {
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <div className="font-semibold text-blue-950">Reseed default templates</div>
-                    <div className="text-xs text-blue-800">Questionnaire templates include the dynamic Jotform link placeholder <code>{'{{links.questionnaire}}'}</code>.</div>
+                    <div className="text-xs text-blue-800">Questionnaire and medications templates include dynamic Jotform link placeholders <code>{'{{links.questionnaire}}'}</code> and <code>{'{{links.medicationsForm}}'}</code>.</div>
                   </div>
                   <button
                     type="button"
                     onClick={selectQuestionnaireSeedOptions}
                     className="rounded-md border border-blue-200 bg-white px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-50"
                   >
-                    Questionnaire EN/CZ/PL
+                    Questionnaire + Meds EN/CZ/PL
                   </button>
                 </div>
                 <label className="mb-3 inline-flex items-center gap-2 text-xs font-medium text-blue-900">
