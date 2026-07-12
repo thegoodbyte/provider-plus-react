@@ -6,7 +6,11 @@ import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
 import { Client, MedicalArtifact, MedicalReviewRequest, Retreat } from '../types';
 import { ThumbsUp } from 'lucide-react';
-import { splitMedicalReviewRequestsByTimeline } from './MedicalReviewRequestsPage.helpers';
+import {
+  formatMedicalReviewDecisionLabel,
+  formatMedicalReviewRequestSummary,
+  splitMedicalReviewRequestsByTimeline,
+} from './MedicalReviewRequestsPage.helpers';
 
 const reviewStatusStyle: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
@@ -253,6 +257,7 @@ const formatDocumentMeta = (request: MedicalReviewRequest) => {
   ].filter(Boolean);
   return parts.join(' • ');
 };
+const formatCompactDocumentMeta = (request: MedicalReviewRequest) => formatMedicalReviewRequestSummary(request) || formatDocumentMeta(request);
 const formatArtifactDocumentMeta = (artifact: MedicalArtifact) => {
   const parts = [
     artifact.documentStage ? documentStageLabels[artifact.documentStage] : '',
@@ -928,8 +933,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
       </div>
       <div className="mt-1 text-xs uppercase tracking-wide text-gray-500">{label}</div>
       <div className="mt-1 text-sm text-gray-600">
-        {getRequestTypeLabel(item.requestType)}
-        {item.reviewDecision ? ` • ${item.reviewDecision}` : ''}
+        {formatCompactDocumentMeta(item) || getRequestTypeLabel(item.requestType)}
+        {item.reviewDecision ? ` • ${formatMedicalReviewDecisionLabel(item.reviewDecision)}` : ''}
       </div>
       <div className="mt-1 text-xs text-gray-500">
         {item.reviewNotes || item.medicalStaffNotes || item.overallNotes || 'No notes saved yet.'}
@@ -957,11 +962,6 @@ const MedicalReviewRequestsPage: React.FC = () => {
         ? `${selected.clientId.firstName} ${selected.clientId.lastName || ''}`.trim()
         : 'Unknown client'
     : '';
-  const selectedRetreatName = selected
-    ? typeof selected.retreatId === 'string'
-      ? selected.retreatId
-      : selected.retreatId?.name || 'Unknown retreat'
-    : '';
   const isMissingOverallDecision = Boolean(validationError && !reviewDecision);
   const isMissingMedicalStaffNotes = Boolean(validationError && !medicalStaffNotes.trim());
 
@@ -975,10 +975,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
               {isDetailView && selected ? (
                 <div className="mt-1">
                   <div className="text-base font-medium text-gray-900 sm:text-lg">{selectedClientName}</div>
-                  <div className="text-sm text-gray-600">{getRequestTypeLabel(selected.requestType)}</div>
-                  {formatDocumentMeta(selected) && (
-                    <div className="text-xs font-medium text-blue-700 sm:text-sm">{formatDocumentMeta(selected)}</div>
-                  )}
+                  <div className="text-sm text-gray-600">{formatCompactDocumentMeta(selected) || getRequestTypeLabel(selected.requestType)}</div>
                 </div>
               ) : (
             <p className="text-sm text-gray-600">
@@ -988,7 +985,13 @@ const MedicalReviewRequestsPage: React.FC = () => {
           {isDetailView && selected && (
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
               <span>Request #{selected.display_id || '—'}</span>
-              {selectedRetreatName && <span>{selectedRetreatName}</span>}
+              <span>
+                {selected.createdAt
+                  ? `Created ${formatDateTime(selected.createdAt)}`
+                  : selected.requestedAt
+                    ? `Created ${formatDateTime(selected.requestedAt)}`
+                    : 'No created date'}
+              </span>
               <span className={`rounded-full px-2 py-1 font-semibold ${reviewStatusStyle[selected.status] || 'bg-gray-100 text-gray-700'}`}>
                 {selected.status}
               </span>
@@ -1086,11 +1089,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
                           #{request.display_id || '—'} {typeof request.clientId === 'string' ? request.clientId : request.clientId?.display_id ? `#${request.clientId.display_id}` : 'Client'}
                         </div>
                         <div className="text-xs text-gray-500">
-                          {getRequestTypeLabel(request.requestType)} • Attempt {request.attemptNumber || 1} • {request.source || 'Provider Plus CRM'}
+                          {formatCompactDocumentMeta(request) || getRequestTypeLabel(request.requestType)} • Attempt {request.attemptNumber || 1} • {request.source || 'Provider Plus CRM'}
                         </div>
-                        {formatDocumentMeta(request) && (
-                          <div className="mt-1 text-xs font-medium text-blue-700">{formatDocumentMeta(request)}</div>
-                        )}
                       </div>
                       <span className={`rounded-full px-2 py-1 text-xs font-semibold ${reviewStatusStyle[request.status] || 'bg-gray-100 text-gray-700'}`}>
                         {request.status}
@@ -1114,12 +1114,15 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   <h2 className="text-xl font-semibold text-gray-900">#{selected.display_id || '—'} Review Request</h2>
                   <div className="text-sm text-gray-600">
                     {selectedClientName}
-                    {' '}• {selectedRetreatName}
                   </div>
-                  <div className="mt-1 text-sm font-medium text-gray-900">{getRequestTypeLabel(selected.requestType)}</div>
-                  {formatDocumentMeta(selected) && (
-                    <div className="mt-1 text-sm font-medium text-blue-700">{formatDocumentMeta(selected)}</div>
-                  )}
+                  <div className="mt-1 text-sm font-medium text-gray-900">{formatCompactDocumentMeta(selected) || getRequestTypeLabel(selected.requestType)}</div>
+                  <div className="mt-1 text-xs text-gray-500">
+                    {selected.createdAt
+                      ? `Created ${formatDateTime(selected.createdAt)}`
+                      : selected.requestedAt
+                        ? `Created ${formatDateTime(selected.requestedAt)}`
+                        : 'No created date'}
+                  </div>
                 </div>
                 <span className={`rounded-full px-2 py-1 text-xs font-semibold ${reviewStatusStyle[selected.status] || 'bg-gray-100 text-gray-700'}`}>
                   {selected.status}
@@ -1143,6 +1146,48 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   <div className="text-xs uppercase tracking-wide text-gray-500">Attempt</div>
                   <div className="mt-1 text-sm text-gray-900">{selected.attemptNumber || 1}</div>
                 </div>
+                </div>
+              )}
+
+              {selected && history.length > 0 && (
+                <div className="space-y-3">
+                  <details className="rounded-md border border-gray-200 bg-white" open={false}>
+                    <summary className="flex cursor-pointer items-center justify-between gap-3 px-3 py-2 text-sm font-semibold text-gray-900">
+                      <span>Previous MRRs ({history.length})</span>
+                      <span className="text-xs font-medium text-gray-500">Client history</span>
+                    </summary>
+                    <div className="border-t border-gray-200 p-3">
+                      <div className="overflow-hidden rounded-md border border-gray-200">
+                        <table className="min-w-full divide-y divide-gray-200 text-sm">
+                          <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500">
+                            <tr>
+                              <th className="px-3 py-2">Request</th>
+                              <th className="px-3 py-2">Document</th>
+                              <th className="px-3 py-2">Created</th>
+                              <th className="px-3 py-2">Decision</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200 bg-white">
+                            {history
+                              .slice()
+                              .sort((a, b) => {
+                                const at = new Date(a.createdAt || a.requestedAt || 0).getTime();
+                                const bt = new Date(b.createdAt || b.requestedAt || 0).getTime();
+                                return bt - at;
+                              })
+                              .map((item) => (
+                                <tr key={item._id} className="align-top">
+                                  <td className="px-3 py-2 font-medium text-gray-900">#{item.display_id || '—'}</td>
+                                  <td className="px-3 py-2 text-gray-700">{formatCompactDocumentMeta(item) || getRequestTypeLabel(item.requestType)}</td>
+                                  <td className="px-3 py-2 text-gray-600">{formatDateTime(item.createdAt || item.requestedAt)}</td>
+                                  <td className="px-3 py-2 text-gray-700">{formatMedicalReviewDecisionLabel(item.reviewDecision)}</td>
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </details>
                 </div>
               )}
 
@@ -1487,7 +1532,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 </div>
                 {isReadOnlyView ? (
                   <div className="rounded-md bg-gray-50 p-3 text-sm">
-                    <div className="font-semibold text-gray-900">{selected.reviewDecision || 'No decision recorded'}</div>
+                    <div className="font-semibold text-gray-900">{formatMedicalReviewDecisionLabel(selected.reviewDecision)}</div>
                     <div className="mt-2 whitespace-pre-wrap text-gray-600">{selected.medicalStaffNotes || selected.overallNotes || selected.reviewNotes || 'No medical staff notes.'}</div>
                   </div>
                 ) : (
@@ -1507,7 +1552,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                         onClick={handleQuickApprove}
                         className="min-h-12 w-full rounded-xl border border-green-200 bg-green-600 px-4 py-3 text-sm font-semibold text-white hover:bg-green-700"
                       >
-                        OK
+                        Approve
                       </button>
                       <button
                         type="button"
@@ -1607,7 +1652,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                         <div key={`${entry.reviewedAt || index}`} className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm">
                           <div className="flex items-center justify-between gap-3">
                             <div className="font-semibold text-gray-900">
-                              {entry.decision || 'No decision'}{entry.status ? ` • ${entry.status}` : ''} • {entry.reviewedBy || 'Unknown reviewer'}
+                              {formatMedicalReviewDecisionLabel(entry.decision)}{entry.status ? ` • ${entry.status}` : ''} • {entry.reviewedBy || 'Unknown reviewer'}
                             </div>
                             <span className="text-xs text-gray-500">{formatDateTime(entry.reviewedAt)}</span>
                           </div>

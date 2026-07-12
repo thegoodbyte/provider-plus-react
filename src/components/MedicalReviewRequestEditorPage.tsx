@@ -490,7 +490,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
             <label className="mb-2 mt-4 block text-sm font-medium text-gray-700">Review Decision</label>
             <select value={form.reviewDecision} onChange={(e) => setForm({ ...form, reviewDecision: e.target.value as FormState['reviewDecision'] })} className="w-full rounded-md border border-gray-300 px-3 py-2">
               <option value="">Select</option>
-              <option value="OK">Accept</option>
+              <option value="OK">Approve</option>
               <option value="caution">Caution</option>
               <option value="NOT OK">Deny</option>
             </select>

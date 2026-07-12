@@ -1,5 +1,24 @@
 import { MedicalReviewRequest } from '../types';
 
+const documentStageLabels: Record<NonNullable<MedicalReviewRequest['documentStage']>, string> = {
+  entry: 'Entry',
+  pre_ceremony: 'Pre-Ceremony',
+  in_ceremony: 'In-Ceremony',
+  post_ceremony: 'Post-Ceremony',
+  other: 'Other',
+  additional: 'Additional',
+};
+
+const documentTypeLabels: Record<NonNullable<MedicalReviewRequest['documentType']>, string> = {
+  EKG: 'EKG',
+  BP: 'Blood Pressure',
+  meds: 'Meds',
+  additional: 'Additional',
+  Liver: 'Liver panel tests',
+  Medications: 'Medications',
+  other: 'Other',
+};
+
 const getRequestId = (request?: MedicalReviewRequest | string | null) => {
   if (!request) return '';
   if (typeof request === 'string') return request;
@@ -50,6 +69,24 @@ export interface MedicalReviewRequestTimeline {
   previousRequests: MedicalReviewRequest[];
   followingRequests: MedicalReviewRequest[];
 }
+
+export const formatMedicalReviewDecisionLabel = (decision?: string) => {
+  if (!decision) return 'No decision recorded';
+  if (decision === 'OK') return 'Approve';
+  if (decision === 'NOT OK') return 'Decline';
+  if (decision === 'caution') return 'Need more info';
+  return decision;
+};
+
+export const formatMedicalReviewRequestSummary = (request: MedicalReviewRequest) => {
+  const documentStage = request.documentStage || (request.artifactSnapshot?.documentStage as MedicalReviewRequest['documentStage'] | undefined);
+  const documentType = request.documentType || (request.artifactSnapshot?.documentType as MedicalReviewRequest['documentType'] | undefined);
+  const parts = [
+    documentStage ? documentStageLabels[documentStage] : '',
+    documentType ? documentTypeLabels[documentType] : '',
+  ].filter(Boolean);
+  return parts.join(' • ');
+};
 
 export const splitMedicalReviewRequestsByTimeline = (
   currentRequest: MedicalReviewRequest | null | undefined,
@@ -113,4 +150,3 @@ export const splitMedicalReviewRequestsByTimeline = (
     followingRequests: followingRequests.sort(sortByTimeline),
   };
 };
-

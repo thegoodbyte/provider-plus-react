@@ -1,4 +1,8 @@
-import { splitMedicalReviewRequestsByTimeline } from './MedicalReviewRequestsPage.helpers';
+import {
+  formatMedicalReviewDecisionLabel,
+  formatMedicalReviewRequestSummary,
+  splitMedicalReviewRequestsByTimeline,
+} from './MedicalReviewRequestsPage.helpers';
 import { MedicalReviewRequest } from '../types';
 
 const makeRequest = (overrides: Partial<MedicalReviewRequest>): MedicalReviewRequest => ({
@@ -62,3 +66,19 @@ describe('splitMedicalReviewRequestsByTimeline', () => {
   });
 });
 
+describe('medical review request helpers', () => {
+  it('formats review decisions with advisor-friendly labels', () => {
+    expect(formatMedicalReviewDecisionLabel('OK')).toBe('Approve');
+    expect(formatMedicalReviewDecisionLabel('caution')).toBe('Need more info');
+    expect(formatMedicalReviewDecisionLabel('NOT OK')).toBe('Decline');
+  });
+
+  it('formats a compact request summary without repeating the request type', () => {
+    const request = makeRequest({
+      documentStage: 'entry',
+      documentType: 'EKG',
+    });
+
+    expect(formatMedicalReviewRequestSummary(request)).toBe('Entry • EKG');
+  });
+});
