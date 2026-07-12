@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import AppleSidebar from './AppleSidebar';
 
 describe('AppleSidebar impersonation navigation', () => {
@@ -34,5 +34,30 @@ describe('AppleSidebar impersonation navigation', () => {
     expect(screen.queryByText('Users')).not.toBeInTheDocument();
     expect(screen.queryByText('Audit Logs')).not.toBeInTheDocument();
     expect(screen.queryByText('Data Backup')).not.toBeInTheDocument();
+  });
+
+  it('collapses and expands the sidebar on toggle', () => {
+    render(
+      <AppleSidebar
+        activeItem="launcher"
+        isOpen
+        onClose={jest.fn()}
+        onItemClick={jest.fn()}
+        onLogout={jest.fn()}
+        userRole="admin"
+        user={{
+          email: 'admin@example.com',
+          role: 'admin',
+        }}
+      />
+    );
+
+    expect(screen.getByText('Provider Plus')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Collapse sidebar'));
+    expect(screen.queryByText('Provider Plus')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Expand sidebar'));
+    expect(screen.getByText('Provider Plus')).toBeInTheDocument();
   });
 });

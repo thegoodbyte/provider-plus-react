@@ -405,9 +405,9 @@ const AppleLayout: React.FC = () => {
       />
 
       {/* Main Content */}
-      <div className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'}`}>
+      <div className={`transition-all duration-300 ${sidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
         {/* Mobile floating controls keep navigation available without reserving header space. */}
-        <div className="fixed left-4 right-4 top-4 z-40 flex items-center justify-between lg:hidden pointer-events-none">
+        <div className="fixed left-4 right-4 top-4 z-40 flex items-center justify-between md:hidden pointer-events-none">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-apple-gray-700 shadow-apple-sm backdrop-blur-apple transition-colors hover:bg-white"
@@ -445,13 +445,13 @@ const AppleLayout: React.FC = () => {
         </div>
 
         {/* Header with glass morphism */}
-        <header className="sticky top-0 z-30 hidden bg-white/70 backdrop-blur-apple border-b border-apple-gray-200 lg:block">
+        <header className="sticky top-0 z-30 hidden bg-white/70 backdrop-blur-apple border-b border-apple-gray-200 md:block">
           <div className="px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-14">
               {/* Mobile menu button */}
               <button
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="lg:hidden inline-flex items-center justify-center w-10 h-10 rounded-apple hover:bg-apple-gray-100 transition-colors flex-shrink-0"
+                className="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-apple hover:bg-apple-gray-100 transition-colors flex-shrink-0"
                 aria-label="Toggle menu"
               >
                 <svg className="w-5 h-5 text-apple-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

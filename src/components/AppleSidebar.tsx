@@ -188,7 +188,6 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
     const saved = localStorage.getItem('sidebarCollapsed');
     return saved === 'true';
   });
-  const [isHovered, setIsHovered] = useState(false);
   const [permissionVersion, setPermissionVersion] = useState(0);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
     const saved = localStorage.getItem('sidebarOpenSections');
@@ -334,7 +333,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
 
   const menuSections = useMemo(() => getMenuSectionsForRole(), [getMenuSectionsForRole]);
 
-  const isExpanded = !isCollapsed || isHovered;
+  const isExpanded = !isCollapsed;
   const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
   const displayEmail = user?.email || '';
   const displayRole =
@@ -365,22 +364,20 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
       {/* Mobile backdrop */}
       {isOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black/30 backdrop-blur-sm z-40"
+          className="md:hidden fixed inset-0 bg-black/30 backdrop-blur-sm z-40"
           onClick={onClose}
         />
       )}
 
       {/* Sidebar */}
       <aside
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
         className={`
           fixed top-0 left-0 h-full z-40
           bg-white/80 backdrop-blur-xl
           border-r border-apple-gray-200
           transform transition-all duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:translate-x-0
+          md:translate-x-0
           ${isExpanded ? 'w-64' : 'w-20'}
         `}
       >
@@ -390,7 +387,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
             <div className="flex items-center justify-between">
               {/* Mobile close button */}
               <button
-                className="lg:hidden p-2 -ml-2 text-apple-gray-500 hover:text-apple-gray-700"
+                className="md:hidden p-2 -ml-2 text-apple-gray-500 hover:text-apple-gray-700"
                 onClick={onClose}
               >
                 {React.createElement(Fi.FiX as any, { className: "w-5 h-5" })}
@@ -414,7 +411,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
           </div>
 
           {/* Collapse Toggle Button (Desktop only) */}
-          <div className={`hidden lg:block px-3 pt-4 pb-2 ${!isExpanded && 'px-2'}`}>
+          <div className={`hidden md:block px-3 pt-4 pb-2 ${!isExpanded && 'px-2'}`}>
             <button
               onClick={handleToggleCollapse}
               className="w-full flex items-center justify-center p-2 rounded-apple hover:bg-apple-gray-100 transition-colors"
