@@ -451,6 +451,7 @@ const BookingRequirementsPanel: React.FC<{
       const [artifactsResponse, documentsResponse] = await Promise.all([
         Promise.all([
           medicalArtifactsApi.getAll({ bookingId, ...bookingFlowFilters }),
+          medicalArtifactsApi.getAll({ bookingId }),
           clientId && retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId, ...bookingFlowFilters }) : Promise.resolve({ data: [] }),
           clientId ? medicalArtifactsApi.getAll({ clientId, ...bookingFlowFilters }) : Promise.resolve({ data: [] }),
         ]),
@@ -647,6 +648,7 @@ const BookingMedicalOverviewPanel: React.FC<{
       const artifactsStart = performance.now();
       const artifactResponses = await Promise.all([
         medicalArtifactsApi.getAll({ bookingId, ...bookingFlowFilters }),
+        medicalArtifactsApi.getAll({ bookingId }),
         clientId && retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId, ...bookingFlowFilters }) : Promise.resolve({ data: [] }),
         clientId ? medicalArtifactsApi.getAll({ clientId, ...bookingFlowFilters }) : Promise.resolve({ data: [] }),
       ]);
@@ -824,6 +826,7 @@ const BookingCeremoniesPanel: React.FC<{
       const artifactsStart = performance.now();
       const artifactResponses = await Promise.all([
         medicalArtifactsApi.getAll({ bookingId, ...bookingFlowFilters }),
+        medicalArtifactsApi.getAll({ bookingId }),
         retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId, ...bookingFlowFilters }) : Promise.resolve({ data: [] }),
         medicalArtifactsApi.getAll({ clientId, ...bookingFlowFilters }),
       ]);

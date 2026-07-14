@@ -208,11 +208,13 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
       const bookingFlowFilters = buildBookingFlowArtifactFilters(itemsResponse.data || []);
       const responses = await Promise.all([
         medicalArtifactsApi.getAll({ bookingId, ...bookingFlowFilters }),
+        medicalArtifactsApi.getAll({ bookingId }),
         clientId && retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId, ...bookingFlowFilters }) : Promise.resolve({ data: [] }),
       ]);
       const directBookingArtifacts: MedicalArtifact[] = responses[0].data || [];
-      const clientRetreatArtifacts: MedicalArtifact[] = responses[1].data || [];
-      const bookingNumberFallbackArtifacts = clientRetreatArtifacts.filter((artifact) =>
+      const bookingArtifacts: MedicalArtifact[] = responses[1].data || [];
+      const clientRetreatArtifacts: MedicalArtifact[] = responses[2].data || [];
+      const bookingNumberFallbackArtifacts = [...bookingArtifacts, ...clientRetreatArtifacts].filter((artifact) =>
         artifactBelongsToBooking(artifact, bookingId, bookingNumber)
       );
       const medicalArtifacts: MedicalArtifact[] = mergeArtifacts([directBookingArtifacts, bookingNumberFallbackArtifacts]).filter((artifact) =>

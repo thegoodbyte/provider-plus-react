@@ -1173,6 +1173,7 @@ export interface MedicalReviewRequest {
 }
 
 export interface MedicalReviewGroupAccessLink {
+  _id?: string;
   tokenHash?: string;
   label?: string;
   url?: string;
@@ -1182,8 +1183,9 @@ export interface MedicalReviewGroupAccessLink {
   firstAccessedAt?: string | Date;
   lastAccessedAt?: string | Date;
   accessCount?: number;
+  expiresAt?: string | Date;
   revokedAt?: string | Date;
-  status?: 'active' | 'revoked';
+  status?: 'active' | 'revoked' | 'expired';
 }
 
 type MedicalReviewGroupUserRef = string | {

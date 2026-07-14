@@ -102,6 +102,7 @@ const MedicalReviewGroupPage: React.FC = () => {
   const [titleDraft, setTitleDraft] = useState('');
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [moveModalOpen, setMoveModalOpen] = useState(false);
+  const [linkExpiryDays, setLinkExpiryDays] = useState('7');
   const [allRequests, setAllRequests] = useState<MedicalReviewRequest[]>([]);
   const [selectedRequestIds, setSelectedRequestIds] = useState<string[]>([]);
   const [moveTargetGroupId, setMoveTargetGroupId] = useState('');
@@ -154,7 +155,11 @@ const MedicalReviewGroupPage: React.FC = () => {
   const issueNewLink = async () => {
     try {
       setIssuingLink(true);
-      const response = await medicalReviewRequestsApi.issueGroupAccessLink(id);
+      const expiresInDays = Number(linkExpiryDays);
+      const response = await medicalReviewRequestsApi.issueGroupAccessLink(
+        id,
+        Number.isFinite(expiresInDays) && expiresInDays > 0 ? { expiresInDays } : {},
+      );
       setAccessLinks((current) => [response.data, ...current]);
       if (response.data?.url) {
         await copyToClipboard(response.data.url);
@@ -163,6 +168,20 @@ const MedicalReviewGroupPage: React.FC = () => {
       setError(requestError?.response?.data?.message || 'Unable to issue grouped review link.');
     } finally {
       setIssuingLink(false);
+    }
+  };
+
+  const revokeLink = async (accessLinkId?: string) => {
+    if (!accessLinkId) return;
+    if (!window.confirm('Revoke this packet link? It will stop working immediately.')) return;
+    try {
+      setSavingGroup(true);
+      const response = await medicalReviewRequestsApi.revokeGroupAccessLink(accessLinkId);
+      setAccessLinks((current) => current.map((link) => (link._id === accessLinkId ? response.data : link)));
+    } catch (requestError: any) {
+      setError(requestError?.response?.data?.message || 'Unable to revoke the packet link.');
+    } finally {
+      setSavingGroup(false);
     }
   };
 
@@ -358,21 +377,32 @@ const MedicalReviewGroupPage: React.FC = () => {
               </p>
               {canManageGroup && (
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  {group?.url && (
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard(group.url || '')}
-                      className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
-                    >
-                      <Icon icon={FiCopy} className="h-4 w-4" />
-                      Copy permanent link
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={issueNewLink}
-                    disabled={issuingLink}
-                    className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+              {group?.url && (
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(group.url || '')}
+                  className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
+                >
+                  <Icon icon={FiCopy} className="h-4 w-4" />
+                  Copy permanent link
+                </button>
+              )}
+              <label className="flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700">
+                <span className="text-xs font-medium uppercase tracking-wide text-gray-500">Expire in</span>
+                <input
+                  type="number"
+                  min="1"
+                  value={linkExpiryDays}
+                  onChange={(event) => setLinkExpiryDays(event.target.value)}
+                  className="w-16 border-0 p-0 text-sm outline-none focus:ring-0"
+                />
+                <span className="text-xs text-gray-500">days</span>
+              </label>
+              <button
+                type="button"
+                onClick={issueNewLink}
+                disabled={issuingLink}
+                className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
                   >
                     <Icon icon={FiLink} className="h-4 w-4" />
                     {issuingLink ? 'Issuing...' : 'Issue new link'}
@@ -383,7 +413,7 @@ const MedicalReviewGroupPage: React.FC = () => {
                     className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-white px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50"
                   >
                     <Icon icon={FiPlus} className="h-4 w-4" />
-                    Add requests
+                    Add MRRs
                   </button>
                   <button
                     type="button"
@@ -422,11 +452,11 @@ const MedicalReviewGroupPage: React.FC = () => {
             </div>
             <div className="mt-3 space-y-2">
               {accessLinks.length > 0 ? accessLinks.map((link) => (
-                <div key={`${link.tokenHash || link.url || link.createdAt}`} className="flex flex-wrap items-center gap-3 rounded-md border border-gray-200 px-3 py-2 text-sm">
+                <div key={link._id || `${link.tokenHash || link.url || link.createdAt}`} className="flex flex-wrap items-center gap-3 rounded-md border border-gray-200 px-3 py-2 text-sm">
                   <div className="min-w-0 flex-1">
                     <div className="font-medium text-gray-900">{link.label || 'Group link'}</div>
                     <div className="text-xs text-gray-500">
-                      {link.status || 'active'}{link.accessCount ? ` • accessed ${link.accessCount}x` : ''}{link.createdAt ? ` • created ${new Date(link.createdAt).toLocaleString()}` : ''}
+                      {link.status || 'active'}{link.accessCount ? ` • accessed ${link.accessCount}x` : ''}{link.createdAt ? ` • created ${new Date(link.createdAt).toLocaleString()}` : ''}{link.expiresAt ? ` • expires ${new Date(link.expiresAt).toLocaleString()}` : ''}
                     </div>
                   </div>
                   <button
@@ -437,6 +467,15 @@ const MedicalReviewGroupPage: React.FC = () => {
                     <Icon icon={FiCopy} className="h-4 w-4" />
                     Copy
                   </button>
+                  {!link.revokedAt && (
+                    <button
+                      type="button"
+                      onClick={() => revokeLink(link._id)}
+                      className="inline-flex items-center gap-2 rounded-md border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50"
+                    >
+                      Revoke
+                    </button>
+                  )}
                 </div>
               )) : (
                 <div className="text-sm text-gray-500">No issued links yet.</div>
@@ -549,7 +588,7 @@ const MedicalReviewGroupPage: React.FC = () => {
           <div className="max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-xl">
             <div className="flex items-start justify-between border-b border-gray-200 px-5 py-4">
               <div>
-                <h2 className="text-lg font-semibold text-gray-900">Add requests to packet</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Add MRRs to packet</h2>
                 <p className="mt-1 text-sm text-gray-600">The packet link stays the same. This only appends more requests to the existing link.</p>
               </div>
               <button type="button" onClick={() => setAddModalOpen(false)} className="rounded-md p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700" title="Close">

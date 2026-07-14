@@ -89,6 +89,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const [groupReviewerUserId, setGroupReviewerUserId] = useState('');
   const [groupType, setGroupType] = useState<'retreat' | 'ceremony' | 'custom'>('retreat');
   const [groupCeremonyNumber, setGroupCeremonyNumber] = useState('');
+  const [groupRetreatId, setGroupRetreatId] = useState('');
   const [selectedGroupRequestIds, setSelectedGroupRequestIds] = useState<string[]>([]);
   const [groupSearchTerm, setGroupSearchTerm] = useState('');
   const [createdGroupUrl, setCreatedGroupUrl] = useState('');
@@ -97,6 +98,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const [editingGroupId, setEditingGroupId] = useState('');
   const [editingGroupTitle, setEditingGroupTitle] = useState('');
   const [editingGroupSaving, setEditingGroupSaving] = useState(false);
+  const [retreatOptions, setRetreatOptions] = useState<Retreat[]>([]);
 
   const loadData = useCallback(async () => {
     try {
@@ -140,6 +142,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
       });
 
       setRequests(enriched);
+      setRetreatOptions(retreatsResponse.data || []);
       setGroups((groupsResponse.data || []).map((group: MedicalReviewGroup) => ({
         ...group,
         requests: group.requests || [],
@@ -199,7 +202,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
           requests: requestsForGroup,
         };
       })
-      .filter((group) => (group.requests || []).length > 0);
+      .filter((group) => Boolean(group._id));
   }, [groups, requestById]);
 
   const ungroupedRequests = useMemo(
@@ -245,6 +248,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     setGroupTitle('');
     setGroupType('retreat');
     setGroupCeremonyNumber('');
+    setGroupRetreatId('');
     setGroupSearchTerm('');
     setCreatedGroupUrl('');
     setGroupError('');
@@ -299,6 +303,12 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     return retreatIds.length === 1 ? retreatIds[0] : undefined;
   }, [selectedGroupRequests]);
 
+  useEffect(() => {
+    if (groupType !== 'custom' && inferredRetreatId && !groupRetreatId) {
+      setGroupRetreatId(inferredRetreatId);
+    }
+  }, [groupType, inferredRetreatId, groupRetreatId]);
+
   const toggleGroupRequest = (id: string) => {
     setSelectedGroupRequestIds((current) => (
       current.includes(id)
@@ -319,12 +329,16 @@ const MedicalReviewRequestsGrid: React.FC = () => {
       const response = await medicalReviewRequestsApi.createGroup({
         title: groupTitle.trim() || undefined,
         groupType,
-        retreatId: inferredRetreatId,
+        retreatId: groupType !== 'custom' ? groupRetreatId || inferredRetreatId : undefined,
         ceremonyNumber: groupType === 'ceremony' && groupCeremonyNumber ? Number(groupCeremonyNumber) : undefined,
         reviewRequestIds: selectedGroupRequestIds,
         reviewerUserId: groupReviewerUserId,
       });
       setCreatedGroupUrl(response.data.url || '');
+      if (response.data?._id) {
+        setGroupModalOpen(false);
+        navigate(`${location.pathname.startsWith('/medical') ? '/medical/review-groups' : '/admin/medical-review-groups'}/${response.data._id}`);
+      }
     } catch (requestError: any) {
       setGroupError(requestError?.response?.data?.message || requestError?.message || 'Unable to create grouped review link.');
     } finally {
@@ -616,7 +630,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                           </div>
                         </div>
                       )) : (
-                        <div className="px-4 py-4 text-sm text-gray-500">No visible requests in this packet.</div>
+                        <div className="px-4 py-4 text-sm text-gray-500">No MRRs in this packet yet. Use Add MRRs to populate it later.</div>
                       )}
                     </div>
                   )}
@@ -901,6 +915,26 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                     <option value="custom">Custom</option>
                   </select>
                 </label>
+                {groupType !== 'custom' && (
+                  <label className="block">
+                    <span className="text-sm font-medium text-gray-700">Retreat</span>
+                    <select
+                      value={groupRetreatId}
+                      onChange={(event) => setGroupRetreatId(event.target.value)}
+                      className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                    >
+                      <option value="">Auto from selected MRRs</option>
+                      {retreatOptions.map((retreat) => (
+                        <option key={retreat._id} value={retreat._id}>
+                          {getRetreatCode(retreat)}
+                        </option>
+                      ))}
+                    </select>
+                    {!groupRetreatId && !inferredRetreatId && (
+                      <div className="mt-1 text-xs text-amber-700">Pick a retreat if you want this empty packet attached to one now.</div>
+                    )}
+                  </label>
+                )}
                 {groupType === 'ceremony' && (
                   <label className="block">
                     <span className="text-sm font-medium text-gray-700">Ceremony #</span>
