@@ -523,6 +523,8 @@ export const communicationsApi = {
     fromName?: string;
     fromEmail?: string;
     replyTo?: string;
+    bookingFlowStepKey?: string;
+    bookingFlowStatusOnSend?: string;
     variables?: Record<string, any>;
     attachments?: Array<{
       fileName: string;
@@ -1014,9 +1016,9 @@ export const medicalReviewRequestsApi = {
     cacheService.clearPattern('medical-review-requests:');
     return api.post<MedicalReviewRequest>('/medical-review-requests', data);
   },
-  createFromTracking: (medicalTrackingId: string, requestType?: 'ekg' | 'liver' | 'both') => {
+  createFromTracking: (medicalTrackingId: string, requestType?: 'ekg' | 'liver' | 'both', data: Partial<MedicalReviewRequest> = {}) => {
     cacheService.clearPattern('medical-review-requests:');
-    return api.post<MedicalReviewRequest>(`/medical-review-requests/from-tracking/${medicalTrackingId}`, { requestType });
+    return api.post<MedicalReviewRequest>(`/medical-review-requests/from-tracking/${medicalTrackingId}`, { ...data, requestType });
   },
   createFromArtifact: (artifactId: string, requestType?: MedicalReviewRequest['requestType'], data: Partial<MedicalReviewRequest> = {}) => {
     cacheService.clearPattern('medical-review-requests:');

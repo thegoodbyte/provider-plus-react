@@ -5,12 +5,13 @@ import SearchableMedicalTrackingSelect from './SearchableMedicalTrackingSelect';
 import { clientsApi, medicalArtifactsApi, medicalReviewRequestsApi, medicalTrackingApi, retreatsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { useAuth } from '../context/AuthContext';
-import { Client, MedicalArtifact, MedicalItem, MedicalReviewRequest, Retreat } from '../types';
+import { Client, MedicalArtifact, MedicalItem, MedicalReviewGroup, MedicalReviewRequest, Retreat } from '../types';
 
 type FormState = {
   medicalTrackingId: string;
   clientId: string;
   retreatId: string;
+  medicalReviewGroupId: string;
   artifactIds: string[];
   documentStage: NonNullable<MedicalArtifact['documentStage']> | '';
   documentType: NonNullable<MedicalArtifact['documentType']> | '';
@@ -81,9 +82,43 @@ const getArtifactFileUrl = (file: NonNullable<MedicalArtifact['files']>[number])
   return /^https?:\/\//i.test(storedPath) ? storedPath : '';
 };
 
+const getObjectId = (value: string | { _id?: string; id?: string } | undefined | null) => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  return value._id || value.id || '';
+};
+
 const getRecordId = (value: string | { _id?: string } | undefined | null) => {
   if (!value) return '';
   return typeof value === 'string' ? value : value._id || '';
+};
+
+const getClientLabel = (client?: string | Client | null) => {
+  if (!client) return '';
+  if (typeof client === 'string') return client;
+  const name = [client.firstName || client.fname, client.lastName || client.lname].filter(Boolean).join(' ');
+  return [`Client #${client.display_id || '—'}`, name || client.email || 'Unknown client'].filter(Boolean).join(' · ');
+};
+
+const getBookingLabel = (artifact?: MedicalArtifact | null) => {
+  const booking = artifact?.bookingId;
+  if (!booking) return '';
+  if (typeof booking === 'string') return `Booking ${booking.slice(-6)}`;
+  const bookingNumber = booking.bookingNumber || (booking as any).display_id;
+  const bookingClient = booking.clientId as any;
+  const clientName = bookingClient && typeof bookingClient === 'object'
+    ? [bookingClient.firstName || bookingClient.fname, bookingClient.lastName || bookingClient.lname].filter(Boolean).join(' ')
+    : '';
+  return [bookingNumber ? `Booking #${bookingNumber}` : `Booking ${getObjectId(booking).slice(-6)}`, clientName].filter(Boolean).join(' · ');
+};
+
+const getGroupLabel = (group?: MedicalReviewGroup | null) => {
+  if (!group) return '';
+  return [
+    group.title,
+    group.retreatName ? `(${group.retreatName})` : '',
+    group.groupType || '',
+  ].filter(Boolean).join(' · ');
 };
 
 const MedicalReviewRequestEditorPage: React.FC = () => {
@@ -99,6 +134,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
   const [medicalUsers, setMedicalUsers] = useState<User[]>([]);
+  const [reviewGroups, setReviewGroups] = useState<MedicalReviewGroup[]>([]);
   const [selectedArtifact, setSelectedArtifact] = useState<MedicalArtifact | null>(null);
   const [clientArtifacts, setClientArtifacts] = useState<MedicalArtifact[]>([]);
   const [isArtifactModalOpen, setIsArtifactModalOpen] = useState(false);
@@ -106,6 +142,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
     medicalTrackingId: '',
     clientId: '',
     retreatId: '',
+    medicalReviewGroupId: '',
     artifactIds: [],
     documentStage: '',
     documentType: '',
@@ -131,10 +168,11 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [trackingResponse, clientsResponse, retreatsResponse, nextDisplayResponse, usersResponse, artifactResponse] = await Promise.all([
+      const [trackingResponse, clientsResponse, retreatsResponse, groupsResponse, nextDisplayResponse, usersResponse, artifactResponse] = await Promise.all([
         medicalTrackingApi.getAll(),
         clientsApi.getAll(),
         retreatsApi.getAll(),
+        medicalReviewRequestsApi.getGroups().catch(() => ({ data: [] as MedicalReviewGroup[] })),
         medicalReviewRequestsApi.getNextDisplayId(),
         usersApi.getAll().catch(() => ({ data: [] as User[] })),
         artifactId ? medicalArtifactsApi.getOne(artifactId).catch(() => null) : Promise.resolve(null),
@@ -143,6 +181,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
       setTrackingItems(trackingResponse.data || []);
       setClients(clientsResponse.data || []);
       setRetreats(retreatsResponse.data || []);
+      setReviewGroups((groupsResponse as any).data || []);
       setMedicalUsers((usersResponse.data || []).filter((item) => item.role === 'medical_advisor' && item.isActive !== false));
       setRequestNumber(nextDisplayResponse.data || null);
       if (artifactResponse?.data) {
@@ -152,6 +191,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           ...prev,
           clientId: typeof artifact.clientId === 'string' ? artifact.clientId : artifact.clientId?._id || prev.clientId,
           retreatId: typeof artifact.retreatId === 'string' ? artifact.retreatId : artifact.retreatId?._id || prev.retreatId,
+          medicalReviewGroupId: prev.medicalReviewGroupId,
           artifactIds: artifact._id ? Array.from(new Set([...prev.artifactIds, artifact._id])) : prev.artifactIds,
           ...getArtifactDocumentMeta(artifact),
           requestType: reviewTypeByArtifact(artifact.artifactType),
@@ -165,6 +205,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           medicalTrackingId: typeof record.medicalTrackingId === 'string' ? record.medicalTrackingId : record.medicalTrackingId?._id || '',
           clientId: typeof record.clientId === 'string' ? record.clientId : record.clientId?._id || '',
           retreatId: typeof record.retreatId === 'string' ? record.retreatId : record.retreatId?._id || '',
+          medicalReviewGroupId: typeof (record as any).medicalReviewGroupId === 'string' ? (record as any).medicalReviewGroupId : (record as any).medicalReviewGroupId?._id || '',
           artifactIds: (record.artifactIds || []).map((artifact: string | MedicalArtifact) => getRecordId(artifact)).filter(Boolean),
           documentStage: record.documentStage || record.artifactSnapshot?.documentStage as FormState['documentStage'] || '',
           documentType: record.documentType || record.artifactSnapshot?.documentType as FormState['documentType'] || '',
@@ -203,6 +244,16 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
     [retreats, form.retreatId],
   );
 
+  const selectedGroup = useMemo(
+    () => reviewGroups.find((group) => group._id === form.medicalReviewGroupId),
+    [reviewGroups, form.medicalReviewGroupId],
+  );
+
+  const matchingGroups = useMemo(() => {
+    if (!form.retreatId) return reviewGroups;
+    return reviewGroups.filter((group) => getObjectId(group.retreatId as any) === form.retreatId);
+  }, [form.retreatId, reviewGroups]);
+
   useEffect(() => {
     if (!selectedTracking) return;
     setForm((prev) => ({
@@ -211,6 +262,13 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
       retreatId: selectedTracking.retreatId || prev.retreatId,
     }));
   }, [selectedTracking]);
+
+  useEffect(() => {
+    if (form.medicalReviewGroupId) return;
+    if (matchingGroups.length === 1 && matchingGroups[0]._id) {
+      setForm((prev) => ({ ...prev, medicalReviewGroupId: matchingGroups[0]._id || '' }));
+    }
+  }, [form.medicalReviewGroupId, matchingGroups]);
 
   useEffect(() => {
     const loadClientArtifacts = async () => {
@@ -241,11 +299,15 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
       if (!form.assignedToUserId) {
         throw new Error('Select a medical advisor before creating the review request.');
       }
+      if (!form.medicalReviewGroupId) {
+        throw new Error('Select a medical review packet before creating the review request.');
+      }
 
       if (isEdit && id) {
         await medicalReviewRequestsApi.update(id, {
           clientId: form.clientId,
           retreatId: form.retreatId,
+          medicalReviewGroupId: form.medicalReviewGroupId,
           medicalTrackingId: form.medicalTrackingId,
           artifactIds: form.artifactIds,
           documentStage: form.documentStage || undefined,
@@ -266,6 +328,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
         const payload = {
           clientId: form.clientId,
           retreatId: form.retreatId || undefined,
+          medicalReviewGroupId: form.medicalReviewGroupId,
           artifactIds: form.artifactIds,
           documentStage: form.documentStage || undefined,
           documentType: form.documentType || undefined,
@@ -340,14 +403,40 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
                     medicalTrackingId,
                     clientId: tracking?.client_id || prev.clientId,
                     retreatId: tracking?.retreatId || prev.retreatId,
+                    medicalReviewGroupId: prev.medicalReviewGroupId,
                     requestType: tracking?.ekgFileName && tracking?.liverPanelFileName ? 'both' : tracking?.ekgFileName ? 'ekg' : tracking?.liverPanelFileName ? 'liver' : prev.requestType,
                   }));
                 }}
               />
             )}
             <div className="mt-3 grid gap-3 text-sm text-gray-600 sm:grid-cols-2">
-              <div>Client ID: {form.clientId || '—'}</div>
-              <div>Retreat ID: {form.retreatId || '—'}</div>
+              <div>Client: {getClientLabel(selectedClient || selectedArtifact?.clientId || null) || form.clientId || '—'}</div>
+              <div>Booking: {getBookingLabel(selectedArtifact) || '—'}</div>
+              <div>Retreat: {selectedRetreat?.code || selectedRetreat?.retreatCode || selectedRetreat?.name || form.retreatId || '—'}</div>
+              <div className="sm:col-span-2">
+                <label className="mb-2 block text-sm font-medium text-gray-700">Medical Review Packet <span className="text-red-600">*</span></label>
+                <select
+                  value={form.medicalReviewGroupId}
+                  required
+                  onChange={(e) => setForm({ ...form, medicalReviewGroupId: e.target.value })}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2"
+                >
+                  <option value="">Select packet</option>
+                  {matchingGroups.map((group) => (
+                    <option key={group._id} value={group._id}>
+                      {getGroupLabel(group)}
+                    </option>
+                  ))}
+                </select>
+                {matchingGroups.length === 0 && (
+                  <p className="mt-1 text-xs text-amber-700">No packet exists for this retreat yet. Create one in Medical Review Requests first.</p>
+                )}
+                {selectedGroup && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Selected packet: <span className="font-medium text-gray-700">{getGroupLabel(selectedGroup)}</span>
+                  </p>
+                )}
+              </div>
               <div>Document stage: {form.documentStage ? documentStageLabels[form.documentStage] : '—'}</div>
               <div>Document type: {form.documentType ? documentTypeLabels[form.documentType] : '—'}</div>
               {form.ceremonyNumber ? <div>Ceremony #: {form.ceremonyNumber}</div> : null}
@@ -487,13 +576,17 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
             <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800">
               {[user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || form.requestedBy}
             </div>
-            <label className="mb-2 mt-4 block text-sm font-medium text-gray-700">Review Decision</label>
-            <select value={form.reviewDecision} onChange={(e) => setForm({ ...form, reviewDecision: e.target.value as FormState['reviewDecision'] })} className="w-full rounded-md border border-gray-300 px-3 py-2">
-              <option value="">Select</option>
-              <option value="OK">Approve</option>
-              <option value="caution">Caution</option>
-              <option value="NOT OK">Deny</option>
-            </select>
+            {isEdit && (
+              <>
+                <label className="mb-2 mt-4 block text-sm font-medium text-gray-700">Review Decision</label>
+                <select value={form.reviewDecision} onChange={(e) => setForm({ ...form, reviewDecision: e.target.value as FormState['reviewDecision'] })} className="w-full rounded-md border border-gray-300 px-3 py-2">
+                  <option value="">Select</option>
+                  <option value="OK">Approve</option>
+                  <option value="caution">Caution</option>
+                  <option value="NOT OK">Deny</option>
+                </select>
+              </>
+            )}
             <label className="mb-2 mt-4 block text-sm font-medium text-gray-700">Overall Notes</label>
             <textarea value={form.overallNotes} onChange={(e) => setForm({ ...form, overallNotes: e.target.value })} rows={4} className="w-full rounded-md border border-gray-300 px-3 py-2" />
           </div>

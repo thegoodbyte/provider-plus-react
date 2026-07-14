@@ -1100,6 +1100,7 @@ export interface MedicalReviewRequest {
   clientId?: string | Client;
   clientDisplayId?: number;
   retreatId?: string | Retreat;
+  medicalReviewGroupId?: string | MedicalReviewGroup;
   bookingFlowItemId?: string | BookingFlowItem;
   medicalTrackingId?: string | MedicalItem | ClientMedical;
   artifactIds?: Array<string | MedicalArtifact>;
@@ -1509,6 +1510,8 @@ export interface SentEmail {
   fromName?: string;
   fromEmail?: string;
   replyTo?: string;
+  bookingFlowStepKey?: string;
+  bookingFlowStatusOnSend?: string;
   provider?: string;
   status?: 'queued' | 'sent' | 'failed' | 'draft';
   gmailMessageId?: string;
