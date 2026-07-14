@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Modal, Form, Input, Select, Button, message, DatePicker } from 'antd';
 import { clientsApi } from '../services/api';
 import './QuickAddClient.css';
@@ -15,6 +15,34 @@ interface QuickAddClientProps {
 const QuickAddClient: React.FC<QuickAddClientProps> = ({ visible, onClose, onSuccess }) => {
     const [form] = Form.useForm();
     const [loading, setLoading] = useState(false);
+    const [nextClientId, setNextClientId] = useState<number | null>(null);
+
+    useEffect(() => {
+        let active = true;
+
+        if (!visible) {
+            setNextClientId(null);
+            return () => {
+                active = false;
+            };
+        }
+
+        clientsApi.getNextDisplayId()
+            .then((response) => {
+                if (active) {
+                    setNextClientId(response.data || null);
+                    form.setFieldsValue({ display_id: response.data || null });
+                }
+            })
+            .catch((error) => {
+                console.error('Error loading next client ID:', error);
+                if (active) setNextClientId(null);
+            });
+
+        return () => {
+            active = false;
+        };
+    }, [visible, form]);
 
     const handleSubmit = async (values: any) => {
         try {
@@ -22,6 +50,7 @@ const QuickAddClient: React.FC<QuickAddClientProps> = ({ visible, onClose, onSuc
 
             // Format the data for quick add
             const clientData = {
+                display_id: values.display_id ? Number(values.display_id) : undefined,
                 firstName: values.firstName,
                 lastName: values.lastName,
                 phone: values.phone,
@@ -90,6 +119,17 @@ const QuickAddClient: React.FC<QuickAddClientProps> = ({ visible, onClose, onSuc
                 onFinish={handleSubmit}
                 autoComplete="off"
             >
+                <Form.Item name="display_id" hidden>
+                    <Input />
+                </Form.Item>
+                <Form.Item label="Client ID">
+                    <Input
+                        value={nextClientId ? `#${nextClientId}` : 'Loading next client ID...'}
+                        readOnly
+                        disabled
+                    />
+                </Form.Item>
+
                 <div className="form-row">
                     <Form.Item
                         name="firstName"

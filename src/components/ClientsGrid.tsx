@@ -150,6 +150,7 @@ const ClientsGrid: React.FC = () => {
   const [workflowFilter, setWorkflowFilter] = useState<string>('all');
   const [tagFilter, setTagFilter] = useState<string>('all');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [nextClientId, setNextClientId] = useState<number | null>(null);
 
   // Helper function to get country name from code
   const handleRefresh = () => {
@@ -500,6 +501,18 @@ const ClientsGrid: React.FC = () => {
     if (retreats.length === 0) {
       fetchRetreats();
     }
+    clientsApi.getNextDisplayId()
+      .then((response) => {
+        setNextClientId(response.data || null);
+        setFormData((prev) => ({
+          ...prev,
+          display_id: response.data || undefined,
+        }));
+      })
+      .catch((error) => {
+        console.error('Error loading next client ID:', error);
+        setNextClientId(null);
+      });
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
@@ -516,6 +529,7 @@ const ClientsGrid: React.FC = () => {
 
     try {
       const cleanData: any = {
+        display_id: formData.display_id ? Number(formData.display_id) : undefined,
         firstName: formData.firstName?.trim(),
         lastName: formData.lastName?.trim(),
         email: formData.email?.trim() || undefined,
@@ -584,6 +598,7 @@ const ClientsGrid: React.FC = () => {
       setFormData({});
       setSelectedRetreatId('');
       setEditingClient(null);
+      setNextClientId(null);
       fetchClients();
     } catch (error: any) {
       let errorMessage = 'An error occurred while saving the client';
@@ -775,6 +790,20 @@ const ClientsGrid: React.FC = () => {
               <div className="form-grid">
                 <div className="form-section">
                   <h4>Basic Information</h4>
+                  {!editingClient && (
+                    <div className="form-group">
+                      <label htmlFor="display_id">Client ID:</label>
+                      <input
+                        type="text"
+                        id="display_id"
+                        name="display_id"
+                        value={nextClientId ? `#${nextClientId}` : 'Loading next client ID...'}
+                        readOnly
+                        disabled
+                      />
+                    </div>
+                  )}
+
                   <div className="form-group">
                     <label htmlFor="firstName">First Name *:</label>
                     <input
