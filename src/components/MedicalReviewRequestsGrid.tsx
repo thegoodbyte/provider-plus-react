@@ -7,7 +7,7 @@ import { medicalReviewRequestsApi, medicalTrackingApi, clientsApi, retreatsApi }
 import { MedicalItem, MedicalReviewGroup, MedicalReviewRequest, Client, Retreat } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { usersApi, User } from '../services/usersApi';
-import { MedicalReviewTypeFilter, matchesReviewRequestFilters } from './MedicalReviewRequestsGrid.helpers';
+import { MedicalReviewTypeFilter, getReviewRequestFilterText, matchesReviewRequestFilters } from './MedicalReviewRequestsGrid.helpers';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
@@ -90,6 +90,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const [groupType, setGroupType] = useState<'retreat' | 'ceremony' | 'custom'>('retreat');
   const [groupCeremonyNumber, setGroupCeremonyNumber] = useState('');
   const [selectedGroupRequestIds, setSelectedGroupRequestIds] = useState<string[]>([]);
+  const [groupSearchTerm, setGroupSearchTerm] = useState('');
   const [createdGroupUrl, setCreatedGroupUrl] = useState('');
   const [groupError, setGroupError] = useState('');
   const [creatingGroup, setCreatingGroup] = useState(false);
@@ -239,13 +240,13 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   };
 
   const openGroupModal = () => {
-    const visibleIds = filteredRequests.map(getRequestId).filter(Boolean);
-    setSelectedGroupRequestIds(visibleIds);
+    setSelectedGroupRequestIds([]);
     setGroupReviewerUserId(advisors[0]?._id || '');
     setGroupTitle('');
-      setGroupType('retreat');
-      setGroupCeremonyNumber('');
-      setCreatedGroupUrl('');
+    setGroupType('retreat');
+    setGroupCeremonyNumber('');
+    setGroupSearchTerm('');
+    setCreatedGroupUrl('');
     setGroupError('');
     setGroupModalOpen(true);
   };
@@ -313,10 +314,6 @@ const MedicalReviewRequestsGrid: React.FC = () => {
       setGroupError('Select a medical advisor.');
       return;
     }
-    if (!selectedGroupRequestIds.length) {
-      setGroupError('Select at least one request.');
-      return;
-    }
     try {
       setCreatingGroup(true);
       const response = await medicalReviewRequestsApi.createGroup({
@@ -334,6 +331,13 @@ const MedicalReviewRequestsGrid: React.FC = () => {
       setCreatingGroup(false);
     }
   };
+
+  const groupModalRequests = useMemo(() => {
+    const search = groupSearchTerm.trim().toLowerCase();
+    const source = requests.filter((request) => !groupedRequestIds.has(getRequestId(request)));
+    if (!search) return source;
+    return source.filter((request) => getReviewRequestFilterText(request).includes(search));
+  }, [groupSearchTerm, groupedRequestIds, requests]);
 
   const copyGroupUrl = async () => {
     if (!createdGroupUrl) return;
@@ -846,6 +850,20 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                 </div>
               )}
 
+              <div className="mb-4 rounded-md border border-gray-200 bg-gray-50 p-3">
+                <label className="block">
+                  <span className="text-sm font-medium text-gray-700">Search requests</span>
+                  <input
+                    value={groupSearchTerm}
+                    onChange={(event) => setGroupSearchTerm(event.target.value)}
+                    placeholder="Search client, booking, retreat, request, notes..."
+                    className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+                  />
+                </label>
+                <div className="mt-3 text-sm font-semibold text-gray-800">Requests in packet ({selectedGroupRequestIds.length})</div>
+                <div className="text-xs text-gray-500">You can create an empty packet now and add requests later.</div>
+              </div>
+
               <div className="grid gap-4 md:grid-cols-2">
                 <label className="block">
                   <span className="text-sm font-medium text-gray-700">Title</span>
@@ -899,14 +917,13 @@ const MedicalReviewRequestsGrid: React.FC = () => {
 
               <div className="mt-5">
                 <div className="mb-2 flex items-center justify-between">
-                  <div className="text-sm font-semibold text-gray-800">Requests in packet ({selectedGroupRequestIds.length})</div>
                   <div className="flex gap-2 text-xs">
-                    <button type="button" onClick={() => setSelectedGroupRequestIds(filteredRequests.map(getRequestId).filter(Boolean))} className="text-blue-700 hover:underline">Select visible</button>
+                    <button type="button" onClick={() => setSelectedGroupRequestIds(groupModalRequests.map(getRequestId).filter(Boolean))} className="text-blue-700 hover:underline">Select visible</button>
                     <button type="button" onClick={() => setSelectedGroupRequestIds([])} className="text-gray-600 hover:underline">Clear</button>
                   </div>
                 </div>
                 <div className="max-h-64 overflow-y-auto rounded-md border border-gray-200">
-                  {filteredRequests.map((request) => {
+                  {groupModalRequests.map((request) => {
                     const id = getRequestId(request);
                     return (
                       <label key={id} className="flex cursor-pointer items-start gap-3 border-b border-gray-100 px-3 py-3 last:border-b-0 hover:bg-gray-50">
@@ -927,7 +944,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                       </label>
                     );
                   })}
-                  {!filteredRequests.length && (
+                  {!groupModalRequests.length && (
                     <div className="px-3 py-6 text-center text-sm text-gray-500">No requests match the current filter.</div>
                   )}
                 </div>

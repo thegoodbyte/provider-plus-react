@@ -23,17 +23,48 @@ const parseLocalDate = (value: string) => {
   return new Date(year, month - 1, day).getTime();
 };
 
-export const getReviewRequestFilterText = (request: MedicalReviewRequest & { clientName?: string; retreatName?: string }) => {
+const getObjectText = (value: any): string => {
+  if (!value) return '';
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (Array.isArray(value)) return value.map((item) => getObjectText(item)).filter(Boolean).join(' ');
+  return [
+    value._id,
+    value.id,
+    value.display_id,
+    value.bookingNumber,
+    value.bookingHash,
+    value.code,
+    value.retreatCode,
+    value.name,
+    value.email,
+    value.firstName,
+    value.lastName,
+    value.title,
+    value.key,
+    value.metadata ? getObjectText(value.metadata) : '',
+  ].filter(Boolean).join(' ');
+};
+
+export const getReviewRequestFilterText = (request: MedicalReviewRequest & { clientName?: string; retreatName?: string; bookingName?: string; bookingNumber?: string }) => {
   const pieces = [
     request.display_id ? `#${request.display_id}` : '',
     request.clientName || '',
     request.retreatName || '',
+    request.bookingName || '',
+    request.bookingNumber || '',
     request.requestType || '',
     request.documentStage || '',
     request.documentType || '',
     request.source || '',
     request.artifactSnapshot?.documentStage || '',
     request.artifactSnapshot?.documentType || '',
+    request.artifactSnapshot?.clientName || '',
+    request.artifactSnapshot?.retreatName || '',
+    request.artifactSnapshot?.fileName || '',
+    request.artifactSnapshot?.notes || '',
+    getObjectText((request as any).bookingId),
+    getObjectText((request as any).bookingFlowItemId),
+    getObjectText((request as any).artifactIds),
     getStringDate(request.requestedAt),
     getStringDate(request.reviewedAt),
     getStringDate(request.assignedDate),
