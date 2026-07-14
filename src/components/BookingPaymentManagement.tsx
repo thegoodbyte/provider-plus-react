@@ -1,11 +1,13 @@
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Payment, PaymentRequest } from '../types';
-import { paymentsApi } from '../services/api';
+import { configSummaryApi, paymentsApi } from '../services/api';
 import CurrencyDisplay from './CurrencyDisplay';
 import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
 import { formatCalendarDate, toDateInputValue, todayDateInputValue } from '../utils/dateFormat';
 import './BookingPaymentManagement.css';
+
+const DEFAULT_EXCHANGE_RATE_PROVIDER_LABEL = 'Revolut';
 
 interface BookingPaymentManagementProps {
   bookingId: string;
@@ -46,6 +48,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   const [usdPreviewLoading, setUsdPreviewLoading] = useState(false);
   const [usdPreviewError, setUsdPreviewError] = useState('');
   const [totalCostUsd, setTotalCostUsd] = useState<number | null>(null);
+  const [exchangeRateProviderLabel, setExchangeRateProviderLabel] = useState(DEFAULT_EXCHANGE_RATE_PROVIDER_LABEL);
   const [newPayment, setNewPayment] = useState({
     amount: '',
     currency: currency as 'EUR' | 'USD' | 'CZK' | 'PLN',
@@ -57,7 +60,6 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
     notes: '',
     paymentDate: todayDateInputValue(),
     bookingCurrencyAmount: '',
-    bookingCurrencyExchangeSource: '',
     bookingCurrencyExchangeDate: ''
   });
 
@@ -87,6 +89,23 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       currency: (current.currency || currency || 'EUR') as 'EUR' | 'USD' | 'CZK' | 'PLN',
     }));
   }, [currency]);
+
+  useEffect(() => {
+    let active = true;
+    configSummaryApi.get().then((response) => {
+      if (!active) return;
+      setExchangeRateProviderLabel(
+        response?.data?.integrations?.exchangeRateProviderLabel
+        || response?.data?.integrations?.exchangeRateProvider
+        || DEFAULT_EXCHANGE_RATE_PROVIDER_LABEL
+      );
+    }).catch(() => {
+      if (active) setExchangeRateProviderLabel(DEFAULT_EXCHANGE_RATE_PROVIDER_LABEL);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     const amount = Number(newPayment.amount);
@@ -302,8 +321,8 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
         bookingCurrencyAmount: isMixedBookingCurrencyPayment && newPayment.bookingCurrencyAmount
           ? parseFloat(newPayment.bookingCurrencyAmount)
           : undefined,
-        bookingCurrencyExchangeSource: isMixedBookingCurrencyPayment ? newPayment.bookingCurrencyExchangeSource || undefined : undefined,
-        bookingCurrencyExchangeDate: isMixedBookingCurrencyPayment ? newPayment.bookingCurrencyExchangeDate || undefined : undefined,
+        bookingCurrencyExchangeSource: isMixedBookingCurrencyPayment ? exchangeRateProviderLabel : undefined,
+        bookingCurrencyExchangeDate: isMixedBookingCurrencyPayment ? (newPayment.bookingCurrencyExchangeDate || newPayment.paymentDate) : undefined,
         paymentMethod: newPayment.paymentMethod as 'bank_transfer' | 'card' | 'cash' | 'paypal' | 'crypto' | 'stripe' | 'wise' | 'revolut' | 'other',
         paymentType: newPayment.paymentType as 'deposit_non_refundable' | 'deposit_refundable' | 'regular_payment' | 'balance_payment' | 'refund' | 'adjustment',
         description: newPayment.description || `${selectedPaymentType?.label} for booking ${bookingHash || bookingId}`,
@@ -332,7 +351,6 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
         notes: '',
         paymentDate: todayDateInputValue(),
         bookingCurrencyAmount: '',
-        bookingCurrencyExchangeSource: '',
         bookingCurrencyExchangeDate: ''
       });
 
@@ -367,7 +385,6 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
           ? 'balance_payment'
           : current.paymentType) as typeof current.paymentType,
       bookingCurrencyAmount: current.bookingCurrencyAmount,
-      bookingCurrencyExchangeSource: current.bookingCurrencyExchangeSource || paymentRequest?.paymentType || '',
       bookingCurrencyExchangeDate: current.bookingCurrencyExchangeDate || (paymentRequest?.paidDate ? toDateInputValue(paymentRequest.paidDate) : ''),
     }));
   };
@@ -379,7 +396,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
         <CurrencyDisplay key="amount" amount={payment.bookingCurrencyAmount || 0} currency={bookingCurrency} />,
       ];
       const note = [
-        payment.bookingCurrencyExchangeSource ? `by ${payment.bookingCurrencyExchangeSource}` : '',
+        `by ${payment.bookingCurrencyExchangeSource || exchangeRateProviderLabel}`,
         payment.bookingCurrencyExchangeDate ? `on ${formatCalendarDate(payment.bookingCurrencyExchangeDate)}` : '',
       ].filter(Boolean).join(' ');
       return (
@@ -704,13 +721,20 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
                     />
                   </div>
                   <div className="form-group">
-                    <label>Conversion Source</label>
-                    <input
-                      type="text"
-                      value={newPayment.bookingCurrencyExchangeSource}
-                      onChange={(e) => setNewPayment({...newPayment, bookingCurrencyExchangeSource: e.target.value})}
-                      placeholder="Revolut, Wise, bank..."
-                    />
+                    <label>Exchange Rate Provider</label>
+                    <div style={{
+                      width: '100%',
+                      minHeight: '38px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '0.375rem',
+                      backgroundColor: '#f9fafb',
+                      color: '#374151',
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '0.5rem 0.75rem',
+                    }}>
+                      {exchangeRateProviderLabel}
+                    </div>
                   </div>
                   <div className="form-group">
                     <label>Conversion Date</label>

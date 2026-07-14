@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { bookingsApi, clientsApi, paymentRequestsApi, paymentsApi, retreatsApi } from '../services/api';
+import { bookingsApi, clientsApi, configSummaryApi, paymentRequestsApi, paymentsApi, retreatsApi } from '../services/api';
 import { Client, Payment, PaymentRequest, Retreat, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import SearchableClientSelect from './SearchableClientSelect';
@@ -12,6 +12,8 @@ import { toDateInputValue, todayDateInputValue } from '../utils/dateFormat';
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
 };
+
+const DEFAULT_EXCHANGE_RATE_PROVIDER_LABEL = 'Revolut';
 
 const resolveId = (value: any) => (typeof value === 'object' && value?._id ? value._id : value || '');
 
@@ -78,6 +80,7 @@ const PaymentEditorPage: React.FC = () => {
   const [retreats, setRetreats] = useState<Retreat[]>([]);
   const [bookings, setBookings] = useState<RetreatClient[]>([]);
   const [selectedPaymentRequest, setSelectedPaymentRequest] = useState<PaymentRequest | null>(null);
+  const [exchangeRateProviderLabel, setExchangeRateProviderLabel] = useState(DEFAULT_EXCHANGE_RATE_PROVIDER_LABEL);
   const [usdPreview, setUsdPreview] = useState<number | null>(null);
   const [usdPreviewLoading, setUsdPreviewLoading] = useState(false);
   const [usdPreviewError, setUsdPreviewError] = useState('');
@@ -101,7 +104,6 @@ const PaymentEditorPage: React.FC = () => {
     isRefundable: false,
     paymentType: 'regular_payment' as 'deposit_non_refundable' | 'deposit_refundable' | 'regular_payment' | 'balance_payment' | 'refund' | 'adjustment',
     bookingCurrencyAmount: '',
-    bookingCurrencyExchangeSource: '',
     bookingCurrencyExchangeDate: '',
   });
 
@@ -109,17 +111,23 @@ const PaymentEditorPage: React.FC = () => {
     const loadData = async () => {
       try {
         setLoading(true);
-        const [clientsResponse, retreatsResponse, bookingsResponse, paymentResponse, nextDisplayIdResponse] = await Promise.all([
+        const [clientsResponse, retreatsResponse, bookingsResponse, paymentResponse, nextDisplayIdResponse, configResponse] = await Promise.all([
           clientsApi.getAll(),
           retreatsApi.getAll(),
           bookingsApi.getAll(),
           id ? paymentsApi.getOne(id) : Promise.resolve(null),
           !id ? paymentsApi.getNextDisplayId().catch(() => null) : Promise.resolve(null),
+          configSummaryApi.get().catch(() => null),
         ]);
 
         setClients(clientsResponse.data || []);
         setRetreats(retreatsResponse.data || []);
         setBookings(bookingsResponse.data || []);
+        setExchangeRateProviderLabel(
+          configResponse?.data?.integrations?.exchangeRateProviderLabel
+          || configResponse?.data?.integrations?.exchangeRateProvider
+          || DEFAULT_EXCHANGE_RATE_PROVIDER_LABEL
+        );
 
         if (paymentResponse?.data) {
           const payment = paymentResponse.data as Payment;
@@ -144,7 +152,6 @@ const PaymentEditorPage: React.FC = () => {
             isRefundable: payment.isRefundable || false,
             paymentType: payment.paymentType || 'regular_payment',
             bookingCurrencyAmount: payment.bookingCurrencyAmount?.toString?.() || '',
-            bookingCurrencyExchangeSource: payment.bookingCurrencyExchangeSource || '',
             bookingCurrencyExchangeDate: payment.bookingCurrencyExchangeDate ? toDateInputValue(payment.bookingCurrencyExchangeDate) : '',
           });
         } else if (paymentRequestIdFromQuery) {
@@ -263,7 +270,6 @@ const PaymentEditorPage: React.FC = () => {
       description: `Payment for invoice ${paymentRequest.invoiceNumber || paymentRequest.display_id || ''}`.trim(),
       notes: prev.notes || paymentRequest.note || paymentRequest.notes || '',
       bookingCurrencyAmount: prev.bookingCurrencyAmount,
-      bookingCurrencyExchangeSource: prev.bookingCurrencyExchangeSource || paymentRequest.paymentType || '',
       bookingCurrencyExchangeDate: prev.bookingCurrencyExchangeDate || (paymentRequest.paidDate ? toDateInputValue(paymentRequest.paidDate) : ''),
     }));
   };
@@ -336,8 +342,8 @@ const PaymentEditorPage: React.FC = () => {
       bookingCurrencyAmount: showBookingCurrencySettlement && formData.bookingCurrencyAmount
         ? parseFloat(formData.bookingCurrencyAmount)
         : undefined,
-      bookingCurrencyExchangeSource: showBookingCurrencySettlement ? formData.bookingCurrencyExchangeSource || undefined : undefined,
-      bookingCurrencyExchangeDate: showBookingCurrencySettlement ? formData.bookingCurrencyExchangeDate || undefined : undefined,
+      bookingCurrencyExchangeSource: showBookingCurrencySettlement ? exchangeRateProviderLabel : undefined,
+      bookingCurrencyExchangeDate: showBookingCurrencySettlement ? (formData.bookingCurrencyExchangeDate || formData.paymentDate || undefined) : undefined,
     };
 
     try {
@@ -542,16 +548,12 @@ const PaymentEditorPage: React.FC = () => {
                       required={showBookingCurrencySettlement}
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Conversion Source</label>
-                    <input
-                      type="text"
-                      value={formData.bookingCurrencyExchangeSource}
-                      onChange={(e) => handleChange('bookingCurrencyExchangeSource', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Revolut, Wise, bank..."
-                    />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Exchange Rate Provider</label>
+                  <div className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700">
+                    {exchangeRateProviderLabel}
                   </div>
+                </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Conversion Date</label>
                     <input
