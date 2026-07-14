@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, User, Calendar, Heart, FileText, AlertCircle, Download, CheckCircle, XCircle } from 'lucide-react';
 import { API_BASE_URL } from '../config/api.config';
+import { medicalArtifactsApi } from '../services/api';
+import { MedicalArtifact } from '../types';
 import './MedicalProfile.css';
 
 interface MedicalData {
@@ -69,6 +71,26 @@ const MedicalProfile: React.FC = () => {
     return `${API_BASE_URL}${filePath}`;
   };
 
+  const getArtifactFilePath = (artifact?: MedicalArtifact | null) => {
+    return artifact?.files?.[0]?.filePath || artifact?.files?.[0]?.s3Key || '';
+  };
+
+  const getArtifactFileName = (artifact?: MedicalArtifact | null) => {
+    return artifact?.files?.[0]?.fileName || artifact?.title || '';
+  };
+
+  const getArtifactDateString = (value?: string | Date | null) => {
+    if (!value) return undefined;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? undefined : date.toISOString();
+  };
+
+  const getLatestArtifactByType = (artifacts: MedicalArtifact[], predicate: (artifact: MedicalArtifact) => boolean) => {
+    return [...artifacts]
+      .filter(predicate)
+      .sort((a, b) => new Date((b.receivedAt || b.createdAt || 0) as string).getTime() - new Date((a.receivedAt || a.createdAt || 0) as string).getTime())[0];
+  };
+
   useEffect(() => {
     // Skip if clientId looks like a route name instead of an ID
     if (clientId && !clientId.includes('-') && clientId.length === 24) {
@@ -109,32 +131,42 @@ const MedicalProfile: React.FC = () => {
         });
       }
 
-      // Fetch all medical records for this client
-      const medicalResponse = await fetch(`${API_BASE_URL}/client-medical/client/${clientId}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const [medicalResponse, artifactsResponse] = await Promise.all([
+        fetch(`${API_BASE_URL}/client-medical/client/${clientId}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }),
+        medicalArtifactsApi.getAll({ clientId }).catch(() => ({ data: [] as MedicalArtifact[] })),
+      ]);
 
       if (medicalResponse.ok) {
         const medicalRecords = await medicalResponse.json();
+        const artifacts = (artifactsResponse.data || []) as MedicalArtifact[];
+
+        const latestEkgArtifact = getLatestArtifactByType(artifacts, (artifact) =>
+          artifact.artifactType === 'ekg' || artifact.artifactType === 'ceremony_ekg' || artifact.documentType === 'EKG',
+        );
+        const latestLiverArtifact = getLatestArtifactByType(artifacts, (artifact) =>
+          artifact.artifactType === 'liver_panel' || artifact.documentType === 'Liver',
+        );
 
         // Get the most recent medical record or combine them
         if (medicalRecords.length > 0) {
           const latestRecord = medicalRecords[0]; // Get most recent
           setMedicalData({
-            liverPanelStatus: latestRecord.liverPanelStatus,
-            liverPanelReceivedDate: latestRecord.liverPanelReceivedDate,
-            liverPanelFilePath: latestRecord.liverPanelFilePath,
-            liverPanelFileName: latestRecord.liverPanelFileName,
-            liverPanelAdvisorNotes: latestRecord.liverPanelAdvisorNotes,
+            liverPanelStatus: latestRecord.liverPanelStatus || (latestLiverArtifact ? 'received' : 'pending'),
+            liverPanelReceivedDate: latestRecord.liverPanelReceivedDate || getArtifactDateString(latestLiverArtifact?.receivedAt),
+            liverPanelFilePath: latestRecord.liverPanelFilePath || getArtifactFilePath(latestLiverArtifact),
+            liverPanelFileName: latestRecord.liverPanelFileName || getArtifactFileName(latestLiverArtifact),
+            liverPanelAdvisorNotes: latestRecord.liverPanelAdvisorNotes || latestLiverArtifact?.notes || latestLiverArtifact?.description,
 
-            ekgStatus: latestRecord.ekgStatus,
-            ekgReceivedDate: latestRecord.ekgReceivedDate,
-            ekgFilePath: latestRecord.ekgFilePath,
-            ekgFileName: latestRecord.ekgFileName,
-            ekgAdvisorNotes: latestRecord.ekgAdvisorNotes,
+            ekgStatus: latestRecord.ekgStatus || (latestEkgArtifact ? 'received' : 'pending'),
+            ekgReceivedDate: latestRecord.ekgReceivedDate || getArtifactDateString(latestEkgArtifact?.receivedAt),
+            ekgFilePath: latestRecord.ekgFilePath || getArtifactFilePath(latestEkgArtifact),
+            ekgFileName: latestRecord.ekgFileName || getArtifactFileName(latestEkgArtifact),
+            ekgAdvisorNotes: latestRecord.ekgAdvisorNotes || latestEkgArtifact?.notes || latestEkgArtifact?.description,
 
             finalMedicalClearance: latestRecord.finalMedicalClearance,
             medicalClearanceDate: latestRecord.medicalClearanceDate,
@@ -146,11 +178,39 @@ const MedicalProfile: React.FC = () => {
           });
 
           // Get retreat info from the records
-          const retreatsData = medicalRecords.map((record: any) => record.retreatId).filter(Boolean);
+          const retreatsData = [
+            ...medicalRecords.map((record: any) => record.retreatId),
+            ...artifacts.map((artifact) => artifact.retreatId),
+          ].filter((retreat: any): retreat is Retreat => Boolean(retreat && typeof retreat === 'object' && retreat._id));
           setRetreats(retreatsData);
           if (retreatsData.length > 0) {
             setActiveRetreatId(retreatsData[0]._id);
           }
+        }
+      } else {
+        const artifacts = (artifactsResponse.data || []) as MedicalArtifact[];
+        const latestEkgArtifact = getLatestArtifactByType(artifacts, (artifact) =>
+          artifact.artifactType === 'ekg' || artifact.artifactType === 'ceremony_ekg' || artifact.documentType === 'EKG',
+        );
+        const latestLiverArtifact = getLatestArtifactByType(artifacts, (artifact) =>
+          artifact.artifactType === 'liver_panel' || artifact.documentType === 'Liver',
+        );
+        if (latestEkgArtifact || latestLiverArtifact) {
+          setMedicalData({
+            ekgStatus: latestEkgArtifact ? 'received' : 'pending',
+            ekgReceivedDate: getArtifactDateString(latestEkgArtifact?.receivedAt),
+            ekgFilePath: getArtifactFilePath(latestEkgArtifact),
+            ekgFileName: getArtifactFileName(latestEkgArtifact),
+            ekgAdvisorNotes: latestEkgArtifact?.notes || latestEkgArtifact?.description,
+            liverPanelStatus: latestLiverArtifact ? 'received' : 'pending',
+            liverPanelReceivedDate: getArtifactDateString(latestLiverArtifact?.receivedAt),
+            liverPanelFilePath: getArtifactFilePath(latestLiverArtifact),
+            liverPanelFileName: getArtifactFileName(latestLiverArtifact),
+            liverPanelAdvisorNotes: latestLiverArtifact?.notes || latestLiverArtifact?.description,
+            medications: [],
+            allergies: [],
+            medicalHistory: '',
+          });
         }
       }
 

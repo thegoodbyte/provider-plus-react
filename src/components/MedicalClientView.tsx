@@ -5,12 +5,13 @@ import {
   bookingsApi,
   clientMedicalApi,
   clientsApi,
+  medicalArtifactsApi,
   medicalReviewRequestsApi,
   notesApi,
   screeningApi,
   retreatsApi,
 } from '../services/api';
-import { Client, ClientMedical, MedicalReviewRequest, Note, RetreatClient, Retreat, ScreeningClient } from '../types';
+import { Client, ClientMedical, MedicalArtifact, MedicalReviewRequest, Note, RetreatClient, Retreat, ScreeningClient } from '../types';
 import { useAuth } from '../context/AuthContext';
 
 type MedicalScreening = ScreeningClient & Record<string, any>;
@@ -61,6 +62,7 @@ const MedicalClientView: React.FC = () => {
           bookingsRes,
           retreatsRes,
           medicalRes,
+          artifactsRes,
           screeningRes,
           notesRes,
           reviewRes,
@@ -69,6 +71,7 @@ const MedicalClientView: React.FC = () => {
           bookingsApi.getByClient(clientId),
           retreatsApi.getAll(),
           clientMedicalApi.getByClient(clientId),
+          medicalArtifactsApi.getAll({ clientId }).catch(() => ({ data: [] as MedicalArtifact[] })),
           screeningApi.getByClient(clientId),
           notesApi.getByClient(clientId),
           medicalReviewRequestsApi.getAll(),
@@ -94,7 +97,76 @@ const MedicalClientView: React.FC = () => {
             const bTime = new Date((b.updatedAt || b.createdAt || 0) as string).getTime();
             return bTime - aTime;
           });
-          setMedicalRecords(records);
+          const artifacts = artifactsRes.status === 'fulfilled' ? (artifactsRes.value.data || []) as MedicalArtifact[] : [];
+
+          const getArtifactId = (value: any) => {
+            if (!value) return '';
+            if (typeof value === 'string') return value;
+            return value._id || value.id || '';
+          };
+
+          const groupArtifactsByRetreat = new Map<string, MedicalArtifact[]>();
+          artifacts.forEach((artifact) => {
+            const retreatId = getArtifactId(artifact.retreatId);
+            if (!retreatId) return;
+            const bucket = groupArtifactsByRetreat.get(retreatId) || [];
+            bucket.push(artifact);
+            groupArtifactsByRetreat.set(retreatId, bucket);
+          });
+
+          const artifactRecords = Array.from(groupArtifactsByRetreat.entries()).map(([retreatId, retreatArtifacts]) => {
+            const latestEkg = retreatArtifacts
+              .filter((artifact) => artifact.artifactType === 'ekg' || artifact.artifactType === 'ceremony_ekg' || artifact.documentType === 'EKG')
+              .sort((a, b) => new Date((b.receivedAt || b.createdAt || 0) as string).getTime() - new Date((a.receivedAt || a.createdAt || 0) as string).getTime())[0];
+            const latestLiver = retreatArtifacts
+              .filter((artifact) => artifact.artifactType === 'liver_panel' || artifact.documentType === 'Liver')
+              .sort((a, b) => new Date((b.receivedAt || b.createdAt || 0) as string).getTime() - new Date((a.receivedAt || a.createdAt || 0) as string).getTime())[0];
+            const existing = records.find((record) => getArtifactId(record.retreatId) === retreatId);
+            const latestArtifact = [latestEkg, latestLiver].filter(Boolean).sort((a, b) =>
+              new Date((b?.receivedAt || b?.createdAt || 0) as string).getTime() - new Date((a?.receivedAt || a?.createdAt || 0) as string).getTime())[0];
+
+            return {
+              ...(existing || {
+                _id: `artifact-${retreatId}`,
+                clientId,
+                retreatId,
+              }),
+              ekgStatus: existing?.ekgStatus || (latestEkg ? 'received' : 'pending'),
+              ekgReceivedDate: existing?.ekgReceivedDate || latestEkg?.receivedAt,
+              ekgFilePath: existing?.ekgFilePath || latestEkg?.files?.[0]?.filePath || latestEkg?.files?.[0]?.s3Key,
+              ekgFileName: existing?.ekgFileName || latestEkg?.files?.[0]?.fileName || latestEkg?.title,
+              ekgAdvisorNotes: existing?.ekgAdvisorNotes || latestEkg?.notes || latestEkg?.description,
+              liverPanelStatus: existing?.liverPanelStatus || (latestLiver ? 'received' : 'pending'),
+              liverPanelReceivedDate: existing?.liverPanelReceivedDate || latestLiver?.receivedAt,
+              liverPanelFilePath: existing?.liverPanelFilePath || latestLiver?.files?.[0]?.filePath || latestLiver?.files?.[0]?.s3Key,
+              liverPanelFileName: existing?.liverPanelFileName || latestLiver?.files?.[0]?.fileName || latestLiver?.title,
+              liverPanelAdvisorNotes: existing?.liverPanelAdvisorNotes || latestLiver?.notes || latestLiver?.description,
+              updatedAt: existing?.updatedAt || latestArtifact?.updatedAt || latestArtifact?.createdAt,
+              createdAt: existing?.createdAt || latestArtifact?.createdAt,
+            } as ClientMedical;
+          });
+
+          const mergedRecords = [...records];
+          artifactRecords.forEach((artifactRecord) => {
+            const retreatId = getArtifactId(artifactRecord.retreatId);
+            const existingIndex = mergedRecords.findIndex((record) => getArtifactId(record.retreatId) === retreatId);
+            if (existingIndex >= 0) {
+              mergedRecords[existingIndex] = {
+                ...mergedRecords[existingIndex],
+                ...artifactRecord,
+              };
+            } else {
+              mergedRecords.push(artifactRecord);
+            }
+          });
+
+          mergedRecords.sort((a, b) => {
+            const aTime = new Date((a.updatedAt || a.createdAt || 0) as string).getTime();
+            const bTime = new Date((b.updatedAt || b.createdAt || 0) as string).getTime();
+            return bTime - aTime;
+          });
+
+          setMedicalRecords(mergedRecords);
         }
 
         if (screeningRes.status === 'fulfilled') {
