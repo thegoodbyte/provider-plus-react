@@ -522,18 +522,18 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                     ).filter(Boolean))}
                     className="flex w-full items-center justify-between gap-3 border-b border-gray-200 px-4 py-4 text-left"
                   >
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-700">
-                        <Icon icon={FiFolder} className="h-4 w-4" />
-                      </span>
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold text-gray-900">{group.title}</div>
-                        <div className="text-xs text-gray-500">
-                          {group.retreatName || 'No retreat'}{group.ceremonyNumber ? ` • Ceremony #${group.ceremonyNumber}` : ''} • {group.requests?.length || 0} requests
-                        </div>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-700">
+                      <Icon icon={FiFolder} className="h-4 w-4" />
+                    </span>
+                    <div className="min-w-0">
+                      <div className={`truncate text-sm font-semibold ${group.requests?.length ? 'text-gray-900' : 'text-gray-400'}`}>{group.title}</div>
+                      <div className="text-xs text-gray-500">
+                        {group.retreatName || 'No retreat'}{group.ceremonyNumber ? ` • Ceremony #${group.ceremonyNumber}` : ''} • {group.requests?.length || 0} requests
                       </div>
                     </div>
-                    <div className="flex shrink-0 items-center gap-2">
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
                     {groupUrl && (
                       <>
                         <button
@@ -542,11 +542,11 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                               event.stopPropagation();
                               copyText(groupUrl);
                             }}
-                            className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-white px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-200 bg-white text-blue-700 hover:bg-blue-50"
                             title="Copy permanent link"
+                            aria-label="Copy permanent link"
                           >
                             <Icon icon={FiCopy} className="h-3.5 w-3.5" />
-                            Link
                           </button>
                           <button
                             type="button"
@@ -554,11 +554,11 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                               event.stopPropagation();
                               openWhatsAppShare(groupUrl, group.title);
                             }}
-                            className="inline-flex items-center gap-1 rounded-md border border-green-200 bg-green-50 px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-100"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-green-200 bg-green-50 text-green-700 hover:bg-green-100"
                             title="Send link in WhatsApp"
+                            aria-label="Send link in WhatsApp"
                           >
                             <Icon icon={FiSend} className="h-3.5 w-3.5" />
-                            WhatsApp
                           </button>
                         </>
                       )}
@@ -570,11 +570,11 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                               event.stopPropagation();
                               openEditGroupModal(group);
                             }}
-                            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
                             title="Rename packet"
+                            aria-label="Rename packet"
                           >
                             <Icon icon={FiEdit2} className="h-3.5 w-3.5" />
-                            Rename
                           </button>
                           <button
                             type="button"
@@ -582,11 +582,11 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                               event.stopPropagation();
                               deleteGroup(group);
                             }}
-                            className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-100"
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
                             title="Delete packet"
+                            aria-label="Delete packet"
                           >
                             <Icon icon={FiTrash2} className="h-3.5 w-3.5" />
-                            Delete
                           </button>
                         </>
                       )}
@@ -630,7 +630,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                           </div>
                         </div>
                       )) : (
-                        <div className="px-4 py-4 text-sm text-gray-500">No MRRs in this packet yet. Use Add MRRs to populate it later.</div>
+                        <div className="px-4 py-4 text-sm text-gray-500">No MRRs in this packet yet. Use the packet add button to populate it later.</div>
                       )}
                     </div>
                   )}

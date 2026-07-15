@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { FiChevronDown, FiChevronRight, FiCopy, FiEdit2, FiFolder, FiLink, FiPlus, FiRefreshCw, FiTrash2 } from 'react-icons/fi';
+import { FiCheck, FiChevronDown, FiChevronRight, FiCopy, FiEdit2, FiFolder, FiLink, FiPlus, FiRefreshCw, FiTrash2 } from 'react-icons/fi';
 import LoadingSpinner from './LoadingSpinner';
 import MedicalReviewTypeBadge from './MedicalReviewTypeBadge';
 import { medicalReviewRequestsApi } from '../services/api';
@@ -258,6 +258,7 @@ const MedicalReviewGroupPage: React.FC = () => {
     const groupRequests = ((group?.requests || []) as MedicalReviewRequest[]).filter(isPendingReview);
     return buildPacketSections(group, groupRequests);
   }, [group]);
+  const pendingRequestCount = (group?.requests || []).filter(isPendingReview).length;
   const filteredCandidates = useMemo(() => {
     const search = requestSearch.trim().toLowerCase();
     if (!search) return allRequests;
@@ -282,7 +283,7 @@ const MedicalReviewGroupPage: React.FC = () => {
             <div className="min-w-0 flex-1">
               <div className="text-xs font-semibold uppercase tracking-wide text-blue-700">Grouped medical review packet</div>
               <div className="mt-1 flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-semibold text-gray-900">{group?.title || 'Medical review packet'}</h1>
+                <h1 className={`text-2xl font-semibold ${pendingRequestCount ? 'text-gray-900' : 'text-gray-400'}`}>{group?.title || 'Medical review packet'}</h1>
                 {canManageGroup && (
                   <>
                     <button
@@ -317,19 +318,21 @@ const MedicalReviewGroupPage: React.FC = () => {
                     type="button"
                     onClick={saveTitle}
                     disabled={savingGroup}
-                    className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-60"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-60"
+                    aria-label="Save title"
+                    title="Save title"
                   >
-                    <Icon icon={FiEdit2} className="h-4 w-4" />
-                    Save title
+                    <Icon icon={FiCheck} className="h-4 w-4" />
                   </button>
                   <button
                     type="button"
                     onClick={deletePacket}
                     disabled={savingGroup}
-                    className="inline-flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-100 disabled:opacity-60"
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-60"
+                    aria-label="Delete packet"
+                    title="Delete packet"
                   >
                     <Icon icon={FiTrash2} className="h-4 w-4" />
-                    Delete packet
                   </button>
                 </div>
               )}
@@ -342,14 +345,15 @@ const MedicalReviewGroupPage: React.FC = () => {
               {canManageGroup && (
                 <div className="mt-3 flex flex-wrap items-center gap-2">
               {group?.url && (
-                <button
-                  type="button"
-                  onClick={() => copyToClipboard(group.url || '')}
-                  className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
-                >
-                  <Icon icon={FiCopy} className="h-4 w-4" />
-                  Copy permanent link
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(group.url || '')}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                    aria-label="Copy permanent link"
+                    title="Copy permanent link"
+                  >
+                    <Icon icon={FiCopy} className="h-4 w-4" />
+                  </button>
               )}
               <label className="flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700">
                 <span className="text-xs font-medium uppercase tracking-wide text-gray-500">Expire in</span>
@@ -366,11 +370,12 @@ const MedicalReviewGroupPage: React.FC = () => {
                 type="button"
                 onClick={issueNewLink}
                 disabled={issuingLink}
-                className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
-                  >
-                    <Icon icon={FiLink} className="h-4 w-4" />
-                    {issuingLink ? 'Issuing...' : 'Issue new link'}
-                  </button>
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                aria-label={issuingLink ? 'Issuing...' : 'Issue new link'}
+                title={issuingLink ? 'Issuing...' : 'Issue new link'}
+              >
+                <Icon icon={FiLink} className="h-4 w-4" />
+              </button>
                   {packetEditMode && (
                     <button
                       type="button"
