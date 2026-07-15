@@ -6,6 +6,7 @@ import MedicalReviewTypeBadge from './MedicalReviewTypeBadge';
 import { medicalReviewRequestsApi } from '../services/api';
 import { MedicalReviewGroup, MedicalReviewRequest } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { buildPacketSections, getClientName, getRequestKey, getRetreatLabel, isPendingReview } from './MedicalReviewGroupPage.helpers';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
@@ -19,72 +20,10 @@ const statusClass: Record<string, string> = {
   completed: 'bg-gray-100 text-gray-800',
 };
 
-const getClientName = (request: any) => {
-  const client = request.clientId && typeof request.clientId === 'object' ? request.clientId : {};
-  return [client.firstName, client.lastName].filter(Boolean).join(' ') || 'Unknown client';
-};
-
-const getRetreatLabel = (request: any) => {
-  const retreat = request.retreatId && typeof request.retreatId === 'object' ? request.retreatId : {};
-  return retreat.code || retreat.retreatCode || retreat.name || 'Unknown retreat';
-};
-
-const getPacketRetreatLabel = (group: MedicalReviewGroup | null, request: MedicalReviewRequest) => {
-  const retreatLabel = getRetreatLabel(request);
-  return retreatLabel !== 'Unknown retreat' ? retreatLabel : (group?.retreatName || 'Unknown retreat');
-};
-
-const isPendingReview = (request: MedicalReviewRequest) => request.status === 'pending' || request.status === 'in_review';
-
-const getRequestKey = (request: MedicalReviewRequest) => request._id || '';
-
 const getGroupUserId = (value?: string | { _id?: string; id?: string } | null) => {
   if (!value) return '';
   if (typeof value === 'string') return value;
   return value._id || value.id || '';
-};
-
-type PacketSection = {
-  key: string;
-  title: string;
-  subtitle?: string;
-  requests: MedicalReviewRequest[];
-};
-
-const buildPacketSections = (group: MedicalReviewGroup | null, requests: MedicalReviewRequest[]): PacketSection[] => {
-  const byKey = new Map<string, MedicalReviewRequest[]>();
-  for (const request of requests || []) {
-    const retreatLabel = getPacketRetreatLabel(group, request);
-    const ceremonyNumber = request.ceremonyNumber || (request as any).ceremonyNumber;
-    const sectionKey = group?.groupType === 'ceremony'
-      ? `ceremony:${ceremonyNumber || 'unknown'}`
-      : `retreat:${retreatLabel}`;
-    const bucket = byKey.get(sectionKey) || [];
-    bucket.push(request);
-    byKey.set(sectionKey, bucket);
-  }
-
-  return Array.from(byKey.entries())
-    .map(([key, sectionRequests]) => {
-      const sorted = [...sectionRequests].sort((a, b) => String(a.requestType || '').localeCompare(String(b.requestType || '')) || String(getClientName(a)).localeCompare(getClientName(b)));
-      if (key.startsWith('ceremony:')) {
-        const ceremony = key.split(':')[1];
-        return {
-          key,
-          title: ceremony === 'unknown' ? 'Ceremony group' : `Ceremony #${ceremony}`,
-          subtitle: `${sorted.length} request${sorted.length === 1 ? '' : 's'}`,
-          requests: sorted,
-        };
-      }
-      const retreatLabel = key.slice('retreat:'.length);
-      return {
-        key,
-        title: retreatLabel,
-        subtitle: `${sorted.length} request${sorted.length === 1 ? '' : 's'}`,
-        requests: sorted,
-      };
-    })
-    .sort((a, b) => a.title.localeCompare(b.title));
 };
 
 const MedicalReviewGroupPage: React.FC = () => {
@@ -109,6 +48,7 @@ const MedicalReviewGroupPage: React.FC = () => {
   const [availableGroups, setAvailableGroups] = useState<MedicalReviewGroup[]>([]);
   const [requestSearch, setRequestSearch] = useState('');
   const [expandedSections, setExpandedSections] = useState<string[]>([]);
+  const [packetEditMode, setPacketEditMode] = useState(false);
   const canManageGroup = user?.role === 'admin' || user?.role === 'medical_staff';
 
   const loadGroup = useCallback(async () => {
@@ -341,7 +281,31 @@ const MedicalReviewGroupPage: React.FC = () => {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               <div className="text-xs font-semibold uppercase tracking-wide text-blue-700">Grouped medical review packet</div>
-              <h1 className="mt-1 text-2xl font-semibold text-gray-900">{group?.title || 'Medical review packet'}</h1>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <h1 className="text-2xl font-semibold text-gray-900">{group?.title || 'Medical review packet'}</h1>
+                {canManageGroup && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={openAddModal}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                      aria-label="Add MRR to packet"
+                      title="Add MRR to packet"
+                    >
+                      <Icon icon={FiPlus} className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPacketEditMode((current) => !current)}
+                      className={`inline-flex h-9 w-9 items-center justify-center rounded-md border ${packetEditMode ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-gray-200 bg-white text-gray-700'} hover:bg-gray-50`}
+                      aria-label={packetEditMode ? 'Stop editing packet' : 'Edit packet'}
+                      title={packetEditMode ? 'Stop editing packet' : 'Edit packet'}
+                    >
+                      <Icon icon={FiEdit2} className="h-4 w-4" />
+                    </button>
+                  </>
+                )}
+              </div>
               {canManageGroup && (
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   <input
@@ -407,23 +371,17 @@ const MedicalReviewGroupPage: React.FC = () => {
                     <Icon icon={FiLink} className="h-4 w-4" />
                     {issuingLink ? 'Issuing...' : 'Issue new link'}
                   </button>
-                  <button
-                    type="button"
-                    onClick={openAddModal}
-                    className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-white px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50"
-                  >
-                    <Icon icon={FiPlus} className="h-4 w-4" />
-                    Add MRRs
-                  </button>
-                  <button
-                    type="button"
-                    onClick={openMoveModal}
-                    disabled={!selectedRequestIds.length}
-                    className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-                  >
-                    <Icon icon={FiFolder} className="h-4 w-4" />
-                    Move selected
-                  </button>
+                  {packetEditMode && (
+                    <button
+                      type="button"
+                      onClick={openMoveModal}
+                      disabled={!selectedRequestIds.length}
+                      className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+                    >
+                      <Icon icon={FiFolder} className="h-4 w-4" />
+                      Move selected
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -516,7 +474,7 @@ const MedicalReviewGroupPage: React.FC = () => {
                         key={request._id}
                         className={`grid gap-3 px-4 py-4 md:items-center ${canManageGroup ? 'md:grid-cols-[36px_150px_minmax(0,1fr)_220px_150px_130px]' : 'md:grid-cols-[150px_minmax(0,1fr)_220px_150px_130px]'}`}
                       >
-                        {canManageGroup && (
+                        {canManageGroup && packetEditMode && (
                           <div className="flex items-start justify-center">
                             <input
                               type="checkbox"
@@ -557,14 +515,14 @@ const MedicalReviewGroupPage: React.FC = () => {
                             >
                               Open review
                             </button>
-                            {canManageGroup && (
+                            {canManageGroup && packetEditMode && (
                               <button
                                 type="button"
                                 onClick={() => removeRequestFromGroup(request._id || '')}
                                 disabled={savingGroup}
                                 className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:opacity-60"
                               >
-                                Remove
+                                Remove from packet
                               </button>
                             )}
                           </div>
