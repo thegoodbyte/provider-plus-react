@@ -98,6 +98,11 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const [editingGroupId, setEditingGroupId] = useState('');
   const [editingGroupTitle, setEditingGroupTitle] = useState('');
   const [editingGroupSaving, setEditingGroupSaving] = useState(false);
+  const [packetAddGroupId, setPacketAddGroupId] = useState('');
+  const [packetAddModalOpen, setPacketAddModalOpen] = useState(false);
+  const [packetAddSearchTerm, setPacketAddSearchTerm] = useState('');
+  const [packetAddSelectedIds, setPacketAddSelectedIds] = useState<string[]>([]);
+  const [packetAddSaving, setPacketAddSaving] = useState(false);
   const [retreatOptions, setRetreatOptions] = useState<Retreat[]>([]);
 
   const loadData = useCallback(async () => {
@@ -205,6 +210,25 @@ const MedicalReviewRequestsGrid: React.FC = () => {
       .filter((group) => Boolean(group._id));
   }, [groups, requestById]);
 
+  const packetAddCandidates = useMemo(() => {
+    const groupedIds = new Set<string>();
+    for (const group of groups) {
+      for (const requestId of group.reviewRequestIds || []) {
+        if (requestId) groupedIds.add(requestId);
+      }
+    }
+    const search = packetAddSearchTerm.trim().toLowerCase();
+    return requests
+      .filter((request) => {
+        const requestId = getRequestId(request);
+        return requestId ? !groupedIds.has(requestId) : false;
+      })
+      .filter((request) => {
+        if (!search) return true;
+        return getReviewRequestFilterText(request).includes(search);
+      });
+  }, [groups, packetAddSearchTerm, requests]);
+
   const ungroupedRequests = useMemo(
     () => filteredRequests.filter((request) => {
       const requestId = getRequestId(request);
@@ -261,6 +285,21 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     setGroupError('');
   };
 
+  const openAddToPacketModal = (group: MedicalReviewGroup) => {
+    setPacketAddGroupId(group._id || '');
+    setPacketAddModalOpen(true);
+    setPacketAddSearchTerm('');
+    setPacketAddSelectedIds([]);
+    setGroupError('');
+  };
+
+  const closeAddToPacketModal = () => {
+    setPacketAddModalOpen(false);
+    setPacketAddGroupId('');
+    setPacketAddSearchTerm('');
+    setPacketAddSelectedIds([]);
+  };
+
   const saveEditedGroup = async () => {
     if (!editingGroupId) return;
     const title = editingGroupTitle.trim();
@@ -290,6 +329,31 @@ const MedicalReviewRequestsGrid: React.FC = () => {
       setGroups((current) => current.filter((item) => item._id !== group._id));
     } catch (requestError: any) {
       setGroupError(requestError?.response?.data?.message || 'Unable to delete the packet.');
+    }
+  };
+
+  const addRequestsToPacket = async () => {
+    if (!packetAddGroupId || !packetAddSelectedIds.length) return;
+    try {
+      setPacketAddSaving(true);
+      await medicalReviewRequestsApi.updateGroup(packetAddGroupId, { reviewRequestIds: packetAddSelectedIds });
+      await loadData();
+      closeAddToPacketModal();
+    } catch (requestError: any) {
+      setGroupError(requestError?.response?.data?.message || 'Unable to add requests to the packet.');
+    } finally {
+      setPacketAddSaving(false);
+    }
+  };
+
+  const removeRequestFromPacket = async (group: MedicalReviewGroup, requestId: string) => {
+    if (!group._id || !requestId) return;
+    if (!window.confirm('Remove this MRR from the packet? The request will stay in the system.')) return;
+    try {
+      await medicalReviewRequestsApi.updateGroup(group._id, { removeReviewRequestIds: [requestId] });
+      await loadData();
+    } catch (requestError: any) {
+      setGroupError(requestError?.response?.data?.message || 'Unable to remove the request from the packet.');
     }
   };
 
@@ -562,8 +626,20 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                           </button>
                         </>
                       )}
-                      {canManageRequests && (
+                  {canManageRequests && (
                         <>
+                          <button
+                            type="button"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              openAddToPacketModal(group);
+                            }}
+                            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-200 bg-white text-blue-700 hover:bg-blue-50"
+                            title="Add MRRs"
+                            aria-label="Add MRRs"
+                          >
+                            <Icon icon={FiPlus} className="h-3.5 w-3.5" />
+                          </button>
                           <button
                             type="button"
                             onClick={(event) => {
@@ -620,17 +696,42 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                             </span>
                           </div>
                           <div className="flex justify-start md:justify-end">
-                            <button
-                              type="button"
-                              onClick={() => navigate(`${basePath}/${request._id}`)}
-                              className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
-                            >
-                              Open review
-                            </button>
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                type="button"
+                                onClick={() => navigate(`${basePath}/${request._id}`)}
+                                className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+                              >
+                                Open review
+                              </button>
+                              {canManageRequests && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeRequestFromPacket(group, request._id || '')}
+                                  className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
+                                  title="Remove from packet"
+                                  aria-label="Remove from packet"
+                                >
+                                  <Icon icon={FiTrash2} className="h-4 w-4" />
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       )) : (
-                        <div className="px-4 py-4 text-sm text-gray-500">No MRRs in this packet yet. Use the packet add button to populate it later.</div>
+                        <div className="flex items-center justify-between gap-3 px-4 py-4 text-sm text-gray-500">
+                          <span>No MRRs in this packet yet. Use the packet add button to populate it later.</span>
+                          {canManageRequests && (
+                            <button
+                              type="button"
+                              onClick={() => openAddToPacketModal(group)}
+                              className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                            >
+                              <Icon icon={FiPlus} className="h-3.5 w-3.5" />
+                              Add MRRs
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}
@@ -1044,6 +1145,87 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                 className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
               >
                 {editingGroupSaving ? 'Saving...' : 'Save title'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {packetAddModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
+          <div className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-lg bg-white shadow-xl">
+            <div className="flex items-start justify-between border-b border-gray-200 px-5 py-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Add MRRs to packet</h2>
+                <p className="mt-1 text-sm text-gray-600">Search and select requests to add to this packet.</p>
+              </div>
+              <button
+                type="button"
+                onClick={closeAddToPacketModal}
+                className="rounded-md p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                title="Close"
+              >
+                <Icon icon={FiX} className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="max-h-[calc(90vh-150px)] overflow-y-auto px-5 py-4">
+              {groupError && (
+                <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{groupError}</div>
+              )}
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">Search requests</span>
+                <input
+                  value={packetAddSearchTerm}
+                  onChange={(event) => setPacketAddSearchTerm(event.target.value)}
+                  placeholder="Search client, booking, retreat, request, notes..."
+                  className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+                />
+              </label>
+              <div className="mt-3 text-sm font-semibold text-gray-800">Requests selected ({packetAddSelectedIds.length})</div>
+              <div className="mt-2 max-h-[50vh] overflow-y-auto rounded-md border border-gray-200">
+                {packetAddCandidates.map((request) => {
+                  const id = getRequestId(request);
+                  return (
+                    <label key={id} className="flex cursor-pointer items-start gap-3 border-b border-gray-100 px-3 py-3 last:border-b-0 hover:bg-gray-50">
+                      <input
+                        type="checkbox"
+                        checked={packetAddSelectedIds.includes(id)}
+                        onChange={() => setPacketAddSelectedIds((current) => (
+                          current.includes(id) ? current.filter((value) => value !== id) : [...current, id]
+                        ))}
+                        className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
+                      />
+                      <span className="min-w-0 text-sm">
+                        <span className="font-semibold text-gray-900">#{request.display_id || '-'}</span>
+                        <span className="ml-2 text-gray-900">{request.clientName}</span>
+                        <span className="ml-2 text-gray-500">{request.retreatName}</span>
+                        <span className="ml-2 inline-flex align-middle">
+                          <MedicalReviewTypeBadge requestType={request.requestType} />
+                        </span>
+                      </span>
+                    </label>
+                  );
+                })}
+                {!packetAddCandidates.length && (
+                  <div className="px-3 py-6 text-center text-sm text-gray-500">No requests match the current filter.</div>
+                )}
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-gray-200 px-5 py-4">
+              <button
+                type="button"
+                onClick={closeAddToPacketModal}
+                className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={addRequestsToPacket}
+                disabled={packetAddSaving || !packetAddSelectedIds.length}
+                className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {packetAddSaving ? 'Saving...' : `Add ${packetAddSelectedIds.length || ''} request${packetAddSelectedIds.length === 1 ? '' : 's'}`}
               </button>
             </div>
           </div>
