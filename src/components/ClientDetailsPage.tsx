@@ -14,6 +14,7 @@ import { cacheService } from '../services/cacheService';
 import { TaskForm } from './Tasks/TaskForm';
 import { TaskList } from './Tasks/TaskList';
 import { buildClientMedicalArtifactInput, getClientMedicalArtifactUploadContext } from './clientMedicalArtifactUpload';
+import { buildBookingCreateUrlFromPayment } from './bookingFromPayment.helpers';
 import './ClientsGrid.css';
 
 // Simple wrapper to fix TypeScript icon issues
@@ -663,6 +664,7 @@ const ClientDetailsPage: React.FC = () => {
     }
     return '';
   };
+  const screeningYearOfBirth = getScreeningValue('year_of_birth', 'yearOfBirth');
 
   const humanizeScreeningKey = (key: string) => (
     key
@@ -1336,6 +1338,7 @@ const ClientDetailsPage: React.FC = () => {
 
               {renderScreeningGrid([
                 { label: 'Screening Date', value: getScreeningValue('screeningDate') ? formatDate(getScreeningValue('screeningDate')) : '' },
+                { label: 'Year of Birth', value: screeningYearOfBirth },
                 { label: 'Age', value: getScreeningValue('age') },
                 { label: 'Risk Level', value: getScreeningValue('riskLevel') },
                 { label: 'Screening Form Status', value: getScreeningValue('status') },
@@ -1903,6 +1906,7 @@ const ClientDetailsPage: React.FC = () => {
                     {payments.map((payment) => {
                       const paymentRetreatId = getId(payment.retreatId);
                       const paymentRetreat = getRetreatById(paymentRetreatId);
+                      const paymentRequest = typeof payment.paymentRequestId === 'object' ? payment.paymentRequestId : undefined;
                       return (
                         <tr key={payment._id}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -1935,6 +1939,22 @@ const ClientDetailsPage: React.FC = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div className="flex justify-end gap-2">
+                              {!getId(payment.bookingId) && (
+                                <button
+                                  type="button"
+                                  onClick={() => navigate(buildBookingCreateUrlFromPayment({
+                                    payment,
+                                    clientId: clientId || undefined,
+                                    retreatId: paymentRetreatId || undefined,
+                                    paymentRequest,
+                                  }))}
+                                  className="inline-flex items-center rounded-md border border-green-200 px-2.5 py-1.5 text-xs font-medium text-green-700 hover:bg-green-50"
+                                  title="Create booking from this payment"
+                                >
+                                  <Icon icon={FiPlus} className="mr-1 h-3.5 w-3.5" />
+                                  Create Booking
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => navigate(`/admin/payments/${payment._id}`, { state: { returnTo: location.pathname } })}
