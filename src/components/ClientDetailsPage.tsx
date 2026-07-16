@@ -14,6 +14,7 @@ import { cacheService } from '../services/cacheService';
 import { TaskForm } from './Tasks/TaskForm';
 import { TaskList } from './Tasks/TaskList';
 import { buildClientMedicalArtifactInput, getClientMedicalArtifactUploadContext } from './clientMedicalArtifactUpload';
+import { buildBookingCreateUrlFromPayment } from './bookingFromPayment.helpers';
 import './ClientsGrid.css';
 
 // Simple wrapper to fix TypeScript icon issues
@@ -142,6 +143,7 @@ const ClientDetailsPage: React.FC = () => {
   const [uploadingLiverPanel, setUploadingLiverPanel] = useState(false);
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
   const [uploadingProfilePicture, setUploadingProfilePicture] = useState(false);
+  const [medicalArtifacts, setMedicalArtifacts] = useState<MedicalArtifact[]>([]);
 
   const handleResetLoginPin = async () => {
     if (!client?._id) return;
@@ -530,13 +532,14 @@ const ClientDetailsPage: React.FC = () => {
       setError(null);
 
       // Fetch all data in parallel
-      const [clientResponse, paymentsResponse, paymentRequestsResponse, bookingsResponse, retreatsResponse, medicalResponse] = await Promise.all([
+      const [clientResponse, paymentsResponse, paymentRequestsResponse, bookingsResponse, retreatsResponse, medicalResponse, artifactsResponse] = await Promise.all([
         clientsApi.getOne(clientId!),
         paymentsApi.getByClient(clientId!).catch(() => ({ data: [] })),
         paymentRequestsApi.getByClient(clientId!).catch(() => ({ data: [] })),
         bookingsApi.getByClient(clientId!).catch(() => ({ data: [] })),
         retreatsApi.getAll().catch(() => ({ data: [] })),
-        clientMedicalApi.getByClient(clientId!).catch(() => ({ data: null }))
+        clientMedicalApi.getByClient(clientId!).catch(() => ({ data: null })),
+        medicalArtifactsApi.getAll({ clientId: clientId! }).catch(() => ({ data: [] }))
       ]);
 
       setClient(clientResponse.data);
@@ -548,6 +551,7 @@ const ClientDetailsPage: React.FC = () => {
       setRetreats(retreatData);
       await loadRetreatHeroUrls(bookingData, retreatData);
       setMedicalInfo(medicalResponse.data);
+      setMedicalArtifacts(artifactsResponse.data || []);
       await loadClientTasks();
     } catch (error: any) {
       console.error('Error fetching client data:', error);
@@ -663,6 +667,7 @@ const ClientDetailsPage: React.FC = () => {
     }
     return '';
   };
+  const screeningYearOfBirth = getScreeningValue('year_of_birth', 'yearOfBirth');
 
   const humanizeScreeningKey = (key: string) => (
     key
@@ -1085,12 +1090,6 @@ const ClientDetailsPage: React.FC = () => {
             onClick={() => setActiveTab('medical')}
           />
           <Tab
-            label="Medical Records"
-            icon={FiActivity}
-            isActive={activeTab === 'medicalRecords'}
-            onClick={() => setActiveTab('medicalRecords')}
-          />
-          <Tab
             label="Bookings"
             icon={FiCalendar}
             isActive={activeTab === 'bookings'}
@@ -1336,6 +1335,7 @@ const ClientDetailsPage: React.FC = () => {
 
               {renderScreeningGrid([
                 { label: 'Screening Date', value: getScreeningValue('screeningDate') ? formatDate(getScreeningValue('screeningDate')) : '' },
+                { label: 'Year of Birth', value: screeningYearOfBirth },
                 { label: 'Age', value: getScreeningValue('age') },
                 { label: 'Risk Level', value: getScreeningValue('riskLevel') },
                 { label: 'Screening Form Status', value: getScreeningValue('status') },
@@ -1514,158 +1514,202 @@ const ClientDetailsPage: React.FC = () => {
                   </div>
                 )}
 
-                {/* EKG and Liver Panel Test Sections */}
+                {/* EKG and Liver Panel Test Sections - Entry Documents */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
                   {/* EKG Test Section */}
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
                       <Icon icon={FiActivity} className="w-4 h-4 mr-2" />
-                      EKG Test
+                      Entry EKG Test
                     </h3>
-                    <dl className="space-y-2">
-                      <div className="flex justify-between">
-                        <dt className="text-xs text-gray-600">Received:</dt>
-                        <dd className="text-xs font-medium">
-                          {medicalInfo.ekgReceivedDate
-                            ? new Date(medicalInfo.ekgReceivedDate).toLocaleDateString()
-                            : 'NA'}
-                        </dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="text-xs text-gray-600">Review Date:</dt>
-                        <dd className="text-xs font-medium">
-                          {medicalInfo.ekgReviewDate
-                            ? new Date(medicalInfo.ekgReviewDate).toLocaleDateString()
-                            : 'Pending'}
-                        </dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="text-xs text-gray-600">Reviewer:</dt>
-                        <dd className="text-xs font-medium">{medicalInfo.ekgReviewPerson || 'Not assigned'}</dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="text-xs text-gray-600">Result:</dt>
-                        <dd className="text-xs font-medium">
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            medicalInfo.ekgResult === 'approved' ? 'bg-green-100 text-green-800' :
-                            medicalInfo.ekgResult === 'rejected' ? 'bg-red-100 text-red-800' :
-                            medicalInfo.ekgResult === 'needs_review' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {medicalInfo.ekgResult || 'Pending'}
-                          </span>
-                        </dd>
-                      </div>
-                      {medicalInfo.ekgNotes && (
-                        <div className="mt-2">
-                          <dt className="text-xs text-gray-600 mb-1">Notes:</dt>
-                          <dd className="text-xs text-gray-700 bg-white p-2 rounded border">
-                            {medicalInfo.ekgNotes}
-                          </dd>
-                        </div>
-                      )}
-                    </dl>
-                    <div className="mt-4 pt-3 border-t border-gray-200">
-                      <AppleButton
-                        onClick={() => setShowEKGUploadModal(true)}
-                        variant="secondary"
-                        className="w-full text-sm"
-                      >
-                        <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
-                        Upload EKG Files
-                      </AppleButton>
-                      {(medicalInfo?.ekgFiles?.length > 0 || ekgFiles.length > 0) && (
-                        <div className="mt-2">
-                          <p className="text-xs text-gray-600 mb-1">
-                            {medicalInfo?.ekgFiles?.length || 0} file(s) uploaded
-                            {ekgFiles.length > 0 && ` (${ekgFiles.length} pending upload)`}
-                          </p>
-                          {medicalInfo?.ekgFiles?.length > 0 && (
-                            <div className="text-xs text-gray-500">
-                              {medicalInfo.ekgFiles.map((file: any, index: number) => (
-                                <div key={index} className="truncate">{file.originalName || file.filename}</div>
-                              ))}
+                    {(() => {
+                      // Find entry EKG artifacts from medical artifacts
+                      const entryEkgArtifacts = medicalArtifacts.filter(
+                        artifact =>
+                          artifact.clientId === clientId &&
+                          (artifact.documentStage === 'entry' || !artifact.documentStage) &&
+                          (artifact.documentType === 'EKG' || artifact.artifactType === 'ekg')
+                      ).sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+
+                      const latestEkg = entryEkgArtifacts[0];
+                      const hasEkg = !!latestEkg;
+
+                      return (
+                        <>
+                          <dl className="space-y-2">
+                            <div className="flex justify-between">
+                              <dt className="text-xs text-gray-600">Status:</dt>
+                              <dd className="text-xs font-medium">
+                                <span className={`px-2 py-1 rounded text-xs ${
+                                  hasEkg ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                                }`}>
+                                  {hasEkg ? 'Received' : 'Pending'}
+                                </span>
+                              </dd>
                             </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                            {latestEkg && (
+                              <>
+                                <div className="flex justify-between">
+                                  <dt className="text-xs text-gray-600">Received:</dt>
+                                  <dd className="text-xs font-medium">
+                                    {new Date(latestEkg.receivedAt || latestEkg.createdAt || '').toLocaleDateString()}
+                                  </dd>
+                                </div>
+                                {latestEkg.title && (
+                                  <div className="flex justify-between">
+                                    <dt className="text-xs text-gray-600">Title:</dt>
+                                    <dd className="text-xs font-medium truncate">{latestEkg.title}</dd>
+                                  </div>
+                                )}
+                                {(latestEkg.notes || latestEkg.description) && (
+                                  <div className="mt-2">
+                                    <dt className="text-xs text-gray-600 mb-1">Notes:</dt>
+                                    <dd className="text-xs text-gray-700 bg-white p-2 rounded border">
+                                      {latestEkg.notes || latestEkg.description}
+                                    </dd>
+                                  </div>
+                                )}
+                                {latestEkg.files && latestEkg.files.length > 0 && (
+                                  <div className="mt-2">
+                                    <dt className="text-xs text-gray-600 mb-1">Files:</dt>
+                                    {latestEkg.files.map((file, idx) => (
+                                      <dd key={idx} className="text-xs text-blue-600 truncate">
+                                        {file.fileName || 'Document'}
+                                      </dd>
+                                    ))}
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </dl>
+                          <div className="mt-4 pt-3 border-t border-gray-200">
+                            <AppleButton
+                              onClick={() => setShowEKGUploadModal(true)}
+                              variant="secondary"
+                              className="w-full text-sm"
+                            >
+                              <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
+                              Upload Entry EKG
+                            </AppleButton>
+                            {entryEkgArtifacts.length > 0 && (
+                              <div className="mt-2">
+                                <p className="text-xs text-gray-600 mb-1">
+                                  {entryEkgArtifacts.length} EKG document(s) uploaded
+                                </p>
+                                <div className="text-xs text-gray-500 max-h-20 overflow-y-auto">
+                                  {entryEkgArtifacts.slice(0, 3).map((artifact, index) => (
+                                    <div key={artifact._id || index} className="truncate">
+                                      {artifact.files?.[0]?.fileName || artifact.title || 'EKG Document'}
+                                    </div>
+                                  ))}
+                                  {entryEkgArtifacts.length > 3 && (
+                                    <div className="text-gray-400">...and {entryEkgArtifacts.length - 3} more</div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
 
                   {/* Liver Panel Test Section */}
                   <div className="bg-gray-50 p-4 rounded-lg">
                     <h3 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
                       <Icon icon={FiHeart} className="w-4 h-4 mr-2" />
-                      Liver Panel Test
+                      Entry Liver Panel Test
                     </h3>
-                    <dl className="space-y-2">
-                      <div className="flex justify-between">
-                        <dt className="text-xs text-gray-600">Received:</dt>
-                        <dd className="text-xs font-medium">
-                          {medicalInfo.liverPanelReceivedDate
-                            ? new Date(medicalInfo.liverPanelReceivedDate).toLocaleDateString()
-                            : 'NA'}
-                        </dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="text-xs text-gray-600">Review Date:</dt>
-                        <dd className="text-xs font-medium">
-                          {medicalInfo.liverPanelReviewDate
-                            ? new Date(medicalInfo.liverPanelReviewDate).toLocaleDateString()
-                            : 'Pending'}
-                        </dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="text-xs text-gray-600">Reviewer:</dt>
-                        <dd className="text-xs font-medium">{medicalInfo.liverPanelReviewPerson || 'Not assigned'}</dd>
-                      </div>
-                      <div className="flex justify-between">
-                        <dt className="text-xs text-gray-600">Result:</dt>
-                        <dd className="text-xs font-medium">
-                          <span className={`px-2 py-1 rounded text-xs ${
-                            medicalInfo.liverPanelResult === 'approved' ? 'bg-green-100 text-green-800' :
-                            medicalInfo.liverPanelResult === 'rejected' ? 'bg-red-100 text-red-800' :
-                            medicalInfo.liverPanelResult === 'needs_review' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {medicalInfo.liverPanelResult || 'Pending'}
-                          </span>
-                        </dd>
-                      </div>
-                      {medicalInfo.liverPanelNotes && (
-                        <div className="mt-2">
-                          <dt className="text-xs text-gray-600 mb-1">Notes:</dt>
-                          <dd className="text-xs text-gray-700 bg-white p-2 rounded border">
-                            {medicalInfo.liverPanelNotes}
-                          </dd>
-                        </div>
-                      )}
-                    </dl>
-                    <div className="mt-4 pt-3 border-t border-gray-200">
-                      <AppleButton
-                        onClick={() => setShowLiverPanelUploadModal(true)}
-                        variant="secondary"
-                        className="w-full text-sm"
-                      >
-                        <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
-                        Upload Liver Panel Files
-                      </AppleButton>
-                      {(medicalInfo?.liverPanelFiles?.length > 0 || liverPanelFiles.length > 0) && (
-                        <div className="mt-2">
-                          <p className="text-xs text-gray-600 mb-1">
-                            {medicalInfo?.liverPanelFiles?.length || 0} file(s) uploaded
-                            {liverPanelFiles.length > 0 && ` (${liverPanelFiles.length} pending upload)`}
-                          </p>
-                          {medicalInfo?.liverPanelFiles?.length > 0 && (
-                            <div className="text-xs text-gray-500">
-                              {medicalInfo.liverPanelFiles.map((file: any, index: number) => (
-                                <div key={index} className="truncate">{file.originalName || file.filename}</div>
-                              ))}
+                    {(() => {
+                      // Find entry Liver Panel artifacts from medical artifacts
+                      const entryLiverArtifacts = medicalArtifacts.filter(
+                        artifact =>
+                          artifact.clientId === clientId &&
+                          (artifact.documentStage === 'entry' || !artifact.documentStage) &&
+                          (artifact.documentType === 'Liver' || artifact.artifactType === 'liver_panel')
+                      ).sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+
+                      const latestLiver = entryLiverArtifacts[0];
+                      const hasLiver = !!latestLiver;
+
+                      return (
+                        <>
+                          <dl className="space-y-2">
+                            <div className="flex justify-between">
+                              <dt className="text-xs text-gray-600">Status:</dt>
+                              <dd className="text-xs font-medium">
+                                <span className={`px-2 py-1 rounded text-xs ${
+                                  hasLiver ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                                }`}>
+                                  {hasLiver ? 'Received' : 'Pending'}
+                                </span>
+                              </dd>
                             </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                            {latestLiver && (
+                              <>
+                                <div className="flex justify-between">
+                                  <dt className="text-xs text-gray-600">Received:</dt>
+                                  <dd className="text-xs font-medium">
+                                    {new Date(latestLiver.receivedAt || latestLiver.createdAt || '').toLocaleDateString()}
+                                  </dd>
+                                </div>
+                                {latestLiver.title && (
+                                  <div className="flex justify-between">
+                                    <dt className="text-xs text-gray-600">Title:</dt>
+                                    <dd className="text-xs font-medium truncate">{latestLiver.title}</dd>
+                                  </div>
+                                )}
+                                {(latestLiver.notes || latestLiver.description) && (
+                                  <div className="mt-2">
+                                    <dt className="text-xs text-gray-600 mb-1">Notes:</dt>
+                                    <dd className="text-xs text-gray-700 bg-white p-2 rounded border">
+                                      {latestLiver.notes || latestLiver.description}
+                                    </dd>
+                                  </div>
+                                )}
+                                {latestLiver.files && latestLiver.files.length > 0 && (
+                                  <div className="mt-2">
+                                    <dt className="text-xs text-gray-600 mb-1">Files:</dt>
+                                    {latestLiver.files.map((file, idx) => (
+                                      <dd key={idx} className="text-xs text-blue-600 truncate">
+                                        {file.fileName || 'Document'}
+                                      </dd>
+                                    ))}
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </dl>
+                          <div className="mt-4 pt-3 border-t border-gray-200">
+                            <AppleButton
+                              onClick={() => setShowLiverPanelUploadModal(true)}
+                              variant="secondary"
+                              className="w-full text-sm"
+                            >
+                              <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
+                              Upload Entry Liver Panel
+                            </AppleButton>
+                            {entryLiverArtifacts.length > 0 && (
+                              <div className="mt-2">
+                                <p className="text-xs text-gray-600 mb-1">
+                                  {entryLiverArtifacts.length} Liver Panel document(s) uploaded
+                                </p>
+                                <div className="text-xs text-gray-500 max-h-20 overflow-y-auto">
+                                  {entryLiverArtifacts.slice(0, 3).map((artifact, index) => (
+                                    <div key={artifact._id || index} className="truncate">
+                                      {artifact.files?.[0]?.fileName || artifact.title || 'Liver Panel Document'}
+                                    </div>
+                                  ))}
+                                  {entryLiverArtifacts.length > 3 && (
+                                    <div className="text-gray-400">...and {entryLiverArtifacts.length - 3} more</div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
@@ -1689,17 +1733,6 @@ const ClientDetailsPage: React.FC = () => {
           </div>
         )}
 
-        {activeTab === 'medicalRecords' && (
-          <div>
-            <MedicalRecordsManager
-              clientId={clientId || ''}
-              clientName={`${client.firstName} ${client.lastName}`}
-              retreatId={getDefaultRetreatId()}
-              retreatOptions={getRetreatOptions()}
-              refreshKey={medicalRecordsRefreshKey}
-            />
-          </div>
-        )}
 
         {activeTab === 'bookings' && (
           <div>
@@ -1903,6 +1936,7 @@ const ClientDetailsPage: React.FC = () => {
                     {payments.map((payment) => {
                       const paymentRetreatId = getId(payment.retreatId);
                       const paymentRetreat = getRetreatById(paymentRetreatId);
+                      const paymentRequest = typeof payment.paymentRequestId === 'object' ? payment.paymentRequestId : undefined;
                       return (
                         <tr key={payment._id}>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -1935,6 +1969,22 @@ const ClientDetailsPage: React.FC = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <div className="flex justify-end gap-2">
+                              {!getId(payment.bookingId) && (
+                                <button
+                                  type="button"
+                                  onClick={() => navigate(buildBookingCreateUrlFromPayment({
+                                    payment,
+                                    clientId: clientId || undefined,
+                                    retreatId: paymentRetreatId || undefined,
+                                    paymentRequest,
+                                  }))}
+                                  className="inline-flex items-center rounded-md border border-green-200 px-2.5 py-1.5 text-xs font-medium text-green-700 hover:bg-green-50"
+                                  title="Create booking from this payment"
+                                >
+                                  <Icon icon={FiPlus} className="mr-1 h-3.5 w-3.5" />
+                                  Create Booking
+                                </button>
+                              )}
                               <button
                                 type="button"
                                 onClick={() => navigate(`/admin/payments/${payment._id}`, { state: { returnTo: location.pathname } })}
