@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FiChevronDown, FiChevronRight, FiCopy, FiEye, FiEdit2, FiFolder, FiLink, FiPlus, FiRefreshCw, FiSend, FiTrash2, FiX } from 'react-icons/fi';
+import { FiChevronDown, FiChevronRight, FiCopy, FiEye, FiEdit2, FiFolder, FiLink, FiMenu, FiPlus, FiRefreshCw, FiSend, FiTrash2, FiX } from 'react-icons/fi';
 import LoadingSpinner from './LoadingSpinner';
 import MedicalReviewTypeBadge from './MedicalReviewTypeBadge';
 import { medicalReviewRequestsApi, medicalTrackingApi, clientsApi, retreatsApi } from '../services/api';
@@ -234,10 +234,10 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     setGroups([...ordered, ...remaining]);
   }, [groups]);
 
-  const reorderGroups = useCallback(async (targetGroupId: string) => {
-    if (!draggedGroupId || draggedGroupId === targetGroupId) return;
+  const reorderGroups = useCallback(async (sourceGroupId: string, targetGroupId: string) => {
+    if (!sourceGroupId || sourceGroupId === targetGroupId) return;
     const currentIds = groups.map((group) => group._id).filter((id): id is string => Boolean(id));
-    const fromIndex = currentIds.indexOf(draggedGroupId);
+    const fromIndex = currentIds.indexOf(sourceGroupId);
     const toIndex = currentIds.indexOf(targetGroupId);
     if (fromIndex < 0 || toIndex < 0) return;
     const nextIds = [...currentIds];
@@ -261,7 +261,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
       setDraggedOverGroupId('');
       setGroupReorderSaving(false);
     }
-  }, [applyOrderedGroupIds, draggedGroupId, groups, loadData]);
+  }, [applyOrderedGroupIds, groups, loadData]);
 
   const packetAddCandidates = useMemo(() => {
     const groupedIds = new Set<string>();
@@ -657,74 +657,32 @@ const MedicalReviewRequestsGrid: React.FC = () => {
             </div>
           )}
 
-          {canManageRequests && visibleGroups.length > 1 && (
-            <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-sm font-semibold text-gray-900">Packet order</h2>
-                  <p className="text-xs text-gray-500">Drag packets horizontally to choose their position.</p>
-                </div>
-                {groupReorderSaving && (
-                  <div className="text-xs font-medium text-blue-700">Saving order...</div>
-                )}
-              </div>
-              <div className="mt-3 flex gap-3 overflow-x-auto pb-1">
-                {visibleGroups.map((group, index) => {
-                  const groupId = group._id || '';
-                  const isDragged = draggedGroupId === groupId;
-                  const isOver = draggedOverGroupId === groupId && draggedGroupId !== groupId;
-                  return (
-                    <div
-                      key={`order-${groupId}`}
-                      role="button"
-                      tabIndex={0}
-                      draggable={Boolean(groupId)}
-                      onDragStart={() => handleGroupDragStart(groupId)}
-                      onDragEnd={handleGroupDragEnd}
-                      onDragOver={(event) => {
-                        event.preventDefault();
-                        setDraggedOverGroupId(groupId);
-                      }}
-                      onDragLeave={() => {
-                        if (draggedOverGroupId === groupId) setDraggedOverGroupId('');
-                      }}
-                      onDrop={(event) => {
-                        event.preventDefault();
-                        void reorderGroups(groupId);
-                      }}
-                      className={`flex min-w-[220px] max-w-[220px] shrink-0 cursor-move flex-col rounded-xl border bg-gray-50 px-3 py-3 text-left shadow-sm transition ${
-                        isDragged ? 'opacity-60' : 'opacity-100'
-                      } ${isOver ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200 hover:border-blue-300'}`}
-                      title="Drag to reorder packet"
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-semibold text-gray-900">
-                            {index + 1}. {group.title}
-                          </div>
-                          <div className="mt-1 text-xs text-gray-500">
-                            {group.retreatName || 'No retreat'}{group.ceremonyNumber ? ` • Ceremony #${group.ceremonyNumber}` : ''}
-                          </div>
-                        </div>
-                        <Icon icon={FiFolder} className="h-4 w-4 shrink-0 text-gray-500" />
-                      </div>
-                      <div className="mt-2 text-xs text-gray-500">
-                        {group.requests?.length || 0} request{(group.requests?.length || 0) === 1 ? '' : 's'}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
           <div className="space-y-3">
-            {visibleGroups.map((group) => {
+            {visibleGroups.map((group, groupIndex) => {
               const groupId = group._id || group.title;
               const expanded = expandedGroupIds.includes(groupId || '');
               const groupUrl = group.url || '';
+              const isDragged = draggedGroupId === groupId;
+              const isOver = draggedOverGroupId === groupId && draggedGroupId !== groupId;
               return (
-                <div key={`group-${groupId}`} className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+                <div
+                  key={`group-${groupId}`}
+                  onDragOver={(event) => {
+                    if (!canManageRequests || !draggedGroupId) return;
+                    event.preventDefault();
+                    setDraggedOverGroupId(groupId || '');
+                  }}
+                  onDragLeave={() => {
+                    if (draggedOverGroupId === groupId) setDraggedOverGroupId('');
+                  }}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    if (groupId) void reorderGroups(draggedGroupId, groupId);
+                  }}
+                  className={`overflow-hidden rounded-2xl border bg-white shadow-sm transition ${
+                    isDragged ? 'opacity-50' : 'opacity-100'
+                  } ${isOver ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200'}`}
+                >
                   <button
                     type="button"
                     onClick={() => setExpandedGroupIds((current) => (
@@ -735,6 +693,34 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                     className="flex w-full items-center justify-between gap-3 border-b border-gray-200 px-4 py-4 text-left"
                   >
                   <div className="flex min-w-0 items-center gap-3">
+                    {canManageRequests && (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        draggable={Boolean(groupId) && !groupReorderSaving}
+                        onClick={(event) => event.stopPropagation()}
+                        onDragStart={(event) => {
+                          event.stopPropagation();
+                          handleGroupDragStart(groupId || '');
+                          event.dataTransfer.effectAllowed = 'move';
+                        }}
+                        onDragEnd={handleGroupDragEnd}
+                        onKeyDown={(event) => {
+                          if (!groupId || groupReorderSaving) return;
+                          const direction = event.key === 'ArrowUp' ? -1 : event.key === 'ArrowDown' ? 1 : 0;
+                          if (!direction) return;
+                          event.preventDefault();
+                          event.stopPropagation();
+                          const target = visibleGroups[groupIndex + direction]?._id;
+                          if (target) void reorderGroups(groupId, target);
+                        }}
+                        className="inline-flex h-9 w-7 shrink-0 cursor-grab items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 active:cursor-grabbing"
+                        title="Drag to move packet; use Up or Down arrow keys when focused"
+                        aria-label={`Move ${group.title}`}
+                      >
+                        <Icon icon={FiMenu} className="h-5 w-5" />
+                      </span>
+                    )}
                     <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-blue-50 text-blue-700">
                       <Icon icon={FiFolder} className="h-4 w-4" />
                     </span>
@@ -746,6 +732,9 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
+                    {groupReorderSaving && draggedGroupId === groupId && (
+                      <span className="text-xs font-medium text-blue-700">Saving...</span>
+                    )}
                     {groupUrl && (
                       <>
                         <button
