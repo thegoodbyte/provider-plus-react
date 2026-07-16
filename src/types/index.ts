@@ -1203,6 +1203,7 @@ export interface MedicalReviewGroup {
   retreatId?: string | Retreat;
   retreatName?: string;
   ceremonyNumber?: number;
+  sortOrder?: number;
   reviewRequestIds?: string[];
   requests?: MedicalReviewRequest[];
   requestCount?: number;

@@ -8,6 +8,7 @@ import { MedicalItem, MedicalReviewGroup, MedicalReviewRequest, Client, Retreat 
 import { useAuth } from '../context/AuthContext';
 import { usersApi, User } from '../services/usersApi';
 import { MedicalReviewTypeFilter, getReviewRequestFilterText, matchesReviewRequestFilters } from './MedicalReviewRequestsGrid.helpers';
+import ResponsiveModal from './ResponsiveModal';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
@@ -48,6 +49,10 @@ const getRequestId = (request: MedicalReviewRequest) => request._id || '';
 const getRequestRetreatId = (request: MedicalReviewRequest) => (
   typeof request.retreatId === 'string' ? request.retreatId : request.retreatId?._id
 );
+
+type ConfirmAction =
+  | { kind: 'delete-group'; groupId: string; title: string; message: string }
+  | { kind: 'remove-request'; groupId: string; requestId: string; title: string; message: string };
 
 const getCompactDisplayName = (name?: string) => {
   const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
@@ -104,6 +109,11 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const [packetAddSelectedIds, setPacketAddSelectedIds] = useState<string[]>([]);
   const [packetAddSaving, setPacketAddSaving] = useState(false);
   const [retreatOptions, setRetreatOptions] = useState<Retreat[]>([]);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
+  const [confirmSaving, setConfirmSaving] = useState(false);
+  const [draggedGroupId, setDraggedGroupId] = useState('');
+  const [draggedOverGroupId, setDraggedOverGroupId] = useState('');
+  const [groupReorderSaving, setGroupReorderSaving] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -210,6 +220,49 @@ const MedicalReviewRequestsGrid: React.FC = () => {
       .filter((group) => Boolean(group._id));
   }, [groups, requestById]);
 
+  const applyOrderedGroupIds = useCallback((orderedGroupIds: string[]) => {
+    const groupById = new Map(groups.map((group) => [group._id || '', group]));
+    const ordered = orderedGroupIds
+      .map((groupId, index) => {
+        const group = groupById.get(groupId);
+        return group ? { ...group, sortOrder: (index + 1) * 10 } : null;
+      })
+      .filter(Boolean) as MedicalReviewGroup[];
+    const remaining = groups
+      .filter((group) => !orderedGroupIds.includes(group._id || ''))
+      .map((group, index) => ({ ...group, sortOrder: ordered.length + (index + 1) * 10 }));
+    setGroups([...ordered, ...remaining]);
+  }, [groups]);
+
+  const reorderGroups = useCallback(async (targetGroupId: string) => {
+    if (!draggedGroupId || draggedGroupId === targetGroupId) return;
+    const currentIds = groups.map((group) => group._id).filter((id): id is string => Boolean(id));
+    const fromIndex = currentIds.indexOf(draggedGroupId);
+    const toIndex = currentIds.indexOf(targetGroupId);
+    if (fromIndex < 0 || toIndex < 0) return;
+    const nextIds = [...currentIds];
+    const [moved] = nextIds.splice(fromIndex, 1);
+    nextIds.splice(toIndex, 0, moved);
+
+    try {
+      setGroupReorderSaving(true);
+      applyOrderedGroupIds(nextIds);
+      const response = await medicalReviewRequestsApi.reorderGroups(nextIds);
+      setGroups((response.data || []).map((group: MedicalReviewGroup, index: number) => ({
+        ...group,
+        sortOrder: typeof group.sortOrder === 'number' ? group.sortOrder : (index + 1) * 10,
+        requests: group.requests || [],
+      })));
+    } catch (error) {
+      console.error('Unable to reorder packets:', error);
+      await loadData();
+    } finally {
+      setDraggedGroupId('');
+      setDraggedOverGroupId('');
+      setGroupReorderSaving(false);
+    }
+  }, [applyOrderedGroupIds, draggedGroupId, groups, loadData]);
+
   const packetAddCandidates = useMemo(() => {
     const groupedIds = new Set<string>();
     for (const group of groups) {
@@ -254,6 +307,15 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     }
   };
 
+  const handleGroupDragStart = (groupId: string) => {
+    setDraggedGroupId(groupId);
+  };
+
+  const handleGroupDragEnd = () => {
+    setDraggedGroupId('');
+    setDraggedOverGroupId('');
+  };
+
   const openWhatsAppShare = (url?: string, label?: string) => {
     if (!url) return;
     const text = encodeURIComponent(`${label || 'Medical review packet'}: ${url}`);
@@ -264,6 +326,32 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     if (!window.confirm('Delete this review request?')) return;
     await medicalReviewRequestsApi.delete(id);
     await loadData();
+  };
+
+  const runConfirmAction = async () => {
+    if (!confirmAction) return;
+    try {
+      setConfirmSaving(true);
+      if (confirmAction.kind === 'delete-group') {
+        await medicalReviewRequestsApi.deleteGroup(confirmAction.groupId);
+        setGroups((current) => current.filter((item) => item._id !== confirmAction.groupId));
+      } else if (confirmAction.kind === 'remove-request') {
+        await medicalReviewRequestsApi.updateGroup(confirmAction.groupId, { removeReviewRequestIds: [confirmAction.requestId] });
+        setGroups((current) => current.map((group) => (
+          group._id === confirmAction.groupId
+            ? {
+                ...group,
+                reviewRequestIds: (group.reviewRequestIds || []).filter((requestId) => requestId !== confirmAction.requestId),
+              }
+            : group
+        )));
+      }
+    } catch (requestError: any) {
+      setGroupError(requestError?.response?.data?.message || 'Unable to complete the action.');
+    } finally {
+      setConfirmAction(null);
+      setConfirmSaving(false);
+    }
   };
 
   const openGroupModal = () => {
@@ -323,13 +411,12 @@ const MedicalReviewRequestsGrid: React.FC = () => {
 
   const deleteGroup = async (group: MedicalReviewGroup) => {
     if (!group._id) return;
-    if (!window.confirm(`Delete packet "${group.title}"? The MRRs will remain in the system.`)) return;
-    try {
-      await medicalReviewRequestsApi.deleteGroup(group._id);
-      setGroups((current) => current.filter((item) => item._id !== group._id));
-    } catch (requestError: any) {
-      setGroupError(requestError?.response?.data?.message || 'Unable to delete the packet.');
-    }
+    setConfirmAction({
+      kind: 'delete-group',
+      groupId: group._id,
+      title: `Delete packet "${group.title}"?`,
+      message: 'The MRRs will remain in the system.',
+    });
   };
 
   const addRequestsToPacket = async () => {
@@ -348,13 +435,13 @@ const MedicalReviewRequestsGrid: React.FC = () => {
 
   const removeRequestFromPacket = async (group: MedicalReviewGroup, requestId: string) => {
     if (!group._id || !requestId) return;
-    if (!window.confirm('Remove this MRR from the packet? The request will stay in the system.')) return;
-    try {
-      await medicalReviewRequestsApi.updateGroup(group._id, { removeReviewRequestIds: [requestId] });
-      await loadData();
-    } catch (requestError: any) {
-      setGroupError(requestError?.response?.data?.message || 'Unable to remove the request from the packet.');
-    }
+    setConfirmAction({
+      kind: 'remove-request',
+      groupId: group._id,
+      requestId,
+      title: 'Remove MRR from packet?',
+      message: 'The request will stay in the system. Only this packet will be updated.',
+    });
   };
 
   const selectedGroupRequests = useMemo(
@@ -566,6 +653,67 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                   <Icon icon={FiLink} className="h-4 w-4" />
                   Create Group
                 </button>
+              </div>
+            </div>
+          )}
+
+          {canManageRequests && visibleGroups.length > 1 && (
+            <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-900">Packet order</h2>
+                  <p className="text-xs text-gray-500">Drag packets horizontally to choose their position.</p>
+                </div>
+                {groupReorderSaving && (
+                  <div className="text-xs font-medium text-blue-700">Saving order...</div>
+                )}
+              </div>
+              <div className="mt-3 flex gap-3 overflow-x-auto pb-1">
+                {visibleGroups.map((group, index) => {
+                  const groupId = group._id || '';
+                  const isDragged = draggedGroupId === groupId;
+                  const isOver = draggedOverGroupId === groupId && draggedGroupId !== groupId;
+                  return (
+                    <div
+                      key={`order-${groupId}`}
+                      role="button"
+                      tabIndex={0}
+                      draggable={Boolean(groupId)}
+                      onDragStart={() => handleGroupDragStart(groupId)}
+                      onDragEnd={handleGroupDragEnd}
+                      onDragOver={(event) => {
+                        event.preventDefault();
+                        setDraggedOverGroupId(groupId);
+                      }}
+                      onDragLeave={() => {
+                        if (draggedOverGroupId === groupId) setDraggedOverGroupId('');
+                      }}
+                      onDrop={(event) => {
+                        event.preventDefault();
+                        void reorderGroups(groupId);
+                      }}
+                      className={`flex min-w-[220px] max-w-[220px] shrink-0 cursor-move flex-col rounded-xl border bg-gray-50 px-3 py-3 text-left shadow-sm transition ${
+                        isDragged ? 'opacity-60' : 'opacity-100'
+                      } ${isOver ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200 hover:border-blue-300'}`}
+                      title="Drag to reorder packet"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold text-gray-900">
+                            {index + 1}. {group.title}
+                          </div>
+                          <div className="mt-1 text-xs text-gray-500">
+                            {group.retreatName || 'No retreat'}{group.ceremonyNumber ? ` • Ceremony #${group.ceremonyNumber}` : ''}
+                          </div>
+                        </div>
+                        <Icon icon={FiFolder} className="h-4 w-4 shrink-0 text-gray-500" />
+                      </div>
+                      <div className="mt-2 text-xs text-gray-500">
+                        {group.requests?.length || 0} request{(group.requests?.length || 0) === 1 ? '' : 's'}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -1231,6 +1379,40 @@ const MedicalReviewRequestsGrid: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ResponsiveModal
+        isOpen={Boolean(confirmAction)}
+        onClose={() => !confirmSaving && setConfirmAction(null)}
+        title={confirmAction?.title || 'Confirm action'}
+        size="sm"
+        closeOnOverlayClick={!confirmSaving}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-700">{confirmAction?.message}</p>
+          <div className="flex flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setConfirmAction(null)}
+              disabled={confirmSaving}
+              className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={runConfirmAction}
+              disabled={confirmSaving}
+              className={`rounded-md px-4 py-2 text-sm font-semibold text-white disabled:opacity-60 ${
+                confirmAction?.kind === 'delete-group'
+                  ? 'bg-red-600 hover:bg-red-700'
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
+            >
+              {confirmSaving ? 'Working...' : 'Confirm'}
+            </button>
+          </div>
+        </div>
+      </ResponsiveModal>
     </div>
   );
 };

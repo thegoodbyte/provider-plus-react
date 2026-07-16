@@ -1060,11 +1060,16 @@ export const medicalReviewRequestsApi = {
   getGroupAccessLinks: (id: string) => api.get<MedicalReviewGroupAccessLink[]>(`/medical-review-requests/groups/${id}/access-links`),
   issueGroupAccessLink: (id: string, data: { expiresInDays?: number } = {}) => api.post<MedicalReviewGroupAccessLink>(`/medical-review-requests/groups/${id}/access-links`, data),
   revokeGroupAccessLink: (accessLinkId: string) => api.patch<MedicalReviewGroupAccessLink>(`/medical-review-requests/groups/access-links/${accessLinkId}/revoke`, {}),
+  reorderGroups: (orderedGroupIds: string[]) => {
+    cacheService.clearPattern('medical-review-requests:');
+    return api.patch<MedicalReviewGroup[]>('/medical-review-requests/groups/order', { orderedGroupIds });
+  },
   updateGroup: (id: string, data: {
     title?: string;
     groupType?: 'retreat' | 'ceremony' | 'custom';
     retreatId?: string;
     ceremonyNumber?: number;
+    sortOrder?: number;
     reviewRequestIds?: string[];
     removeReviewRequestIds?: string[];
     replaceReviewRequestIds?: string[];
