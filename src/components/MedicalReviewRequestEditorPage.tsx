@@ -23,7 +23,7 @@ type FormState = {
   sentForReviewAt: string;
   assignedTo: string;
   assignedToUserId: string;
-  reviewDecision: 'OK' | 'caution' | 'NOT OK' | '';
+  reviewDecision: 'OK' | 'caution' | 'more_info_needed' | 'NOT OK' | '';
   reviewNotes: string;
   overallNotes: string;
   medicalStaffNotes: string;
@@ -597,7 +597,8 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
                   <option value="">Select</option>
                   <option value="OK">Approve</option>
                   <option value="caution">Caution</option>
-                  <option value="NOT OK">Deny</option>
+                  <option value="more_info_needed">More Info Needed</option>
+                  <option value="NOT OK">Declined</option>
                 </select>
               </>
             )}

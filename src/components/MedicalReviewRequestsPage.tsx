@@ -5,10 +5,14 @@ import { useAuth } from '../context/AuthContext';
 import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
 import { Client, MedicalArtifact, MedicalReviewRequest, Retreat } from '../types';
-import { ThumbsUp } from 'lucide-react';
+import { AlertTriangle, ThumbsDown, ThumbsUp } from 'lucide-react';
 import {
   formatMedicalReviewDecisionLabel,
   formatMedicalReviewRequestSummary,
+  getAssociatedMedicalReviewRequests,
+  medicalReviewDecisionLabels,
+  medicalReviewDecisionOptions,
+  normalizeMedicalReviewDecision,
   splitMedicalReviewRequestsByTimeline,
 } from './MedicalReviewRequestsPage.helpers';
 
@@ -22,12 +26,8 @@ const reviewStatusStyle: Record<string, string> = {
   completed: 'bg-gray-100 text-gray-800',
 };
 
-const decisionOptions = ['OK', 'caution', 'NOT OK'] as const;
-const decisionLabels: Record<typeof decisionOptions[number], string> = {
-  OK: 'OK',
-  caution: 'Need more info',
-  'NOT OK': 'No good',
-};
+const decisionOptions = medicalReviewDecisionOptions;
+const decisionLabels = medicalReviewDecisionLabels;
 
 const getDecisionButtonClass = (option: typeof decisionOptions[number], selected: boolean, size: 'sm' | 'lg' = 'sm') => {
   const base = size === 'lg'
@@ -37,11 +37,13 @@ const getDecisionButtonClass = (option: typeof decisionOptions[number], selected
   if (selected) {
     if (option === 'OK') return `${base} bg-green-600 text-white`;
     if (option === 'caution') return `${base} bg-yellow-500 text-white`;
+    if (option === 'more_info_needed') return `${base} bg-blue-600 text-white`;
     return `${base} bg-red-600 text-white`;
   }
 
   if (option === 'OK') return `${base} border border-green-200 bg-green-50 text-green-800 hover:bg-green-100`;
   if (option === 'caution') return `${base} border border-yellow-200 bg-yellow-50 text-yellow-800 hover:bg-yellow-100`;
+  if (option === 'more_info_needed') return `${base} border border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100`;
   return `${base} border border-red-200 bg-red-50 text-red-700 hover:bg-red-100`;
 };
 
@@ -174,7 +176,7 @@ type FileReviewDraft = {
   artifactId?: string;
   fileKey?: string;
   fileName?: string;
-  decision?: 'OK' | 'caution' | 'NOT OK' | '';
+  decision?: 'OK' | 'caution' | 'more_info_needed' | 'NOT OK' | '';
   notes?: string;
 };
 type ReviewContext = {
@@ -231,7 +233,7 @@ const sanitizeFileReviewDraft = (review: Partial<FileReviewDraft> & { reviewedAt
   artifactId: review.artifactId || undefined,
   fileKey: review.fileKey || undefined,
   fileName: review.fileName || undefined,
-  decision: review.decision || undefined,
+  decision: normalizeMedicalReviewDecision(review.decision) || undefined,
   notes: review.notes || undefined,
   reviewedAt: review.reviewedAt || undefined,
   reviewedBy: review.reviewedBy || undefined,
@@ -417,8 +419,9 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [selected, setSelected] = useState<MedicalReviewRequest | null>(null);
   const [history, setHistory] = useState<MedicalReviewRequest[]>([]);
   const [relatedArtifacts, setRelatedArtifacts] = useState<MedicalArtifact[]>([]);
-  const [reviewDecision, setReviewDecision] = useState<'OK' | 'caution' | 'NOT OK' | ''>('');
+  const [reviewDecision, setReviewDecision] = useState<(typeof decisionOptions)[number] | ''>('');
   const [medicalStaffNotes, setMedicalStaffNotes] = useState('');
+  const [savingReview, setSavingReview] = useState(false);
   const [fileReviews, setFileReviews] = useState<FileReviewDraft[]>([]);
   const [reviewContext, setReviewContext] = useState<ReviewContext | null>(null);
   const [accessLinks, setAccessLinks] = useState<MedicalReviewAccessLink[]>([]);
@@ -475,11 +478,11 @@ const MedicalReviewRequestsPage: React.FC = () => {
           setRelatedArtifacts([]);
           setAccessLinks([]);
         }
-        setReviewDecision(selectedItem.reviewDecision || '');
+        setReviewDecision(normalizeMedicalReviewDecision(selectedItem.reviewDecision) as (typeof decisionOptions)[number] | '');
         setMedicalStaffNotes(selectedItem.medicalStaffNotes || selectedItem.overallNotes || selectedItem.reviewNotes || '');
         setFileReviews((selectedItem.fileReviews || []).map((review: NonNullable<MedicalReviewRequest['fileReviews']>[number]) => ({
           ...sanitizeFileReviewDraft(review),
-          decision: review.decision || '',
+          decision: normalizeMedicalReviewDecision(review.decision) || '',
         })));
       } else {
         setReviewContext(null);
@@ -541,6 +544,10 @@ const MedicalReviewRequestsPage: React.FC = () => {
   }, [requests, requestSearchFilter, retreatFilter, statusFilter, typeFilter]);
 
   const reviewTimeline = useMemo(() => splitMedicalReviewRequestsByTimeline(selected, history), [history, selected]);
+  const associatedRequests = useMemo(
+    () => getAssociatedMedicalReviewRequests(selected, history),
+    [history, selected],
+  );
 
   const selectedArtifactIds = useMemo(() => {
     return new Set((selected?.artifactIds || []).map((artifact) => getId(artifact)));
@@ -573,35 +580,32 @@ const MedicalReviewRequestsPage: React.FC = () => {
     setValidationError('');
     const effectiveDecision = options?.quickApprove ? 'OK' : reviewDecision;
     const effectiveNotes = options?.quickApprove ? (medicalStaffNotes.trim() || 'no comment') : medicalStaffNotes.trim();
-    if (!effectiveDecision || !effectiveNotes) {
-      setValidationError('Choose an overall decision and add medical staff notes before saving.');
+    if (!effectiveDecision || effectiveNotes.length < 2) {
+      setValidationError('Choose a result and enter at least 2 characters before confirming.');
       reviewDecisionSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
     const cleanedFileReviews = fileReviews
       .filter((review) => review.fileKey || review.fileName || review.notes || review.decision)
       .map((review) => sanitizeFileReviewDraft(review));
-    await medicalReviewRequestsApi.review(selected._id, {
-      status: effectiveDecision === 'OK' ? 'approved' : effectiveDecision === 'NOT OK' ? 'rejected' : effectiveDecision === 'caution' ? 'caution' : 'in_review',
-      reviewDecision: effectiveDecision || undefined,
-      reviewNotes: effectiveNotes,
-      overallNotes: effectiveNotes,
-      medicalStaffNotes: effectiveNotes,
-      fileReviews: cleanedFileReviews,
-      reviewedBy: [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || 'medical_staff',
-    });
-    await loadRequests();
-    if (options?.redirectAfterSave) {
-      navigate('/medical-dashboard');
+    try {
+      setSavingReview(true);
+      await medicalReviewRequestsApi.review(selected._id, {
+        status: effectiveDecision === 'OK' ? 'approved' : effectiveDecision === 'NOT OK' ? 'rejected' : effectiveDecision === 'caution' ? 'caution' : 'needs_resubmission',
+        reviewDecision: effectiveDecision || undefined,
+        reviewNotes: effectiveNotes,
+        overallNotes: effectiveNotes,
+        medicalStaffNotes: effectiveNotes,
+        fileReviews: cleanedFileReviews,
+        reviewedBy: [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || 'medical_staff',
+      });
+      await loadRequests();
+      if (options?.redirectAfterSave) {
+        navigate('/medical-dashboard');
+      }
+    } finally {
+      setSavingReview(false);
     }
-  };
-
-  const handleQuickApprove = async () => {
-    setReviewDecision('OK');
-    if (!medicalStaffNotes.trim()) {
-      setMedicalStaffNotes('no comment');
-    }
-    await handleSaveReview({ quickApprove: true, redirectAfterSave: true });
   };
 
   const handleGenerateAccessLink = async () => {
@@ -963,7 +967,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
         : 'Unknown client'
     : '';
   const isMissingOverallDecision = Boolean(validationError && !reviewDecision);
-  const isMissingMedicalStaffNotes = Boolean(validationError && !medicalStaffNotes.trim());
+  const isMissingMedicalStaffNotes = Boolean(validationError && medicalStaffNotes.trim().length < 2);
 
   return (
     <div className="overflow-x-hidden p-0 sm:p-6">
@@ -1188,6 +1192,23 @@ const MedicalReviewRequestsPage: React.FC = () => {
                       </div>
                     </div>
                   </details>
+                </div>
+              )}
+
+              {selected && associatedRequests.length > 0 && (
+                <div className="rounded-md border border-gray-200 bg-white p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <div className="text-sm font-semibold text-gray-900">Associated Medical Reviews ({associatedRequests.length})</div>
+                      <div className="text-xs text-gray-500">All other medical review links for this client.</div>
+                    </div>
+                    <div className="text-xs text-gray-500">Tap any review to switch context.</div>
+                  </div>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                    {associatedRequests.map((item) => (
+                      renderRelatedRequestCard(item, 'Associated review')
+                    ))}
+                  </div>
                 </div>
               )}
 
@@ -1537,67 +1558,67 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   </div>
                 ) : (
                   <>
-                    <div className="grid gap-2 sm:grid-cols-4">
-                      <button
-                        type="button"
-                        onClick={handleQuickApprove}
-                        className="min-h-12 w-full rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-semibold text-green-700 hover:bg-green-100"
-                        aria-label="Quick approve"
-                        title="Quick approve"
-                      >
-                        <ThumbsUp className="mx-auto h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleQuickApprove}
-                        className="min-h-12 w-full rounded-xl border border-green-200 bg-green-600 px-4 py-3 text-sm font-semibold text-white hover:bg-green-700"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setReviewDecision('caution');
-                          if (validationError && medicalStaffNotes.trim()) setValidationError('');
-                        }}
-                        className={getDecisionButtonClass('caution', reviewDecision === 'caution', 'lg')}
-                      >
-                        Need more info
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setReviewDecision('NOT OK');
-                          if (validationError && medicalStaffNotes.trim()) setValidationError('');
-                        }}
-                        className={getDecisionButtonClass('NOT OK', reviewDecision === 'NOT OK', 'lg')}
-                      >
-                        No good
-                      </button>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {decisionOptions.map((option) => (
+                        <button
+                          key={option}
+                          type="button"
+                          onClick={() => {
+                            setReviewDecision(option);
+                            if (validationError && medicalStaffNotes.trim().length >= 2) setValidationError('');
+                          }}
+                          className={getDecisionButtonClass(option, reviewDecision === option, 'lg')}
+                        >
+                          {option === 'OK' ? (
+                            <ThumbsUp className="mx-auto mb-1 h-4 w-4" />
+                          ) : option === 'NOT OK' ? (
+                            <ThumbsDown className="mx-auto mb-1 h-4 w-4" />
+                          ) : (
+                            <AlertTriangle className="mx-auto mb-1 h-4 w-4" />
+                          )}
+                          {decisionLabels[option]}
+                        </button>
+                      ))}
                     </div>
                     {isMissingOverallDecision && (
                       <div className="mt-2 text-xs font-medium text-red-700">Pick one decision before saving.</div>
                     )}
-                    <label htmlFor="medical-staff-notes" className="mt-4 block text-sm font-semibold text-gray-900">
-                      Medical staff notes <span className="text-red-600">*</span>
-                    </label>
-                    <textarea
-                      id="medical-staff-notes"
-                      value={medicalStaffNotes}
-                      onChange={(e) => {
-                        setMedicalStaffNotes(e.target.value);
-                        if (validationError && reviewDecision && e.target.value.trim()) setValidationError('');
-                      }}
-                      rows={4}
-                      className={`mt-2 w-full rounded-md border px-3 py-2 text-sm ${
-                        isMissingMedicalStaffNotes
-                          ? 'border-red-400 bg-white ring-2 ring-red-100'
-                          : 'border-gray-300'
-                      }`}
-                      placeholder="Required: add the overall medical staff notes for this review"
-                    />
-                    {isMissingMedicalStaffNotes && (
-                      <div className="mt-1 text-xs font-medium text-red-700">Add medical staff notes before saving.</div>
+                    {reviewDecision && (
+                      <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                        <label htmlFor="medical-staff-notes" className="block text-sm font-semibold text-gray-900">
+                          Note for {decisionLabels[reviewDecision]} <span className="text-red-600">*</span>
+                        </label>
+                        <textarea
+                          id="medical-staff-notes"
+                          value={medicalStaffNotes}
+                          onChange={(e) => {
+                            setMedicalStaffNotes(e.target.value);
+                            if (validationError && e.target.value.trim().length >= 2) setValidationError('');
+                          }}
+                          rows={3}
+                          minLength={2}
+                          autoFocus
+                          className={`mt-2 w-full rounded-md border bg-white px-3 py-2 text-sm ${
+                            isMissingMedicalStaffNotes
+                              ? 'border-red-400 ring-2 ring-red-100'
+                              : 'border-gray-300'
+                          }`}
+                          placeholder="Enter at least 2 characters"
+                        />
+                        <div className="mt-1 flex items-center justify-between gap-3">
+                          <span className={`text-xs ${medicalStaffNotes.trim().length >= 2 ? 'text-gray-500' : 'font-medium text-red-700'}`}>
+                            Minimum 2 characters
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleSaveReview()}
+                            disabled={savingReview || medicalStaffNotes.trim().length < 2}
+                            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {savingReview ? 'Confirming...' : 'Confirm'}
+                          </button>
+                        </div>
+                      </div>
                     )}
                   </>
                 )}
@@ -1629,15 +1650,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                     >
                       {isMedicalRoute ? 'Review' : 'Edit Request'}
                     </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => handleSaveReview()}
-                      className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-                    >
-                      Save Review
-                    </button>
-                  )}
+                  ) : null}
                 </div>
               </div>
 
