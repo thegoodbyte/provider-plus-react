@@ -168,11 +168,13 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
 }) => {
   const navigate = useNavigate();
   const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
+  const [flowItems, setFlowItems] = useState<BookingFlowItem[]>([]);
   const [reviewsByArtifact, setReviewsByArtifact] = useState<Record<string, MedicalReviewRequest[]>>({});
   const [loading, setLoading] = useState(false);
   const [uploadingType, setUploadingType] = useState<BookingMedicalTestType | null>(null);
   const [creatingReviewFor, setCreatingReviewFor] = useState<string | null>(null);
   const [savingResultType, setSavingResultType] = useState<BookingMedicalTestType | null>(null);
+  const [markingReceivedType, setMarkingReceivedType] = useState<BookingMedicalTestType | null>(null);
   const [medicalAdvisors, setMedicalAdvisors] = useState<User[]>([]);
   const [advisorSelections, setAdvisorSelections] = useState<Record<BookingMedicalTestType, string>>({
     ekg: '',
@@ -182,7 +184,6 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
     ekg: '',
     liver_panel: '',
   });
-  const [markedArtifactIds, setMarkedArtifactIds] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
   const loadMedicalArtifacts = async () => {
@@ -190,7 +191,9 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
     setError(null);
     try {
       const itemsResponse = await bookingFlowApi.getItems({ bookingId });
-      const bookingFlowFilters = buildBookingFlowArtifactFilters(itemsResponse.data || []);
+      const loadedFlowItems: BookingFlowItem[] = itemsResponse.data || [];
+      setFlowItems(loadedFlowItems);
+      const bookingFlowFilters = buildBookingFlowArtifactFilters(loadedFlowItems);
       const responses = await Promise.all([
         medicalArtifactsApi.getAll({ bookingId, ...bookingFlowFilters }),
         medicalArtifactsApi.getAll({ bookingId }),
@@ -328,9 +331,10 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
 
     if (!item?._id) return;
 
-    await bookingFlowApi.updateItem(item._id, {
+    const receivedAt = new Date().toISOString();
+    const response = await bookingFlowApi.updateItem(item._id, {
       status: 'received',
-      receivedAt: new Date().toISOString(),
+      receivedAt,
       notes: `${sectionType === 'ekg' ? 'EKG' : 'Liver panel'} received from booking upload${artifact?.display_id ? ` (artifact #${artifact.display_id})` : ''}.`,
       metadata: {
         ...(item.metadata || {}),
@@ -339,34 +343,23 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
         receivedFrom: 'booking-medical-upload',
       },
     } as Partial<BookingFlowItem>);
+    setFlowItems((current) => current.map((candidate) => candidate._id === item._id
+      ? { ...candidate, ...(response.data || {}), status: 'received', receivedAt }
+      : candidate));
   };
 
-  useEffect(() => {
-    const candidates = medicalTestSections
-      .map((section) => {
-        const artifact = artifactsByType[section.type][0];
-        return { section, artifact };
-      })
-      .filter(({ artifact }) => artifact?._id && ((artifact.files || []).length > 0 || getArtifactResultText(artifact)));
-
-    const unmarked = candidates.filter(({ artifact }) => artifact?._id && !markedArtifactIds.has(artifact._id));
-    if (!unmarked.length) return;
-
-    setMarkedArtifactIds((current) => {
-      const next = new Set(current);
-      unmarked.forEach(({ artifact }) => {
-        if (artifact?._id) next.add(artifact._id);
-      });
-      return next;
-    });
-
-    unmarked.forEach(({ section, artifact }) => {
-      if (!artifact) return;
-      markBookingFlowReceived(section.type, artifact)
-        .then(() => onUploadComplete?.())
-        .catch((error) => console.error(`Unable to mark ${section.title} as received:`, error));
-    });
-  }, [artifactsByType, markedArtifactIds, onUploadComplete]);
+  const handleMarkReceived = async (section: (typeof medicalTestSections)[number], artifact: MedicalArtifact) => {
+    setMarkingReceivedType(section.type);
+    setError(null);
+    try {
+      await markBookingFlowReceived(section.type, artifact);
+      onUploadComplete?.();
+    } catch (markError: any) {
+      setError(markError?.response?.data?.message || markError?.message || `Unable to mark ${section.title} received.`);
+    } finally {
+      setMarkingReceivedType(null);
+    }
+  };
 
   const saveResult = async (section: (typeof medicalTestSections)[number], latestArtifact?: MedicalArtifact) => {
     const resultText = resultDrafts[section.type].trim();
@@ -415,7 +408,6 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
       }
 
       await upsertClientMedicalResult(section.type, resultText);
-      await markBookingFlowReceived(section.type, latestArtifact);
       await loadMedicalArtifacts();
       onUploadComplete?.();
     } catch (saveError: any) {
@@ -489,7 +481,6 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
         }
         const uploadedArtifact = uploadResponse.data?.artifact || created.data;
         await createReviewRequest(uploadedArtifact, section);
-        await markBookingFlowReceived(section.type, uploadedArtifact);
       }
 
       await loadMedicalArtifacts();
@@ -527,6 +518,15 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
           const isSavingResult = savingResultType === section.type;
           const isCreatingReview = latestArtifact?._id && creatingReviewFor === latestArtifact._id;
           const selectedAdvisorId = advisorSelections[section.type] || '';
+          const receiptKey = getFlowReceiptKey(section.type);
+          const receiptGroup = getFlowReadinessGroup(section.type);
+          const receiptItem = flowItems.find((item) => {
+            const template = typeof item.templateId === 'object' ? item.templateId : undefined;
+            return item.key === receiptKey
+              || (item.metadata?.readinessGroup || template?.readinessGroup) === receiptGroup
+              || (item.metadata?.expectedArtifact || template?.expectedArtifact) === section.type;
+          });
+          const isMarkedReceived = !!receiptItem && ['received', 'reviewed', 'approved', 'caution', 'completed'].includes(receiptItem.status);
 
           return (
             <div key={section.type} className="booking-document-card">
@@ -537,6 +537,24 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                   <p>{section.description}</p>
                 </div>
               </div>
+
+              {latestArtifact && (
+                <div className="booking-medical-required-item">
+                  <div>
+                    <span className="booking-medical-required-label">Booking step</span>
+                    {isMarkedReceived ? (
+                      <strong>{section.title} received — {formatDate(receiptItem?.receivedAt || receiptItem?.completedAt || receiptItem?.updatedAt)}</strong>
+                    ) : (
+                      <span>Artifact is linked to this booking and can fulfill the received step.</span>
+                    )}
+                  </div>
+                  {!isMarkedReceived && (
+                    <button className="btn btn-sm btn-secondary" type="button" disabled={markingReceivedType === section.type} onClick={() => handleMarkReceived(section, latestArtifact)}>
+                      {markingReceivedType === section.type ? 'Marking...' : `Mark ${section.title} received`}
+                    </button>
+                  )}
+                </div>
+              )}
 
               <div className="booking-medical-status-row">
                 <span className={`status-badge ${latestArtifact ? 'badge-received' : 'badge-pending'}`}>
