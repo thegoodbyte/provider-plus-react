@@ -35,14 +35,13 @@ const bookingDocumentUploadsByStep: Record<string, {
   title: string;
 }> = {
   contract_signed: { documentType: 'contract', title: 'Signed Contract' },
-  ekg_received: { documentType: 'ekg', title: 'Entry EKG' },
-  liver_received: { documentType: 'liver_panel', title: 'Entry Liver Panel' },
   medications_form_initial_received: { documentType: 'medications_form', title: 'Medications Form' },
   medications_form_30_day_received: { documentType: 'medications_form', title: '30-Day Medications Form' },
   questionnaire_received: { documentType: 'questionnaire', title: 'Questionnaire' },
 };
 
 const getBookingDocumentTypeForStep = (item: BookingFlowItem) => {
+  if (artifactUploadsByStep[item.key]) return '';
   const explicit = bookingDocumentUploadsByStep[item.key]?.documentType;
   return String(
     explicit ||
