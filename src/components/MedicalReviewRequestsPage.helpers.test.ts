@@ -1,6 +1,8 @@
 import {
+  getAssociatedMedicalReviewRequests,
   formatMedicalReviewDecisionLabel,
   formatMedicalReviewRequestSummary,
+  normalizeMedicalReviewDecision,
   splitMedicalReviewRequestsByTimeline,
 } from './MedicalReviewRequestsPage.helpers';
 import { MedicalReviewRequest } from '../types';
@@ -68,9 +70,19 @@ describe('splitMedicalReviewRequestsByTimeline', () => {
 
 describe('medical review request helpers', () => {
   it('formats review decisions with advisor-friendly labels', () => {
-    expect(formatMedicalReviewDecisionLabel('OK')).toBe('Approve');
-    expect(formatMedicalReviewDecisionLabel('caution')).toBe('Need more info');
-    expect(formatMedicalReviewDecisionLabel('NOT OK')).toBe('Decline');
+    expect(formatMedicalReviewDecisionLabel('OK')).toBe('OK');
+    expect(formatMedicalReviewDecisionLabel('caution')).toBe('Caution');
+    expect(formatMedicalReviewDecisionLabel('more_info_needed')).toBe('More Info Needed');
+    expect(formatMedicalReviewDecisionLabel('NOT OK')).toBe('Declined');
+    expect(formatMedicalReviewDecisionLabel('approved')).toBe('OK');
+    expect(formatMedicalReviewDecisionLabel('declined')).toBe('Declined');
+    expect(formatMedicalReviewDecisionLabel('needs_more_info')).toBe('More Info Needed');
+  });
+
+  it('normalizes legacy decision values to the canonical request-state values', () => {
+    expect(normalizeMedicalReviewDecision('approved')).toBe('OK');
+    expect(normalizeMedicalReviewDecision('needs_more_info')).toBe('more_info_needed');
+    expect(normalizeMedicalReviewDecision('declined')).toBe('NOT OK');
   });
 
   it('formats a compact request summary without repeating the request type', () => {
@@ -80,5 +92,34 @@ describe('medical review request helpers', () => {
     });
 
     expect(formatMedicalReviewRequestSummary(request)).toBe('Entry • EKG');
+  });
+
+  it('returns all other client review requests in timeline order for associated links', () => {
+    const older = makeRequest({
+      _id: 'req-1',
+      display_id: 1001,
+      requestedAt: '2026-06-01T10:00:00.000Z',
+      documentStage: 'entry',
+      documentType: 'EKG',
+    });
+    const current = makeRequest({
+      _id: 'req-2',
+      display_id: 1002,
+      requestedAt: '2026-06-10T10:00:00.000Z',
+      documentStage: 'entry',
+      documentType: 'Liver',
+    });
+    const newer = makeRequest({
+      _id: 'req-3',
+      display_id: 1003,
+      requestedAt: '2026-06-20T10:00:00.000Z',
+      documentStage: 'pre_ceremony',
+      documentType: 'EKG',
+    });
+
+    expect(getAssociatedMedicalReviewRequests(current, [newer, current, older]).map((request) => request._id)).toEqual([
+      'req-1',
+      'req-3',
+    ]);
   });
 });

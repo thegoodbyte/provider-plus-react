@@ -1132,21 +1132,21 @@ export interface MedicalReviewRequest {
   lastNotificationSentAt?: Date | string;
   reviewedAt?: Date | string;
   reviewedBy?: string;
-  reviewDecision?: 'OK' | 'caution' | 'NOT OK';
+  reviewDecision?: 'OK' | 'caution' | 'more_info_needed' | 'NOT OK';
   overallNotes?: string;
   medicalStaffNotes?: string;
   fileReviews?: Array<{
     artifactId?: string;
     fileKey?: string;
     fileName?: string;
-    decision?: 'OK' | 'caution' | 'NOT OK';
+    decision?: 'OK' | 'caution' | 'more_info_needed' | 'NOT OK';
     notes?: string;
     reviewedAt?: Date | string;
     reviewedBy?: string;
   }>;
   decisionHistory?: Array<{
     status?: 'pending' | 'in_review' | 'approved' | 'rejected' | 'caution' | 'needs_resubmission' | 'completed';
-    decision?: 'OK' | 'caution' | 'NOT OK';
+    decision?: 'OK' | 'caution' | 'more_info_needed' | 'NOT OK';
     notes?: string;
     overallNotes?: string;
     medicalStaffNotes?: string;
@@ -1304,7 +1304,7 @@ export interface BookingFlowItem {
   emailSentAt?: Date | string;
   receivedAt?: Date | string;
   reviewedAt?: Date | string;
-  reviewDecision?: 'OK' | 'caution' | 'NOT OK';
+  reviewDecision?: 'OK' | 'caution' | 'more_info_needed' | 'NOT OK';
   reviewNotes?: string;
   reviewedBy?: string;
   approvedAt?: Date | string;

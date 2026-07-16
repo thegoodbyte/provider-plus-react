@@ -1115,7 +1115,7 @@ export const medicalReviewRequestsApi = {
   ),
   review: (id: string, reviewData: {
     status?: string;
-    reviewDecision?: 'OK' | 'caution' | 'NOT OK';
+    reviewDecision?: 'OK' | 'caution' | 'more_info_needed' | 'NOT OK';
     reviewNotes?: string;
     overallNotes?: string;
     medicalStaffNotes?: string;

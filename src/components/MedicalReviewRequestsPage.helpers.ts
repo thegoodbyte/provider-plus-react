@@ -1,5 +1,46 @@
 import { MedicalReviewRequest } from '../types';
 
+const decisionAliases: Record<string, 'OK' | 'caution' | 'more_info_needed' | 'NOT OK'> = {
+  ok: 'OK',
+  approve: 'OK',
+  approved: 'OK',
+  caution: 'caution',
+  'needs more info': 'more_info_needed',
+  'need more info': 'more_info_needed',
+  'more info needed': 'more_info_needed',
+  'more info': 'more_info_needed',
+  'not ok': 'NOT OK',
+  decline: 'NOT OK',
+  declined: 'NOT OK',
+  rejected: 'NOT OK',
+  reject: 'NOT OK',
+  no: 'NOT OK',
+};
+
+export const medicalReviewDecisionOptions = ['OK', 'caution', 'more_info_needed', 'NOT OK'] as const;
+
+export const medicalReviewDecisionLabels: Record<typeof medicalReviewDecisionOptions[number], string> = {
+  OK: 'OK',
+  caution: 'Caution',
+  more_info_needed: 'More Info Needed',
+  'NOT OK': 'Declined',
+};
+
+export const normalizeMedicalReviewDecision = (decision?: string | null) => {
+  if (!decision) return '';
+  const normalized = decision.toLowerCase().replace(/[\s_-]+/g, ' ').trim();
+  return decisionAliases[normalized] || decisionAliases[decision.toLowerCase().trim()] || '';
+};
+
+export const getMedicalReviewDecisionTone = (decision?: string | null) => {
+  const normalized = normalizeMedicalReviewDecision(decision);
+  if (normalized === 'OK') return 'green';
+  if (normalized === 'caution') return 'amber';
+  if (normalized === 'more_info_needed') return 'blue';
+  if (normalized === 'NOT OK') return 'red';
+  return 'gray';
+};
+
 const documentStageLabels: Record<NonNullable<MedicalReviewRequest['documentStage']>, string> = {
   entry: 'Entry',
   pre_ceremony: 'Pre-Ceremony',
@@ -36,6 +77,18 @@ const getAttemptKey = (request: MedicalReviewRequest) => request.attemptNumber |
 const sortByTimeline = (a: MedicalReviewRequest, b: MedicalReviewRequest) =>
   getRequestSortKey(a) - getRequestSortKey(b) || getAttemptKey(a) - getAttemptKey(b) || String(a.display_id || '').localeCompare(String(b.display_id || ''));
 
+export const getAssociatedMedicalReviewRequests = (
+  currentRequest: MedicalReviewRequest | null | undefined,
+  reviewHistory: MedicalReviewRequest[] = [],
+): MedicalReviewRequest[] => {
+  const currentId = getRequestId(currentRequest);
+  const relatedRequests = currentId
+    ? reviewHistory.filter((request) => getRequestId(request) !== currentId)
+    : [...reviewHistory];
+
+  return relatedRequests.sort(sortByTimeline);
+};
+
 const splitByTime = (current: MedicalReviewRequest, relatedRequests: MedicalReviewRequest[]) => {
   const currentTime = getRequestSortKey(current);
   const currentAttempt = getAttemptKey(current);
@@ -70,12 +123,10 @@ export interface MedicalReviewRequestTimeline {
   followingRequests: MedicalReviewRequest[];
 }
 
-export const formatMedicalReviewDecisionLabel = (decision?: string) => {
-  if (!decision) return 'No decision recorded';
-  if (decision === 'OK') return 'Approve';
-  if (decision === 'NOT OK') return 'Decline';
-  if (decision === 'caution') return 'Need more info';
-  return decision;
+export const formatMedicalReviewDecisionLabel = (decision?: string | null) => {
+  const normalized = normalizeMedicalReviewDecision(decision);
+  if (!normalized) return 'No decision recorded';
+  return medicalReviewDecisionLabels[normalized];
 };
 
 export const formatMedicalReviewRequestSummary = (request: MedicalReviewRequest) => {
