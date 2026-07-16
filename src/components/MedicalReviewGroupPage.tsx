@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { FiCheck, FiChevronDown, FiChevronRight, FiCopy, FiEdit2, FiFolder, FiLink, FiPlus, FiRefreshCw, FiTrash2 } from 'react-icons/fi';
 import LoadingSpinner from './LoadingSpinner';
+import ResponsiveModal from './ResponsiveModal';
 import MedicalReviewTypeBadge from './MedicalReviewTypeBadge';
 import { medicalReviewRequestsApi } from '../services/api';
 import { MedicalReviewGroup, MedicalReviewRequest } from '../types';
@@ -26,6 +27,11 @@ const getGroupUserId = (value?: string | { _id?: string; id?: string } | null) =
   return value._id || value.id || '';
 };
 
+type ConfirmAction =
+  | { kind: 'revoke-link'; accessLinkId: string; title: string; message: string }
+  | { kind: 'remove-request'; requestId: string; title: string; message: string }
+  | { kind: 'delete-packet'; title: string; message: string };
+
 const MedicalReviewGroupPage: React.FC = () => {
   const { id = '' } = useParams();
   const location = useLocation();
@@ -49,6 +55,7 @@ const MedicalReviewGroupPage: React.FC = () => {
   const [requestSearch, setRequestSearch] = useState('');
   const [expandedSections, setExpandedSections] = useState<string[]>([]);
   const [packetEditMode, setPacketEditMode] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const canManageGroup = user?.role === 'admin' || user?.role === 'medical_staff';
 
   const loadGroup = useCallback(async () => {
@@ -113,14 +120,55 @@ const MedicalReviewGroupPage: React.FC = () => {
 
   const revokeLink = async (accessLinkId?: string) => {
     if (!accessLinkId) return;
-    if (!window.confirm('Revoke this packet link? It will stop working immediately.')) return;
+    setConfirmAction({
+      kind: 'revoke-link',
+      accessLinkId,
+      title: 'Revoke packet link?',
+      message: 'This link will stop working immediately.',
+    });
+  };
+
+  const removeRequestFromGroup = async (requestId: string) => {
+    if (!group?._id || !requestId) return;
+    setConfirmAction({
+      kind: 'remove-request',
+      requestId,
+      title: 'Remove MRR from packet?',
+      message: 'The review request will stay in the system. Only the packet link will be updated.',
+    });
+  };
+
+  const deletePacket = async () => {
+    if (!group?._id) return;
+    setConfirmAction({
+      kind: 'delete-packet',
+      title: `Delete packet "${group.title}"?`,
+      message: 'This will not delete the MRRs.',
+    });
+  };
+
+  const runConfirmAction = async () => {
+    if (!confirmAction) return;
     try {
       setSavingGroup(true);
-      const response = await medicalReviewRequestsApi.revokeGroupAccessLink(accessLinkId);
-      setAccessLinks((current) => current.map((link) => (link._id === accessLinkId ? response.data : link)));
+      if (confirmAction.kind === 'revoke-link') {
+        const response = await medicalReviewRequestsApi.revokeGroupAccessLink(confirmAction.accessLinkId);
+        setAccessLinks((current) => current.map((link) => (link._id === confirmAction.accessLinkId ? response.data : link)));
+      } else if (confirmAction.kind === 'remove-request' && group?._id) {
+        await medicalReviewRequestsApi.updateGroup(group._id, { removeReviewRequestIds: [confirmAction.requestId] });
+        setGroup((current) => current ? {
+          ...current,
+          reviewRequestIds: (current.reviewRequestIds || []).filter((requestId) => requestId !== confirmAction.requestId),
+          requests: (current.requests || []).filter((request) => getRequestKey(request) !== confirmAction.requestId),
+        } : current);
+      } else if (confirmAction.kind === 'delete-packet' && group?._id) {
+        await medicalReviewRequestsApi.deleteGroup(group._id);
+        navigate(basePath, { replace: true });
+      }
     } catch (requestError: any) {
-      setError(requestError?.response?.data?.message || 'Unable to revoke the packet link.');
+      setError(requestError?.response?.data?.message || 'Unable to complete the action.');
     } finally {
+      setConfirmAction(null);
       setSavingGroup(false);
     }
   };
@@ -162,20 +210,6 @@ const MedicalReviewGroupPage: React.FC = () => {
     }
   };
 
-  const removeRequestFromGroup = async (requestId: string) => {
-    if (!group?._id || !requestId) return;
-    if (!window.confirm('Remove this MRR from the packet? The review request will stay in the system.')) return;
-    try {
-      setSavingGroup(true);
-      await medicalReviewRequestsApi.updateGroup(group._id, { removeReviewRequestIds: [requestId] });
-      await loadGroup();
-    } catch (requestError: any) {
-      setError(requestError?.response?.data?.message || 'Unable to remove the request from the packet.');
-    } finally {
-      setSavingGroup(false);
-    }
-  };
-
   const saveTitle = async () => {
     if (!group?._id) return;
     try {
@@ -184,20 +218,6 @@ const MedicalReviewGroupPage: React.FC = () => {
       setGroup((current) => current ? { ...current, title: response.data.title || titleDraft.trim() || current.title } : current);
     } catch (requestError: any) {
       setError(requestError?.response?.data?.message || 'Unable to rename the packet.');
-    } finally {
-      setSavingGroup(false);
-    }
-  };
-
-  const deletePacket = async () => {
-    if (!group?._id) return;
-    if (!window.confirm(`Delete packet "${group.title}"? This will not delete the MRRs.`)) return;
-    try {
-      setSavingGroup(true);
-      await medicalReviewRequestsApi.deleteGroup(group._id);
-      navigate(basePath, { replace: true });
-    } catch (requestError: any) {
-      setError(requestError?.response?.data?.message || 'Unable to delete the packet.');
     } finally {
       setSavingGroup(false);
     }
@@ -671,6 +691,40 @@ const MedicalReviewGroupPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ResponsiveModal
+        isOpen={Boolean(confirmAction)}
+        onClose={() => !savingGroup && setConfirmAction(null)}
+        title={confirmAction?.title || 'Confirm action'}
+        size="sm"
+        closeOnOverlayClick={!savingGroup}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-700">{confirmAction?.message}</p>
+          <div className="flex flex-wrap justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setConfirmAction(null)}
+              disabled={savingGroup}
+              className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={runConfirmAction}
+              disabled={savingGroup}
+              className={`rounded-md px-4 py-2 text-sm font-semibold text-white disabled:opacity-60 ${
+                confirmAction?.kind === 'delete-packet'
+                  ? 'bg-red-600 hover:bg-red-700'
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
+            >
+              {savingGroup ? 'Working...' : 'Confirm'}
+            </button>
+          </div>
+        </div>
+      </ResponsiveModal>
     </div>
   );
 };
