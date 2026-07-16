@@ -31,6 +31,7 @@ import WorkflowDashboard from './WorkflowDashboard';
 import RetreatFlowPage from './RetreatFlowPage';
 import RetreatFlowLibraryPage from './RetreatFlowLibraryPage';
 import BookingFlowPage from './BookingFlowPage';
+import BookingStepDeadlinesPage from './BookingStepDeadlinesPage';
 import BookingDocumentsPage from './BookingDocumentsPage';
 import BookingDocumentTypesPage from './BookingDocumentTypesPage';
 import FlowTaskInboxPage from './FlowTaskInboxPage';
@@ -160,6 +161,7 @@ const AppleLayout: React.FC = () => {
     if (route === 'retreat-flow') return 'retreat-flow';
     if (route === 'retreat-flow-library') return 'retreat-flow-library';
     if (route === 'booking-flow') return 'booking-flow';
+    if (route === 'booking-step-deadlines') return 'booking-step-deadlines';
     if (route === 'booking-documents') return 'booking-documents';
     if (route === 'booking-document-types') return 'booking-document-types';
     if (route === 'flow-tasks') return 'flow-tasks';
@@ -629,6 +631,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="retreat-flow-library" element={<RetreatFlowLibraryPage />} />
                       <Route path="booking-flow" element={<BookingFlowPage />} />
                       <Route path="booking-flow/:bookingId" element={<BookingFlowPage />} />
+                      <Route path="booking-step-deadlines" element={<BookingStepDeadlinesPage />} />
                       <Route path="booking-documents" element={<BookingDocumentsPage />} />
                       <Route path="booking-document-types" element={<BookingDocumentTypesPage />} />
                       <Route path="flow-tasks" element={<FlowTaskInboxPage />} />
@@ -721,6 +724,7 @@ const AppleLayout: React.FC = () => {
                         <Route path="retreat-flow-library" element={<RetreatFlowLibraryPage />} />
                         <Route path="booking-flow" element={<BookingFlowPage />} />
                         <Route path="booking-flow/:bookingId" element={<BookingFlowPage />} />
+                        <Route path="booking-step-deadlines" element={<BookingStepDeadlinesPage />} />
                         <Route path="booking-documents" element={<BookingDocumentsPage />} />
                         <Route path="booking-document-types" element={<BookingDocumentTypesPage />} />
                         <Route path="flow-tasks" element={<FlowTaskInboxPage />} />
@@ -861,6 +865,7 @@ const AppleLayout: React.FC = () => {
                 <Route path="/retreat-flow-library" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><RetreatFlowLibraryPage /></ProtectedRoute>} />
                 <Route path="/booking-flow" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><BookingFlowPage /></ProtectedRoute>} />
                 <Route path="/booking-flow/:bookingId" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><BookingFlowPage /></ProtectedRoute>} />
+                <Route path="/booking-step-deadlines" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><BookingStepDeadlinesPage /></ProtectedRoute>} />
                 <Route path="/booking-documents" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><BookingDocumentsPage /></ProtectedRoute>} />
                 <Route path="/booking-document-types" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><BookingDocumentTypesPage /></ProtectedRoute>} />
                 <Route path="/flow-tasks" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><FlowTaskInboxPage /></ProtectedRoute>} />

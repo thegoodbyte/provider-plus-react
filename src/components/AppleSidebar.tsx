@@ -59,7 +59,8 @@ const FULL_MENU_SECTIONS: MenuSection[] = [
       { id: 'houses', label: 'Houses', Icon: Fi.FiHome },
       { id: 'retreat-flow', label: 'Retreat Readiness Setup', Icon: Fi.FiCalendar },
       { id: 'retreat-flow-library', label: 'Booking Step Setup', Icon: Fi.FiLayers },
-      { id: 'booking-flow', label: 'Booking Step Deadlines', Icon: Fi.FiCheckSquare },
+      { id: 'booking-flow', label: 'Booking Flow', Icon: Fi.FiCheckSquare },
+      { id: 'booking-step-deadlines', label: 'Step Deadlines', Icon: Fi.FiCalendar },
       { id: 'booking-documents', label: 'Document Library', Icon: Fi.FiFileText },
       { id: 'booking-document-types', label: 'Booking Document Types', Icon: Fi.FiSettings },
     ],
@@ -173,6 +174,12 @@ const BOOKING_STEP_NAV_ACCENTS: Record<string, { border: string; background: str
     activeBackground: 'rgba(187, 247, 208, 1)',
     color: 'rgb(22, 101, 52)',
   },
+  'booking-step-deadlines': {
+    border: 'rgb(134, 239, 172)',
+    background: 'rgba(220, 252, 231, 0.92)',
+    activeBackground: 'rgba(187, 247, 208, 1)',
+    color: 'rgb(22, 101, 52)',
+  },
 };
 
 const AppleSidebar: React.FC<AppleSidebarProps> = ({
@@ -258,7 +265,8 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
               { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
               { id: 'retreat-flow', label: 'Retreat Readiness Setup', Icon: Fi.FiCalendar },
               { id: 'retreat-flow-library', label: 'Booking Step Setup', Icon: Fi.FiLayers },
-              { id: 'booking-flow', label: 'Booking Step Deadlines', Icon: Fi.FiCheckSquare },
+              { id: 'booking-flow', label: 'Booking Flow', Icon: Fi.FiCheckSquare },
+              { id: 'booking-step-deadlines', label: 'Step Deadlines', Icon: Fi.FiCalendar },
               { id: 'booking-documents', label: 'Document Library', Icon: Fi.FiFileText },
               { id: 'booking-document-types', label: 'Booking Document Types', Icon: Fi.FiSettings },
             ],

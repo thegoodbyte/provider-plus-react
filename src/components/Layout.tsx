@@ -16,6 +16,7 @@ import MedicalAdvisorDashboard from './MedicalAdvisorDashboard';
 import MedicalReviewDetail from './MedicalReviewDetail';
 import MedicalRetreats from './MedicalRetreats';
 import MedicalProfile from './MedicalProfile';
+import BookingStepDeadlinesPage from './BookingStepDeadlinesPage';
 import { useAuth } from '../context/AuthContext';
 import './Layout.css';
 
@@ -40,6 +41,7 @@ const Layout: React.FC = () => {
     if (path.startsWith('/screening')) return 'screening';
     if (path.startsWith('/clients')) return 'clients';
     if (path.startsWith('/bookings')) return 'bookings';
+    if (path.startsWith('/booking-step-deadlines')) return 'booking-step-deadlines';
     if (path.startsWith('/medical')) return 'medical';
     if (path.startsWith('/reminders')) return 'reminders';
     if (path.startsWith('/payments')) return 'payments';
@@ -125,6 +127,7 @@ const Layout: React.FC = () => {
             <Route path="/clients" element={<UnifiedClientManager />} />
             <Route path="/clients/:clientId" element={<ClientDetailsPage />} />
             <Route path="/bookings" element={<BookingsGrid />} />
+            <Route path="/booking-step-deadlines" element={<BookingStepDeadlinesPage />} />
             <Route path="/medical" element={<MedicalGrid />} />
             <Route path="/reminders" element={<RemindersPage />} />
             <Route path="/payments" element={<PaymentsPage />} />

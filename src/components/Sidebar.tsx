@@ -101,6 +101,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed,
       description: 'Master booking step configuration'
     },
     {
+      id: 'booking-step-deadlines',
+      label: 'Step Deadlines',
+      icon: FiCalendar,
+      description: 'All booking-step deadlines across retreats'
+    },
+    {
       id: 'houses',
       label: 'Houses',
       icon: FiHome,
@@ -161,7 +167,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed,
   const getBookingStepAccentClass = (itemId: string) => {
     if (itemId === 'retreat-flow') return 'nav-link-readiness';
     if (itemId === 'retreat-flow-library') return 'nav-link-step-setup';
-    if (itemId === 'booking-flow') return 'nav-link-step-deadlines';
+    if (itemId === 'booking-flow' || itemId === 'booking-step-deadlines') return 'nav-link-step-deadlines';
     return '';
   };
 
