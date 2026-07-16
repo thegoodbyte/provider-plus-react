@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FiChevronDown, FiChevronRight, FiCopy, FiEye, FiEdit2, FiFolder, FiLink, FiMenu, FiPlus, FiRefreshCw, FiSend, FiTrash2, FiX } from 'react-icons/fi';
+import { FiChevronDown, FiChevronRight, FiCopy, FiEye, FiEdit2, FiFolder, FiLink, FiLock, FiMenu, FiPlus, FiRefreshCw, FiSend, FiTrash2, FiUnlock, FiX, FiZap } from 'react-icons/fi';
 import LoadingSpinner from './LoadingSpinner';
 import MedicalReviewTypeBadge from './MedicalReviewTypeBadge';
 import { medicalReviewRequestsApi, medicalTrackingApi, clientsApi, retreatsApi } from '../services/api';
@@ -48,6 +48,10 @@ const getRequestId = (request: MedicalReviewRequest) => request._id || '';
 
 const getRequestRetreatId = (request: MedicalReviewRequest) => (
   typeof request.retreatId === 'string' ? request.retreatId : request.retreatId?._id
+);
+
+const getGroupRetreatId = (group: MedicalReviewGroup) => (
+  typeof group.retreatId === 'string' ? group.retreatId : group.retreatId?._id
 );
 
 type ConfirmAction =
@@ -114,6 +118,9 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const [draggedGroupId, setDraggedGroupId] = useState('');
   const [draggedOverGroupId, setDraggedOverGroupId] = useState('');
   const [groupReorderSaving, setGroupReorderSaving] = useState(false);
+  const [groupOrderUnlocked, setGroupOrderUnlocked] = useState(false);
+  const [autoAssignSaving, setAutoAssignSaving] = useState(false);
+  const [autoAssignMessage, setAutoAssignMessage] = useState('');
 
   const loadData = useCallback(async () => {
     try {
@@ -314,6 +321,60 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const handleGroupDragEnd = () => {
     setDraggedGroupId('');
     setDraggedOverGroupId('');
+  };
+
+  const autoAssignRequestsToPackets = async () => {
+    const ungrouped = requests.filter((request) => {
+      const requestId = getRequestId(request);
+      return requestId && !groupedRequestIds.has(requestId);
+    });
+    const assignments = new Map<string, string[]>();
+    let skipped = 0;
+
+    for (const request of ungrouped) {
+      const requestId = getRequestId(request);
+      const retreatId = getRequestRetreatId(request);
+      if (!requestId || !retreatId) {
+        skipped += 1;
+        continue;
+      }
+
+      const retreatGroups = groups.filter((group) => getGroupRetreatId(group) === retreatId && group._id && !group.revokedAt);
+      const ceremonyNumber = request.ceremonyNumber;
+      const exactCeremonyGroups = typeof ceremonyNumber === 'number'
+        ? retreatGroups.filter((group) => group.ceremonyNumber === ceremonyNumber)
+        : [];
+      const retreatOnlyGroups = retreatGroups.filter((group) => group.groupType === 'retreat' && group.ceremonyNumber == null);
+      const matches = exactCeremonyGroups.length ? exactCeremonyGroups : retreatOnlyGroups;
+
+      if (matches.length !== 1 || !matches[0]._id) {
+        skipped += 1;
+        continue;
+      }
+      assignments.set(matches[0]._id, [...(assignments.get(matches[0]._id) || []), requestId]);
+    }
+
+    const assignedCount = Array.from(assignments.values()).reduce((total, ids) => total + ids.length, 0);
+    if (!assignedCount) {
+      setAutoAssignMessage(skipped
+        ? `No MRRs were assigned. ${skipped} had no single matching retreat packet.`
+        : 'All eligible MRRs are already in packets.');
+      return;
+    }
+
+    try {
+      setAutoAssignSaving(true);
+      setAutoAssignMessage('');
+      await Promise.all(Array.from(assignments.entries()).map(([groupId, reviewRequestIds]) => (
+        medicalReviewRequestsApi.updateGroup(groupId, { reviewRequestIds })
+      )));
+      await loadData();
+      setAutoAssignMessage(`${assignedCount} MRR${assignedCount === 1 ? '' : 's'} added to ${assignments.size} retreat packet${assignments.size === 1 ? '' : 's'}${skipped ? `; ${skipped} skipped because no single packet matched.` : '.'}`);
+    } catch (requestError: any) {
+      setAutoAssignMessage(requestError?.response?.data?.message || 'Unable to auto-assign MRRs.');
+    } finally {
+      setAutoAssignSaving(false);
+    }
   };
 
   const openWhatsAppShare = (url?: string, label?: string) => {
@@ -647,6 +708,33 @@ const MedicalReviewRequestsGrid: React.FC = () => {
               </div>
               <div className="flex flex-wrap gap-2">
                 <button
+                  type="button"
+                  onClick={autoAssignRequestsToPackets}
+                  disabled={autoAssignSaving}
+                  className="inline-flex w-auto shrink-0 items-center gap-2 whitespace-nowrap rounded-md border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-medium text-violet-700 hover:bg-violet-100 disabled:opacity-60"
+                  title="Add ungrouped MRRs to the matching retreat packets"
+                >
+                  <Icon icon={FiZap} className="h-4 w-4" />
+                  {autoAssignSaving ? 'Assigning...' : 'Auto-assign MRRs'}
+                </button>
+                {visibleGroups.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setGroupOrderUnlocked((current) => !current);
+                      handleGroupDragEnd();
+                    }}
+                    className={`inline-flex w-auto shrink-0 items-center gap-2 whitespace-nowrap rounded-md border px-4 py-2 text-sm font-medium ${
+                      groupOrderUnlocked
+                        ? 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100'
+                        : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Icon icon={groupOrderUnlocked ? FiLock : FiUnlock} className="h-4 w-4" />
+                    {groupOrderUnlocked ? 'Lock order' : 'Unlock order'}
+                  </button>
+                )}
+                <button
                   onClick={openGroupModal}
                   className="inline-flex w-auto shrink-0 items-center gap-2 whitespace-nowrap rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100"
                 >
@@ -654,6 +742,12 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                   Create Group
                 </button>
               </div>
+            </div>
+          )}
+
+          {autoAssignMessage && (
+            <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800" role="status">
+              {autoAssignMessage}
             </div>
           )}
 
@@ -668,7 +762,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                 <div
                   key={`group-${groupId}`}
                   onDragOver={(event) => {
-                    if (!canManageRequests || !draggedGroupId) return;
+                    if (!canManageRequests || !groupOrderUnlocked || !draggedGroupId) return;
                     event.preventDefault();
                     setDraggedOverGroupId(groupId || '');
                   }}
@@ -677,7 +771,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                   }}
                   onDrop={(event) => {
                     event.preventDefault();
-                    if (groupId) void reorderGroups(draggedGroupId, groupId);
+                    if (groupOrderUnlocked && groupId) void reorderGroups(draggedGroupId, groupId);
                   }}
                   className={`overflow-hidden rounded-2xl border bg-white shadow-sm transition ${
                     isDragged ? 'opacity-50' : 'opacity-100'
@@ -693,7 +787,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                     className="flex w-full items-center justify-between gap-3 border-b border-gray-200 px-4 py-4 text-left"
                   >
                   <div className="flex min-w-0 items-center gap-3">
-                    {canManageRequests && (
+                    {canManageRequests && groupOrderUnlocked && (
                       <span
                         role="button"
                         tabIndex={0}
