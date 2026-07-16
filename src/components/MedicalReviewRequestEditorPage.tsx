@@ -6,6 +6,7 @@ import { clientsApi, medicalArtifactsApi, medicalReviewRequestsApi, medicalTrack
 import { usersApi, User } from '../services/usersApi';
 import { useAuth } from '../context/AuthContext';
 import { Client, MedicalArtifact, MedicalItem, MedicalReviewGroup, MedicalReviewRequest, Retreat } from '../types';
+import { groupMatchesRetreat } from './MedicalReviewRequestEditorPage.helpers';
 
 type FormState = {
   medicalTrackingId: string;
@@ -251,8 +252,18 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
 
   const matchingGroups = useMemo(() => {
     if (!form.retreatId) return reviewGroups;
-    return reviewGroups.filter((group) => getObjectId(group.retreatId as any) === form.retreatId);
-  }, [form.retreatId, reviewGroups]);
+    return reviewGroups.filter((group) => groupMatchesRetreat(group, form.retreatId, selectedRetreat));
+  }, [form.retreatId, reviewGroups, selectedRetreat]);
+
+  const packetOptions = useMemo(() => {
+    const matchingIds = new Set(matchingGroups.map((group) => group._id).filter(Boolean));
+    return [...reviewGroups].sort((left, right) => {
+      const leftMatches = matchingIds.has(left._id);
+      const rightMatches = matchingIds.has(right._id);
+      if (leftMatches !== rightMatches) return leftMatches ? -1 : 1;
+      return getGroupLabel(left).localeCompare(getGroupLabel(right));
+    });
+  }, [matchingGroups, reviewGroups]);
 
   useEffect(() => {
     if (!selectedTracking) return;
@@ -422,14 +433,17 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
                   className="w-full rounded-md border border-gray-300 px-3 py-2"
                 >
                   <option value="">Select packet</option>
-                  {matchingGroups.map((group) => (
+                  {packetOptions.map((group) => (
                     <option key={group._id} value={group._id}>
-                      {getGroupLabel(group)}
+                      {getGroupLabel(group)}{matchingGroups.some((match) => match._id === group._id) ? ' — matching retreat' : ''}
                     </option>
                   ))}
                 </select>
-                {matchingGroups.length === 0 && (
-                  <p className="mt-1 text-xs text-amber-700">No packet exists for this retreat yet. Create one in Medical Review Requests first.</p>
+                {reviewGroups.length === 0 && (
+                  <p className="mt-1 text-xs text-amber-700">No medical review packets exist yet. Create one in Medical Review Requests first.</p>
+                )}
+                {reviewGroups.length > 0 && matchingGroups.length === 0 && (
+                  <p className="mt-1 text-xs text-amber-700">No packet is linked to this retreat. You can still choose another available packet or create a retreat packet first.</p>
                 )}
                 {selectedGroup && (
                   <p className="mt-1 text-xs text-gray-500">
