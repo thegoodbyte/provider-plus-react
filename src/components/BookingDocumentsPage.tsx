@@ -147,7 +147,7 @@ const BookingDocumentsPage: React.FC = () => {
   }, []);
 
   const documentTypes = useMemo(() => {
-    return Array.from(new Set(documents.map((document) => normalizeKey(document.documentType)).filter(Boolean))).sort();
+    return Array.from(new Set(documents.map((document) => normalizeKey(document.documentType)).filter((type) => type && type !== 'ekg' && type !== 'liver_panel'))).sort();
   }, [documents]);
 
   const handleSort = (key: SortKey) => {
@@ -163,6 +163,7 @@ const BookingDocumentsPage: React.FC = () => {
     const normalizedQuery = query.trim().toLowerCase();
     const filtered = documents.filter((document) => {
       const type = normalizeKey(document.documentType);
+      if (type === 'ekg' || type === 'liver_panel') return false;
       if (typeFilter !== 'all' && type !== typeFilter) return false;
 
       if (!normalizedQuery) return true;
