@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, Circle, FileText, Link2, ListPlus, Lock, Mail, RefreshCw, RotateCcw, Save, Unlock, Upload, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Circle, FileText, Link2, ListPlus, Lock, Mail, OctagonX, RefreshCw, RotateCcw, Save, ThumbsDown, Unlock, Upload, X } from 'lucide-react';
 import { bookingDocumentsApi, bookingFlowApi, clientsApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { BookingDocument, BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, Client, MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
@@ -447,8 +447,8 @@ const getSimpleStatus = (item?: BookingFlowItem) => {
   if (failedStatuses.has(item.status)) {
     return {
       label: item.status.replace(/_/g, ' '),
-      className: 'bg-red-50 text-red-700',
-      icon: <X className="h-5 w-5" />,
+      className: 'bg-red-100 text-red-800',
+      icon: <OctagonX className="h-5 w-5" />,
     };
   }
   if (attentionStatuses.has(item.status)) {
@@ -462,7 +462,7 @@ const getSimpleStatus = (item?: BookingFlowItem) => {
     return {
       label: item.status.replace(/_/g, ' '),
       className: 'bg-green-50 text-green-700',
-      icon: <CheckCircle2 className="h-5 w-5" />,
+      icon: <ThumbsDown className="h-5 w-5" />,
     };
   }
   return {
@@ -676,6 +676,11 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     });
     return Array.from(groups.values());
   }, [rows]);
+
+  const actionNumberByKey = useMemo(
+    () => new Map(rows.map((row, index) => [row.key, index + 1])),
+    [rows]
+  );
 
   const itemMap = useMemo(() => {
     const map = new Map<string, BookingFlowItem>();
@@ -1660,16 +1665,16 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                   </td>
                   {bookings.map((booking) => (
                     <td key={`${group.key}:${getObjectId(booking)}`} className={`border-b border-r border-gray-300 px-2 py-2 text-xs font-semibold uppercase tracking-wide ${tone.groupCell} ${tone.groupText}`} style={groupStyle}>
-                      {group.rows.length} steps
+                      <span className="sr-only">{group.label}</span>
                     </td>
                   ))}
                 </tr>
-                {group.rows.map((row, rowIndex) => (
+                {group.rows.map((row) => (
                   <tr key={row.key}>
                     <td className={`sticky left-0 z-30 border-b border-l-4 border-r border-gray-300 bg-clip-padding px-3 py-2 font-medium text-gray-900 ${tone.stepCell} ${tone.stepStripe}`} style={getStickyActionCellStyle(stepStyle, '#f8fafc')}>
                       <div className="flex items-start gap-2">
                         <span className={`mt-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded px-1 text-[11px] font-semibold ${tone.badge}`} style={badgeStyle}>
-                          {rowIndex + 1}
+                          {actionNumberByKey.get(row.key)}
                         </span>
                         <span>{row.title}</span>
                       </div>
