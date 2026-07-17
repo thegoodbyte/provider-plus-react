@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { retreatsApi, bookingsApi, retreatExpensesApi, paymentsApi, clientsApi, housesApi, communicationsApi, contactBookApi } from '../services/api';
 import { Retreat, ExpenseSummary, House, Payment, EmailTemplate, ContactBookEntry, RetreatStaffAssignment } from '../types';
 import ExpensesTab from './ExpensesTab';
@@ -15,6 +15,8 @@ import { Modal, Form, Input, Select, Button, message, Collapse } from 'antd';
 import { Client } from '../types';
 import {
   FiEdit2,
+  FiChevronLeft,
+  FiChevronRight,
   FiEye,
   FiImage,
   FiMail,
@@ -267,7 +269,9 @@ const cropImageToHeroBanner = (file: File, width = 1200, height = 250): Promise<
 
 const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack, initialTab = 'clients', onTabChange }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [retreat, setRetreat] = useState<Retreat | null>(null);
+  const [scheduledRetreats, setScheduledRetreats] = useState<Retreat[]>([]);
   const [clients, setClients] = useState<RetreatClientData[]>([]);
   const [expensesSummary, setExpensesSummary] = useState<ExpenseSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -347,14 +351,21 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const fetchRetreatData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [retreatResponse, clientsResponse, expensesSummaryResponse, paymentsResponse] = await Promise.all([
+      const [retreatResponse, clientsResponse, expensesSummaryResponse, paymentsResponse, retreatsResponse] = await Promise.all([
         retreatsApi.getOne(retreatId),
         bookingsApi.getByRetreatWithDetails(retreatId),
         retreatExpensesApi.getRetreatSummary(retreatId),
-        paymentsApi.getByRetreat(retreatId)
+        paymentsApi.getByRetreat(retreatId),
+        retreatsApi.getAll()
       ]);
 
       setRetreat(retreatResponse.data);
+      setScheduledRetreats((retreatsResponse.data || [])
+        .filter((item: Retreat) => item._id && item.startDate && !Number.isNaN(new Date(item.startDate).getTime()))
+        .sort((left: Retreat, right: Retreat) => {
+          const dateDifference = new Date(left.startDate!).getTime() - new Date(right.startDate!).getTime();
+          return dateDifference || String(left._id).localeCompare(String(right._id));
+        }));
       await loadHeroImageUrl(retreatResponse.data);
       setExpensesSummary(expensesSummaryResponse.data);
 
@@ -934,6 +945,16 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const retreatCapacity = Number(retreat.capacity || 0);
   const availableSpaces = retreatCapacity ? Math.max(retreatCapacity - clients.length, 0) : 0;
   const retreatDateText = `${formatDate(retreat.startDate || '')} - ${formatDate(retreat.endDate || '')}`;
+  const currentRetreatIndex = scheduledRetreats.findIndex((item) => item._id === retreatId);
+  const previousRetreat = currentRetreatIndex > 0 ? scheduledRetreats[currentRetreatIndex - 1] : null;
+  const nextRetreat = currentRetreatIndex >= 0 && currentRetreatIndex < scheduledRetreats.length - 1
+    ? scheduledRetreats[currentRetreatIndex + 1]
+    : null;
+  const navigateToRetreat = (targetRetreat?: Retreat | null) => {
+    if (!targetRetreat?._id) return;
+    const tabSuffix = activeTab === 'clients' ? '' : `/${activeTab}`;
+    navigate(`/${routePrefix}/retreats/${targetRetreat._id}${tabSuffix}`);
+  };
 
   // If viewing a specific client, show the client detail view
   if (viewingClientId) {
@@ -949,7 +970,29 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     <div className="retreat-detail-container">
       <div className="retreat-detail-header">
         <div className="retreat-detail-actions">
-          <button onClick={onBack} className="back-btn" title="Back to retreats" aria-label="Back to retreats">←</button>
+          <button onClick={onBack} className="edit-retreat-btn retreat-icon-action" title="Back to all retreats">
+            All retreats
+          </button>
+          <button
+            type="button"
+            onClick={() => navigateToRetreat(previousRetreat)}
+            disabled={!previousRetreat}
+            className="edit-retreat-btn retreat-icon-action disabled:cursor-not-allowed disabled:opacity-40"
+            title={previousRetreat ? `Previous retreat: ${previousRetreat.name || previousRetreat.code || formatDate(previousRetreat.startDate || '')}` : 'No previous scheduled retreat'}
+            aria-label="Previous scheduled retreat"
+          >
+            <Icon icon={FiChevronLeft} className="w-5 h-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => navigateToRetreat(nextRetreat)}
+            disabled={!nextRetreat}
+            className="edit-retreat-btn retreat-icon-action disabled:cursor-not-allowed disabled:opacity-40"
+            title={nextRetreat ? `Next retreat: ${nextRetreat.name || nextRetreat.code || formatDate(nextRetreat.startDate || '')}` : 'No next scheduled retreat'}
+            aria-label="Next scheduled retreat"
+          >
+            <Icon icon={FiChevronRight} className="w-5 h-5" />
+          </button>
           <input
             ref={heroImageInputRef}
             type="file"
