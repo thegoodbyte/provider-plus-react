@@ -484,11 +484,11 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     if (!packetAddGroupId || !packetAddSelectedIds.length) return;
     try {
       setPacketAddSaving(true);
-      await medicalReviewRequestsApi.updateGroup(packetAddGroupId, { reviewRequestIds: packetAddSelectedIds });
+      await medicalReviewRequestsApi.addRequestsToGroup(packetAddGroupId, packetAddSelectedIds);
       await loadData();
       closeAddToPacketModal();
     } catch (requestError: any) {
-      setGroupError(requestError?.response?.data?.message || 'Unable to add requests to the packet.');
+      setGroupError(requestError?.response?.data?.message || requestError?.message || 'Unable to add requests to the packet.');
     } finally {
       setPacketAddSaving(false);
     }
