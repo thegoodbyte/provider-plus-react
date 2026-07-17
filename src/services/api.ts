@@ -1078,6 +1078,10 @@ export const medicalReviewRequestsApi = {
     cacheService.clearPattern('medical-review-requests:');
     return api.patch<MedicalReviewGroup>(`/medical-review-requests/groups/${id}`, data);
   },
+  addRequestsToGroup: (id: string, reviewRequestIds: string[]) => {
+    cacheService.clearPattern('medical-review-requests:');
+    return api.post<MedicalReviewGroup>(`/medical-review-requests/groups/${id}/requests`, { reviewRequestIds });
+  },
   deleteGroup: (id: string) => {
     cacheService.clearPattern('medical-review-requests:');
     return api.delete<{ deleted: boolean; groupId: string; removedRequestIds: string[] }>(`/medical-review-requests/groups/${id}`);

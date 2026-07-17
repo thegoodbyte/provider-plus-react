@@ -200,11 +200,11 @@ const MedicalReviewGroupPage: React.FC = () => {
     if (!selectedRequestIds.length) return;
     try {
       setSavingGroup(true);
-      await medicalReviewRequestsApi.updateGroup(id, { reviewRequestIds: selectedRequestIds });
+      await medicalReviewRequestsApi.addRequestsToGroup(id, selectedRequestIds);
       setAddModalOpen(false);
       await loadGroup();
     } catch (requestError: any) {
-      setError(requestError?.response?.data?.message || 'Unable to add requests to this packet.');
+      setError(requestError?.response?.data?.message || requestError?.message || 'Unable to add requests to this packet.');
     } finally {
       setSavingGroup(false);
     }
