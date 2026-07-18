@@ -52,6 +52,13 @@ const getBookingDocumentTypeForStep = (item: BookingFlowItem) => {
   ).trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 };
 
+const getBookingDocumentUploadConfig = (item: BookingFlowItem) => {
+  const explicit = bookingDocumentUploadsByStep[item.key];
+  if (explicit) return explicit;
+  const documentType = getBookingDocumentTypeForStep(item);
+  return documentType ? { documentType, title: item.title || documentType.replace(/_/g, ' ') } : undefined;
+};
+
 const getObjectId = (value: any): string => {
   if (!value) return '';
   if (typeof value === 'string') return value;
@@ -411,7 +418,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
   const uploadStepArtifact = async (item: BookingFlowItem, files: FileList | null) => {
     if (!files?.length || !selectedBooking) return;
     const config = artifactUploadsByStep[item.key];
-    const documentConfig = bookingDocumentUploadsByStep[item.key];
+    const documentConfig = getBookingDocumentUploadConfig(item);
     if ((!config && !documentConfig) || !item._id) return;
 
     const clientId = getObjectId(selectedBooking.clientId || item.clientId);
@@ -746,7 +753,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                 const id = item._id || item.key;
                 const draft = drafts[id] || makeDraft(item);
                 const isChecked = draft.checked;
-                const uploadConfig = artifactUploadsByStep[item.key] || bookingDocumentUploadsByStep[item.key];
+                const uploadConfig = artifactUploadsByStep[item.key] || getBookingDocumentUploadConfig(item);
                 const overdue = isPastDue(item);
                 const dueSoon = isDueSoon(item);
                 const groupKey = getBookingStepGroupKey(item);
