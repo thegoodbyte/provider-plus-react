@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiPlus, FiEdit2, FiTrash2, FiDollarSign, FiChevronDown } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiDollarSign, FiChevronDown, FiSearch, FiX } from 'react-icons/fi';
 import { paymentsApi, clientsApi, retreatsApi, bookingsApi } from '../services/api';
 import { Payment, Client, Retreat, RetreatClient } from '../types';
 import CurrencyDisplay from './CurrencyDisplay';
@@ -16,6 +16,8 @@ interface PaymentWithDetails extends Payment {
   clientDisplayId?: number;
   retreatName?: string;
   bookingNumber?: number;
+  clientEmail?: string;
+  clientPhone?: string;
 }
 
 type PaymentSortKey = 'display' | 'date' | 'client' | 'retreat' | 'booking' | 'amount' | 'usd' | 'method' | 'status' | 'type';
@@ -32,6 +34,7 @@ const PaymentsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [sortKey, setSortKey] = useState<PaymentSortKey>('display');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const fetchPayments = useCallback(async () => {
     try {
@@ -76,6 +79,8 @@ const PaymentsPage: React.FC = () => {
           bookingId,
           clientName: client ? `${client.firstName} ${client.lastName}` : 'Unknown Client',
           clientDisplayId: client?.display_id,
+          clientEmail: client?.email,
+          clientPhone: client?.phone,
           retreatName: getRetreatCode(retreat),
           bookingNumber: (typeof payment.bookingId === 'object' ? payment.bookingId?.bookingNumber : undefined) || booking?.bookingNumber,
         };
@@ -119,15 +124,18 @@ const PaymentsPage: React.FC = () => {
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
-  const totalCompleted = useMemo(
-    () => payments.filter((payment) => payment.status === 'completed').length,
-    [payments],
-  );
+  const filteredPayments = useMemo(() => {
+    const terms = searchTerm.trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (!terms.length) return payments;
+    return payments.filter((payment) => {
+      const haystack = [payment.display_id, payment._id, payment.clientDisplayId, payment.clientId, payment.clientName, payment.clientEmail, payment.clientPhone, payment.bookingNumber, payment.bookingId, payment.bookingHash, payment.retreatId, payment.retreatName, payment.paymentRequestId, typeof payment.paymentRequestId === 'object' ? payment.paymentRequestId?._id : payment.paymentRequestId, typeof payment.paymentRequestId === 'object' ? payment.paymentRequestId?.display_id : undefined, typeof payment.paymentRequestId === 'object' ? payment.paymentRequestId?.invoiceNumber : undefined, payment.transactionId, payment.transactionReference, payment.description, payment.notes, payment.status, payment.paymentMethod, payment.paymentType, payment.currency, payment.amount, payment.usd_amount, payment.paymentDate, payment.processedDate, payment.processedBy]
+        .filter((value) => value !== undefined && value !== null).join(' ').toLowerCase();
+      return terms.every((term) => haystack.includes(term.replace(/^#/, '')));
+    });
+  }, [payments, searchTerm]);
 
-  const totalPending = useMemo(
-    () => payments.filter((payment) => payment.status === 'pending').length,
-    [payments],
-  );
+  const totalCompleted = useMemo(() => filteredPayments.filter((payment) => payment.status === 'completed').length, [filteredPayments]);
+  const totalPending = useMemo(() => filteredPayments.filter((payment) => payment.status === 'pending').length, [filteredPayments]);
 
   const getSortValue = (payment: PaymentWithDetails, key: PaymentSortKey) => {
     switch (key) {
@@ -157,7 +165,7 @@ const PaymentsPage: React.FC = () => {
   };
 
   const sortedPayments = useMemo(() => {
-    return [...payments].sort((a, b) => {
+    return [...filteredPayments].sort((a, b) => {
       const aValue = getSortValue(a, sortKey);
       const bValue = getSortValue(b, sortKey);
       const direction = sortDirection === 'asc' ? 1 : -1;
@@ -168,7 +176,7 @@ const PaymentsPage: React.FC = () => {
 
       return String(aValue).localeCompare(String(bValue), undefined, { numeric: true, sensitivity: 'base' }) * direction;
     });
-  }, [payments, sortDirection, sortKey]);
+  }, [filteredPayments, sortDirection, sortKey]);
 
   const handleSort = (key: PaymentSortKey) => {
     if (sortKey === key) {
@@ -212,6 +220,15 @@ const PaymentsPage: React.FC = () => {
           <Icon icon={FiPlus} className="w-4 h-4" />
           Add Payment
         </button>
+      </div>
+
+      <div className="mb-4 flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+        <div className="relative min-w-0 flex-1">
+          <Icon icon={FiSearch} className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <input type="search" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Search client, client ID, booking, payment ID, reference, amount, status, notes..." className="w-full rounded-md border border-gray-300 py-2 pl-9 pr-9 text-sm text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500" aria-label="Search payments" />
+          {searchTerm && <button type="button" onClick={() => setSearchTerm('')} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700" title="Clear search" aria-label="Clear payment search"><Icon icon={FiX} className="h-4 w-4" /></button>}
+        </div>
+        <span className="shrink-0 text-sm text-gray-500">{filteredPayments.length} of {payments.length}</span>
       </div>
 
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -331,15 +348,15 @@ const PaymentsPage: React.FC = () => {
               ))}
             </tbody>
           </table>
-          {payments.length === 0 && (
-            <div className="text-center py-8 text-gray-500">No payments found</div>
+          {sortedPayments.length === 0 && (
+            <div className="text-center py-8 text-gray-500">{searchTerm ? 'No payments match your search' : 'No payments found'}</div>
           )}
         </div>
       </div>
 
       <div className="mt-4 flex items-center justify-between">
         <div className="text-sm text-gray-700">
-          Showing {payments.length} payment{payments.length !== 1 ? 's' : ''}
+          Showing {filteredPayments.length} payment{filteredPayments.length !== 1 ? 's' : ''}{searchTerm ? ` of ${payments.length}` : ''}
         </div>
         <div className="flex items-center gap-4">
           <div className="text-sm text-gray-700">Total: {totalCompleted} completed</div>
