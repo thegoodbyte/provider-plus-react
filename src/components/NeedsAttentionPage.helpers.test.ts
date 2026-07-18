@@ -1,4 +1,4 @@
-import { classifyAttention, isCompleteStatus, sortAttentionItems } from './NeedsAttentionPage.helpers';
+import { classifyAttention, isCompleteStatus, isPastRetreat, sortAttentionItems } from './NeedsAttentionPage.helpers';
 
 describe('Needs Attention helpers', () => {
   it('excludes terminal statuses', () => {
@@ -22,5 +22,12 @@ describe('Needs Attention helpers', () => {
       { ...base, id: 'blocked', title: 'Blocked', severity: 'blocked' },
     ]);
     expect(sorted.map((item) => item.id)).toEqual(['late', 'blocked', 'soon']);
+  });
+
+  it('identifies retreats that ended before today', () => {
+    const now = new Date('2026-07-18T12:00:00Z');
+    expect(isPastRetreat('2026-07-17', now)).toBe(true);
+    expect(isPastRetreat('2026-07-18', now)).toBe(false);
+    expect(isPastRetreat(undefined, now)).toBe(false);
   });
 });
