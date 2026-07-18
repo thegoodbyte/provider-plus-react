@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FiChevronDown, FiChevronRight, FiCopy, FiEye, FiEdit2, FiFolder, FiLink, FiLock, FiMenu, FiPlus, FiRefreshCw, FiSend, FiTrash2, FiUnlock, FiX, FiZap } from 'react-icons/fi';
+import { FiChevronDown, FiChevronRight, FiCopy, FiEye, FiEdit2, FiFolder, FiLink, FiLock, FiMenu, FiPlus, FiRefreshCw, FiSearch, FiSend, FiTrash2, FiUnlock, FiX, FiZap } from 'react-icons/fi';
 import LoadingSpinner from './LoadingSpinner';
 import MedicalReviewTypeBadge from './MedicalReviewTypeBadge';
 import { medicalReviewRequestsApi, medicalTrackingApi, clientsApi, retreatsApi } from '../services/api';
@@ -297,6 +297,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     [filteredRequests, groupedRequestIds]
   );
   const [expandedGroupIds, setExpandedGroupIds] = useState<string[]>([]);
+  const [packetSearchTerms, setPacketSearchTerms] = useState<Record<string, string>>({});
 
   useEffect(() => {
     setExpandedGroupIds((current) => {
@@ -758,6 +759,11 @@ const MedicalReviewRequestsGrid: React.FC = () => {
               const groupUrl = group.url || '';
               const isDragged = draggedGroupId === groupId;
               const isOver = draggedOverGroupId === groupId && draggedGroupId !== groupId;
+              const packetSearch = packetSearchTerms[groupId || ''] || '';
+              const normalizedPacketSearch = packetSearch.trim().toLowerCase();
+              const packetRequests = normalizedPacketSearch
+                ? (group.requests || []).filter((request) => getReviewRequestFilterText(request).includes(normalizedPacketSearch))
+                : (group.requests || []);
               return (
                 <div
                   key={`group-${groupId}`}
@@ -902,7 +908,21 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                   </button>
                   {expanded && (
                     <div className="divide-y divide-gray-100">
-                      {group.requests?.length ? group.requests.map((request) => (
+                      <div className="bg-gray-50 px-4 py-3">
+                        <label className="relative block">
+                          <span className="sr-only">Search within {group.title}</span>
+                          <Icon icon={FiSearch} className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                          <input
+                            type="search"
+                            value={packetSearch}
+                            onChange={(event) => setPacketSearchTerms((current) => ({ ...current, [groupId || '']: event.target.value }))}
+                            placeholder="Search this packet by client name or any column..."
+                            className="w-full rounded-md border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                          />
+                        </label>
+                        {normalizedPacketSearch && <div className="mt-1 text-xs text-gray-500">Showing {packetRequests.length} of {group.requests?.length || 0} requests</div>}
+                      </div>
+                      {packetRequests.length ? packetRequests.map((request) => (
                         <div key={request._id} className="grid gap-3 px-4 py-4 md:grid-cols-[150px_minmax(0,1fr)_220px_150px_130px] md:items-center">
                           <div className="min-w-0">
                             <button
@@ -949,7 +969,9 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                             </div>
                           </div>
                         </div>
-                      )) : (
+                      )) : group.requests?.length ? (
+                        <div className="px-4 py-6 text-center text-sm text-gray-500">No requests in this packet match “{packetSearch}”.</div>
+                      ) : (
                         <div className="flex items-center justify-between gap-3 px-4 py-4 text-sm text-gray-500">
                           <span>No MRRs in this packet yet. Use the packet add button to populate it later.</span>
                           {canManageRequests && (
