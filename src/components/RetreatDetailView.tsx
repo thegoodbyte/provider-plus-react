@@ -1422,7 +1422,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                               className="mt-0.5 block text-xs font-semibold text-gray-500 hover:text-gray-700 hover:underline"
                               title="View client profile"
                             >
-                              Client #{client.clientDisplayId || client.clientId.slice(-6)}
+                              {client.clientDisplayId ? `Client #${client.clientDisplayId}` : 'Client ID unavailable'}
                             </Link>
                           </div>
                         </div>
