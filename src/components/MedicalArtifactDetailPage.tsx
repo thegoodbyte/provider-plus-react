@@ -916,15 +916,9 @@ const MedicalArtifactDetailPage: React.FC = () => {
                 <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Status</div>
                 <div className="mt-1 capitalize text-gray-900">{artifact.status || 'stored'}</div>
               </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Document Stage</div>
-                  <div className="mt-1 text-gray-900">{documentStageLabels[artifact.documentStage || 'entry'] || artifact.documentStage || '-'}</div>
-                </div>
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Document Type</div>
-                  <div className="mt-1 text-gray-900">{documentTypeLabels[artifact.documentType || 'additional'] || artifact.documentType || '-'}</div>
-                </div>
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Document Stage</div>
+                <div className="mt-1 text-gray-900">{documentStageLabels[artifact.documentStage || 'entry'] || artifact.documentStage || '-'}</div>
               </div>
             </div>
           </div>
@@ -937,7 +931,6 @@ const MedicalArtifactDetailPage: React.FC = () => {
               <div><dt className="text-gray-500">Client</dt><dd className="font-medium text-gray-900">{getClientLabel(artifact.clientId)}</dd></div>
               <div><dt className="text-gray-500">Type</dt><dd className="font-medium text-gray-900">{getArtifactTypeLabel(artifact.artifactType)}</dd></div>
               <div><dt className="text-gray-500">Document stage</dt><dd className="font-medium text-gray-900">{documentStageLabels[artifact.documentStage || 'entry'] || artifact.documentStage || '-'}</dd></div>
-              <div><dt className="text-gray-500">Document type</dt><dd className="font-medium text-gray-900">{documentTypeLabels[artifact.documentType || 'additional'] || artifact.documentType || '-'}</dd></div>
               <div>
                 <dt className="text-gray-500">Booking</dt>
                 <dd className="font-medium text-gray-900">
