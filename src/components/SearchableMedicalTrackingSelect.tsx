@@ -7,12 +7,22 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
 };
 
 interface Props {
-  items: MedicalItem[];
+  items: EnrichedMedicalItem[];
   value?: string;
   onChange: (id: string) => void;
   placeholder?: string;
   className?: string;
 }
+
+export type EnrichedMedicalItem = MedicalItem & { retreatName?: string };
+
+export const getMedicalTrackingOptionLabels = (item: EnrichedMedicalItem) => {
+  const clientName = [item.firstName, item.lastName].filter(Boolean).join(' ') || item.clientName || '';
+  const client = [item.clientDisplayId ? `#${item.clientDisplayId}` : '', clientName].filter(Boolean).join(' ') || `Client ${String(item.client_id || '').slice(-6)}`;
+  const record = item.ekgFileName || item.liverPanelFileName || (item.display_id ? `Medical record #${item.display_id}` : `Medical record ${String(item._id || '').slice(-6)}`);
+  const context = item.retreatName || item.source || 'No retreat linked';
+  return { primary: `${client} · ${item.type || 'Medical'}`, secondary: `${record} · ${context}` };
+};
 
 const SearchableMedicalTrackingSelect: React.FC<Props> = ({
   items,
@@ -53,7 +63,7 @@ const SearchableMedicalTrackingSelect: React.FC<Props> = ({
   }, []);
 
   const displayValue = selectedItem
-    ? `${selectedItem.clientDisplayId ? `#${selectedItem.clientDisplayId} ` : ''}${selectedItem.type} • ${selectedItem.source || 'Unknown source'}`
+    ? getMedicalTrackingOptionLabels(selectedItem).primary
     : '';
 
   return (
@@ -96,7 +106,9 @@ const SearchableMedicalTrackingSelect: React.FC<Props> = ({
           {filteredItems.length === 0 ? (
             <div className="px-3 py-2 text-sm text-gray-500">No records found</div>
           ) : (
-            filteredItems.map((item) => (
+            filteredItems.map((item) => {
+              const labels = getMedicalTrackingOptionLabels(item);
+              return (
               <button
                 key={item._id}
                 type="button"
@@ -110,17 +122,17 @@ const SearchableMedicalTrackingSelect: React.FC<Props> = ({
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="truncate text-sm font-medium text-gray-900">
-                      {item.clientDisplayId ? `#${item.clientDisplayId} ` : ''}
-                      {item.type}
+                      {labels.primary}
                     </div>
                     <div className="truncate text-xs text-gray-500">
-                      {item.ekgFileName || item.liverPanelFileName || 'No file name'} • {item.source || 'Unknown'}
+                      {labels.secondary}
                     </div>
                   </div>
                   <div className="text-xs font-mono text-blue-600">{item.display_id ? `#${item.display_id}` : ''}</div>
                 </div>
               </button>
-            ))
+              );
+            })
           )}
         </div>
       )}
