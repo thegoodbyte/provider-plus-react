@@ -72,6 +72,12 @@ const getClientName = (client?: string | Client) => {
   return [client.firstName || client.fname, client.lastName || client.lname].filter(Boolean).join(' ') || client.email || 'Unknown client';
 };
 
+const getClientLabel = (client?: string | Client) => {
+  const name = getClientName(client);
+  if (!client || typeof client === 'string') return name;
+  return client.display_id ? `#${client.display_id} ${name}` : name;
+};
+
 const getRetreatLabel = (retreat?: string | Retreat) => {
   if (!retreat || typeof retreat === 'string') return retreat ? `Retreat ${String(retreat).slice(-6)}` : '';
   return retreat.retreatCode || retreat.code || retreat.name || getObjectId(retreat);
@@ -547,7 +553,7 @@ const MedicalArtifactsPage: React.FC = () => {
               <th className="px-4 py-3">ID</th>
               <th className="px-4 py-3">Actions</th>
               <th className="px-4 py-3">Preview</th>
-              <th className="px-4 py-3">Stage</th>
+              <th className="hidden px-4 py-3 sm:table-cell">Stage</th>
               <th className="px-4 py-3">Document Type</th>
               <th className="px-4 py-3">Client</th>
               <th className="px-4 py-3">Booking / Retreat</th>
@@ -628,18 +634,23 @@ const MedicalArtifactsPage: React.FC = () => {
                     <div className="flex h-[60px] w-[80px] items-center justify-center rounded border border-dashed border-gray-200 text-xs text-gray-400">No thumb</div>
                   )}
                 </td>
-                <td className="px-4 py-3">
+                <td className="hidden px-4 py-3 sm:table-cell">
                   <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
                     {getDocumentStageLabel(artifact.documentStage)}
                   </span>
                 </td>
                 <td className="px-4 py-3">
-                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${compactDocumentType.className}`}>
-                    <compactDocumentType.Icon className="h-3.5 w-3.5" />
-                    {compactDocumentType.label}
-                  </span>
+                  <div className="flex flex-col items-start gap-1">
+                    <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700 sm:hidden">
+                      {getDocumentStageLabel(artifact.documentStage)}
+                    </span>
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${compactDocumentType.className}`}>
+                      <compactDocumentType.Icon className="h-3.5 w-3.5" />
+                      {compactDocumentType.label}
+                    </span>
+                  </div>
                 </td>
-                <td className="px-4 py-3">{getClientName(artifact.clientId)}</td>
+                <td className="px-4 py-3">{getClientLabel(artifact.clientId)}</td>
                 <td className="px-4 py-3">
                   <div className="flex flex-col gap-1 text-xs text-gray-600">
                     <span>{getBookingLabel(artifact.bookingId) || '-'}</span>
