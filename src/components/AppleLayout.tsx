@@ -32,6 +32,7 @@ import RetreatFlowPage from './RetreatFlowPage';
 import RetreatFlowLibraryPage from './RetreatFlowLibraryPage';
 import BookingFlowPage from './BookingFlowPage';
 import BookingStepDeadlinesPage from './BookingStepDeadlinesPage';
+import NeedsAttentionPage from './NeedsAttentionPage';
 import BookingDocumentsPage from './BookingDocumentsPage';
 import BookingDocumentTypesPage from './BookingDocumentTypesPage';
 import FlowTaskInboxPage from './FlowTaskInboxPage';
@@ -632,6 +633,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="booking-flow" element={<BookingFlowPage />} />
                       <Route path="booking-flow/:bookingId" element={<BookingFlowPage />} />
                       <Route path="booking-step-deadlines" element={<BookingStepDeadlinesPage />} />
+                      <Route path="needs-attention" element={<NeedsAttentionPage />} />
                       <Route path="booking-documents" element={<BookingDocumentsPage />} />
                       <Route path="booking-document-types" element={<BookingDocumentTypesPage />} />
                       <Route path="flow-tasks" element={<FlowTaskInboxPage />} />
@@ -725,6 +727,7 @@ const AppleLayout: React.FC = () => {
                         <Route path="booking-flow" element={<BookingFlowPage />} />
                         <Route path="booking-flow/:bookingId" element={<BookingFlowPage />} />
                         <Route path="booking-step-deadlines" element={<BookingStepDeadlinesPage />} />
+                        <Route path="needs-attention" element={<NeedsAttentionPage />} />
                         <Route path="booking-documents" element={<BookingDocumentsPage />} />
                         <Route path="booking-document-types" element={<BookingDocumentTypesPage />} />
                         <Route path="flow-tasks" element={<FlowTaskInboxPage />} />
