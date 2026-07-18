@@ -1489,39 +1489,6 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
               Simple
             </button>
           </div>
-          {viewMode === 'detail' && (
-            isEditing ? (
-              <>
-                <button
-                  type="button"
-                  onClick={saveAllAndLock}
-                  disabled={saving === 'save-all'}
-                  className="inline-flex items-center gap-2 rounded-md bg-green-600 px-3 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
-                >
-                  <Save className="h-4 w-4" />
-                  {saving === 'save-all' ? 'Saving...' : 'Save & Lock'}
-                </button>
-                <button
-                  type="button"
-                  onClick={cancelEditing}
-                  disabled={saving === 'save-all'}
-                  className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  Cancel
-                </button>
-              </>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setIsEditing(true)}
-                className="inline-flex items-center gap-2 rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-gray-800"
-              >
-                <Unlock className="h-4 w-4" />
-                Unlock Editing
-              </button>
-            )
-          )}
           {!isEditing && viewMode === 'detail' && (
             <span className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-2 py-2 text-xs font-medium text-gray-600">
               <Lock className="h-3.5 w-3.5" />
@@ -2164,6 +2131,24 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
               </table>
             </div>
           </div>
+        </div>
+      )}
+      {viewMode === 'detail' && (
+        <div className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-xl border border-gray-200 bg-white/95 p-2 shadow-2xl backdrop-blur">
+          {isEditing ? (
+            <>
+              <button type="button" onClick={cancelEditing} disabled={saving === 'save-all'} className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                <RotateCcw className="h-4 w-4" /> Cancel
+              </button>
+              <button type="button" onClick={saveAllAndLock} disabled={saving === 'save-all'} className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50">
+                <Save className="h-4 w-4" /> {saving === 'save-all' ? 'Saving...' : 'Save & Lock'}
+              </button>
+            </>
+          ) : (
+            <button type="button" onClick={() => setIsEditing(true)} className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-gray-800">
+              <Unlock className="h-4 w-4" /> Unlock Editing
+            </button>
+          )}
         </div>
       )}
       {reviewRequestModal && (
