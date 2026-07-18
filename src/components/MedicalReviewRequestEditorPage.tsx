@@ -179,7 +179,21 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
         artifactId ? medicalArtifactsApi.getOne(artifactId).catch(() => null) : Promise.resolve(null),
       ]);
 
-      setTrackingItems(trackingResponse.data || []);
+      const clientById = new Map<string | undefined, Client>((clientsResponse.data || []).map((client: Client) => [client._id, client]));
+      const retreatById = new Map<string | undefined, Retreat>((retreatsResponse.data || []).map((retreat: Retreat) => [retreat._id, retreat]));
+      setTrackingItems((trackingResponse.data || []).map((item: MedicalItem) => {
+        const client = clientById.get(item.client_id);
+        const retreatId = getObjectId(item.retreatId as any);
+        const retreat = retreatById.get(retreatId);
+        return {
+          ...item,
+          clientDisplayId: item.clientDisplayId || client?.display_id,
+          clientName: item.clientName || (client ? [client.firstName || client.fname, client.lastName || client.lname].filter(Boolean).join(' ') : ''),
+          firstName: item.firstName || client?.firstName || client?.fname,
+          lastName: item.lastName || client?.lastName || client?.lname,
+          retreatName: retreat?.retreatCode || retreat?.code || retreat?.name,
+        };
+      }));
       setClients(clientsResponse.data || []);
       setRetreats(retreatsResponse.data || []);
       setReviewGroups((groupsResponse as any).data || []);
