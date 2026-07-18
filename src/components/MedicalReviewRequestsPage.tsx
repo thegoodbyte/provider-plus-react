@@ -968,6 +968,13 @@ const MedicalReviewRequestsPage: React.FC = () => {
     : '';
   const isMissingOverallDecision = Boolean(validationError && !reviewDecision);
   const isMissingMedicalStaffNotes = Boolean(validationError && medicalStaffNotes.trim().length < 2);
+  const originalArtifactIds = selected
+    ? Array.from(new Set([
+        getId(selected.medicalArtifactId),
+        ...(selected.artifactIds || []).map((artifact) => getId(artifact)),
+      ].filter((artifactId): artifactId is string => Boolean(artifactId))))
+    : [];
+  const artifactRoutePrefix = isMedicalRoute ? '/medical' : '/admin';
 
   return (
     <div className="overflow-x-hidden p-0 sm:p-6">
@@ -999,6 +1006,19 @@ const MedicalReviewRequestsPage: React.FC = () => {
               <span className={`rounded-full px-2 py-1 font-semibold ${reviewStatusStyle[selected.status] || 'bg-gray-100 text-gray-700'}`}>
                 {selected.status}
               </span>
+              {originalArtifactIds.map((artifactId, index) => (
+                <button
+                  key={artifactId}
+                  type="button"
+                  onClick={() => navigate(`${artifactRoutePrefix}/medical-artifacts/${artifactId}/edit`)}
+                  className="rounded-md border border-blue-200 bg-blue-50 px-2 py-1 font-semibold text-blue-700 hover:bg-blue-100"
+                >
+                  {originalArtifactIds.length > 1 ? `Edit original artifact ${index + 1}` : 'Edit original artifact'}
+                </button>
+              ))}
+              {originalArtifactIds.length === 0 && (
+                <span className="rounded-md bg-amber-50 px-2 py-1 font-medium text-amber-800">No original artifact linked</span>
+              )}
             </div>
           )}
           {!isDetailView && (
