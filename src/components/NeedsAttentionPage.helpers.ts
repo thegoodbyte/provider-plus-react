@@ -7,6 +7,7 @@ export interface AttentionItem {
   detail: string;
   retreat: string;
   client: string;
+  retreatEndDate?: string;
   dueDate?: string;
   severity: AttentionSeverity;
   href: string;
@@ -16,6 +17,17 @@ const severityRank: Record<AttentionSeverity, number> = { overdue: 0, blocked: 1
 const COMPLETE = new Set(['completed', 'complete', 'approved', 'paid', 'received', 'dismissed', 'cancelled', 'canceled', 'voided']);
 
 export const isCompleteStatus = (status: unknown) => COMPLETE.has(String(status || '').toLowerCase());
+
+export const isPastRetreat = (retreatEndDate?: string, now = new Date()): boolean => {
+  if (!retreatEndDate) return false;
+  const dateOnly = String(retreatEndDate).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const end = dateOnly
+    ? new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
+    : new Date(retreatEndDate);
+  if (Number.isNaN(end.getTime())) return false;
+  end.setHours(23, 59, 59, 999);
+  return end.getTime() < now.getTime();
+};
 
 export const classifyAttention = (status: unknown, dueDate?: string, now = new Date()): AttentionSeverity => {
   const normalized = String(status || '').toLowerCase();
@@ -37,6 +49,7 @@ export const sortAttentionItems = (items: AttentionItem[]) => [...items].sort((a
 
 export const entityId = (value: any): string => String(value?._id || value || '');
 export const entityLabel = (value: any, fallback = '—'): string => value?.name || value?.retreatCode || value?.code || fallback;
+export const retreatEndDate = (value: any): string | undefined => value?.endDate || value?.dates?.endDate || value?.startDate || value?.dates?.startDate;
 export const clientLabel = (value: any): string => {
   if (!value || typeof value === 'string') return '—';
   return [value.firstName, value.lastName].filter(Boolean).join(' ') || (value.display_id ? `Client #${value.display_id}` : '—');

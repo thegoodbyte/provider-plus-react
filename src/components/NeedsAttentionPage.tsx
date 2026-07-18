@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { FiAlertTriangle, FiClock, FiRefreshCw, FiSearch } from 'react-icons/fi';
 import { bookingDocumentsApi, bookingFlowApi, medicalReviewRequestsApi, paymentRequestsApi, remindersApi } from '../services/api';
-import { AttentionItem, classifyAttention, clientLabel, entityId, entityLabel, isCompleteStatus, sortAttentionItems } from './NeedsAttentionPage.helpers';
+import { AttentionItem, classifyAttention, clientLabel, entityId, entityLabel, isCompleteStatus, isPastRetreat, retreatEndDate, sortAttentionItems } from './NeedsAttentionPage.helpers';
 
 const AlertIcon = FiAlertTriangle as any;
 const ClockIcon = FiClock as any;
@@ -20,6 +20,7 @@ const NeedsAttentionPage: React.FC = () => {
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState('all');
+  const [retreatTiming, setRetreatTiming] = useState<'current' | 'past' | 'all'>('current');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -37,20 +38,20 @@ const NeedsAttentionPage: React.FC = () => {
       steps.filter((item) => !isCompleteStatus(item.status)).forEach((item) => {
         const bookingId = entityId(item.bookingId);
         const isContract = /contract/i.test(`${item.title || ''} ${item.key || ''}`);
-        next.push({ id: `step-${item._id}`, category: isContract ? 'Contract' : 'Booking step', title: item.title || 'Booking step', detail: item.notes || item.status || 'Pending', retreat: entityLabel(item.retreatId), client: clientLabel(item.clientId), dueDate: dueValue(item), severity: classifyAttention(item.status, dueValue(item)), href: `/${prefix}/booking-flow/${bookingId}` });
+        next.push({ id: `step-${item._id}`, category: isContract ? 'Contract' : 'Booking step', title: item.title || 'Booking step', detail: item.notes || item.status || 'Pending', retreat: entityLabel(item.retreatId), retreatEndDate: retreatEndDate(item.retreatId), client: clientLabel(item.clientId), dueDate: dueValue(item), severity: classifyAttention(item.status, dueValue(item)), href: `/${prefix}/booking-flow/${bookingId}` });
       });
       documents.filter((item) => !isCompleteStatus(item.status) && String(item.status || '').toLowerCase() !== 'stored').forEach((item) => {
         const bookingId = entityId(item.bookingId);
-        next.push({ id: `document-${item._id}`, category: /contract/i.test(item.documentType || item.title || '') ? 'Contract' : 'Document', title: item.title || item.documentType || 'Document', detail: item.status || 'Action required', retreat: entityLabel(item.retreatId), client: clientLabel(item.clientId), dueDate: dueValue(item), severity: classifyAttention(item.status, dueValue(item)), href: bookingId ? `/${prefix}/bookings/${bookingId}` : `/${prefix}/booking-documents` });
+        next.push({ id: `document-${item._id}`, category: /contract/i.test(item.documentType || item.title || '') ? 'Contract' : 'Document', title: item.title || item.documentType || 'Document', detail: item.status || 'Action required', retreat: entityLabel(item.retreatId), retreatEndDate: retreatEndDate(item.retreatId), client: clientLabel(item.clientId), dueDate: dueValue(item), severity: classifyAttention(item.status, dueValue(item)), href: bookingId ? `/${prefix}/bookings/${bookingId}` : `/${prefix}/booking-documents` });
       });
       payments.filter((item) => !isCompleteStatus(item.status)).forEach((item) => {
-        next.push({ id: `payment-${item._id}`, category: 'Payment', title: `Payment request #${item.display_id || item.invoiceNumber || '—'}`, detail: `${item.status || 'pending'}${item.requestedAmount ? ` · ${item.requestedAmount} ${item.currency || ''}` : ''}`, retreat: entityLabel(item.retreatId), client: clientLabel(item.clientId), dueDate: dueValue(item), severity: classifyAttention(item.status, dueValue(item)), href: `/${prefix}/payment-requests/${item._id}` });
+        next.push({ id: `payment-${item._id}`, category: 'Payment', title: `Payment request #${item.display_id || item.invoiceNumber || '—'}`, detail: `${item.status || 'pending'}${item.requestedAmount ? ` · ${item.requestedAmount} ${item.currency || ''}` : ''}`, retreat: entityLabel(item.retreatId), retreatEndDate: retreatEndDate(item.retreatId), client: clientLabel(item.clientId), dueDate: dueValue(item), severity: classifyAttention(item.status, dueValue(item)), href: `/${prefix}/payment-requests/${item._id}` });
       });
       reviews.filter((item) => !isCompleteStatus(item.status)).forEach((item) => {
-        next.push({ id: `review-${item._id}`, category: 'Medical review', title: `Medical review #${item.display_id || '—'}`, detail: item.requestType || item.status || 'Pending review', retreat: entityLabel(item.retreatId), client: clientLabel(item.clientId), dueDate: dueValue(item), severity: classifyAttention(item.status, dueValue(item)), href: `/${prefix}/medical-review-requests/${item._id}` });
+        next.push({ id: `review-${item._id}`, category: 'Medical review', title: `Medical review #${item.display_id || '—'}`, detail: item.requestType || item.status || 'Pending review', retreat: entityLabel(item.retreatId), retreatEndDate: retreatEndDate(item.retreatId), client: clientLabel(item.clientId), dueDate: dueValue(item), severity: classifyAttention(item.status, dueValue(item)), href: `/${prefix}/medical-review-requests/${item._id}` });
       });
       reminders.filter((item) => !isCompleteStatus(item.status)).forEach((item) => {
-        next.push({ id: `reminder-${item._id}`, category: 'Follow-up', title: item.title || item.message || 'Follow-up', detail: item.description || item.status || 'Pending', retreat: entityLabel(item.retreatId), client: clientLabel(item.clientId), dueDate: dueValue(item), severity: classifyAttention(item.status, dueValue(item)), href: `/${prefix}/reminders` });
+        next.push({ id: `reminder-${item._id}`, category: 'Follow-up', title: item.title || item.message || 'Follow-up', detail: item.description || item.status || 'Pending', retreat: entityLabel(item.retreatId), retreatEndDate: retreatEndDate(item.retreatId), client: clientLabel(item.clientId), dueDate: dueValue(item), severity: classifyAttention(item.status, dueValue(item)), href: `/${prefix}/reminders` });
       });
       setItems(sortAttentionItems(next));
     } catch (loadError: any) { setError(loadError?.message || 'Unable to load needs-attention data.'); }
@@ -60,10 +61,12 @@ const NeedsAttentionPage: React.FC = () => {
   useEffect(() => { load(); }, [load]);
   const filtered = useMemo(() => items.filter((item) => {
     const matchesCategory = category === 'all' || item.category === category;
+    const past = isPastRetreat(item.retreatEndDate);
+    const matchesRetreatTiming = retreatTiming === 'all' || (retreatTiming === 'past' ? past : !past);
     const haystack = `${item.title} ${item.detail} ${item.retreat} ${item.client}`.toLowerCase();
-    return matchesCategory && haystack.includes(query.trim().toLowerCase());
-  }), [items, category, query]);
-  const counts = useMemo(() => items.reduce<Record<string, number>>((acc, item) => ({ ...acc, [item.severity]: (acc[item.severity] || 0) + 1 }), {}), [items]);
+    return matchesCategory && matchesRetreatTiming && haystack.includes(query.trim().toLowerCase());
+  }), [items, category, query, retreatTiming]);
+  const counts = useMemo(() => filtered.reduce<Record<string, number>>((acc, item) => ({ ...acc, [item.severity]: (acc[item.severity] || 0) + 1 }), {}), [filtered]);
 
   return <div className="p-6">
     <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
@@ -76,6 +79,7 @@ const NeedsAttentionPage: React.FC = () => {
     <div className="mb-4 flex flex-col gap-3 sm:flex-row">
       <label className="relative flex-1"><SearchIcon className="absolute left-3 top-3 text-gray-400" /><span className="sr-only">Search</span><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search client, retreat, item or status" className="w-full rounded-md border border-gray-300 py-2 pl-9 pr-3 text-sm" /></label>
       <select value={category} onChange={(event) => setCategory(event.target.value)} aria-label="Category" className="rounded-md border border-gray-300 px-3 py-2 text-sm"><option value="all">All categories</option>{['Booking step','Document','Payment','Contract','Medical review','Follow-up'].map((value) => <option key={value}>{value}</option>)}</select>
+      <select value={retreatTiming} onChange={(event) => setRetreatTiming(event.target.value as typeof retreatTiming)} aria-label="Retreat timing" className="rounded-md border border-gray-300 px-3 py-2 text-sm"><option value="current">Current & upcoming retreats</option><option value="past">Past retreats</option><option value="all">All retreats</option></select>
     </div>
     {error && <div role="alert" className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-800">{error}</div>}
     {loading ? <div className="py-14 text-center text-gray-500">Loading attention items…</div> : filtered.length === 0 ? <div className="py-14 text-center text-gray-500">No open items match the current filters.</div> :
