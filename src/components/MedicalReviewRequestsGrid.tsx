@@ -58,12 +58,9 @@ type ConfirmAction =
   | { kind: 'delete-group'; groupId: string; title: string; message: string }
   | { kind: 'remove-request'; groupId: string; requestId: string; title: string; message: string };
 
-const getCompactDisplayName = (name?: string) => {
-  const parts = String(name || '').trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return 'Unknown client';
-  if (parts.length === 1) return parts[0];
-  return `${parts[0]} ${parts[parts.length - 1][0].toUpperCase()}.`;
-};
+const getClientGridLabel = (request: EnrichedReviewRequest) => (
+  `${request.clientDisplayId ? `#${request.clientDisplayId} ` : ''}${request.clientName || 'Unknown client'}`
+);
 
 const statusClass: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
@@ -158,6 +155,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
         return {
           ...request,
           clientName: client ? `${client.firstName} ${client.lastName}` : 'Unknown Client',
+          clientDisplayId: request.clientDisplayId || client?.display_id,
           retreatName: getRetreatCode(retreat),
           trackingFileName: tracking?.ekgFileName || tracking?.liverPanelFileName || undefined,
         };
@@ -935,7 +933,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                             <div className="mt-1 text-xs text-gray-500">{request.requestType || 'review'}</div>
                           </div>
                           <div className="min-w-0">
-                            <div className="truncate text-sm font-medium text-gray-900">{getCompactDisplayName(request.clientName)}</div>
+                            <div className="truncate text-sm font-medium text-gray-900">{getClientGridLabel(request)}</div>
                             <div className="truncate text-xs text-gray-500">{request.retreatName}</div>
                           </div>
                           <div className="min-w-0">
@@ -1027,7 +1025,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                           <div className="mt-1 text-xs text-gray-500">{request.requestType || 'review'}</div>
                         </div>
                         <div className="min-w-0">
-                          <div className="truncate text-sm font-medium text-gray-900">{getCompactDisplayName(request.clientName)}</div>
+                          <div className="truncate text-sm font-medium text-gray-900">{getClientGridLabel(request)}</div>
                           <div className="truncate text-xs text-gray-500">{request.retreatName}</div>
                         </div>
                         <div className="min-w-0">
@@ -1075,7 +1073,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                 </div>
 
                 <div className="min-w-0">
-                  <div className="truncate text-base font-semibold text-gray-900">{getCompactDisplayName(request.clientName)}</div>
+                  <div className="truncate text-base font-semibold text-gray-900">{getClientGridLabel(request)}</div>
                   <div className="truncate text-sm text-gray-500">{retreatLabel}</div>
                 </div>
 
@@ -1119,8 +1117,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                 <tr key={request._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 text-sm font-semibold text-blue-600">#{request.display_id || '—'}</td>
                   <td className="px-6 py-4 text-sm text-gray-900">
-                    {request.clientName}
-                    <div className="text-xs text-gray-500">#{request.clientDisplayId || '—'}</div>
+                    {getClientGridLabel(request)}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">{request.retreatName}</td>
                   <td className="px-6 py-4 text-sm text-gray-900">
