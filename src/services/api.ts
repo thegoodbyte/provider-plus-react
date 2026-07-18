@@ -1238,7 +1238,8 @@ export const bookingFlowApi = {
     cacheService.clearPattern('communications:sent-emails');
     return api.post<{ item: BookingFlowItem; sentEmail: SentEmail }>(`/booking-flow/items/${id}/send-email`, {});
   },
-  getItemEmailComposeData: (id: string, actionKey?: string) => api.get<{
+  getItemEmailComposeData: async (id: string, actionKey?: string) => {
+    const request = () => api.get<{
     to: string;
     templateId: string;
     configuredTemplateId?: string;
@@ -1252,7 +1253,18 @@ export const bookingFlowApi = {
     actionKey?: string;
     actionLabel?: string;
     variables: Record<string, any>;
-  }>(`/booking-flow/items/${id}/email-compose-data${actionKey ? `?actionKey=${encodeURIComponent(actionKey)}` : ''}`),
+    }>(`/booking-flow/items/${id}/email-compose-data${actionKey ? `?actionKey=${encodeURIComponent(actionKey)}` : ''}`);
+
+    try {
+      return await request();
+    } catch (error: any) {
+      // A GET is safe to retry when a deploy/gateway interruption produced no
+      // HTTP response. Do not retry application, authorization, or validation errors.
+      if (error?.response) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 750));
+      return request();
+    }
+  },
   getItemActionLogs: (id: string) => cachedGet<BookingFlowActionLog[]>(
     `booking-flow:item-action-logs:${id}`,
     () => api.get<BookingFlowActionLog[]>(`/booking-flow/items/${id}/action-logs`)
