@@ -1286,10 +1286,8 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     const currentRetreatId = getObjectId(booking.retreatId || booking.retreat || item.retreatId) || retreatId;
     const documentType = resolveBookingDocumentType(item);
     const artifactConfig = artifactStepConfigByKey[item.key];
-    const documentConfig = bookingDocumentTypeByStep[item.key] ? {
-      documentType: bookingDocumentTypeByStep[item.key],
-      title: humanizeDocumentKey(bookingDocumentTypeByStep[item.key]),
-    } : undefined;
+    const configuredDocumentType = normalizeDocumentKey(bookingDocumentTypeByStep[item.key] || item.metadata?.expectedBookingDocument || item.metadata?.expectedDocument || (!artifactConfig ? item.metadata?.expectedArtifact : '') || '');
+    const documentConfig = configuredDocumentType ? { documentType: configuredDocumentType, title: humanizeDocumentKey(configuredDocumentType) } : undefined;
     const uploadTarget = resolveBookingStepUploadTarget(artifactConfig, documentConfig);
     if (!bookingId || !clientId || !currentRetreatId) {
       alert('This file cannot be uploaded because the booking, client, or retreat link is missing.');
@@ -1701,6 +1699,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                       const documentTypeForStep = item ? resolveBookingDocumentType(item) : normalizeDocumentKey(row.key);
                       const relatedBookingDocument = bookingDocumentMap.get(`${getObjectId(booking)}:${documentTypeForStep}`)?.[0];
                       const artifactStepConfig = artifactStepConfigByKey[row.key] || (reviewStepConfig ? artifactStepConfigByKey[reviewStepConfig.receivedStepKey] : undefined);
+                      const configuredBookingDocumentType = normalizeDocumentKey(bookingDocumentTypeByStep[row.key] || item?.metadata?.expectedBookingDocument || item?.metadata?.expectedDocument || (!artifactStepConfig ? item?.metadata?.expectedArtifact : '') || '');
                       const linkableArtifacts = artifactStepConfig ? getArtifactLinkCandidates(booking, medicalArtifacts, artifactStepConfig) : [];
                       const relatedMedicalArtifact = linkedArtifactId
                         ? medicalArtifactById.get(linkedArtifactId)
@@ -1920,6 +1919,15 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                                     event.target.value = '';
                                   }}
                                 />
+                              </label>
+                            )}
+                            {configuredBookingDocumentType && isEditing && !configuredActions.some((action) => action.type === 'upload') && (
+                              <label className="inline-flex cursor-pointer items-center justify-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-800 hover:bg-blue-100" title={`Upload ${humanizeDocumentKey(configuredBookingDocumentType)} for this booking step`}>
+                                <Upload className="h-3.5 w-3.5" /> Upload {humanizeDocumentKey(configuredBookingDocumentType)}
+                                <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.heic,.heif" multiple disabled={Boolean(saving)} onChange={(event) => {
+                                  uploadItemDocument(booking, item, { key: `document-upload:${item?._id || row.key}`, label: `Upload ${humanizeDocumentKey(configuredBookingDocumentType)}`, type: 'upload' }, event.target.files);
+                                  event.target.value = '';
+                                }} />
                               </label>
                             )}
                             {relatedBookingDocument?._id && (
