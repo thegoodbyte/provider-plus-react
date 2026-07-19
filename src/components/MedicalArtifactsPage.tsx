@@ -47,6 +47,9 @@ const getDocumentStageLabel = (stage?: MedicalArtifact['documentStage']) =>
 const getDocumentTypeLabel = (type?: MedicalArtifact['documentType'], artifactType?: MedicalArtifact['artifactType']) =>
   type ? documentTypeLabels[type] : getArtifactTypeLabel(artifactType);
 
+const getSourceLabel = (source?: MedicalArtifact['source']) =>
+  source === 'client_upload' ? 'Client (IR)' : 'Admin (RE)';
+
 const getObjectId = (value: any) => typeof value === 'object' ? value?._id || value?.id : value;
 
 const clientNameBackgrounds = [
@@ -124,6 +127,7 @@ const getSearchText = (artifact: MedicalArtifact) => [
   artifact.documentStage,
   artifact.documentType,
   artifact.status,
+  getSourceLabel(artifact.source),
   getClientName(artifact.clientId),
   typeof artifact.clientId === 'object' ? artifact.clientId.email : '',
   typeof artifact.clientId === 'object' ? artifact.clientId.display_id : '',
@@ -555,6 +559,7 @@ const MedicalArtifactsPage: React.FC = () => {
               <th className="px-4 py-3">Preview</th>
               <th className="hidden px-4 py-3 sm:table-cell">Stage</th>
               <th className="px-4 py-3">Document Type</th>
+              <th className="px-4 py-3">Source</th>
               <th className="px-4 py-3">Client</th>
               <th className="px-4 py-3">Booking / Retreat</th>
               <th className="px-4 py-3">Received</th>
@@ -650,6 +655,11 @@ const MedicalArtifactsPage: React.FC = () => {
                     </span>
                   </div>
                 </td>
+                <td className="px-4 py-3">
+                  <span className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-semibold ${artifact.source === 'client_upload' ? 'bg-purple-50 text-purple-700' : 'bg-slate-100 text-slate-700'}`}>
+                    {getSourceLabel(artifact.source)}
+                  </span>
+                </td>
                 <td className="px-4 py-3">{getClientLabel(artifact.clientId)}</td>
                 <td className="px-4 py-3">
                   <div className="flex flex-col gap-1 text-xs text-gray-600">
@@ -702,7 +712,7 @@ const MedicalArtifactsPage: React.FC = () => {
             })}
             {filteredArtifacts.length === 0 && (
               <tr>
-                <td colSpan={10} className="px-4 py-8 text-center text-gray-500">No medical artifacts yet.</td>
+                <td colSpan={11} className="px-4 py-8 text-center text-gray-500">No medical artifacts yet.</td>
               </tr>
             )}
           </tbody>
