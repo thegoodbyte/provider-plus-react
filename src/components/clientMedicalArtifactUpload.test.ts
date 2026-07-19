@@ -19,7 +19,7 @@ describe('clientMedicalArtifactUpload helpers', () => {
       contextType: 'client',
       purpose: 'general',
       status: 'pending_review',
-      source: 'client_upload',
+      source: 'admin_upload',
     });
     expect(payload.bookingId).toBeUndefined();
     expect(payload.retreatId).toBeUndefined();
