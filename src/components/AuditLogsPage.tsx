@@ -19,7 +19,7 @@ type AuditLog = {
   createdAt: string;
 };
 
-const actions = ['', 'create', 'update', 'delete', 'view', 'login'];
+const actions = ['', 'create', 'update', 'delete', 'view', 'login', 'client_portal_login_success', 'client_portal_login_failed'];
 
 const AuditLogsPage: React.FC = () => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -72,6 +72,7 @@ const AuditLogsPage: React.FC = () => {
       <div className="mb-5">
         <h1 className="text-2xl font-semibold text-gray-900">Audit Logs</h1>
         <p className="mt-1 text-sm text-gray-600">Search user activity across creates, updates, deletes, and detail views.</p>
+        <button type="button" className="mt-3 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700" onClick={() => { setPage(1); setFilters((current) => ({ ...current, action: '', entityType: 'client_portal_access' })); }}>Show ibogaready.com logins</button>
       </div>
 
       <div className="mb-4 grid gap-3 rounded-md border border-gray-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
