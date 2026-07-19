@@ -1907,6 +1907,8 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
             bookingId={bookingId}
             clientId={getObjectId(booking?.clientId || booking?.clientDetails)}
             retreatId={getObjectId(booking?.retreatId || booking?.retreat)}
+            recipientEmail={(typeof booking?.clientId === 'object' ? booking.clientId?.email : booking?.clientDetails?.email) || booking?.clientEmail}
+            recipientName={typeof booking?.clientId === 'object' ? [booking.clientId?.firstName, booking.clientId?.lastName].filter(Boolean).join(' ') : [booking?.clientDetails?.firstName, booking?.clientDetails?.lastName].filter(Boolean).join(' ')}
             title="Booking emails"
             subtitle="Only emails related to this booking and client."
           />

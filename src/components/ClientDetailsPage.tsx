@@ -2026,6 +2026,8 @@ const ClientDetailsPage: React.FC = () => {
         {activeTab === 'emails' && (
           <EmailHistoryPanel
             clientId={clientId}
+            recipientEmail={client?.email}
+            recipientName={[client?.firstName, client?.lastName].filter(Boolean).join(' ')}
             title="Client emails"
             subtitle="Sent and received emails for this client."
           />
