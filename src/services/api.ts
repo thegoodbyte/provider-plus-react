@@ -718,6 +718,7 @@ export const medicalAdvisorApi = {
 };
 
 export const medicalArtifactsApi = {
+  getForBooking: (bookingId: string) => api.get<MedicalArtifact[]>(`/medical-artifacts/booking/${encodeURIComponent(bookingId)}`),
   getAll: (filters: {
     clientId?: string;
     retreatId?: string;
