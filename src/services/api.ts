@@ -287,6 +287,12 @@ export const bookingsApi = {
     cacheService.clearPattern('bookings:');
     return api.post<RetreatClient>(`/bookings/${id}/confirmation-history`, data);
   },
+  storeConfirmationPdf: (id: string, language: 'en' | 'cz' | 'pl', blob: Blob, fileName: string) => {
+    const formData = new FormData();
+    formData.append('file', blob, fileName);
+    cacheService.clearPattern('bookings:');
+    return api.post(`/bookings/${id}/confirmation-pdf?language=${language}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
   checkIn: (id: string) => {
     cacheService.clearPattern('bookings:');
     return api.patch<RetreatClient>(`/bookings/${id}/check-in`, {});
