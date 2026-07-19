@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, Circle, FileText, Link2, ListPlus, Lock, Mail, OctagonX, RefreshCw, RotateCcw, Save, ThumbsDown, Unlock, Upload, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Circle, FileText, Link2, ListPlus, Lock, Mail, OctagonX, RefreshCw, Save, ThumbsDown, Unlock, Upload, X } from 'lucide-react';
 import { bookingDocumentsApi, bookingFlowApi, clientsApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { BookingDocument, BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, Client, MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
@@ -850,7 +850,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     }
   };
 
-  const saveAllAndLock = async () => {
+  const saveAllChanges = async (lockAfterSave = false) => {
     const dirtyIds = Object.keys(dirtyNoteIds);
     setSaving('save-all');
     try {
@@ -861,16 +861,10 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       }));
       setDirtyNoteIds({});
       await loadData(false);
-      setIsEditing(false);
+      if (lockAfterSave) setIsEditing(false);
     } finally {
       setSaving('');
     }
-  };
-
-  const cancelEditing = async () => {
-    setIsEditing(false);
-    setDirtyNoteIds({});
-    await loadData(false);
   };
 
   const updateItemDate = async (item: BookingFlowItem | undefined, value: string) => {
@@ -1465,7 +1459,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
           <p className="text-sm text-gray-500">
             {viewMode === 'detail'
               ? isEditing
-                ? 'Editing is unlocked. Save and lock when you are done changing readiness.'
+                ? 'Editing is unlocked. Changes stay unlocked until you explicitly lock readiness.'
                 : 'Read-only mode prevents accidental changes. Unlock editing to update status, date, notes, or actions.'
               : 'Simple view shows only complete, pending, and problem status by color.'}
           </p>
@@ -2141,24 +2135,22 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
           </div>
         </div>
       )}
-      {viewMode === 'detail' && (
-        <div className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-xl border border-gray-200 bg-white/95 p-2 shadow-2xl backdrop-blur">
+        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-xl border border-gray-200 bg-white/95 p-2 shadow-2xl backdrop-blur">
           {isEditing ? (
             <>
-              <button type="button" onClick={cancelEditing} disabled={saving === 'save-all'} className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
-                <RotateCcw className="h-4 w-4" /> Cancel
+              <button type="button" onClick={() => saveAllChanges(false)} disabled={saving === 'save-all'} className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
+                <Save className="h-4 w-4" /> {saving === 'save-all' ? 'Saving...' : 'Save'}
               </button>
-              <button type="button" onClick={saveAllAndLock} disabled={saving === 'save-all'} className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50">
-                <Save className="h-4 w-4" /> {saving === 'save-all' ? 'Saving...' : 'Save & Lock'}
+              <button type="button" onClick={() => saveAllChanges(true)} disabled={saving === 'save-all'} className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-50">
+                <Lock className="h-4 w-4" /> {saving === 'save-all' ? 'Saving...' : 'Lock'}
               </button>
             </>
           ) : (
-            <button type="button" onClick={() => setIsEditing(true)} className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-gray-800">
+            <button type="button" onClick={() => { setViewMode('detail'); setIsEditing(true); }} className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white shadow-lg hover:bg-gray-800">
               <Unlock className="h-4 w-4" /> Unlock Editing
             </button>
           )}
         </div>
-      )}
       {reviewRequestModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-lg rounded-lg bg-white p-5 shadow-xl">
