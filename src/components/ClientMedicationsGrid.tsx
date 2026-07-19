@@ -200,6 +200,7 @@ const ClientMedicationsGrid: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Date Collected
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items / Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   PDF Document
                 </th>
@@ -239,6 +240,7 @@ const ClientMedicationsGrid: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {formatDate(medication.date_collected)}
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm"><strong>{medication.entries?.length || 0}</strong> items<br/><span className="capitalize text-gray-500">{medication.status || 'legacy'}</span></td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {medication.pdf_file ? (
                       <a
@@ -251,7 +253,7 @@ const ClientMedicationsGrid: React.FC = () => {
                         View PDF
                       </a>
                     ) : (
-                      <span className="text-gray-400 text-sm">No file</span>
+                      <a href={`${API_BASE_URL}${clientMedicationsApi.downloadPdfUrl(medication._id)}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Download PDF</a>
                     )}
                   </td>
                   <td className="px-6 py-4">
@@ -293,7 +295,7 @@ const ClientMedicationsGrid: React.FC = () => {
               ))}
               {filteredMedications.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
                     {searchTerm ? 'No medications found matching your search.' : 'No medication records found.'}
                   </td>
                 </tr>
