@@ -647,6 +647,7 @@ const BookingMedicalOverviewPanel: React.FC<{
       const bookingFlowFilters = buildBookingFlowArtifactFilters(itemsResponse.data || []);
       const artifactsStart = performance.now();
       const artifactResponses = await Promise.all([
+        medicalArtifactsApi.getForBooking(bookingId),
         medicalArtifactsApi.getAll({ bookingId, ...bookingFlowFilters }),
         medicalArtifactsApi.getAll({ bookingId }),
         clientId && retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId, ...bookingFlowFilters }) : Promise.resolve({ data: [] }),
