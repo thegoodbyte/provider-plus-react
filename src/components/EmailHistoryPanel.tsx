@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FiInbox, FiMail, FiPlus, FiRefreshCw } from 'react-icons/fi';
+import { FiChevronDown, FiChevronUp, FiInbox, FiMail, FiPlus, FiRefreshCw, FiSend } from 'react-icons/fi';
 import { communicationsApi } from '../services/api';
 import { InboundEmail, SentEmail } from '../types';
 import { taskService } from '../services/taskService';
@@ -14,6 +14,8 @@ interface EmailHistoryPanelProps {
   retreatId?: string;
   title?: string;
   subtitle?: string;
+  recipientEmail?: string;
+  recipientName?: string;
 }
 
 const formatDate = (value?: string | Date) => {
@@ -42,12 +44,17 @@ const getInboundClientLabel = (email: InboundEmail) => {
   return email.fromName || email.fromEmail || 'Unknown';
 };
 
-const EmailHistoryPanel: React.FC<EmailHistoryPanelProps> = ({ clientId, bookingId, retreatId, title = 'Email history', subtitle }) => {
+const EmailHistoryPanel: React.FC<EmailHistoryPanelProps> = ({ clientId, bookingId, retreatId, title = 'Email history', subtitle, recipientEmail, recipientName }) => {
   const [loading, setLoading] = useState(true);
   const [sentEmails, setSentEmails] = useState<SentEmail[]>([]);
   const [inboundEmails, setInboundEmails] = useState<InboundEmail[]>([]);
   const [error, setError] = useState('');
   const [direction, setDirection] = useState<EmailDirectionFilter>('all');
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [subject, setSubject] = useState('');
+  const [message, setMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sendMessage, setSendMessage] = useState('');
 
   const loadEmails = useCallback(async () => {
     try {
@@ -105,6 +112,25 @@ const EmailHistoryPanel: React.FC<EmailHistoryPanelProps> = ({ clientId, booking
     await loadEmails();
   };
 
+  const handleSend = async () => {
+    if (!recipientEmail?.trim()) { setSendMessage('This client does not have an email address.'); return; }
+    if (!subject.trim() || !message.trim()) { setSendMessage('Subject and message are required.'); return; }
+    try {
+      setSending(true); setSendMessage('');
+      await communicationsApi.sendEmail({
+        to: recipientEmail.trim(), subject: subject.trim(), bodyText: message.trim(),
+        clientId, bookingId, retreatId,
+        relatedEntityType: bookingId ? 'booking' : 'client',
+        relatedEntityId: bookingId || clientId,
+        variables: { client: { id: clientId, email: recipientEmail, name: recipientName || '' } },
+      });
+      setSubject(''); setMessage(''); setComposerOpen(false); setSendMessage(`Email sent to ${recipientEmail}.`);
+      await loadEmails();
+    } catch (sendError: any) {
+      setSendMessage(sendError?.response?.data?.message || 'Email could not be sent.');
+    } finally { setSending(false); }
+  };
+
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4 sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -113,6 +139,9 @@ const EmailHistoryPanel: React.FC<EmailHistoryPanelProps> = ({ clientId, booking
           <p className="text-sm text-gray-500">{subtitle || 'Sent and received emails connected to this record.'}</p>
         </div>
         <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setComposerOpen((value) => !value)} className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700">
+            <Icon icon={FiMail} className="h-4 w-4" /> Send message <Icon icon={composerOpen ? FiChevronUp : FiChevronDown} className="h-4 w-4" />
+          </button>
           <button type="button" onClick={() => void loadEmails()} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
             <Icon icon={FiRefreshCw} className="h-4 w-4" />
             Refresh
@@ -131,6 +160,16 @@ const EmailHistoryPanel: React.FC<EmailHistoryPanelProps> = ({ clientId, booking
           </div>
         </div>
       </div>
+
+      {sendMessage && <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">{sendMessage}</div>}
+      {composerOpen && <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50/40 p-4">
+        <div className="mb-3 text-sm text-gray-700">To: <strong>{recipientName ? `${recipientName} ` : ''}&lt;{recipientEmail || 'No client email'}&gt;</strong></div>
+        <div className="grid gap-3">
+          <label className="grid gap-1 text-sm font-medium text-gray-700">Subject<input value={subject} onChange={(e) => setSubject(e.target.value)} className="rounded-md border border-gray-300 bg-white px-3 py-2" placeholder="Email subject" /></label>
+          <label className="grid gap-1 text-sm font-medium text-gray-700">Message<textarea value={message} onChange={(e) => setMessage(e.target.value)} className="min-h-36 rounded-md border border-gray-300 bg-white px-3 py-2" placeholder="Write your message to the client" /></label>
+          <div className="flex justify-end"><button type="button" disabled={sending || !recipientEmail} onClick={() => void handleSend()} className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"><Icon icon={FiSend} className="h-4 w-4" />{sending ? 'Sending…' : 'Send email'}</button></div>
+        </div>
+      </div>}
 
       {error && <div className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
