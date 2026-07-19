@@ -10,6 +10,11 @@ export interface ClientMedication {
   medstaff_review_notes: string;
   createdAt: Date;
   updatedAt: Date;
+  language?: 'en' | 'cs' | 'pl';
+  status?: 'draft' | 'submitted' | 'reviewed';
+  lookback_days?: number;
+  submitted_at?: Date;
+  entries?: Array<{ name: string; category?: string; dose?: string; frequency?: string; reason?: string; last_taken_date?: Date; notes?: string; images?: any[] }>;
 }
 
 export interface CreateClientMedicationDto {
@@ -66,4 +71,6 @@ export const clientMedicationsApi = {
       },
     });
   },
+
+  downloadPdfUrl: (id: string) => `/client-medications/${id}/download-pdf`,
 };
