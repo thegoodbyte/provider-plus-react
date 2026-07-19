@@ -651,6 +651,7 @@ const BookingMedicalOverviewPanel: React.FC<{
         medicalArtifactsApi.getAll({ bookingId }),
         clientId && retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId, ...bookingFlowFilters }) : Promise.resolve({ data: [] }),
         clientId ? medicalArtifactsApi.getAll({ clientId, ...bookingFlowFilters }) : Promise.resolve({ data: [] }),
+        clientId ? medicalArtifactsApi.getAll({ clientId }) : Promise.resolve({ data: [] }),
       ]);
       timings.artifacts = performance.now() - artifactsStart;
       const loadedArtifacts = mergeArtifacts(artifactResponses.map((response) => response.data || []))
@@ -682,7 +683,11 @@ const BookingMedicalOverviewPanel: React.FC<{
 
   const entryArtifacts = artifactsByStage.entry || [];
   const requiredRows = requiredEntryDocumentTypes.map((documentType) => {
-    const match = entryArtifacts.find((artifact) => artifact.documentType === documentType);
+    const expectedArtifactType = documentType === 'EKG' ? 'ekg' : 'liver_panel';
+    const match = entryArtifacts.find((artifact) =>
+      artifact.artifactType === expectedArtifactType
+      || String(artifact.documentType || '').toLowerCase() === documentType.toLowerCase()
+    );
     return { documentType, artifact: match, review: match ? getLatestReviewForArtifact(match, reviewsByArtifact) : undefined };
   });
 
