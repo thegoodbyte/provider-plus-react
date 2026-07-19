@@ -1,5 +1,4 @@
 import type { MedicalArtifact, MedicalArtifactCreateInput } from '../types';
-import { DOCUMENT_STAGES, MEDICAL_STATUSES } from '../config/constants/medical.constants';
 
 export type ClientMedicalArtifactUploadContext = {
   bookingId?: string;
@@ -38,7 +37,7 @@ export const buildClientMedicalArtifactInput = (params: {
     title,
     artifactType,
     documentType,
-    documentStage: DOCUMENT_STAGES.ENTRY,
+    documentStage: 'entry',
     contextType: context.bookingId ? 'booking' : 'client',
     purpose: context.bookingId ? 'booking_requirement' : 'general',
     status: 'pending_review',
