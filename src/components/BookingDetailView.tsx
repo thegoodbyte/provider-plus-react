@@ -12,7 +12,7 @@ import EmailHistoryPanel from './EmailHistoryPanel';
 import { TaskList } from './Tasks/TaskList';
 import { TaskForm } from './Tasks/TaskForm';
 import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
-import { createBookingConfirmationPdf, generateBookingPDF } from './BookingConfirmationPDF';
+import { createBookingConfirmationPdf } from './BookingConfirmationPDF';
 import { Task, CreateTaskDto, taskService } from '../services/taskService';
 import { BookingDocument, BookingFlowItem, CeremonyParticipant, MedicalArtifact, MedicalReviewRequest } from '../types';
 import './BookingDetailView.css';
@@ -1277,18 +1277,18 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     });
   };
 
+  const storeCanonicalBookingPdf = async (blob: Blob, fileName: string, language: BookingConfirmationLanguage) => {
+    await bookingsApi.storeConfirmationPdf(bookingId, language, blob, fileName);
+  };
+
   const generatePDF = async () => {
     if (!booking) return;
 
     try {
       setIsGeneratingPDF(true);
-      await generateBookingPDF({
-        booking,
-        language: pdfLanguage,
-        onComplete: () => {
-          setIsGeneratingPDF(false);
-        }
-      });
+      const { pdf, blob, fileName } = await createBookingConfirmationPdf({ booking, language: pdfLanguage });
+      await storeCanonicalBookingPdf(blob, fileName, pdfLanguage);
+      pdf.save(fileName);
     } catch (error) {
       console.error('Error generating PDF:', error);
       alert('Error generating PDF. Please try again.');
@@ -1302,6 +1302,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     try {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       const { blob, fileName } = await createBookingConfirmationPdf({ booking, language: pdfLanguage });
+      await storeCanonicalBookingPdf(blob, fileName, pdfLanguage);
       setPreviewUrl(URL.createObjectURL(blob));
       setPreviewFileName(fileName);
     } catch (error) {
@@ -1329,6 +1330,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     try {
       const language = pdfLanguage;
       const { blob, fileName } = await createBookingConfirmationPdf({ booking, language });
+      await storeCanonicalBookingPdf(blob, fileName, language);
       const contentBase64 = await blobToBase64(blob);
       const email = await buildBookingConfirmationEmail(language);
       setConfirmationEmailDraft({
@@ -1384,6 +1386,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     try {
       const language = pdfLanguage;
       const { blob, fileName } = await createBookingConfirmationPdf({ booking, language });
+      await storeCanonicalBookingPdf(blob, fileName, language);
       pdfSize = blob.size;
       const contentBase64 = await blobToBase64(blob);
       const email = await buildBookingConfirmationEmail(language);
