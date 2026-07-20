@@ -84,7 +84,7 @@
 
 .booking-document-type-sections {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(260px, 0.9fr) minmax(260px, 0.9fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0;
 }
 
@@ -95,6 +95,14 @@
 
 .type-section:last-child {
   border-right: 0;
+}
+
+.type-section:nth-child(2n) {
+  border-right: 0;
+}
+
+.type-section:nth-child(-n + 2) {
+  border-bottom: 1px solid #e5e7eb;
 }
 
 .type-section h2 {
@@ -165,6 +173,10 @@
   justify-content: flex-end;
   gap: 10px;
   padding-top: 18px;
+}
+
+.medical-artifact-toggle {
+  margin-bottom: 12px;
 }
 
 .booking-document-type-row .checkbox-row {

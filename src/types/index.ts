@@ -1367,6 +1367,10 @@ export interface BookingDocumentType {
   bookingFlowSentStepKey?: string;
   reviewRequired?: boolean;
   reviewRequestType?: MedicalReviewRequest['requestType'];
+  storeAsMedicalArtifact?: boolean;
+  medicalArtifactType?: string;
+  medicalDocumentStage?: string;
+  medicalDocumentType?: string;
   createdAt?: string;
   updatedAt?: string;
 }

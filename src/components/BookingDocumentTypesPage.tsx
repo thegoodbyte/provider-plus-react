@@ -16,6 +16,10 @@ const emptyDraft = (): DraftType => ({
   bookingFlowSentStepKey: '',
   reviewRequired: false,
   reviewRequestType: undefined,
+  storeAsMedicalArtifact: false,
+  medicalArtifactType: '',
+  medicalDocumentStage: 'entry',
+  medicalDocumentType: '',
   isNew: true,
 });
 
@@ -78,6 +82,10 @@ const BookingDocumentTypesPage: React.FC = () => {
       bookingFlowSentStepKey: draft.bookingFlowSentStepKey || undefined,
       reviewRequired: Boolean(draft.reviewRequired),
       reviewRequestType: draft.reviewRequestType || undefined,
+      storeAsMedicalArtifact: Boolean(draft.storeAsMedicalArtifact),
+      medicalArtifactType: draft.medicalArtifactType || undefined,
+      medicalDocumentStage: draft.medicalDocumentStage || undefined,
+      medicalDocumentType: draft.medicalDocumentType || undefined,
     };
     try {
       if (draft._id && !draft.isNew) {
@@ -231,6 +239,28 @@ const BookingDocumentTypesPage: React.FC = () => {
                       Review required
                     </label>
                   </div>
+                </div>
+              </section>
+
+              <section className="type-section">
+                <h2>Medical Artifact</h2>
+                <label className="checkbox-row medical-artifact-toggle">
+                  <input type="checkbox" checked={Boolean(type.storeAsMedicalArtifact)} onChange={(event) => updateDraft(index, { storeAsMedicalArtifact: event.target.checked })} />
+                  Also store as a medical artifact
+                </label>
+                <div className="form-grid" aria-disabled={!type.storeAsMedicalArtifact}>
+                  <label>
+                    Artifact type
+                    <input disabled={!type.storeAsMedicalArtifact} value={type.medicalArtifactType || ''} onChange={(event) => updateDraft(index, { medicalArtifactType: event.target.value })} placeholder="medications_form" />
+                  </label>
+                  <label>
+                    Document stage
+                    <input disabled={!type.storeAsMedicalArtifact} value={type.medicalDocumentStage || ''} onChange={(event) => updateDraft(index, { medicalDocumentStage: event.target.value })} placeholder="entry" />
+                  </label>
+                  <label>
+                    Medical document type
+                    <input disabled={!type.storeAsMedicalArtifact} value={type.medicalDocumentType || ''} onChange={(event) => updateDraft(index, { medicalDocumentType: event.target.value })} placeholder="Medications" />
+                  </label>
                 </div>
               </section>
             </div>
