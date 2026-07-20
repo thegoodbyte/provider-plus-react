@@ -1,6 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircle2, Copy, GripVertical, Plus, RefreshCw, Save, Trash2 } from 'lucide-react';
+import { CheckCircle2, Copy, Download, GripVertical, Plus, RefreshCw, Save, Trash2, Upload, X } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 import { bookingFlowApi, communicationsApi, retreatsApi } from '../services/api';
@@ -106,6 +106,11 @@ const RetreatFlowLibraryPage: React.FC = () => {
   const [applying, setApplying] = useState(false);
   const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>([]);
   const [draggedTemplateId, setDraggedTemplateId] = useState<string>('');
+  const [importBackup, setImportBackup] = useState<any>(null);
+  const [importPreview, setImportPreview] = useState<any>(null);
+  const [importMode, setImportMode] = useState<'merge_by_key' | 'restore_exact_ids'>('merge_by_key');
+  const [importing, setImporting] = useState(false);
+  const importInputRef = useRef<HTMLInputElement | null>(null);
 
   const normalizeTemplateActionsForForm = (template: BookingFlowTemplate): BookingFlowAction[] => {
     const actions = (template.actions || []).map((action) => ({
@@ -275,6 +280,63 @@ const RetreatFlowLibraryPage: React.FC = () => {
     if (!window.confirm('Delete this library step?')) return;
     await bookingFlowApi.deleteLibraryTemplate(selectedTemplateId);
     await loadData();
+  };
+
+  const exportBackup = async () => {
+    try {
+      const response = await bookingFlowApi.exportLibraryBackup();
+      const blob = new Blob([JSON.stringify(response.data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `booking-step-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      alert(error?.response?.data?.message || 'Unable to export booking-step backup.');
+    }
+  };
+
+  const previewImport = async (backup: any, mode: 'merge_by_key' | 'restore_exact_ids') => {
+    const response = await bookingFlowApi.previewLibraryImport(backup, mode);
+    setImportPreview(response.data);
+  };
+
+  const chooseImportFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    try {
+      const backup = JSON.parse(await file.text());
+      setImportBackup(backup);
+      setImportMode('merge_by_key');
+      await previewImport(backup, 'merge_by_key');
+    } catch (error: any) {
+      setImportBackup(null);
+      setImportPreview(null);
+      alert(error?.response?.data?.message || error?.message || 'Unable to read or validate this backup file.');
+    }
+  };
+
+  const changeImportMode = async (mode: 'merge_by_key' | 'restore_exact_ids') => {
+    setImportMode(mode);
+    if (importBackup) await previewImport(importBackup, mode);
+  };
+
+  const applyImport = async () => {
+    if (!importBackup || !importPreview?.valid) return;
+    setImporting(true);
+    try {
+      const response = await bookingFlowApi.importLibraryBackup(importBackup, importMode);
+      alert(`Restore complete. Added ${response.data.added}, updated ${response.data.updated}, unchanged ${response.data.unchanged}. An automatic pre-import backup was saved to Audit Logs.`);
+      setImportBackup(null);
+      setImportPreview(null);
+      await loadData();
+    } catch (error: any) {
+      alert(error?.response?.data?.message || 'Unable to restore booking-step configuration.');
+    } finally {
+      setImporting(false);
+    }
   };
 
   const applyColorToGroup = async () => {
@@ -725,7 +787,14 @@ const RetreatFlowLibraryPage: React.FC = () => {
           <h1 className="text-2xl font-semibold text-gray-900">Booking Step Setup</h1>
           <p className="text-sm text-gray-600">Configure the master booking steps, deadlines, artifact matching, and order used when bookings are created.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <button onClick={exportBackup} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+            <Download className="h-4 w-4" /> Export Backup
+          </button>
+          <button onClick={() => importInputRef.current?.click()} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+            <Upload className="h-4 w-4" /> Import / Restore
+          </button>
+          <input ref={importInputRef} type="file" accept="application/json,.json" onChange={chooseImportFile} className="hidden" />
           <button onClick={handleSeed} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
             <Icon icon={Plus} className="h-4 w-4" />
             Seed Defaults
@@ -736,6 +805,36 @@ const RetreatFlowLibraryPage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {importBackup && importPreview && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-gray-900/50 p-4" role="dialog" aria-modal="true" aria-labelledby="restore-title">
+          <div className="w-full max-w-3xl rounded-xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between border-b border-gray-200 p-5">
+              <div><h2 id="restore-title" className="text-lg font-semibold text-gray-900">Preview booking-step restore</h2><p className="mt-1 text-sm text-gray-600">No configuration changes have been made.</p></div>
+              <button onClick={() => { setImportBackup(null); setImportPreview(null); }} className="rounded p-1 text-gray-400 hover:bg-gray-100"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="space-y-4 p-5">
+              <label className="block text-sm font-semibold text-gray-800">Restore mode
+                <select value={importMode} onChange={(event) => changeImportMode(event.target.value as any)} className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 font-normal">
+                  <option value="merge_by_key">Merge by stable key (recommended)</option>
+                  <option value="restore_exact_ids">Disaster recovery: restore exact IDs</option>
+                </select>
+              </label>
+              {importMode === 'restore_exact_ids' && <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">Exact-ID restore fails safely if an imported ID or key belongs to a different record.</div>}
+              <div className="grid grid-cols-4 gap-3">
+                {(['add', 'update', 'unchanged', 'conflict'] as const).map((status) => <div key={status} className="rounded-lg border border-gray-200 p-3 text-center"><div className="text-xl font-bold text-gray-900">{importPreview.summary?.[status] || 0}</div><div className="text-xs font-semibold uppercase text-gray-500">{status}</div></div>)}
+              </div>
+              <div className="max-h-72 overflow-auto rounded-md border border-gray-200">
+                <table className="min-w-full text-sm"><thead className="sticky top-0 bg-gray-50"><tr><th className="px-3 py-2 text-left">Step key</th><th className="px-3 py-2 text-left">Result</th><th className="px-3 py-2 text-left">Details</th></tr></thead><tbody className="divide-y divide-gray-100">{(importPreview.results || []).map((result: any) => <tr key={`${result.key}-${result.id}`}><td className="px-3 py-2 font-medium">{result.key}</td><td className="px-3 py-2">{result.status}</td><td className="px-3 py-2 text-gray-500">{result.reason || ''}</td></tr>)}</tbody></table>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 border-t border-gray-200 p-5">
+              <button onClick={() => { setImportBackup(null); setImportPreview(null); }} disabled={importing} className="rounded-md border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700">Cancel</button>
+              <button onClick={applyImport} disabled={importing || !importPreview.valid} className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{importing ? 'Restoring...' : 'Create backup & restore'}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="mb-4 max-w-lg">
         <SearchableRetreatSelect
