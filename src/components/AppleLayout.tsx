@@ -76,6 +76,7 @@ import { ForgotPassword } from './Login/ForgotPassword';
 import { ResetPassword } from './Login/ResetPassword';
 import { ChangeOwnPassword } from './Login/ChangeOwnPassword';
 import SubmissionNotificationsPage from './SubmissionNotificationsPage';
+import RetreatClientsPrintPage from './RetreatClientsPrintPage';
 
 const BookingDetailRoute: React.FC = () => {
   const { bookingId } = useParams();
@@ -595,6 +596,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="screening" element={<ScreeningClientsGrid />} />
                       <Route path="potential-clients" element={<UnifiedClientManager />} />
                       <Route path="retreats" element={<RetreatsGrid />} />
+                      <Route path="retreats/:retreatId/clients-print" element={<RetreatClientsPrintPage />} />
                       <Route path="retreats/:retreatId" element={<RetreatDetailRoute />} />
                       <Route path="retreats/:retreatId/:tab" element={<RetreatDetailRoute />} />
                       <Route path="retreat/:retreatId" element={<RetreatDetailRoute />} />
@@ -744,6 +746,7 @@ const AppleLayout: React.FC = () => {
                         <Route path="bookings/:bookingId" element={<BookingDetailRoute />} />
                         <Route path="bookings/:bookingId/edit" element={<BookingEditorPage mode="edit" />} />
                         <Route path="retreats" element={<RetreatsGrid />} />
+                        <Route path="retreats/:retreatId/clients-print" element={<RetreatClientsPrintPage />} />
                         <Route path="retreats/:retreatId" element={<RetreatDetailRoute />} />
                         <Route path="retreats/:retreatId/:tab" element={<RetreatDetailRoute />} />
                         <Route path="retreat/:retreatId" element={<RetreatDetailRoute />} />
@@ -780,6 +783,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="launcher" element={<ModuleLauncherPage />} />
                       <Route path="bookings" element={<BookingsGrid />} />
                       <Route path="retreats" element={<RetreatsGrid />} />
+                      <Route path="retreats/:retreatId/clients-print" element={<RetreatClientsPrintPage />} />
                       <Route path="retreats/:retreatId" element={<RetreatDetailRoute />} />
                       <Route path="retreats/:retreatId/:tab" element={<RetreatDetailRoute />} />
                       <Route path="retreat/:retreatId" element={<RetreatDetailRoute />} />
