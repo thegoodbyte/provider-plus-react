@@ -427,6 +427,19 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
     }
   };
 
+  const handleDeletePayment = async (payment: Payment) => {
+    const label = payment.display_id ? `payment #${payment.display_id}` : 'this payment';
+    if (!window.confirm(`Delete ${label}? This will recalculate the booking balance and cannot be undone.`)) return;
+    try {
+      await paymentsApi.delete(payment._id!);
+      await fetchPayments();
+      if (onPaymentUpdate) onPaymentUpdate();
+    } catch (error: any) {
+      console.error('Error deleting payment:', error);
+      alert(error?.response?.data?.message || 'Unable to delete the payment.');
+    }
+  };
+
   // Remove the formatCurrency function since we'll use CurrencyDisplay component
 
   const formatPaymentType = (type: string) => {
@@ -893,6 +906,16 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
                               title="Edit this payment"
                             >
                               Edit
+                            </button>
+                          )}
+                          {payment._id && (
+                            <button
+                              type="button"
+                              onClick={() => handleDeletePayment(payment)}
+                              className="delete-payment-btn"
+                              title="Delete this payment"
+                            >
+                              Delete
                             </button>
                           )}
                         </div>
