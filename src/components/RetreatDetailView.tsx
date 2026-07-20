@@ -1364,8 +1364,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             <h2>📋 Retreat Clients ({activeClientCount} active)</h2>
             <div className="section-actions">
               <button
-                onClick={() => window.open(`${location.pathname.replace(/\/$/, '')}/clients-print`, '_blank', 'noopener,noreferrer')}
-                className="retreat-client-action"
+                onClick={() => navigate(`${location.pathname.replace(/\/$/, '')}/clients-print`)}
+                className="retreat-client-action retreat-client-action-print"
                 title="Open the A4 landscape client grid"
                 aria-label="Print retreat client grid"
               >
