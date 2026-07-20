@@ -98,6 +98,7 @@ const FULL_MENU_SECTIONS: MenuSection[] = [
     Icon: Fi.FiBriefcase,
     items: [
       { id: 'needs-attention', label: 'Needs Attention', Icon: Fi.FiAlertTriangle },
+      { id: 'ir-notifications', label: 'IR Notifications', Icon: Fi.FiBell },
       { id: 'assistant', label: 'Assistant', Icon: Fi.FiCpu },
       { id: 'tasks', label: 'General Tasks', Icon: Fi.FiCheckSquare },
       { id: 'reminders', label: 'Reminders', Icon: Fi.FiBell },

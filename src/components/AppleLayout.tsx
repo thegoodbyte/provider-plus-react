@@ -75,6 +75,7 @@ import { useAuth } from '../context/AuthContext';
 import { ForgotPassword } from './Login/ForgotPassword';
 import { ResetPassword } from './Login/ResetPassword';
 import { ChangeOwnPassword } from './Login/ChangeOwnPassword';
+import SubmissionNotificationsPage from './SubmissionNotificationsPage';
 
 const BookingDetailRoute: React.FC = () => {
   const { bookingId } = useParams();
@@ -164,6 +165,7 @@ const AppleLayout: React.FC = () => {
     if (route === 'booking-documents') return 'booking-documents';
     if (route === 'booking-document-types') return 'booking-document-types';
     if (route === 'flow-tasks') return 'flow-tasks';
+    if (route === 'ir-notifications') return 'ir-notifications';
     if (route === 'retreats') return 'retreats';
     if (route === 'ceremonies') return 'ceremonies';
     if (route === 'houses') return 'houses';
@@ -631,6 +633,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="booking-flow" element={<BookingFlowPage />} />
                       <Route path="booking-flow/:bookingId" element={<BookingFlowPage />} />
                       <Route path="needs-attention" element={<NeedsAttentionPage />} />
+                      <Route path="ir-notifications" element={<SubmissionNotificationsPage />} />
                       <Route path="booking-documents" element={<BookingDocumentsPage />} />
                       <Route path="booking-document-types" element={<BookingDocumentTypesPage />} />
                       <Route path="flow-tasks" element={<FlowTaskInboxPage />} />
@@ -724,6 +727,7 @@ const AppleLayout: React.FC = () => {
                         <Route path="booking-flow" element={<BookingFlowPage />} />
                         <Route path="booking-flow/:bookingId" element={<BookingFlowPage />} />
                         <Route path="needs-attention" element={<NeedsAttentionPage />} />
+                        <Route path="ir-notifications" element={<SubmissionNotificationsPage />} />
                         <Route path="booking-documents" element={<BookingDocumentsPage />} />
                         <Route path="booking-document-types" element={<BookingDocumentTypesPage />} />
                         <Route path="flow-tasks" element={<FlowTaskInboxPage />} />
