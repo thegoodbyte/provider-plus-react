@@ -21,6 +21,7 @@ import {
   FiImage,
   FiMail,
   FiPlus,
+  FiPrinter,
   FiRefreshCw,
   FiTrash2,
   FiUpload,
@@ -1362,6 +1363,15 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           <div className="section-header">
             <h2>📋 Retreat Clients ({activeClientCount} active)</h2>
             <div className="section-actions">
+              <button
+                onClick={() => window.open(`${location.pathname.replace(/\/$/, '')}/clients-print`, '_blank', 'noopener,noreferrer')}
+                className="retreat-client-action"
+                title="Open the A4 landscape client grid"
+                aria-label="Print retreat client grid"
+              >
+                <Icon icon={FiPrinter} className="w-4 h-4" />
+                <span>Print Client Grid</span>
+              </button>
               <label className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700">
                 <input type="checkbox" checked={showCancelledBookings} onChange={(event) => setShowCancelledBookings(event.target.checked)} />
                 Show cancelled ({clients.length - activeClientCount})

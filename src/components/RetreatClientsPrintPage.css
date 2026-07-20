@@ -1,0 +1,65 @@
+.retreat-client-print-page {
+  min-height: 100vh;
+  background: #f3f4f6;
+  padding: 24px;
+}
+
+.retreat-client-print-toolbar {
+  display: flex;
+  justify-content: space-between;
+  max-width: 1120px;
+  margin: 0 auto 16px;
+}
+
+.retreat-client-print-toolbar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: white;
+  padding: 9px 15px;
+  font-weight: 600;
+}
+
+.retreat-client-print-toolbar button:last-child { background: #2563eb; color: white; border-color: #2563eb; }
+.retreat-client-print-toolbar button:disabled { opacity: .5; }
+
+.retreat-client-print-sheet {
+  position: relative;
+  box-sizing: border-box;
+  width: 1120px;
+  min-height: 790px;
+  margin: 0 auto 24px;
+  padding: 24px;
+  background: white;
+  box-shadow: 0 2px 12px rgba(15, 23, 42, .12);
+  page-break-after: always;
+}
+
+.retreat-client-print-sheet:last-child { page-break-after: auto; }
+.retreat-client-print-sheet h1 { margin: 0 0 18px; text-align: center; font-size: 26px; letter-spacing: .04em; }
+.retreat-client-print-page-number { position: absolute; top: 30px; right: 24px; color: #64748b; font-size: 12px; }
+.retreat-client-print-sheet table { width: 100%; height: 680px; table-layout: fixed; border-collapse: collapse; }
+.retreat-client-print-sheet th,
+.retreat-client-print-sheet td { border: 1.5px solid #111827; padding: 8px; vertical-align: top; overflow-wrap: anywhere; }
+.retreat-client-print-sheet th { width: 13%; background: #f1f5f9; text-align: left; font-size: 13px; }
+.retreat-client-print-sheet td { font-size: 12px; }
+.retreat-client-print-sheet tr:first-child td { font-size: 14px; font-weight: 700; }
+.retreat-client-print-message { max-width: 1120px; margin: 40px auto; padding: 24px; background: white; text-align: center; }
+.retreat-client-print-error { color: #b91c1c; }
+
+@page { size: A4 landscape; margin: 8mm; }
+
+@media print {
+  body * { visibility: hidden !important; }
+  .retreat-client-print-page,
+  .retreat-client-print-page * { visibility: visible !important; }
+  .retreat-client-print-page { position: absolute; inset: 0; min-height: auto; padding: 0; background: white; }
+  .retreat-client-print-toolbar { display: none; }
+  .retreat-client-print-sheet { width: 281mm; min-height: 194mm; margin: 0; padding: 5mm; box-shadow: none; }
+  .retreat-client-print-sheet h1 { margin-bottom: 4mm; font-size: 18pt; }
+  .retreat-client-print-sheet table { height: 171mm; }
+  .retreat-client-print-sheet th,
+  .retreat-client-print-sheet td { padding: 2mm; }
+}
