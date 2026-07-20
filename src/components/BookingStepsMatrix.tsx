@@ -58,8 +58,6 @@ const bookingDocumentTypeByStep: Record<string, string> = {
   contract_signed: 'contract',
   ekg_received: 'ekg',
   liver_received: 'liver_panel',
-  medications_form_initial_received: 'medications_form',
-  medications_form_30_day_received: 'medications_form',
   questionnaire_received: 'questionnaire',
 };
 
@@ -75,11 +73,14 @@ type ReviewStepConfig = {
 const reviewStepConfigByKey: Record<string, ReviewStepConfig> = {
   ekg_sent_for_review: { receivedStepKey: 'ekg_received', requestType: 'ekg_review', documentStage: 'entry', documentType: 'EKG', artifactType: 'ekg', label: 'Entry EKG review' },
   liver_panel_sent_for_review: { receivedStepKey: 'liver_received', requestType: 'liver_panel_review', documentStage: 'entry', documentType: 'Liver', artifactType: 'liver_panel', label: 'Liver panel review' },
+  medications_form_mrr_sent: { receivedStepKey: 'medications_form_initial_received', requestType: 'medications_review', documentStage: 'entry', documentType: 'Medications', artifactType: 'medications_form', label: 'Medication form review' },
+  medications_form_review_result: { receivedStepKey: 'medications_form_initial_received', requestType: 'medications_review', documentStage: 'entry', documentType: 'Medications', artifactType: 'medications_form', label: 'Medication form review' },
 };
 
 const artifactStepConfigByKey: Record<string, Pick<ReviewStepConfig, 'documentStage' | 'documentType' | 'artifactType' | 'label'>> = {
   ekg_received: { documentStage: 'entry', documentType: 'EKG', artifactType: 'ekg', label: 'Entry EKG' },
   liver_received: { documentStage: 'entry', documentType: 'Liver', artifactType: 'liver_panel', label: 'Entry liver panel' },
+  medications_form_initial_received: { documentStage: 'entry', documentType: 'Medications', artifactType: 'medications_form', label: 'Medication form' },
 };
 
 type ArtifactLinkConfig = {
@@ -105,6 +106,9 @@ const getReviewStepConfig = (row: Pick<MatrixRow, 'key' | 'title'>) => {
   }
   if (normalized.includes('liver')) {
     return { receivedStepKey: 'liver_received', requestType: 'liver_panel_review' as const, documentStage: 'entry' as const, documentType: 'Liver' as const, artifactType: 'liver_panel' as const, label: 'Liver panel review' };
+  }
+  if (normalized.includes('medication') || normalized.includes('meds')) {
+    return { receivedStepKey: 'medications_form_initial_received', requestType: 'medications_review' as const, documentStage: 'entry' as const, documentType: 'Medications' as const, artifactType: 'medications_form' as const, label: 'Medication form review' };
   }
   return undefined;
 };
@@ -149,6 +153,7 @@ const reviewStatusToDecision = (status?: MedicalReviewRequest['status']) => {
   if (status === 'approved') return 'OK';
   if (status === 'rejected') return 'NOT OK';
   if (status === 'caution') return 'caution';
+  if (status === 'needs_resubmission') return 'more_info_needed';
   return '';
 };
 
@@ -156,6 +161,7 @@ const reviewDecisionToLabel = (decision?: string) => {
   if (decision === 'OK') return 'OK';
   if (decision === 'NOT OK') return 'Declined';
   if (decision === 'caution') return 'Caution';
+  if (decision === 'more_info_needed') return 'More info needed';
   return '';
 };
 
@@ -163,6 +169,7 @@ const reviewDecisionToClassName = (decision?: string) => {
   if (decision === 'OK') return 'border-green-300 bg-green-200 text-green-950';
   if (decision === 'NOT OK') return 'border-red-300 bg-red-200 text-red-950';
   if (decision === 'caution') return 'border-yellow-300 bg-yellow-200 text-yellow-950';
+  if (decision === 'more_info_needed') return 'border-amber-300 bg-amber-200 text-amber-950';
   return '';
 };
 
@@ -1947,7 +1954,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                                 </button>
                               );
                             })}
-                            {shouldShowArtifactUploadFallback(artifactStepConfig, isEditing, configuredActions.some((action) => action.type === 'upload')) && (
+                            {row.key !== 'medications_form_initial_received' && shouldShowArtifactUploadFallback(artifactStepConfig, isEditing, configuredActions.some((action) => action.type === 'upload')) && (
                               <label
                                 className={`inline-flex items-center justify-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 ${!isEditing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
                                 title={isEditing ? `Upload a new ${artifactStepConfig?.label || 'artifact'} document` : 'Unlock editing to upload documents'}

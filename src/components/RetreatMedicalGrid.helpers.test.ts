@@ -102,6 +102,7 @@ describe('RetreatMedicalGrid helpers', () => {
     expect(data.rows.find((row) => row.key === 'ekg')?.cells[1].reviewLabel).toBe('MRR #5002');
     expect(data.rows.find((row) => row.key === 'ekg')?.cells[1].decisionLabel).toBe('OK');
     expect(data.rows.find((row) => row.key === 'liver')?.cells[0].decisionLabel).toBe('Caution');
+    expect(data.rows.map((row) => row.key)).toEqual(['ekg', 'liver', 'medications']);
   });
 
   it('marks cells with artifacts but no review as artifact only', () => {

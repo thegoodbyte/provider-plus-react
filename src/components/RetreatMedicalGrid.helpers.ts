@@ -1,6 +1,6 @@
 import { MedicalArtifact, MedicalReviewRequest, RetreatClient } from '../types';
 
-export type RetreatMedicalStageKey = 'ekg' | 'liver';
+export type RetreatMedicalStageKey = 'ekg' | 'liver' | 'medications';
 
 export type RetreatMedicalDecisionTone = 'green' | 'yellow' | 'red' | 'neutral';
 
@@ -80,6 +80,16 @@ const stageDefinitions: RetreatMedicalStageDefinition[] = [
     documentTypes: ['Liver'],
     accentClass: 'medical-stage-liver',
   },
+  {
+    key: 'medications',
+    label: 'Medication Form',
+    shortLabel: 'MEDS',
+    iconLabel: 'file',
+    requestTypes: ['medications_review'],
+    artifactTypes: ['medications_form', 'medication_list'],
+    documentTypes: ['Medications', 'meds'],
+    accentClass: 'medical-stage-medications',
+  },
 ];
 
 export const retreatMedicalStages = stageDefinitions;
@@ -114,24 +124,27 @@ const getArtifactSortKey = (artifact: MedicalArtifact) =>
 
 const normalizeText = (value: unknown) => String(value || '').toLowerCase();
 
-const getReviewDecision = (request?: MedicalReviewRequest | null): 'OK' | 'caution' | 'NOT OK' | '' => {
+const getReviewDecision = (request?: MedicalReviewRequest | null): 'OK' | 'caution' | 'more_info_needed' | 'NOT OK' | '' => {
   if (!request) return '';
   if (request.reviewDecision === 'OK' || request.decision === 'approved' || request.status === 'approved' || request.status === 'completed') return 'OK';
-  if (request.reviewDecision === 'NOT OK' || request.decision === 'declined' || request.status === 'rejected' || request.status === 'needs_resubmission') return 'NOT OK';
-  if (request.reviewDecision === 'caution' || request.decision === 'caution' || request.decision === 'need_more_info' || request.status === 'caution') return 'caution';
+  if (request.reviewDecision === 'more_info_needed' || request.decision === 'need_more_info' || request.status === 'needs_resubmission') return 'more_info_needed';
+  if (request.reviewDecision === 'NOT OK' || request.decision === 'declined' || request.status === 'rejected') return 'NOT OK';
+  if (request.reviewDecision === 'caution' || request.decision === 'caution' || request.status === 'caution') return 'caution';
   return '';
 };
 
-const getDecisionTone = (decision: 'OK' | 'caution' | 'NOT OK' | ''): RetreatMedicalDecisionTone => {
+const getDecisionTone = (decision: 'OK' | 'caution' | 'more_info_needed' | 'NOT OK' | ''): RetreatMedicalDecisionTone => {
   if (decision === 'OK') return 'green';
   if (decision === 'caution') return 'yellow';
+  if (decision === 'more_info_needed') return 'yellow';
   if (decision === 'NOT OK') return 'red';
   return 'neutral';
 };
 
-const getDecisionLabel = (decision: 'OK' | 'caution' | 'NOT OK' | '', request?: MedicalReviewRequest | null) => {
+const getDecisionLabel = (decision: 'OK' | 'caution' | 'more_info_needed' | 'NOT OK' | '', request?: MedicalReviewRequest | null) => {
   if (decision === 'OK') return 'OK';
   if (decision === 'caution') return 'Caution';
+  if (decision === 'more_info_needed') return 'More info needed';
   if (decision === 'NOT OK') return 'Declined';
   if (request?.status === 'pending' || request?.status === 'assigned' || request?.status === 'in_progress' || request?.status === 'in_review') {
     return request.status.replace(/_/g, ' ');

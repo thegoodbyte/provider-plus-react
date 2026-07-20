@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { HeartPulse, Leaf, RefreshCw } from 'lucide-react';
+import { FileText, HeartPulse, Leaf, RefreshCw } from 'lucide-react';
 import { bookingsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { Retreat, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
@@ -8,6 +8,7 @@ import {
   buildRetreatMedicalGridData,
   RetreatMedicalCell,
   RetreatMedicalGridData,
+  RetreatMedicalRow,
 } from './RetreatMedicalGrid.helpers';
 import './RetreatTrackingGrid.css';
 
@@ -27,9 +28,10 @@ const getLocationPrefix = (pathname: string) => {
   return ['admin', 'medical', 'staff', 'user', 'helper'].includes(firstRouteSegment) ? firstRouteSegment : 'admin';
 };
 
-const getStageIcon = (stageKey: 'ekg' | 'liver') => {
+const getStageIcon = (stageKey: RetreatMedicalRow['key']) => {
   if (stageKey === 'ekg') return <HeartPulse className="h-4 w-4" />;
-  return <Leaf className="h-4 w-4" />;
+  if (stageKey === 'liver') return <Leaf className="h-4 w-4" />;
+  return <FileText className="h-4 w-4" />;
 };
 
 const getStageToneClass = (cell: RetreatMedicalCell) => {
@@ -111,7 +113,7 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
     ];
   }, [gridData]);
 
-  const renderCell = (stageKey: 'ekg' | 'liver', cell: RetreatMedicalCell, client: any, clientIndex: number) => {
+  const renderCell = (stageKey: RetreatMedicalRow['key'], cell: RetreatMedicalCell, client: any, clientIndex: number) => {
     const bookingId = client.bookingId || '';
     const clientId = client.clientId || '';
     const artifactId = cell.artifact?._id || '';
@@ -214,7 +216,7 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
             Medical Grid {gridData.retreatCode || retreat?.retreatCode || retreat?.code || retreatId}
           </h3>
           <p>
-            EKG and liver review requests with MRR numbers, submitted dates, decisions, and notes.
+            EKG, liver, and medication-form review requests with linked artifacts, MRR numbers, submitted dates, decisions, and notes.
           </p>
         </div>
         <button type="button" onClick={fetchGridData} className="medical-grid-refresh-btn">
