@@ -83,6 +83,27 @@ const artifactStepConfigByKey: Record<string, Pick<ReviewStepConfig, 'documentSt
   medications_form_initial_received: { documentStage: 'entry', documentType: 'Medications', artifactType: 'medications_form', label: 'Medication form' },
 };
 
+const getArtifactStepConfig = (item: Pick<BookingFlowItem, 'key' | 'title' | 'metadata'>) => {
+  const exact = artifactStepConfigByKey[item.key];
+  if (exact) return exact;
+
+  const metadata = item.metadata || {};
+  const normalized = normalizeDocumentKey([
+    item.key,
+    item.title,
+    metadata.expectedArtifact,
+    metadata.expectedDocument,
+    metadata.expectedBookingDocument,
+  ].filter(Boolean).join(' '));
+  if (normalized.includes('review') || normalized.includes('sent_for_review')) return undefined;
+  if (normalized.includes('medication') || normalized.includes('medical_form') || normalized.includes('meds_form') || normalized.includes('med_form')) {
+    return artifactStepConfigByKey.medications_form_initial_received;
+  }
+  if (normalized.includes('entry_ekg') || normalized === 'ekg_received') return artifactStepConfigByKey.ekg_received;
+  if (normalized.includes('liver') && normalized.includes('received')) return artifactStepConfigByKey.liver_received;
+  return undefined;
+};
+
 type ArtifactLinkConfig = {
   documentStage: MedicalArtifact['documentStage'];
   documentType: MedicalArtifact['documentType'];
@@ -1323,7 +1344,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     const clientId = getObjectId(booking.clientId || booking.client || item.clientId);
     const currentRetreatId = getObjectId(booking.retreatId || booking.retreat || item.retreatId) || retreatId;
     const documentType = resolveBookingDocumentType(item);
-    const artifactConfig = artifactStepConfigByKey[item.key];
+    const artifactConfig = getArtifactStepConfig(item);
     const configuredDocumentType = normalizeDocumentKey(bookingDocumentTypeByStep[item.key] || item.metadata?.expectedBookingDocument || item.metadata?.expectedDocument || (!artifactConfig ? item.metadata?.expectedArtifact : '') || '');
     const documentConfig = configuredDocumentType ? { documentType: configuredDocumentType, title: humanizeDocumentKey(configuredDocumentType) } : undefined;
     const uploadTarget = resolveBookingStepUploadTarget(artifactConfig, documentConfig);
@@ -1755,7 +1776,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                       const existingReviewRequestDisplay = item?.metadata?.medicalReviewRequestDisplayId || existingReviewRequest?.display_id || '';
                       const documentTypeForStep = item ? resolveBookingDocumentType(item) : normalizeDocumentKey(row.key);
                       const relatedBookingDocument = bookingDocumentMap.get(`${getObjectId(booking)}:${documentTypeForStep}`)?.[0];
-                      const artifactStepConfig = artifactStepConfigByKey[row.key] || (reviewStepConfig ? artifactStepConfigByKey[reviewStepConfig.receivedStepKey] : undefined);
+                      const artifactStepConfig = getArtifactStepConfig(row) || (reviewStepConfig ? artifactStepConfigByKey[reviewStepConfig.receivedStepKey] : undefined);
                       const configuredBookingDocumentType = normalizeDocumentKey(bookingDocumentTypeByStep[row.key] || item?.metadata?.expectedBookingDocument || item?.metadata?.expectedDocument || (!artifactStepConfig ? item?.metadata?.expectedArtifact : '') || '');
                       const linkableArtifacts = artifactStepConfig ? getArtifactLinkCandidates(booking, medicalArtifacts, artifactStepConfig) : [];
                       const relatedMedicalArtifact = linkedArtifactId
