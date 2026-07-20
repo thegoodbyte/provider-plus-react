@@ -1166,6 +1166,12 @@ export const bookingFlowApi = {
       }
     }
   ),
+  exportLibraryBackup: () => api.get<any>('/booking-flow/library/backup/export'),
+  previewLibraryImport: (backup: any, mode: 'merge_by_key' | 'restore_exact_ids') => api.post<any>('/booking-flow/library/backup/preview', { backup, mode }),
+  importLibraryBackup: (backup: any, mode: 'merge_by_key' | 'restore_exact_ids') => {
+    cacheService.clearPattern('booking-flow:');
+    return api.post<any>('/booking-flow/library/backup/import', { backup, mode });
+  },
   createTemplate: (data: Omit<BookingFlowTemplate, '_id'>) => {
     cacheService.clearPattern('booking-flow:');
     return api.post<BookingFlowTemplate>('/booking-flow/templates', data);
