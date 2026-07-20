@@ -90,6 +90,11 @@ interface RetreatClientData {
   roomAssignment?: string;
   specialRequests?: string;
   notes?: string;
+  cancellationDate?: string;
+  cancellationReason?: string;
+  cancellationNotes?: string;
+  cancellationDepositTreatment?: 'none' | 'retained' | 'refund_pending' | 'partially_refunded' | 'credited';
+  cancellationRefundAmount?: number;
 }
 
 const USD_FALLBACK_RATES: Record<string, number> = {
@@ -281,6 +286,16 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [showEditModal, setShowEditModal] = useState(false);
   const [showQuickBookingModal, setShowQuickBookingModal] = useState(false);
   const [showExistingClientModal, setShowExistingClientModal] = useState(false);
+  const [showCancelledBookings, setShowCancelledBookings] = useState(false);
+  const [cancellingBooking, setCancellingBooking] = useState<RetreatClientData | null>(null);
+  const [cancellationSaving, setCancellationSaving] = useState(false);
+  const [cancellationForm, setCancellationForm] = useState({
+    cancellationDate: new Date().toISOString().slice(0, 10),
+    cancellationReason: '',
+    cancellationNotes: '',
+    cancellationDepositTreatment: 'retained' as 'none' | 'retained' | 'refund_pending' | 'partially_refunded' | 'credited',
+    cancellationRefundAmount: '',
+  });
   const [showRetreatEmailModal, setShowRetreatEmailModal] = useState(false);
   const [retreatEmailTemplates, setRetreatEmailTemplates] = useState<EmailTemplate[]>([]);
   const [retreatEmailLoading, setRetreatEmailLoading] = useState(false);
@@ -428,7 +443,12 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           currency,
           roomAssignment: booking.roomAssignment,
           specialRequests: booking.specialRequests,
-          notes: booking.notes
+          notes: booking.notes,
+          cancellationDate: booking.cancellationDate,
+          cancellationReason: booking.cancellationReason,
+          cancellationNotes: booking.cancellationNotes,
+          cancellationDepositTreatment: booking.cancellationDepositTreatment,
+          cancellationRefundAmount: booking.cancellationRefundAmount
         };
       });
 
@@ -867,10 +887,13 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   ];
 
   // Sort clients based on current sort field and direction
-  const sortedClients = React.useMemo(() => {
-    if (!sortField) return clients;
+  const visibleClients = React.useMemo(() => clients.filter((client) => showCancelledBookings || client.status !== 'cancelled'), [clients, showCancelledBookings]);
+  const activeClientCount = React.useMemo(() => clients.filter((client) => client.status !== 'cancelled').length, [clients]);
 
-    return [...clients].sort((a, b) => {
+  const sortedClients = React.useMemo(() => {
+    if (!sortField) return visibleClients;
+
+    return [...visibleClients].sort((a, b) => {
       let compareValue = 0;
 
       if (sortField === 'bookingNumber') {
@@ -883,15 +906,56 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
 
       return sortDirection === 'asc' ? compareValue : -compareValue;
     });
-  }, [clients, sortField, sortDirection]);
+  }, [visibleClients, sortField, sortDirection]);
 
   const retreatEmailRecipientCount = React.useMemo(() => {
     return new Set(
-      clients
+      clients.filter((client) => client.status !== 'cancelled')
         .map((client) => String(client.clientEmail || '').trim().toLowerCase())
         .filter(Boolean)
     ).size;
   }, [clients]);
+
+  const bookingStatusLabel = (status: string) => ({ pending: 'Conditional', confirmed: 'Confirmed', 'checked-in': 'Checked in', 'checked-out': 'Completed', cancelled: 'Cancelled' }[status] || status);
+  const paymentStatusLabel = (client: RetreatClientData) => {
+    if (client.status === 'cancelled') {
+      if (client.cancellationDepositTreatment === 'none') return 'No payment';
+      if (client.cancellationDepositTreatment === 'retained') return 'Deposit retained';
+      if (client.cancellationDepositTreatment === 'credited') return 'Credit transferred';
+      if (client.cancellationDepositTreatment === 'partially_refunded') return 'Partial refund';
+      if (client.cancellationDepositTreatment === 'refund_pending') return client.amountPaid <= 0 ? 'Refunded' : 'Refund pending';
+    }
+    if (client.amountPaid <= 0) return 'No payment';
+    if (client.amountPaid >= client.totalAmount) return client.amountPaid > client.totalAmount ? 'Overpaid' : 'Paid in full';
+    return 'Deposit paid · Balance due';
+  };
+  const paymentStatusClass = (client: RetreatClientData) => client.amountPaid >= client.totalAmount && client.totalAmount > 0 ? 'bg-green-100 text-green-800' : client.status === 'cancelled' ? 'bg-gray-100 text-gray-700' : 'bg-amber-100 text-amber-800';
+
+  const openCancellation = (client: RetreatClientData) => {
+    setCancellingBooking(client);
+    setCancellationForm({ cancellationDate: new Date().toISOString().slice(0, 10), cancellationReason: '', cancellationNotes: '', cancellationDepositTreatment: client.amountPaid > 0 ? 'retained' : 'none', cancellationRefundAmount: '' });
+  };
+
+  const submitCancellation = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!cancellingBooking || cancellationForm.cancellationReason.trim().length < 2) return;
+    setCancellationSaving(true);
+    try {
+      await bookingsApi.cancel(cancellingBooking._id, {
+        ...cancellationForm,
+        cancellationReason: cancellationForm.cancellationReason.trim(),
+        cancellationNotes: cancellationForm.cancellationNotes.trim() || undefined,
+        cancellationRefundAmount: cancellationForm.cancellationRefundAmount ? Number(cancellationForm.cancellationRefundAmount) : undefined,
+      });
+      setCancellingBooking(null);
+      await fetchRetreatData();
+      message.success('Booking cancelled. Payment history was preserved.');
+    } catch (error: any) {
+      message.error(error?.response?.data?.message || 'Unable to cancel the booking.');
+    } finally {
+      setCancellationSaving(false);
+    }
+  };
 
   const handleSort = (field: 'bookingNumber' | 'clientName') => {
     if (sortField === field) {
@@ -931,7 +995,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const actualExpensesUSD = expensesSummary?.actualExpensesUSD ?? expensesSummary?.totalExpensesUSD ?? 0;
   const profitUSD = totalRevenueUSD - actualExpensesUSD;
   const expectedProfitUSD = totalExpectedUSD - plannedExpensesUSD;
-  const occupancyRate = retreat.capacity ? Math.round((clients.length / retreat.capacity) * 100) : 0;
+  const occupancyRate = retreat.capacity ? Math.round((activeClientCount / retreat.capacity) * 100) : 0;
   const retreatCode = retreat.code || retreat.retreatCode || retreat.name || 'Retreat';
   const retreatCodeColor = retreat.backgroundColor || retreat.textColor || '#111827';
   const retreatHouse = retreat.houseId && typeof retreat.houseId === 'object' ? retreat.houseId : null;
@@ -1172,8 +1236,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         <Panel header="📊 Financial Metrics" key="metrics">
           <div className="retreat-stats">
             <div className="stat-card">
-              <div className="stat-number">{clients.length}</div>
-              <div className="stat-label">Total Clients</div>
+              <div className="stat-number">{activeClientCount}</div>
+              <div className="stat-label">Active Clients</div>
             </div>
             <div className="stat-card">
               <div className="stat-number">{occupancyRate}%</div>
@@ -1224,7 +1288,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           aria-selected={activeTab === 'clients'}
         >
           <PeopleAltRoundedIcon className="retreat-tab-icon" />
-          <span>Clients ({clients.length})</span>
+          <span>Clients ({activeClientCount})</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'holisticView' ? 'active' : ''}`}
@@ -1296,8 +1360,12 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         {activeTab === 'clients' && (
         <div className="clients-section">
           <div className="section-header">
-            <h2>📋 Retreat Clients ({clients.length})</h2>
+            <h2>📋 Retreat Clients ({activeClientCount} active)</h2>
             <div className="section-actions">
+              <label className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700">
+                <input type="checkbox" checked={showCancelledBookings} onChange={(event) => setShowCancelledBookings(event.target.checked)} />
+                Show cancelled ({clients.length - activeClientCount})
+              </label>
               <button
                 onClick={() => setShowQuickBookingModal(true)}
                 className="retreat-client-action retreat-client-action-book"
@@ -1372,7 +1440,10 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                       Phone
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Registration Date
+                      Booking Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Payment Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Total Amount
@@ -1431,7 +1502,13 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                         {client.clientPhone}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {formatDate(client.registrationDate)}
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${client.status === 'cancelled' ? 'bg-red-100 text-red-800' : client.status === 'confirmed' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-700'}`}>
+                          {bookingStatusLabel(client.status)}
+                        </span>
+                        {client.status === 'cancelled' && client.cancellationReason && <div className="mt-1 max-w-44 whitespace-normal text-xs text-gray-500" title={client.cancellationNotes || client.cancellationReason}>{client.cancellationReason}</div>}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${paymentStatusClass(client)}`}>{paymentStatusLabel(client)}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {formatAmount(client.totalAmount, client.currency)}
@@ -1455,6 +1532,15 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                           >
                             <Icon icon={FiEdit2} />
                           </button>
+                          {client.status !== 'cancelled' && (
+                            <button
+                              onClick={() => openCancellation(client)}
+                              className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-100"
+                              title="Cancel booking and preserve payment history"
+                            >
+                              Cancel
+                            </button>
+                          )}
                           <button
                             onClick={() => handleDeleteBooking(client._id)}
                             className="icon-action-btn icon-action-btn-danger"
@@ -1468,7 +1554,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                   ))}
                 </tbody>
               </table>
-              {clients.length === 0 && !isLoading && (
+              {visibleClients.length === 0 && !isLoading && (
                 <div className="text-center py-8 text-gray-500">
                   No bookings found
                 </div>
@@ -1527,6 +1613,52 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       </div>
 
       {/* Edit Booking Modal */}
+      {cancellingBooking && (
+        <div className="modal-overlay">
+          <div className="modal large-modal" onClick={(event) => event.stopPropagation()}>
+            <h3>Cancel Booking #{cancellingBooking.bookingNumber || cancellingBooking._id.slice(-6)}</h3>
+            <p className="mb-4 text-sm text-gray-600">{cancellingBooking.clientName} will be removed from active occupancy. Existing payments remain in the financial history.</p>
+            <form onSubmit={submitCancellation}>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label htmlFor="cancellation-date">Cancellation date *</label>
+                  <input id="cancellation-date" type="date" required value={cancellationForm.cancellationDate} onChange={(event) => setCancellationForm({ ...cancellationForm, cancellationDate: event.target.value })} />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="deposit-treatment">Deposit/payment treatment *</label>
+                  <select id="deposit-treatment" required value={cancellationForm.cancellationDepositTreatment} onChange={(event) => setCancellationForm({ ...cancellationForm, cancellationDepositTreatment: event.target.value as any })}>
+                    <option value="none">No payment was received</option>
+                    <option value="retained">Retain deposit/payment</option>
+                    <option value="refund_pending">Refund separately</option>
+                    <option value="partially_refunded">Partial refund separately</option>
+                    <option value="credited">Transfer as client credit</option>
+                  </select>
+                </div>
+                {cancellationForm.cancellationDepositTreatment === 'partially_refunded' && (
+                  <div className="form-group">
+                    <label htmlFor="cancellation-refund">Planned refund amount *</label>
+                    <input id="cancellation-refund" type="number" min="0.01" step="0.01" required value={cancellationForm.cancellationRefundAmount} onChange={(event) => setCancellationForm({ ...cancellationForm, cancellationRefundAmount: event.target.value })} />
+                  </div>
+                )}
+                <div className="form-group full-width">
+                  <label htmlFor="cancellation-reason">Cancellation reason *</label>
+                  <input id="cancellation-reason" required minLength={2} value={cancellationForm.cancellationReason} onChange={(event) => setCancellationForm({ ...cancellationForm, cancellationReason: event.target.value })} placeholder="For example: client decided not to attend" />
+                </div>
+                <div className="form-group full-width">
+                  <label htmlFor="cancellation-notes">Cancellation comment / internal notes</label>
+                  <textarea id="cancellation-notes" rows={4} value={cancellationForm.cancellationNotes} onChange={(event) => setCancellationForm({ ...cancellationForm, cancellationNotes: event.target.value })} placeholder="Add the client communication, refund agreement, or other details here." />
+                </div>
+              </div>
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">Selecting a refund treatment records the decision but does not send money automatically. Record the actual refund from the payment after it is processed.</div>
+              <div className="form-buttons">
+                <button type="button" onClick={() => setCancellingBooking(null)} className="cancel-btn" disabled={cancellationSaving}>Keep Booking</button>
+                <button type="submit" className="bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-50" disabled={cancellationSaving}>{cancellationSaving ? 'Cancelling…' : 'Confirm Cancellation'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {showEditModal && (
         <div className="modal-overlay">
           <div className="modal large-modal" onClick={(e) => e.stopPropagation()}>
@@ -1564,7 +1696,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                     <option value="confirmed">Confirmed</option>
                     <option value="checked-in">Checked In</option>
                     <option value="checked-out">Checked Out</option>
-                    <option value="cancelled">Cancelled</option>
                   </select>
                 </div>
 
