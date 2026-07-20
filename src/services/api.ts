@@ -1352,9 +1352,9 @@ export const bookingDocumentsApi = {
     });
   },
   getFileViewUrl: (id: string, storedPath: string) => `${api.defaults.baseURL}/booking-documents/${id}/files/view?storedPath=${encodeURIComponent(storedPath)}`,
-  delete: (id: string) => {
+  delete: (id: string, reason = 'Upload rollback') => {
     cacheService.clearPattern('booking-documents:');
-    return api.delete(`/booking-documents/${id}`);
+    return api.delete(`/booking-documents/${id}`, { data: { reason } });
   },
 };
 
