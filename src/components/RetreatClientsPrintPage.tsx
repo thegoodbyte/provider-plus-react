@@ -9,7 +9,8 @@ const Icon: React.FC<{ icon: any }> = ({ icon: IconComponent }) => <IconComponen
 
 type PrintClient = {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   bookingNumber: string;
   phone: string;
   room: string;
@@ -30,15 +31,24 @@ const getRetreatCode = (retreat?: Retreat | null) => String(
   retreat?.retreatCode || retreat?.code || retreat?.name || 'Retreat',
 );
 
-const ROWS: Array<{ label: string; value: (client: PrintClient) => string }> = [
-  { label: 'Full name', value: (client) => client.name },
+const ROWS: Array<{ label: string; value: (client: PrintClient) => React.ReactNode; className?: string }> = [
+  {
+    label: 'Full name',
+    className: 'retreat-client-print-name-row',
+    value: (client) => (
+      <div className="retreat-client-print-name">
+        <span>{client.firstName}</span>
+        <span>{client.lastName}</span>
+      </div>
+    ),
+  },
   { label: 'Client ID', value: (client) => client.id },
   { label: 'Booking #', value: (client) => client.bookingNumber },
-  { label: 'Phone', value: (client) => client.phone },
-  { label: 'Room', value: (client) => client.room },
-  { label: 'Status', value: (client) => client.status },
-  { label: 'Arrival', value: (client) => client.arrival },
-  { label: 'Notes', value: (client) => client.notes },
+  { label: '', value: () => '' },
+  { label: '', value: () => '' },
+  { label: '', value: () => '' },
+  { label: '', value: () => '' },
+  { label: '', value: () => '' },
 ];
 
 const chunk = <T,>(items: T[], size: number): T[][] => {
@@ -69,7 +79,8 @@ const RetreatClientsPrintPage: React.FC = () => {
           const displayId = client.display_id || client.displayId;
           return {
             id: displayId ? `#${displayId}` : String(getId(client) || ''),
-            name: `${client.firstName || client.fname || ''} ${client.lastName || client.lname || ''}`.trim() || 'Unknown client',
+            firstName: String(client.firstName || client.fname || 'Unknown'),
+            lastName: String(client.lastName || client.lname || 'client'),
             bookingNumber: String(booking.bookingNumber || booking.display_id || booking.displayId || ''),
             phone: String(client.phone || ''),
             room: String(booking.roomAssignment || ''),
@@ -103,7 +114,7 @@ const RetreatClientsPrintPage: React.FC = () => {
           <table>
             <tbody>
               {ROWS.map((row) => (
-                <tr key={row.label}>
+                <tr key={`${row.label}-${ROWS.indexOf(row)}`} className={row.className || (ROWS.indexOf(row) === 1 ? 'retreat-client-print-id-row' : '')}>
                   <th scope="row">{row.label}</th>
                   {pageClients.map((client, clientIndex) => (
                     <td key={`${client.bookingNumber}-${clientIndex}`}>{row.value(client)}</td>
