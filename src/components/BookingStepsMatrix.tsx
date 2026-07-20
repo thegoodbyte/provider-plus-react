@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useLocation } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Circle, FileText, Filter, Link2, ListPlus, Lock, Mail, OctagonX, RefreshCw, Save, ThumbsDown, Unlock, Upload, X } from 'lucide-react';
@@ -531,6 +531,10 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const [selectedBookingAction, setSelectedBookingAction] = useState('');
   const [selectedActionKeys, setSelectedActionKeys] = useState<string[] | null>(null);
   const [actionFilterOpen, setActionFilterOpen] = useState(false);
+  const [actionFilterDraft, setActionFilterDraft] = useState<string[]>([]);
+  const [actionFilterSearch, setActionFilterSearch] = useState('');
+  const [actionFilterPosition, setActionFilterPosition] = useState({ top: 0, left: 0 });
+  const actionFilterButtonRef = useRef<HTMLButtonElement | null>(null);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [dirtyNoteIds, setDirtyNoteIds] = useState<Record<string, true>>({});
   const [datePickerDrafts, setDatePickerDrafts] = useState<Record<string, string>>({});
@@ -693,14 +697,22 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       .filter((group) => group.rows.length > 0);
   }, [groupedRows, selectedActionKeys]);
 
-  const toggleActionFilter = (key: string) => {
-    setSelectedActionKeys((current) => {
-      const active = new Set(current === null ? rows.map((row) => row.key) : current);
-      if (active.has(key)) active.delete(key);
-      else active.add(key);
-      return Array.from(active);
+  const openActionFilter = () => {
+    if (actionFilterOpen) {
+      setActionFilterOpen(false);
+      return;
+    }
+    const rect = actionFilterButtonRef.current?.getBoundingClientRect();
+    setActionFilterPosition({
+      top: (rect?.bottom || 0) + 6,
+      left: Math.max(12, Math.min(rect?.left || 12, window.innerWidth - 352)),
     });
+    setActionFilterDraft(selectedActionKeys === null ? rows.map((row) => row.key) : selectedActionKeys);
+    setActionFilterSearch('');
+    setActionFilterOpen(true);
   };
+
+  const visibleActionFilterRows = rows.filter((row) => row.title.toLowerCase().includes(actionFilterSearch.trim().toLowerCase()));
 
   const actionNumberByKey = useMemo(
     () => new Map(rows.map((row, index) => [row.key, index + 1])),
@@ -1543,33 +1555,14 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
           <thead>
             <tr>
               <th className={`sticky left-0 top-0 z-40 border-b border-r border-gray-300 bg-gray-100 bg-clip-padding px-3 py-2 text-left text-xs font-semibold uppercase text-gray-600 shadow-[4px_0_10px_rgba(15,23,42,0.08)] ${viewMode === 'simple' ? 'min-w-[240px]' : 'min-w-[220px]'}`}>
-                <div className="relative">
-                  <button type="button" onClick={() => setActionFilterOpen((open) => !open)} className="inline-flex w-full items-center justify-between gap-2 rounded px-1 py-1 text-left hover:bg-gray-200" aria-expanded={actionFilterOpen}>
+                <div>
+                  <button ref={actionFilterButtonRef} type="button" onClick={openActionFilter} className={`inline-flex w-full items-center justify-between gap-2 rounded-md border px-2 py-1.5 text-left shadow-sm ${selectedActionKeys === null ? 'border-gray-300 bg-white hover:bg-gray-50' : 'border-blue-300 bg-blue-50 text-blue-800 hover:bg-blue-100'}`} aria-expanded={actionFilterOpen}>
                     <span>Action{selectedActionKeys === null ? '' : ` (${selectedActionKeys.length}/${rows.length})`}</span>
-                    <Filter className={`h-3.5 w-3.5 ${selectedActionKeys === null ? 'text-gray-400' : 'text-blue-600'}`} />
+                    <span className="inline-flex items-center gap-1 text-[10px] font-bold">
+                      <Filter className={`h-3.5 w-3.5 ${selectedActionKeys === null ? 'text-gray-500' : 'text-blue-600'}`} />
+                      FILTER
+                    </span>
                   </button>
-                  {actionFilterOpen && (
-                    <div className="absolute left-0 top-full z-[100] mt-2 w-80 rounded-lg border border-gray-200 bg-white p-3 normal-case shadow-2xl">
-                      <div className="mb-2 flex items-center justify-between gap-3 border-b border-gray-100 pb-2">
-                        <span className="text-sm font-semibold text-gray-900">Filter booking actions</span>
-                        <div className="flex gap-2 text-xs font-semibold">
-                          <button type="button" onClick={() => setSelectedActionKeys(null)} className="text-blue-700 hover:underline">All</button>
-                          <button type="button" onClick={() => setSelectedActionKeys([])} className="text-gray-600 hover:underline">Clear</button>
-                        </div>
-                      </div>
-                      <div className="max-h-80 space-y-1 overflow-y-auto pr-1">
-                        {rows.map((row, index) => {
-                          const checked = selectedActionKeys === null || selectedActionKeys.includes(row.key);
-                          return (
-                            <label key={row.key} className="flex cursor-pointer items-start gap-2 rounded px-2 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
-                              <input type="checkbox" checked={checked} onChange={() => toggleActionFilter(row.key)} className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600" />
-                              <span><span className="mr-1 text-gray-400">{index + 1}.</span>{row.title}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
                 </div>
               </th>
               {bookings.map((booking) => (
@@ -2053,6 +2046,42 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
           </tbody>
         </table>
       </div>
+
+      {actionFilterOpen && createPortal(
+        <>
+          <button type="button" className="fixed inset-0 z-[1090] cursor-default bg-transparent" onClick={() => setActionFilterOpen(false)} aria-label="Close action filter" />
+          <div className="fixed z-[1100] w-[340px] rounded-lg border border-gray-300 bg-white normal-case shadow-2xl" style={{ top: actionFilterPosition.top, left: actionFilterPosition.left }} role="dialog" aria-label="Filter booking actions">
+            <div className="border-b border-gray-200 p-3">
+              <div className="text-sm font-semibold text-gray-900">Filter booking actions</div>
+              <input autoFocus value={actionFilterSearch} onChange={(event) => setActionFilterSearch(event.target.value)} placeholder="Search actions" className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
+            </div>
+            <div className="flex items-center justify-between border-b border-gray-100 px-3 py-2 text-xs font-semibold">
+              <label className="flex cursor-pointer items-center gap-2 text-gray-700">
+                <input type="checkbox" checked={actionFilterDraft.length === rows.length && rows.length > 0} onChange={(event) => setActionFilterDraft(event.target.checked ? rows.map((row) => row.key) : [])} className="h-4 w-4 rounded border-gray-300 text-blue-600" />
+                Select all
+              </label>
+              <span className="text-gray-500">{actionFilterDraft.length} of {rows.length}</span>
+            </div>
+            <div className="max-h-80 space-y-0.5 overflow-y-auto p-2">
+              {visibleActionFilterRows.map((row) => {
+                const originalIndex = rows.findIndex((candidate) => candidate.key === row.key);
+                return (
+                  <label key={row.key} className="flex cursor-pointer items-start gap-2 rounded px-2 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
+                    <input type="checkbox" checked={actionFilterDraft.includes(row.key)} onChange={() => setActionFilterDraft((current) => current.includes(row.key) ? current.filter((key) => key !== row.key) : [...current, row.key])} className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600" />
+                    <span><span className="mr-1 text-gray-400">{originalIndex + 1}.</span>{row.title}</span>
+                  </label>
+                );
+              })}
+              {visibleActionFilterRows.length === 0 && <div className="px-2 py-6 text-center text-sm text-gray-500">No actions match your search.</div>}
+            </div>
+            <div className="flex justify-end gap-2 border-t border-gray-200 p-3">
+              <button type="button" onClick={() => setActionFilterOpen(false)} className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
+              <button type="button" onClick={() => { setSelectedActionKeys(actionFilterDraft.length === rows.length ? null : actionFilterDraft); setActionFilterOpen(false); }} className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Apply filter</button>
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
       {composeState && (
         <EmailComposeModal
           title={`Send ${composeState.item.title}`}
