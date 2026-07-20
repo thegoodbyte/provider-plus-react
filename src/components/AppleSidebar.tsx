@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { Tooltip } from '@mui/material';
 import * as Fi from 'react-icons/fi';
+import { api } from '../services/api';
 
 interface AppleSidebarProps {
   activeItem: string;
@@ -98,7 +99,7 @@ const FULL_MENU_SECTIONS: MenuSection[] = [
     Icon: Fi.FiBriefcase,
     items: [
       { id: 'needs-attention', label: 'Needs Attention', Icon: Fi.FiAlertTriangle },
-      { id: 'ir-notifications', label: 'IR Notifications', Icon: Fi.FiBell },
+      { id: 'ir-notifications', label: 'Notifications', Icon: Fi.FiBell },
       { id: 'assistant', label: 'Assistant', Icon: Fi.FiCpu },
       { id: 'tasks', label: 'General Tasks', Icon: Fi.FiCheckSquare },
       { id: 'reminders', label: 'Reminders', Icon: Fi.FiBell },
@@ -191,6 +192,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
     return saved === 'true';
   });
   const [permissionVersion, setPermissionVersion] = useState(0);
+  const [notificationCount, setNotificationCount] = useState(0);
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
     const saved = localStorage.getItem('sidebarOpenSections');
     if (!saved) return {};
@@ -345,6 +347,26 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
     navigationRole === 'facilitator' ? 'Facilitator' :
     navigationRole === 'helper' ? 'Helper' :
     navigationRole === 'user' ? 'User' : 'User';
+
+  useEffect(() => {
+    let mounted = true;
+    const loadNotificationCount = async () => {
+      try {
+        const response = await api.get('/submission-notifications/unread-count');
+        if (mounted) setNotificationCount(Number(response.data?.count || 0));
+      } catch {
+        // Keep navigation usable if the count endpoint is temporarily unavailable.
+      }
+    };
+    loadNotificationCount();
+    const timer = window.setInterval(loadNotificationCount, 60000);
+    window.addEventListener('notifications-updated', loadNotificationCount);
+    return () => {
+      mounted = false;
+      window.clearInterval(timer);
+      window.removeEventListener('notifications-updated', loadNotificationCount);
+    };
+  }, [activeItem]);
 
   useEffect(() => {
     const activeSection = menuSections.find((section) => section.items.some((item) => item.id === activeItem));
@@ -516,6 +538,11 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                                 <span className={`text-sm whitespace-nowrap ${isActive ? 'font-semibold' : 'font-medium'}`}>
                                   {item.label}
                                 </span>
+                                {item.id === 'ir-notifications' && notificationCount > 0 && (
+                                  <span className="ml-auto min-w-5 rounded-full bg-red-600 px-1.5 py-0.5 text-center text-xs font-bold text-white">
+                                    {notificationCount > 99 ? '99+' : notificationCount}
+                                  </span>
+                                )}
                               </button>
                             </li>
                           );
