@@ -131,26 +131,19 @@ const getFirstPaymentDateFromPayments = (payments: Payment[]) => {
 const resolveBookingPayments = async (booking: any): Promise<Payment[]> => {
   const bookingId = booking?._id || booking?.id;
   const bookingHash = booking?.bookingHash;
-
-  try {
-    if (bookingHash) {
-      const response = await paymentsApi.getByBookingHash(bookingHash);
-      return response.data || [];
-    }
-  } catch (error) {
-    console.warn('Unable to load booking payments by hash for PDF:', error);
-  }
-
-  try {
-    if (bookingId) {
-      const response = await paymentsApi.getByBooking(bookingId);
-      return response.data || [];
-    }
-  } catch (error) {
-    console.warn('Unable to load booking payments by ID for PDF:', error);
-  }
-
-  return [];
+  const requests: Promise<any>[] = [];
+  if (bookingId) requests.push(paymentsApi.getByBooking(bookingId));
+  if (bookingHash) requests.push(paymentsApi.getByBookingHash(bookingHash));
+  const responses = await Promise.allSettled(requests);
+  const unique = new Map<string, Payment>();
+  responses.forEach((response) => {
+    if (response.status !== 'fulfilled') return;
+    (response.value.data || []).forEach((payment: Payment) => {
+      const key = String(payment._id || `${payment.transactionId || payment.transactionReference}-${payment.paymentDate}-${payment.amount}`);
+      unique.set(key, payment);
+    });
+  });
+  return Array.from(unique.values());
 };
 
 const fallbackUsdRates: Record<Payment['currency'], number> = {
@@ -191,28 +184,8 @@ const getBookingTotalUsdAmount = (booking: any) => {
 };
 
 const resolveInitialPaymentDate = async (booking: any) => {
-  const bookingId = booking?._id || booking?.id;
-  const bookingHash = booking?.bookingHash;
-
-  try {
-    if (bookingHash) {
-      const response = await paymentsApi.getByBookingHash(bookingHash);
-      const paymentDate = getFirstPaymentDateFromPayments(response.data || []);
-      if (paymentDate) return paymentDate;
-    }
-  } catch (error) {
-    console.warn('Unable to load booking payments by hash for PDF deadlines:', error);
-  }
-
-  try {
-    if (bookingId) {
-      const response = await paymentsApi.getByBooking(bookingId);
-      const paymentDate = getFirstPaymentDateFromPayments(response.data || []);
-      if (paymentDate) return paymentDate;
-    }
-  } catch (error) {
-    console.warn('Unable to load booking payments by ID for PDF deadlines:', error);
-  }
+  const paymentDate = getFirstPaymentDateFromPayments(await resolveBookingPayments(booking));
+  if (paymentDate) return paymentDate;
 
   const paymentRequest = booking?.paymentRequestId || booking?.paymentRequest;
   const fallbackFields = [
