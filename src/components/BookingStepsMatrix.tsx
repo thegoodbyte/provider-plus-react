@@ -1975,13 +1975,13 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                                 </button>
                               );
                             })}
-                            {row.key !== 'medications_form_initial_received' && shouldShowArtifactUploadFallback(artifactStepConfig, isEditing, configuredActions.some((action) => action.type === 'upload')) && (
+                            {shouldShowArtifactUploadFallback(artifactStepConfig, isEditing, configuredActions.some((action) => action.type === 'upload')) && (
                               <label
                                 className={`inline-flex items-center justify-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 ${!isEditing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
                                 title={isEditing ? `Upload a new ${artifactStepConfig?.label || 'artifact'} document` : 'Unlock editing to upload documents'}
                               >
                                 <Upload className="h-3.5 w-3.5" />
-                                Upload new
+                                Upload {artifactStepConfig?.artifactType === 'medications_form' ? 'form' : 'new'}
                                 <input
                                   type="file"
                                   className="hidden"
