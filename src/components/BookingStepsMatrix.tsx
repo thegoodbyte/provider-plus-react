@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useLocation } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Circle, FileText, Link2, ListPlus, Lock, Mail, OctagonX, RefreshCw, Save, ThumbsDown, Unlock, Upload, X } from 'lucide-react';
 import { bookingDocumentsApi, bookingFlowApi, clientsApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
@@ -526,6 +527,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const [saving, setSaving] = useState('');
   const [viewMode, setViewMode] = useState<'detail' | 'simple'>('detail');
   const [isEditing, setIsEditing] = useState(false);
+  const [toolbarMessage, setToolbarMessage] = useState('');
   const [selectedBookingAction, setSelectedBookingAction] = useState('');
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [dirtyNoteIds, setDirtyNoteIds] = useState<Record<string, true>>({});
@@ -620,12 +622,16 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
 
   const generateSteps = async () => {
     setSaving('generate');
+    setToolbarMessage('');
     try {
       await communicationsApi.seedDefaultTemplates();
       await bookingFlowApi.seedLibraryTemplates();
       await bookingFlowApi.seedTemplates(retreatId);
       await bookingFlowApi.generateForRetreat(retreatId);
       await loadData(false);
+      setToolbarMessage('Booking steps are up to date.');
+    } catch (error: any) {
+      setToolbarMessage(error?.response?.data?.message || error?.message || 'Unable to generate missing booking steps.');
     } finally {
       setSaving('');
     }
@@ -1481,12 +1487,15 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
               Simple
             </button>
           </div>
-          {!isEditing && viewMode === 'detail' && (
-            <span className="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-gray-50 px-2 py-2 text-xs font-medium text-gray-600">
-              <Lock className="h-3.5 w-3.5" />
-              Locked
-            </span>
-          )}
+          {viewMode === 'detail' && (isEditing ? (
+            <button type="button" onClick={() => saveAllChanges(true)} disabled={saving === 'save-all'} className="inline-flex items-center gap-2 rounded-md bg-gray-900 px-3 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-50">
+              <Lock className="h-4 w-4" /> {saving === 'save-all' ? 'Saving...' : 'Save & Lock'}
+            </button>
+          ) : (
+            <button type="button" onClick={() => setIsEditing(true)} className="inline-flex items-center gap-2 rounded-md bg-gray-900 px-3 py-2 text-sm font-semibold text-white hover:bg-gray-800">
+              <Unlock className="h-4 w-4" /> Unlock Editing
+            </button>
+          ))}
           <button onClick={() => loadData()} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
             <RefreshCw className="h-4 w-4" />
             Refresh
@@ -1495,14 +1504,20 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
             type="button"
             onClick={generateSteps}
             disabled={saving === 'generate'}
-            title="Generate missing booking steps"
-            aria-label="Generate missing booking steps"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+            title="Create booking steps that are configured for this retreat but do not exist yet"
+            className="inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
           >
             <ListPlus className={`h-4 w-4 ${saving === 'generate' ? 'animate-pulse' : ''}`} />
+            {saving === 'generate' ? 'Generating...' : 'Generate Missing Steps'}
           </button>
         </div>
       </div>
+
+      {toolbarMessage && (
+        <div className={`rounded-md border px-4 py-2 text-sm ${toolbarMessage.startsWith('Unable') ? 'border-red-200 bg-red-50 text-red-700' : 'border-blue-200 bg-blue-50 text-blue-800'}`}>
+          {toolbarMessage}
+        </div>
+      )}
 
       <div className="max-h-[calc(100vh-220px)] overflow-auto rounded-lg border border-gray-300 bg-white">
         <table className="min-w-full border-separate border-spacing-0 text-sm">
@@ -2135,7 +2150,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
           </div>
         </div>
       )}
-        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-xl border border-gray-200 bg-white/95 p-2 shadow-2xl backdrop-blur">
+        {createPortal(<div className="fixed bottom-6 right-6 z-[1000] flex items-center gap-2 rounded-xl border border-gray-300 bg-white p-2 shadow-2xl">
           {isEditing ? (
             <>
               <button type="button" onClick={() => saveAllChanges(false)} disabled={saving === 'save-all'} className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
@@ -2150,7 +2165,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
               <Unlock className="h-4 w-4" /> Unlock Editing
             </button>
           )}
-        </div>
+        </div>, document.body)}
       {reviewRequestModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-lg rounded-lg bg-white p-5 shadow-xl">
