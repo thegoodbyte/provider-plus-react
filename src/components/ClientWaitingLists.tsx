@@ -31,6 +31,8 @@ interface WaitingListEntry {
   joinedDate: string;
   retreatId: Retreat;
   notes: string;
+  noticeDays?: number;
+  source?: string;
 }
 
 interface RetreatOption {
@@ -348,7 +350,7 @@ const ClientWaitingLists: React.FC = () => {
                     <strong>{option.retreat.name}</strong>
                     {option.isOnWaitingList && option.waitingListEntry ? (
                       <span>
-                        Position #{option.waitingListEntry.position} - Joined {formatDate(option.waitingListEntry.joinedDate)}
+                        Position #{option.waitingListEntry.position} · {option.waitingListEntry.noticeDays || 1} day{Number(option.waitingListEntry.noticeDays || 1) === 1 ? '' : 's'} notice · {option.waitingListEntry.source === 'iboga_ready' ? 'Guest selected in IR' : 'Added in RE'} · Joined {formatDate(option.waitingListEntry.joinedDate)}
                       </span>
                     ) : (
                       <span>Not currently on this waiting list</span>

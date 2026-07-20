@@ -19,6 +19,8 @@ interface WaitingListEntry {
   joinedDate: string;
   client: Client;
   notes: string;
+  noticeDays?: number;
+  source?: string;
 }
 
 interface RetreatColumn {
@@ -321,6 +323,12 @@ const WaitingListMatrix: React.FC = () => {
                           </span>
                           <span className="joined-date">
                             Joined {formatDate(entry.joinedDate)}
+                          </span>
+                          <span className="joined-date">
+                            {entry.noticeDays || 1} day{Number(entry.noticeDays || 1) === 1 ? '' : 's'} notice
+                          </span>
+                          <span className="joined-date">
+                            {entry.source === 'iboga_ready' ? 'Selected by guest in IR' : 'Added in RE'}
                           </span>
                         </div>
 
