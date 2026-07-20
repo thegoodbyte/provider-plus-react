@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useLocation } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, Circle, FileText, Link2, ListPlus, Lock, Mail, OctagonX, RefreshCw, Save, ThumbsDown, Unlock, Upload, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Circle, FileText, Filter, Link2, ListPlus, Lock, Mail, OctagonX, RefreshCw, Save, ThumbsDown, Unlock, Upload, X } from 'lucide-react';
 import { bookingDocumentsApi, bookingFlowApi, clientsApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { BookingDocument, BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, Client, MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
@@ -529,6 +529,8 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [toolbarMessage, setToolbarMessage] = useState('');
   const [selectedBookingAction, setSelectedBookingAction] = useState('');
+  const [selectedActionKeys, setSelectedActionKeys] = useState<string[] | null>(null);
+  const [actionFilterOpen, setActionFilterOpen] = useState(false);
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [dirtyNoteIds, setDirtyNoteIds] = useState<Record<string, true>>({});
   const [datePickerDrafts, setDatePickerDrafts] = useState<Record<string, string>>({});
@@ -682,6 +684,23 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     });
     return Array.from(groups.values());
   }, [rows]);
+
+  const filteredGroupedRows = useMemo<MatrixRowGroup[]>(() => {
+    if (selectedActionKeys === null) return groupedRows;
+    const selected = new Set(selectedActionKeys);
+    return groupedRows
+      .map((group) => ({ ...group, rows: group.rows.filter((row) => selected.has(row.key)) }))
+      .filter((group) => group.rows.length > 0);
+  }, [groupedRows, selectedActionKeys]);
+
+  const toggleActionFilter = (key: string) => {
+    setSelectedActionKeys((current) => {
+      const active = new Set(current === null ? rows.map((row) => row.key) : current);
+      if (active.has(key)) active.delete(key);
+      else active.add(key);
+      return Array.from(active);
+    });
+  };
 
   const actionNumberByKey = useMemo(
     () => new Map(rows.map((row, index) => [row.key, index + 1])),
@@ -1523,7 +1542,36 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
         <table className="min-w-full border-separate border-spacing-0 text-sm">
           <thead>
             <tr>
-              <th className={`sticky left-0 top-0 z-40 border-b border-r border-gray-300 bg-gray-100 bg-clip-padding px-3 py-2 text-left text-xs font-semibold uppercase text-gray-600 shadow-[4px_0_10px_rgba(15,23,42,0.08)] ${viewMode === 'simple' ? 'min-w-[240px]' : 'min-w-[220px]'}`}>Action</th>
+              <th className={`sticky left-0 top-0 z-40 border-b border-r border-gray-300 bg-gray-100 bg-clip-padding px-3 py-2 text-left text-xs font-semibold uppercase text-gray-600 shadow-[4px_0_10px_rgba(15,23,42,0.08)] ${viewMode === 'simple' ? 'min-w-[240px]' : 'min-w-[220px]'}`}>
+                <div className="relative">
+                  <button type="button" onClick={() => setActionFilterOpen((open) => !open)} className="inline-flex w-full items-center justify-between gap-2 rounded px-1 py-1 text-left hover:bg-gray-200" aria-expanded={actionFilterOpen}>
+                    <span>Action{selectedActionKeys === null ? '' : ` (${selectedActionKeys.length}/${rows.length})`}</span>
+                    <Filter className={`h-3.5 w-3.5 ${selectedActionKeys === null ? 'text-gray-400' : 'text-blue-600'}`} />
+                  </button>
+                  {actionFilterOpen && (
+                    <div className="absolute left-0 top-full z-[100] mt-2 w-80 rounded-lg border border-gray-200 bg-white p-3 normal-case shadow-2xl">
+                      <div className="mb-2 flex items-center justify-between gap-3 border-b border-gray-100 pb-2">
+                        <span className="text-sm font-semibold text-gray-900">Filter booking actions</span>
+                        <div className="flex gap-2 text-xs font-semibold">
+                          <button type="button" onClick={() => setSelectedActionKeys(null)} className="text-blue-700 hover:underline">All</button>
+                          <button type="button" onClick={() => setSelectedActionKeys([])} className="text-gray-600 hover:underline">Clear</button>
+                        </div>
+                      </div>
+                      <div className="max-h-80 space-y-1 overflow-y-auto pr-1">
+                        {rows.map((row, index) => {
+                          const checked = selectedActionKeys === null || selectedActionKeys.includes(row.key);
+                          return (
+                            <label key={row.key} className="flex cursor-pointer items-start gap-2 rounded px-2 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
+                              <input type="checkbox" checked={checked} onChange={() => toggleActionFilter(row.key)} className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600" />
+                              <span><span className="mr-1 text-gray-400">{index + 1}.</span>{row.title}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </th>
               {bookings.map((booking) => (
                 <th key={getObjectId(booking)} className={`sticky top-0 z-20 border-b border-r border-gray-300 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase text-gray-600 ${viewMode === 'simple' ? 'min-w-[150px]' : 'min-w-[260px]'}`}>
                   <div className="flex items-start gap-2">
@@ -1620,7 +1668,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                 })}
               </tr>
             )}
-            {groupedRows.map((group) => (
+            {filteredGroupedRows.map((group) => (
               <React.Fragment key={group.key}>
                 {(() => {
                   const tone = getBookingStepToneWithColor(group.key, group.color);
