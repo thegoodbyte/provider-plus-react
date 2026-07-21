@@ -66,7 +66,7 @@
   .retreat-client-print-toolbar { display: none; }
   .retreat-client-print-sheet { width: 100%; min-height: 0; height: auto; margin: 0; padding: 4mm; box-shadow: none; break-inside: avoid; page-break-inside: avoid; }
   .retreat-client-print-sheet h1 { margin-bottom: 4mm; font-size: 17pt; }
-  .retreat-client-print-sheet table { height: 150mm; break-inside: avoid; page-break-inside: avoid; }
+  .retreat-client-print-sheet table { height: 168mm; break-inside: avoid; page-break-inside: avoid; }
   .retreat-client-print-sheet tr { break-inside: avoid; page-break-inside: avoid; }
   .retreat-client-print-sheet th,
   .retreat-client-print-sheet td { padding: 2mm; }
