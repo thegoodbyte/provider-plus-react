@@ -43,7 +43,7 @@ const ROWS: Array<{ label: string; value: (client: PrintClient) => React.ReactNo
     ),
   },
   { label: 'Client ID', value: (client) => client.id },
-  { label: 'Booking #', value: (client) => client.bookingNumber },
+  { label: '', value: () => '' },
   { label: '', value: () => '' },
   { label: '', value: () => '' },
   { label: '', value: () => '' },
