@@ -536,6 +536,7 @@ export const communicationsApi = {
     replyTo?: string;
     bookingFlowStepKey?: string;
     bookingFlowStatusOnSend?: string;
+    excludedClientIds?: string[];
     variables?: Record<string, any>;
     attachments?: Array<{
       fileName: string;

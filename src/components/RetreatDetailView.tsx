@@ -11,7 +11,7 @@ import SearchableClientSelector from './SearchableClientSelector';
 import RetreatTrackingGrid from './RetreatTrackingGrid';
 import BookingStepsMatrix from './BookingStepsMatrix';
 import { TasksWidget } from './Tasks/TasksWidget';
-import { Modal, Form, Input, Select, Button, message, Collapse } from 'antd';
+import { Modal, Form, Input, Select, Button, Checkbox, message, Collapse } from 'antd';
 import { Client } from '../types';
 import {
   FiEdit2,
@@ -76,6 +76,7 @@ interface RetreatClientData {
   clientDisplayId?: number;
   clientName: string;
   clientEmail?: string;
+  clientLanguage?: string;
   clientPhone: string;
   clientProfilePictureUrl?: string;
   clientProfilePictureS3Key?: string;
@@ -300,6 +301,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [showRetreatEmailModal, setShowRetreatEmailModal] = useState(false);
   const [retreatEmailTemplates, setRetreatEmailTemplates] = useState<EmailTemplate[]>([]);
   const [retreatEmailLoading, setRetreatEmailLoading] = useState(false);
+  const [excludedRetreatEmailClientIds, setExcludedRetreatEmailClientIds] = useState<string[]>([]);
   const [metricsCollapsed, setMetricsCollapsed] = useState(true);
   const [showRetreatEditModal, setShowRetreatEditModal] = useState(false);
   const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
@@ -430,6 +432,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             ? `${booking.clientId.firstName || booking.clientId.fname || ''} ${booking.clientId.lastName || booking.clientId.lname || ''}`.trim()
             : 'Unknown Client',
           clientEmail: booking.clientId?.email || '',
+          clientLanguage: booking.clientId?.language || '',
           clientPhone: booking.clientId?.phone || '',
           clientProfilePictureUrl: booking.clientId?.profilePictureUrl || '',
           clientProfilePictureS3Key: booking.clientId?.profilePictureS3Key || '',
@@ -786,6 +789,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       subject: `Information for ${retreatLabel}`,
       bodyText: '',
     });
+    setExcludedRetreatEmailClientIds([]);
     setShowRetreatEmailModal(true);
 
     if (retreatEmailTemplates.length === 0) {
@@ -815,6 +819,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         templateId: values.templateId || undefined,
         subject: values.subject,
         bodyText: values.bodyText,
+        excludedClientIds: excludedRetreatEmailClientIds,
         variables: {
           retreatName: retreat?.name,
           retreatCode: retreat?.code || retreat?.retreatCode || retreat?.name,
@@ -909,13 +914,20 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     });
   }, [visibleClients, sortField, sortDirection]);
 
-  const retreatEmailRecipientCount = React.useMemo(() => {
-    return new Set(
-      clients.filter((client) => client.status !== 'cancelled')
-        .map((client) => String(client.clientEmail || '').trim().toLowerCase())
-        .filter(Boolean)
-    ).size;
+  const retreatEmailRecipients = React.useMemo(() => {
+    const seen = new Set<string>();
+    return clients.filter((client) => {
+      const email = String(client.clientEmail || '').trim().toLowerCase();
+      if (client.status === 'cancelled' || !email || seen.has(email)) return false;
+      seen.add(email);
+      return true;
+    });
   }, [clients]);
+
+  const retreatEmailRecipientCount = React.useMemo(
+    () => retreatEmailRecipients.filter((client) => !excludedRetreatEmailClientIds.includes(client.clientId)).length,
+    [excludedRetreatEmailClientIds, retreatEmailRecipients],
+  );
 
   const bookingStatusLabel = (status: string) => ({ pending: 'Conditional', confirmed: 'Confirmed', 'checked-in': 'Checked in', 'checked-out': 'Completed', cancelled: 'Cancelled' }[status] || status);
   const paymentStatusLabel = (client: RetreatClientData) => {
@@ -1949,7 +1961,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
 
       {/* Retreat Email Modal */}
       <Modal
-        title={`Email Everyone in ${retreatCode}`}
+        title={`Email retreat clients — ${retreatCode}`}
         open={showRetreatEmailModal}
         onCancel={() => setShowRetreatEmailModal(false)}
         footer={null}
@@ -1957,8 +1969,27 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         destroyOnClose
       >
         <div className="mb-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-          This sends one logged email per client in this retreat. Current eligible recipients: <strong>{retreatEmailRecipientCount}</strong>.
-          Clients without an email address are skipped.
+          This sends one logged email per included client. <strong>{retreatEmailRecipientCount}</strong> of {retreatEmailRecipients.length} eligible recipients selected.
+          Clients without an email address and cancelled bookings are skipped.
+        </div>
+        <div className="mb-5 rounded-md border border-gray-200 bg-white">
+          <div className="flex items-center justify-between gap-3 border-b border-gray-200 px-4 py-3">
+            <div><div className="text-sm font-semibold text-gray-900">Recipients</div><div className="text-xs text-gray-500">Uncheck anyone who should not receive this email.</div></div>
+            <div className="flex gap-2">
+              <Button size="small" onClick={() => setExcludedRetreatEmailClientIds([])}>Include all</Button>
+              <Button size="small" onClick={() => setExcludedRetreatEmailClientIds(retreatEmailRecipients.map((client) => client.clientId))}>Exclude all</Button>
+            </div>
+          </div>
+          <div className="max-h-56 divide-y divide-gray-100 overflow-y-auto">
+            {retreatEmailRecipients.map((client) => {
+              const included = !excludedRetreatEmailClientIds.includes(client.clientId);
+              return <label key={client.clientId} className="flex cursor-pointer items-center gap-3 px-4 py-3 hover:bg-gray-50">
+                <Checkbox checked={included} onChange={(event) => setExcludedRetreatEmailClientIds((current) => event.target.checked ? current.filter((id) => id !== client.clientId) : [...current, client.clientId])} />
+                <span className="min-w-0 flex-1"><span className="block truncate text-sm font-medium text-gray-900">{client.clientDisplayId ? `#${client.clientDisplayId} ` : ''}{client.clientName}</span><span className="block truncate text-xs text-gray-500">{client.clientEmail}</span></span>
+                {client.clientLanguage && <span className="rounded bg-gray-100 px-2 py-1 text-xs font-semibold uppercase text-gray-600">{client.clientLanguage}</span>}
+              </label>;
+            })}
+          </div>
         </div>
         <Form
           form={retreatEmailForm}
