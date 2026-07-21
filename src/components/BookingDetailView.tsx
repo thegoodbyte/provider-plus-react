@@ -409,10 +409,10 @@ const mergeArtifacts = (artifactGroups: MedicalArtifact[][]) => {
 };
 
 const isArtifactRelevantToBooking = (artifact: MedicalArtifact, bookingId: string, retreatId?: string) => {
-  const artifactBookingId = getObjectId(artifact.bookingId);
+  const artifactBookingId = getObjectId(artifact.bookingId) || getObjectId((artifact as any).data?.bookingId);
   if (artifactBookingId) return artifactBookingId === bookingId;
 
-  const artifactRetreatId = getObjectId(artifact.retreatId);
+  const artifactRetreatId = getObjectId(artifact.retreatId) || getObjectId((artifact as any).data?.retreatId);
   if (artifactRetreatId) return Boolean(retreatId) && artifactRetreatId === retreatId;
 
   return true;
@@ -454,6 +454,7 @@ const BookingRequirementsPanel: React.FC<{
           medicalArtifactsApi.getAll({ bookingId }),
           clientId && retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId, ...bookingFlowFilters }) : Promise.resolve({ data: [] }),
           clientId ? medicalArtifactsApi.getAll({ clientId, ...bookingFlowFilters }) : Promise.resolve({ data: [] }),
+          clientId ? medicalArtifactsApi.getAll({ clientId }) : Promise.resolve({ data: [] }),
         ]),
         bookingDocumentsApi.getAll({ bookingId }),
       ]);
