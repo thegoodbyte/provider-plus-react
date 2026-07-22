@@ -593,7 +593,6 @@ const ClientScreening: React.FC = () => {
           depressionDiagnosed: checked,
           ...(checked ? {} : {
             depressionSince: '',
-            depressionDetails: '',
           }),
         }));
         return;
@@ -616,7 +615,6 @@ const ClientScreening: React.FC = () => {
           anxietyDiagnosed: checked,
           ...(checked ? {} : {
             anxietySince: '',
-            anxietyDetails: '',
           }),
         }));
         return;
@@ -1340,16 +1338,14 @@ const ClientScreening: React.FC = () => {
                     placeholder="Diagnosed since / date (text)"
                   />
                 )}
-                {formData.depressionDiagnosed && (
-                  <textarea
-                    name="depressionDetails"
-                    value={formData.depressionDetails}
-                    onChange={handleInputChange}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md"
-                    placeholder="Current or past depression, treatment, severity, hospitalizations, former diagnosis, or notes"
-                  />
-                )}
+                <textarea
+                  name="depressionDetails"
+                  value={formData.depressionDetails}
+                  onChange={handleInputChange}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-md"
+                  placeholder="Please explain what is going on with the depression, including current or past symptoms, treatment, severity, or other relevant details"
+                />
               </div>
             )}
           </div>
@@ -1386,16 +1382,14 @@ const ClientScreening: React.FC = () => {
                     placeholder="Diagnosed since / date (text)"
                   />
                 )}
-                {formData.anxietyDiagnosed && (
-                  <textarea
-                    name="anxietyDetails"
-                    value={formData.anxietyDetails}
-                    onChange={handleInputChange}
-                    rows={2}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-md"
-                    placeholder="Current or past anxiety, panic attacks, treatment, severity, former diagnosis, or notes"
-                  />
-                )}
+                <textarea
+                  name="anxietyDetails"
+                  value={formData.anxietyDetails}
+                  onChange={handleInputChange}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-md"
+                  placeholder="Please explain what is going on with the anxiety, including current or past symptoms, panic attacks, treatment, severity, or other relevant details"
+                />
               </div>
             )}
           </div>
