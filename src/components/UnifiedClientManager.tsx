@@ -490,9 +490,17 @@ const UnifiedClientManager: React.FC = () => {
     navigate(`/clients/${client._id}`);
   };
 
-  const handleNewClient = () => {
+  const handleNewClient = async () => {
     resetForm();
-    setShowForm(true);
+    try {
+      const response = await clientsApi.getNextDisplayId();
+      setFormData((current) => ({ ...current, display_id: Number(response.data) }));
+      setShowForm(true);
+    } catch (error) {
+      console.error('Error loading next client ID:', error);
+      setShowForm(true);
+      alert('The next Client ID could not be loaded. The server will assign it when the client is saved.');
+    }
   };
 
   const handleCloseForm = () => {
@@ -823,7 +831,7 @@ const UnifiedClientManager: React.FC = () => {
                         label="Client ID"
                         value={formData.display_id?.toString() || ''}
                         onChange={(value) => setFormData({ ...formData, display_id: value ? parseInt(value) : undefined })}
-                        placeholder="Auto-generated if empty (min 1001)"
+                        placeholder="Next Client ID"
                         type="number"
                       />
 
