@@ -3186,3 +3186,17 @@
     font-size: 13px;
   }
 }
+
+/* Retreat drug screening */
+.drug-screening-panel { background:#fff; border:1px solid #e5e7eb; border-radius:16px; overflow:hidden; }
+.drug-screening-heading { padding:24px; display:flex; justify-content:space-between; gap:24px; align-items:center; border-bottom:1px solid #edf0f2; }
+.drug-screening-heading h2 { margin:0 0 5px; font-size:22px; color:#17212b; }
+.drug-screening-heading p { margin:0; color:#667085; }
+.drug-screening-progress { min-width:112px; text-align:center; background:#f0fdf4; color:#166534; border-radius:12px; padding:12px 18px; }
+.drug-screening-progress strong,.drug-screening-progress span { display:block; }
+.drug-screening-progress strong { font-size:20px; }.drug-screening-progress span { font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+.drug-screening-summary { display:grid; grid-template-columns:repeat(3,1fr); padding:18px 24px; gap:12px; background:#f8fafc; }
+.drug-screening-summary div { background:#fff; border:1px solid #e5e7eb; border-radius:10px; padding:14px; }.drug-screening-summary span,.drug-screening-summary strong { display:block; }.drug-screening-summary span { color:#667085; font-size:12px; }.drug-screening-summary strong { font-size:24px; margin-top:4px; }
+.drug-screening-table-wrap { overflow-x:auto; }.drug-screening-table { width:100%; border-collapse:collapse; }.drug-screening-table th { background:#fff; color:#667085; font-size:12px; text-transform:uppercase; letter-spacing:.03em; text-align:left; padding:13px 16px; border-bottom:1px solid #e5e7eb; white-space:nowrap; }.drug-screening-table td { padding:14px 16px; border-bottom:1px solid #edf0f2; vertical-align:middle; }.drug-screening-table td:first-child strong,.drug-screening-table td:first-child small { display:block; }.drug-screening-table td:first-child small { color:#8a94a3; margin-top:3px; }.drug-tags { display:flex; flex-wrap:wrap; gap:2px; min-width:160px; }.drug-empty { text-align:center; color:#667085; padding:36px!important; }
+.drug-form { display:grid; gap:10px; padding-top:12px; }.drug-form label { margin-top:7px; font-weight:600; color:#344054; }.drug-form label span { color:#dc2626; }.drug-form .ant-picker { width:100%; }.drug-checkboxes { display:grid; grid-template-columns:repeat(2,1fr); gap:8px; padding:12px; background:#f8fafc; border-radius:8px; }
+@media(max-width:700px){.drug-screening-heading{align-items:flex-start}.drug-screening-summary{grid-template-columns:1fr}.drug-checkboxes{grid-template-columns:1fr}}

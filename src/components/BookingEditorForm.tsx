@@ -37,6 +37,7 @@ interface BookingEditorFormProps {
   bookingId?: string;
   initialBooking?: RetreatClient | null;
   initialRetreats?: Retreat[];
+  initialBookingData?: Partial<BookingFormData>;
   onCancel: () => void;
   onSaved: () => void;
   submitLabel?: string;
@@ -59,6 +60,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   bookingId,
   initialBooking,
   initialRetreats,
+  initialBookingData,
   onCancel,
   onSaved,
   submitLabel,
@@ -71,10 +73,13 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   const [booking, setBooking] = useState<RetreatClient | null>(initialBooking || null);
   const [formData, setFormData] = useState<BookingFormData>(emptyForm());
   const [bookingNumberError, setBookingNumberError] = useState('');
+  const [cancellationReason, setCancellationReason] = useState('');
+  const [depositTreatment, setDepositTreatment] = useState<'no_refund' | 'partial_refund' | 'full_refund' | 'credit_transfer'>('no_refund');
+  const [cancellationNotes, setCancellationNotes] = useState('');
 
   useEffect(() => {
     loadData();
-  }, [bookingId, initialBooking]);
+  }, [bookingId, initialBooking, initialBookingData, initialRetreats, mode]);
 
   const loadData = async () => {
     try {
@@ -98,6 +103,9 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
         currentBooking = response.data || null;
       }
       setBooking(currentBooking);
+      setCancellationReason(currentBooking?.cancellationReason || '');
+      setDepositTreatment(currentBooking?.cancellationDepositTreatment || 'no_refund');
+      setCancellationNotes(currentBooking?.cancellationNotes || '');
 
       if (currentBooking) {
         setFormData({
@@ -113,6 +121,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       } else {
         setFormData({
           ...emptyForm(),
+          ...initialBookingData,
           bookingNumber: nextNumberResponse.data ? String(nextNumberResponse.data) : '',
         });
       }
@@ -206,7 +215,28 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       }
 
       if (mode === 'edit' && bookingId) {
-        await bookingsApi.update(bookingId, payload as any);
+        if (formData.status === 'cancelled' && booking?.status !== 'cancelled') {
+          if (!cancellationReason.trim()) {
+            alert('Please enter a cancellation reason.');
+            return;
+          }
+          const { status: _status, ...bookingChanges } = payload;
+          await bookingsApi.update(bookingId, bookingChanges as any);
+          const depositTreatmentMap = {
+            no_refund: 'retained',
+            partial_refund: 'partially_refunded',
+            full_refund: 'refund_pending',
+            credit_transfer: 'credited',
+          } as const;
+          await bookingsApi.cancelBooking(bookingId, {
+            cancellationDate: new Date().toISOString(),
+            cancellationReason: cancellationReason.trim(),
+            cancellationDepositTreatment: depositTreatmentMap[depositTreatment],
+            cancellationNotes: cancellationNotes.trim() || undefined,
+          });
+        } else {
+          await bookingsApi.update(bookingId, payload as any);
+        }
       } else {
         await bookingsApi.create(payload as any);
       }
@@ -357,6 +387,15 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
             </select>
           </div>
         </div>
+
+        {mode === 'edit' && formData.status === 'cancelled' && booking?.status !== 'cancelled' && (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4 space-y-4">
+            <div><h3 className="font-semibold text-red-900">Cancel this booking</h3><p className="text-sm text-red-700">This records the cancellation on the booking. The client profile remains active.</p></div>
+            <div><label className="mb-1 block text-sm font-medium text-gray-700">Cancellation reason *</label><textarea rows={3} value={cancellationReason} onChange={e => setCancellationReason(e.target.value)} className="w-full rounded-md border border-gray-300 px-3 py-2" placeholder="Why is this booking being cancelled?" required /></div>
+            <div><label className="mb-1 block text-sm font-medium text-gray-700">Deposit treatment *</label><select value={depositTreatment} onChange={e => setDepositTreatment(e.target.value as any)} className="w-full rounded-md border border-gray-300 px-3 py-2"><option value="no_refund">No refund — deposit retained</option><option value="partial_refund">Partial refund</option><option value="full_refund">Full refund</option><option value="credit_transfer">Credit / transfer to another booking</option></select></div>
+            <div><label className="mb-1 block text-sm font-medium text-gray-700">Cancellation notes</label><textarea rows={2} value={cancellationNotes} onChange={e => setCancellationNotes(e.target.value)} className="w-full rounded-md border border-gray-300 px-3 py-2" placeholder="Optional internal details" /></div>
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center gap-3 pt-2">
           <div className="min-w-[220px] flex-1 text-xs text-gray-500">

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, MedicalReviewGroup, MedicalReviewGroupAccessLink, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, MailSettings, EmailTemplate, EmailTemplateSeedOption, SentEmail, RetreatArtifactSubmissionsResponse } from '../types';
+import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, MedicalReviewGroup, MedicalReviewGroupAccessLink, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, MailSettings, EmailTemplate, EmailTemplateSeedOption, SentEmail, RetreatArtifactSubmissionsResponse, BloodPressureReading } from '../types';
 import { authService } from './authService';
 import { cacheService } from './cacheService';
 import { API_BASE_URL } from '../config/api.config';
@@ -306,6 +306,17 @@ export const bookingsApi = {
     cacheService.clearPattern('bookings:');
     return api.patch<RetreatClient>(`/bookings/${id}/check-out`, {});
   },
+  cancelBooking: (id: string, data: {
+    cancellationDate: string;
+    cancellationReason: string;
+    cancellationDepositTreatment: 'none' | 'retained' | 'refund_pending' | 'partially_refunded' | 'credited';
+    cancellationNotes?: string;
+    cancellationRefundAmount?: number;
+  }) => {
+    cacheService.clearPattern('bookings:');
+    cacheService.clearPattern('payments:');
+    return api.patch<RetreatClient>(`/bookings/${id}/cancel`, data);
+  },
   delete: (id: string) => {
     cacheService.clearPattern('bookings:');
     return api.delete(`/bookings/${id}`);
@@ -360,6 +371,7 @@ export const paymentsApi = {
   getRetreatSummary: (retreatId: string) => cachedGet<PaymentSummary>(`payments:summary:${retreatId}`, () => api.get<PaymentSummary>(`/payments/retreat-summary/${retreatId}`)),
   getNextDisplayId: () => api.get<number>('/payments/next-display-id'),
   convertToUsd: (amount: number, currency: string) => api.get<{ amount: number; currency: string; usd_amount: number }>(`/payments/convert-to-usd?amount=${encodeURIComponent(String(amount))}&currency=${encodeURIComponent(currency)}`),
+  convert: (amount: number, from: string, to: string) => api.get<{ amount: number; from: string; to: string; provider: string }>(`/payments/convert?amount=${encodeURIComponent(String(amount))}&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
   create: (data: Omit<Payment, '_id'>) => {
     cacheService.clearPattern('payments:');
     cacheService.clearPattern('bookings:'); // Clear bookings cache too as payments affect booking status
@@ -423,6 +435,10 @@ export const paymentRequestsApi = {
     cacheService.clearPattern('payment-requests:');
     return api.put<PaymentRequest>(`/payment-requests/${id}/send-reminder`);
   },
+};
+
+export const bloodPressureReadingsApi = {
+  getByClient: (clientId: string) => api.get<BloodPressureReading[]>(`/blood-pressure-readings?clientId=${encodeURIComponent(clientId)}`),
 };
 
 export const communicationsApi = {
@@ -1360,6 +1376,11 @@ export const bookingDocumentsApi = {
   },
   getFileViewUrl: (id: string, storedPath: string) => `${api.defaults.baseURL}/booking-documents/${id}/files/view?storedPath=${encodeURIComponent(storedPath)}`,
   delete: (id: string, reason = 'Upload rollback') => {
+  getFile: (id: string, storedPath: string) => api.get(
+    `/booking-documents/${id}/files/view?storedPath=${encodeURIComponent(storedPath)}`,
+    { responseType: 'blob' },
+  ),
+  delete: (id: string, reason = 'Upload rollback') => {
     cacheService.clearPattern('booking-documents:');
     return api.delete(`/booking-documents/${id}`, { data: { reason } });
   },
@@ -1601,4 +1622,14 @@ export const assistantApi = {
     api.get<RetreatReadinessAssistantResult>(`/assistant/retreat-readiness/${retreatId}`),
   chat: (data: { scope: 'retreat' | 'booking'; retreatId?: string; bookingId?: string; message: string }) =>
     api.post<AssistantChatResponse>('/assistant/chat', data),
+};
+
+export const drugScreeningsApi = {
+  list: (retreatId: string) => api.get('/drug-screenings', { params: { retreatId } }),
+  save: (retreatId: string, bookingId: string, data: { clientId: string; administeredAt: string; testedFor: string[]; result: string; notes?: string }, image?: File) => {
+    const form = new FormData();
+    form.append('clientId', data.clientId); form.append('administeredAt', data.administeredAt); form.append('testedFor', JSON.stringify(data.testedFor)); form.append('result', data.result); form.append('notes', data.notes || '');
+    if (image) form.append('image', image);
+    return api.put(`/drug-screenings/retreat/${retreatId}/booking/${bookingId}`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
 };

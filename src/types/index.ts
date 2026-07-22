@@ -232,6 +232,11 @@ export interface RetreatClient {
   currency?: 'EUR' | 'USD' | 'CZK' | 'PLN';
   amountPaid?: number;
   status?: 'pending' | 'conditional' | 'confirmed' | 'approved' | 'declined' | 'moved' | 'checked-in' | 'checked-out' | 'cancelled';
+  cancellationReason?: string;
+  cancellationDepositTreatment?: 'no_refund' | 'partial_refund' | 'full_refund' | 'credit_transfer';
+  cancellationNotes?: string;
+  cancelledAt?: string | Date;
+  cancelledBy?: string;
   roomAssignment?: string;
   specialRequests?: string;
   notes?: string;
@@ -495,6 +500,7 @@ export interface Payment {
   clientId: string | Client;
   retreatId: string | Retreat;
   paymentRequestId?: string | PaymentRequest;
+  originalPaymentId?: string | Payment;
   bookingId?: string | RetreatClient; // Legacy - for backward compatibility
   bookingHash?: string; // New field - 20-character hash for linking to specific booking
   amount: number;
@@ -1483,6 +1489,18 @@ export interface EmailTemplate {
   tags?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface BloodPressureReading {
+  _id?: string;
+  clientId: string | Client;
+  systolic: number;
+  diastolic: number;
+  pulse?: number;
+  recordedAt: string;
+  notes?: string;
+  source?: 'ibogaready' | 'admin';
+  createdAt?: string;
 }
 
 export interface EmailTemplateSeedOption {

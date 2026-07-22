@@ -9,7 +9,9 @@ import CeremoniesGrid from './CeremoniesGrid';
 import CeremonyAnalytics from './CeremonyAnalytics';
 import SearchableClientSelector from './SearchableClientSelector';
 import RetreatTrackingGrid from './RetreatTrackingGrid';
+import DrugScreeningTab from './DrugScreeningTab';
 import BookingStepsMatrix from './BookingStepsMatrix';
+import RetreatReserveListPanel from './RetreatReserveListPanel';
 import { TasksWidget } from './Tasks/TasksWidget';
 import { Modal, Form, Input, Select, Button, Checkbox, message, Collapse } from 'antd';
 import { Client } from '../types';
@@ -36,6 +38,7 @@ import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
 import SavingsRoundedIcon from '@mui/icons-material/SavingsRounded';
 import SpaRoundedIcon from '@mui/icons-material/SpaRounded';
 import TaskAltRoundedIcon from '@mui/icons-material/TaskAltRounded';
+import BiotechRoundedIcon from '@mui/icons-material/BiotechRounded';
 import './ClientsGrid.css';
 
 // Simple wrapper to fix TypeScript icon issues
@@ -54,7 +57,7 @@ interface RetreatDetailViewProps {
   onTabChange?: (tab: RetreatDetailTab) => void;
 }
 
-export type RetreatDetailTab = 'clients' | 'holisticView' | 'tracking' | 'expenses' | 'payments' | 'ceremonies' | 'analytics' | 'tasks';
+export type RetreatDetailTab = 'clients' | 'reserveList' | 'holisticView' | 'tracking' | 'drugScreening' | 'expenses' | 'payments' | 'ceremonies' | 'analytics' | 'tasks';
 
 interface QuickBookingFormData {
   firstName: string;
@@ -300,6 +303,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   });
   const [showRetreatEmailModal, setShowRetreatEmailModal] = useState(false);
   const [retreatEmailTemplates, setRetreatEmailTemplates] = useState<EmailTemplate[]>([]);
+  const [retreatEmailStepTemplates, setRetreatEmailStepTemplates] = useState<BookingFlowTemplate[]>([]);
   const [retreatEmailLoading, setRetreatEmailLoading] = useState(false);
   const [excludedRetreatEmailClientIds, setExcludedRetreatEmailClientIds] = useState<string[]>([]);
   const [metricsCollapsed, setMetricsCollapsed] = useState(true);
@@ -397,7 +401,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           (bookingHash && payment.bookingHash === bookingHash)
         ));
       };
-      const getPaymentNetAmount = (payment: Payment) => Math.max((payment.amount || 0) - (payment.refundedAmount || 0), 0);
+      const getPaymentNetAmount = (payment: Payment) => payment.paymentType === 'refund'
+        ? -Math.abs(payment.amount || 0)
+        : Math.max((payment.amount || 0) - (payment.refundedAmount || 0), 0);
       const getPaymentNetUSD = (payment: Payment) => {
         const netAmount = getPaymentNetAmount(payment);
         if (typeof payment.usd_amount === 'number') {
@@ -788,14 +794,20 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       templateId: '',
       subject: `Information for ${retreatLabel}`,
       bodyText: '',
+      bookingFlowStepKey: '',
+      bookingFlowStatusOnSend: 'completed',
     });
     setExcludedRetreatEmailClientIds([]);
     setShowRetreatEmailModal(true);
 
-    if (retreatEmailTemplates.length === 0) {
+    if (retreatEmailTemplates.length === 0 || retreatEmailStepTemplates.length === 0) {
       try {
-        const response = await communicationsApi.getTemplates();
-        setRetreatEmailTemplates((response.data || []).filter((template: EmailTemplate) => template.active !== false));
+        const [templateResponse, stepResponse] = await Promise.all([
+          retreatEmailTemplates.length === 0 ? communicationsApi.getTemplates() : Promise.resolve({ data: retreatEmailTemplates }),
+          retreatEmailStepTemplates.length === 0 && retreatId ? bookingFlowApi.getTemplates(retreatId) : Promise.resolve({ data: retreatEmailStepTemplates }),
+        ]);
+        setRetreatEmailTemplates((templateResponse.data || []).filter((template: EmailTemplate) => template.active !== false));
+        setRetreatEmailStepTemplates((stepResponse.data || []).filter((step: BookingFlowTemplate) => step.active !== false));
       } catch (error) {
         console.error('Error loading email templates:', error);
         message.warning('Email templates could not be loaded. You can still write the email manually.');
@@ -805,14 +817,19 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
 
   const handleRetreatEmailTemplateChange = (templateId: string) => {
     const template = retreatEmailTemplates.find((item) => item._id === templateId);
-    if (!template) return;
+    if (!template) {
+      retreatEmailForm.setFieldsValue({ bookingFlowStepKey: '', bookingFlowStatusOnSend: 'completed' });
+      return;
+    }
     retreatEmailForm.setFieldsValue({
       subject: template.subject || '',
       bodyText: template.bodyText || '',
+      bookingFlowStepKey: template.bookingFlowStepKey || '',
+      bookingFlowStatusOnSend: template.bookingFlowStatusOnSend || (template.bookingFlowStepKey ? 'completed' : undefined),
     });
   };
 
-  const handleRetreatEmailSend = async (values: { templateId?: string; subject: string; bodyText: string }) => {
+  const handleRetreatEmailSend = async (values: { templateId?: string; subject: string; bodyText: string; bookingFlowStepKey?: string; bookingFlowStatusOnSend?: string }) => {
     try {
       setRetreatEmailLoading(true);
       const response = await communicationsApi.sendRetreatEmail(retreatId, {
@@ -1295,6 +1312,15 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       {/* Tab Navigation */}
       <div className="tab-navigation retreat-detail-tabs" role="tablist" aria-label="Retreat sections">
         <button
+          className={`tab-btn ${activeTab === 'drugScreening' ? 'active' : ''}`}
+          onClick={() => handleTabChange('drugScreening')}
+          role="tab"
+          aria-selected={activeTab === 'drugScreening'}
+        >
+          <BiotechRoundedIcon className="retreat-tab-icon" />
+          <span>Drug Screening</span>
+        </button>
+        <button
           className={`tab-btn ${activeTab === 'clients' ? 'active' : ''}`}
           onClick={() => handleTabChange('clients')}
           role="tab"
@@ -1302,6 +1328,15 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         >
           <PeopleAltRoundedIcon className="retreat-tab-icon" />
           <span>Clients ({activeClientCount})</span>
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'reserveList' ? 'active' : ''}`}
+          onClick={() => handleTabChange('reserveList')}
+          role="tab"
+          aria-selected={activeTab === 'reserveList'}
+        >
+          <Icon icon={FiUserPlus} className="w-5 h-5 retreat-tab-icon" />
+          <span>Reserve List</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'holisticView' ? 'active' : ''}`}
@@ -1473,6 +1508,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Amount Paid
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
@@ -1538,6 +1574,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {formatAmount(client.amountPaid, client.currency)}
                       </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {(() => { const difference = client.amountPaid - client.totalAmount; const status = client.amountPaid <= 0 ? ['Unpaid','bg-gray-100 text-gray-700'] : Math.abs(difference) < 0.01 ? ['Paid in full','bg-green-100 text-green-800'] : difference > 0 ? ['Overpaid','bg-purple-100 text-purple-800'] : ['Partially paid','bg-amber-100 text-amber-800']; return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${status[1]}`}>{status[0]}</span>; })()}
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center gap-2">
                           <button
@@ -1591,6 +1630,15 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         </div>
         )}
 
+        {activeTab === 'reserveList' && (
+        <div className="reserve-list-section">
+          <RetreatReserveListPanel
+            retreatId={retreatId}
+            retreatName={retreat?.name || retreat?.code || retreat?.retreatCode || 'Retreat'}
+          />
+        </div>
+        )}
+
         {activeTab === 'holisticView' && (
         <div className="booking-steps-section">
           <BookingStepsMatrix retreatId={retreatId} />
@@ -1600,6 +1648,12 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         {activeTab === 'tracking' && (
         <div className="tracking-section">
           <RetreatTrackingGrid retreatId={retreatId} />
+        </div>
+        )}
+
+        {activeTab === 'drugScreening' && (
+        <div className="drug-screening-section">
+          <DrugScreeningTab retreatId={retreatId} clients={clients} />
         </div>
         )}
 
@@ -2008,6 +2062,35 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                 </Option>
               ))}
             </Select>
+          </Form.Item>
+
+          <Form.Item
+            name="bookingFlowStepKey"
+            label="Mark booking step"
+            extra="Inherited from the selected email template. Every successfully sent group email updates the matching client's booking step."
+          >
+            <Select allowClear placeholder="Skip marking a booking step">
+              <Option value="">Skip</Option>
+              {retreatEmailStepTemplates.map((step) => (
+                <Option key={step.key} value={step.key}>
+                  {step.display_id ? `#${step.display_id} ` : ''}{step.title || step.key}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item noStyle shouldUpdate={(previous, current) => previous.bookingFlowStepKey !== current.bookingFlowStepKey}>
+            {({ getFieldValue }) => getFieldValue('bookingFlowStepKey') ? (
+              <Form.Item name="bookingFlowStatusOnSend" label="Booking step status after send" initialValue="completed">
+                <Select>
+                  <Option value="completed">Completed</Option>
+                  <Option value="sent">Sent</Option>
+                  <Option value="received">Received</Option>
+                  <Option value="approved">Approved</Option>
+                  <Option value="waived">Waived</Option>
+                </Select>
+              </Form.Item>
+            ) : null}
           </Form.Item>
 
           <Form.Item

@@ -62,11 +62,13 @@ import MedicalProfile from './MedicalProfile';
 import MedicalClientView from './MedicalClientView';
 import MedicalAdvisorReview from './MedicalAdvisorReview';
 import ModuleLauncherPage from './ModuleLauncherPage';
+import ReserveListsPage from './ReserveListsPage';
 import ProtectedRoute from './ProtectedRoute';
 import Unauthorized from './Unauthorized';
 import PermissionsMatrix from './PermissionsMatrix';
 import ClientMedicationsGrid from './ClientMedicationsGrid';
 import ClientMedicationForm from './ClientMedicationForm';
+import ClientFoodFormsPage from './ClientFoodFormsPage';
 import UserManagement from './UserManagement';
 import AuditLogsPage from './AuditLogsPage';
 import DataBackupPage from './DataBackupPage';
@@ -84,7 +86,7 @@ const BookingDetailRoute: React.FC = () => {
   return <BookingDetailView bookingId={bookingId || ''} onBack={() => navigate(-1)} />;
 };
 
-const RETREAT_DETAIL_TABS: RetreatDetailTab[] = ['clients', 'holisticView', 'tracking', 'expenses', 'payments', 'ceremonies', 'analytics', 'tasks'];
+const RETREAT_DETAIL_TABS: RetreatDetailTab[] = ['clients', 'holisticView', 'tracking', 'drugScreening', 'expenses', 'payments', 'ceremonies', 'analytics', 'tasks'];
 
 const getRetreatTabFromRoute = (tab?: string): RetreatDetailTab => (
   RETREAT_DETAIL_TABS.includes(tab as RetreatDetailTab) ? tab as RetreatDetailTab : 'clients'
@@ -163,8 +165,10 @@ const AppleLayout: React.FC = () => {
     if (route === 'retreat-flow') return 'retreat-flow';
     if (route === 'retreat-flow-library') return 'retreat-flow-library';
     if (route === 'booking-flow') return 'booking-flow';
+    if (route === 'booking-step-deadlines') return 'booking-step-deadlines';
     if (route === 'booking-documents') return 'booking-documents';
     if (route === 'booking-document-types') return 'booking-document-types';
+    if (route === 'reserve-lists') return 'reserve-lists';
     if (route === 'flow-tasks') return 'flow-tasks';
     if (route === 'ir-notifications') return 'ir-notifications';
     if (route === 'retreats') return 'retreats';
@@ -638,6 +642,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="ir-notifications" element={<SubmissionNotificationsPage />} />
                       <Route path="booking-documents" element={<BookingDocumentsPage />} />
                       <Route path="booking-document-types" element={<BookingDocumentTypesPage />} />
+                      <Route path="reserve-lists" element={<ReserveListsPage />} />
                       <Route path="flow-tasks" element={<FlowTaskInboxPage />} />
                       <Route path="medical-dashboard" element={<MedicalAdvisorDashboard />} />
                       <Route path="medical-review/:bookingId" element={<MedicalReviewDetail />} />
@@ -664,6 +669,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="client-medications/create" element={<ClientMedicationForm mode="create" />} />
                       <Route path="client-medications/edit/:id" element={<ClientMedicationForm mode="edit" />} />
                       <Route path="client-medications/view/:id" element={<ClientMedicationForm mode="view" />} />
+                      <Route path="client-food-forms" element={<ClientFoodFormsPage />} />
                       <Route path="analytics" element={<div className="p-6">Analytics - Coming Soon</div>} />
                       <Route path="users" element={<UserManagement />} />
                       <Route path="audit-logs" element={<AuditLogsPage />} />
@@ -732,6 +738,7 @@ const AppleLayout: React.FC = () => {
                         <Route path="ir-notifications" element={<SubmissionNotificationsPage />} />
                         <Route path="booking-documents" element={<BookingDocumentsPage />} />
                         <Route path="booking-document-types" element={<BookingDocumentTypesPage />} />
+                        <Route path="reserve-lists" element={<ReserveListsPage />} />
                         <Route path="flow-tasks" element={<FlowTaskInboxPage />} />
                         <Route path="review/:id" element={<MedicalAdvisorReview />} />
                         <Route path="medical-review/:id" element={<MedicalAdvisorReview />} />
@@ -872,8 +879,14 @@ const AppleLayout: React.FC = () => {
                 <Route path="/retreat-flow-library" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><RetreatFlowLibraryPage /></ProtectedRoute>} />
                 <Route path="/booking-flow" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><BookingFlowPage /></ProtectedRoute>} />
                 <Route path="/booking-flow/:bookingId" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><BookingFlowPage /></ProtectedRoute>} />
+                <Route path="/booking-step-deadlines" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><BookingStepDeadlinesPage /></ProtectedRoute>} />
                 <Route path="/booking-documents" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><BookingDocumentsPage /></ProtectedRoute>} />
                 <Route path="/booking-document-types" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><BookingDocumentTypesPage /></ProtectedRoute>} />
+                <Route path="/reserve-lists" element={<ProtectedRoute><ReserveListsPage /></ProtectedRoute>} />
+                <Route path="/admin/reserve-lists" element={<ProtectedRoute><ReserveListsPage /></ProtectedRoute>} />
+                <Route path="/medical/reserve-lists" element={<ProtectedRoute><ReserveListsPage /></ProtectedRoute>} />
+                <Route path="/staff/reserve-lists" element={<ProtectedRoute><ReserveListsPage /></ProtectedRoute>} />
+                <Route path="/user/reserve-lists" element={<ProtectedRoute><ReserveListsPage /></ProtectedRoute>} />
                 <Route path="/flow-tasks" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><FlowTaskInboxPage /></ProtectedRoute>} />
                 <Route path="/clients" element={<ProtectedRoute><UnifiedClientManager /></ProtectedRoute>} />
                 <Route path="/clients/add" element={<ProtectedRoute><AddClient /></ProtectedRoute>} />

@@ -48,6 +48,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   const [usdPreviewLoading, setUsdPreviewLoading] = useState(false);
   const [usdPreviewError, setUsdPreviewError] = useState('');
   const [totalCostUsd, setTotalCostUsd] = useState<number | null>(null);
+  const [bookingCurrencyPreviewLoading, setBookingCurrencyPreviewLoading] = useState(false);
   const [exchangeRateProviderLabel, setExchangeRateProviderLabel] = useState(DEFAULT_EXCHANGE_RATE_PROVIDER_LABEL);
   const [newPayment, setNewPayment] = useState({
     amount: '',
@@ -141,6 +142,22 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
 
   const bookingCurrency = (currency || 'EUR') as 'EUR' | 'USD' | 'CZK' | 'PLN';
   const isMixedBookingCurrencyPayment = Boolean(newPayment.currency && bookingCurrency && newPayment.currency !== bookingCurrency);
+
+  useEffect(() => {
+    if (!isMixedBookingCurrencyPayment) return;
+    const amount = Number(newPayment.amount);
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    let active = true;
+    const timeout = window.setTimeout(async () => {
+      try {
+        setBookingCurrencyPreviewLoading(true);
+        const response = await paymentsApi.convert(amount, newPayment.currency, bookingCurrency);
+        if (active) setNewPayment(current => ({ ...current, bookingCurrencyAmount: response.data.amount.toFixed(2) }));
+      } catch (error) { console.error('Error converting payment to booking currency:', error); }
+      finally { if (active) setBookingCurrencyPreviewLoading(false); }
+    }, 350);
+    return () => { active = false; window.clearTimeout(timeout); };
+  }, [newPayment.amount, newPayment.currency, bookingCurrency, isMixedBookingCurrencyPayment]);
 
   useEffect(() => {
     if (!Number.isFinite(Number(totalAmount)) || Number(totalAmount) <= 0 || !currency) {
@@ -522,6 +539,18 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
 
   const balanceUsd = totalCostUsd !== null ? totalCostUsd - totalPaidUsd : null;
 
+  const totalPaidBookingCurrency = payments
+    .filter(p => p.status === 'completed')
+    .reduce((sum, payment) => {
+      const sign = payment.paymentType === 'refund' ? -1 : 1;
+      const refunded = Number(payment.refundedAmount || 0);
+      if (payment.currency === bookingCurrency) return sum + sign * Math.max(Math.abs(Number(payment.amount || 0)) - refunded, 0);
+      if (payment.bookingCurrency === bookingCurrency && Number(payment.bookingCurrencyAmount)) return sum + sign * Math.abs(Number(payment.bookingCurrencyAmount));
+      return sum;
+    }, 0);
+  const bookingBalance = Math.max(Number(totalAmount || 0) - totalPaidBookingCurrency, 0);
+  const isPaidInFull = Number(totalAmount || 0) > 0 && bookingBalance < 0.01;
+
   const totalRefundedUsd = payments
     .reduce((sum, p) => sum + (p.refundedAmount ? (p.currency === 'USD' ? p.refundedAmount : 0) : 0), 0);
 
@@ -538,6 +567,9 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
     <div className="booking-payment-management">
       <div className="payment-summary-header">
         <h3>Payments</h3>
+        <span className={`booking-payment-state ${isPaidInFull ? 'paid-in-full' : totalPaidBookingCurrency > 0 ? 'partially-paid' : 'unpaid'}`}>
+          {isPaidInFull ? '✓ Paid in full' : totalPaidBookingCurrency > 0 ? 'Partially paid' : 'Unpaid'}
+        </span>
       </div>
 
       <div className="payment-summary-cards">
@@ -554,10 +586,10 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
             {formatUsd(totalPaidUsd)}
           </div>
         </div>
-        <div className={`summary-card balance ${balanceUsd !== null && balanceUsd > 0 ? 'due' : 'overpaid'}`}>
-          <div className="card-label">Balance USD</div>
+        <div className={`summary-card balance ${!isPaidInFull && balanceUsd !== null && balanceUsd > 0 ? 'due' : 'overpaid'}`}>
+          <div className="card-label">{isPaidInFull ? 'Paid in full' : 'Balance USD'}</div>
           <div className="card-amount">
-            {formatUsd(balanceUsd)}
+            {formatUsd(isPaidInFull ? 0 : balanceUsd)}
           </div>
         </div>
         {totalRefundedUsd > 0 && (
@@ -722,15 +754,12 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
               {isMixedBookingCurrencyPayment && (
                 <div className="form-row">
                   <div className="form-group">
-                    <label>{bookingCurrency} Equivalent *</label>
+                    <label>{bookingCurrency} Equivalent</label>
                     <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={newPayment.bookingCurrencyAmount}
-                      onChange={(e) => setNewPayment({...newPayment, bookingCurrencyAmount: e.target.value})}
-                      required={isMixedBookingCurrencyPayment}
-                      placeholder={`Amount counted toward booking in ${bookingCurrency}`}
+                      type="text"
+                      value={bookingCurrencyPreviewLoading ? 'Calculating...' : newPayment.bookingCurrencyAmount ? `${newPayment.bookingCurrencyAmount} ${bookingCurrency}` : ''}
+                      disabled
+                      placeholder={`Calculated automatically in ${bookingCurrency}`}
                     />
                   </div>
                   <div className="form-group">
