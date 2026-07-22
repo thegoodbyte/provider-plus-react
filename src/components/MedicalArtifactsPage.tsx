@@ -555,6 +555,7 @@ const MedicalArtifactsPage: React.FC = () => {
           <thead className="bg-gray-50 text-left text-xs font-semibold uppercase text-gray-500">
             <tr>
               <th className="px-4 py-3">ID</th>
+              <th className="min-w-[170px] px-4 py-3">MRR</th>
               <th className="px-4 py-3">Actions</th>
               <th className="px-4 py-3">Preview</th>
               <th className="hidden px-4 py-3 sm:table-cell">Stage</th>
@@ -564,7 +565,6 @@ const MedicalArtifactsPage: React.FC = () => {
               <th className="px-4 py-3">Booking / Retreat</th>
               <th className="px-4 py-3">Received</th>
               <th className="px-4 py-3">Files</th>
-              <th className="px-4 py-3">Medical Review</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 bg-white">
@@ -587,6 +587,43 @@ const MedicalArtifactsPage: React.FC = () => {
                   ) : (
                     `#${artifact.display_id}`
                   )}
+                </td>
+                <td className="min-w-[170px] px-4 py-3">
+                  <div className="flex flex-col gap-1">
+                    {latestReview?._id ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/admin/medical-review-requests/${latestReview._id}`)}
+                          className="w-fit text-xs font-semibold text-blue-700 hover:text-blue-900 hover:underline"
+                        >
+                          {getReviewLabel(latestReview)}
+                        </button>
+                        <span className="text-[11px] text-gray-500">
+                          {latestReview.requestType?.replace(/_/g, ' ') || 'medical review'} · {latestReview.status || 'pending'}
+                        </span>
+                        {artifactReviews.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => navigate(`${artifact._id}`)}
+                            className="w-fit text-[11px] font-medium text-gray-500 hover:text-gray-800 hover:underline"
+                            title="Open artifact to see full medical review history"
+                          >
+                            {artifactReviews.length} MRRs total
+                          </button>
+                        )}
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleRequestReview(artifact)}
+                        className="w-fit text-xs font-semibold text-blue-700 hover:text-blue-900 hover:underline"
+                      >
+                        Create MRR
+                      </button>
+                    )}
+                    <ReviewResultBadge review={latestReview} />
+                  </div>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex justify-start gap-2">
@@ -670,43 +707,6 @@ const MedicalArtifactsPage: React.FC = () => {
                 </td>
                 <td className="px-4 py-3">{artifact.receivedAt ? new Date(artifact.receivedAt).toLocaleDateString() : '-'}</td>
                 <td className="px-4 py-3">{artifact.files?.length || 0}</td>
-                <td className="px-4 py-3">
-                  <div className="flex flex-col gap-1">
-                    {latestReview?._id ? (
-                      <>
-                        <button
-                          type="button"
-                          onClick={() => navigate(`/admin/medical-review-requests/${latestReview._id}`)}
-                          className="w-fit text-xs font-semibold text-blue-700 hover:text-blue-900 hover:underline"
-                        >
-                          {getReviewLabel(latestReview)}
-                        </button>
-                        <span className="text-[11px] text-gray-500">
-                          {latestReview.requestType?.replace(/_/g, ' ') || 'medical review'} · {latestReview.status || 'pending'}
-                        </span>
-                        {artifactReviews.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => navigate(`${artifact._id}`)}
-                            className="w-fit text-[11px] font-medium text-gray-500 hover:text-gray-800 hover:underline"
-                            title="Open artifact to see full medical review history"
-                          >
-                            {artifactReviews.length} MRRs total
-                          </button>
-                        )}
-                      </>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleRequestReview(artifact)}
-                        className="w-fit text-xs font-semibold text-blue-700 hover:text-blue-900 hover:underline"
-                      >
-                        Create MRR
-                      </button>
-                    )}
-                    <ReviewResultBadge review={latestReview} />
-                  </div>
-                </td>
               </tr>
               );
             })}
