@@ -7,6 +7,11 @@ import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 
 type TabKey = 'settings' | 'templates' | 'compose' | 'sent' | 'inbound';
+const WELCOME_STEP_OPTIONS = [
+  ['booking_confirmation_sent', 'Booking confirmation sent'], ['medical_labs_requested', 'EKG and liver requested'],
+  ['medications_form_initial_sent', 'Medications form sent'], ['questionnaire_sent', 'Questionnaire sent'],
+  ['food_form_sent', 'Food form sent'], ['contract_sent', 'Contract requested'],
+];
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
@@ -22,6 +27,7 @@ const defaultTemplateForm: Partial<EmailTemplate> = {
   templateKey: '',
   language: 'en',
   bookingFlowStepKey: '',
+  bookingFlowStepKeys: [],
   bookingFlowStatusOnSend: 'sent',
   active: true,
   notes: '',
@@ -863,14 +869,11 @@ const CommunicationsPage: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Booking Step Key</label>
-                <input
-                  value={templateForm.bookingFlowStepKey || ''}
-                  onChange={(e) => setTemplateForm((prev) => ({ ...prev, bookingFlowStepKey: e.target.value }))}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2"
-                  placeholder="booking_confirmation_sent"
-                />
-                <p className="mt-1 text-xs text-gray-500">Optional. When this template is sent for a booking, this booking step is updated.</p>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Booking Steps Updated After Successful Send</label>
+                <div className="space-y-2 rounded-md border border-gray-300 bg-white p-3">
+                  {WELCOME_STEP_OPTIONS.map(([key, label]) => <label key={key} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={(templateForm.bookingFlowStepKeys || []).includes(key)} onChange={(event) => setTemplateForm((prev) => ({ ...prev, bookingFlowStepKeys: event.target.checked ? Array.from(new Set([...(prev.bookingFlowStepKeys || []), key])) : (prev.bookingFlowStepKeys || []).filter((item) => item !== key) }))}/><span>{label}</span><code className="ml-auto text-xs text-gray-400">{key}</code></label>)}
+                </div>
+                <p className="mt-1 text-xs text-gray-500">All selected steps are updated only after Gmail confirms the email was sent.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status After Send</label>

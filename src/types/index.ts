@@ -1483,6 +1483,7 @@ export interface EmailTemplate {
   templateKey?: string;
   language?: 'en' | 'cz' | 'pl' | string;
   bookingFlowStepKey?: string;
+  bookingFlowStepKeys?: string[];
   bookingFlowStatusOnSend?: 'pending' | 'sent' | 'received' | 'completed' | 'approved' | 'waived' | string;
   active?: boolean;
   notes?: string;
@@ -1511,6 +1512,7 @@ export interface EmailTemplateSeedOption {
   templateKey?: string;
   language?: string;
   bookingFlowStepKey?: string;
+  bookingFlowStepKeys?: string[];
   bookingFlowStatusOnSend?: string;
   description?: string;
   active?: boolean;
@@ -1529,6 +1531,7 @@ export interface SentEmail {
     mimeType?: string;
     size?: number;
   }>;
+  bookingFlowUpdates?: Array<{ stepKey: string; statusBefore?: string; statusAfter: string; bookingFlowItemId?: string }>;
   to: string[];
   cc?: string[];
   bcc?: string[];

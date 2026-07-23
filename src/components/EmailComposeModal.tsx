@@ -115,6 +115,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
     fromEmail: initialValues.fromEmail || '',
     replyTo: initialValues.replyTo || '',
   });
+  const selectedTemplate = templates.find((item) => item._id === selectedTemplateId);
 
   useEffect(() => {
     setSelectedTemplateId(initialValues.templateId || '');
@@ -137,7 +138,9 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
     const prepareBookingConfirmationAttachment = async () => {
       const isBookingConfirmation =
         initialValues.templateKey === 'booking_confirmation' ||
-        initialValues.bookingFlowStepKey === 'booking_confirmation_sent';
+        initialValues.bookingFlowStepKey === 'booking_confirmation_sent' ||
+        selectedTemplate?.templateKey === 'welcome_booking' || selectedTemplate?.templateKey === 'booking_confirmation' ||
+        selectedTemplate?.bookingFlowStepKeys?.includes('booking_confirmation_sent');
       const bookingId =
         initialValues.bookingId ||
         initialValues.variables?.booking?._id ||
@@ -177,6 +180,8 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
     initialValues.resolvedLanguage,
     initialValues.templateKey,
     initialValues.variables,
+    selectedTemplate?.templateKey,
+    selectedTemplate?.bookingFlowStepKeys,
     preparedAttachments.length,
   ]);
 
@@ -232,6 +237,8 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
     (
       initialValues.templateKey === 'booking_confirmation' ||
       initialValues.bookingFlowStepKey === 'booking_confirmation_sent' ||
+      selectedTemplate?.templateKey === 'welcome_booking' ||
+      selectedTemplate?.bookingFlowStepKeys?.includes('booking_confirmation_sent') ||
       title.toLowerCase().includes('booking confirmation')
     );
 
