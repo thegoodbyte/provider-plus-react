@@ -1,0 +1,349 @@
+.booking-step-deadlines-page {
+  min-height: 100%;
+  padding: 24px 24px 48px;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 1), rgba(255, 255, 255, 1));
+  color: #0f172a;
+}
+
+.booking-step-deadlines-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.booking-step-deadlines-eyebrow {
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: #2563eb;
+  margin-bottom: 8px;
+}
+
+.booking-step-deadlines-header h1 {
+  margin: 0;
+  font-size: 2rem;
+  line-height: 1.1;
+}
+
+.booking-step-deadlines-header p {
+  margin: 8px 0 0;
+  color: #64748b;
+  max-width: 52rem;
+}
+
+.deadline-refresh-btn,
+.deadline-clear-btn,
+.deadline-link-button {
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: #fff;
+  color: #0f172a;
+  border-radius: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease, background 160ms ease;
+}
+
+.deadline-refresh-btn,
+.deadline-clear-btn {
+  padding: 12px 16px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.deadline-refresh-btn:hover,
+.deadline-clear-btn:hover,
+.deadline-link-button:hover:not(:disabled) {
+  border-color: rgba(59, 130, 246, 0.55);
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.08);
+}
+
+.deadline-refresh-btn:active,
+.deadline-clear-btn:active,
+.deadline-link-button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.booking-step-deadlines-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.summary-card {
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 18px;
+  padding: 16px 18px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+}
+
+.summary-value {
+  font-size: 1.8rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.summary-label {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.78rem;
+  color: #64748b;
+}
+
+.booking-step-deadlines-filters {
+  display: grid;
+  grid-template-columns: minmax(280px, 2fr) repeat(4, minmax(160px, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+  padding: 16px;
+  margin-bottom: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
+}
+
+.deadline-search,
+.deadline-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.deadline-field-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #64748b;
+}
+
+.deadline-search {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 14px;
+  padding: 0 14px;
+  background: #fff;
+  min-height: 48px;
+}
+
+.deadline-search input,
+.deadline-field input,
+.deadline-field select {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #0f172a;
+  font: inherit;
+}
+
+.deadline-field input,
+.deadline-field select {
+  min-height: 48px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 14px;
+  padding: 0 14px;
+  background: #fff;
+}
+
+.booking-step-deadlines-table-shell {
+  overflow: auto;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
+}
+
+.booking-step-deadlines-table {
+  width: 100%;
+  min-width: 1180px;
+  border-collapse: collapse;
+}
+
+.booking-step-deadlines-table th,
+.booking-step-deadlines-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  vertical-align: top;
+  text-align: left;
+}
+
+.booking-step-deadlines-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.deadline-col-index {
+  width: 72px;
+  white-space: nowrap;
+  font-weight: 800;
+}
+
+.deadline-col-date {
+  width: 170px;
+}
+
+.deadline-date {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.deadline-date-key,
+.deadline-step-meta {
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.deadline-step {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.deadline-step-title {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.deadline-link-button,
+.deadline-client {
+  max-width: 100%;
+}
+
+.deadline-link-button {
+  padding: 8px 12px;
+  color: #2563eb;
+  background: rgba(59, 130, 246, 0.04);
+}
+
+.deadline-link-button:disabled {
+  cursor: default;
+  opacity: 0.7;
+  color: #64748b;
+}
+
+.deadline-link-button span,
+.deadline-client span,
+.deadline-notes {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.deadline-client {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #334155;
+}
+
+.deadline-notes {
+  max-width: 280px;
+  color: #334155;
+}
+
+.deadline-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 800;
+  text-transform: capitalize;
+  background: #f8fafc;
+  color: #0f172a;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.deadline-status-pending,
+.deadline-status-sent,
+.deadline-status-scheduled {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.deadline-status-received,
+.deadline-status-completed,
+.deadline-status-approved,
+.deadline-status-reviewed {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.deadline-status-caution {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.deadline-status-rejected,
+.deadline-status-blocked {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.deadline-status-needs-resubmission {
+  background: #fef9c3;
+  color: #a16207;
+}
+
+.deadline-empty,
+.deadline-loading {
+  padding: 42px 20px;
+  text-align: center;
+  color: #64748b;
+}
+
+.deadline-error {
+  margin-bottom: 16px;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 16px;
+  padding: 14px 16px;
+  background: rgba(254, 226, 226, 0.55);
+  color: #991b1b;
+}
+
+@media (max-width: 1280px) {
+  .booking-step-deadlines-filters {
+    grid-template-columns: minmax(260px, 2fr) repeat(2, minmax(160px, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .booking-step-deadlines-page {
+    padding: 18px 16px 40px;
+  }
+
+  .booking-step-deadlines-header {
+    flex-direction: column;
+  }
+
+  .booking-step-deadlines-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .booking-step-deadlines-filters {
+    grid-template-columns: 1fr;
+  }
+
+  .booking-step-deadlines-table {
+    min-width: 1040px;
+  }
+}

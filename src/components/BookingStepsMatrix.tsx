@@ -611,6 +611,13 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     suggestedFollowUpDate: string;
     history: BookingFlowActionLog[];
   } | null>(null);
+  const [automationState, setAutomationState] = useState<{
+    item: BookingFlowItem;
+    paused: boolean;
+    pauseReason?: string;
+    resumeAt?: string;
+    schedules: Array<{ _id: string; ruleKey: string; actionType: 'send_email' | 'create_staff_task'; scheduledFor: string; status: string; executedAt?: string; lastError?: string }>;
+  } | null>(null);
   const routePrefix = useMemo(() => {
     const firstSegment = location.pathname.split('/').filter(Boolean)[0];
     return ['admin', 'medical', 'staff', 'user', 'helper'].includes(firstSegment) ? firstSegment : 'admin';
@@ -1531,6 +1538,33 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     }
   };
 
+  const openReminderAutomation = async (item?: BookingFlowItem) => {
+    if (!item?._id) return;
+    setSaving(`automation:${item._id}`);
+    try {
+      const response = await bookingFlowApi.getItemReminderAutomation(item._id);
+      setAutomationState({ item, ...response.data });
+    } catch (error: any) {
+      alert(error?.response?.data?.message || error?.message || 'Unable to load reminder automation.');
+    } finally {
+      setSaving('');
+    }
+  };
+
+  const toggleReminderAutomation = async () => {
+    if (!automationState?.item?._id) return;
+    const paused = !automationState.paused;
+    const reason = paused ? window.prompt('Why are reminders being paused for this client?', automationState.pauseReason || '') || '' : undefined;
+    setSaving(`automation-toggle:${automationState.item._id}`);
+    try {
+      const response = await bookingFlowApi.setItemReminderAutomationPaused(automationState.item._id, { paused, reason });
+      setAutomationState((current) => current ? { ...current, ...response.data } : current);
+      await loadData(false);
+    } finally {
+      setSaving('');
+    }
+  };
+
   const sendRowEmail = async (row: MatrixRow) => {
     if (!row.templateId) return;
     const label = row.key === 'address_sent' ? 'address email' : `"${row.title}" email`;
@@ -2052,16 +2086,27 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                               );
                             })}
                             {canSendReminder(item) && (
-                              <button
-                                type="button"
-                                disabled={saving === `reminder-preview:${item._id}`}
-                                onClick={() => openReminderPreview(item)}
-                                className="inline-flex items-center justify-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-50"
-                                title={`Preview a reminder for ${item.title}`}
-                              >
-                                <Mail className="h-3.5 w-3.5" />
-                                {saving === `reminder-preview:${item._id}` ? 'Preparing...' : `Remind: ${item.title}`}
-                              </button>
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={saving === `reminder-preview:${item._id}`}
+                                  onClick={() => openReminderPreview(item)}
+                                  className="inline-flex items-center justify-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-50"
+                                  title={`Preview a reminder for ${item.title}`}
+                                >
+                                  <Mail className="h-3.5 w-3.5" />
+                                  {saving === `reminder-preview:${item._id}` ? 'Preparing...' : `Remind: ${item.title}`}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => openReminderAutomation(item)}
+                                  className={`inline-flex items-center justify-center gap-1 rounded-md border px-2 py-1 text-xs font-medium ${item.automationPaused ? 'border-gray-300 bg-gray-100 text-gray-600' : 'border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100'}`}
+                                  title="View automated reminder sequence"
+                                >
+                                  <ListPlus className="h-3.5 w-3.5" />
+                                  {item.automationPaused ? 'Automation paused' : 'Automation'}
+                                </button>
+                              </>
                             )}
                             {shouldShowArtifactUploadFallback(artifactStepConfig, isEditing, configuredActions.some((action) => action.type === 'upload')) && (
                               <label
@@ -2253,6 +2298,43 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
               <button type="button" disabled={!reminderState.subject.trim() || !reminderState.bodyText.trim() || saving === `reminder-send:${reminderState.item._id}`} onClick={() => sendReminder()} className="rounded-md bg-amber-700 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-800 disabled:opacity-50">
                 {saving === `reminder-send:${reminderState.item._id}` ? 'Sending...' : 'Send reminder'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {automationState && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-2xl rounded-xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between border-b border-gray-200 px-5 py-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Automated reminders: {automationState.item.title}</h2>
+                <p className="mt-1 text-sm text-gray-500">Generated from the step deadline. Completed steps cancel future actions automatically.</p>
+              </div>
+              <button type="button" onClick={() => setAutomationState(null)} className="rounded-md p-2 text-gray-500 hover:bg-gray-100"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="space-y-4 p-5">
+              {automationState.paused && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                  <strong>Automation paused.</strong>{automationState.pauseReason ? ` ${automationState.pauseReason}` : ''}
+                </div>
+              )}
+              <div className="overflow-hidden rounded-lg border border-gray-200">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-gray-50 text-xs uppercase text-gray-500"><tr><th className="px-3 py-2">When</th><th className="px-3 py-2">Action</th><th className="px-3 py-2">Status</th></tr></thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {automationState.schedules.map((schedule) => (
+                      <tr key={schedule._id}><td className="px-3 py-2">{formatDateTime(schedule.scheduledFor)}</td><td className="px-3 py-2">{schedule.ruleKey.replace(/_/g, ' ')}</td><td className="px-3 py-2 font-medium">{schedule.status.replace(/_/g, ' ')}</td></tr>
+                    ))}
+                    {automationState.schedules.length === 0 && <tr><td colSpan={3} className="px-3 py-6 text-center text-gray-500">No automation is scheduled for this step.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div className="flex justify-between border-t border-gray-200 px-5 py-4">
+              <button type="button" onClick={toggleReminderAutomation} disabled={saving === `automation-toggle:${automationState.item._id}`} className={`rounded-md px-4 py-2 text-sm font-semibold ${automationState.paused ? 'bg-green-700 text-white' : 'border border-gray-300 text-gray-700'}`}>
+                {automationState.paused ? 'Resume automation' : 'Pause for this client'}
+              </button>
+              <button type="button" onClick={() => setAutomationState(null)} className="rounded-md bg-gray-900 px-4 py-2 text-sm font-semibold text-white">Close</button>
             </div>
           </div>
         </div>

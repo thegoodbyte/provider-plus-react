@@ -1263,8 +1263,19 @@ export interface BookingFlowTemplate {
   emailEnabled?: boolean;
   emailTemplateId?: string | EmailTemplate;
   actions?: BookingFlowAction[];
+  reminderRules?: BookingReminderRule[];
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface BookingReminderRule {
+  key: string;
+  offsetDays: number;
+  actionType: 'send_email' | 'create_staff_task';
+  emailTemplateId?: string;
+  taskTitle?: string;
+  taskPriority?: 'low' | 'medium' | 'high' | 'urgent';
+  active?: boolean;
 }
 
 export interface BookingFlowAction {
@@ -1290,6 +1301,10 @@ export interface BookingFlowItem {
   emailEnabled?: boolean;
   emailTemplateId?: string | EmailTemplate;
   actions?: BookingFlowAction[];
+  automationPaused?: boolean;
+  automationPausedAt?: Date | string;
+  automationPauseReason?: string;
+  automationResumeAt?: Date | string;
   emailSentEmailId?: string | SentEmail;
   key: string;
   title: string;

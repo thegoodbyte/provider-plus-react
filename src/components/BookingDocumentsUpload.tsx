@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Eye, FileText, RefreshCw, Send, Upload } from 'lucide-react';
-import { bookingDocumentsApi, bookingFlowApi } from '../services/api';
-import { BookingDocument, BookingDocumentType, BookingFlowActionLog, BookingFlowItem } from '../types';
+import { bookingDocumentsApi, bookingFlowApi, medicalArtifactsApi } from '../services/api';
+import { BookingDocument, BookingDocumentType, BookingFlowActionLog, BookingFlowItem, MedicalArtifact } from '../types';
 import './BookingMedicalUpload.css';
 
 interface BookingDocumentsUploadProps {
@@ -84,6 +84,7 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
   onUploadComplete,
 }) => {
   const [documents, setDocuments] = useState<BookingDocument[]>([]);
+  const [entryMedicalArtifacts, setEntryMedicalArtifacts] = useState<MedicalArtifact[]>([]);
   const [documentTypes, setDocumentTypes] = useState<BookingDocumentType[]>([]);
   const [flowItems, setFlowItems] = useState<BookingFlowItem[]>([]);
   const [actionLogsByItem, setActionLogsByItem] = useState<Record<string, BookingFlowActionLog[]>>({});
@@ -142,16 +143,23 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
     setLoading(true);
     setError(null);
     try {
-      const [typesResponse, documentsResponse, flowResponse] = await Promise.all([
+      const [typesResponse, documentsResponse, flowResponse, medicalArtifactsResponse] = await Promise.all([
         bookingDocumentsApi.getTypes(),
         bookingDocumentsApi.getAll({ bookingId }),
         bookingFlowApi.getItems({ bookingId }),
+        medicalArtifactsApi.getAll({ bookingId }),
       ]);
 
       const items: BookingFlowItem[] = flowResponse.data || [];
       setDocumentTypes(typesResponse.data || []);
       setDocuments(documentsResponse.data || []);
       setFlowItems(items);
+      setEntryMedicalArtifacts((medicalArtifactsResponse.data || []).filter((artifact: MedicalArtifact) =>
+        (artifact.files || []).length > 0
+        && (artifact.documentStage === 'entry' || !artifact.documentStage)
+        && (artifact.artifactType === 'ekg' || artifact.artifactType === 'liver_panel'
+          || artifact.documentType === 'EKG' || artifact.documentType === 'Liver')
+      ));
 
       const logEntries = await Promise.all(
         items
@@ -302,6 +310,34 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
 
   return (
     <div className="booking-medical-upload">
+      <div className="booking-documents-header">
+        <div>
+          <h3>Entry Medical Documents</h3>
+          <p>Entry EKG and liver-panel files uploaded through this booking's retreat requirements.</p>
+        </div>
+      </div>
+      {entryMedicalArtifacts.length === 0 ? (
+        <div className="booking-medical-empty">No entry EKG or liver panel has been uploaded for this booking.</div>
+      ) : (
+        <div className="booking-medical-record-list">
+          {entryMedicalArtifacts.map((artifact) => (
+            <div className="booking-medical-record" key={artifact._id || `${artifact.artifactType}-${artifact.createdAt}`}>
+              <div className="booking-medical-record-main">
+                <strong>{artifact.artifactType === 'liver_panel' || artifact.documentType === 'Liver' ? 'Entry Liver Panel' : 'Entry EKG'}</strong>
+                <div className="booking-medical-meta">
+                  <span>{artifact.title || artifact.documentType}</span>
+                  <span>{formatDate(artifact.receivedAt || artifact.createdAt)}</span>
+                  <span>{(artifact.files || []).length} file(s)</span>
+                </div>
+                <div className="booking-medical-meta">
+                  {(artifact.files || []).map((file, index) => <span key={`${file.fileName}-${index}`}>{file.fileName || 'Document'}</span>)}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="booking-documents-header">
         <div>
           <h3>Booking Documents</h3>

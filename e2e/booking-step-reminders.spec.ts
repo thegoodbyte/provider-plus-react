@@ -13,6 +13,7 @@ test.describe('PPVC-325 booking step reminders', () => {
 
   test('previews and records an EKG reminder without completing the step', async ({ page }) => {
     let reminderPayload: any;
+    let pausePayload: any;
     const booking = {
       _id: 'booking-1', bookingNumber: 1201, status: 'confirmed', retreatId,
       clientId: { _id: 'client-1', firstName: 'Anna', lastName: 'Nowak', email: 'anna@example.com', display_id: 1001 },
@@ -44,9 +45,21 @@ test.describe('PPVC-325 booking step reminders', () => {
         reminderPayload = request.postDataJSON();
         return route.fulfill({ json: { sentEmail: { _id: 'sent-1', status: 'sent' }, item: { ...item, status: 'pending' } } });
       }
+      if (url.pathname === `/booking-flow/items/${itemId}/reminder-automation` && request.method() === 'GET') return route.fulfill({ json: {
+        paused: false,
+        schedules: [
+          { _id: 'schedule-1', ruleKey: 'friendly_7_days_before', actionType: 'send_email', scheduledFor: '2026-08-05T09:00:00.000Z', status: 'scheduled' },
+          { _id: 'schedule-2', ruleKey: 'urgent_3_days_overdue', actionType: 'send_email', scheduledFor: '2026-08-15T09:00:00.000Z', status: 'scheduled' },
+        ],
+      } });
+      if (url.pathname === `/booking-flow/items/${itemId}/reminder-automation/pause` && request.method() === 'PATCH') {
+        pausePayload = request.postDataJSON();
+        return route.fulfill({ json: { paused: true, pauseReason: pausePayload.reason, schedules: [] } });
+      }
       return route.fulfill({ json: [] });
     });
 
+    page.on('dialog', (dialog) => dialog.accept(dialog.type() === 'prompt' ? 'Waiting for doctor appointment' : undefined));
     await page.goto(`/admin/retreats/${retreatId}/holisticView`);
     await page.getByRole('button', { name: 'Remind: Entry EKG received' }).click();
     await expect(page.getByRole('heading', { name: 'Reminder: Entry EKG received' })).toBeVisible();
@@ -54,7 +67,6 @@ test.describe('PPVC-325 booking step reminders', () => {
     await expect(page.getByText('1 previous reminder.')).toBeVisible();
     await expect(page.locator('input[type="date"][value="2026-08-15"]')).toBeVisible();
 
-    page.once('dialog', (dialog) => dialog.accept());
     await page.getByRole('button', { name: 'Send reminder' }).click();
     await expect.poll(() => reminderPayload).toBeTruthy();
     expect(reminderPayload).toMatchObject({
@@ -63,5 +75,11 @@ test.describe('PPVC-325 booking step reminders', () => {
       overrideDuplicate: false,
     });
     expect(item.status).toBe('pending');
+
+    await page.getByRole('button', { name: 'Automation' }).click();
+    await expect(page.getByRole('heading', { name: 'Automated reminders: Entry EKG received' })).toBeVisible();
+    await expect(page.getByText('friendly 7 days before')).toBeVisible();
+    await page.getByRole('button', { name: 'Pause for this client' }).click();
+    await expect.poll(() => pausePayload).toMatchObject({ paused: true, reason: 'Waiting for doctor appointment' });
   });
 });

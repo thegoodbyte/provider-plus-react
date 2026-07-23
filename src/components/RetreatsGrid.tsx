@@ -375,6 +375,12 @@ const RetreatsGrid: React.FC = () => {
             >
               Holistic View
             </button>
+            <Link
+              to={`/${routePrefix}/booking-step-deadlines`}
+              className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Step Deadlines
+            </Link>
           </div>
         </div>
         <div className="flex items-center gap-3">

@@ -141,7 +141,8 @@ const ModuleLauncherPage: React.FC = () => {
           { id: 'bookings', label: 'Bookings', subtitle: 'Retreat seats', route: 'bookings', icon: ClipboardPaste, tone: 'blue' },
           { id: 'retreat-flow', label: 'Readiness Setup', subtitle: 'Per-retreat steps', route: 'retreat-flow', icon: LayoutGrid, tone: 'blue' },
           { id: 'retreat-flow-library', label: 'Booking Step Setup', subtitle: 'Master steps', route: 'retreat-flow-library', icon: BookOpen, tone: 'blue' },
-          { id: 'booking-flow', label: 'Step Deadlines', subtitle: 'Per booking', route: 'booking-flow', icon: ListTodo, tone: 'blue' },
+          { id: 'booking-flow', label: 'Booking Flow', subtitle: 'Per booking', route: 'booking-flow', icon: ListTodo, tone: 'blue' },
+          { id: 'booking-step-deadlines', label: 'Step Deadlines', subtitle: 'Across retreats', route: 'booking-step-deadlines', icon: CalendarDays, tone: 'blue' },
         ],
       },
       {
@@ -161,6 +162,7 @@ const ModuleLauncherPage: React.FC = () => {
           { id: 'medical-tracking', label: 'Readiness', subtitle: 'Per client status', route: 'medical-tracking', icon: Stethoscope, tone: 'emerald' },
           { id: 'medical-review-requests', label: 'Review Requests', subtitle: 'Medical reviews', route: 'medical-review-requests', icon: Inbox, tone: 'emerald' },
           { id: 'medical-retreats', label: 'Medical Retreats', subtitle: 'Per retreat', route: 'medical-retreats', icon: Activity, tone: 'emerald' },
+          { id: 'booking-step-deadlines', label: 'Step Deadlines', subtitle: 'Across retreats', route: 'booking-step-deadlines', icon: CalendarDays, tone: 'emerald' },
         ],
       },
       {
@@ -216,7 +218,7 @@ const ModuleLauncherPage: React.FC = () => {
           { id: 'potential-clients', label: 'Potential', subtitle: 'Filtered clients', route: 'clients?filter=leads', icon: ClipboardList, tone: 'blue' },
           { id: 'bookings', label: 'Bookings', subtitle: 'Booking list', route: 'bookings', icon: ClipboardPaste, tone: 'blue' },
           { id: 'retreat-flow', label: 'Readiness Setup', subtitle: 'Steps', route: 'retreat-flow', icon: LayoutGrid, tone: 'blue' },
-          { id: 'booking-flow', label: 'Step Deadlines', subtitle: 'Per booking', route: 'booking-flow', icon: ListTodo, tone: 'blue' },
+          { id: 'booking-flow', label: 'Booking Flow', subtitle: 'Per booking', route: 'booking-flow', icon: ListTodo, tone: 'blue' },
         ],
       },
       {

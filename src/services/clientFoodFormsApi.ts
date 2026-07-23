@@ -1,0 +1,3 @@
+import { api } from './api';
+export interface ClientFoodForm { _id: string; display_id: number; client_id: string; status: 'draft' | 'submitted' | 'reviewed'; language: 'en' | 'cs' | 'pl'; answers: Record<string, unknown>; email: string; signature_name: string; submitted_at?: string; pdf_file?: string; }
+export const clientFoodFormsApi = { getAll: () => api.get<ClientFoodForm[]>('/client-food-forms'), getOne: (id: string) => api.get<ClientFoodForm>(`/client-food-forms/${id}`), update: (id: string, data: Partial<ClientFoodForm>) => api.patch<ClientFoodForm>(`/client-food-forms/${id}`, data), delete: (id: string) => api.delete(`/client-food-forms/${id}`) };

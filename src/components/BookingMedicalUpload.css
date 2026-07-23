@@ -10,6 +10,16 @@
     color: #333;
 }
 
+.booking-bp-readings { margin-bottom: 16px; padding: 14px; border: 1px solid #dbe3ef; border-radius: 8px; background: #fff; }
+.booking-bp-readings-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.booking-bp-readings-header h4 { margin: 0 0 3px; color: #1f2937; }
+.booking-bp-readings-header p { margin: 0; color: #64748b; font-size: 13px; }
+.booking-bp-table-wrap { overflow-x: auto; }
+.booking-bp-table-wrap table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.booking-bp-table-wrap th,.booking-bp-table-wrap td { padding: 8px 10px; border-top: 1px solid #e5e7eb; text-align: left; vertical-align: top; }
+.booking-bp-table-wrap th { color: #64748b; font-size: 11px; text-transform: uppercase; }
+@media(max-width:640px){.booking-bp-readings{padding:10px}.booking-bp-table-wrap th,.booking-bp-table-wrap td{padding:7px;font-size:12px}}
+
 .booking-documents-header {
     display: flex;
     align-items: flex-start;
@@ -54,6 +64,15 @@
     display: flex;
     gap: 10px;
     align-items: flex-start;
+}
+
+.booking-document-card-heading-copy {
+    flex: 1;
+    min-width: 0;
+}
+
+.booking-medical-upload-button {
+    flex: none;
 }
 
 .booking-document-card-header h4 {
@@ -377,6 +396,137 @@
     outline: none;
     border-color: #374151;
     box-shadow: 0 0 0 2px rgba(55, 65, 81, 0.15);
+}
+
+.booking-medical-upload-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    background: rgba(15, 23, 42, 0.62);
+}
+
+.booking-medical-upload-modal {
+    width: min(620px, 100%);
+    max-height: 90vh;
+    overflow-y: auto;
+    border-radius: 10px;
+    background: white;
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.35);
+}
+
+.booking-medical-upload-modal-header,
+.booking-medical-upload-modal-footer {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 16px 18px;
+}
+
+.booking-medical-upload-modal-header {
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.booking-medical-upload-modal-header h4 {
+    margin: 0 0 4px;
+    color: #111827;
+    font-size: 18px;
+}
+
+.booking-medical-upload-modal-header p,
+.booking-medical-upload-help {
+    margin: 0;
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.booking-medical-upload-modal-header > button {
+    border: 0;
+    padding: 4px;
+    background: transparent;
+    color: #64748b;
+    cursor: pointer;
+}
+
+.booking-medical-upload-modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    padding: 18px;
+}
+
+.booking-medical-upload-context {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    padding: 12px;
+    border-radius: 8px;
+    background: #f8fafc;
+}
+
+.booking-medical-upload-context > div {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.booking-medical-upload-context span,
+.booking-medical-upload-field-label {
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.booking-medical-upload-context strong {
+    overflow-wrap: anywhere;
+    color: #1f2937;
+    font-size: 13px;
+}
+
+.booking-medical-upload-field-label {
+    display: block;
+    margin-bottom: 6px;
+}
+
+.booking-medical-upload-field {
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 9px 10px;
+    background: white;
+    color: #111827;
+    font-size: 14px;
+}
+
+.booking-medical-upload-help {
+    margin-top: 6px;
+}
+
+.booking-medical-upload-file-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 8px;
+    color: #475569;
+    font-size: 12px;
+}
+
+.booking-medical-upload-modal-footer {
+    align-items: center;
+    justify-content: flex-end;
+    border-top: 1px solid #e5e7eb;
+}
+
+@media (max-width: 640px) {
+    .booking-medical-upload-context {
+        grid-template-columns: 1fr;
+    }
 }
 
 .booking-medical-result-editor button {

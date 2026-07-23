@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FiAlertCircle, FiCheckCircle, FiInbox, FiMail, FiPlus, FiRefreshCw, FiSave, FiSend, FiTrash2 } from 'react-icons/fi';
+import { FiAlertCircle, FiCheckCircle, FiInbox, FiMail, FiPlus, FiRefreshCw, FiSave, FiSearch, FiSend, FiTrash2 } from 'react-icons/fi';
 import { Link, useLocation } from 'react-router-dom';
 import { communicationsApi, clientsApi, retreatsApi } from '../services/api';
 import { Client, EmailTemplate, EmailTemplateSeedOption, InboundEmail, MailSettings, Retreat, SentEmail } from '../types';
@@ -73,6 +73,10 @@ const CommunicationsPage: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [templateSearch, setTemplateSearch] = useState('');
+  const [templateCategoryFilter, setTemplateCategoryFilter] = useState('all');
+  const [templateLanguageFilter, setTemplateLanguageFilter] = useState('all');
+  const [templateStatusFilter, setTemplateStatusFilter] = useState('all');
   const [selectedSentEmailId, setSelectedSentEmailId] = useState('');
   const [templateForm, setTemplateForm] = useState<Partial<EmailTemplate>>(defaultTemplateForm);
   const [composeForm, setComposeForm] = useState(defaultComposeForm);
@@ -91,6 +95,44 @@ const CommunicationsPage: React.FC = () => {
     () => templates.find((template) => template._id === selectedTemplateId) || null,
     [templates, selectedTemplateId],
   );
+
+  const templateCategories = useMemo(() => Array.from(new Set(
+    templates.map((template) => String(template.category || 'general').trim()).filter(Boolean),
+  )).sort((a, b) => a.localeCompare(b)), [templates]);
+
+  const templateLanguages = useMemo(() => Array.from(new Set(
+    templates.map((template) => String(template.language || 'en').trim().toLowerCase()).filter(Boolean),
+  )).sort((a, b) => a.localeCompare(b)), [templates]);
+
+  const filteredTemplates = useMemo(() => {
+    const search = templateSearch.trim().toLowerCase();
+    return templates.filter((template) => {
+      const category = String(template.category || 'general').trim();
+      const language = String(template.language || 'en').trim().toLowerCase();
+      const status = template.active === false ? 'hidden' : 'active';
+      const searchableText = [
+        template.display_id,
+        template.name,
+        template.subject,
+        template.description,
+        category,
+        template.templateKey,
+        language,
+        template.tags,
+        template.notes,
+      ].filter((value) => value !== undefined && value !== null).join(' ').toLowerCase();
+
+      return (!search || searchableText.includes(search))
+        && (templateCategoryFilter === 'all' || category === templateCategoryFilter)
+        && (templateLanguageFilter === 'all' || language === templateLanguageFilter)
+        && (templateStatusFilter === 'all' || status === templateStatusFilter);
+    });
+  }, [templates, templateSearch, templateCategoryFilter, templateLanguageFilter, templateStatusFilter]);
+
+  const hasTemplateFilters = Boolean(templateSearch.trim())
+    || templateCategoryFilter !== 'all'
+    || templateLanguageFilter !== 'all'
+    || templateStatusFilter !== 'all';
 
   const groupedSeedOptions = useMemo(() => {
     return seedOptions.reduce((groups: Record<string, EmailTemplateSeedOption[]>, option) => {
@@ -786,8 +828,68 @@ const CommunicationsPage: React.FC = () => {
                 </button>
               </div>
             )}
+            <div className="space-y-2 rounded-md border border-gray-200 bg-gray-50 p-3">
+              <div className="relative">
+                <Icon icon={FiSearch} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="search"
+                  value={templateSearch}
+                  onChange={(event) => setTemplateSearch(event.target.value)}
+                  className="w-full rounded-md border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm"
+                  placeholder="Search templates..."
+                  aria-label="Search communication templates"
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:grid-cols-1">
+                <select
+                  value={templateCategoryFilter}
+                  onChange={(event) => setTemplateCategoryFilter(event.target.value)}
+                  className="w-full rounded-md border border-gray-300 bg-white px-2 py-2 text-sm"
+                  aria-label="Filter templates by category"
+                >
+                  <option value="all">All categories</option>
+                  {templateCategories.map((category) => <option key={category} value={category}>{category}</option>)}
+                </select>
+                <select
+                  value={templateLanguageFilter}
+                  onChange={(event) => setTemplateLanguageFilter(event.target.value)}
+                  className="w-full rounded-md border border-gray-300 bg-white px-2 py-2 text-sm"
+                  aria-label="Filter templates by language"
+                >
+                  <option value="all">All languages</option>
+                  {templateLanguages.map((language) => <option key={language} value={language}>{language.toUpperCase()}</option>)}
+                </select>
+                <select
+                  value={templateStatusFilter}
+                  onChange={(event) => setTemplateStatusFilter(event.target.value)}
+                  className="w-full rounded-md border border-gray-300 bg-white px-2 py-2 text-sm"
+                  aria-label="Filter templates by status"
+                >
+                  <option value="all">All statuses</option>
+                  <option value="active">Active</option>
+                  <option value="hidden">Hidden</option>
+                </select>
+              </div>
+              <div className="flex items-center justify-between text-xs text-gray-500">
+                <span>{filteredTemplates.length} of {templates.length} templates</span>
+                {hasTemplateFilters && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTemplateSearch('');
+                      setTemplateCategoryFilter('all');
+                      setTemplateLanguageFilter('all');
+                      setTemplateStatusFilter('all');
+                    }}
+                    className="font-medium text-blue-600 hover:text-blue-800"
+                  >
+                    Clear filters
+                  </button>
+                )}
+              </div>
+            </div>
             <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-1">
-              {templates.map((template) => (
+              {filteredTemplates.map((template) => (
                 <button
                   key={template._id}
                   type="button"
@@ -810,6 +912,11 @@ const CommunicationsPage: React.FC = () => {
                 </button>
               ))}
               {templates.length === 0 && <div className="text-sm text-gray-500">No templates yet.</div>}
+              {templates.length > 0 && filteredTemplates.length === 0 && (
+                <div className="rounded-md border border-dashed border-gray-300 p-4 text-center text-sm text-gray-500">
+                  No templates match these filters.
+                </div>
+              )}
             </div>
           </section>
 

@@ -1321,6 +1321,26 @@ export const bookingFlowApi = {
     cacheService.clearPattern('communications:sent-emails');
     return api.post(`/booking-flow/items/${id}/send-reminder`, data);
   },
+  getItemReminderAutomation: (id: string) => api.get<{
+    paused: boolean;
+    pauseReason?: string;
+    resumeAt?: string;
+    schedules: Array<{
+      _id: string;
+      ruleKey: string;
+      actionType: 'send_email' | 'create_staff_task';
+      scheduledFor: string;
+      status: string;
+      executedAt?: string;
+      lastError?: string;
+    }>;
+  }>(`/booking-flow/items/${id}/reminder-automation`),
+  setItemReminderAutomationPaused: (id: string, data: { paused: boolean; reason?: string; resumeAt?: string }) => {
+    cacheService.clearPattern('booking-flow:');
+    return api.patch(`/booking-flow/items/${id}/reminder-automation/pause`, data);
+  },
+  syncReminderAutomation: () => api.post('/booking-flow/reminder-automation/sync', {}),
+  processReminderAutomation: (limit = 50) => api.post('/booking-flow/reminder-automation/process', { limit }),
   getItemActionLogs: (id: string) => cachedGet<BookingFlowActionLog[]>(
     `booking-flow:item-action-logs:${id}`,
     () => api.get<BookingFlowActionLog[]>(`/booking-flow/items/${id}/action-logs`)

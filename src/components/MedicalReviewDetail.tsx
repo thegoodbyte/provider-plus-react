@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, FileText, Heart, Calendar, User,
-  CheckCircle, XCircle, AlertTriangle, Download,
+  AlertTriangle, Download, ThumbsUp, ThumbsDown,
   Clock, Activity, Phone, Mail
 } from 'lucide-react';
 import { API_BASE_URL } from '../config/api.config';
@@ -395,8 +395,8 @@ const MedicalReviewDetail: React.FC = () => {
                 checked={reviewDecision === 'approved'}
                 onChange={(e) => setReviewDecision(e.target.value as any)}
               />
-              <CheckCircle size={20} />
-              <span>Approve for Retreat</span>
+              <ThumbsUp size={20} />
+              <span>Approve</span>
             </label>
 
             <label className="decision-option">
@@ -407,8 +407,8 @@ const MedicalReviewDetail: React.FC = () => {
                 checked={reviewDecision === 'declined'}
                 onChange={(e) => setReviewDecision(e.target.value as any)}
               />
-              <XCircle size={20} />
-              <span>Decline - Medical Concerns</span>
+              <ThumbsDown size={20} />
+              <span>Decline</span>
             </label>
 
             <label className="decision-option">
@@ -420,7 +420,7 @@ const MedicalReviewDetail: React.FC = () => {
                 onChange={(e) => setReviewDecision(e.target.value as any)}
               />
               <AlertTriangle size={20} />
-              <span>Needs More Information</span>
+              <span>Need more info</span>
             </label>
           </div>
 

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { FiSend, FiX } from 'react-icons/fi';
-import { bookingsApi, communicationsApi } from '../services/api';
+import { bookingDocumentsApi, bookingsApi, communicationsApi } from '../services/api';
 import { EmailTemplate, MailSettings } from '../types';
 import { createBookingConfirmationPdf } from './BookingConfirmationPDF';
 
@@ -158,11 +158,26 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
         const { blob, fileName } = await createBookingConfirmationPdf({ booking: bookingResponse.data, language });
         const contentBase64 = await blobToBase64(blob);
         if (!active) return;
-        setPreparedAttachments([{
+        const nextAttachments = [{
           fileName,
           mimeType: 'application/pdf',
           contentBase64,
-        }]);
+        }];
+        const contractDocuments = await bookingDocumentsApi.getAll({ bookingId: String(bookingId), documentType: 'contract' }).catch(() => ({ data: [] }));
+        const contractDocument = contractDocuments.data?.[0];
+        const contractFile = contractDocument?.files?.[0];
+        const storedPath = contractFile?.s3Key || contractFile?.filePath;
+        if (contractDocument?._id && storedPath) {
+          const contractResponse = await bookingDocumentsApi.getFile(contractDocument._id, storedPath).catch(() => null);
+          if (contractResponse?.data instanceof Blob) {
+            nextAttachments.push({
+              fileName: contractFile.fileName || 'retreat-contract.pdf',
+              mimeType: contractFile.mimeType || contractResponse.data.type || 'application/pdf',
+              contentBase64: await blobToBase64(contractResponse.data),
+            });
+          }
+        }
+        if (active) setPreparedAttachments(nextAttachments);
       } catch (error) {
         console.error('Unable to prepare booking confirmation PDF attachment:', error);
         if (active) setAttachmentPreparationError('Unable to prepare booking confirmation PDF attachment.');
