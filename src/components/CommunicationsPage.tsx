@@ -17,6 +17,18 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
   return <IconComponent className={className} />;
 };
 
+const looksLikeHtml = (value: string) => /<!doctype\s+html|<html[\s>]|<body[\s>]|<(?:p|div|table|h[1-6]|ul|ol|br|a)\b/i.test(value);
+const htmlToPlainText = (value: string) => value
+  .replace(/<(?:br|\/p|\/div|\/h[1-6]|\/li)>/gi, '\n')
+  .replace(/<[^>]+>/g, '')
+  .replace(/&nbsp;/gi, ' ')
+  .replace(/&amp;/gi, '&')
+  .replace(/&lt;/gi, '<')
+  .replace(/&gt;/gi, '>')
+  .replace(/\n{3,}/g, '\n\n')
+  .trim();
+const plainTextToHtml = (value: string) => `<pre style="white-space: pre-wrap; font-family: inherit;">${value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>`;
+
 const defaultTemplateForm: Partial<EmailTemplate> = {
   name: '',
   description: '',
@@ -1009,14 +1021,21 @@ const CommunicationsPage: React.FC = () => {
               <label className="block text-sm font-medium text-gray-700 mb-1">Message Body</label>
               <textarea
                 rows={12}
-                value={templateForm.bodyText || ''}
-                onChange={(e) => setTemplateForm((prev) => ({
-                  ...prev,
-                  bodyText: e.target.value,
-                  bodyHtml: `<pre style="white-space: pre-wrap; font-family: inherit;">${e.target.value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</pre>`,
-                }))}
+                value={looksLikeHtml(String(templateForm.bodyHtml || '')) ? templateForm.bodyHtml : templateForm.bodyText || ''}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  const isHtml = looksLikeHtml(value);
+                  setTemplateForm((prev) => ({
+                    ...prev,
+                    bodyText: isHtml ? htmlToPlainText(value) : value,
+                    bodyHtml: isHtml ? value : plainTextToHtml(value),
+                  }));
+                }}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-sm"
               />
+              <p className="mt-1 text-xs text-gray-500">
+                HTML is detected automatically. Paste the complete HTML source here; no special label is required.
+              </p>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div>

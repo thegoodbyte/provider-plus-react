@@ -111,6 +111,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
     bcc: initialValues.bcc || '',
     subject: initialValues.subject || '',
     bodyText: initialValues.bodyText || '',
+    bodyHtml: '',
     fromName: initialValues.fromName || '',
     fromEmail: initialValues.fromEmail || '',
     replyTo: initialValues.replyTo || '',
@@ -127,6 +128,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
       bcc: initialValues.bcc || '',
       subject: initialValues.subject || '',
       bodyText: initialValues.bodyText || '',
+      bodyHtml: '',
       fromName: initialValues.fromName || '',
       fromEmail: initialValues.fromEmail || '',
       replyTo: initialValues.replyTo || '',
@@ -237,6 +239,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
       ...prev,
       subject: template.subject ? interpolateTemplate(template.subject, initialValues.variables) : prev.subject,
       bodyText: template.bodyText ? interpolateTemplate(template.bodyText, initialValues.variables) : prev.bodyText,
+      bodyHtml: template.bodyHtml ? interpolateTemplate(template.bodyHtml, initialValues.variables) : '',
     }));
   }, [initialValues.variables, templates]);
 
@@ -282,6 +285,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
         bcc: formData.bcc.trim() || undefined,
         subject,
         bodyText: formData.bodyText,
+        bodyHtml: formData.bodyHtml || undefined,
         templateId: selectedTemplateId || initialValues.templateId || undefined,
         fromName: formData.fromName.trim() || settings?.senderName,
         fromEmail: formData.fromEmail.trim() || settings?.senderEmail,
@@ -446,8 +450,15 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
             <label className="mb-1 block text-sm font-medium text-gray-700">Message</label>
             <textarea
               rows={14}
-              value={formData.bodyText}
-              onChange={(event) => updateField('bodyText', event.target.value)}
+              value={formData.bodyHtml || formData.bodyText}
+              onChange={(event) => {
+                const value = event.target.value;
+                if (/<!doctype\s+html|<html[\s>]|<body[\s>]|<(?:p|div|table|h[1-6]|ul|ol|br|a)\b/i.test(value)) {
+                  setFormData((prev) => ({ ...prev, bodyHtml: value }));
+                } else {
+                  setFormData((prev) => ({ ...prev, bodyText: value, bodyHtml: '' }));
+                }
+              }}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             />
           </div>
