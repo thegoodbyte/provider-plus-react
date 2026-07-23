@@ -69,6 +69,7 @@ import PermissionsMatrix from './PermissionsMatrix';
 import ClientMedicationsGrid from './ClientMedicationsGrid';
 import ClientMedicationForm from './ClientMedicationForm';
 import ClientFoodFormsPage from './ClientFoodFormsPage';
+import BookingStepDeadlinesPage from './BookingStepDeadlinesPage';
 import UserManagement from './UserManagement';
 import AuditLogsPage from './AuditLogsPage';
 import DataBackupPage from './DataBackupPage';

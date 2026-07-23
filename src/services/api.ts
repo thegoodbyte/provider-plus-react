@@ -1416,7 +1416,6 @@ export const bookingDocumentsApi = {
     });
   },
   getFileViewUrl: (id: string, storedPath: string) => `${api.defaults.baseURL}/booking-documents/${id}/files/view?storedPath=${encodeURIComponent(storedPath)}`,
-  delete: (id: string, reason = 'Upload rollback') => {
   getFile: (id: string, storedPath: string) => api.get(
     `/booking-documents/${id}/files/view?storedPath=${encodeURIComponent(storedPath)}`,
     { responseType: 'blob' },
