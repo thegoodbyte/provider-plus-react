@@ -1300,6 +1300,27 @@ export const bookingFlowApi = {
       return request();
     }
   },
+  getItemReminderPreview: (id: string) => api.get<{
+    to: string;
+    subject: string;
+    bodyText: string;
+    stepKey: string;
+    stepTitle: string;
+    dueDate?: string;
+    uploadUrl: string;
+    actionKey: string;
+    reminderCount: number;
+    lastReminderAt?: string;
+    duplicateBlocked: boolean;
+    duplicateWarning: boolean;
+    suggestedFollowUpDate: string;
+    history: BookingFlowActionLog[];
+  }>(`/booking-flow/items/${id}/reminder-preview`),
+  sendItemReminder: (id: string, data: { subject: string; bodyText: string; followUpDate?: string; overrideDuplicate?: boolean }) => {
+    cacheService.clearPattern('booking-flow:');
+    cacheService.clearPattern('communications:sent-emails');
+    return api.post(`/booking-flow/items/${id}/send-reminder`, data);
+  },
   getItemActionLogs: (id: string) => cachedGet<BookingFlowActionLog[]>(
     `booking-flow:item-action-logs:${id}`,
     () => api.get<BookingFlowActionLog[]>(`/booking-flow/items/${id}/action-logs`)
