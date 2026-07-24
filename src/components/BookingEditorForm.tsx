@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { bookingsApi, clientsApi, retreatsApi } from '../services/api';
-import { RetreatClient, Client, Retreat, PaymentRequest } from '../types';
+import { bookingsApi, ceremoniesApi, clientsApi, retreatsApi } from '../services/api';
+import { RetreatClient, Client, Retreat, PaymentRequest, Ceremony } from '../types';
 import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
@@ -16,6 +16,10 @@ type BookingFormData = {
   currency: 'EUR' | 'USD' | 'CZK' | 'PLN';
   status: 'pending' | 'confirmed' | 'checked-in' | 'checked-out' | 'cancelled';
   bookingNumber: string;
+  bookingType: 'full_retreat' | 'booster';
+  ceremonyId: string;
+  checkInDate: string;
+  checkOutDate: string;
 };
 
 const bookingStatusValues = ['pending', 'confirmed', 'checked-in', 'checked-out', 'cancelled'] as const;
@@ -53,7 +57,19 @@ const emptyForm = (): BookingFormData => ({
   currency: 'EUR',
   status: 'pending',
   bookingNumber: '',
+  bookingType: 'full_retreat',
+  ceremonyId: '',
+  checkInDate: '',
+  checkOutDate: '',
 });
+
+const toDateTimeInput = (value?: string | Date | null) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+};
 
 const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   mode,
@@ -70,6 +86,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   const [saving, setSaving] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>(initialRetreats || []);
+  const [ceremonies, setCeremonies] = useState<Ceremony[]>([]);
   const [booking, setBooking] = useState<RetreatClient | null>(initialBooking || null);
   const [formData, setFormData] = useState<BookingFormData>(emptyForm());
   const [bookingNumberError, setBookingNumberError] = useState('');
@@ -117,6 +134,10 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
           currency: (currentBooking.currency || 'EUR') as BookingFormData['currency'],
           status: normalizeBookingStatus(currentBooking.status),
           bookingNumber: currentBooking.bookingNumber?.toString() || '',
+          bookingType: currentBooking.bookingType || 'full_retreat',
+          ceremonyId: typeof currentBooking.ceremonyId === 'string' ? currentBooking.ceremonyId : currentBooking.ceremonyId?._id || '',
+          checkInDate: toDateTimeInput(currentBooking.checkInDate),
+          checkOutDate: toDateTimeInput(currentBooking.checkOutDate),
         });
       } else {
         setFormData({
@@ -133,6 +154,20 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!formData.retreatId) {
+      setCeremonies([]);
+      return;
+    }
+    ceremoniesApi.getByRetreat(formData.retreatId)
+      .then((response) => setCeremonies((response.data || []).sort((a, b) =>
+        new Date(a.date).getTime() - new Date(b.date).getTime())))
+      .catch((error) => {
+        console.error('Error loading retreat ceremonies:', error);
+        setCeremonies([]);
+      });
+  }, [formData.retreatId]);
 
   const resolveId = (value: any) => {
     if (!value) return '';
@@ -201,9 +236,11 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
         currency: formData.currency,
         status: formData.status,
         bookingNumber: Number.isFinite(bookingNumber) ? bookingNumber : undefined,
+        bookingType: formData.bookingType,
+        ceremonyId: formData.bookingType === 'booster' ? formData.ceremonyId : undefined,
         registrationDate: booking?.registrationDate || new Date().toISOString(),
-        checkInDate: booking?.checkInDate || new Date().toISOString(),
-        checkOutDate: booking?.checkOutDate || new Date().toISOString(),
+        checkInDate: formData.checkInDate ? new Date(formData.checkInDate).toISOString() : undefined,
+        checkOutDate: formData.checkOutDate ? new Date(formData.checkOutDate).toISOString() : undefined,
         roomAssignment: (booking as any)?.roomAssignment || '',
         specialRequests: (booking as any)?.specialRequests || '',
         notes: (booking as any)?.notes || '',
@@ -212,6 +249,14 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       if (payload.bookingNumber != null) {
         const valid = await validateBookingNumber(String(payload.bookingNumber));
         if (!valid) return;
+      }
+      if (formData.bookingType === 'booster' && !formData.ceremonyId) {
+        alert('Please select the ceremony this booster guest will attend.');
+        return;
+      }
+      if (formData.checkInDate && formData.checkOutDate && new Date(formData.checkOutDate) <= new Date(formData.checkInDate)) {
+        alert('Check-out must be after check-in.');
+        return;
       }
 
       if (mode === 'edit' && bookingId) {
@@ -284,6 +329,65 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
               <div>Check-in: {formatDate(booking?.checkInDate)}</div>
               <div>Check-out: {formatDate(booking?.checkOutDate)}</div>
             </div>
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-blue-100 bg-blue-50 p-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Booking type</label>
+              <select
+                value={formData.bookingType}
+                onChange={(e) => setFormData((prev) => ({
+                  ...prev,
+                  bookingType: e.target.value as BookingFormData['bookingType'],
+                  ceremonyId: e.target.value === 'booster' ? prev.ceremonyId : '',
+                }))}
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="full_retreat">Full 7-day retreat</option>
+                <option value="booster">Booster within this retreat</option>
+              </select>
+            </div>
+            {formData.bookingType === 'booster' && (
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Ceremony attending *</label>
+                <select
+                  value={formData.ceremonyId}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, ceremonyId: e.target.value }))}
+                  className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Select ceremony...</option>
+                  {ceremonies.map((ceremony, index) => (
+                    <option key={ceremony._id} value={ceremony._id}>
+                      Ceremony {index + 1} — {new Date(ceremony.date).toLocaleDateString()}
+                    </option>
+                  ))}
+                </select>
+                {!ceremonies.length && formData.retreatId && (
+                  <p className="mt-1 text-xs text-amber-700">Add ceremonies to this retreat before making a booster booking.</p>
+                )}
+              </div>
+            )}
+          </div>
+          <p className="mt-2 text-xs text-blue-700">
+            Booster guests remain part of this retreat, but appear only in their selected ceremony.
+          </p>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Arrival</label>
+            <input type="datetime-local" value={formData.checkInDate}
+              onChange={(e) => setFormData((prev) => ({ ...prev, checkInDate: e.target.value }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Departure</label>
+            <input type="datetime-local" value={formData.checkOutDate}
+              onChange={(e) => setFormData((prev) => ({ ...prev, checkOutDate: e.target.value }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
         </div>
 

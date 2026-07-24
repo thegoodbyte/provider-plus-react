@@ -225,6 +225,7 @@ export interface RetreatClient {
   clientId: string;
   paymentRequestId?: string | PaymentRequest;
   bookingType?: 'full_retreat' | 'booster'; // Type of booking
+  ceremonyId?: string | Ceremony;
   registrationDate: Date | string;
   checkInDate: Date | string;
   checkOutDate: Date | string;
