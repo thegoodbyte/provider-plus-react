@@ -147,14 +147,21 @@ const ClientDetailsPage: React.FC = () => {
 
   const handleResetLoginPin = async () => {
     if (!client?._id) return;
-    if (!window.confirm('Generate a new client portal PIN and email it to the client?')) return;
+    if (!window.confirm('Generate a new client portal PIN?')) return;
+    const notifyClient = window.confirm(
+      'Notify the client by email?\n\nOK: change the PIN and send a localized email.\nCancel: change the PIN without sending an email.'
+    );
 
     try {
       setResettingLoginPin(true);
       setLoginPinMessage(null);
-      const response = await clientsApi.resetLoginPin(client._id);
+      const response = await clientsApi.resetLoginPin(client._id, notifyClient);
       setClient((current: any) => current ? { ...current, loginPin: response.data.loginPin } : current);
-      setLoginPinMessage(response.data.emailSent ? 'A new PIN was generated and emailed to the client.' : 'A new PIN was generated. Email delivery was not confirmed.');
+      setLoginPinMessage(
+        notifyClient
+          ? (response.data.emailSent ? 'A new PIN was generated and emailed to the client in their preferred language.' : 'A new PIN was generated, but email delivery was not confirmed.')
+          : 'A new PIN was generated without notifying the client.'
+      );
     } catch (error: any) {
       console.error('Error resetting client PIN:', error);
       setLoginPinMessage(error?.response?.data?.message || error?.message || 'Failed to reset client PIN.');

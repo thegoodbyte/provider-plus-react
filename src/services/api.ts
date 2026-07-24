@@ -177,8 +177,8 @@ export const clientsApi = {
       },
     });
   },
-  resetLoginPin: (id: string) =>
-    api.post<{ client: Client; loginPin: string; emailSent: boolean }>(`/clients/${id}/login-pin/reset`, {}),
+  resetLoginPin: (id: string, notifyClient: boolean) =>
+    api.post<{ client: Client; loginPin: string; emailSent: boolean }>(`/clients/${id}/login-pin/reset`, { notifyClient }),
   getProfilePictureBlob: (id: string) =>
     api.get(`/clients/${id}/profile-picture`, { responseType: 'blob', suppressGlobalError: true } as any),
 };
