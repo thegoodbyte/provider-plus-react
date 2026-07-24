@@ -70,6 +70,8 @@ import ClientMedicationsGrid from './ClientMedicationsGrid';
 import ClientMedicationForm from './ClientMedicationForm';
 import ClientFoodFormsPage from './ClientFoodFormsPage';
 import BookingStepDeadlinesPage from './BookingStepDeadlinesPage';
+import ScheduledRemindersPage from './ScheduledRemindersPage';
+import MedicationStopPlanPage from './MedicationStopPlanPage';
 import UserManagement from './UserManagement';
 import AuditLogsPage from './AuditLogsPage';
 import DataBackupPage from './DataBackupPage';
@@ -637,6 +639,8 @@ const AppleLayout: React.FC = () => {
                       <Route path="retreat-flow" element={<RetreatFlowPage />} />
                       <Route path="retreat-flow/:retreatId" element={<RetreatFlowPage />} />
                       <Route path="retreat-flow-library" element={<RetreatFlowLibraryPage />} />
+                      <Route path="scheduled-reminders" element={<ScheduledRemindersPage />} />
+                      <Route path="bookings/:bookingId/medication-stop-plan" element={<MedicationStopPlanPage />} />
                       <Route path="booking-flow" element={<BookingFlowPage />} />
                       <Route path="booking-flow/:bookingId" element={<BookingFlowPage />} />
                       <Route path="needs-attention" element={<NeedsAttentionPage />} />
@@ -733,6 +737,8 @@ const AppleLayout: React.FC = () => {
                         <Route path="retreat-flow" element={<RetreatFlowPage />} />
                         <Route path="retreat-flow/:retreatId" element={<RetreatFlowPage />} />
                         <Route path="retreat-flow-library" element={<RetreatFlowLibraryPage />} />
+                        <Route path="scheduled-reminders" element={<ScheduledRemindersPage />} />
+                        <Route path="bookings/:bookingId/medication-stop-plan" element={<MedicationStopPlanPage />} />
                         <Route path="booking-flow" element={<BookingFlowPage />} />
                         <Route path="booking-flow/:bookingId" element={<BookingFlowPage />} />
                         <Route path="needs-attention" element={<NeedsAttentionPage />} />
@@ -881,6 +887,8 @@ const AppleLayout: React.FC = () => {
                 <Route path="/booking-flow" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><BookingFlowPage /></ProtectedRoute>} />
                 <Route path="/booking-flow/:bookingId" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><BookingFlowPage /></ProtectedRoute>} />
                 <Route path="/booking-step-deadlines" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><BookingStepDeadlinesPage /></ProtectedRoute>} />
+                <Route path="/scheduled-reminders" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><ScheduledRemindersPage /></ProtectedRoute>} />
+                <Route path="/bookings/:bookingId/medication-stop-plan" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><MedicationStopPlanPage /></ProtectedRoute>} />
                 <Route path="/booking-documents" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><BookingDocumentsPage /></ProtectedRoute>} />
                 <Route path="/booking-document-types" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><BookingDocumentTypesPage /></ProtectedRoute>} />
                 <Route path="/reserve-lists" element={<ProtectedRoute><ReserveListsPage /></ProtectedRoute>} />

@@ -1341,6 +1341,12 @@ export const bookingFlowApi = {
   },
   syncReminderAutomation: () => api.post('/booking-flow/reminder-automation/sync', {}),
   processReminderAutomation: (limit = 50) => api.post('/booking-flow/reminder-automation/process', { limit }),
+  getReminderSchedules: (params: Record<string, any> = {}) => api.get('/booking-flow/reminder-automation/schedules', { params }),
+  updateReminderSchedule: (id: string, data: { scheduledFor?: string; status?: 'scheduled' | 'paused' | 'cancelled' }) =>
+    api.patch(`/booking-flow/reminder-automation/schedules/${id}`, data),
+  getMedicationStopPlan: (bookingId: string) => api.get(`/booking-flow/bookings/${bookingId}/medication-stop-plan`),
+  saveMedicationStopPlan: (bookingId: string, entries: Record<string, any>[]) =>
+    api.put(`/booking-flow/bookings/${bookingId}/medication-stop-plan`, { entries }),
   getItemActionLogs: (id: string) => cachedGet<BookingFlowActionLog[]>(
     `booking-flow:item-action-logs:${id}`,
     () => api.get<BookingFlowActionLog[]>(`/booking-flow/items/${id}/action-logs`)
