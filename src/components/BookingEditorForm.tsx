@@ -175,6 +175,10 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       totalAmount: paymentRequest?.fullPriceQuote ? Number(paymentRequest.fullPriceQuote) : prev.totalAmount,
       amountPaid: paymentRequest ? Number(paymentRequest.amountPaid || prev.amountPaid || 0) : prev.amountPaid,
       currency: paymentRequest?.currency ? paymentRequest.currency : prev.currency,
+      bookingType: paymentRequest?.bookingType || prev.bookingType,
+      ceremonyId: paymentRequest?.bookingType === 'booster'
+        ? resolveId(paymentRequest.ceremonyId)
+        : prev.ceremonyId,
     }));
   };
 

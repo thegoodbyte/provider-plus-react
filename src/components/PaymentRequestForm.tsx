@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { PaymentRequest, Client, Retreat } from '../types';
+import { PaymentRequest, Client, Retreat, Ceremony } from '../types';
 import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
-import { clientsApi, paymentRequestsApi, paymentsApi, retreatsApi } from '../services/api';
+import { ceremoniesApi, clientsApi, paymentRequestsApi, paymentsApi, retreatsApi } from '../services/api';
 import { FiSave, FiArrowLeft } from 'react-icons/fi';
 import { toDateInputValue, todayDateInputValue } from '../utils/dateFormat';
 
@@ -28,6 +28,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
 }) => {
   const [clients, setClients] = useState<Client[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
+  const [ceremonies, setCeremonies] = useState<Ceremony[]>([]);
   const [loading, setLoading] = useState(false);
   const [nextDisplayId, setNextDisplayId] = useState<number | null>(paymentRequest?.display_id || null);
   const [formError, setFormError] = useState('');
@@ -41,6 +42,8 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     invoiceNumber: paymentRequest?.invoiceNumber || paymentRequest?.display_id?.toString() || '',
     clientId: resolveId(paymentRequest?.clientId),
     retreatId: resolveId(paymentRequest?.retreatId),
+    bookingType: paymentRequest?.bookingType || 'full_retreat',
+    ceremonyId: resolveId(paymentRequest?.ceremonyId),
     paymentDate: paymentRequest?.paymentDate ? toDateInputValue(paymentRequest.paymentDate) : defaultDate(),
     paymentType: paymentRequest?.paymentType || 'Other',
     requestType: paymentRequest?.requestType || 'full_payment',
@@ -81,6 +84,18 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
 
     loadOptions();
   }, []);
+
+  useEffect(() => {
+    if (!formData.retreatId) {
+      setCeremonies([]);
+      return;
+    }
+    ceremoniesApi.getByRetreat(formData.retreatId)
+      .then((response) => setCeremonies((response.data || []).sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+      )))
+      .catch(() => setCeremonies([]));
+  }, [formData.retreatId]);
 
   useEffect(() => {
     const amount = Number(formData.fullPriceQuote);
@@ -142,6 +157,10 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
       alert('Please fill in all required fields');
       return;
     }
+    if (formData.bookingType === 'booster' && !formData.ceremonyId) {
+      alert('Please select the ceremony for this booster.');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -164,6 +183,8 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
         invoiceNumber,
         clientId: formData.clientId,
         retreatId: formData.retreatId,
+        bookingType: formData.bookingType as PaymentRequest['bookingType'],
+        ceremonyId: formData.bookingType === 'booster' ? formData.ceremonyId : undefined,
         paymentDate: formData.paymentDate,
         paymentType: formData.paymentType as PaymentRequest['paymentType'],
         requestType: formData.requestType as PaymentRequest['requestType'],
@@ -251,11 +272,46 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
               <SearchableRetreatSelect
                 retreats={retreats}
                 selectedRetreatId={formData.retreatId}
-                onRetreatSelect={(retreatId) => handleChange('retreatId', retreatId)}
+                onRetreatSelect={(retreatId) => setFormData((prev) => ({ ...prev, retreatId, ceremonyId: '' }))}
                 placeholder="Search retreat by name or location"
                 className="w-full"
               />
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Booking type *</label>
+              <select
+                value={formData.bookingType}
+                onChange={(event) => setFormData((prev) => ({
+                  ...prev,
+                  bookingType: event.target.value as 'full_retreat' | 'booster',
+                  ceremonyId: event.target.value === 'booster' ? prev.ceremonyId : '',
+                }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="full_retreat">Full retreat</option>
+                <option value="booster">Booster in this retreat</option>
+              </select>
+            </div>
+
+            {formData.bookingType === 'booster' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Ceremony *</label>
+                <select
+                  value={formData.ceremonyId}
+                  onChange={(event) => handleChange('ceremonyId', event.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                >
+                  <option value="">Select ceremony</option>
+                  {ceremonies.map((ceremony, index) => (
+                    <option key={ceremony._id} value={ceremony._id}>
+                      Ceremony {index + 1} — {new Date(ceremony.date).toLocaleDateString()}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Request Date *</label>
