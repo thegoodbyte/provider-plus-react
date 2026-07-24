@@ -11,6 +11,7 @@ import SearchableClientSelector from './SearchableClientSelector';
 import RetreatTrackingGrid from './RetreatTrackingGrid';
 import DrugScreeningTab from './DrugScreeningTab';
 import BookingStepsMatrix from './BookingStepsMatrix';
+import BookingEditorForm from './BookingEditorForm';
 import RetreatReserveListPanel from './RetreatReserveListPanel';
 import { TasksWidget } from './Tasks/TasksWidget';
 import { Modal, Form, Input, Select, Button, Checkbox, message, Collapse } from 'antd';
@@ -330,7 +331,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [quickBookingForm] = Form.useForm();
   const [retreatEmailForm] = Form.useForm();
   const [quickBookingLoading, setQuickBookingLoading] = useState(false);
-  const [existingClientBookingLoading, setExistingClientBookingLoading] = useState(false);
+  const [selectedExistingClient, setSelectedExistingClient] = useState<Client | null>(null);
   const heroImageInputRef = useRef<HTMLInputElement | null>(null);
   const firstRouteSegment = location.pathname.split('/').filter(Boolean)[0];
   const routePrefix = ['admin', 'medical', 'staff', 'user', 'helper'].includes(firstRouteSegment) ? firstRouteSegment : 'admin';
@@ -756,36 +757,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     }
   };
 
-  const handleExistingClientSelect = async (selectedClient: Client) => {
-    try {
-      setExistingClientBookingLoading(true);
-
-      // Create booking for existing client
-      const bookingData: any = {
-        clientId: selectedClient._id!,
-        retreatId: retreatId,
-        totalAmount: 3000, // Default amount, can be edited later
-        currency: 'EUR' as const,
-        status: 'confirmed' as const,
-        registrationDate: new Date().toISOString(),
-        amountPaid: 0,
-        amountPaidUSD: 0,
-      };
-      if (retreat?.startDate) bookingData.checkInDate = retreat.startDate;
-      if (retreat?.endDate) bookingData.checkOutDate = retreat.endDate;
-
-      await bookingsApi.create(bookingData);
-
-      const fullName = `${selectedClient.firstName || ''} ${selectedClient.lastName || ''}`.trim();
-      message.success(`${fullName} has been added to this retreat!`);
-      setShowExistingClientModal(false);
-      await fetchRetreatData(); // Refresh the data
-    } catch (error: any) {
-      console.error('Error adding existing client:', error);
-      message.error(error.response?.data?.message || 'Failed to add client to retreat');
-    } finally {
-      setExistingClientBookingLoading(false);
-    }
+  const handleExistingClientSelect = (selectedClient: Client) => {
+    setSelectedExistingClient(selectedClient);
+    setShowExistingClientModal(false);
   };
 
   const openRetreatEmailModal = async () => {
@@ -2132,6 +2106,40 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         onSelectClient={handleExistingClientSelect}
         title="Add Existing Client to Retreat"
       />
+
+      <Modal
+        title={`Book ${selectedExistingClient?.firstName || ''} ${selectedExistingClient?.lastName || ''}`.trim()}
+        open={!!selectedExistingClient}
+        onCancel={() => setSelectedExistingClient(null)}
+        footer={null}
+        width={860}
+        destroyOnClose
+      >
+        {selectedExistingClient && retreat && (
+          <BookingEditorForm
+            mode="create"
+            initialRetreats={[retreat]}
+            initialBookingData={{
+              clientId: selectedExistingClient._id || '',
+              retreatId,
+              totalAmount: 3000,
+              currency: 'EUR',
+              status: 'confirmed',
+              bookingType: 'full_retreat',
+              checkInDate: retreat.startDate ? new Date(retreat.startDate).toISOString().slice(0, 16) : '',
+              checkOutDate: retreat.endDate ? new Date(retreat.endDate).toISOString().slice(0, 16) : '',
+            }}
+            onCancel={() => setSelectedExistingClient(null)}
+            onSaved={async () => {
+              const fullName = `${selectedExistingClient.firstName || ''} ${selectedExistingClient.lastName || ''}`.trim();
+              setSelectedExistingClient(null);
+              await fetchRetreatData();
+              message.success(`${fullName} has been added to this retreat.`);
+            }}
+            submitLabel="Create Booking"
+          />
+        )}
+      </Modal>
 
       {/* Retreat Edit Modal */}
       {showRetreatEditModal && (
