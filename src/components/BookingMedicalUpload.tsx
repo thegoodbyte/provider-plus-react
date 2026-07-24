@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Eye, FileText, RefreshCw, Save, Send, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { bookingFlowApi, clientMedicalApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { bloodPressureReadingsApi, bookingFlowApi, clientMedicalApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
-import { BookingFlowItem, ClientMedical, MedicalArtifact, MedicalReviewRequest } from '../types';
+import { BloodPressureReading, BookingFlowItem, ClientMedical, MedicalArtifact, MedicalReviewRequest } from '../types';
 import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
 import './BookingMedicalUpload.css';
 
@@ -185,12 +185,15 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
     liver_panel: '',
   });
   const [error, setError] = useState<string | null>(null);
+  const [bloodPressureReadings, setBloodPressureReadings] = useState<BloodPressureReading[]>([]);
 
   const loadMedicalArtifacts = async () => {
     setLoading(true);
     setError(null);
     try {
       const itemsResponse = await bookingFlowApi.getItems({ bookingId });
+      const readingsResponse = clientId ? await bloodPressureReadingsApi.getByClient(clientId) : { data: [] };
+      setBloodPressureReadings(readingsResponse.data || []);
       const loadedFlowItems: BookingFlowItem[] = itemsResponse.data || [];
       setFlowItems(loadedFlowItems);
       const bookingFlowFilters = buildBookingFlowArtifactFilters(loadedFlowItems);
@@ -505,6 +508,44 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
       </div>
 
       {error && <div className="alert alert-danger">{error}</div>}
+
+      <section className="mb-5 rounded-xl border border-sky-200 bg-sky-50/60 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h4 className="font-semibold text-slate-900">Blood Pressure Monitoring</h4>
+            <p className="text-sm text-slate-600">Readings submitted by this client through IbogaReady.</p>
+          </div>
+          <span className="rounded-full bg-white px-3 py-1 text-sm font-medium text-sky-800">
+            {bloodPressureReadings.length} reading{bloodPressureReadings.length === 1 ? '' : 's'}
+          </span>
+        </div>
+        {bloodPressureReadings.length === 0 ? (
+          <p className="mt-3 text-sm text-slate-500">No blood-pressure readings have been submitted yet.</p>
+        ) : (
+          <div className="mt-3 overflow-x-auto rounded-lg border border-sky-100 bg-white">
+            <table className="min-w-full text-sm">
+              <thead className="bg-sky-50 text-left text-xs uppercase text-slate-500">
+                <tr><th className="px-3 py-2">Date and time</th><th className="px-3 py-2">Reading</th><th className="px-3 py-2">Pulse</th><th className="px-3 py-2">Notes</th></tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {bloodPressureReadings.map((reading) => {
+                  const high = reading.systolic >= 160 || reading.diastolic >= 100;
+                  return (
+                    <tr key={reading._id || reading.recordedAt}>
+                      <td className="px-3 py-2">{new Date(reading.recordedAt).toLocaleString()}</td>
+                      <td className={`px-3 py-2 font-semibold ${high ? 'text-red-700' : 'text-slate-900'}`}>
+                        {reading.systolic}/{reading.diastolic} mmHg {high ? '— HIGH' : ''}
+                      </td>
+                      <td className="px-3 py-2">{reading.pulse || '—'}</td>
+                      <td className="px-3 py-2 text-slate-600">{reading.notes || '—'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       <div className="booking-documents-grid">
         {medicalTestSections.map((section) => {
