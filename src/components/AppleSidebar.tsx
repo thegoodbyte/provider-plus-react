@@ -19,6 +19,8 @@ interface AppleSidebarProps {
     impersonatedBy?: string;
     impersonationType?: string;
   } | null;
+  appMode?: 'normal' | 'retreat' | 'shopping';
+  selectedRetreatLabel?: string;
 }
 
 type MenuItem = {
@@ -193,7 +195,9 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
   onClose,
   onLogout,
   userRole,
-  user
+  user,
+  appMode = 'normal',
+  selectedRetreatLabel
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(() => {
     const saved = localStorage.getItem('sidebarCollapsed');
@@ -345,7 +349,26 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
     }
   }, [navigationRole, permissionVersion]);
 
-  const menuSections = useMemo(() => getMenuSectionsForRole(), [getMenuSectionsForRole]);
+  const menuSections = useMemo(() => {
+    const roleSections = getMenuSectionsForRole();
+    if (appMode === 'shopping') {
+      return [{
+        id: 'shopping',
+        label: 'Shopping',
+        Icon: Fi.FiShoppingBag,
+        items: [{ id: 'expenses', label: 'Receipts & expenses', Icon: Fi.FiCamera }],
+      }];
+    }
+    if (appMode === 'retreat') {
+      return [{
+        id: 'retreat-mode',
+        label: selectedRetreatLabel || 'This retreat',
+        Icon: Fi.FiCalendar,
+        items: [{ id: 'selected-retreat', label: 'Retreat dashboard', Icon: Fi.FiGrid }],
+      }];
+    }
+    return roleSections;
+  }, [appMode, getMenuSectionsForRole, selectedRetreatLabel]);
 
   const isExpanded = !isCollapsed;
   const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
