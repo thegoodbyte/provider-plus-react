@@ -18,6 +18,7 @@ type BookingFormData = {
   bookingNumber: string;
   bookingType: 'full_retreat' | 'booster';
   ceremonyId: string;
+  ceremonyNumber: string;
   checkInDate: string;
   checkOutDate: string;
 };
@@ -59,6 +60,7 @@ const emptyForm = (): BookingFormData => ({
   bookingNumber: '',
   bookingType: 'full_retreat',
   ceremonyId: '',
+  ceremonyNumber: '',
   checkInDate: '',
   checkOutDate: '',
 });
@@ -136,6 +138,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
           bookingNumber: currentBooking.bookingNumber?.toString() || '',
           bookingType: currentBooking.bookingType || 'full_retreat',
           ceremonyId: typeof currentBooking.ceremonyId === 'string' ? currentBooking.ceremonyId : currentBooking.ceremonyId?._id || '',
+          ceremonyNumber: currentBooking.ceremonyNumber?.toString() || '',
           checkInDate: toDateTimeInput(currentBooking.checkInDate),
           checkOutDate: toDateTimeInput(currentBooking.checkOutDate),
         });
@@ -188,6 +191,9 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       ceremonyId: paymentRequest?.bookingType === 'booster'
         ? resolveId(paymentRequest.ceremonyId)
         : prev.ceremonyId,
+      ceremonyNumber: paymentRequest?.bookingType === 'booster'
+        ? String(paymentRequest.ceremonyNumber || '')
+        : prev.ceremonyNumber,
     }));
   };
 
@@ -242,6 +248,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
         bookingNumber: Number.isFinite(bookingNumber) ? bookingNumber : undefined,
         bookingType: formData.bookingType,
         ceremonyId: formData.bookingType === 'booster' ? formData.ceremonyId : undefined,
+        ceremonyNumber: formData.bookingType === 'booster' ? Number(formData.ceremonyNumber) : undefined,
         registrationDate: booking?.registrationDate || new Date().toISOString(),
         checkInDate: formData.checkInDate ? new Date(formData.checkInDate).toISOString() : undefined,
         checkOutDate: formData.checkOutDate ? new Date(formData.checkOutDate).toISOString() : undefined,
@@ -254,7 +261,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
         const valid = await validateBookingNumber(String(payload.bookingNumber));
         if (!valid) return;
       }
-      if (formData.bookingType === 'booster' && !formData.ceremonyId) {
+      if (formData.bookingType === 'booster' && !formData.ceremonyNumber) {
         alert('Please select the ceremony this booster guest will attend.');
         return;
       }
@@ -346,6 +353,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
                   ...prev,
                   bookingType: e.target.value as BookingFormData['bookingType'],
                   ceremonyId: e.target.value === 'booster' ? prev.ceremonyId : '',
+                  ceremonyNumber: e.target.value === 'booster' ? prev.ceremonyNumber : '',
                 }))}
                 className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
@@ -357,15 +365,22 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">Ceremony attending *</label>
                 <select
-                  value={formData.ceremonyId}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, ceremonyId: e.target.value }))}
+                  value={formData.ceremonyNumber}
+                  onChange={(e) => {
+                    const position = Number(e.target.value);
+                    setFormData((prev) => ({
+                      ...prev,
+                      ceremonyNumber: e.target.value,
+                      ceremonyId: ceremonies[position - 1]?._id || '',
+                    }));
+                  }}
                   className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 >
                   <option value="">Select ceremony...</option>
-                  {ceremonies.map((ceremony, index) => (
-                    <option key={ceremony._id} value={ceremony._id}>
-                      Ceremony {index + 1} — {new Date(ceremony.date).toLocaleDateString()}
+                  {Array.from({ length: retreats.find((item) => item._id === formData.retreatId)?.ceremonyCount || 2 }, (_, index) => (
+                    <option key={index + 1} value={index + 1}>
+                      Ceremony {index + 1}{ceremonies[index]?.date ? ` — ${new Date(ceremonies[index].date).toLocaleDateString()}` : ''}
                     </option>
                   ))}
                 </select>

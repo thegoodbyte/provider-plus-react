@@ -2233,6 +2233,11 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                   min="0"
                 />
               </div>
+              <div className="form-group">
+                <label htmlFor="retreat-ceremonyCount">Number of ceremonies:</label>
+                <input type="number" min="1" id="retreat-ceremonyCount" name="ceremonyCount"
+                  value={retreatFormData.ceremonyCount ?? 2} onChange={handleRetreatInputChange} />
+              </div>
 
               <div className="form-group">
                 <div className="mb-2 flex items-center justify-between gap-3">

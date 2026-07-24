@@ -44,6 +44,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     retreatId: resolveId(paymentRequest?.retreatId),
     bookingType: paymentRequest?.bookingType || 'full_retreat',
     ceremonyId: resolveId(paymentRequest?.ceremonyId),
+    ceremonyNumber: paymentRequest?.ceremonyNumber?.toString() || '',
     paymentDate: paymentRequest?.paymentDate ? toDateInputValue(paymentRequest.paymentDate) : defaultDate(),
     paymentType: paymentRequest?.paymentType || 'Other',
     requestType: paymentRequest?.requestType || 'full_payment',
@@ -157,7 +158,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
       alert('Please fill in all required fields');
       return;
     }
-    if (formData.bookingType === 'booster' && !formData.ceremonyId) {
+    if (formData.bookingType === 'booster' && !formData.ceremonyNumber) {
       alert('Please select the ceremony for this booster.');
       return;
     }
@@ -185,6 +186,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
         retreatId: formData.retreatId,
         bookingType: formData.bookingType as PaymentRequest['bookingType'],
         ceremonyId: formData.bookingType === 'booster' ? formData.ceremonyId : undefined,
+        ceremonyNumber: formData.bookingType === 'booster' ? Number(formData.ceremonyNumber) : undefined,
         paymentDate: formData.paymentDate,
         paymentType: formData.paymentType as PaymentRequest['paymentType'],
         requestType: formData.requestType as PaymentRequest['requestType'],
@@ -272,7 +274,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
               <SearchableRetreatSelect
                 retreats={retreats}
                 selectedRetreatId={formData.retreatId}
-                onRetreatSelect={(retreatId) => setFormData((prev) => ({ ...prev, retreatId, ceremonyId: '' }))}
+                onRetreatSelect={(retreatId) => setFormData((prev) => ({ ...prev, retreatId, ceremonyId: '', ceremonyNumber: '' }))}
                 placeholder="Search retreat by name or location"
                 className="w-full"
               />
@@ -286,6 +288,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                   ...prev,
                   bookingType: event.target.value as 'full_retreat' | 'booster',
                   ceremonyId: event.target.value === 'booster' ? prev.ceremonyId : '',
+                  ceremonyNumber: event.target.value === 'booster' ? prev.ceremonyNumber : '',
                 }))}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
@@ -298,15 +301,19 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Ceremony *</label>
                 <select
-                  value={formData.ceremonyId}
-                  onChange={(event) => handleChange('ceremonyId', event.target.value)}
+                  value={formData.ceremonyNumber}
+                  onChange={(event) => {
+                    const position = Number(event.target.value);
+                    handleChange('ceremonyNumber', event.target.value);
+                    handleChange('ceremonyId', ceremonies[position - 1]?._id || '');
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 >
                   <option value="">Select ceremony</option>
-                  {ceremonies.map((ceremony, index) => (
-                    <option key={ceremony._id} value={ceremony._id}>
-                      Ceremony {index + 1} — {new Date(ceremony.date).toLocaleDateString()}
+                  {Array.from({ length: retreats.find((item) => item._id === formData.retreatId)?.ceremonyCount || 2 }, (_, index) => (
+                    <option key={index + 1} value={index + 1}>
+                      Ceremony {index + 1}{ceremonies[index]?.date ? ` — ${new Date(ceremonies[index].date).toLocaleDateString()}` : ''}
                     </option>
                   ))}
                 </select>
