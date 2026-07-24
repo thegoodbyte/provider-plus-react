@@ -698,9 +698,10 @@ const BookingMedicalOverviewPanel: React.FC<{
       <div className="detail-section">
         <div className="section-header">
           <h3 className="pdf-section-title">Required Entry Medical Items</h3>
-          <button className="edit-btn" type="button" onClick={loadMedicalOverview} disabled={loading}>
-            {loading ? 'Refreshing...' : 'Refresh'}
-          </button>
+          <div className="flex gap-2">
+            <button className="edit-btn" type="button" onClick={() => navigate(`${routePrefix}/bookings/${bookingId}/medication-stop-plan`)}>Medication stop plan</button>
+            <button className="edit-btn" type="button" onClick={loadMedicalOverview} disabled={loading}>{loading ? 'Refreshing...' : 'Refresh'}</button>
+          </div>
         </div>
         {error && <div className="alert alert-danger">{error}</div>}
         <div className="booking-medical-required-grid">

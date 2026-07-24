@@ -1284,6 +1284,53 @@ export const bookingFlowApi = {
       return request();
     }
   },
+  getItemReminderPreview: (id: string) => api.get<{
+    to: string;
+    subject: string;
+    bodyText: string;
+    stepKey: string;
+    stepTitle: string;
+    dueDate?: string;
+    uploadUrl: string;
+    actionKey: string;
+    reminderCount: number;
+    lastReminderAt?: string;
+    duplicateBlocked: boolean;
+    duplicateWarning: boolean;
+    suggestedFollowUpDate: string;
+    history: BookingFlowActionLog[];
+  }>(`/booking-flow/items/${id}/reminder-preview`),
+  sendItemReminder: (id: string, data: { subject: string; bodyText: string; followUpDate?: string; overrideDuplicate?: boolean }) => {
+    cacheService.clearPattern('booking-flow:');
+    cacheService.clearPattern('communications:sent-emails');
+    return api.post(`/booking-flow/items/${id}/send-reminder`, data);
+  },
+  getItemReminderAutomation: (id: string) => api.get<{
+    paused: boolean;
+    pauseReason?: string;
+    resumeAt?: string;
+    schedules: Array<{
+      _id: string;
+      ruleKey: string;
+      actionType: 'send_email' | 'create_staff_task';
+      scheduledFor: string;
+      status: string;
+      executedAt?: string;
+      lastError?: string;
+    }>;
+  }>(`/booking-flow/items/${id}/reminder-automation`),
+  setItemReminderAutomationPaused: (id: string, data: { paused: boolean; reason?: string; resumeAt?: string }) => {
+    cacheService.clearPattern('booking-flow:');
+    return api.patch(`/booking-flow/items/${id}/reminder-automation/pause`, data);
+  },
+  syncReminderAutomation: () => api.post('/booking-flow/reminder-automation/sync', {}),
+  processReminderAutomation: (limit = 50) => api.post('/booking-flow/reminder-automation/process', { limit }),
+  getReminderSchedules: (params: Record<string, any> = {}) => api.get('/booking-flow/reminder-automation/schedules', { params }),
+  updateReminderSchedule: (id: string, data: { scheduledFor?: string; status?: 'scheduled' | 'paused' | 'cancelled' }) =>
+    api.patch(`/booking-flow/reminder-automation/schedules/${id}`, data),
+  getMedicationStopPlan: (bookingId: string) => api.get(`/booking-flow/bookings/${bookingId}/medication-stop-plan`),
+  saveMedicationStopPlan: (bookingId: string, entries: Record<string, any>[]) =>
+    api.put(`/booking-flow/bookings/${bookingId}/medication-stop-plan`, { entries }),
   getItemActionLogs: (id: string) => cachedGet<BookingFlowActionLog[]>(
     `booking-flow:item-action-logs:${id}`,
     () => api.get<BookingFlowActionLog[]>(`/booking-flow/items/${id}/action-logs`)
