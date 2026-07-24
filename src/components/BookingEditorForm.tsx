@@ -41,6 +41,7 @@ interface BookingEditorFormProps {
   bookingId?: string;
   initialBooking?: RetreatClient | null;
   initialRetreats?: Retreat[];
+  initialBookingData?: Partial<BookingFormData>;
   onCancel: () => void;
   onSaved: () => void;
   submitLabel?: string;
@@ -75,6 +76,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   bookingId,
   initialBooking,
   initialRetreats,
+  initialBookingData,
   onCancel,
   onSaved,
   submitLabel,
@@ -91,7 +93,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
 
   useEffect(() => {
     loadData();
-  }, [bookingId, initialBooking]);
+  }, [bookingId, initialBooking, initialBookingData, initialRetreats, mode]);
 
   const loadData = async () => {
     try {
@@ -134,6 +136,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       } else {
         setFormData({
           ...emptyForm(),
+          ...initialBookingData,
           bookingNumber: nextNumberResponse.data ? String(nextNumberResponse.data) : '',
         });
       }

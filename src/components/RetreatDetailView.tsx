@@ -11,7 +11,6 @@ import SearchableClientSelector from './SearchableClientSelector';
 import RetreatTrackingGrid from './RetreatTrackingGrid';
 import BookingStepsMatrix from './BookingStepsMatrix';
 import BookingEditorForm from './BookingEditorForm';
-import RetreatReserveListPanel from './RetreatReserveListPanel';
 import { TasksWidget } from './Tasks/TasksWidget';
 import { Modal, Form, Input, Select, Button, Checkbox, message, Collapse } from 'antd';
 import { Client } from '../types';

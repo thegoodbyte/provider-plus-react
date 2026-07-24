@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, MedicalReviewGroup, MedicalReviewGroupAccessLink, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, MailSettings, EmailTemplate, EmailTemplateSeedOption, SentEmail, RetreatArtifactSubmissionsResponse } from '../types';
+import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, MedicalReviewGroup, MedicalReviewGroupAccessLink, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, MailSettings, EmailTemplate, EmailTemplateSeedOption, SentEmail, RetreatArtifactSubmissionsResponse, BloodPressureReading } from '../types';
 import { authService } from './authService';
 import { cacheService } from './cacheService';
 import { API_BASE_URL } from '../config/api.config';
@@ -423,6 +423,10 @@ export const paymentRequestsApi = {
     cacheService.clearPattern('payment-requests:');
     return api.put<PaymentRequest>(`/payment-requests/${id}/send-reminder`);
   },
+};
+
+export const bloodPressureReadingsApi = {
+  getByClient: (clientId: string) => api.get<BloodPressureReading[]>(`/blood-pressure-readings?clientId=${encodeURIComponent(clientId)}`),
 };
 
 export const communicationsApi = {

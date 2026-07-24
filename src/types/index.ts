@@ -1489,6 +1489,18 @@ export interface EmailTemplate {
   updatedAt?: string;
 }
 
+export interface BloodPressureReading {
+  _id?: string;
+  clientId: string | Client;
+  systolic: number;
+  diastolic: number;
+  pulse?: number;
+  recordedAt: string;
+  notes?: string;
+  source?: 'ibogaready' | 'admin';
+  createdAt?: string;
+}
+
 export interface EmailTemplateSeedOption {
   key: string;
   name: string;
