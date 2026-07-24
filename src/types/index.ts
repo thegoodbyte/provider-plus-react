@@ -13,6 +13,7 @@ export interface Retreat {
   endDate?: Date | string;
   endTime?: string;
   capacity?: number;
+  ceremonyCount?: number;
   currentOccupancy?: number;
   description?: string;
   houseId?: string | House;
@@ -226,6 +227,7 @@ export interface RetreatClient {
   paymentRequestId?: string | PaymentRequest;
   bookingType?: 'full_retreat' | 'booster'; // Type of booking
   ceremonyId?: string | Ceremony;
+  ceremonyNumber?: number;
   registrationDate: Date | string;
   checkInDate: Date | string;
   checkOutDate: Date | string;
@@ -1415,6 +1417,7 @@ export interface PaymentRequest {
   retreatId: string;
   bookingType?: 'full_retreat' | 'booster';
   ceremonyId?: string | Ceremony;
+  ceremonyNumber?: number;
   paymentDate: Date | string;
   paymentType: 'CSOB' | 'Paypal' | 'Revolut' | 'Wise' | 'Cash' | 'Other';
   fullPriceQuote: number;
