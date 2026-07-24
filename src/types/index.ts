@@ -1434,6 +1434,8 @@ export interface PaymentRequest {
   display_id?: number;
   clientId: string;
   retreatId: string;
+  bookingType?: 'full_retreat' | 'booster';
+  ceremonyId?: string | Ceremony;
   paymentDate: Date | string;
   paymentType: 'CSOB' | 'Paypal' | 'Revolut' | 'Wise' | 'Cash' | 'Other';
   fullPriceQuote: number;
