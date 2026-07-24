@@ -347,6 +347,7 @@ export const paymentsApi = {
   getAll: () => cachedGet<Payment[]>('payments:all', () => api.get<Payment[]>('/payments')),
   getOne: (id: string) => cachedGet<Payment>(`payments:${id}`, () => api.get<Payment>(`/payments/${id}`)),
   getByRetreat: (retreatId: string) => cachedGet<Payment[]>(`payments:retreat:${retreatId}`, () => api.get<Payment[]>(`/payments/by-retreat/${retreatId}`)),
+  getByRetreatFresh: (retreatId: string) => api.get<Payment[]>(`/payments/by-retreat/${retreatId}`),
   getByClient: (clientId: string) => cachedGet<Payment[]>(`payments:client:${clientId}`, () => api.get<Payment[]>(`/payments/by-client/${clientId}`)),
   getByBooking: (bookingId: string) => cachedGet<Payment[]>(`payments:booking:${bookingId}`, () => api.get<Payment[]>(`/payments/by-booking/${bookingId}`)),
   getUnlinkedCandidatesByBooking: (bookingId: string) => api.get<Payment[]>(`/payments/unlinked-candidates/by-booking/${bookingId}`),
