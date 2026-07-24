@@ -381,7 +381,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         retreatsApi.getOne(retreatId),
         bookingsApi.getByRetreatWithDetails(retreatId),
         retreatExpensesApi.getRetreatSummary(retreatId),
-        paymentsApi.getByRetreat(retreatId),
+        paymentsApi.getByRetreatFresh(retreatId),
         retreatsApi.getAll()
       ]);
 
