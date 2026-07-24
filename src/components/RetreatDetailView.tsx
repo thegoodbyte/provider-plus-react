@@ -73,6 +73,9 @@ interface RetreatClientData {
   _id: string;
   bookingNumber?: number | string;
   bookingHash?: string;
+  bookingType?: 'full_retreat' | 'booster';
+  ceremonyNumber?: number;
+  paymentRequestId?: string;
   clientId: string;
   clientDisplayId?: number;
   clientName: string;
@@ -393,9 +396,11 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       const getPaymentsForBooking = (booking: any) => {
         const bookingId = getObjectId(booking);
         const bookingHash = booking.bookingHash;
+        const paymentRequestId = getObjectId(booking.paymentRequestId);
         return payments.filter((payment: Payment) => (
           getObjectId(payment.bookingId) === bookingId ||
-          (bookingHash && payment.bookingHash === bookingHash)
+          (bookingHash && payment.bookingHash === bookingHash) ||
+          (paymentRequestId && getObjectId(payment.paymentRequestId) === paymentRequestId)
         ));
       };
       const getPaymentNetAmount = (payment: Payment) => Math.max((payment.amount || 0) - (payment.refundedAmount || 0), 0);
@@ -427,6 +432,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           _id: booking._id,
           bookingNumber: booking.bookingNumber || booking.display_id || booking.displayId,
           bookingHash: booking.bookingHash,
+          bookingType: booking.bookingType || 'full_retreat',
+          ceremonyNumber: booking.ceremonyNumber,
+          paymentRequestId: getObjectId(booking.paymentRequestId),
           clientId: booking.clientId?._id || booking.clientId || '', // Store the actual client ID
           clientDisplayId: booking.clientId?.display_id,
           clientName: booking.clientId
@@ -1436,6 +1444,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                       Phone
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Booking Type
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Booking Status
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1496,6 +1507,17 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {client.clientPhone}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {client.bookingType === 'booster' ? (
+                          <span className="rounded-full bg-purple-100 px-2.5 py-1 text-xs font-semibold text-purple-800">
+                            Booster · Ceremony {client.ceremonyNumber || '—'}
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700">
+                            Full retreat
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${client.status === 'cancelled' ? 'bg-red-100 text-red-800' : client.status === 'confirmed' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-700'}`}>
