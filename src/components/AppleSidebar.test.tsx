@@ -60,4 +60,43 @@ describe('AppleSidebar impersonation navigation', () => {
     fireEvent.click(screen.getByLabelText('Expand sidebar'));
     expect(screen.getByText('Provider Plus')).toBeInTheDocument();
   });
+
+  it('shows only receipt and expense navigation in shopping mode', () => {
+    render(
+      <AppleSidebar
+        activeItem="expenses"
+        isOpen
+        onClose={jest.fn()}
+        onItemClick={jest.fn()}
+        onLogout={jest.fn()}
+        userRole="admin"
+        appMode="shopping"
+      />
+    );
+
+    expect(screen.getByText('Shopping')).toBeInTheDocument();
+    expect(screen.getByText('Receipts & expenses')).toBeInTheDocument();
+    expect(screen.queryByText('Clients')).not.toBeInTheDocument();
+    expect(screen.queryByText('Payments')).not.toBeInTheDocument();
+  });
+
+  it('shows only the selected retreat dashboard in retreat mode', () => {
+    render(
+      <AppleSidebar
+        activeItem="selected-retreat"
+        isOpen
+        onClose={jest.fn()}
+        onItemClick={jest.fn()}
+        onLogout={jest.fn()}
+        userRole="admin"
+        appMode="retreat"
+        selectedRetreatLabel="JULY-2026"
+      />
+    );
+
+    expect(screen.getByText('JULY-2026')).toBeInTheDocument();
+    expect(screen.getByText('Retreat dashboard')).toBeInTheDocument();
+    expect(screen.queryByText('Payment Requests')).not.toBeInTheDocument();
+    expect(screen.queryByText('Users')).not.toBeInTheDocument();
+  });
 });

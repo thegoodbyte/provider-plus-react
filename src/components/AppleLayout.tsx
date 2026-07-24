@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate, useParams } from 'react-router-dom';
-import { FiBookOpen, FiCalendar, FiChevronDown, FiCreditCard, FiUsers } from 'react-icons/fi';
+import { FiBookOpen, FiCalendar, FiChevronDown, FiCreditCard, FiGrid, FiShoppingBag, FiUsers, FiX } from 'react-icons/fi';
 import AppleSidebar from './AppleSidebar';
 import UnifiedClientManager from './UnifiedClientManager';
 import HousesGrid from './HousesGrid';
@@ -82,6 +82,27 @@ import { ResetPassword } from './Login/ResetPassword';
 import { ChangeOwnPassword } from './Login/ChangeOwnPassword';
 import SubmissionNotificationsPage from './SubmissionNotificationsPage';
 import RetreatClientsPrintPage from './RetreatClientsPrintPage';
+import { bookingsApi, retreatsApi } from '../services/api';
+import { Retreat } from '../types';
+
+type AppMode = 'normal' | 'retreat' | 'shopping';
+type StoredAppMode = {
+  mode: AppMode;
+  retreatId?: string;
+  retreatLabel?: string;
+};
+
+const APP_MODE_STORAGE_KEY = 'providerPlusAppMode:v1';
+
+const readStoredAppMode = (): StoredAppMode => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(APP_MODE_STORAGE_KEY) || '{}');
+    if (parsed.mode === 'retreat' || parsed.mode === 'shopping') return parsed;
+  } catch {
+    // Ignore invalid or old local state.
+  }
+  return { mode: 'normal' };
+};
 
 const BookingDetailRoute: React.FC = () => {
   const { bookingId } = useParams();
@@ -122,7 +143,12 @@ const HeaderIcon: React.FC<{ icon: any; className?: string }> = ({ icon: IconCom
 const AppleLayout: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [quickMenuOpen, setQuickMenuOpen] = useState(false);
-  const [retreatFocusMode, setRetreatFocusMode] = useState(() => localStorage.getItem('appFocusMode') === 'true');
+  const [appMode, setAppMode] = useState<StoredAppMode>(readStoredAppMode);
+  const [retreatOptions, setRetreatOptions] = useState<Retreat[]>([]);
+  const [retreatsLoading, setRetreatsLoading] = useState(false);
+  const [allowedBookingIds, setAllowedBookingIds] = useState<Set<string>>(new Set());
+  const [allowedClientIds, setAllowedClientIds] = useState<Set<string>>(new Set());
+  const [retreatAccessLoaded, setRetreatAccessLoaded] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     const saved = localStorage.getItem('sidebarCollapsed');
     return saved === 'true';
@@ -231,6 +257,8 @@ const AppleLayout: React.FC = () => {
   };
 
   const activeItem = getActiveItemFromPath();
+  const routePrefix = getRoutePrefix();
+  const defaultRoute = getDefaultRoute();
   const isImpersonating = Boolean(user?.impersonatedBy || user?.originalRole);
   const isUserImpersonation = user?.impersonationType === 'user_impersonation';
   const impersonatedLabel = user?.impersonatedUserName || [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || 'user';
@@ -239,8 +267,46 @@ const AppleLayout: React.FC = () => {
   const canChangeOwnPassword = Boolean(user) && !isImpersonating && !isMedicalQuickAccessSession;
 
   useEffect(() => {
-    localStorage.setItem('appFocusMode', retreatFocusMode ? 'true' : 'false');
-  }, [retreatFocusMode]);
+    localStorage.setItem(APP_MODE_STORAGE_KEY, JSON.stringify(appMode));
+  }, [appMode]);
+
+  useEffect(() => {
+    if (!quickMenuOpen || retreatOptions.length > 0 || retreatsLoading) return;
+    setRetreatsLoading(true);
+    retreatsApi.getAll()
+      .then((response) => {
+        const sorted = [...response.data].sort((a, b) => (
+          new Date(b.startDate || 0).getTime() - new Date(a.startDate || 0).getTime()
+        ));
+        setRetreatOptions(sorted);
+      })
+      .catch(() => setRetreatOptions([]))
+      .finally(() => setRetreatsLoading(false));
+  }, [quickMenuOpen, retreatOptions.length, retreatsLoading]);
+
+  useEffect(() => {
+    if (appMode.mode !== 'retreat' || !appMode.retreatId) {
+      setAllowedBookingIds(new Set());
+      setAllowedClientIds(new Set());
+      setRetreatAccessLoaded(false);
+      return;
+    }
+    setRetreatAccessLoaded(false);
+    bookingsApi.getByRetreatWithDetails(appMode.retreatId)
+      .then((response) => {
+        const bookings = response.data || [];
+        setAllowedBookingIds(new Set(bookings.map((booking: any) => String(booking._id))));
+        setAllowedClientIds(new Set(bookings.map((booking: any) => {
+          const client = booking.clientId;
+          return String(typeof client === 'string' ? client : client?._id || '');
+        }).filter(Boolean)));
+      })
+      .catch(() => {
+        setAllowedBookingIds(new Set());
+        setAllowedClientIds(new Set());
+      })
+      .finally(() => setRetreatAccessLoaded(true));
+  }, [appMode.mode, appMode.retreatId]);
 
   useEffect(() => {
     if (isMedicalQuickAccessSession) {
@@ -252,14 +318,54 @@ const AppleLayout: React.FC = () => {
     }
 
     if (location.pathname === '/') {
-      const prefix = getRoutePrefix();
-      const defaultRoute = getDefaultRoute();
-      navigate(`/${prefix}/${defaultRoute}`, { replace: true });
+      navigate(`/${routePrefix}/${defaultRoute}`, { replace: true });
     }
-  }, [isMedicalQuickAccessSession, location.pathname, navigate, user?.medicalReviewRequestId, user?.role]);
+  }, [defaultRoute, isMedicalQuickAccessSession, location.pathname, navigate, routePrefix, user?.medicalReviewRequestId]);
+
+  useEffect(() => {
+    if (isMedicalQuickAccessSession || appMode.mode === 'normal') return;
+    const prefix = `/${routePrefix}`;
+    const path = location.pathname;
+
+    if (appMode.mode === 'shopping') {
+      if (path !== `${prefix}/expenses`) navigate(`${prefix}/expenses`, { replace: true });
+      return;
+    }
+
+    if (!appMode.retreatId) {
+      setAppMode({ mode: 'normal' });
+      return;
+    }
+    if (!retreatAccessLoaded) return;
+
+    const retreatRoot = `${prefix}/retreats/${appMode.retreatId}`;
+    const bookingMatch = path.match(new RegExp(`^${prefix}/bookings/([^/]+)`));
+    const clientMatch = path.match(new RegExp(`^${prefix}/(?:clients|medical)/([^/]+)`));
+    const isSelectedRetreat = path === retreatRoot || path.startsWith(`${retreatRoot}/`);
+    const isAllowedBooking = Boolean(bookingMatch && allowedBookingIds.has(bookingMatch[1]));
+    const isAllowedClient = Boolean(clientMatch && allowedClientIds.has(clientMatch[1]));
+
+    if (!isSelectedRetreat && !isAllowedBooking && !isAllowedClient) {
+      navigate(retreatRoot, { replace: true });
+    }
+  }, [
+    allowedBookingIds,
+    allowedClientIds,
+    appMode,
+    isMedicalQuickAccessSession,
+    location.pathname,
+    navigate,
+    retreatAccessLoaded,
+    routePrefix,
+  ]);
 
   const handleItemClick = (item: string) => {
     const prefix = getRoutePrefix();
+    if (item === 'selected-retreat' && appMode.retreatId) {
+      navigate(`/${prefix}/retreats/${appMode.retreatId}`);
+      setSidebarOpen(false);
+      return;
+    }
     const retreatSectionRoutes: Record<string, string> = {
       ceremonies: 'retreat/ceremonies',
       bookings: 'retreat/bookings',
@@ -281,10 +387,25 @@ const AppleLayout: React.FC = () => {
     setQuickMenuOpen(false);
   };
 
-  const toggleRetreatFocusMode = () => {
-    const next = !retreatFocusMode;
-    setRetreatFocusMode(next);
-    navigate(`/${getRoutePrefix()}/${next ? 'retreat-focus' : getDefaultRoute()}`);
+  const activateNormalMode = () => {
+    setAppMode({ mode: 'normal' });
+    setQuickMenuOpen(false);
+    navigate(`/${getRoutePrefix()}/${getDefaultRoute()}`);
+  };
+
+  const activateShoppingMode = () => {
+    setAppMode({ mode: 'shopping' });
+    setQuickMenuOpen(false);
+    setSidebarOpen(false);
+    navigate(`/${getRoutePrefix()}/expenses`);
+  };
+
+  const activateRetreatMode = (retreat: Retreat) => {
+    const retreatLabel = String(retreat.code || retreat.retreatCode || retreat.name || 'Retreat');
+    setAppMode({ mode: 'retreat', retreatId: retreat._id, retreatLabel });
+    setQuickMenuOpen(false);
+    setSidebarOpen(false);
+    navigate(`/${getRoutePrefix()}/retreats/${retreat._id}`);
   };
 
   useEffect(() => {
@@ -301,11 +422,11 @@ const AppleLayout: React.FC = () => {
         <button
           type="button"
           onClick={() => setQuickMenuOpen((open) => !open)}
-          className="inline-flex items-center gap-2 rounded-apple border border-apple-gray-200 bg-white px-3 py-2 text-sm font-semibold text-apple-gray-700 shadow-apple-sm transition-colors hover:bg-apple-gray-50"
+          className="inline-flex min-h-11 items-center gap-2 rounded-apple border border-apple-gray-200 bg-white px-3 py-2 text-sm font-semibold text-apple-gray-700 shadow-apple-sm transition-colors hover:bg-apple-gray-50"
           aria-expanded={quickMenuOpen}
           aria-controls="quick-menu"
         >
-          Quick Menu
+          {appMode.mode === 'normal' ? 'Quick Menu' : appMode.mode === 'shopping' ? 'Shopping Mode' : appMode.retreatLabel || 'Retreat Mode'}
           <HeaderIcon
             icon={FiChevronDown}
             className={`h-4 w-4 transition-transform ${quickMenuOpen ? 'rotate-180' : ''}`}
@@ -315,20 +436,70 @@ const AppleLayout: React.FC = () => {
         {quickMenuOpen && (
           <div
             id="quick-menu"
-            className="absolute left-0 top-full z-50 mt-2 grid w-[460px] grid-cols-4 gap-3 rounded-apple-lg border border-apple-gray-200 bg-white p-3 shadow-apple-lg"
+            className="fixed inset-3 z-50 overflow-y-auto rounded-apple-lg border border-apple-gray-200 bg-white p-4 shadow-apple-lg md:absolute md:inset-auto md:left-0 md:top-full md:mt-2 md:w-[520px]"
           >
-            {quickMenuItems.map((item) => (
-              <button
-                key={item.route}
-                type="button"
-                onClick={() => handleQuickMenuClick(item.route)}
-                className="flex h-[108px] items-center justify-center rounded-apple-lg border border-apple-gray-200 bg-white text-apple-gray-700 shadow-apple-sm transition-colors hover:bg-apple-gray-50 hover:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                aria-label={item.label}
-                title={item.label}
-              >
-                <HeaderIcon icon={item.icon} className="h-[100px] w-[100px]" />
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <div className="text-lg font-bold text-apple-gray-900">Choose app mode</div>
+                <div className="text-sm text-apple-gray-600">Large, simple controls for this device.</div>
+              </div>
+              <button type="button" onClick={() => setQuickMenuOpen(false)} className="flex h-11 w-11 items-center justify-center rounded-full bg-apple-gray-100" aria-label="Close quick menu">
+                <HeaderIcon icon={FiX} className="h-6 w-6" />
               </button>
-            ))}
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <button type="button" onClick={activateNormalMode} className={`min-h-28 rounded-2xl border-2 p-4 text-left ${appMode.mode === 'normal' ? 'border-blue-600 bg-blue-50' : 'border-apple-gray-200'}`}>
+                <HeaderIcon icon={FiGrid} className="mb-3 h-8 w-8 text-blue-700" />
+                <div className="font-bold">Normal</div>
+                <div className="text-xs text-apple-gray-600">Full app</div>
+              </button>
+              <button type="button" onClick={activateShoppingMode} className={`min-h-28 rounded-2xl border-2 p-4 text-left ${appMode.mode === 'shopping' ? 'border-emerald-600 bg-emerald-50' : 'border-apple-gray-200'}`}>
+                <HeaderIcon icon={FiShoppingBag} className="mb-3 h-8 w-8 text-emerald-700" />
+                <div className="font-bold">Shopping</div>
+                <div className="text-xs text-apple-gray-600">Receipts & expenses</div>
+              </button>
+              <div className={`min-h-28 rounded-2xl border-2 p-4 ${appMode.mode === 'retreat' ? 'border-violet-600 bg-violet-50' : 'border-apple-gray-200'}`}>
+                <HeaderIcon icon={FiCalendar} className="mb-3 h-8 w-8 text-violet-700" />
+                <div className="font-bold">Retreat</div>
+                <div className="text-xs text-apple-gray-600">One retreat only</div>
+              </div>
+            </div>
+
+            <div className="mt-5">
+              <label htmlFor="mode-retreat-picker" className="mb-2 block text-sm font-bold text-apple-gray-800">Start Retreat Mode</label>
+              <select
+                id="mode-retreat-picker"
+                value={appMode.mode === 'retreat' ? appMode.retreatId || '' : ''}
+                onChange={(event) => {
+                  const retreat = retreatOptions.find((item) => item._id === event.target.value);
+                  if (retreat) activateRetreatMode(retreat);
+                }}
+                disabled={retreatsLoading}
+                className="min-h-14 w-full rounded-xl border-2 border-apple-gray-300 bg-white px-4 text-base font-semibold"
+              >
+                <option value="">{retreatsLoading ? 'Loading retreats…' : 'Select a retreat…'}</option>
+                {retreatOptions.map((retreat) => (
+                  <option key={retreat._id} value={retreat._id}>
+                    {String(retreat.code || retreat.retreatCode || retreat.name)}{retreat.startDate ? ` — ${new Date(retreat.startDate).toLocaleDateString()}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {appMode.mode === 'normal' && (
+              <div className="mt-5 border-t border-apple-gray-200 pt-4">
+                <div className="mb-2 text-xs font-bold uppercase tracking-wide text-apple-gray-500">Quick links</div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {quickMenuItems.map((item) => (
+                    <button key={item.route} type="button" onClick={() => handleQuickMenuClick(item.route)} className="flex min-h-20 flex-col items-center justify-center rounded-xl border border-apple-gray-200 bg-white p-2 font-semibold text-apple-gray-700">
+                      <HeaderIcon icon={item.icon} className="mb-1 h-7 w-7" />
+                      <span className="text-xs">{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -406,13 +577,15 @@ const AppleLayout: React.FC = () => {
     <div className="min-h-screen bg-apple-gray-50">
       {/* Sidebar */}
       <AppleSidebar
-        activeItem={activeItem}
+        activeItem={appMode.mode === 'retreat' ? 'selected-retreat' : activeItem}
         onItemClick={handleItemClick}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
         onLogout={logout}
         userRole={user?.role}
         user={user}
+        appMode={appMode.mode}
+        selectedRetreatLabel={appMode.retreatLabel}
       />
 
       {/* Main Content */}
@@ -429,6 +602,9 @@ const AppleLayout: React.FC = () => {
             </svg>
           </button>
           <div className="flex items-center gap-2">
+            <div className="pointer-events-auto">
+              {renderQuickMenu()}
+            </div>
             {canChangeOwnPassword && (
               <button
                 onClick={() => navigate('/users/change-password')}
@@ -454,6 +630,19 @@ const AppleLayout: React.FC = () => {
             </button>
           </div>
         </div>
+
+        {appMode.mode !== 'normal' && (
+          <div className={`sticky top-0 z-20 flex items-center justify-between gap-3 px-4 py-3 text-sm font-semibold md:top-14 ${
+            appMode.mode === 'shopping' ? 'bg-emerald-100 text-emerald-950' : 'bg-violet-100 text-violet-950'
+          }`}>
+            <span className="truncate">
+              {appMode.mode === 'shopping' ? 'Shopping Mode · Receipts & expenses only' : `Retreat Mode · ${appMode.retreatLabel || 'Selected retreat'}`}
+            </span>
+            <button type="button" onClick={() => setQuickMenuOpen(true)} className="min-h-10 shrink-0 rounded-lg bg-white px-3 shadow-sm">
+              Switch
+            </button>
+          </div>
+        )}
 
         {/* Header with glass morphism */}
         <header className="sticky top-0 z-30 hidden bg-white/70 backdrop-blur-apple border-b border-apple-gray-200 md:block">
@@ -490,16 +679,6 @@ const AppleLayout: React.FC = () => {
                     Medical View
                   </button>
                 )}
-                <button
-                  onClick={toggleRetreatFocusMode}
-                  className={`hidden md:inline-flex px-3 py-1.5 text-sm font-medium rounded-apple transition-all ${
-                    retreatFocusMode
-                      ? 'bg-blue-600 text-white hover:bg-blue-700'
-                      : 'text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100'
-                  }`}
-                >
-                  {retreatFocusMode ? 'Exit Retreat Mode' : 'Retreat Mode'}
-                </button>
                 {isImpersonating && (
                   <button
                     onClick={() => {
