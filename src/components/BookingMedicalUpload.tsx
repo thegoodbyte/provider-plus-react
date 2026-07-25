@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Eye, FileText, RefreshCw, Save, Send, Upload } from 'lucide-react';
+import { Eye, FilePlus2, FileText, RefreshCw, Send, Upload, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { bloodPressureReadingsApi, bookingFlowApi, clientMedicalApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { bloodPressureReadingsApi, bookingFlowApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
-import { BloodPressureReading, BookingFlowItem, ClientMedical, MedicalArtifact, MedicalReviewRequest } from '../types';
+import { BloodPressureReading, BookingFlowItem, MedicalArtifact, MedicalReviewRequest } from '../types';
 import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
 import './BookingMedicalUpload.css';
 
@@ -17,6 +17,24 @@ interface BookingMedicalUploadProps {
 
 type BookingMedicalTestType = 'ekg' | 'liver_panel';
 type BookingDocumentType = Extract<MedicalArtifact['documentType'], 'EKG' | 'Liver'>;
+type UploadDocumentType = Extract<MedicalArtifact['documentType'], 'EKG' | 'Liver' | 'BP' | 'Medications' | 'additional' | 'other'>;
+
+const uploadDocumentOptions: Array<{ value: UploadDocumentType; label: string }> = [
+  { value: 'EKG', label: 'EKG' },
+  { value: 'Liver', label: 'Liver panel' },
+  { value: 'BP', label: 'Blood pressure' },
+  { value: 'Medications', label: 'Medications' },
+  { value: 'additional', label: 'Additional medical document' },
+  { value: 'other', label: 'Other' },
+];
+
+const getArtifactTypeForDocument = (documentType: UploadDocumentType): NonNullable<MedicalArtifact['artifactType']> => {
+  if (documentType === 'EKG') return 'ekg';
+  if (documentType === 'Liver') return 'liver_panel';
+  if (documentType === 'BP') return 'blood_pressure';
+  if (documentType === 'Medications') return 'medications_form';
+  return 'other';
+};
 
 const medicalTestSections: Array<{
   type: BookingMedicalTestType;
@@ -171,19 +189,18 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
   const [flowItems, setFlowItems] = useState<BookingFlowItem[]>([]);
   const [reviewsByArtifact, setReviewsByArtifact] = useState<Record<string, MedicalReviewRequest[]>>({});
   const [loading, setLoading] = useState(false);
-  const [uploadingType, setUploadingType] = useState<BookingMedicalTestType | null>(null);
+  const [uploadingType, setUploadingType] = useState<NonNullable<MedicalArtifact['artifactType']> | null>(null);
   const [creatingReviewFor, setCreatingReviewFor] = useState<string | null>(null);
-  const [savingResultType, setSavingResultType] = useState<BookingMedicalTestType | null>(null);
   const [markingReceivedType, setMarkingReceivedType] = useState<BookingMedicalTestType | null>(null);
   const [medicalAdvisors, setMedicalAdvisors] = useState<User[]>([]);
   const [advisorSelections, setAdvisorSelections] = useState<Record<BookingMedicalTestType, string>>({
     ekg: '',
     liver_panel: '',
   });
-  const [resultDrafts, setResultDrafts] = useState<Record<BookingMedicalTestType, string>>({
-    ekg: '',
-    liver_panel: '',
-  });
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [uploadDocumentType, setUploadDocumentType] = useState<UploadDocumentType>('additional');
+  const [uploadTitle, setUploadTitle] = useState('');
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [bloodPressureReadings, setBloodPressureReadings] = useState<BloodPressureReading[]>([]);
 
@@ -208,9 +225,8 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
       const bookingNumberFallbackArtifacts = [...bookingArtifacts, ...clientRetreatArtifacts].filter((artifact) =>
         artifactBelongsToBooking(artifact, bookingId, bookingNumber)
       );
-      const medicalArtifacts: MedicalArtifact[] = mergeArtifacts([directBookingArtifacts, bookingNumberFallbackArtifacts]).filter((artifact) =>
-        medicalTestSections.some((section) => artifactMatchesSection(artifact, section) && artifactBelongsToBooking(artifact, bookingId, bookingNumber))
-      );
+      const medicalArtifacts: MedicalArtifact[] = mergeArtifacts([directBookingArtifacts, bookingNumberFallbackArtifacts])
+        .filter((artifact) => artifactBelongsToBooking(artifact, bookingId, bookingNumber));
       setArtifacts(medicalArtifacts);
 
       const reviewEntries = await Promise.all(
@@ -260,49 +276,6 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
       liver_panel: [],
     });
   }, [artifacts]);
-
-  useEffect(() => {
-    setResultDrafts({
-      ekg: getArtifactResultText(artifactsByType.ekg[0]),
-      liver_panel: getArtifactResultText(artifactsByType.liver_panel[0]),
-    });
-  }, [artifactsByType]);
-
-  const upsertClientMedicalResult = async (sectionType: BookingMedicalTestType, resultText: string) => {
-    const now = new Date().toISOString();
-    const update: Partial<ClientMedical> = sectionType === 'ekg'
-      ? {
-          ekgResults: resultText,
-          ekgReceivedDate: now,
-          ekgStatus: 'received',
-        }
-      : {
-          liverPanelResults: resultText,
-          liverPanelReceivedDate: now,
-          liverPanelStatus: 'received',
-        };
-
-    try {
-      const existing = await clientMedicalApi.getByClientAndRetreat(clientId, retreatId);
-      if (existing.data?._id) {
-        await clientMedicalApi.update(existing.data._id, update);
-        return;
-      }
-    } catch (medicalLoadError: any) {
-      if (medicalLoadError?.response?.status && medicalLoadError.response.status !== 404) {
-        throw medicalLoadError;
-      }
-    }
-
-    await clientMedicalApi.create({
-      clientId,
-      retreatId,
-      liverPanelStatus: sectionType === 'liver_panel' ? 'received' : 'pending',
-      ekgStatus: sectionType === 'ekg' ? 'received' : 'pending',
-      finalMedicalClearance: false,
-      ...update,
-    } as any);
-  };
 
   const markBookingFlowReceived = async (sectionType: BookingMedicalTestType, artifact?: MedicalArtifact) => {
     const key = getFlowReceiptKey(sectionType);
@@ -364,62 +337,6 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
     }
   };
 
-  const saveResult = async (section: (typeof medicalTestSections)[number], latestArtifact?: MedicalArtifact) => {
-    const resultText = resultDrafts[section.type].trim();
-    if (!resultText) {
-      setError(`Enter ${section.title} results before saving.`);
-      return;
-    }
-
-    setSavingResultType(section.type);
-    setError(null);
-    try {
-      const now = new Date().toISOString();
-      const artifactPayload = {
-        textContent: resultText,
-        notes: resultText,
-        data: {
-          ...(latestArtifact?.data || {}),
-          resultText,
-          resultRecordedAt: now,
-          resultSource: 'booking',
-          bookingId,
-          bookingNumber,
-        },
-        contextType: 'booking' as const,
-        documentStage: 'entry' as const,
-        documentType: section.documentType,
-        purpose: 'booking_requirement' as const,
-        tags: Array.from(new Set([...(latestArtifact?.tags || []), 'booking-requirement'])),
-        receivedAt: latestArtifact?.receivedAt || now,
-        status: 'stored' as const,
-      };
-
-      if (latestArtifact?._id) {
-        await medicalArtifactsApi.update(latestArtifact._id, artifactPayload);
-      } else {
-        await medicalArtifactsApi.create({
-          clientId,
-          retreatId,
-          bookingId,
-          artifactType: section.type,
-          title: `${section.title} Results${bookingNumber ? ` - Booking ${bookingNumber}` : ''}`,
-          description: section.description,
-          source: 'manual',
-          ...artifactPayload,
-        });
-      }
-
-      await upsertClientMedicalResult(section.type, resultText);
-      await loadMedicalArtifacts();
-      onUploadComplete?.();
-    } catch (saveError: any) {
-      setError(saveError?.response?.data?.message || saveError?.message || `Unable to save ${section.title} results.`);
-    } finally {
-      setSavingResultType(null);
-    }
-  };
-
   const createReviewRequest = async (artifact: MedicalArtifact, section: (typeof medicalTestSections)[number]) => {
     if (!artifact._id) return undefined;
     const advisorId = advisorSelections[section.type];
@@ -445,37 +362,50 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
     }
   };
 
-  const handleUpload = async (section: (typeof medicalTestSections)[number], files: FileList | null) => {
-    if (!files?.length) return;
+  const openUploadModal = (documentType: UploadDocumentType = 'additional') => {
+    setUploadDocumentType(documentType);
+    setUploadTitle('');
+    setSelectedFiles([]);
+    setError(null);
+    setUploadModalOpen(true);
+  };
 
-    setUploadingType(section.type);
+  const handleUpload = async () => {
+    if (!selectedFiles.length) {
+      setError('Choose at least one document to upload.');
+      return;
+    }
+
+    const artifactType = getArtifactTypeForDocument(uploadDocumentType);
+    const section = medicalTestSections.find((item) => item.type === artifactType);
+    const documentLabel = uploadDocumentOptions.find((item) => item.value === uploadDocumentType)?.label || 'Medical document';
+    setUploadingType(artifactType);
     setError(null);
     try {
-      const fileArray = Array.from(files);
       const created = await medicalArtifactsApi.create({
         clientId,
         retreatId,
         bookingId,
-        artifactType: section.type,
+        artifactType,
         contextType: 'booking',
         documentStage: 'entry',
-        documentType: section.documentType,
-        purpose: 'booking_requirement',
-        title: `${section.title}${bookingNumber ? ` - Booking ${bookingNumber}` : ''}`,
-        description: section.description,
+        documentType: uploadDocumentType,
+        purpose: section ? 'booking_requirement' : 'general',
+        title: uploadTitle.trim() || `${documentLabel}${bookingNumber ? ` - Booking ${bookingNumber}` : ''}`,
+        description: section?.description || `Additional medical document for booking ${bookingNumber || bookingId}.`,
         source: 'admin_upload',
         status: 'stored',
         data: {
           bookingId,
           bookingNumber,
         },
-        tags: ['booking-requirement', bookingNumber ? `booking-${bookingNumber}` : ''].filter(Boolean),
+        tags: [section ? 'booking-requirement' : 'additional-medical-document', bookingNumber ? `booking-${bookingNumber}` : ''].filter(Boolean),
       });
 
       if (created.data._id) {
         let uploadResponse;
         try {
-          uploadResponse = await medicalArtifactsApi.uploadFiles(created.data._id, fileArray);
+          uploadResponse = await medicalArtifactsApi.uploadFiles(created.data._id, selectedFiles);
         } catch (uploadError) {
           await medicalArtifactsApi.delete(created.data._id).catch((rollbackError) => {
             console.error('Error rolling back empty medical artifact:', rollbackError);
@@ -483,11 +413,17 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
           throw uploadError;
         }
         const uploadedArtifact = uploadResponse.data?.artifact || created.data;
-        await createReviewRequest(uploadedArtifact, section);
+        if (section) {
+          await createReviewRequest(uploadedArtifact, section);
+          await markBookingFlowReceived(section.type, uploadedArtifact);
+        }
       }
 
       await loadMedicalArtifacts();
       onUploadComplete?.();
+      setUploadModalOpen(false);
+      setSelectedFiles([]);
+      setUploadTitle('');
     } catch (uploadError: any) {
       setError(getApiErrorMessage(uploadError));
     } finally {
@@ -554,9 +490,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
           const latestReview = latestArtifact?._id ? getLatestReview(reviewsByArtifact[latestArtifact._id]) : undefined;
           const latestResult = getArtifactResultText(latestArtifact);
           const latestDecision = getReviewDecisionInfo(latestReview);
-          const inputId = `booking-medical-${section.type}`;
           const isUploading = uploadingType === section.type;
-          const isSavingResult = savingResultType === section.type;
           const isCreatingReview = latestArtifact?._id && creatingReviewFor === latestArtifact._id;
           const selectedAdvisorId = advisorSelections[section.type] || '';
           const receiptKey = getFlowReceiptKey(section.type);
@@ -655,26 +589,6 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                 </div>
               </div>
 
-              <div className="booking-medical-result-editor">
-                <label htmlFor={`booking-medical-result-${section.type}`}>{section.title} results</label>
-                <textarea
-                  id={`booking-medical-result-${section.type}`}
-                  rows={4}
-                  value={resultDrafts[section.type]}
-                  onChange={(event) => setResultDrafts((current) => ({ ...current, [section.type]: event.target.value }))}
-                  placeholder={`Enter ${section.title} results, values, interpretation, or notes`}
-                  disabled={isSavingResult}
-                />
-                <button
-                  className="btn btn-sm btn-secondary"
-                  type="button"
-                  disabled={isSavingResult}
-                  onClick={() => saveResult(section, latestArtifact)}
-                >
-                  <Save size={16} /> {isSavingResult ? 'Saving...' : 'Save Results'}
-                </button>
-              </div>
-
               <div className="booking-document-files">
                 {!latestArtifact ? (
                   <div className="booking-document-empty">No {section.title} file uploaded yet.</div>
@@ -759,25 +673,97 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
               </div>
 
               <div className="upload-section">
-                <input
-                  type="file"
-                  id={inputId}
-                  accept=".pdf,.jpg,.jpeg,.png,.heic,.heif"
-                  multiple
-                  onChange={(event) => {
-                    handleUpload(section, event.target.files);
-                    event.target.value = '';
-                  }}
+                <button
+                  type="button"
+                  className="btn btn-sm btn-primary"
+                  onClick={() => openUploadModal(section.documentType)}
                   disabled={Boolean(uploadingType)}
-                />
-                <label htmlFor={inputId} className="btn btn-sm btn-primary">
+                >
                   <Upload size={16} /> {isUploading || isCreatingReview ? 'Working...' : `Upload ${section.title}`}
-                </label>
+                </button>
               </div>
             </div>
           );
         })}
       </div>
+
+      <section className="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h4 className="flex items-center gap-2 font-semibold text-slate-900">
+              <FilePlus2 size={20} /> Additional document
+            </h4>
+            <p className="mt-1 text-sm text-slate-600">Upload any other medical document linked to this booking.</p>
+          </div>
+          <button type="button" className="btn btn-sm btn-primary" onClick={() => openUploadModal('additional')}>
+            <Upload size={16} /> Upload document
+          </button>
+        </div>
+      </section>
+
+      {uploadModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="booking-medical-upload-title">
+          <div className="max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl sm:max-w-xl sm:rounded-2xl sm:p-6">
+            <div className="mb-5 flex items-start justify-between gap-4">
+              <div>
+                <h3 id="booking-medical-upload-title" className="text-xl font-bold text-slate-900">Upload medical artifact</h3>
+                <p className="mt-1 text-sm text-slate-600">The client, retreat, and booking are already linked.</p>
+              </div>
+              <button type="button" onClick={() => setUploadModalOpen(false)} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-100" aria-label="Close upload">
+                <X size={22} />
+              </button>
+            </div>
+
+            {error && <div className="alert alert-danger mb-4">{error}</div>}
+
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="booking-medical-document-type" className="mb-1 block text-sm font-semibold text-slate-700">Document type</label>
+                <select
+                  id="booking-medical-document-type"
+                  value={uploadDocumentType}
+                  onChange={(event) => setUploadDocumentType(event.target.value as UploadDocumentType)}
+                  className="min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-base"
+                >
+                  {uploadDocumentOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="booking-medical-upload-title-input" className="mb-1 block text-sm font-semibold text-slate-700">Title (optional)</label>
+                <input
+                  id="booking-medical-upload-title-input"
+                  value={uploadTitle}
+                  onChange={(event) => setUploadTitle(event.target.value)}
+                  className="min-h-12 w-full rounded-lg border border-slate-300 px-3 text-base"
+                  placeholder="Defaults to the document type"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="booking-medical-upload-files" className="mb-1 block text-sm font-semibold text-slate-700">Files</label>
+                <input
+                  id="booking-medical-upload-files"
+                  type="file"
+                  accept=".pdf,.jpg,.jpeg,.png,.heic,.heif"
+                  multiple
+                  capture="environment"
+                  onChange={(event) => setSelectedFiles(Array.from(event.target.files || []))}
+                  className="block min-h-14 w-full rounded-lg border border-slate-300 bg-slate-50 p-3 text-sm"
+                />
+                <p className="mt-1 text-xs text-slate-500">PDF or photo. On mobile you can use the camera.</p>
+              </div>
+            </div>
+
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button type="button" onClick={() => setUploadModalOpen(false)} className="min-h-12 rounded-xl border border-slate-300 bg-white font-semibold text-slate-700">Cancel</button>
+              <button type="button" onClick={handleUpload} disabled={Boolean(uploadingType)} className="btn btn-primary min-h-12 justify-center">
+                <Upload size={18} /> {uploadingType ? 'Uploading…' : 'Upload'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
