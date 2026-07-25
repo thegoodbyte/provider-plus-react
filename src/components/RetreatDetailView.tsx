@@ -373,11 +373,10 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const fetchRetreatData = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [retreatResponse, clientsResponse, expensesSummaryResponse, paymentsResponse, retreatsResponse] = await Promise.all([
+      const [retreatResponse, clientsResponse, expensesSummaryResponse, retreatsResponse] = await Promise.all([
         retreatsApi.getOne(retreatId),
         bookingsApi.getByRetreatWithDetails(retreatId),
         retreatExpensesApi.getRetreatSummary(retreatId),
-        paymentsApi.getByRetreatFresh(retreatId),
         retreatsApi.getAll()
       ]);
 
@@ -391,8 +390,26 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       await loadHeroImageUrl(retreatResponse.data);
       setExpensesSummary(expensesSummaryResponse.data);
 
-      const payments = paymentsResponse.data || [];
       const getObjectId = (value: any) => typeof value === 'object' ? value?._id || value?.id : value;
+      const paymentResults = await Promise.all((clientsResponse.data || []).map(async (booking: any) => {
+        const bookingId = getObjectId(booking);
+        const lookups = await Promise.allSettled([
+          paymentsApi.getByBooking(bookingId),
+          booking.bookingHash
+            ? paymentsApi.getByBookingHash(booking.bookingHash)
+            : Promise.resolve({ data: [] as Payment[] }),
+        ]);
+        const exactBookingPayments = new Map<string, Payment>();
+        lookups.forEach((lookup) => {
+          if (lookup.status !== 'fulfilled') return;
+          (lookup.value.data || []).forEach((payment: Payment) => {
+            if (!payment._id) return;
+            exactBookingPayments.set(payment._id, { ...payment, bookingId } as Payment);
+          });
+        });
+        return Array.from(exactBookingPayments.values());
+      }));
+      const payments = paymentResults.flat();
       const getPaymentsForBooking = (booking: any) => {
         const bookingId = getObjectId(booking);
         return payments.filter((payment: Payment) => getObjectId(payment.bookingId) === bookingId);
