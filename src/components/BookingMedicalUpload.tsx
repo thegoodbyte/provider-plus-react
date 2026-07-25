@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Eye, FilePlus2, FileText, RefreshCw, Send, Upload, X } from 'lucide-react';
+import { Eye, FileText, RefreshCw, Send, Upload, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { bloodPressureReadingsApi, bookingFlowApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
@@ -13,6 +13,10 @@ interface BookingMedicalUploadProps {
   clientId: string;
   retreatId: string;
   onUploadComplete?: () => void;
+  uploadRequest?: {
+    stage: NonNullable<MedicalArtifact['documentStage']>;
+    key: number;
+  } | null;
 }
 
 type BookingMedicalTestType = 'ekg' | 'liver_panel';
@@ -28,8 +32,11 @@ const uploadDocumentOptions: Array<{ value: UploadDocumentType; label: string }>
   { value: 'other', label: 'Other' },
 ];
 
-const getArtifactTypeForDocument = (documentType: UploadDocumentType): NonNullable<MedicalArtifact['artifactType']> => {
-  if (documentType === 'EKG') return 'ekg';
+const getArtifactTypeForDocument = (
+  documentType: UploadDocumentType,
+  stage: NonNullable<MedicalArtifact['documentStage']>
+): NonNullable<MedicalArtifact['artifactType']> => {
+  if (documentType === 'EKG') return ['pre_ceremony', 'in_ceremony', 'post_ceremony'].includes(stage) ? 'ceremony_ekg' : 'ekg';
   if (documentType === 'Liver') return 'liver_panel';
   if (documentType === 'BP') return 'blood_pressure';
   if (documentType === 'Medications') return 'medications_form';
@@ -183,6 +190,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
   clientId,
   retreatId,
   onUploadComplete,
+  uploadRequest,
 }) => {
   const navigate = useNavigate();
   const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
@@ -199,6 +207,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
   });
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [uploadDocumentType, setUploadDocumentType] = useState<UploadDocumentType>('additional');
+  const [uploadDocumentStage, setUploadDocumentStage] = useState<NonNullable<MedicalArtifact['documentStage']>>('entry');
   const [uploadTitle, setUploadTitle] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -362,13 +371,22 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
     }
   };
 
-  const openUploadModal = (documentType: UploadDocumentType = 'additional') => {
+  const openUploadModal = (
+    documentType: UploadDocumentType = 'additional',
+    stage: NonNullable<MedicalArtifact['documentStage']> = 'entry'
+  ) => {
     setUploadDocumentType(documentType);
+    setUploadDocumentStage(stage);
     setUploadTitle('');
     setSelectedFiles([]);
     setError(null);
     setUploadModalOpen(true);
   };
+
+  useEffect(() => {
+    if (!uploadRequest) return;
+    openUploadModal(uploadRequest.stage === 'entry' ? 'EKG' : 'additional', uploadRequest.stage);
+  }, [uploadRequest]);
 
   const handleUpload = async () => {
     if (!selectedFiles.length) {
@@ -376,8 +394,10 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
       return;
     }
 
-    const artifactType = getArtifactTypeForDocument(uploadDocumentType);
-    const section = medicalTestSections.find((item) => item.type === artifactType);
+    const artifactType = getArtifactTypeForDocument(uploadDocumentType, uploadDocumentStage);
+    const section = uploadDocumentStage === 'entry'
+      ? medicalTestSections.find((item) => item.type === artifactType)
+      : undefined;
     const documentLabel = uploadDocumentOptions.find((item) => item.value === uploadDocumentType)?.label || 'Medical document';
     setUploadingType(artifactType);
     setError(null);
@@ -388,9 +408,15 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
         bookingId,
         artifactType,
         contextType: 'booking',
-        documentStage: 'entry',
+        documentStage: uploadDocumentStage,
         documentType: uploadDocumentType,
-        purpose: section ? 'booking_requirement' : 'general',
+        purpose: section
+          ? 'booking_requirement'
+          : uploadDocumentStage === 'pre_ceremony'
+            ? 'pre_ceremony'
+            : ['in_ceremony', 'post_ceremony'].includes(uploadDocumentStage)
+              ? 'repeat_test'
+              : 'general',
         title: uploadTitle.trim() || `${documentLabel}${bookingNumber ? ` - Booking ${bookingNumber}` : ''}`,
         description: section?.description || `Additional medical document for booking ${bookingNumber || bookingId}.`,
         source: 'admin_upload',
@@ -490,8 +516,6 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
           const latestReview = latestArtifact?._id ? getLatestReview(reviewsByArtifact[latestArtifact._id]) : undefined;
           const latestResult = getArtifactResultText(latestArtifact);
           const latestDecision = getReviewDecisionInfo(latestReview);
-          const isUploading = uploadingType === section.type;
-          const isCreatingReview = latestArtifact?._id && creatingReviewFor === latestArtifact._id;
           const selectedAdvisorId = advisorSelections[section.type] || '';
           const receiptKey = getFlowReceiptKey(section.type);
           const receiptGroup = getFlowReadinessGroup(section.type);
@@ -672,34 +696,10 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                 )}
               </div>
 
-              <div className="upload-section">
-                <button
-                  type="button"
-                  className="btn btn-sm btn-primary"
-                  onClick={() => openUploadModal(section.documentType)}
-                  disabled={Boolean(uploadingType)}
-                >
-                  <Upload size={16} /> {isUploading || isCreatingReview ? 'Working...' : `Upload ${section.title}`}
-                </button>
-              </div>
             </div>
           );
         })}
       </div>
-
-      <section className="mt-5 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h4 className="flex items-center gap-2 font-semibold text-slate-900">
-              <FilePlus2 size={20} /> Additional document
-            </h4>
-            <p className="mt-1 text-sm text-slate-600">Upload any other medical document linked to this booking.</p>
-          </div>
-          <button type="button" className="btn btn-sm btn-primary" onClick={() => openUploadModal('additional')}>
-            <Upload size={16} /> Upload document
-          </button>
-        </div>
-      </section>
 
       {uploadModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="booking-medical-upload-title">
@@ -717,6 +717,23 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
             {error && <div className="alert alert-danger mb-4">{error}</div>}
 
             <div className="space-y-4">
+              <div>
+                <label htmlFor="booking-medical-document-stage" className="mb-1 block text-sm font-semibold text-slate-700">Stage</label>
+                <select
+                  id="booking-medical-document-stage"
+                  value={uploadDocumentStage}
+                  onChange={(event) => setUploadDocumentStage(event.target.value as NonNullable<MedicalArtifact['documentStage']>)}
+                  className="min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-base"
+                >
+                  <option value="entry">Entry</option>
+                  <option value="pre_ceremony">Pre-ceremony</option>
+                  <option value="in_ceremony">In-ceremony</option>
+                  <option value="post_ceremony">Post-ceremony</option>
+                  <option value="other">Other</option>
+                  <option value="additional">Additional</option>
+                </select>
+              </div>
+
               <div>
                 <label htmlFor="booking-medical-document-type" className="mb-1 block text-sm font-semibold text-slate-700">Document type</label>
                 <select

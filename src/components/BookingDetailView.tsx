@@ -635,6 +635,7 @@ const BookingMedicalOverviewPanel: React.FC<{
   const [reviewsByArtifact, setReviewsByArtifact] = useState<Record<string, MedicalReviewRequest[]>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [uploadRequest, setUploadRequest] = useState<{ stage: NonNullable<MedicalArtifact['documentStage']>; key: number } | null>(null);
 
   const loadMedicalOverview = async () => {
     const loadStart = performance.now();
@@ -741,7 +742,22 @@ const BookingMedicalOverviewPanel: React.FC<{
               <details key={stage} className="booking-medical-stage" open={stage === 'entry'}>
                 <summary>
                   <span>{medicalStageLabels[stage]}</span>
-                  <span>{stageArtifacts.length}</span>
+                  <span className="flex items-center gap-3">
+                    <span>{stageArtifacts.length}</span>
+                    {clientId && retreatId && (
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-primary"
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          setUploadRequest({ stage: stage || 'other', key: Date.now() });
+                        }}
+                      >
+                        Upload
+                      </button>
+                    )}
+                  </span>
                 </summary>
                 {stageArtifacts.length === 0 ? (
                   <div className="booking-medical-empty">No {medicalStageLabels[stage].toLowerCase()} records found.</div>
@@ -785,6 +801,7 @@ const BookingMedicalOverviewPanel: React.FC<{
           bookingNumber={bookingNumber}
           clientId={clientId}
           retreatId={retreatId}
+          uploadRequest={uploadRequest}
           onUploadComplete={() => {
             onUploadComplete();
             loadMedicalOverview();
