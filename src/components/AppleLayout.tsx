@@ -49,6 +49,8 @@ import PaymentEditorPage from './PaymentEditorPage';
 import PaymentRequestsGrid from './PaymentRequestsGrid';
 import PaymentRequestEditorPage from './PaymentRequestEditorPage';
 import ExpensesPage from './ExpensesPage';
+import ExpenseDetailPage from './ExpenseDetailPage';
+import ExpenseEditorPage from './ExpenseEditorPage';
 import CommunicationsPage from './CommunicationsPage';
 import ContactBookPage from './ContactBookPage';
 import AssistantPage from './AssistantPage';
@@ -325,7 +327,7 @@ const AppleLayout: React.FC = () => {
     const path = location.pathname;
 
     if (appMode.mode === 'shopping') {
-      if (path !== `${prefix}/expenses`) navigate(`${prefix}/expenses`, { replace: true });
+      if (path !== `${prefix}/expenses` && !path.startsWith(`${prefix}/expenses/`)) navigate(`${prefix}/expenses`, { replace: true });
       return;
     }
 
@@ -837,6 +839,9 @@ const AppleLayout: React.FC = () => {
                       <Route path="payments/:id" element={<PaymentEditorPage />} />
                       <Route path="payments/:id/edit" element={<PaymentEditorPage />} />
                       <Route path="expenses" element={<ExpensesPage />} />
+                      <Route path="expenses/new" element={<ExpenseEditorPage />} />
+                      <Route path="expenses/:id" element={<ExpenseDetailPage />} />
+                      <Route path="expenses/:id/edit" element={<ExpenseEditorPage />} />
                       <Route path="payment-requests" element={<PaymentRequestsGrid />} />
                       <Route path="payment-requests/new" element={<PaymentRequestEditorPage />} />
                       <Route path="payment-requests/:id" element={<PaymentRequestEditorPage />} />
@@ -1083,6 +1088,9 @@ const AppleLayout: React.FC = () => {
                 <Route path="/payments/:id" element={<ProtectedRoute><PaymentEditorPage /></ProtectedRoute>} />
                 <Route path="/payments/:id/edit" element={<ProtectedRoute><PaymentEditorPage /></ProtectedRoute>} />
                 <Route path="/expenses" element={<ProtectedRoute><ExpensesPage /></ProtectedRoute>} />
+                <Route path="/expenses/new" element={<ProtectedRoute><ExpenseEditorPage /></ProtectedRoute>} />
+                <Route path="/expenses/:id" element={<ProtectedRoute><ExpenseDetailPage /></ProtectedRoute>} />
+                <Route path="/expenses/:id/edit" element={<ProtectedRoute><ExpenseEditorPage /></ProtectedRoute>} />
                 <Route path="/requirements" element={<ProtectedRoute><RequirementsGrid /></ProtectedRoute>} />
               </Routes>
             </div>
