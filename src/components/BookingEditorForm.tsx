@@ -273,7 +273,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       }
 
       if (mode === 'edit' && bookingId) {
-        if (formData.status === 'cancelled' && booking?.status !== 'cancelled') {
+        if (formData.status === 'cancelled') {
           if (cancellationReason.trim().length < 2) {
             alert('Please enter a cancellation reason.');
             return;
@@ -512,7 +512,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
           </div>
         </div>
 
-        {mode === 'edit' && formData.status === 'cancelled' && booking?.status !== 'cancelled' && (
+        {mode === 'edit' && formData.status === 'cancelled' && (
           <div className="space-y-4 rounded-lg border border-red-200 bg-red-50 p-4">
             <div>
               <h3 className="font-semibold text-red-900">Cancel this booking</h3>
