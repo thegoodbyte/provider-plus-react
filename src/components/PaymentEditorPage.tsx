@@ -244,13 +244,8 @@ const PaymentEditorPage: React.FC = () => {
     };
   }, [formData.amount, formData.currency]);
 
-  const findBookingForPaymentRequest = (paymentRequestId: string, clientId?: string, retreatId?: string, bookingList = bookings) => {
-    return bookingList.find((booking) => resolveId(booking.paymentRequestId) === paymentRequestId)
-      || bookingList.find((booking) => {
-        const bookingClientId = resolveId(booking.clientId);
-        const bookingRetreatId = resolveId(booking.retreatId);
-        return Boolean(clientId && retreatId && bookingClientId === clientId && bookingRetreatId === retreatId);
-      });
+  const findBookingForPaymentRequest = (paymentRequestId: string, bookingList = bookings) => {
+    return bookingList.find((booking) => resolveId(booking.paymentRequestId) === paymentRequestId);
   };
 
   const applyPaymentRequest = (paymentRequestId: string, paymentRequest?: PaymentRequest, bookingList = bookings) => {
@@ -268,7 +263,7 @@ const PaymentEditorPage: React.FC = () => {
     const currency = paymentRequest?.currency || formData.currency;
     const clientId = resolveId(paymentRequest?.clientId);
     const retreatId = resolveId(paymentRequest?.retreatId);
-    const booking = findBookingForPaymentRequest(paymentRequestId, clientId, retreatId, bookingList);
+    const booking = findBookingForPaymentRequest(paymentRequestId, bookingList);
     const requestPaymentType = paymentTypeFromRequest(paymentRequest.requestType);
 
     setFormData((prev) => ({
@@ -314,8 +309,8 @@ const PaymentEditorPage: React.FC = () => {
 
     if (isView) return;
 
-    if (!isExisting && !formData.paymentRequestId) {
-      alert('Please select a payment request first');
+    if (!isExisting && !formData.bookingId && !formData.paymentRequestId) {
+      setFormError('Select the exact booking. A payment request is only sufficient before its booking has been created.');
       return;
     }
 
@@ -481,13 +476,13 @@ const PaymentEditorPage: React.FC = () => {
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Booking Number</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Booking Number {!formData.paymentRequestId && '*'}</label>
               <select
                 value={formData.bookingId}
                 onChange={(e) => handleBookingSelect(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="">No booking linked</option>
+                <option value="">{formData.paymentRequestId ? 'Booking not created yet' : 'Select the exact booking'}</option>
                 {bookingOptions.map((booking) => {
                   const client = typeof booking.clientId === 'object' ? booking.clientId as Client : clients.find((item) => item._id === booking.clientId);
                   const retreat = typeof booking.retreatId === 'object' ? booking.retreatId as Retreat : retreats.find((item) => item._id === booking.retreatId);
@@ -502,6 +497,9 @@ const PaymentEditorPage: React.FC = () => {
                 <p className="mt-1 text-xs text-gray-500">
                   Linked to booking #{selectedBooking.bookingNumber || selectedBooking._id?.slice(-6)}
                 </p>
+              )}
+              {!selectedBooking && formData.paymentRequestId && (
+                <p className="mt-1 text-xs text-amber-700">This payment will be linked automatically only when a booking is created from this payment request.</p>
               )}
             </div>
 

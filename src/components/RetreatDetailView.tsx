@@ -399,13 +399,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       const getObjectId = (value: any) => typeof value === 'object' ? value?._id || value?.id : value;
       const getPaymentsForBooking = (booking: any) => {
         const bookingId = getObjectId(booking);
-        const bookingHash = booking.bookingHash;
-        const paymentRequestId = getObjectId(booking.paymentRequestId);
-        return payments.filter((payment: Payment) => (
-          getObjectId(payment.bookingId) === bookingId ||
-          (bookingHash && payment.bookingHash === bookingHash) ||
-          (paymentRequestId && getObjectId(payment.paymentRequestId) === paymentRequestId)
-        ));
+        return payments.filter((payment: Payment) => getObjectId(payment.bookingId) === bookingId);
       };
       const getPaymentNetAmount = (payment: Payment) => payment.paymentType === 'refund'
         ? -Math.abs(payment.amount || 0)
