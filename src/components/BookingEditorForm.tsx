@@ -92,6 +92,10 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   const [booking, setBooking] = useState<RetreatClient | null>(initialBooking || null);
   const [formData, setFormData] = useState<BookingFormData>(emptyForm());
   const [bookingNumberError, setBookingNumberError] = useState('');
+  const [cancellationReason, setCancellationReason] = useState('');
+  const [depositTreatment, setDepositTreatment] = useState<'none' | 'retained' | 'refund_pending' | 'partially_refunded' | 'credited'>('none');
+  const [cancellationNotes, setCancellationNotes] = useState('');
+  const [cancellationRefundAmount, setCancellationRefundAmount] = useState('');
 
   useEffect(() => {
     loadData();
@@ -119,6 +123,10 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
         currentBooking = response.data || null;
       }
       setBooking(currentBooking);
+      setCancellationReason((currentBooking as any)?.cancellationReason || '');
+      setDepositTreatment((currentBooking as any)?.cancellationDepositTreatment || 'none');
+      setCancellationNotes((currentBooking as any)?.cancellationNotes || '');
+      setCancellationRefundAmount((currentBooking as any)?.cancellationRefundAmount ? String((currentBooking as any).cancellationRefundAmount) : '');
 
       if (currentBooking) {
         setFormData({
@@ -265,7 +273,27 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       }
 
       if (mode === 'edit' && bookingId) {
-        await bookingsApi.update(bookingId, payload as any);
+        if (formData.status === 'cancelled' && booking?.status !== 'cancelled') {
+          if (cancellationReason.trim().length < 2) {
+            alert('Please enter a cancellation reason.');
+            return;
+          }
+          if (depositTreatment === 'partially_refunded' && Number(cancellationRefundAmount) <= 0) {
+            alert('Please enter the planned partial refund amount.');
+            return;
+          }
+          const { status: _status, ...bookingChanges } = payload;
+          await bookingsApi.update(bookingId, bookingChanges as any);
+          await bookingsApi.cancel(bookingId, {
+            cancellationDate: new Date().toISOString(),
+            cancellationReason: cancellationReason.trim(),
+            cancellationNotes: cancellationNotes.trim() || undefined,
+            cancellationDepositTreatment: depositTreatment,
+            cancellationRefundAmount: depositTreatment === 'partially_refunded' ? Number(cancellationRefundAmount) : undefined,
+          });
+        } else {
+          await bookingsApi.update(bookingId, payload as any);
+        }
       } else {
         await bookingsApi.create(payload as any);
       }
@@ -483,6 +511,39 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
             </select>
           </div>
         </div>
+
+        {mode === 'edit' && formData.status === 'cancelled' && booking?.status !== 'cancelled' && (
+          <div className="space-y-4 rounded-lg border border-red-200 bg-red-50 p-4">
+            <div>
+              <h3 className="font-semibold text-red-900">Cancel this booking</h3>
+              <p className="text-sm text-red-700">Record why it was cancelled and what happens to the deposit.</p>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Cancellation reason *</label>
+              <textarea rows={3} value={cancellationReason} onChange={(event) => setCancellationReason(event.target.value)} className="w-full rounded-md border border-gray-300 px-3 py-2" required minLength={2} />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Deposit treatment *</label>
+              <select value={depositTreatment} onChange={(event) => setDepositTreatment(event.target.value as typeof depositTreatment)} className="w-full rounded-md border border-gray-300 px-3 py-2">
+                <option value="none">No payment was received</option>
+                <option value="retained">Deposit retained</option>
+                <option value="refund_pending">Full refund pending</option>
+                <option value="partially_refunded">Partial refund</option>
+                <option value="credited">Credit transferred to another booking</option>
+              </select>
+            </div>
+            {depositTreatment === 'partially_refunded' && (
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Planned refund amount *</label>
+                <input type="number" min="0.01" step="0.01" value={cancellationRefundAmount} onChange={(event) => setCancellationRefundAmount(event.target.value)} className="w-full rounded-md border border-gray-300 px-3 py-2" required />
+              </div>
+            )}
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Cancellation notes</label>
+              <textarea rows={2} value={cancellationNotes} onChange={(event) => setCancellationNotes(event.target.value)} className="w-full rounded-md border border-gray-300 px-3 py-2" />
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center gap-3 pt-2">
           <div className="min-w-[220px] flex-1 text-xs text-gray-500">
