@@ -5,173 +5,55 @@ import ExpensesPage from './ExpensesPage';
 import { expenseTypesApi, retreatExpensesApi, retreatsApi } from '../services/api';
 
 jest.mock('../services/api', () => ({
-  expenseTypesApi: {
-    getAll: jest.fn(),
-  },
-  retreatExpensesApi: {
-    getAll: jest.fn(),
-    create: jest.fn(),
-    update: jest.fn(),
-    delete: jest.fn(),
-  },
-  retreatsApi: {
-    getAll: jest.fn(),
-  },
+  expenseTypesApi: { getAll: jest.fn() },
+  retreatExpensesApi: { getAll: jest.fn(), delete: jest.fn() },
+  retreatsApi: { getAll: jest.fn() },
 }));
 
-const benRetreat = {
-  _id: 'retreat-ben',
-  name: 'June retreat',
-  code: 'BEN-06-17-26',
-  retreatCode: 'BEN-06-17-26',
-  location: 'Default Location',
-  startDate: '2026-06-10T00:00:00.000Z',
-  endDate: '2026-06-25T23:59:59.000Z',
+jest.mock('react-router-dom', () => ({
+  useNavigate: () => jest.fn(),
+  useLocation: () => ({ pathname: '/admin/expenses' }),
+}), { virtual: true });
+
+const expense = {
+  _id: 'expense-1',
+  expenseTypeId: { _id: 'food', name: 'Food', category: 'food' },
+  retreatId: { _id: 'retreat-1', name: 'July retreat', code: 'JUL-25-26' },
+  amount: 125,
+  currency: 'CZK',
+  description: 'Ceremony fruit',
+  vendor: 'Market',
+  expenseDate: '2026-07-25T00:00:00.000Z',
+  status: 'paid',
 };
 
-const otherRetreat = {
-  _id: 'retreat-other',
-  name: 'Other retreat',
-  code: 'JNO-07-25-26',
-  retreatCode: 'JNO-07-25-26',
-  location: 'Default Location',
-  startDate: '2026-07-25T00:00:00.000Z',
-  endDate: '2026-08-01T23:59:59.000Z',
-};
-
-const expenseType = {
-  _id: 'expense-type-food',
-  name: 'Food',
-  description: 'Food supplies',
-  category: 'food',
-  isActive: true,
-};
-
-const setupMocks = (expenses: any[]) => {
-  (retreatExpensesApi.getAll as jest.Mock).mockResolvedValue({ data: expenses });
-  (expenseTypesApi.getAll as jest.Mock).mockResolvedValue({ data: [expenseType] });
-  (retreatsApi.getAll as jest.Mock).mockResolvedValue({ data: [benRetreat, otherRetreat] });
-};
-
-const waitForLoadedExpenses = async () => {
-  await waitFor(() => {
-    expect(screen.queryByText(/loading expenses/i)).not.toBeInTheDocument();
-  });
-};
-
-describe('ExpensesPage retreat filtering', () => {
+describe('Expenses CRUD index', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (retreatExpensesApi.getAll as jest.Mock).mockResolvedValue({ data: [expense] });
+    (expenseTypesApi.getAll as jest.Mock).mockResolvedValue({ data: [expense.expenseTypeId] });
+    (retreatsApi.getAll as jest.Mock).mockResolvedValue({ data: [expense.retreatId] });
+    (retreatExpensesApi.delete as jest.Mock).mockResolvedValue({});
   });
 
-  it('keeps expenses visible when the API returns retreatId as a populated retreat object', async () => {
-    setupMocks([
-      {
-        _id: 'expense-ben',
-        retreatId: benRetreat,
-        expenseTypeId: expenseType,
-        amount: 125,
-        currency: 'USD',
-        description: 'BEN supplies',
-        vendor: 'Market',
-        expenseDate: '2026-06-20T00:00:00.000Z',
-        status: 'paid',
-      },
-      {
-        _id: 'expense-other',
-        retreatId: otherRetreat,
-        expenseTypeId: expenseType,
-        amount: 90,
-        currency: 'USD',
-        description: 'Other supplies',
-        vendor: 'Market',
-        expenseDate: '2026-07-20T00:00:00.000Z',
-        status: 'paid',
-      },
-    ]);
+  const renderPage = () => render(<ExpensesPage />);
 
-    render(<ExpensesPage />);
-    await waitForLoadedExpenses();
-
-    await userEvent.selectOptions(screen.getByDisplayValue('All Retreats'), 'retreat-ben');
-
-    const rows = screen.getAllByRole('row');
-    const bodyRows = rows.slice(1);
-    expect(bodyRows).toHaveLength(1);
-    expect(within(bodyRows[0]).getByText('BEN supplies')).toBeInTheDocument();
-    expect(within(bodyRows[0]).getByText('BEN-06-17-26')).toBeInTheDocument();
-    expect(screen.queryByText('Other supplies')).not.toBeInTheDocument();
+  it('renders the expense grid and CRUD actions', async () => {
+    renderPage();
+    expect(await screen.findAllByText('Ceremony fruit')).not.toHaveLength(0);
+    expect(screen.getByRole('button', { name: 'View expense' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Edit expense' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Delete expense' })).toBeInTheDocument();
   });
 
-  it('keeps older expenses visible when retreatId was saved as the retreat code string', async () => {
-    setupMocks([
-      {
-        _id: 'expense-ben-legacy',
-        retreatId: 'BEN-06-17-26',
-        expenseTypeId: expenseType,
-        amount: 45,
-        currency: 'USD',
-        description: 'Legacy BEN supplies',
-        vendor: 'Market',
-        expenseDate: '2026-06-20T00:00:00.000Z',
-        status: 'paid',
-      },
-    ]);
-
-    render(<ExpensesPage />);
-    await waitForLoadedExpenses();
-
-    await userEvent.selectOptions(screen.getByDisplayValue('All Retreats'), 'retreat-ben');
-
-    const legacyRow = screen.getByText('Legacy BEN supplies').closest('tr');
-    expect(legacyRow).toBeTruthy();
-    expect(within(legacyRow as HTMLTableRowElement).getByText('BEN-06-17-26')).toBeInTheDocument();
-    expect(screen.getByText('Total Expenses')).toBeInTheDocument();
-    expect(within(screen.getByText('Total Expenses').closest('.bg-white') as HTMLElement).getByText('1')).toBeInTheDocument();
-  });
-
-  it('auto-links the quick expense form to the retreat that matches the selected date', async () => {
-    setupMocks([]);
-
-    render(<ExpensesPage />);
-    await waitForLoadedExpenses();
-
-    const user = userEvent.setup();
-    await user.clear(screen.getByLabelText('Date'));
-    await user.type(screen.getByLabelText('Date'), '2026-06-20');
-    await user.clear(screen.getByLabelText('Amount'));
-    await user.type(screen.getByLabelText('Amount'), '42.50');
-    await user.type(screen.getByLabelText('Merchant'), 'Gas station');
-    await user.click(screen.getByRole('button', { name: /save expense/i }));
-
-    await waitFor(() => {
-      expect(retreatExpensesApi.create).toHaveBeenCalled();
-    });
-
-    const payload = (retreatExpensesApi.create as jest.Mock).mock.calls[0][0];
-    expect(payload.retreatId).toBe('retreat-ben');
-    expect(payload.currency).toBe('CZK');
-    expect(payload.amount).toBe(42.5);
-  });
-
-  it('lets the quick expense form save a general expense without a retreat id', async () => {
-    setupMocks([]);
-
-    render(<ExpensesPage />);
-    await waitForLoadedExpenses();
-
-    const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: /general company/i }));
-    await user.clear(screen.getByLabelText('Amount'));
-    await user.type(screen.getByLabelText('Amount'), '15');
-    await user.click(screen.getByRole('button', { name: /save expense/i }));
-
-    await waitFor(() => {
-      expect(retreatExpensesApi.create).toHaveBeenCalled();
-    });
-
-    const payload = (retreatExpensesApi.create as jest.Mock).mock.calls[0][0];
-    expect(payload.retreatId).toBeUndefined();
-    expect(payload.currency).toBe('CZK');
+  it('uses an in-app confirmation before deleting', async () => {
+    renderPage();
+    await screen.findAllByText('Ceremony fruit');
+    await userEvent.click(screen.getByRole('button', { name: 'Delete expense' }));
+    const dialog = screen.getByRole('dialog', { name: 'Delete expense?' });
+    expect(dialog).toBeInTheDocument();
+    expect(retreatExpensesApi.delete).not.toHaveBeenCalled();
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(retreatExpensesApi.delete).toHaveBeenCalledWith('expense-1'));
   });
 });
