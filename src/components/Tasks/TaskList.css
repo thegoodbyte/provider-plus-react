@@ -61,7 +61,7 @@
   grid-template-columns: minmax(220px, 2fr) 88px 88px 112px 136px 112px minmax(130px, 1fr) minmax(145px, 1fr) 108px;
   border-bottom: 1px solid #eef2f7;
   transition: background-color 0.15s ease, box-shadow 0.15s ease;
-  min-height: 62px;
+  min-height: 44px;
 }
 
 .task-row:hover {
@@ -79,7 +79,7 @@
 }
 
 .task-cell {
-  padding: 10px 12px;
+  padding: 6px 10px;
   border-right: 1px solid #eef2f7;
   display: flex;
   flex-direction: column;
@@ -210,7 +210,10 @@
   font-size: 13px;
   font-weight: 500;
   color: #333;
-  margin-bottom: 2px;
+  margin-bottom: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .client-info .client-number,

@@ -209,9 +209,6 @@ export const TaskList: React.FC<TaskListProps> = ({
                   <div className="due-date-text">
                     {formatDate(task.dueDate)}
                   </div>
-                  <div className="due-date-relative">
-                    {taskService.formatDueDate(task.dueDate)}
-                  </div>
                 </div>
               ) : (
                 <span className="no-due-date">No due date</span>
@@ -233,10 +230,9 @@ export const TaskList: React.FC<TaskListProps> = ({
               <span className="task-cell-label">Client</span>
               {task.clientId && typeof task.clientId === 'object' ? (
                 <div className="client-info">
-                  <div className="client-name">
-                    {getClientDisplayName(task.clientId)}
+                  <div className="client-name" title={`${getClientDisplayName(task.clientId)} ${getClientNumber(task.clientId)}`}>
+                    {getClientDisplayName(task.clientId)} {getClientNumber(task.clientId)}
                   </div>
-                  <div className="client-number">{getClientNumber(task.clientId)}</div>
                 </div>
               ) : (
                 <span className="no-client">-</span>
@@ -247,8 +243,7 @@ export const TaskList: React.FC<TaskListProps> = ({
               <span className="task-cell-label">Retreat</span>
               {task.retreatId && typeof task.retreatId === 'object' ? (
                 <div className="retreat-info">
-                  <div className="retreat-name">{(task.retreatId as any).name}</div>
-                  <div className="retreat-code">{(task.retreatId as any).code}</div>
+                  <div className="retreat-name" title={`${(task.retreatId as any).name} ${(task.retreatId as any).code || ''}`}>{(task.retreatId as any).code || (task.retreatId as any).name}</div>
                 </div>
               ) : (
                 <span className="no-retreat">-</span>
