@@ -981,11 +981,16 @@ const MedicalReviewRequestsPage: React.FC = () => {
       <div className="mb-4 flex items-start justify-between gap-4 sm:mb-6">
         <div>
           <h1 className="text-xl font-semibold leading-tight text-gray-900 sm:text-2xl">
-            {isDetailView && selected ? 'Medical Review' : 'Medical Review Requests'}
+            {isDetailView && selected ? (
+              <>
+                <span className="sm:hidden">{selectedClientName} · MRR #{selected.display_id || '—'}</span>
+                <span className="hidden sm:inline">Medical Review</span>
+              </>
+            ) : 'Medical Review Requests'}
           </h1>
               {isDetailView && selected ? (
                 <div className="mt-1">
-                  <div className="text-base font-medium text-gray-900 sm:text-lg">{selectedClientName}</div>
+                  <div className="hidden text-base font-medium text-gray-900 sm:block sm:text-lg">{selectedClientName}</div>
                   <div className="text-sm text-gray-600">{formatCompactDocumentMeta(selected) || getRequestTypeLabel(selected.requestType)}</div>
                 </div>
               ) : (
@@ -994,7 +999,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
             </p>
           )}
           {isDetailView && selected && (
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+            <div className="mt-2 hidden flex-wrap items-center gap-2 text-xs text-gray-500 sm:flex">
               <span>Request #{selected.display_id || '—'}</span>
               <span>
                 {selected.createdAt
@@ -1131,7 +1136,139 @@ const MedicalReviewRequestsPage: React.FC = () => {
           {!selected ? (
             <div className="p-4 text-sm text-gray-500">Select a request to review it.</div>
           ) : (
-            <div className="space-y-4 sm:space-y-5">
+            <>
+            {isDetailView && (
+              <div className="space-y-3 sm:hidden">
+                <section className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+                  <div className="border-b border-gray-200 px-3 py-2 text-sm font-semibold text-gray-900">
+                    {formatCompactDocumentMeta(selected) || getRequestTypeLabel(selected.requestType)}
+                  </div>
+                  <div className="space-y-3 p-2">
+                    {linkedArtifacts.length === 0 ? (
+                      <div className="p-3 text-sm text-gray-500">No linked document is available.</div>
+                    ) : linkedArtifacts.map((artifact) => (
+                      <div key={artifact._id} className="min-w-0 space-y-2">
+                        <div className="px-1 text-xs font-semibold text-blue-800">
+                          {getArtifactTypeLabel(artifact.artifactType)}{artifact.title ? ` · ${artifact.title}` : ''}
+                        </div>
+                        {artifact.textContent && (
+                          <div className="whitespace-pre-wrap rounded-md bg-gray-50 p-2 text-xs text-gray-700">{artifact.textContent}</div>
+                        )}
+                        {artifact.files?.length ? artifact.files.map((file, index) => (
+                          <div key={`${file.fileName || file.s3Key || index}`} className="min-w-0 overflow-hidden rounded-md border border-gray-200">
+                            <ArtifactInlinePreview artifactId={artifact._id} file={file} index={index} frame={false} />
+                          </div>
+                        )) : (
+                          <div className="rounded-md bg-gray-50 p-2 text-xs text-gray-500">No uploaded picture or PDF.</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section
+                  ref={reviewDecisionSectionRef}
+                  className={`rounded-lg border bg-white p-3 ${
+                    isMissingOverallDecision || isMissingMedicalStaffNotes ? 'border-red-300' : 'border-gray-200'
+                  }`}
+                >
+                  <div className="mb-2 text-sm font-semibold text-gray-900">Review</div>
+                  {isReadOnlyView ? (
+                    <div className="rounded-md bg-gray-50 p-3 text-sm">
+                      <div className="font-semibold text-gray-900">{formatMedicalReviewDecisionLabel(selected.reviewDecision)}</div>
+                      <div className="mt-2 whitespace-pre-wrap text-gray-600">{selected.medicalStaffNotes || selected.overallNotes || selected.reviewNotes || 'No medical staff notes.'}</div>
+                    </div>
+                  ) : (
+                    <>
+                      <textarea
+                        id="mobile-medical-staff-notes"
+                        value={medicalStaffNotes}
+                        onChange={(event) => {
+                          setMedicalStaffNotes(event.target.value);
+                          if (validationError && event.target.value.trim().length >= 2) setValidationError('');
+                        }}
+                        rows={4}
+                        minLength={2}
+                        className={`w-full rounded-md border px-3 py-2 text-base ${
+                          isMissingMedicalStaffNotes ? 'border-red-400 ring-2 ring-red-100' : 'border-gray-300'
+                        }`}
+                        placeholder="Review notes and recommendations"
+                      />
+                      <div className="mt-2 grid grid-cols-3 gap-2">
+                        {decisionOptions.map((option) => (
+                          <button
+                            key={option}
+                            type="button"
+                            onClick={() => {
+                              setReviewDecision(option);
+                              if (validationError && medicalStaffNotes.trim().length >= 2) setValidationError('');
+                            }}
+                            className={getDecisionButtonClass(option, reviewDecision === option, 'sm')}
+                          >
+                            {decisionLabels[option]}
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleSaveReview()}
+                        disabled={savingReview || !reviewDecision || medicalStaffNotes.trim().length < 2}
+                        className="mt-2 w-full rounded-md bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {savingReview ? 'Saving...' : 'Save review'}
+                      </button>
+                    </>
+                  )}
+                </section>
+
+                <details className="rounded-lg border border-gray-200 bg-white">
+                  <summary className="cursor-pointer px-3 py-3 text-sm font-semibold text-gray-900">Additional information</summary>
+                  <div className="space-y-3 border-t border-gray-200 p-3 text-sm">
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div><span className="text-gray-500">Status</span><div className="font-semibold text-gray-900">{selected.status}</div></div>
+                      <div><span className="text-gray-500">Created</span><div className="font-semibold text-gray-900">{formatDateTime(selected.createdAt || selected.requestedAt)}</div></div>
+                      <div><span className="text-gray-500">Attempt</span><div className="font-semibold text-gray-900">{selected.attemptNumber || 1}</div></div>
+                      <div><span className="text-gray-500">Request</span><div className="font-semibold text-gray-900">MRR #{selected.display_id || '—'}</div></div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {profileHref && (
+                        <button type="button" onClick={() => navigate(profileHref)} className="rounded-md border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700">
+                          Full medical profile
+                        </button>
+                      )}
+                      {originalArtifactIds.map((artifactId, index) => (
+                        <button key={artifactId} type="button" onClick={() => navigate(`${artifactRoutePrefix}/medical-artifacts/${artifactId}/edit`)} className="rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700">
+                          {originalArtifactIds.length > 1 ? `Original artifact ${index + 1}` : 'Original artifact'}
+                        </button>
+                      ))}
+                    </div>
+                    {contextScreenings.length > 0 && (
+                      <details className="rounded-md border border-gray-200">
+                        <summary className="cursor-pointer px-3 py-2 font-semibold text-gray-900">Screening</summary>
+                        <div className="border-t border-gray-200 p-3">{renderReadOnlyScreening(contextScreenings[0])}</div>
+                      </details>
+                    )}
+                    {history.length > 0 && (
+                      <details className="rounded-md border border-gray-200">
+                        <summary className="cursor-pointer px-3 py-2 font-semibold text-gray-900">Previous MRRs ({history.length})</summary>
+                        <div className="space-y-2 border-t border-gray-200 p-2">
+                          {history.map((item) => renderRelatedRequestCard(item, 'Previous review'))}
+                        </div>
+                      </details>
+                    )}
+                    {associatedRequests.length > 0 && (
+                      <details className="rounded-md border border-gray-200">
+                        <summary className="cursor-pointer px-3 py-2 font-semibold text-gray-900">Associated reviews ({associatedRequests.length})</summary>
+                        <div className="space-y-2 border-t border-gray-200 p-2">
+                          {associatedRequests.map((item) => renderRelatedRequestCard(item, 'Associated review'))}
+                        </div>
+                      </details>
+                    )}
+                  </div>
+                </details>
+              </div>
+            )}
+            <div className={`${isDetailView ? 'hidden sm:block' : ''} space-y-4 sm:space-y-5`}>
               {!isDetailView && (
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -1711,6 +1848,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
               </div>
 
             </div>
+            </>
           )}
         </div>
       </div>
