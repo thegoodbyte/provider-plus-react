@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, Eye, FileText, HeartPulse, Leaf, Plus, RefreshCw, Send, Trash2, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Eye, FileText, HeartPulse, Leaf, Pencil, Plus, RefreshCw, Send, Trash2, XCircle } from 'lucide-react';
 import { medicalArtifactsApi, medicalReviewRequestsApi, retreatsApi } from '../services/api';
 import { Client, MedicalArtifact, MedicalReviewRequest, Retreat, RetreatArtifactSubmissionRow, RetreatArtifactSubmissionsResponse, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
@@ -435,7 +435,7 @@ const MedicalArtifactsPage: React.FC = () => {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-3 md:p-6">
       <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Medical Artifacts</h1>
@@ -550,13 +550,13 @@ const MedicalArtifactsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-md border border-gray-200">
-        <table className="min-w-full divide-y divide-gray-200 text-sm">
+      <div className="max-w-full overflow-x-auto rounded-md border border-gray-200">
+        <table className="min-w-[1280px] divide-y divide-gray-200 text-sm">
           <thead className="bg-gray-50 text-left text-xs font-semibold uppercase text-gray-500">
             <tr>
               <th className="px-4 py-3">ID</th>
               <th className="min-w-[170px] px-4 py-3">MRR</th>
-              <th className="px-4 py-3">Actions</th>
+              <th className="sticky right-0 z-20 min-w-[184px] border-l border-gray-200 bg-gray-50 px-4 py-3">Actions</th>
               <th className="px-4 py-3">Preview</th>
               <th className="hidden px-4 py-3 sm:table-cell">Stage</th>
               <th className="px-4 py-3">Document Type</th>
@@ -625,7 +625,7 @@ const MedicalArtifactsPage: React.FC = () => {
                     <ReviewResultBadge review={latestReview} />
                   </div>
                 </td>
-                <td className="px-4 py-3">
+                <td className="sticky right-0 z-10 min-w-[184px] border-l border-gray-200 bg-white px-4 py-3 shadow-[-6px_0_10px_-10px_rgba(15,23,42,0.6)]">
                   <div className="flex justify-start gap-2">
                     <button
                       type="button"
@@ -634,6 +634,16 @@ const MedicalArtifactsPage: React.FC = () => {
                       className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                     >
                       <Eye className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      title="Edit artifact"
+                      aria-label={`Edit medical artifact #${artifact.display_id}`}
+                      onClick={() => navigate(`${artifact._id}/edit`)}
+                      disabled={!artifact._id}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 disabled:opacity-50"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
                     </button>
                     {latestReview?._id ? (
                       <button
