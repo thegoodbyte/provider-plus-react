@@ -5,13 +5,14 @@ import { Button, Modal, Form, Input, DatePicker, TimePicker, Select, message } f
 import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons';
 import moment from 'moment';
 import ParticipantTracker from './ParticipantTracker';
+import CeremonyReadyChecklist from './CeremonyReadyChecklist';
 
 interface CeremoniesGridProps {
   retreatId?: string;
   retreats?: Retreat[];
 }
 
-type CeremonyFullTab = 'med_prep' | 'spiritual' | 'spoons' | 'post' | 'report';
+type CeremonyFullTab = 'ready' | 'med_prep' | 'spiritual' | 'spoons' | 'post' | 'report';
 
 type CeremonyReportState = {
   ceremonyReport: string;
@@ -51,7 +52,7 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
   const [modalVisible, setModalVisible] = useState(false);
   const [editingCeremony, setEditingCeremony] = useState<Ceremony | null>(null);
   const [trackingCeremonyId, setTrackingCeremonyId] = useState<string | null>(null);
-  const [activeFullTab, setActiveFullTab] = useState<CeremonyFullTab>('med_prep');
+  const [activeFullTab, setActiveFullTab] = useState<CeremonyFullTab>('ready');
   const [spiritualNotes, setSpiritualNotes] = useState('');
   const [savingSpiritualNotes, setSavingSpiritualNotes] = useState(false);
   const [reportNotes, setReportNotes] = useState<CeremonyReportState>(emptyReportState);
@@ -229,6 +230,7 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
   };
 
   const fullViewTabs: Array<{ key: CeremonyFullTab; label: string }> = [
+    { key: 'ready', label: 'Ready checklist' },
     { key: 'med_prep', label: 'Med prep' },
     { key: 'spiritual', label: 'Spiritual verification' },
     { key: 'spoons', label: 'Spoons taken' },
@@ -292,6 +294,10 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
             ))}
           </div>
         </div>
+
+        {activeFullTab === 'ready' && (
+          <CeremonyReadyChecklist ceremonyId={trackingCeremonyId} />
+        )}
 
         {activeFullTab === 'med_prep' && (
           <ParticipantTracker ceremonyId={trackingCeremonyId} initialView="pre" lockedView showHeader={false} />
@@ -476,7 +482,7 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     <button
                       type="button"
-                      onClick={() => openFullView(ceremony, 'med_prep')}
+                      onClick={() => openFullView(ceremony, 'ready')}
                       className="font-semibold text-blue-700 hover:text-blue-900 hover:underline"
                       title="Open ceremony view"
                     >

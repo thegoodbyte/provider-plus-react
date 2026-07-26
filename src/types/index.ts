@@ -699,6 +699,11 @@ export interface Ceremony {
   medicalAdvisorApproval?: boolean;
   medicalAdvisorNotes?: string;
   medicalAdvisorName?: string;
+  readyChecklistItems?: Array<{
+    id: string;
+    label: string;
+    kind: 'manual' | 'ekg' | 'bp';
+  }>;
 
   status?: 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
   createdAt?: string;
@@ -787,6 +792,12 @@ export interface CeremonyParticipant {
 
   medicalClearance?: 'approved' | 'not_approved' | 'conditional' | 'pending';
   medicalClearanceNotes?: string;
+  readyChecklist?: Array<{
+    itemId: string;
+    checked?: boolean;
+    note?: string;
+    updatedAt?: Date | string;
+  }>;
 
   // Ceremony participation details
   participated?: boolean;
