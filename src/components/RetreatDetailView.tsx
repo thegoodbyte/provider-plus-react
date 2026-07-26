@@ -307,6 +307,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [retreatEmailLoading, setRetreatEmailLoading] = useState(false);
   const [excludedRetreatEmailClientIds, setExcludedRetreatEmailClientIds] = useState<string[]>([]);
   const [metricsCollapsed, setMetricsCollapsed] = useState(true);
+  const [helperAssignmentsCollapsed, setHelperAssignmentsCollapsed] = useState(true);
   const [showRetreatEditModal, setShowRetreatEditModal] = useState(false);
   const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
   const [heroImageSource, setHeroImageSource] = useState<'retreat' | 'house' | null>(null);
@@ -1003,17 +1004,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const expectedProfitUSD = totalExpectedUSD - plannedExpensesUSD;
   const occupancyRate = retreat.capacity ? Math.round((activeClientCount / retreat.capacity) * 100) : 0;
   const retreatCode = retreat.code || retreat.retreatCode || retreat.name || 'Retreat';
-  const retreatCodeColor = retreat.backgroundColor || retreat.textColor || '#111827';
-  const retreatHouse = retreat.houseId && typeof retreat.houseId === 'object' ? retreat.houseId : null;
-  const retreatPlace = retreatHouse?.generalTown
-    || retreatHouse?.general_town
-    || retreatHouse?.city
-    || retreat.location_town
-    || retreat.locationTown
-    || retreat.location
-    || 'Location TBD';
   const retreatCapacity = Number(retreat.capacity || 0);
-  const availableSpaces = retreatCapacity ? Math.max(retreatCapacity - clients.length, 0) : 0;
   const retreatDateText = `${formatDate(retreat.startDate || '')} - ${formatDate(retreat.endDate || '')}`;
   const currentRetreatIndex = scheduledRetreats.findIndex((item) => item._id === retreatId);
   const previousRetreat = currentRetreatIndex > 0 ? scheduledRetreats[currentRetreatIndex - 1] : null;
@@ -1063,38 +1054,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           >
             <Icon icon={FiChevronRight} className="w-5 h-5" />
           </button>
-          <input
-            ref={heroImageInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleHeroImageSelect}
-            className="hidden"
-          />
-          <button
-            type="button"
-            onClick={() => heroImageInputRef.current?.click()}
-            className="edit-retreat-btn retreat-icon-action"
-            disabled={heroImageUploading}
-            title={heroImageSource === 'house' ? 'Upload a custom hero image for this retreat' : 'Upload Hero Image'}
-            aria-label={heroImageSource === 'house' ? 'Upload custom hero image' : 'Upload hero image'}
-          >
-            <Icon icon={FiUpload} className="w-4 h-4" />
-            <span className="retreat-action-label">
-              {heroImageUploading ? 'Uploading image...' : heroImageSource === 'house' ? 'Override Hero Image' : 'Upload Hero Image'}
-            </span>
-          </button>
-          {retreat.heroImageS3Key && (
-            <button
-              type="button"
-              onClick={handleClearHeroImage}
-              className="edit-retreat-btn retreat-icon-action"
-              title="Remove custom retreat hero and use the house default"
-              aria-label="Use house hero image"
-            >
-              <Icon icon={FiImage} className="w-4 h-4" />
-              <span className="retreat-action-label">Use House Hero</span>
-            </button>
-          )}
           <button onClick={async () => {
             // Fetch houses when edit modal is opened
             if (houses.length === 0) {
@@ -1130,42 +1089,22 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             <span className="retreat-action-label">Edit Retreat</span>
           </button>
         </div>
-        <div
-          className="retreat-hero-banner"
-          style={{
-            backgroundImage: heroImageUrl
-              ? `linear-gradient(rgba(255,255,255,0.25), rgba(255,255,255,0.25)), url(${heroImageUrl})`
-              : 'linear-gradient(135deg, #1f2937 0%, #475569 100%)',
-          }}
-        >
-          <div className="retreat-hero-content">
-            <div className="retreat-code-cutout">
-              <span
-                style={{ color: retreatCodeColor }}
-              >
-                {retreatCode}
-              </span>
-            </div>
-            <div className="retreat-hero-primary">
-              <span>{retreatPlace}</span>
-              {retreatCapacity > 0 && <span>{availableSpaces}/{retreatCapacity}</span>}
-            </div>
-            <div className="retreat-hero-secondary">
-              <span>{retreatDateText}</span>
-              <span className={`status-badge status-${retreat.status}`} style={{ textTransform: 'uppercase' }}>
-                {retreat.status || 'upcoming'}
-              </span>
-            </div>
-          </div>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600 shadow-sm">
+          <span className="font-semibold text-gray-900">{retreatCode}</span>
+          <span aria-hidden="true">·</span>
+          <span>{activeClientCount}/{retreatCapacity} spots taken</span>
+          <span aria-hidden="true">·</span>
+          <span>{retreatDateText}</span>
         </div>
       </div>
 
-      <section className="mb-5 rounded-lg border border-gray-200 bg-white px-4 py-4 shadow-sm">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-base font-semibold text-gray-900">Helper Directory Assignments</h2>
-            <p className="text-sm text-gray-500">Helpers and cooks assigned from Contact Book.</p>
-          </div>
+      <Collapse
+        activeKey={helperAssignmentsCollapsed ? [] : ['helperAssignments']}
+        onChange={(keys) => setHelperAssignmentsCollapsed(!keys.includes('helperAssignments'))}
+        style={{ marginBottom: '20px' }}
+      >
+        <Panel header="👥 Helper Assignments" key="helperAssignments">
+          <div className="mb-3 flex justify-end">
           <button
             type="button"
             onClick={async () => {
@@ -1201,9 +1140,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           >
             Edit assignments
           </button>
-        </div>
+          </div>
 
-        {Boolean(retreat.retreatStaff?.length) ? (
+          {Boolean(retreat.retreatStaff?.length) ? (
           <div className="grid gap-3 lg:grid-cols-2">
             {(retreat.retreatStaff || []).map((assignment, index) => (
               <div key={`${assignment.contactId || assignment.name || 'staff'}-${index}`} className="rounded-md border border-gray-100 bg-gray-50 p-3">
@@ -1227,12 +1166,13 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
               </div>
             ))}
           </div>
-        ) : (
+          ) : (
           <div className="rounded-md border border-dashed border-gray-200 bg-gray-50 px-4 py-4 text-sm text-gray-500">
             No helpers or cooks assigned yet.
           </div>
-        )}
-      </section>
+          )}
+        </Panel>
+      </Collapse>
 
       <Collapse
         activeKey={metricsCollapsed ? [] : ['metrics']}
