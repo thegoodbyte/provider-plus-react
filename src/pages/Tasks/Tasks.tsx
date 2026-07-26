@@ -6,6 +6,7 @@ import { TaskList } from '../../components/Tasks/TaskList';
 import { TaskForm } from '../../components/Tasks/TaskForm';
 import { TaskFiltersPanel } from '../../components/Tasks/TaskFiltersPanel';
 import TasksCalendarView from '../../components/Tasks/TasksCalendarView';
+import { SprintBoard } from '../../components/Tasks/SprintBoard';
 import './Tasks.css';
 
 export const Tasks: React.FC = () => {
@@ -16,7 +17,7 @@ export const Tasks: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'board' | 'calendar'>('list');
   const [filters, setFilters] = useState<TaskFilters>({
     sortBy: 'dueDate',
     sortOrder: 'asc'
@@ -135,6 +136,7 @@ export const Tasks: React.FC = () => {
           <div className="task-header-actions">
             <div className="tasks-view-toggle" aria-label="Task view">
               <button type="button" className={viewMode === 'list' ? 'active' : ''} onClick={() => setViewMode('list')}>List</button>
+              <button type="button" className={viewMode === 'board' ? 'active' : ''} onClick={() => setViewMode('board')}>Sprints</button>
               <button type="button" className={viewMode === 'calendar' ? 'active' : ''} onClick={() => setViewMode('calendar')}>Calendar</button>
             </div>
             <button
@@ -167,6 +169,8 @@ export const Tasks: React.FC = () => {
             onDeleteTask={handleDeleteTask}
             onCompleteTask={handleCompleteTask}
           />
+        ) : viewMode === 'board' ? (
+          <SprintBoard tasks={tasks} onChanged={loadTasks} onEdit={handleEditTask} />
         ) : (
           <TasksCalendarView tasks={tasks} deadlines={deadlines} />
         )}
