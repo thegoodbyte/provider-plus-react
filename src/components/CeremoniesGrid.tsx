@@ -6,13 +6,14 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-de
 import moment from 'moment';
 import ParticipantTracker from './ParticipantTracker';
 import CeremonyReadyChecklist from './CeremonyReadyChecklist';
+import CeremonyMedicalGuidance from './CeremonyMedicalGuidance';
 
 interface CeremoniesGridProps {
   retreatId?: string;
   retreats?: Retreat[];
 }
 
-type CeremonyFullTab = 'ready' | 'med_prep' | 'spiritual' | 'spoons' | 'post' | 'report';
+type CeremonyFullTab = 'ready' | 'guidance' | 'med_prep' | 'spiritual' | 'spoons' | 'post' | 'report';
 
 type CeremonyReportState = {
   ceremonyReport: string;
@@ -231,6 +232,7 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
 
   const fullViewTabs: Array<{ key: CeremonyFullTab; label: string }> = [
     { key: 'ready', label: 'Ready checklist' },
+    { key: 'guidance', label: 'Medical guidance' },
     { key: 'med_prep', label: 'Med prep' },
     { key: 'spiritual', label: 'Spiritual verification' },
     { key: 'spoons', label: 'Spoons taken' },
@@ -297,6 +299,10 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
 
         {activeFullTab === 'ready' && (
           <CeremonyReadyChecklist ceremonyId={trackingCeremonyId} />
+        )}
+
+        {activeFullTab === 'guidance' && (
+          <CeremonyMedicalGuidance ceremonyId={trackingCeremonyId} />
         )}
 
         {activeFullTab === 'med_prep' && (

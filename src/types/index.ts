@@ -798,6 +798,11 @@ export interface CeremonyParticipant {
     note?: string;
     updatedAt?: Date | string;
   }>;
+  medicalGuidance?: Array<{
+    itemId: string;
+    value?: string;
+    updatedAt?: Date | string;
+  }>;
 
   // Ceremony participation details
   participated?: boolean;
