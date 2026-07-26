@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Upload, Search } from 'lucide-react';
-import { bookingsApi, clientsApi, medicalArtifactsApi } from '../services/api';
-import { Client, MedicalArtifact, RetreatClient } from '../types';
+import { bookingsApi, ceremoniesApi, clientsApi, medicalArtifactsApi, retreatsApi } from '../services/api';
+import { Ceremony, Client, MedicalArtifact, Retreat, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 
 type DocumentStage = NonNullable<MedicalArtifact['documentStage']>;
@@ -55,14 +55,25 @@ const getBookingLabel = (booking: RetreatClient) => {
   return parts.join(' - ');
 };
 
+const getRetreatLabel = (retreat: Retreat) =>
+  retreat.code || retreat.retreatCode || retreat.name || `Retreat ${retreat._id?.slice(-6) || ''}`;
+
+const getCeremonyLabel = (ceremony: Ceremony) => {
+  const date = ceremony.date ? new Date(ceremony.date).toLocaleDateString() : '';
+  return [`Ceremony #${ceremony.ceremonyNumber}`, date, ceremony.status].filter(Boolean).join(' - ');
+};
+
 const MedicalArtifactCreatePage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const routePrefix = location.pathname.startsWith('/medical/') ? '/medical' : '/admin';
   const dropdownRef = useRef<HTMLDivElement>(null);
   const [clients, setClients] = useState<Client[]>([]);
+  const [retreats, setRetreats] = useState<Retreat[]>([]);
+  const [ceremonies, setCeremonies] = useState<Ceremony[]>([]);
   const [bookings, setBookings] = useState<RetreatClient[]>([]);
   const [loadingBookings, setLoadingBookings] = useState(false);
+  const [loadingCeremonies, setLoadingCeremonies] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,6 +86,8 @@ const MedicalArtifactCreatePage: React.FC = () => {
     documentStage: 'entry' as NonNullable<MedicalArtifact['documentStage']>,
     documentType: 'additional' as NonNullable<MedicalArtifact['documentType']>,
     bookingId: '',
+    retreatId: '',
+    ceremonyId: '',
     ceremonyNumber: undefined as number | undefined,
     title: '',
     resultText: '',
@@ -89,8 +102,12 @@ const MedicalArtifactCreatePage: React.FC = () => {
   useEffect(() => {
     const loadClients = async () => {
       try {
-        const response = await clientsApi.getAll();
-        setClients(response.data || []);
+        const [clientsResponse, retreatsResponse] = await Promise.all([
+          clientsApi.getAll(),
+          retreatsApi.getAll(),
+        ]);
+        setClients(clientsResponse.data || []);
+        setRetreats(retreatsResponse.data || []);
       } finally {
         setLoading(false);
       }
@@ -165,6 +182,30 @@ const MedicalArtifactCreatePage: React.FC = () => {
   }, [form.clientId]);
 
   useEffect(() => {
+    if (!isCeremonyStage || !form.retreatId) {
+      setCeremonies([]);
+      return;
+    }
+
+    let isMounted = true;
+    setLoadingCeremonies(true);
+    ceremoniesApi.getByRetreat(form.retreatId)
+      .then((response) => {
+        if (isMounted) setCeremonies(response.data || []);
+      })
+      .catch(() => {
+        if (isMounted) setCeremonies([]);
+      })
+      .finally(() => {
+        if (isMounted) setLoadingCeremonies(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [form.retreatId, isCeremonyStage]);
+
+  useEffect(() => {
     const loadUploadTarget = async () => {
       const firstFileName = selectedFiles[0]?.name || `${inferredArtifactType}.pdf`;
       try {
@@ -185,8 +226,12 @@ const MedicalArtifactCreatePage: React.FC = () => {
       setError('Select a booking. Only entry-level medical records can be saved without a booking.');
       return;
     }
-    if (isCeremonyStage && !form.ceremonyNumber) {
-      setError('Enter the ceremony number for pre-, in-, or post-ceremony records.');
+    if (isCeremonyStage && !form.retreatId) {
+      setError('Select a retreat for pre-, in-, or post-ceremony records.');
+      return;
+    }
+    if (isCeremonyStage && (!form.ceremonyId || !form.ceremonyNumber)) {
+      setError('Select a ceremony for pre-, in-, or post-ceremony records.');
       return;
     }
     const systolic = Number(form.systolic);
@@ -211,7 +256,7 @@ const MedicalArtifactCreatePage: React.FC = () => {
       const artifactType = inferredArtifactType;
       const contextType: NonNullable<MedicalArtifact['contextType']> = isCeremonyStage ? 'ceremony' : (form.bookingId ? 'booking' : 'client');
       const purpose = getPurposeForStage(form.documentStage);
-      const retreatId = getObjectId(selectedBooking?.retreatId);
+      const retreatId = isCeremonyStage ? form.retreatId : getObjectId(selectedBooking?.retreatId);
       const title = form.title.trim() || selectedFiles[0]?.name || `${documentStageLabels[form.documentStage]} ${documentTypeLabels[form.documentType]}`;
       const resultText = form.resultText.trim();
       const bpText = isBloodPressure
@@ -225,6 +270,7 @@ const MedicalArtifactCreatePage: React.FC = () => {
         clientId: form.clientId,
         retreatId: retreatId || undefined,
         bookingId: form.bookingId || undefined,
+        ceremonyId: isCeremonyStage ? form.ceremonyId : undefined,
         artifactType,
         contextType,
         documentStage: form.documentStage,
@@ -249,6 +295,8 @@ const MedicalArtifactCreatePage: React.FC = () => {
           resultRecordedAt: new Date().toISOString(),
           resultSource: 'manual',
           bookingId: form.bookingId || undefined,
+          retreatId: retreatId || undefined,
+          ceremonyId: isCeremonyStage ? form.ceremonyId : undefined,
           ceremonyNumber: isCeremonyStage ? form.ceremonyNumber : undefined,
         } : undefined,
       });
@@ -327,7 +375,7 @@ const MedicalArtifactCreatePage: React.FC = () => {
                         key={clientId}
                         type="button"
                         onClick={() => {
-                          setForm({ ...form, clientId, bookingId: '' });
+                          setForm({ ...form, clientId, bookingId: '', retreatId: '', ceremonyId: '', ceremonyNumber: undefined });
                           setShowClientDropdown(false);
                           setClientSearch('');
                         }}
@@ -350,7 +398,18 @@ const MedicalArtifactCreatePage: React.FC = () => {
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-600">Booking</label>
             <select
               value={form.bookingId}
-              onChange={(event) => setForm({ ...form, bookingId: event.target.value })}
+              onChange={(event) => {
+                const bookingId = event.target.value;
+                const booking = bookings.find((item) => item._id === bookingId);
+                const retreatId = String(getObjectId(booking?.retreatId) || '');
+                setForm({
+                  ...form,
+                  bookingId,
+                  retreatId: isCeremonyStage ? retreatId : form.retreatId,
+                  ceremonyId: '',
+                  ceremonyNumber: undefined,
+                });
+              }}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
               disabled={!form.clientId || loadingBookings}
               required={requiresBooking}
@@ -377,6 +436,10 @@ const MedicalArtifactCreatePage: React.FC = () => {
                 setForm({
                   ...form,
                   documentStage: nextStage,
+                  retreatId: ceremonyStages.has(nextStage)
+                    ? (form.retreatId || String(getObjectId(selectedBooking?.retreatId) || ''))
+                    : '',
+                  ceremonyId: ceremonyStages.has(nextStage) ? form.ceremonyId : '',
                   ceremonyNumber: ceremonyStages.has(nextStage) ? form.ceremonyNumber : undefined,
                 });
               }}
@@ -449,21 +512,53 @@ const MedicalArtifactCreatePage: React.FC = () => {
         )}
 
         {isCeremonyStage && (
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-600">Ceremony #</label>
-              <input
-                type="number"
-                min="1"
-                value={form.ceremonyNumber || ''}
-                onChange={(event) => setForm({ ...form, ceremonyNumber: event.target.value ? parseInt(event.target.value) : undefined })}
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-600">Retreat</label>
+              <select
+                value={form.retreatId}
+                onChange={(event) => setForm({
+                  ...form,
+                  retreatId: event.target.value,
+                  ceremonyId: '',
+                  ceremonyNumber: undefined,
+                })}
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                placeholder="1, 2, 3"
                 required
-              />
+              >
+                <option value="">Select retreat</option>
+                {retreats.map((retreat) => (
+                  <option key={retreat._id} value={retreat._id}>{getRetreatLabel(retreat)}</option>
+                ))}
+              </select>
             </div>
-            <div className="col-span-2 flex items-center text-sm text-gray-600">
-              <span>Booking and ceremony number are required for {documentStageLabels[form.documentStage]} records.</span>
+            <div>
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-600">Ceremony</label>
+              <select
+                value={form.ceremonyId}
+                onChange={(event) => {
+                  const ceremonyId = event.target.value;
+                  const ceremony = ceremonies.find((item) => item._id === ceremonyId);
+                  setForm({
+                    ...form,
+                    ceremonyId,
+                    ceremonyNumber: ceremony?.ceremonyNumber,
+                  });
+                }}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                disabled={!form.retreatId || loadingCeremonies}
+                required
+              >
+                <option value="">
+                  {loadingCeremonies ? 'Loading ceremonies...' : form.retreatId ? 'Select ceremony' : 'Select retreat first'}
+                </option>
+                {ceremonies.map((ceremony) => (
+                  <option key={ceremony._id} value={ceremony._id}>{getCeremonyLabel(ceremony)}</option>
+                ))}
+              </select>
+              {form.retreatId && !loadingCeremonies && ceremonies.length === 0 && (
+                <p className="mt-1 text-xs text-amber-700">No ceremonies are configured for this retreat.</p>
+              )}
             </div>
           </div>
         )}
