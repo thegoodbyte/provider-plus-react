@@ -592,9 +592,10 @@ const BookingRequirementsPanel: React.FC<{
 
 const MedicalReviewLine: React.FC<{
   review?: MedicalReviewRequest;
+  artifactId?: string;
   routePrefix: string;
   navigate: ReturnType<typeof useNavigate>;
-}> = ({ review, routePrefix, navigate }) => (
+}> = ({ review, artifactId, routePrefix, navigate }) => (
   <div className="booking-medical-review-line">
     <span className={`booking-medical-decision ${getReviewDecisionClass(review)}`}>
       {getReviewDecisionText(review)}
@@ -608,7 +609,18 @@ const MedicalReviewLine: React.FC<{
         Review #{review.display_id || review._id}
       </button>
     ) : (
-      <span className="booking-medical-muted">No medical review linked yet</span>
+      <span className="booking-medical-missing-review">
+        <span className="booking-medical-muted">No medical review linked yet</span>
+        {artifactId && (
+          <button
+            type="button"
+            className="booking-medical-create-review"
+            onClick={() => navigate(`${routePrefix}/medical-review-requests/new?artifactId=${artifactId}`)}
+          >
+            Create MRR
+          </button>
+        )}
+      </span>
     )}
     {review?.reviewedAt && <span className="booking-medical-muted">{formatShortDateTime(review.reviewedAt)}</span>}
     {(review?.reviewNotes || review?.overallNotes || review?.medicalStaffNotes) && (
@@ -723,7 +735,7 @@ const BookingMedicalOverviewPanel: React.FC<{
                   >
                     Artifact #{artifact.display_id || artifact._id}
                   </button>
-                  <MedicalReviewLine review={review} routePrefix={routePrefix} navigate={navigate} />
+                  <MedicalReviewLine review={review} artifactId={artifact._id} routePrefix={routePrefix} navigate={navigate} />
                 </>
               ) : (
                 <span className="booking-medical-decision medical-decision-declined">Missing</span>
@@ -783,7 +795,7 @@ const BookingMedicalOverviewPanel: React.FC<{
                               <span>{(artifact.files || []).length} file(s)</span>
                             </div>
                           </div>
-                          <MedicalReviewLine review={review} routePrefix={routePrefix} navigate={navigate} />
+                          <MedicalReviewLine review={review} artifactId={artifact._id} routePrefix={routePrefix} navigate={navigate} />
                         </div>
                       );
                     })}
