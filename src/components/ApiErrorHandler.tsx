@@ -25,6 +25,7 @@ export const ApiErrorContext = React.createContext<{
 const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
   const [error, setError] = useState<ApiError | null>(null);
   const [retryCount, setRetryCount] = useState(0);
+  const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
     // Add response interceptor to catch API errors
@@ -89,6 +90,7 @@ const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
           apiError.method = error.config.method?.toUpperCase();
         }
 
+        setShowDetails(false);
         setError(apiError);
         return Promise.reject(error);
       }
@@ -103,6 +105,7 @@ const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
   const clearError = () => {
     setError(null);
     setRetryCount(0);
+    setShowDetails(false);
   };
 
   const handleRetry = async () => {
@@ -136,31 +139,32 @@ const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
         <div className="api-error-backdrop" />
         <div className="api-error-modal">
           <div className="api-error-icon">
-            {error.code === 'NETWORK_ERROR' ? '🔌' : '⚠️'}
+            🔌
           </div>
 
-          <h2 className="api-error-title">
-            {error.code === 'NETWORK_ERROR' ? 'Connection Error' : 'Error Loading Data'}
-          </h2>
+          <h2 className="api-error-title">Connection to server lost</h2>
 
-          <p className="api-error-message">{error.message}</p>
+          <p className="api-error-message">Please retry the connection or dismiss this message.</p>
 
-          {error.url && (
-            <div className="api-error-details">
-              <p>
-                <span className="api-error-label">Endpoint:</span>
-                <code>{error.method} {error.url}</code>
-              </p>
-              {error.code && (
+          {showDetails && (
+            <div className="api-error-expanded">
+              <div className="api-error-details">
                 <p>
-                  <span className="api-error-label">Error Code:</span>
-                  <code>{error.code}</code>
+                  <span className="api-error-label">Message:</span>
+                  <span>{error.message}</span>
                 </p>
-              )}
-              <p>
-                <span className="api-error-label">Time:</span>
-                {error.timestamp.toLocaleTimeString()}
-              </p>
+                {error.url && <p><span className="api-error-label">Endpoint:</span><code>{error.method} {error.url}</code></p>}
+                {error.code && <p><span className="api-error-label">Error Code:</span><code>{error.code}</code></p>}
+                <p><span className="api-error-label">Time:</span>{error.timestamp.toLocaleTimeString()}</p>
+              </div>
+              <div className="api-error-help">
+                <p>If this problem persists:</p>
+                <ul>
+                  <li>Refresh the page to load the latest deployed version</li>
+                  <li>Retry after a minute in case the server is restarting</li>
+                  <li>Contact support with the endpoint and time shown above</li>
+                </ul>
+              </div>
             </div>
           )}
 
@@ -168,22 +172,15 @@ const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
             <button onClick={handleRetry} className="api-error-retry">
               🔄 Retry {retryCount > 0 && `(${retryCount})`}
             </button>
-            <button onClick={handleGoHome} className="api-error-home">
-              Home
-            </button>
             <button onClick={clearError} className="api-error-dismiss">
               Dismiss
             </button>
           </div>
 
-          <div className="api-error-help">
-            <p>If this problem persists, please:</p>
-            <ul>
-              <li>Refresh the page to load the latest deployed bundle</li>
-              <li>Check whether the backend API is returning 502 or restarting</li>
-              <li>Contact support with the endpoint and time shown above</li>
-            </ul>
-          </div>
+          <button type="button" className="api-error-more" onClick={() => setShowDetails((visible) => !visible)} aria-expanded={showDetails}>
+            {showDetails ? 'Hide details' : 'More info'}
+          </button>
+          {showDetails && <button type="button" onClick={handleGoHome} className="api-error-home-link">Go to home</button>}
         </div>
 
         <div className="api-error-content">
