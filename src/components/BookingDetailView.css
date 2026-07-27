@@ -575,6 +575,44 @@
   border-top: 1px solid #eef2f7;
 }
 
+.booking-medical-missing-review {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.booking-medical-create-review {
+  border: 1px solid #bfdbfe;
+  border-radius: 0.5rem;
+  background: #eff6ff;
+  color: #1d4ed8;
+  padding: 0.38rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.booking-medical-create-review:hover {
+  border-color: #93c5fd;
+  background: #dbeafe;
+}
+
+@media (max-width: 640px) {
+  .booking-medical-missing-review {
+    width: 100%;
+    align-items: stretch;
+    justify-content: flex-start;
+    flex-direction: column;
+  }
+
+  .booking-medical-create-review {
+    width: 100%;
+    min-height: 2.5rem;
+  }
+}
+
 .booking-medical-decision {
   display: inline-flex;
   align-items: center;
