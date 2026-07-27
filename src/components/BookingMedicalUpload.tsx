@@ -349,17 +349,13 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
   const createReviewRequest = async (artifact: MedicalArtifact, section: (typeof medicalTestSections)[number]) => {
     if (!artifact._id) return undefined;
     const advisorId = advisorSelections[section.type];
-    if (!advisorId) {
-      setError('Select a medical advisor before creating the medical review request.');
-      return undefined;
-    }
     const advisor = medicalAdvisors.find((item) => item._id === advisorId);
     setCreatingReviewFor(artifact._id);
     setError(null);
     try {
       const response = await medicalReviewRequestsApi.createFromArtifact(artifact._id, section.requestType, {
-        assignedToUserId: advisorId,
-        medicalStaffNotes: `${artifact.title} linked to booking ${bookingNumber || bookingId}${advisor?.email ? ` and assigned to ${advisor.email}` : ''}.`,
+        ...(advisorId ? { assignedToUserId: advisorId } : {}),
+        medicalStaffNotes: `${artifact.title} linked to booking ${bookingNumber || bookingId}${advisor?.email ? ` and assigned to ${advisor.email}` : ' and added to the unassigned review queue'}.`,
       });
       await loadMedicalArtifacts();
       return response.data;
@@ -587,9 +583,9 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                   )}
                 </div>
                 <div>
-                  <span className="booking-medical-required-label">Medical advisor</span>
+                  <span className="booking-medical-required-label">Medical advisor (optional)</span>
                   {latestReview?._id ? (
-                    <span>{typeof latestReview.assignedToUserId === 'object'
+                    <span>{!latestReview.assignedToUserId ? 'Unassigned review queue' : typeof latestReview.assignedToUserId === 'object'
                       ? [latestReview.assignedToUserId.firstName, latestReview.assignedToUserId.lastName].filter(Boolean).join(' ') || latestReview.assignedToUserId.email || 'Assigned'
                       : 'Assigned'}</span>
                   ) : (
@@ -598,7 +594,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                       onChange={(event) => setAdvisorSelections((current) => ({ ...current, [section.type]: event.target.value }))}
                       className="booking-medical-advisor-select"
                     >
-                      <option value="">Select advisor</option>
+                      <option value="">Leave unassigned</option>
                       {medicalAdvisors.map((advisor) => (
                         <option key={advisor._id} value={advisor._id}>
                           {[advisor.firstName, advisor.lastName].filter(Boolean).join(' ') || advisor.email}
@@ -683,7 +679,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                             <button
                               className="btn btn-sm btn-primary"
                               type="button"
-                              disabled={!artifact._id || !selectedAdvisorId || creatingReviewFor === artifact._id}
+                              disabled={!artifact._id || creatingReviewFor === artifact._id}
                               onClick={() => createReviewRequest(artifact, section)}
                             >
                               <Send size={16} /> {creatingReviewFor === artifact._id ? 'Creating...' : 'Create Review'}
