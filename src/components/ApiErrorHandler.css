@@ -77,6 +77,10 @@
   line-height: 1.5;
 }
 
+.api-error-expanded {
+  animation: fadeIn 0.2s ease-out;
+}
+
 /* Error Details */
 .api-error-details {
   background: #f8f9fa;
@@ -112,7 +116,26 @@
   display: flex;
   gap: 10px;
   justify-content: center;
-  margin: 25px 0;
+  margin: 25px 0 14px;
+}
+
+.api-error-more,
+.api-error-home-link {
+  display: block;
+  margin: 0 auto;
+  border: 0;
+  background: transparent;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.api-error-home-link {
+  margin-top: 12px;
+  color: #64748b;
+  font-size: 13px;
 }
 
 .api-error-actions button {
