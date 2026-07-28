@@ -35,6 +35,8 @@ export interface RetreatMedicalCell {
   decisionLabel?: string;
   decisionTone: RetreatMedicalDecisionTone;
   notes?: string;
+  artifacts: MedicalArtifact[];
+  reviews: MedicalReviewRequest[];
 }
 
 export interface RetreatMedicalRow {
@@ -280,6 +282,17 @@ export const buildRetreatMedicalGridData = (
       const booking = bookings.find((entry) => getObjectId(entry) === client.bookingId) || bookings.find((entry) => getObjectId(entry.clientId) === client.clientId);
       const artifact = booking ? pickMatchingArtifact(artifacts, stage, booking) : null;
       const review = booking ? pickMatchingReview(reviews, stage, booking, artifact) : null;
+      const bookingClientId = booking ? getObjectId(booking.clientId) : '';
+      const bookingId = booking ? getObjectId(booking) : '';
+      const matchingArtifacts = artifacts
+        .filter((item) => matchesStageArtifact(item, stage)
+          && (getObjectId(item.clientId) === bookingClientId || getObjectId(item.bookingId) === bookingId))
+        .sort((a, b) => getArtifactSortKey(b) - getArtifactSortKey(a));
+      const matchingReviews = reviews
+        .filter((item) => matchesStageReview(item, stage)
+          && (getObjectId(item.clientId) === bookingClientId || getObjectId((item as any).bookingId) === bookingId
+            || (item.artifactIds || []).some((id) => matchingArtifacts.some((entry) => getObjectId(entry) === getObjectId(id)))))
+        .sort((a, b) => getRequestSortKey(b) - getRequestSortKey(a));
       const decision = getReviewDecision(review);
       const notes = review?.reviewNotes || review?.overallNotes || review?.medicalStaffNotes || artifact?.notes || '';
       const submittedAt = review?.requestedAt || review?.assignedDate || review?.createdAt || artifact?.receivedAt || '';
@@ -304,6 +317,8 @@ export const buildRetreatMedicalGridData = (
         decisionLabel: getDecisionLabel(decision, review),
         decisionTone: getDecisionTone(decision),
         notes,
+        artifacts: matchingArtifacts,
+        reviews: matchingReviews,
       };
     }),
   }));
