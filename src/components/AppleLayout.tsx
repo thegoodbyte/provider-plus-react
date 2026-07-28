@@ -11,6 +11,7 @@ import ClientEditPage from './ClientEditPage';
 import AddClient from '../pages/AddClient';
 import ClientScreening from '../pages/ClientScreening';
 import RetreatDetailView, { RetreatDetailTab } from './RetreatDetailView';
+import RetreatStaffingPage from './RetreatStaffingPage';
 // import ClientsGrid from './ClientsGrid'; // Now using UnifiedClientManager
 import BookingsGrid from './BookingsGrid';
 import BookingEditorPage from './BookingEditorPage';
@@ -201,6 +202,7 @@ const AppleLayout: React.FC = () => {
     if (route === 'flow-tasks') return 'flow-tasks';
     if (route === 'ir-notifications') return 'ir-notifications';
     if (route === 'retreats') return 'retreats';
+    if (route === 'retreat-staffing') return 'retreat-staffing';
     if (route === 'ceremonies') return 'ceremonies';
     if (route === 'houses') return 'houses';
     if (route === 'bookings') return 'bookings';
@@ -818,6 +820,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="workflow/bookings/:bookingId" element={<WorkflowDashboard />} />
                       <Route path="retreat-flow" element={<RetreatFlowPage />} />
                       <Route path="retreat-flow/:retreatId" element={<RetreatFlowPage />} />
+                      <Route path="retreat-staffing" element={<RetreatStaffingPage />} />
                       <Route path="retreat-flow-library" element={<RetreatFlowLibraryPage />} />
                       <Route path="scheduled-reminders" element={<ScheduledRemindersPage />} />
                       <Route path="bookings/:bookingId/medication-stop-plan" element={<MedicationStopPlanPage />} />
@@ -980,6 +983,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="launcher" element={<ModuleLauncherPage />} />
                       <Route path="bookings" element={<BookingsGrid />} />
                       <Route path="retreats" element={<RetreatsGrid />} />
+                      <Route path="retreat-staffing" element={<RetreatStaffingPage />} />
                       <Route path="retreats/:retreatId/clients-print" element={<RetreatClientsPrintPage />} />
                       <Route path="retreats/:retreatId" element={<RetreatDetailRoute />} />
                       <Route path="retreats/:retreatId/:tab" element={<RetreatDetailRoute />} />

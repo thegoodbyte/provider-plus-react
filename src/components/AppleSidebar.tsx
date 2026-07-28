@@ -57,6 +57,7 @@ const FULL_MENU_SECTIONS: MenuSection[] = [
     Icon: Fi.FiCalendar,
     items: [
       { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
+      { id: 'retreat-staffing', label: 'Helpers & Cooks', Icon: Fi.FiUsers },
       { id: 'ceremonies', label: 'Ceremonies', Icon: Fi.FiClock },
       { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
       { id: 'houses', label: 'Houses', Icon: Fi.FiHome },
