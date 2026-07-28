@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Pencil } from 'lucide-react';
+import { ArrowLeft, Image, Pencil } from 'lucide-react';
 import { retreatExpensesApi } from '../services/api';
 import { RetreatExpense } from '../types';
 import LoadingSpinner from './LoadingSpinner';
@@ -32,6 +32,22 @@ const ExpenseDetailPage: React.FC = () => {
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
         <div className="border-b border-slate-200 pb-4"><div className="text-sm font-bold uppercase tracking-wide text-slate-500">Expense</div><h1 className="mt-1 text-2xl font-extrabold text-slate-950">{expense.description || expense.vendor || 'Expense'}</h1><div className="mt-2 text-3xl font-black text-blue-700">{amount}</div></div>
         <dl className="divide-y divide-slate-100">{rows.map(([label, value]) => <div key={label} className="grid grid-cols-[110px_1fr] gap-3 py-3"><dt className="font-semibold text-slate-500">{label}</dt><dd className="break-words font-semibold text-slate-900">{value}</dd></div>)}</dl>
+        {expense.receiptS3Key && id && (
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                const response = await retreatExpensesApi.getReceiptUrl(id);
+                window.open(response.data.url, '_blank', 'noopener,noreferrer');
+              } catch (receiptError: any) {
+                setError(receiptError?.response?.data?.message || 'Could not open the receipt.');
+              }
+            }}
+            className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-50 font-bold text-blue-700"
+          >
+            <Image size={20} /> View receipt{expense.receiptFileName ? ` · ${expense.receiptFileName}` : ''}
+          </button>
+        )}
       </div>
     </div>
   );

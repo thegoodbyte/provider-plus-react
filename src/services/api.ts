@@ -338,6 +338,12 @@ export const retreatExpensesApi = {
   getRetreatSummary: (retreatId: string) => api.get<ExpenseSummary>(`/retreat-expenses/retreat/${retreatId}/summary`),
   create: (data: Omit<RetreatExpense, '_id'>) => api.post<RetreatExpense>('/retreat-expenses', data),
   update: (id: string, data: Partial<RetreatExpense>) => api.patch<RetreatExpense>(`/retreat-expenses/${id}`, data),
+  uploadReceipt: (id: string, receipt: File) => {
+    const formData = new FormData();
+    formData.append('receipt', receipt);
+    return api.post<{ expense: RetreatExpense; receiptUrl: string }>(`/retreat-expenses/${id}/receipt`, formData);
+  },
+  getReceiptUrl: (id: string) => api.get<{ url: string; fileName?: string; mimeType?: string }>(`/retreat-expenses/${id}/receipt-url`),
   delete: (id: string) => api.delete(`/retreat-expenses/${id}`),
   initializeRetreatExpenses: (retreatId: string) => api.post(`/retreat-expenses/retreat/${retreatId}/initialize`, {}),
   autoGenerateHouseCost: (retreatId: string) => api.post<RetreatExpense>(`/retreat-expenses/retreat/${retreatId}/auto-generate-house-cost`, {}),

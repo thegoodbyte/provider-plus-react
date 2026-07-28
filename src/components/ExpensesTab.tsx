@@ -52,6 +52,7 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showTypeManager, setShowTypeManager] = useState(false);
   const [editingExpense, setEditingExpense] = useState<RetreatExpense | null>(null);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [editingExpenseType, setEditingExpenseType] = useState<ExpenseType | null>(null);
   const [formData, setFormData] = useState<ExpenseFormData>({
     expenseKind: 'actual',
@@ -122,6 +123,7 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
 
   const handleEditExpense = (expense: RetreatExpense) => {
     setEditingExpense(expense);
+    setReceiptFile(null);
     setFormData({
       expenseKind: expense.expenseKind || 'actual',
       expenseTypeId: typeof expense.expenseTypeId === 'string' ? expense.expenseTypeId : expense.expenseTypeId._id || '',
@@ -260,14 +262,20 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
         expenseKind: formData.expenseKind || 'actual'
       };
 
+      let expenseId = editingExpense?._id || '';
       if (editingExpense) {
         await retreatExpensesApi.update(editingExpense._id!, submitData);
       } else {
-        await retreatExpensesApi.create(submitData);
+        const response = await retreatExpensesApi.create(submitData);
+        expenseId = response.data._id || '';
+      }
+      if (receiptFile && expenseId) {
+        await retreatExpensesApi.uploadReceipt(expenseId, receiptFile);
       }
 
       setShowAddForm(false);
       setEditingExpense(null);
+      setReceiptFile(null);
       setFormData({
         expenseKind: 'actual',
         expenseTypeId: '',
@@ -357,7 +365,7 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
       {/* Actions */}
       <div className="flex gap-2 mb-6">
         <button
-          onClick={() => setShowAddForm(true)}
+          onClick={() => { setReceiptFile(null); setShowAddForm(true); }}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50"
           disabled={showAddForm}
         >
@@ -629,6 +637,19 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
                   required
                 />
               </div>
+
+              <div className="form-group full-width">
+                <label>Receipt image</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
+                />
+                <p className="mt-1 text-sm text-gray-500">
+                  {receiptFile?.name || editingExpense?.receiptFileName || 'Optional photo or image, maximum 10 MB'}
+                </p>
+              </div>
             </div>
 
             <div className="form-actions">
@@ -637,6 +658,7 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
                 onClick={() => {
                   setShowAddForm(false);
                   setEditingExpense(null);
+                  setReceiptFile(null);
                 }}
                 className="cancel-btn"
               >
