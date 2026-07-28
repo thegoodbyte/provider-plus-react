@@ -87,7 +87,7 @@ const CommunicationsPage: React.FC = () => {
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [templateSearch, setTemplateSearch] = useState('');
   const [templateCategoryFilter, setTemplateCategoryFilter] = useState('all');
-  const [templateLanguageFilter, setTemplateLanguageFilter] = useState('all');
+  const [templateLanguageFilter, setTemplateLanguageFilter] = useState('en');
   const [templateStatusFilter, setTemplateStatusFilter] = useState('all');
   const [selectedSentEmailId, setSelectedSentEmailId] = useState('');
   const [templateForm, setTemplateForm] = useState<Partial<EmailTemplate>>(defaultTemplateForm);
@@ -108,19 +108,24 @@ const CommunicationsPage: React.FC = () => {
     [templates, selectedTemplateId],
   );
 
+  const selectedTemplateCounterparts = useMemo(() => {
+    const key = String(selectedTemplate?.templateKey || '').trim().toLowerCase();
+    if (!key) return [];
+    return templates
+      .filter((template) => template._id !== selectedTemplate?._id
+        && String(template.templateKey || '').trim().toLowerCase() === key)
+      .sort((a, b) => String(a.language || 'en').localeCompare(String(b.language || 'en')));
+  }, [selectedTemplate, templates]);
+
   const templateCategories = useMemo(() => Array.from(new Set(
     templates.map((template) => String(template.category || 'general').trim()).filter(Boolean),
-  )).sort((a, b) => a.localeCompare(b)), [templates]);
-
-  const templateLanguages = useMemo(() => Array.from(new Set(
-    templates.map((template) => String(template.language || 'en').trim().toLowerCase()).filter(Boolean),
   )).sort((a, b) => a.localeCompare(b)), [templates]);
 
   const filteredTemplates = useMemo(() => {
     const search = templateSearch.trim().toLowerCase();
     return templates.filter((template) => {
       const category = String(template.category || 'general').trim();
-      const language = String(template.language || 'en').trim().toLowerCase();
+      const language = String(template.language || 'en').trim().toLowerCase().replace('cs', 'cz');
       const status = template.active === false ? 'hidden' : 'active';
       const searchableText = [
         template.display_id,
@@ -143,7 +148,7 @@ const CommunicationsPage: React.FC = () => {
 
   const hasTemplateFilters = Boolean(templateSearch.trim())
     || templateCategoryFilter !== 'all'
-    || templateLanguageFilter !== 'all'
+    || templateLanguageFilter !== 'en'
     || templateStatusFilter !== 'all';
 
   const groupedSeedOptions = useMemo(() => {
@@ -840,6 +845,37 @@ const CommunicationsPage: React.FC = () => {
                 </button>
               </div>
             )}
+            <div className="grid grid-cols-3 rounded-lg border border-gray-200 bg-gray-100 p-1" role="tablist" aria-label="Template language">
+              {[
+                { key: 'pl', label: 'PL' },
+                { key: 'cz', label: 'CZ' },
+                { key: 'en', label: 'EN' },
+              ].map((language) => (
+                <button
+                  key={language.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={templateLanguageFilter === language.key}
+                  onClick={() => {
+                    setTemplateLanguageFilter(language.key);
+                    const selectedLanguage = String(selectedTemplate?.language || 'en').toLowerCase().replace('cs', 'cz');
+                    if (selectedTemplate && selectedLanguage !== language.key) {
+                      const counterpart = templates.find((template) =>
+                        String(template.templateKey || '').trim().toLowerCase() === String(selectedTemplate.templateKey || '').trim().toLowerCase()
+                        && String(template.language || 'en').toLowerCase().replace('cs', 'cz') === language.key);
+                      setSelectedTemplateId(counterpart?._id || '');
+                    }
+                  }}
+                  className={`rounded-md px-3 py-2 text-sm font-semibold transition ${
+                    templateLanguageFilter === language.key
+                      ? 'bg-white text-blue-700 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-800'
+                  }`}
+                >
+                  {language.label}
+                </button>
+              ))}
+            </div>
             <div className="space-y-2 rounded-md border border-gray-200 bg-gray-50 p-3">
               <div className="relative">
                 <Icon icon={FiSearch} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
@@ -863,15 +899,6 @@ const CommunicationsPage: React.FC = () => {
                   {templateCategories.map((category) => <option key={category} value={category}>{category}</option>)}
                 </select>
                 <select
-                  value={templateLanguageFilter}
-                  onChange={(event) => setTemplateLanguageFilter(event.target.value)}
-                  className="w-full rounded-md border border-gray-300 bg-white px-2 py-2 text-sm"
-                  aria-label="Filter templates by language"
-                >
-                  <option value="all">All languages</option>
-                  {templateLanguages.map((language) => <option key={language} value={language}>{language.toUpperCase()}</option>)}
-                </select>
-                <select
                   value={templateStatusFilter}
                   onChange={(event) => setTemplateStatusFilter(event.target.value)}
                   className="w-full rounded-md border border-gray-300 bg-white px-2 py-2 text-sm"
@@ -890,7 +917,7 @@ const CommunicationsPage: React.FC = () => {
                     onClick={() => {
                       setTemplateSearch('');
                       setTemplateCategoryFilter('all');
-                      setTemplateLanguageFilter('all');
+                      setTemplateLanguageFilter('en');
                       setTemplateStatusFilter('all');
                     }}
                     className="font-medium text-blue-600 hover:text-blue-800"
@@ -946,6 +973,28 @@ const CommunicationsPage: React.FC = () => {
                 </button>
               )}
             </div>
+            {selectedTemplateId && (
+              <div className="flex flex-wrap items-center gap-2 rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-sm">
+                <span className="font-medium text-blue-950">Other languages:</span>
+                {selectedTemplateCounterparts.length > 0 ? selectedTemplateCounterparts.map((template) => (
+                  <button
+                    key={template._id}
+                    type="button"
+                    onClick={() => {
+                      handleSelectTemplate(template);
+                      setTemplateLanguageFilter(String(template.language || 'en').toLowerCase().replace('cs', 'cz'));
+                    }}
+                    className="rounded-full border border-blue-200 bg-white px-3 py-1 font-semibold text-blue-700 hover:bg-blue-100"
+                  >
+                    {String(template.language || 'en').toUpperCase()} · #{template.display_id || 'n/a'}
+                  </button>
+                )) : (
+                  <span className="text-blue-700">
+                    No counterparts found. Give translated versions the same Variant Key.
+                  </span>
+                )}
+              </div>
+            )}
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
