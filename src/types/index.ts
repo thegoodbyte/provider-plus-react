@@ -101,6 +101,17 @@ export interface ContactBookEntry {
   updatedAt?: string;
 }
 
+export interface Referral {
+  _id?: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  notes?: string;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Client {
   _id?: string;
   firstName: string;
@@ -130,6 +141,7 @@ export interface Client {
   firstContactDate?: Date | string;
   rejectionReason?: string;
   source?: string;
+  referralId?: string | Referral;
   tags?: string[];
   notes?: string;
   preferredName?: string;

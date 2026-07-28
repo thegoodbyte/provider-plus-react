@@ -53,6 +53,7 @@ import ExpenseDetailPage from './ExpenseDetailPage';
 import ExpenseEditorPage from './ExpenseEditorPage';
 import CommunicationsPage from './CommunicationsPage';
 import ContactBookPage from './ContactBookPage';
+import ReferralsPage from './ReferralsPage';
 import AssistantPage from './AssistantPage';
 import HelperCurrentRetreatPage from './HelperCurrentRetreatPage';
 import RetreatFocusModePage from './RetreatFocusModePage';
@@ -205,6 +206,7 @@ const AppleLayout: React.FC = () => {
     if (route === 'bookings') return 'bookings';
     if (route === 'reminders') return 'reminders';
     if (route === 'contact-book') return 'contact-book';
+    if (route === 'referrals') return 'referrals';
     if (route === 'payments') return 'payments';
     if (route === 'payment-requests') return 'payment-requests';
     if (route === 'communications') return 'communications';
@@ -849,6 +851,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="communications" element={<CommunicationsPage />} />
                       <Route path="assistant" element={<AssistantPage />} />
                       <Route path="contact-book" element={<ContactBookPage />} />
+                      <Route path="referrals" element={<ReferralsPage />} />
                       <Route path="requirements" element={<RequirementsGrid />} />
                       <Route path="permissions" element={<PermissionsMatrix />} />
                       <Route path="client-medications" element={<ClientMedicationsGrid />} />
@@ -1051,6 +1054,8 @@ const AppleLayout: React.FC = () => {
                 <Route path="/admin/assistant" element={<ProtectedRoute requiredRole={['admin']}><AssistantPage /></ProtectedRoute>} />
                 <Route path="/medical/assistant" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><AssistantPage /></ProtectedRoute>} />
                 <Route path="/contact-book" element={<ProtectedRoute><ContactBookPage /></ProtectedRoute>} />
+                <Route path="/referrals" element={<ProtectedRoute requiredRole={['admin']}><ReferralsPage /></ProtectedRoute>} />
+                <Route path="/admin/referrals" element={<ProtectedRoute requiredRole={['admin']}><ReferralsPage /></ProtectedRoute>} />
                 <Route path="/admin/contact-book" element={<ProtectedRoute><ContactBookPage /></ProtectedRoute>} />
                 <Route path="/medical/contact-book" element={<ProtectedRoute><ContactBookPage /></ProtectedRoute>} />
                 <Route path="/staff/contact-book" element={<ProtectedRoute><ContactBookPage /></ProtectedRoute>} />

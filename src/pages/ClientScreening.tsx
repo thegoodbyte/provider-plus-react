@@ -2,8 +2,8 @@ import React, { useState, useEffect, ChangeEvent, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AppleButton from '../components/AppleButton';
-import { clientsApi, screeningApi } from '../services/api';
-import { Client } from '../types';
+import { clientsApi, referralsApi, screeningApi } from '../services/api';
+import { Client, Referral } from '../types';
 
 interface ScreeningData {
   clientId: string;
@@ -14,6 +14,8 @@ interface ScreeningData {
   mainIntent: string;
   childhood: string;
   occupation: string;
+  referralId: string;
+  source: string;
   sexualAbuse: boolean;
   sexualAbuseDetails: string;
   physicalAbuse: boolean;
@@ -240,6 +242,7 @@ const ClientScreening: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [referrals, setReferrals] = useState<Referral[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
   const mainIntentRef = useRef<HTMLTextAreaElement | null>(null);
   const saveMessageTimeoutRef = useRef<number | null>(null);
@@ -253,6 +256,8 @@ const ClientScreening: React.FC = () => {
     mainIntent: '',
     childhood: '',
     occupation: '',
+    referralId: '',
+    source: '',
     sexualAbuse: false,
     sexualAbuseDetails: '',
     physicalAbuse: false,
@@ -372,6 +377,7 @@ const ClientScreening: React.FC = () => {
 
   useEffect(() => {
     fetchClient();
+    referralsApi.getAll().then((response) => setReferrals(response.data || [])).catch(() => setReferrals([]));
   }, [clientId]);
 
   useEffect(() => {
@@ -447,6 +453,7 @@ const ClientScreening: React.FC = () => {
       const dateOfBirthYear = (clientData as any).dateOfBirth
         ? new Date((clientData as any).dateOfBirth).getFullYear()
         : undefined;
+      const existingReferral = existingValue('referralId', 'referralId') as string | Referral | undefined;
 
       // Pre-populate client info
       setFormData(prev => ({
@@ -466,6 +473,8 @@ const ClientScreening: React.FC = () => {
         riskNotes: existingValue('riskNotes', 'whatToChange') ?? prev.riskNotes,
         childhood: existingValue('childhood', 'childhood') ?? prev.childhood,
         occupation: existingValue('occupation') ?? prev.occupation,
+        referralId: typeof existingReferral === 'object' ? existingReferral?._id || '' : String(existingReferral || ''),
+        source: String(existingValue('source', 'source') || ''),
         heartConditionOk: existingScreening.heartConditionOk === true || heartCondition === 'OK',
         heartCondition,
         liverConditionOk: existingScreening.liverConditionOk === true || liverCondition === 'OK',
@@ -1046,6 +1055,21 @@ const ClientScreening: React.FC = () => {
               className="w-full px-3 py-2 border border-gray-200 rounded-md"
               placeholder="Occupation, role, work situation, or daily structure"
             />
+          </div>
+          <div className="md:col-span-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Referral</label>
+            <select
+              value={formData.referralId}
+              onChange={(event) => {
+                const referral = referrals.find((item) => item._id === event.target.value);
+                setHasChanges(true);
+                setFormData((current) => ({ ...current, referralId: event.target.value, source: referral?.name || '' }));
+              }}
+              className="w-full px-3 py-2 border border-gray-200 rounded-md"
+            >
+              <option value="">{formData.source ? `Unlinked: ${formData.source}` : 'No referral selected'}</option>
+              {referrals.filter((item) => item.isActive !== false || item._id === formData.referralId).map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}
+            </select>
           </div>
         </div>
       </div>
