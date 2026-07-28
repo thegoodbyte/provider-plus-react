@@ -228,20 +228,6 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
         }
       }
 
-      if (markOnUpload[section.type] && section.receivedItem?._id) {
-        await bookingFlowApi.recordItemAction(section.receivedItem._id, {
-          actionType: 'artifact_received',
-          actionKey: `${section.type}_uploaded`,
-          statusAfter: 'received',
-          notes: `${section.title} uploaded from booking documents.`,
-          metadata: {
-            documentType: section.type,
-            bookingDocumentId: created.data._id,
-            fileNames: fileArray.map((file) => file.name),
-          },
-        });
-      }
-
       await loadDocuments();
       onUploadComplete?.();
     } catch (uploadError: any) {
@@ -279,18 +265,6 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
           markBookingStepOnUpload: true,
         },
       } as any);
-      await bookingFlowApi.recordItemAction(section.receivedItem._id, {
-        actionType: 'artifact_received',
-        actionKey: `${section.type}_manual_linked`,
-        statusAfter: 'received',
-        notes: `${section.title} manually linked from an existing booking document.`,
-        metadata: {
-          documentType: section.type,
-          bookingDocumentId: document._id,
-          fileNames: (document.files || []).map((file) => file.fileName).filter(Boolean),
-          source: 'manual_link',
-        },
-      });
       await loadDocuments();
       onUploadComplete?.();
     } catch (linkError: any) {

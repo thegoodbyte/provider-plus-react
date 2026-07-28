@@ -447,9 +447,11 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
           },
         });
 
+        let receivedAt = new Date().toISOString();
         if (createdDocument.data._id) {
           try {
-            await bookingDocumentsApi.uploadFiles(createdDocument.data._id, fileArray);
+            const uploadedDocument = await bookingDocumentsApi.uploadFiles(createdDocument.data._id, fileArray);
+            receivedAt = uploadedDocument.data.receivedAt || receivedAt;
           } catch (uploadError) {
             await bookingDocumentsApi.delete(createdDocument.data._id).catch((rollbackError) => {
               console.error('Error rolling back empty booking document:', rollbackError);
@@ -460,7 +462,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
 
         await updateItem(item, {
           status: 'received',
-          receivedAt: new Date().toISOString(),
+          receivedAt,
           metadata: {
             ...(item.metadata || {}),
             latestBookingDocumentId: createdDocument.data._id,
