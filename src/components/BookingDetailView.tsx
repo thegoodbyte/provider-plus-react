@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiChevronDown, FiDownload, FiEdit3, FiEye, FiMail, FiSend } from 'react-icons/fi';
+import { FiArrowLeft, FiChevronDown, FiDownload, FiEdit3, FiEye, FiMail, FiSend, FiX } from 'react-icons/fi';
 import { message } from 'antd';
 import { bookingsApi, bookingDocumentsApi, bookingFlowApi, ceremoniesApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import BookingPaymentManagement from './BookingPaymentManagement';
@@ -1323,7 +1323,8 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
       pdf.save(fileName);
     } catch (error) {
       console.error('Error generating PDF:', error);
-      alert('Error generating PDF. Please try again.');
+      message.error('Could not generate the booking PDF. Please try again.');
+    } finally {
       setIsGeneratingPDF(false);
     }
   };
@@ -1339,9 +1340,15 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
       setPreviewFileName(fileName);
     } catch (error) {
       console.error('Error previewing PDF:', error);
+      message.error('Could not open the booking PDF preview. Please try downloading it instead.');
     } finally {
       setIsPreviewingPDF(false);
     }
+  };
+
+  const closePdfPreview = () => {
+    setPreviewUrl('');
+    setPreviewFileName('');
   };
 
   const showMissingClientEmailError = () => {
@@ -1591,23 +1598,30 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         </div>
       </div>
 
-      <div className="detail-content" ref={pdfRef}>
-        {previewUrl && (
-          <div className="detail-section pdf-section">
-            <div className="section-header">
-              <h3 className="pdf-section-title">Booking Confirmation Preview</h3>
-              <a href={previewUrl} download={previewFileName} className="edit-btn">
-                Download Preview
-              </a>
+      {previewUrl && (
+        <div className="booking-pdf-preview-backdrop" role="dialog" aria-modal="true" aria-label="Booking confirmation preview">
+          <div className="booking-pdf-preview-modal">
+            <div className="booking-pdf-preview-header">
+              <h3>Booking Confirmation Preview</h3>
+              <div className="booking-pdf-preview-actions">
+                <a href={previewUrl} download={previewFileName} className="edit-btn">
+                  Download
+                </a>
+                <button type="button" onClick={closePdfPreview} className="booking-pdf-preview-close" aria-label="Close PDF preview">
+                  <HeaderIcon icon={FiX} />
+                </button>
+              </div>
             </div>
             <iframe
               src={previewUrl}
               title={previewFileName || 'Booking confirmation preview'}
-              className="w-full border-0"
-              style={{ height: '70vh', background: '#fff' }}
+              className="booking-pdf-preview-frame"
             />
           </div>
-        )}
+        </div>
+      )}
+
+      <div className="detail-content" ref={pdfRef}>
 
         <div className="booking-info-strip" aria-label="Booking summary">
           <div className="booking-info-item booking-info-client">
