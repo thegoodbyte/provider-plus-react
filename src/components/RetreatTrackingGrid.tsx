@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { FileText, HeartPulse, Leaf, RefreshCw } from 'lucide-react';
+import { Modal } from 'antd';
 import { bookingsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { Retreat, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
@@ -61,6 +62,7 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
   const [gridData, setGridData] = useState<RetreatMedicalGridData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [retreat, setRetreat] = useState<Retreat | null>(null);
+  const [historyView, setHistoryView] = useState<{ cell: RetreatMedicalCell; clientName: string; stage: string } | null>(null);
 
   const fetchGridData = useCallback(async () => {
     try {
@@ -161,6 +163,15 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
               Booking #{client.bookingNumber || bookingId.slice(-6)}
             </Link>
           ) : null}
+          {(cell.reviews.length > 1 || cell.artifacts.length > 1) && (
+            <button
+              type="button"
+              className="medical-cell-mini-link"
+              onClick={() => setHistoryView({ cell, clientName: client.clientName, stage: stageKey.toUpperCase() })}
+            >
+              {cell.reviews.length} MRR{cell.reviews.length === 1 ? '' : 's'} · {cell.artifacts.length} artifact{cell.artifacts.length === 1 ? '' : 's'}
+            </button>
+          )}
         </div>
       </div>
     );
@@ -210,6 +221,46 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
 
   return (
     <div className="retreat-medical-grid">
+      <Modal
+        title={historyView ? `${historyView.clientName} · ${historyView.stage} history` : 'Medical history'}
+        open={Boolean(historyView)}
+        onCancel={() => setHistoryView(null)}
+        footer={null}
+        width={760}
+      >
+        {historyView && (
+          <div className="space-y-5">
+            <div>
+              <h4 className="mb-2 font-semibold text-gray-900">Medical review iterations ({historyView.cell.reviews.length})</h4>
+              <div className="space-y-2">
+                {historyView.cell.reviews.map((review, index) => (
+                  <div key={review._id || index} className={`rounded-lg border p-3 ${index === 0 ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-gray-50'}`}>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <Link to={`/${routePrefix}/medical-review-requests/${review._id}`} className="font-semibold text-blue-700 hover:underline">
+                        MRR #{review.display_id || review._id?.slice(-6)}
+                      </Link>
+                      <span className="text-xs font-semibold uppercase text-gray-500">{index === 0 ? 'Latest' : `Previous ${index}`}</span>
+                    </div>
+                    <div className="mt-1 text-sm text-gray-700">{review.reviewDecision || review.decision || review.status || 'Pending'}</div>
+                    <div className="mt-1 whitespace-pre-wrap text-sm text-gray-600">{review.reviewNotes || review.overallNotes || review.medicalStaffNotes || 'No review notes.'}</div>
+                  </div>
+                ))}
+                {historyView.cell.reviews.length === 0 && <div className="text-sm text-gray-500">No MRRs.</div>}
+              </div>
+            </div>
+            <div>
+              <h4 className="mb-2 font-semibold text-gray-900">Artifacts ({historyView.cell.artifacts.length})</h4>
+              <div className="flex flex-wrap gap-2">
+                {historyView.cell.artifacts.map((artifact, index) => (
+                  <Link key={artifact._id || index} to={`/${routePrefix}/medical-artifacts/${artifact._id}`} className="rounded-md border border-gray-200 px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50">
+                    Artifact #{artifact.display_id || artifact._id?.slice(-6)}{index === 0 ? ' · latest' : ''}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </Modal>
       <div className="medical-grid-header">
         <div>
           <h3>
