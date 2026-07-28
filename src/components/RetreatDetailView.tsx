@@ -12,7 +12,7 @@ import RetreatTrackingGrid from './RetreatTrackingGrid';
 import BookingStepsMatrix from './BookingStepsMatrix';
 import BookingEditorForm from './BookingEditorForm';
 import { TasksWidget } from './Tasks/TasksWidget';
-import { Modal, Form, Input, Select, Button, Checkbox, message, Collapse } from 'antd';
+import { Modal, Form, Input, Select, Button, Checkbox, message } from 'antd';
 import { Client } from '../types';
 import {
   FiEdit2,
@@ -46,7 +46,6 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
 
 const { Option } = Select;
 const { TextArea } = Input;
-const { Panel } = Collapse;
 
 interface RetreatDetailViewProps {
   retreatId: string;
@@ -1054,6 +1053,24 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           >
             <Icon icon={FiChevronRight} className="w-5 h-5" />
           </button>
+          <button
+            type="button"
+            onClick={() => setHelperAssignmentsCollapsed(false)}
+            className="edit-retreat-btn retreat-icon-action"
+            title="View helper assignments"
+          >
+            <PeopleAltRoundedIcon className="w-4 h-4" />
+            <span className="retreat-action-label">Helpers</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMetricsCollapsed(false)}
+            className="edit-retreat-btn retreat-icon-action"
+            title="View financial metrics"
+          >
+            <InsightsRoundedIcon className="w-4 h-4" />
+            <span className="retreat-action-label">Metrics</span>
+          </button>
           <button onClick={async () => {
             // Fetch houses when edit modal is opened
             if (houses.length === 0) {
@@ -1098,12 +1115,14 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         </div>
       </div>
 
-      <Collapse
-        activeKey={helperAssignmentsCollapsed ? [] : ['helperAssignments']}
-        onChange={(keys) => setHelperAssignmentsCollapsed(!keys.includes('helperAssignments'))}
-        style={{ marginBottom: '20px' }}
+      <Modal
+        title="Helper Assignments"
+        open={!helperAssignmentsCollapsed}
+        onCancel={() => setHelperAssignmentsCollapsed(true)}
+        footer={null}
+        width={900}
+        destroyOnClose
       >
-        <Panel header="👥 Helper Assignments" key="helperAssignments">
           <div className="mb-3 flex justify-end">
           <button
             type="button"
@@ -1171,15 +1190,16 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             No helpers or cooks assigned yet.
           </div>
           )}
-        </Panel>
-      </Collapse>
+      </Modal>
 
-      <Collapse
-        activeKey={metricsCollapsed ? [] : ['metrics']}
-        onChange={(keys) => setMetricsCollapsed(!keys.includes('metrics'))}
-        style={{ marginBottom: '20px' }}
+      <Modal
+        title="Financial Metrics"
+        open={!metricsCollapsed}
+        onCancel={() => setMetricsCollapsed(true)}
+        footer={null}
+        width={1000}
+        destroyOnClose
       >
-        <Panel header="📊 Financial Metrics" key="metrics">
           <div className="retreat-stats">
             <div className="stat-card">
               <div className="stat-number">{activeClientCount}</div>
@@ -1222,8 +1242,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
               <div className="stat-label">Expected Profit</div>
             </div>
           </div>
-        </Panel>
-      </Collapse>
+      </Modal>
 
       {/* Tab Navigation */}
       <div className="tab-navigation retreat-detail-tabs" role="tablist" aria-label="Retreat sections">
