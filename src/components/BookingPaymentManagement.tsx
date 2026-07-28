@@ -48,6 +48,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   const [usdPreviewLoading, setUsdPreviewLoading] = useState(false);
   const [usdPreviewError, setUsdPreviewError] = useState('');
   const [totalCostUsd, setTotalCostUsd] = useState<number | null>(null);
+  const [bookingCurrencyPreviewLoading, setBookingCurrencyPreviewLoading] = useState(false);
   const [exchangeRateProviderLabel, setExchangeRateProviderLabel] = useState(DEFAULT_EXCHANGE_RATE_PROVIDER_LABEL);
   const [newPayment, setNewPayment] = useState({
     amount: '',
@@ -141,6 +142,46 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
 
   const bookingCurrency = (currency || 'EUR') as 'EUR' | 'USD' | 'CZK' | 'PLN';
   const isMixedBookingCurrencyPayment = Boolean(newPayment.currency && bookingCurrency && newPayment.currency !== bookingCurrency);
+
+  useEffect(() => {
+    if (!isMixedBookingCurrencyPayment) {
+      setNewPayment(current => current.bookingCurrencyAmount
+        ? { ...current, bookingCurrencyAmount: '' }
+        : current);
+      return;
+    }
+
+    const amount = Number(newPayment.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setNewPayment(current => current.bookingCurrencyAmount
+        ? { ...current, bookingCurrencyAmount: '' }
+        : current);
+      return;
+    }
+
+    let active = true;
+    const timeout = window.setTimeout(async () => {
+      try {
+        setBookingCurrencyPreviewLoading(true);
+        const response = await paymentsApi.convert(amount, newPayment.currency, bookingCurrency);
+        if (active) {
+          setNewPayment(current => ({
+            ...current,
+            bookingCurrencyAmount: response.data.amount.toFixed(2),
+          }));
+        }
+      } catch (error) {
+        console.error('Error converting payment to booking currency:', error);
+      } finally {
+        if (active) setBookingCurrencyPreviewLoading(false);
+      }
+    }, 350);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+    };
+  }, [newPayment.amount, newPayment.currency, bookingCurrency, isMixedBookingCurrencyPayment]);
 
   useEffect(() => {
     if (!Number.isFinite(Number(totalAmount)) || Number(totalAmount) <= 0 || !currency) {
@@ -722,15 +763,16 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
               {isMixedBookingCurrencyPayment && (
                 <div className="form-row">
                   <div className="form-group">
-                    <label>{bookingCurrency} Equivalent *</label>
+                    <label>{bookingCurrency} Equivalent</label>
                     <input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={newPayment.bookingCurrencyAmount}
-                      onChange={(e) => setNewPayment({...newPayment, bookingCurrencyAmount: e.target.value})}
-                      required={isMixedBookingCurrencyPayment}
-                      placeholder={`Amount counted toward booking in ${bookingCurrency}`}
+                      type="text"
+                      value={bookingCurrencyPreviewLoading
+                        ? 'Calculating...'
+                        : newPayment.bookingCurrencyAmount
+                          ? `${newPayment.bookingCurrencyAmount} ${bookingCurrency}`
+                          : ''}
+                      disabled
+                      placeholder={`Calculated automatically in ${bookingCurrency}`}
                     />
                   </div>
                   <div className="form-group">
