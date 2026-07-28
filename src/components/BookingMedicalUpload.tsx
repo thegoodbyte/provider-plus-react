@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Eye, FileText, RefreshCw, Send, Upload, X } from 'lucide-react';
+import { Check, Eye, FileText, Pencil, RefreshCw, Send, Trash2, Upload, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { bloodPressureReadingsApi, bookingFlowApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
@@ -212,6 +212,34 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [bloodPressureReadings, setBloodPressureReadings] = useState<BloodPressureReading[]>([]);
+  const [editingReading, setEditingReading] = useState<BloodPressureReading | null>(null);
+  const [savingReading, setSavingReading] = useState(false);
+
+  const saveReading = async () => {
+    if (!editingReading?._id) return;
+    setSavingReading(true);
+    try {
+      await bloodPressureReadingsApi.update(editingReading._id, editingReading);
+      setEditingReading(null);
+      const response = await bloodPressureReadingsApi.getByClient(clientId);
+      setBloodPressureReadings(response.data || []);
+    } catch (readingError: any) {
+      setError(readingError?.response?.data?.message || 'Unable to update blood-pressure reading.');
+    } finally {
+      setSavingReading(false);
+    }
+  };
+
+  const deleteReading = async (reading: BloodPressureReading) => {
+    if (!reading._id || !window.confirm(`Delete the ${reading.systolic}/${reading.diastolic} reading?`)) return;
+    try {
+      await bloodPressureReadingsApi.delete(reading._id);
+      setBloodPressureReadings((items) => items.filter((item) => item._id !== reading._id));
+      if (editingReading?._id === reading._id) setEditingReading(null);
+    } catch (readingError: any) {
+      setError(readingError?.response?.data?.message || 'Unable to delete blood-pressure reading.');
+    }
+  };
 
   const loadMedicalArtifacts = async () => {
     setLoading(true);
@@ -483,19 +511,22 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
           <div className="mt-3 overflow-x-auto rounded-lg border border-sky-100 bg-white">
             <table className="min-w-full text-sm">
               <thead className="bg-sky-50 text-left text-xs uppercase text-slate-500">
-                <tr><th className="px-3 py-2">Date and time</th><th className="px-3 py-2">Reading</th><th className="px-3 py-2">Pulse</th><th className="px-3 py-2">Notes</th></tr>
+                <tr><th className="px-3 py-2">Date and time</th><th className="px-3 py-2">Reading</th><th className="px-3 py-2">Pulse</th><th className="px-3 py-2">Notes</th><th className="px-3 py-2 text-right">Actions</th></tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {bloodPressureReadings.map((reading) => {
                   const high = reading.systolic >= 160 || reading.diastolic >= 100;
+                  const isEditing = editingReading?._id === reading._id;
+                  const activeEdit = isEditing ? editingReading as BloodPressureReading : reading;
                   return (
                     <tr key={reading._id || reading.recordedAt}>
-                      <td className="px-3 py-2">{new Date(reading.recordedAt).toLocaleString()}</td>
+                      <td className="px-3 py-2">{isEditing ? <input type="datetime-local" className="rounded border px-2 py-1" value={new Date(activeEdit.recordedAt).toISOString().slice(0, 16)} onChange={(event) => setEditingReading({ ...activeEdit, recordedAt: new Date(event.target.value).toISOString() })} /> : new Date(reading.recordedAt).toLocaleString()}</td>
                       <td className={`px-3 py-2 font-semibold ${high ? 'text-red-700' : 'text-slate-900'}`}>
-                        {reading.systolic}/{reading.diastolic} mmHg {high ? '— HIGH' : ''}
+                        {isEditing ? <span className="flex items-center gap-1"><input type="number" className="w-16 rounded border px-2 py-1" value={activeEdit.systolic} onChange={(event) => setEditingReading({ ...activeEdit, systolic: Number(event.target.value) })} /><span>/</span><input type="number" className="w-16 rounded border px-2 py-1" value={activeEdit.diastolic} onChange={(event) => setEditingReading({ ...activeEdit, diastolic: Number(event.target.value) })} /></span> : <>{reading.systolic}/{reading.diastolic} mmHg {high ? '— HIGH' : ''}</>}
                       </td>
-                      <td className="px-3 py-2">{reading.pulse || '—'}</td>
-                      <td className="px-3 py-2 text-slate-600">{reading.notes || '—'}</td>
+                      <td className="px-3 py-2">{isEditing ? <input type="number" className="w-16 rounded border px-2 py-1" value={activeEdit.pulse || ''} onChange={(event) => setEditingReading({ ...activeEdit, pulse: event.target.value ? Number(event.target.value) : undefined })} /> : reading.pulse || '—'}</td>
+                      <td className="px-3 py-2 text-slate-600">{isEditing ? <input className="min-w-40 rounded border px-2 py-1" value={activeEdit.notes || ''} onChange={(event) => setEditingReading({ ...activeEdit, notes: event.target.value })} /> : reading.notes || '—'}</td>
+                      <td className="px-3 py-2"><div className="flex justify-end gap-1">{isEditing ? <><button type="button" className="rounded p-2 text-green-700 hover:bg-green-50" onClick={saveReading} disabled={savingReading} title="Save reading"><Check size={16} /></button><button type="button" className="rounded p-2 text-slate-600 hover:bg-slate-100" onClick={() => setEditingReading(null)} title="Cancel edit"><X size={16} /></button></> : <button type="button" className="rounded p-2 text-blue-700 hover:bg-blue-50" onClick={() => setEditingReading({ ...reading })} title="Edit reading"><Pencil size={16} /></button>}<button type="button" className="rounded p-2 text-red-700 hover:bg-red-50" onClick={() => deleteReading(reading)} title="Delete reading"><Trash2 size={16} /></button></div></td>
                     </tr>
                   );
                 })}

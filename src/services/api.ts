@@ -429,6 +429,8 @@ export const paymentRequestsApi = {
 
 export const bloodPressureReadingsApi = {
   getByClient: (clientId: string) => api.get<BloodPressureReading[]>(`/blood-pressure-readings?clientId=${encodeURIComponent(clientId)}`),
+  update: (id: string, data: Partial<BloodPressureReading>) => api.patch<BloodPressureReading>(`/blood-pressure-readings/${id}`, data),
+  delete: (id: string) => api.delete<{ deleted: boolean; id: string }>(`/blood-pressure-readings/${id}`),
 };
 
 export const communicationsApi = {
