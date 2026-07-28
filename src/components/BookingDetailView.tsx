@@ -354,6 +354,7 @@ const indexReviewsByArtifact = (reviews: MedicalReviewRequest[]) => {
   for (const review of reviews || []) {
     const artifactIds = Array.from(new Set([
       ...(review.artifactIds || []),
+      review.medicalArtifactId,
       (review as any).artifactId,
       ...((review.fileReviews || []).map((fileReview) => fileReview.artifactId)),
     ]
