@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { RefreshCw } from 'lucide-react';
-import { ceremoniesApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
-import { Ceremony, CeremonyParticipant, MedicalArtifact, MedicalReviewRequest } from '../types';
+import { bookingsApi, ceremoniesApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { Ceremony, CeremonyParticipant, MedicalArtifact, MedicalReviewRequest, RetreatClient } from '../types';
 import { message } from 'antd';
 
 type GuidanceRow = {
@@ -14,6 +14,11 @@ type GuidanceRow = {
 const getId = (value: any) => typeof value === 'string' ? value : value?._id || value?.id || '';
 const getClientName = (participant: CeremonyParticipant) => {
   const client = participant.clientId as any;
+  if (!client || typeof client === 'string') return `Client ${getId(client).slice(-6)}`;
+  return [client.firstName || client.fname, client.lastName || client.lname].filter(Boolean).join(' ') || client.email || 'Client';
+};
+const getBookingClientName = (booking: RetreatClient) => {
+  const client = booking.clientId as any;
   if (!client || typeof client === 'string') return `Client ${getId(client).slice(-6)}`;
   return [client.firstName || client.fname, client.lastName || client.lname].filter(Boolean).join(' ') || client.email || 'Client';
 };
@@ -51,6 +56,7 @@ const reviewHasType = (request: MedicalReviewRequest, linkedArtifacts: MedicalAr
 const CeremonyMedicalGuidance: React.FC<{ ceremonyId: string }> = ({ ceremonyId }) => {
   const [ceremony, setCeremony] = useState<Ceremony | null>(null);
   const [participants, setParticipants] = useState<CeremonyParticipant[]>([]);
+  const [bookings, setBookings] = useState<RetreatClient[]>([]);
   const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
   const [reviews, setReviews] = useState<MedicalReviewRequest[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -66,14 +72,16 @@ const CeremonyMedicalGuidance: React.FC<{ ceremonyId: string }> = ({ ceremonyId 
       ]);
       const loadedCeremony = ceremonyResponse.data;
       const retreatId = getId(loadedCeremony.retreatId);
-      const [artifactResponse, reviewResponse] = retreatId
+      const [artifactResponse, reviewResponse, bookingResponse] = retreatId
         ? await Promise.all([
             medicalArtifactsApi.getAll({ retreatId }),
             medicalReviewRequestsApi.getAll({ retreatId }),
+            bookingsApi.getByRetreatWithDetails(retreatId),
           ])
-        : [{ data: [] as MedicalArtifact[] }, { data: [] as MedicalReviewRequest[] }];
+        : [{ data: [] as MedicalArtifact[] }, { data: [] as MedicalReviewRequest[] }, { data: [] as RetreatClient[] }];
       setCeremony(loadedCeremony);
       setParticipants(participantResponse.data || []);
+      setBookings(bookingResponse.data || []);
       setArtifacts(artifactResponse.data || []);
       setReviews(reviewResponse.data || []);
       const nextDrafts: Record<string, string> = {};
@@ -94,6 +102,34 @@ const CeremonyMedicalGuidance: React.FC<{ ceremonyId: string }> = ({ ceremonyId 
   useEffect(() => {
     loadData();
   }, [ceremonyId]);
+
+  const clientColumns = useMemo(() => {
+    const activeBookings = bookings.filter((booking) => !['cancelled', 'declined', 'moved'].includes(String(booking.status || '').toLowerCase()));
+    const seen = new Set<string>();
+    const bookingColumns = activeBookings.filter((booking) => {
+      const key = getId(booking.clientId) || getId(booking);
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).map((booking) => {
+      const clientId = getId(booking.clientId);
+      return {
+        key: getId(booking) || clientId,
+        clientId,
+        booking,
+        participant: participants.find((participant) => getId(participant.clientId) === clientId),
+        name: getBookingClientName(booking),
+      };
+    });
+    if (bookingColumns.length) return bookingColumns;
+    return participants.map((participant) => ({
+      key: getId(participant),
+      clientId: getId(participant.clientId),
+      booking: undefined,
+      participant,
+      name: getClientName(participant),
+    }));
+  }, [bookings, participants]);
 
   const rows = useMemo<GuidanceRow[]>(() => {
     const entryStage = (request: MedicalReviewRequest, linkedArtifacts: MedicalArtifact[]) =>
@@ -146,9 +182,8 @@ const CeremonyMedicalGuidance: React.FC<{ ceremonyId: string }> = ({ ceremonyId 
     return Array.from(new Map([...populated, ...resolved].filter((artifact) => artifact._id).map((artifact) => [artifact._id!, artifact])).values());
   }
 
-  const getAutomaticValue = (participant: CeremonyParticipant, row: GuidanceRow) => {
+  const getAutomaticValue = (clientId: string, row: GuidanceRow) => {
     if (!row.automatic || !row.matches) return '';
-    const clientId = getId(participant.clientId);
     const matchingReviews = reviews
       .filter((request) => {
         const linked = getLinkedArtifacts(request);
@@ -207,8 +242,11 @@ const CeremonyMedicalGuidance: React.FC<{ ceremonyId: string }> = ({ ceremonyId 
           <thead>
             <tr className="bg-gray-50">
               <th className="sticky left-0 z-10 min-w-[220px] border-b border-r border-gray-200 bg-gray-50 px-3 py-3 text-left font-semibold text-gray-700">Medical guidance</th>
-              {participants.map((participant) => (
-                <th key={participant._id} className="min-w-[240px] max-w-[300px] border-b border-r border-gray-200 px-3 py-3 text-left font-semibold text-gray-900">{getClientName(participant)}</th>
+              {clientColumns.map((column) => (
+                <th key={column.key} className="min-w-[240px] max-w-[300px] border-b border-r border-gray-200 px-3 py-3 text-left font-semibold text-gray-900">
+                  {column.name}
+                  {column.booking?.bookingNumber && <div className="mt-1 text-xs font-normal text-gray-500">Booking #{column.booking.bookingNumber}</div>}
+                </th>
               ))}
             </tr>
           </thead>
@@ -219,13 +257,16 @@ const CeremonyMedicalGuidance: React.FC<{ ceremonyId: string }> = ({ ceremonyId 
                   {row.label}
                   {row.automatic && <div className="mt-1 text-[11px] font-normal text-blue-600">From medical review</div>}
                 </th>
-                {participants.map((participant) => {
-                  const key = `${participant._id}:${row.id}`;
-                  const value = row.automatic ? getAutomaticValue(participant, row) : (drafts[key] ?? getStoredValue(participant, row.id));
+                {clientColumns.map((column) => {
+                  const participant = column.participant;
+                  const key = `${participant?._id || column.key}:${row.id}`;
+                  const value = row.automatic ? getAutomaticValue(column.clientId, row) : (participant ? (drafts[key] ?? getStoredValue(participant, row.id)) : '');
                   return (
-                    <td key={participant._id} className="max-w-[300px] border-b border-r border-gray-200 p-2 align-top">
+                    <td key={column.key} className="max-w-[300px] border-b border-r border-gray-200 p-2 align-top">
                       {row.automatic ? (
                         <div className={`min-h-[72px] whitespace-pre-wrap rounded-md p-2 text-xs ${value.startsWith('No MRR') ? 'bg-red-50 text-red-800' : value.includes('Pending —') ? 'bg-amber-50 text-gray-800' : 'bg-emerald-50 text-gray-800'}`}>{value}</div>
+                      ) : !participant ? (
+                        <div className="min-h-[72px] rounded-md bg-gray-50 p-2 text-xs text-gray-500">Add this client to the ceremony to save ceremony-specific notes.</div>
                       ) : (
                         <textarea
                           value={value}
@@ -244,7 +285,7 @@ const CeremonyMedicalGuidance: React.FC<{ ceremonyId: string }> = ({ ceremonyId 
             ))}
           </tbody>
         </table>
-        {participants.length === 0 && <div className="p-6 text-sm text-gray-500">No clients are linked to this ceremony.</div>}
+        {clientColumns.length === 0 && <div className="p-6 text-sm text-gray-500">No active clients are booked for this retreat.</div>}
       </div>
     </div>
   );
