@@ -731,8 +731,10 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       return;
     }
     const rect = actionFilterButtonRef.current?.getBoundingClientRect();
+    const panelHeight = Math.min(620, window.innerHeight - 24);
+    const preferredTop = (rect?.bottom || 0) + 6;
     setActionFilterPosition({
-      top: (rect?.bottom || 0) + 6,
+      top: Math.max(12, Math.min(preferredTop, window.innerHeight - panelHeight - 12)),
       left: Math.max(12, Math.min(rect?.left || 12, window.innerWidth - 352)),
     });
     setActionFilterDraft(selectedActionKeys === null ? rows.map((row) => row.key) : selectedActionKeys);
@@ -2078,19 +2080,19 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       {actionFilterOpen && createPortal(
         <>
           <button type="button" className="fixed inset-0 z-[1090] cursor-default bg-transparent" onClick={() => setActionFilterOpen(false)} aria-label="Close action filter" />
-          <div className="fixed z-[1100] w-[340px] rounded-lg border border-gray-300 bg-white normal-case shadow-2xl" style={{ top: actionFilterPosition.top, left: actionFilterPosition.left }} role="dialog" aria-label="Filter booking actions">
-            <div className="border-b border-gray-200 p-3">
+          <div className="fixed z-[1100] flex w-[340px] max-w-[calc(100vw-24px)] flex-col overflow-hidden rounded-lg border border-gray-300 bg-white normal-case shadow-2xl" style={{ top: actionFilterPosition.top, left: actionFilterPosition.left, maxHeight: 'calc(100vh - 24px)' }} role="dialog" aria-label="Filter booking actions">
+            <div className="shrink-0 border-b border-gray-200 p-3">
               <div className="text-sm font-semibold text-gray-900">Filter booking actions</div>
               <input autoFocus value={actionFilterSearch} onChange={(event) => setActionFilterSearch(event.target.value)} placeholder="Search actions" className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
             </div>
-            <div className="flex items-center justify-between border-b border-gray-100 px-3 py-2 text-xs font-semibold">
+            <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-3 py-2 text-xs font-semibold">
               <label className="flex cursor-pointer items-center gap-2 text-gray-700">
                 <input type="checkbox" checked={actionFilterDraft.length === rows.length && rows.length > 0} onChange={(event) => setActionFilterDraft(event.target.checked ? rows.map((row) => row.key) : [])} className="h-4 w-4 rounded border-gray-300 text-blue-600" />
                 Select all
               </label>
               <span className="text-gray-500">{actionFilterDraft.length} of {rows.length}</span>
             </div>
-            <div className="max-h-80 space-y-0.5 overflow-y-auto p-2">
+            <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto p-2">
               {visibleActionFilterRows.map((row) => {
                 const originalIndex = rows.findIndex((candidate) => candidate.key === row.key);
                 return (
@@ -2102,7 +2104,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
               })}
               {visibleActionFilterRows.length === 0 && <div className="px-2 py-6 text-center text-sm text-gray-500">No actions match your search.</div>}
             </div>
-            <div className="flex justify-end gap-2 border-t border-gray-200 p-3">
+            <div className="sticky bottom-0 flex shrink-0 justify-end gap-2 border-t border-gray-200 bg-white p-3 shadow-[0_-4px_12px_rgba(15,23,42,0.08)]">
               <button type="button" onClick={() => setActionFilterOpen(false)} className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
               <button type="button" onClick={() => { setSelectedActionKeys(actionFilterDraft.length === rows.length ? null : actionFilterDraft); setActionFilterOpen(false); }} className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Apply filter</button>
             </div>
