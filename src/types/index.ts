@@ -1528,12 +1528,18 @@ export interface EmailTemplate {
 export interface BloodPressureReading {
   _id?: string;
   clientId: string | Client;
+  bookingId?: string;
+  retreatId?: string;
+  ceremonyId?: string;
+  medicalArtifactId?: string;
   systolic: number;
   diastolic: number;
   pulse?: number;
   recordedAt: string;
   notes?: string;
   source?: 'ibogaready' | 'admin';
+  context?: 'client_monitoring' | 'arrival' | 'pre_ceremony' | 'in_ceremony' | 'post_ceremony' | 'other';
+  ceremonyNumber?: number;
   createdAt?: string;
 }
 

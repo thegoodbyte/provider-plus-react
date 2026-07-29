@@ -268,6 +268,20 @@ const formatArtifactDocumentMeta = (artifact: MedicalArtifact) => {
   ].filter(Boolean);
   return parts.join(' • ');
 };
+const BloodPressureArtifactSummary: React.FC<{ artifact: MedicalArtifact }> = ({ artifact }) => {
+  if (artifact.artifactType !== 'blood_pressure' && artifact.documentType !== 'BP') return null;
+  const systolic = artifact.data?.systolic;
+  const diastolic = artifact.data?.diastolic;
+  const pulse = artifact.data?.pulse || artifact.data?.heartRate;
+  if (!systolic || !diastolic) return null;
+  return (
+    <div className="grid grid-cols-3 gap-2 rounded-lg border border-sky-200 bg-sky-50 p-3 text-center">
+      <div><div className="text-[11px] font-semibold uppercase text-sky-700">SYS</div><div className="text-3xl font-bold text-slate-950">{systolic}</div></div>
+      <div><div className="text-[11px] font-semibold uppercase text-sky-700">DIA</div><div className="text-3xl font-bold text-slate-950">{diastolic}</div></div>
+      <div><div className="text-[11px] font-semibold uppercase text-sky-700">Pulse</div><div className="text-3xl font-bold text-slate-950">{pulse || '—'}</div></div>
+    </div>
+  );
+};
 const formatDateTime = (value?: string | Date | null) => {
   if (!value) return 'Not set';
   const date = new Date(value);
@@ -1151,6 +1165,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                         <div className="px-1 text-xs font-semibold text-blue-800">
                           {getArtifactTypeLabel(artifact.artifactType)}{artifact.title ? ` · ${artifact.title}` : ''}
                         </div>
+                        <BloodPressureArtifactSummary artifact={artifact} />
                         {artifact.textContent && (
                           <div className="whitespace-pre-wrap rounded-md bg-gray-50 p-2 text-xs text-gray-700">{artifact.textContent}</div>
                         )}
@@ -1619,6 +1634,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                             <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">This request</span>
                           </div>
                           {artifact.textContent && <div className="mt-2 whitespace-pre-wrap text-gray-700">{artifact.textContent}</div>}
+                          <div className="mt-2"><BloodPressureArtifactSummary artifact={artifact} /></div>
                           {artifact.notes && <div className="mt-2 text-xs text-gray-600">Notes: {artifact.notes}</div>}
                           {!!artifact.files?.length && (
                             <div className="mt-2 space-y-3">

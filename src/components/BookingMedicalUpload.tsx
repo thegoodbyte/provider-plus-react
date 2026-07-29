@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, Eye, FileText, Pencil, RefreshCw, Send, Trash2, Upload, X } from 'lucide-react';
+import { Check, Eye, FileText, Pencil, Plus, RefreshCw, Send, Trash2, Upload, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { bloodPressureReadingsApi, bookingFlowApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
@@ -22,6 +22,32 @@ interface BookingMedicalUploadProps {
 type BookingMedicalTestType = 'ekg' | 'liver_panel';
 type BookingDocumentType = Extract<MedicalArtifact['documentType'], 'EKG' | 'Liver'>;
 type UploadDocumentType = Extract<MedicalArtifact['documentType'], 'EKG' | 'Liver' | 'BP' | 'Medications' | 'additional' | 'other'>;
+type MedicalView = 'documents' | 'blood_pressure';
+
+const newBloodPressureReading = (): Partial<BloodPressureReading> => ({
+  systolic: undefined,
+  diastolic: undefined,
+  pulse: undefined,
+  recordedAt: new Date().toISOString(),
+  notes: '',
+  context: 'other',
+});
+
+const bloodPressureContextLabels: Record<NonNullable<BloodPressureReading['context']>, string> = {
+  client_monitoring: 'Client monitoring',
+  arrival: 'On arrival',
+  pre_ceremony: 'Before ceremony',
+  in_ceremony: 'During ceremony',
+  post_ceremony: 'After ceremony',
+  other: 'Other',
+};
+
+const documentStageForBloodPressure = (context?: BloodPressureReading['context']): NonNullable<MedicalArtifact['documentStage']> => {
+  if (context === 'pre_ceremony') return 'pre_ceremony';
+  if (context === 'in_ceremony') return 'in_ceremony';
+  if (context === 'post_ceremony') return 'post_ceremony';
+  return context === 'client_monitoring' || context === 'arrival' ? 'entry' : 'other';
+};
 
 const uploadDocumentOptions: Array<{ value: UploadDocumentType; label: string }> = [
   { value: 'EKG', label: 'EKG' },
@@ -214,6 +240,89 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
   const [bloodPressureReadings, setBloodPressureReadings] = useState<BloodPressureReading[]>([]);
   const [editingReading, setEditingReading] = useState<BloodPressureReading | null>(null);
   const [savingReading, setSavingReading] = useState(false);
+  const [medicalView, setMedicalView] = useState<MedicalView>('documents');
+  const [addingReading, setAddingReading] = useState(false);
+  const [newReading, setNewReading] = useState<Partial<BloodPressureReading>>(newBloodPressureReading);
+  const [creatingBpReviewFor, setCreatingBpReviewFor] = useState<string | null>(null);
+
+  const addReading = async () => {
+    if (!newReading.systolic || !newReading.diastolic || !newReading.recordedAt) {
+      setError('Enter SYS, DIA, and the reading date/time.');
+      return;
+    }
+    setSavingReading(true);
+    setError(null);
+    try {
+      await bloodPressureReadingsApi.create({
+        clientId,
+        bookingId,
+        retreatId,
+        systolic: Number(newReading.systolic),
+        diastolic: Number(newReading.diastolic),
+        pulse: newReading.pulse ? Number(newReading.pulse) : undefined,
+        recordedAt: newReading.recordedAt,
+        notes: newReading.notes,
+        context: newReading.context || 'other',
+        ceremonyNumber: newReading.ceremonyNumber,
+      });
+      const response = await bloodPressureReadingsApi.getByClient(clientId);
+      setBloodPressureReadings(response.data || []);
+      setNewReading(newBloodPressureReading());
+      setAddingReading(false);
+    } catch (readingError: any) {
+      setError(readingError?.response?.data?.message || 'Unable to add blood-pressure reading.');
+    } finally {
+      setSavingReading(false);
+    }
+  };
+
+  const createBloodPressureReview = async (reading: BloodPressureReading) => {
+    if (!reading._id) return;
+    setCreatingBpReviewFor(reading._id);
+    setError(null);
+    try {
+      let artifactId = typeof reading.medicalArtifactId === 'string' ? reading.medicalArtifactId : '';
+      if (!artifactId) {
+        const created = await medicalArtifactsApi.create({
+          clientId,
+          bookingId,
+          retreatId,
+          artifactType: 'blood_pressure',
+          documentType: 'BP',
+          documentStage: documentStageForBloodPressure(reading.context),
+          ceremonyNumber: reading.ceremonyNumber,
+          contextType: reading.ceremonyNumber ? 'ceremony' : 'booking',
+          purpose: reading.context === 'pre_ceremony' ? 'pre_ceremony' : 'general',
+          title: `Blood pressure ${reading.systolic}/${reading.diastolic}`,
+          textContent: `${reading.systolic}/${reading.diastolic} mmHg${reading.pulse ? ` · pulse ${reading.pulse} bpm` : ''}`,
+          data: {
+            bloodPressureReadingId: reading._id,
+            systolic: reading.systolic,
+            diastolic: reading.diastolic,
+            pulse: reading.pulse,
+            recordedAt: reading.recordedAt,
+            context: reading.context,
+            ceremonyNumber: reading.ceremonyNumber,
+          },
+          receivedAt: reading.recordedAt,
+          source: reading.source === 'ibogaready' ? 'client_upload' : 'manual',
+          notes: reading.notes,
+        });
+        artifactId = created.data._id || '';
+        if (artifactId) await bloodPressureReadingsApi.update(reading._id, { medicalArtifactId: artifactId });
+      }
+      if (!artifactId) throw new Error('Unable to create a BP medical artifact.');
+      const response = await medicalReviewRequestsApi.createFromArtifact(artifactId, 'blood_pressure_review', {
+        medicalStaffNotes: `Review BP ${reading.systolic}/${reading.diastolic}${reading.pulse ? `, pulse ${reading.pulse}` : ''} recorded ${new Date(reading.recordedAt).toLocaleString()}.`,
+      });
+      await loadMedicalArtifacts();
+      if (response.data?._id) navigate(`/medical-review-requests/${response.data._id}`);
+    } catch (reviewError: any) {
+      setError(reviewError?.response?.data?.message || reviewError?.message || 'Unable to create BP medical review request.');
+    } finally {
+      setCreatingBpReviewFor(null);
+    }
+  };
 
   const saveReading = async () => {
     if (!editingReading?._id) return;
@@ -495,23 +604,42 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
 
       {error && <div className="alert alert-danger">{error}</div>}
 
+      <div className="mb-4 flex gap-2 border-b border-slate-200">
+        <button type="button" onClick={() => setMedicalView('documents')} className={`border-b-2 px-4 py-2 text-sm font-semibold ${medicalView === 'documents' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500'}`}>Medical documents</button>
+        <button type="button" onClick={() => setMedicalView('blood_pressure')} className={`border-b-2 px-4 py-2 text-sm font-semibold ${medicalView === 'blood_pressure' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500'}`}>All BP readings ({bloodPressureReadings.length})</button>
+      </div>
+
+      {medicalView === 'blood_pressure' && (
       <section className="mb-5 rounded-xl border border-sky-200 bg-sky-50/60 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h4 className="font-semibold text-slate-900">Blood Pressure Monitoring</h4>
-            <p className="text-sm text-slate-600">Readings submitted by this client through IbogaReady.</p>
+            <h4 className="font-semibold text-slate-900">All Blood Pressure Readings</h4>
+            <p className="text-sm text-slate-600">Client monitoring and readings taken on arrival, before, during, or after ceremonies.</p>
           </div>
-          <span className="rounded-full bg-white px-3 py-1 text-sm font-medium text-sky-800">
-            {bloodPressureReadings.length} reading{bloodPressureReadings.length === 1 ? '' : 's'}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-white px-3 py-1 text-sm font-medium text-sky-800">{bloodPressureReadings.length} reading{bloodPressureReadings.length === 1 ? '' : 's'}</span>
+            <button type="button" className="btn btn-sm btn-primary" onClick={() => setAddingReading((value) => !value)}><Plus size={16} /> Add BP</button>
+          </div>
         </div>
+        {addingReading && (
+          <div className="mt-4 grid gap-3 rounded-lg border border-sky-200 bg-white p-3 md:grid-cols-4">
+            <label className="text-xs font-semibold text-slate-600">SYS<input type="number" value={newReading.systolic || ''} onChange={(event) => setNewReading({ ...newReading, systolic: Number(event.target.value) || undefined })} className="mt-1 w-full rounded border px-3 py-2 text-base" /></label>
+            <label className="text-xs font-semibold text-slate-600">DIA<input type="number" value={newReading.diastolic || ''} onChange={(event) => setNewReading({ ...newReading, diastolic: Number(event.target.value) || undefined })} className="mt-1 w-full rounded border px-3 py-2 text-base" /></label>
+            <label className="text-xs font-semibold text-slate-600">Pulse<input type="number" value={newReading.pulse || ''} onChange={(event) => setNewReading({ ...newReading, pulse: Number(event.target.value) || undefined })} className="mt-1 w-full rounded border px-3 py-2 text-base" /></label>
+            <label className="text-xs font-semibold text-slate-600">Measured at<input type="datetime-local" value={newReading.recordedAt ? new Date(newReading.recordedAt).toISOString().slice(0, 16) : ''} onChange={(event) => setNewReading({ ...newReading, recordedAt: new Date(event.target.value).toISOString() })} className="mt-1 w-full rounded border px-3 py-2 text-sm" /></label>
+            <label className="text-xs font-semibold text-slate-600">Context<select value={newReading.context || 'other'} onChange={(event) => setNewReading({ ...newReading, context: event.target.value as BloodPressureReading['context'] })} className="mt-1 w-full rounded border px-3 py-2 text-sm">{Object.entries(bloodPressureContextLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+            <label className="text-xs font-semibold text-slate-600">Ceremony #<input type="number" min="1" value={newReading.ceremonyNumber || ''} onChange={(event) => setNewReading({ ...newReading, ceremonyNumber: Number(event.target.value) || undefined })} className="mt-1 w-full rounded border px-3 py-2 text-sm" /></label>
+            <label className="text-xs font-semibold text-slate-600 md:col-span-2">Notes<input value={newReading.notes || ''} onChange={(event) => setNewReading({ ...newReading, notes: event.target.value })} className="mt-1 w-full rounded border px-3 py-2 text-sm" /></label>
+            <div className="flex gap-2 md:col-span-4 md:justify-end"><button type="button" className="btn btn-sm btn-secondary" onClick={() => setAddingReading(false)}>Cancel</button><button type="button" className="btn btn-sm btn-primary" onClick={addReading} disabled={savingReading}>{savingReading ? 'Saving…' : 'Save reading'}</button></div>
+          </div>
+        )}
         {bloodPressureReadings.length === 0 ? (
           <p className="mt-3 text-sm text-slate-500">No blood-pressure readings have been submitted yet.</p>
         ) : (
           <div className="mt-3 overflow-x-auto rounded-lg border border-sky-100 bg-white">
             <table className="min-w-full text-sm">
               <thead className="bg-sky-50 text-left text-xs uppercase text-slate-500">
-                <tr><th className="px-3 py-2">Date and time</th><th className="px-3 py-2">Reading</th><th className="px-3 py-2">Pulse</th><th className="px-3 py-2">Notes</th><th className="px-3 py-2 text-right">Actions</th></tr>
+                <tr><th className="px-3 py-2">Date and time</th><th className="px-3 py-2">Context</th><th className="px-3 py-2">Reading</th><th className="px-3 py-2">Pulse</th><th className="px-3 py-2">Notes</th><th className="px-3 py-2 text-right">Actions</th></tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {bloodPressureReadings.map((reading) => {
@@ -521,12 +649,13 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                   return (
                     <tr key={reading._id || reading.recordedAt}>
                       <td className="px-3 py-2">{isEditing ? <input type="datetime-local" className="rounded border px-2 py-1" value={new Date(activeEdit.recordedAt).toISOString().slice(0, 16)} onChange={(event) => setEditingReading({ ...activeEdit, recordedAt: new Date(event.target.value).toISOString() })} /> : new Date(reading.recordedAt).toLocaleString()}</td>
+                      <td className="px-3 py-2">{isEditing ? <div className="space-y-1"><select className="rounded border px-2 py-1" value={activeEdit.context || 'client_monitoring'} onChange={(event) => setEditingReading({ ...activeEdit, context: event.target.value as BloodPressureReading['context'] })}>{Object.entries(bloodPressureContextLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><input type="number" min="1" className="w-24 rounded border px-2 py-1" placeholder="Ceremony #" value={activeEdit.ceremonyNumber || ''} onChange={(event) => setEditingReading({ ...activeEdit, ceremonyNumber: Number(event.target.value) || undefined })} /></div> : <>{bloodPressureContextLabels[reading.context || 'client_monitoring']}{reading.ceremonyNumber ? ` · Ceremony #${reading.ceremonyNumber}` : ''}</>}</td>
                       <td className={`px-3 py-2 font-semibold ${high ? 'text-red-700' : 'text-slate-900'}`}>
                         {isEditing ? <span className="flex items-center gap-1"><input type="number" className="w-16 rounded border px-2 py-1" value={activeEdit.systolic} onChange={(event) => setEditingReading({ ...activeEdit, systolic: Number(event.target.value) })} /><span>/</span><input type="number" className="w-16 rounded border px-2 py-1" value={activeEdit.diastolic} onChange={(event) => setEditingReading({ ...activeEdit, diastolic: Number(event.target.value) })} /></span> : <>{reading.systolic}/{reading.diastolic} mmHg {high ? '— HIGH' : ''}</>}
                       </td>
                       <td className="px-3 py-2">{isEditing ? <input type="number" className="w-16 rounded border px-2 py-1" value={activeEdit.pulse || ''} onChange={(event) => setEditingReading({ ...activeEdit, pulse: event.target.value ? Number(event.target.value) : undefined })} /> : reading.pulse || '—'}</td>
                       <td className="px-3 py-2 text-slate-600">{isEditing ? <input className="min-w-40 rounded border px-2 py-1" value={activeEdit.notes || ''} onChange={(event) => setEditingReading({ ...activeEdit, notes: event.target.value })} /> : reading.notes || '—'}</td>
-                      <td className="px-3 py-2"><div className="flex justify-end gap-1">{isEditing ? <><button type="button" className="rounded p-2 text-green-700 hover:bg-green-50" onClick={saveReading} disabled={savingReading} title="Save reading"><Check size={16} /></button><button type="button" className="rounded p-2 text-slate-600 hover:bg-slate-100" onClick={() => setEditingReading(null)} title="Cancel edit"><X size={16} /></button></> : <button type="button" className="rounded p-2 text-blue-700 hover:bg-blue-50" onClick={() => setEditingReading({ ...reading })} title="Edit reading"><Pencil size={16} /></button>}<button type="button" className="rounded p-2 text-red-700 hover:bg-red-50" onClick={() => deleteReading(reading)} title="Delete reading"><Trash2 size={16} /></button></div></td>
+                      <td className="px-3 py-2"><div className="flex justify-end gap-1">{isEditing ? <><button type="button" className="rounded p-2 text-green-700 hover:bg-green-50" onClick={saveReading} disabled={savingReading} title="Save reading"><Check size={16} /></button><button type="button" className="rounded p-2 text-slate-600 hover:bg-slate-100" onClick={() => setEditingReading(null)} title="Cancel edit"><X size={16} /></button></> : <><button type="button" className="rounded p-2 text-blue-700 hover:bg-blue-50" onClick={() => setEditingReading({ ...reading })} title="Edit reading"><Pencil size={16} /></button><button type="button" className="rounded p-2 text-violet-700 hover:bg-violet-50" onClick={() => createBloodPressureReview(reading)} disabled={creatingBpReviewFor === reading._id} title="Create BP medical review request"><Send size={16} /></button></>}<button type="button" className="rounded p-2 text-red-700 hover:bg-red-50" onClick={() => deleteReading(reading)} title="Delete reading"><Trash2 size={16} /></button></div></td>
                     </tr>
                   );
                 })}
@@ -535,7 +664,9 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
           </div>
         )}
       </section>
+      )}
 
+      {medicalView === 'documents' && (
       <div className="booking-documents-grid">
         {medicalTestSections.map((section) => {
           const sectionArtifacts = artifactsByType[section.type];
@@ -727,6 +858,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
           );
         })}
       </div>
+      )}
 
       {uploadModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="booking-medical-upload-title">
