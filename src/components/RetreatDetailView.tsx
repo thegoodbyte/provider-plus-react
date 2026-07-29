@@ -2187,7 +2187,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                             <option value="">Select helper or cook</option>
                             {staffDirectory.map((contact) => (
                               <option key={contact._id} value={contact._id}>
-                                {contact.name} ({contact.role}){contact.phone ? ` - ${contact.phone}` : ''}
+                                {contact.name} ({Array.from(new Set([...(contact.roles || []), contact.role].filter(Boolean))).join(', ')}){contact.phone ? ` - ${contact.phone}` : ''}
                               </option>
                             ))}
                           </select>

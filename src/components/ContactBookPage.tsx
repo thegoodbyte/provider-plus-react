@@ -26,6 +26,7 @@ const roleOptions = [
 const emptyForm: Partial<ContactBookEntry> = {
   name: '',
   role: 'helper',
+  roles: ['helper'],
   organization: '',
   phone: '',
   email: '',
@@ -50,6 +51,12 @@ const roleLabel = (role?: string) =>
     .split(' ')
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
+
+const contactRoles = (contact: Partial<ContactBookEntry>) =>
+  Array.from(new Set(
+    [...(contact.roles || []), ...(contact.role ? [contact.role] : [])]
+      .filter((role): role is string => Boolean(role)),
+  ));
 
 const ContactBookPage: React.FC = () => {
   const [contacts, setContacts] = useState<ContactBookEntry[]>([]);
@@ -89,8 +96,9 @@ const ContactBookPage: React.FC = () => {
 
   const roleCounts = useMemo(() => {
     return contacts.reduce<Record<string, number>>((acc, contact) => {
-      const role = contact.role || 'other';
-      acc[role] = (acc[role] || 0) + 1;
+      contactRoles(contact).forEach((role) => {
+        acc[role] = (acc[role] || 0) + 1;
+      });
       return acc;
     }, {});
   }, [contacts]);
@@ -105,6 +113,7 @@ const ContactBookPage: React.FC = () => {
     setEditingContact(contact);
     setFormData({
       ...contact,
+      roles: contactRoles(contact),
       languages: contact.languages || [],
       tags: contact.tags || [],
       isActive: contact.isActive !== false,
@@ -133,8 +142,9 @@ const ContactBookPage: React.FC = () => {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!formData.name?.trim() || !formData.role?.trim()) {
-      setError('Name and role are required.');
+    const roles = contactRoles(formData);
+    if (!formData.name?.trim() || roles.length === 0) {
+      setError('Name and at least one role are required.');
       return;
     }
 
@@ -144,7 +154,8 @@ const ContactBookPage: React.FC = () => {
       const payload = {
         ...formData,
         name: formData.name.trim(),
-        role: formData.role.trim(),
+        role: roles[0],
+        roles,
         languages: formData.languages || [],
         tags: formData.tags || [],
         isActive: formData.isActive !== false,
@@ -162,6 +173,14 @@ const ContactBookPage: React.FC = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const toggleRole = (role: string) => {
+    setFormData((previous) => {
+      const selected = contactRoles(previous);
+      const roles = selected.includes(role) ? selected.filter((item) => item !== role) : [...selected, role];
+      return { ...previous, roles, role: roles[0] || '' };
+    });
   };
 
   const handleDelete = async (contact: ContactBookEntry) => {
@@ -276,7 +295,9 @@ const ContactBookPage: React.FC = () => {
                   <div className="text-xs text-gray-500">{[contact.organization, contact.location].filter(Boolean).join(' - ')}</div>
                 </td>
                 <td className="px-4 py-3">
-                  <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700">{roleLabel(contact.role)}</span>
+                  <div className="flex flex-wrap gap-1">
+                    {contactRoles(contact).map((role) => <span key={role} className="rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700">{roleLabel(role)}</span>)}
+                  </div>
                 </td>
                 <td className="px-4 py-3 text-sm">
                   {contact.phone ? <a className="text-gray-800 underline-offset-2 hover:underline" href={`tel:${contact.phone}`}>{contact.phone}</a> : '-'}
@@ -312,7 +333,7 @@ const ContactBookPage: React.FC = () => {
             <div className="mb-3 flex items-start justify-between gap-3">
               <div>
                 <div className="text-base font-semibold text-gray-900">{contact.name}</div>
-                <div className="text-sm text-gray-600">{roleLabel(contact.role)}{contact.organization ? ` - ${contact.organization}` : ''}</div>
+                <div className="text-sm text-gray-600">{contactRoles(contact).map(roleLabel).join(', ')}{contact.organization ? ` - ${contact.organization}` : ''}</div>
               </div>
               <div className="flex gap-2">
                 <button onClick={() => openEdit(contact)} className="icon-action-btn icon-action-btn-edit" title="Edit contact">
@@ -363,21 +384,17 @@ const ContactBookPage: React.FC = () => {
                 <span className="mb-1 block text-sm font-medium text-gray-700">Name</span>
                 <input name="name" value={formData.name || ''} onChange={handleInputChange} required className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm" />
               </label>
-              <label className="block">
-                <span className="mb-1 block text-sm font-medium text-gray-700">Role</span>
-                <input
-                  name="role"
-                  list="contact-book-role-options"
-                  value={formData.role || ''}
-                  onChange={handleInputChange}
-                  required
-                  placeholder="helper, translator, driver..."
-                  className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm"
-                />
-                <datalist id="contact-book-role-options">
-                  {roleOptions.map((role) => <option key={role} value={role} />)}
-                </datalist>
-              </label>
+              <fieldset className="block">
+                <legend className="mb-2 block text-sm font-medium text-gray-700">Roles (select all that apply)</legend>
+                <div className="flex flex-wrap gap-2">
+                  {Array.from(new Set([...roleOptions, ...contactRoles(formData)])).map((role) => {
+                    const selected = contactRoles(formData).includes(role);
+                    return <button key={role} type="button" onClick={() => toggleRole(role)} className={`rounded-full border px-3 py-1.5 text-sm font-medium ${selected ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}`} aria-pressed={selected}>
+                      {selected ? '✓ ' : ''}{roleLabel(role)}
+                    </button>;
+                  })}
+                </div>
+              </fieldset>
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-gray-700">Organization</span>
                 <input name="organization" value={formData.organization || ''} onChange={handleInputChange} className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm" />

@@ -88,6 +88,7 @@ export interface ContactBookEntry {
   _id?: string;
   name: string;
   role: string;
+  roles?: string[];
   organization?: string;
   phone?: string;
   email?: string;

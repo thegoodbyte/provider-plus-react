@@ -68,8 +68,12 @@ const RetreatStaffingPage: React.FC = () => {
   useEffect(() => { load(); }, []);
 
   const peopleById = useMemo(() => new Map(directory.map((person) => [person._id || '', person])), [directory]);
-  const optionsFor = (role: StaffRole) => directory.filter((person) =>
-    person.isActive !== false && (role === 'cook' ? person.role === 'cook' : person.role === 'helper'));
+  const optionsFor = (role: StaffRole) => {
+    const requiredRole = role === 'cook' ? 'cook' : 'helper';
+    return directory.filter((person) =>
+      person.isActive !== false
+      && Array.from(new Set([...(person.roles || []), person.role])).includes(requiredRole));
+  };
 
   const cancelEditing = () => {
     setDrafts(Object.fromEntries(retreats.filter((row) => row._id).map((row) => [row._id!, draftFor(row)])));
