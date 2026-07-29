@@ -152,12 +152,17 @@ const ContactBookPage: React.FC = () => {
     setError(null);
     try {
       const payload = {
-        ...formData,
         name: formData.name.trim(),
         role: roles[0],
         roles,
+        organization: formData.organization,
+        phone: formData.phone,
+        email: formData.email,
+        whatsapp: formData.whatsapp,
+        location: formData.location,
         languages: formData.languages || [],
         tags: formData.tags || [],
+        notes: formData.notes,
         isActive: formData.isActive !== false,
       } as Omit<ContactBookEntry, '_id'>;
 
@@ -384,14 +389,16 @@ const ContactBookPage: React.FC = () => {
                 <span className="mb-1 block text-sm font-medium text-gray-700">Name</span>
                 <input name="name" value={formData.name || ''} onChange={handleInputChange} required className="w-full rounded-md border border-gray-200 px-3 py-2 text-sm" />
               </label>
-              <fieldset className="block">
-                <legend className="mb-2 block text-sm font-medium text-gray-700">Roles (select all that apply)</legend>
-                <div className="flex flex-wrap gap-2">
+              <fieldset className="block rounded-md border border-gray-200 p-3 md:col-span-2">
+                <legend className="px-1 text-sm font-semibold text-gray-800">Roles — select all that apply</legend>
+                <p className="mb-3 text-xs text-gray-500">A contact can be assigned to several roles, for example Cook and Helper.</p>
+                <div className="grid gap-2 sm:grid-cols-3 md:grid-cols-4">
                   {Array.from(new Set([...roleOptions, ...contactRoles(formData)])).map((role) => {
                     const selected = contactRoles(formData).includes(role);
-                    return <button key={role} type="button" onClick={() => toggleRole(role)} className={`rounded-full border px-3 py-1.5 text-sm font-medium ${selected ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'}`} aria-pressed={selected}>
-                      {selected ? '✓ ' : ''}{roleLabel(role)}
-                    </button>;
+                    return <label key={role} className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium ${selected ? 'border-blue-500 bg-blue-50 text-blue-800' : 'border-gray-200 bg-white text-gray-700'}`}>
+                      <input type="checkbox" checked={selected} onChange={() => toggleRole(role)} className="h-4 w-4 rounded border-gray-300" />
+                      {roleLabel(role)}
+                    </label>;
                   })}
                 </div>
               </fieldset>
