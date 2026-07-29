@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Check, Eye, FileText, Pencil, Plus, RefreshCw, Send, Trash2, Upload, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { bloodPressureReadingsApi, bookingFlowApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { bloodPressureReadingsApi, bookingFlowApi, ceremoniesApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
-import { BloodPressureReading, BookingFlowItem, MedicalArtifact, MedicalReviewRequest } from '../types';
+import { BloodPressureReading, BookingFlowItem, Ceremony, MedicalArtifact, MedicalReviewRequest } from '../types';
 import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
 import './BookingMedicalUpload.css';
 
@@ -235,6 +235,9 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
   const [uploadDocumentType, setUploadDocumentType] = useState<UploadDocumentType>('additional');
   const [uploadDocumentStage, setUploadDocumentStage] = useState<NonNullable<MedicalArtifact['documentStage']>>('entry');
   const [uploadTitle, setUploadTitle] = useState('');
+  const [uploadCeremonyId, setUploadCeremonyId] = useState('');
+  const [retreatCeremonies, setRetreatCeremonies] = useState<Ceremony[]>([]);
+  const [loadingRetreatCeremonies, setLoadingRetreatCeremonies] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [bloodPressureReadings, setBloodPressureReadings] = useState<BloodPressureReading[]>([]);
@@ -511,10 +514,29 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
     setUploadDocumentType(documentType);
     setUploadDocumentStage(stage);
     setUploadTitle('');
+    setUploadCeremonyId('');
     setSelectedFiles([]);
     setError(null);
     setUploadModalOpen(true);
   };
+
+  const isCeremonyUpload = ['pre_ceremony', 'in_ceremony', 'post_ceremony'].includes(uploadDocumentStage);
+  const selectedUploadCeremony = retreatCeremonies.find((ceremony) => ceremony._id === uploadCeremonyId);
+
+  useEffect(() => {
+    if (!uploadModalOpen || !isCeremonyUpload || !retreatId) {
+      setRetreatCeremonies([]);
+      return;
+    }
+    setLoadingRetreatCeremonies(true);
+    ceremoniesApi.getByRetreat(retreatId)
+      .then((response) => setRetreatCeremonies((response.data || []).sort((a, b) => a.ceremonyNumber - b.ceremonyNumber)))
+      .catch(() => {
+        setRetreatCeremonies([]);
+        setError('Unable to load ceremonies for this retreat.');
+      })
+      .finally(() => setLoadingRetreatCeremonies(false));
+  }, [isCeremonyUpload, retreatId, uploadModalOpen]);
 
   useEffect(() => {
     if (!uploadRequest) return;
@@ -524,6 +546,10 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
   const handleUpload = async () => {
     if (!selectedFiles.length) {
       setError('Choose at least one document to upload.');
+      return;
+    }
+    if (isCeremonyUpload && (!uploadCeremonyId || !selectedUploadCeremony?.ceremonyNumber)) {
+      setError('Select the ceremony for this pre-, in-, or post-ceremony medical artifact.');
       return;
     }
 
@@ -540,9 +566,11 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
         retreatId,
         bookingId,
         artifactType,
-        contextType: 'booking',
+        contextType: isCeremonyUpload ? 'ceremony' : 'booking',
         documentStage: uploadDocumentStage,
         documentType: uploadDocumentType,
+        ceremonyId: isCeremonyUpload ? uploadCeremonyId : undefined,
+        ceremonyNumber: isCeremonyUpload ? selectedUploadCeremony?.ceremonyNumber : undefined,
         purpose: section
           ? 'booking_requirement'
           : uploadDocumentStage === 'pre_ceremony'
@@ -557,6 +585,8 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
         data: {
           bookingId,
           bookingNumber,
+          ceremonyId: isCeremonyUpload ? uploadCeremonyId : undefined,
+          ceremonyNumber: isCeremonyUpload ? selectedUploadCeremony?.ceremonyNumber : undefined,
         },
         tags: [section ? 'booking-requirement' : 'additional-medical-document', bookingNumber ? `booking-${bookingNumber}` : ''].filter(Boolean),
       });
@@ -881,7 +911,10 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                 <select
                   id="booking-medical-document-stage"
                   value={uploadDocumentStage}
-                  onChange={(event) => setUploadDocumentStage(event.target.value as NonNullable<MedicalArtifact['documentStage']>)}
+                  onChange={(event) => {
+                    setUploadDocumentStage(event.target.value as NonNullable<MedicalArtifact['documentStage']>);
+                    setUploadCeremonyId('');
+                  }}
                   className="min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-base"
                 >
                   <option value="entry">Entry</option>
@@ -892,6 +925,39 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                   <option value="additional">Additional</option>
                 </select>
               </div>
+
+              {isCeremonyUpload && (
+                <div className="grid gap-3 rounded-lg border border-violet-200 bg-violet-50 p-3 sm:grid-cols-2">
+                  <div>
+                    <span className="mb-1 block text-sm font-semibold text-slate-700">Retreat</span>
+                    <div className="min-h-12 rounded-lg border border-violet-200 bg-white px-3 py-3 text-sm text-slate-700">
+                      Booking retreat · {retreatId}
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">The retreat is fixed from this booking.</p>
+                  </div>
+                  <div>
+                    <label htmlFor="booking-medical-ceremony" className="mb-1 block text-sm font-semibold text-slate-700">Ceremony</label>
+                    <select
+                      id="booking-medical-ceremony"
+                      value={uploadCeremonyId}
+                      onChange={(event) => setUploadCeremonyId(event.target.value)}
+                      disabled={loadingRetreatCeremonies}
+                      required
+                      className="min-h-12 w-full rounded-lg border border-violet-200 bg-white px-3 text-base"
+                    >
+                      <option value="">{loadingRetreatCeremonies ? 'Loading ceremonies…' : 'Select ceremony'}</option>
+                      {retreatCeremonies.map((ceremony) => (
+                        <option key={ceremony._id} value={ceremony._id}>
+                          Ceremony #{ceremony.ceremonyNumber} · {new Date(ceremony.date).toLocaleDateString()}
+                        </option>
+                      ))}
+                    </select>
+                    {!loadingRetreatCeremonies && retreatCeremonies.length === 0 && (
+                      <p className="mt-1 text-xs font-medium text-amber-700">No ceremonies are configured for this retreat.</p>
+                    )}
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label htmlFor="booking-medical-document-type" className="mb-1 block text-sm font-semibold text-slate-700">Document type</label>
