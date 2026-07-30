@@ -1171,6 +1171,8 @@ export const medicalReviewRequestsApi = {
     liverReviewDecision?: 'OK' | 'caution' | 'NOT OK';
     liverReviewNotes?: string;
     reviewedBy?: string;
+    followUpDeadline?: string;
+    followUpEmailTemplateId?: string;
   }) => {
     cacheService.clearPattern('medical-review-requests:');
     return api.patch<MedicalReviewRequest>(`/medical-review-requests/${id}/review`, reviewData);

@@ -2,9 +2,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
-import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
-import { Client, MedicalArtifact, MedicalReviewRequest, Retreat } from '../types';
+import { Client, EmailTemplate, MedicalArtifact, MedicalReviewRequest, Retreat } from '../types';
 import { AlertTriangle, ThumbsDown, ThumbsUp } from 'lucide-react';
 import {
   formatMedicalReviewDecisionLabel,
@@ -446,8 +446,26 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [retreatFilter, setRetreatFilter] = useState('');
   const [requestSearchFilter, setRequestSearchFilter] = useState('');
   const [validationError, setValidationError] = useState('');
+  const [followUpDeadline, setFollowUpDeadline] = useState(() => new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]);
+  const [followUpEmailTemplateId, setFollowUpEmailTemplateId] = useState('');
+  const [followUpTemplates, setFollowUpTemplates] = useState<EmailTemplate[]>([]);
   const reviewDecisionSectionRef = useRef<HTMLDivElement | null>(null);
   const canEditReview = isEditRoute || (isAdvisorReviewRoute && selected?.status === 'pending' && !isMagicReviewSession);
+
+  useEffect(() => {
+    if (reviewDecision !== 'more_info_needed') return;
+    communicationsApi.getTemplates()
+      .then((response) => {
+        const templates = (response.data || []).filter((template: EmailTemplate) =>
+          template.active !== false && (
+            template.templateKey === 'medical_more_information'
+            || template.category === 'medical'
+          ));
+        setFollowUpTemplates(templates);
+        if (!followUpEmailTemplateId && templates[0]?._id) setFollowUpEmailTemplateId(templates[0]._id);
+      })
+      .catch(() => setFollowUpTemplates([]));
+  }, [reviewDecision, followUpEmailTemplateId]);
 
   const loadRequests = useCallback(async () => {
     try {
@@ -612,6 +630,10 @@ const MedicalReviewRequestsPage: React.FC = () => {
         medicalStaffNotes: effectiveNotes,
         fileReviews: cleanedFileReviews,
         reviewedBy: [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || 'medical_staff',
+        ...(effectiveDecision === 'more_info_needed' ? {
+          followUpDeadline,
+          followUpEmailTemplateId: followUpEmailTemplateId || undefined,
+        } : {}),
       });
       await loadRequests();
       if (options?.redirectAfterSave) {
@@ -1778,6 +1800,35 @@ const MedicalReviewRequestsPage: React.FC = () => {
                           }`}
                           placeholder="Enter at least 2 characters"
                         />
+                        {reviewDecision === 'more_info_needed' && (
+                          <div className="mt-3 rounded-md border border-orange-200 bg-orange-50 p-3">
+                            <div className="text-sm font-semibold text-orange-950">Automatic client follow-up</div>
+                            <p className="mt-1 text-xs text-orange-800">The note above becomes the client instruction. The app creates a blocking booking step and coordinator task. The email is prepared but not sent automatically.</p>
+                            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                              <label className="text-xs font-semibold text-gray-700">Deadline
+                                <input
+                                  type="date"
+                                  value={followUpDeadline}
+                                  min={new Date().toISOString().split('T')[0]}
+                                  onChange={(event) => setFollowUpDeadline(event.target.value)}
+                                  className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-normal"
+                                />
+                              </label>
+                              <label className="text-xs font-semibold text-gray-700">Email template
+                                <select
+                                  value={followUpEmailTemplateId}
+                                  onChange={(event) => setFollowUpEmailTemplateId(event.target.value)}
+                                  className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-normal"
+                                >
+                                  <option value="">Use/create the language default</option>
+                                  {followUpTemplates.map((template) => (
+                                    <option key={template._id} value={template._id}>{template.name}</option>
+                                  ))}
+                                </select>
+                              </label>
+                            </div>
+                          </div>
+                        )}
                         <div className="mt-1 flex items-center justify-between gap-3">
                           <span className={`text-xs ${medicalStaffNotes.trim().length >= 2 ? 'text-gray-500' : 'font-medium text-red-700'}`}>
                             Minimum 2 characters

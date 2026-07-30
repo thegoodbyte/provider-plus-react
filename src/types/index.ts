@@ -1179,6 +1179,19 @@ export interface MedicalReviewRequest {
   reviewDecision?: 'OK' | 'caution' | 'more_info_needed' | 'NOT OK';
   overallNotes?: string;
   medicalStaffNotes?: string;
+  followUpAutomation?: {
+    state?: 'awaiting_client' | 'received' | string;
+    dueDate?: Date | string;
+    bookingId?: string;
+    bookingFlowItemId?: string;
+    taskId?: string;
+    emailTemplateId?: string;
+    emailStatus?: 'draft_ready' | 'template_missing' | string;
+    instructions?: string;
+    receivedArtifactId?: string;
+    createdAt?: Date | string;
+    receivedAt?: Date | string;
+  };
   fileReviews?: Array<{
     artifactId?: string;
     fileKey?: string;
