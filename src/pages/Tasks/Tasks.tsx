@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { BookingFlowItem } from '../../types';
 import { bookingFlowApi } from '../../services/api';
-import { Task, TaskFilters, taskService } from '../../services/taskService';
+import { Task, TaskFilters, isSystemGeneratedTask, taskService } from '../../services/taskService';
 import { TaskList } from '../../components/Tasks/TaskList';
 import { TaskForm } from '../../components/Tasks/TaskForm';
 import { TaskFiltersPanel } from '../../components/Tasks/TaskFiltersPanel';
 import TasksCalendarView from '../../components/Tasks/TasksCalendarView';
 import { SprintBoard } from '../../components/Tasks/SprintBoard';
+import RemindersPage from '../../components/RemindersPage';
 import './Tasks.css';
 
 export const Tasks: React.FC = () => {
@@ -18,6 +19,7 @@ export const Tasks: React.FC = () => {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'board' | 'calendar'>('list');
+  const [activeTab, setActiveTab] = useState<'mine' | 'system' | 'reminders'>('mine');
   const [filters, setFilters] = useState<TaskFilters>({
     sortBy: 'dueDate',
     sortOrder: 'asc'
@@ -106,14 +108,18 @@ export const Tasks: React.FC = () => {
     setFilters(newFilters);
   };
 
+  const myTasks = tasks.filter((task) => !isSystemGeneratedTask(task));
+  const systemTasks = tasks.filter(isSystemGeneratedTask);
+  const visibleTasks = activeTab === 'system' ? systemTasks : myTasks;
+
   const getTaskStats = () => {
     const stats = {
-      total: tasks.length,
-      pending: tasks.filter(t => t.status === 'pending').length,
-      inProgress: tasks.filter(t => t.status === 'in_progress').length,
-      completed: tasks.filter(t => t.status === 'completed').length,
-      overdue: tasks.filter(t => t.dueDate && taskService.isOverdue(t.dueDate, t.status)).length,
-      urgent: tasks.filter(t => t.urgency === 'urgent').length,
+      total: visibleTasks.length,
+      pending: visibleTasks.filter(t => t.status === 'pending').length,
+      inProgress: visibleTasks.filter(t => t.status === 'in_progress').length,
+      completed: visibleTasks.filter(t => t.status === 'completed').length,
+      overdue: visibleTasks.filter(t => t.dueDate && taskService.isOverdue(t.dueDate, t.status)).length,
+      urgent: visibleTasks.filter(t => t.urgency === 'urgent').length,
     };
     return stats;
   };
@@ -134,17 +140,19 @@ export const Tasks: React.FC = () => {
         <div className="header-content">
           <h1>Tasks</h1>
           <div className="task-header-actions">
-            <div className="tasks-view-toggle" aria-label="Task view">
+            {activeTab !== 'reminders' && <div className="tasks-view-toggle" aria-label="Task view">
               <button type="button" className={viewMode === 'list' ? 'active' : ''} onClick={() => setViewMode('list')}>List</button>
-              <button type="button" className={viewMode === 'board' ? 'active' : ''} onClick={() => setViewMode('board')}>Sprints</button>
+              {activeTab === 'mine' && <button type="button" className={viewMode === 'board' ? 'active' : ''} onClick={() => setViewMode('board')}>Sprints</button>}
               <button type="button" className={viewMode === 'calendar' ? 'active' : ''} onClick={() => setViewMode('calendar')}>Calendar</button>
-            </div>
+            </div>}
+            {activeTab === 'mine' && (
             <button
               className="btn btn-primary"
               onClick={handleCreateTask}
             >
               Create Task
             </button>
+            )}
           </div>
         </div>
       </div>
@@ -156,26 +164,46 @@ export const Tasks: React.FC = () => {
         </div>
       )}
 
-      <TaskFiltersPanel
+      <div className="tasks-source-tabs" role="tablist" aria-label="Task source">
+        <button type="button" role="tab" aria-selected={activeTab === 'mine'} className={activeTab === 'mine' ? 'active' : ''} onClick={() => setActiveTab('mine')}>
+          My Tasks <span>{myTasks.length}</span>
+        </button>
+        <button type="button" role="tab" aria-selected={activeTab === 'system'} className={activeTab === 'system' ? 'active' : ''} onClick={() => { setActiveTab('system'); if (viewMode === 'board') setViewMode('list'); }}>
+          System Tasks <span>{systemTasks.length}</span>
+        </button>
+        <button type="button" role="tab" aria-selected={activeTab === 'reminders'} className={activeTab === 'reminders' ? 'active' : ''} onClick={() => setActiveTab('reminders')}>
+          Reminders
+        </button>
+      </div>
+
+      {activeTab === 'mine' && <div className="tasks-source-help">Tasks created by you or your team. Assign them, prioritize them, and complete them manually.</div>}
+      {activeTab === 'system' && <div className="tasks-source-help system">Generated from booking steps and automation. Resolve the linked source; the task will update automatically.</div>}
+      {activeTab === 'reminders' && <div className="tasks-source-help reminder">Reminders notify you at a chosen time. Use a task when work must be completed; use a reminder when you only need a timed prompt.</div>}
+
+      {activeTab !== 'reminders' && <TaskFiltersPanel
         filters={filters}
         onFiltersChange={handleFiltersChange}
-      />
+      />}
 
       <div className="tasks-main-content">
-        {viewMode === 'list' ? (
+        {activeTab === 'reminders' ? (
+          <RemindersPage />
+        ) : viewMode === 'list' ? (
           <TaskList
-            tasks={tasks}
+            tasks={visibleTasks}
             onEditTask={handleEditTask}
             onDeleteTask={handleDeleteTask}
             onCompleteTask={handleCompleteTask}
+            systemManaged={activeTab === 'system'}
           />
         ) : viewMode === 'board' ? (
-          <SprintBoard tasks={tasks} onChanged={loadTasks} onEdit={handleEditTask} />
+          <SprintBoard tasks={visibleTasks} onChanged={loadTasks} onEdit={handleEditTask} />
         ) : (
-          <TasksCalendarView tasks={tasks} deadlines={deadlines} />
+          <TasksCalendarView tasks={visibleTasks} deadlines={activeTab === 'system' ? deadlines : []} />
         )}
       </div>
 
+      {activeTab !== 'reminders' && (
       <div className="task-stats-footer">
         <div className="stat-item">
           <span className="stat-label">Total</span>
@@ -202,6 +230,7 @@ export const Tasks: React.FC = () => {
           <span className="stat-value urgent">{stats.urgent}</span>
         </div>
       </div>
+      )}
 
       {showForm && (
         <TaskForm

@@ -105,7 +105,7 @@ const EmailHistoryPanel: React.FC<EmailHistoryPanelProps> = ({ clientId, booking
       clientId,
       retreatId,
       bookingId,
-      sourceType: 'inbound_email',
+      sourceType: 'manual_email_followup',
       sourceId: email._id,
       tags: ['email', 'follow-up'],
     });

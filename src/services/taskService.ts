@@ -102,6 +102,24 @@ export interface TaskStatistics {
   dueThisWeek: Array<{ count: number }>;
 }
 
+export const isSystemGeneratedTask = (task: Task): boolean => {
+  const tags = (task.tags || []).map((tag) => String(tag).toLowerCase());
+  const systemSourceTypes = new Set([
+    'booking-flow',
+    'booking_reminder_automation',
+    'ibogaready_submission',
+    'medical_advisor_action',
+    'retreat_day_plan',
+    'inbound_email',
+  ]);
+  return Boolean(
+    (task.sourceType && systemSourceTypes.has(task.sourceType))
+    || task.bookingFlowItemId
+    || task.reminderKind
+    || tags.some((tag) => ['booking-flow', 'automated-reminder', 'system-generated', 'automation'].includes(tag))
+  );
+};
+
 class TaskService {
   private baseUrl = `${API_BASE_URL}/tasks`;
 

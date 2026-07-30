@@ -20,6 +20,56 @@
   margin-bottom: 20px;
 }
 
+.tasks-source-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+  overflow-x: auto;
+}
+
+.tasks-source-tabs button {
+  min-height: 46px;
+  padding: 0 18px;
+  border: 1px solid #d8dee8;
+  border-radius: 12px;
+  background: #fff;
+  color: #475569;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.tasks-source-tabs button.active {
+  border-color: #334155;
+  background: #334155;
+  color: #fff;
+}
+
+.tasks-source-tabs button span {
+  margin-left: 6px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, .2);
+}
+
+.tasks-source-help {
+  margin-bottom: 14px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 14px;
+}
+
+.tasks-source-help.system {
+  background: #f8fafc;
+  color: #475569;
+}
+
+.tasks-source-help.reminder {
+  background: #fffbeb;
+  color: #92400e;
+}
+
 .header-content {
   display: flex;
   justify-content: space-between;
