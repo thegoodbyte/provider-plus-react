@@ -436,6 +436,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [reviewDecision, setReviewDecision] = useState<(typeof decisionOptions)[number] | ''>('');
   const [medicalStaffNotes, setMedicalStaffNotes] = useState('');
   const [savingReview, setSavingReview] = useState(false);
+  const [resettingReview, setResettingReview] = useState(false);
   const [fileReviews, setFileReviews] = useState<FileReviewDraft[]>([]);
   const [reviewContext, setReviewContext] = useState<ReviewContext | null>(null);
   const [accessLinks, setAccessLinks] = useState<MedicalReviewAccessLink[]>([]);
@@ -656,6 +657,29 @@ const MedicalReviewRequestsPage: React.FC = () => {
       alert(error?.response?.data?.message || error?.message || 'Unable to generate medical review access link.');
     } finally {
       setAccessLinkBusy(false);
+    }
+  };
+
+  const handleResetReview = async () => {
+    if (!selected?._id || user?.role !== 'admin') return;
+    const reason = window.prompt(
+      `Reset the decision for MRR #${selected.display_id || selected._id}?\n\nEnter the reason for this administrative correction:`,
+      'Decision entered by mistake',
+    );
+    if (reason === null) return;
+    if (!window.confirm('This will remove the current decision and return the MRR to the pending review queue. Continue?')) return;
+    try {
+      setResettingReview(true);
+      const response = await medicalReviewRequestsApi.resetReview(selected._id, reason.trim() || 'Decision entered by mistake');
+      setSelected(response.data);
+      setReviewDecision('');
+      setMedicalStaffNotes('');
+      setFileReviews([]);
+      await loadRequests();
+    } catch (error: any) {
+      alert(error?.response?.data?.message || error?.message || 'Unable to reset this medical review.');
+    } finally {
+      setResettingReview(false);
     }
   };
 
@@ -1214,6 +1238,16 @@ const MedicalReviewRequestsPage: React.FC = () => {
                     <div className="rounded-md bg-gray-50 p-3 text-sm">
                       <div className="font-semibold text-gray-900">{formatMedicalReviewDecisionLabel(selected.reviewDecision)}</div>
                       <div className="mt-2 whitespace-pre-wrap text-gray-600">{selected.medicalStaffNotes || selected.overallNotes || selected.reviewNotes || 'No medical staff notes.'}</div>
+                      {user?.role === 'admin' && selected.reviewDecision && (
+                        <button
+                          type="button"
+                          onClick={handleResetReview}
+                          disabled={resettingReview}
+                          className="mt-3 w-full rounded-md border border-red-300 bg-white px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-50"
+                        >
+                          {resettingReview ? 'Resetting...' : 'Reset mistaken review'}
+                        </button>
+                      )}
                     </div>
                   ) : (
                     <>
@@ -1750,6 +1784,16 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   <div className="rounded-md bg-gray-50 p-3 text-sm">
                     <div className="font-semibold text-gray-900">{formatMedicalReviewDecisionLabel(selected.reviewDecision)}</div>
                     <div className="mt-2 whitespace-pre-wrap text-gray-600">{selected.medicalStaffNotes || selected.overallNotes || selected.reviewNotes || 'No medical staff notes.'}</div>
+                    {user?.role === 'admin' && selected.reviewDecision && (
+                      <button
+                        type="button"
+                        onClick={handleResetReview}
+                        disabled={resettingReview}
+                        className="mt-3 rounded-md border border-red-300 bg-white px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                      >
+                        {resettingReview ? 'Resetting...' : 'Reset mistaken review'}
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <>

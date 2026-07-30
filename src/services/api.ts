@@ -1177,6 +1177,10 @@ export const medicalReviewRequestsApi = {
     cacheService.clearPattern('medical-review-requests:');
     return api.patch<MedicalReviewRequest>(`/medical-review-requests/${id}/review`, reviewData);
   },
+  resetReview: (id: string, reason?: string) => {
+    cacheService.clearPattern('medical-review-requests:');
+    return api.patch<MedicalReviewRequest>(`/medical-review-requests/${id}/reset-review`, { reason });
+  },
   delete: (id: string) => {
     cacheService.clearPattern('medical-review-requests:');
     return api.delete(`/medical-review-requests/${id}`);
