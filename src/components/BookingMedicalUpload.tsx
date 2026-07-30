@@ -522,9 +522,10 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
 
   const isCeremonyUpload = ['pre_ceremony', 'in_ceremony', 'post_ceremony'].includes(uploadDocumentStage);
   const selectedUploadCeremony = retreatCeremonies.find((ceremony) => ceremony._id === uploadCeremonyId);
+  const hasUploadCeremony = Boolean(uploadCeremonyId && selectedUploadCeremony?.ceremonyNumber);
 
   useEffect(() => {
-    if (!uploadModalOpen || !isCeremonyUpload || !retreatId) {
+    if (!uploadModalOpen || !retreatId) {
       setRetreatCeremonies([]);
       return;
     }
@@ -536,7 +537,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
         setError('Unable to load ceremonies for this retreat.');
       })
       .finally(() => setLoadingRetreatCeremonies(false));
-  }, [isCeremonyUpload, retreatId, uploadModalOpen]);
+  }, [retreatId, uploadModalOpen]);
 
   useEffect(() => {
     if (!uploadRequest) return;
@@ -566,11 +567,11 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
         retreatId,
         bookingId,
         artifactType,
-        contextType: isCeremonyUpload ? 'ceremony' : 'booking',
+        contextType: hasUploadCeremony ? 'ceremony' : 'booking',
         documentStage: uploadDocumentStage,
         documentType: uploadDocumentType,
-        ceremonyId: isCeremonyUpload ? uploadCeremonyId : undefined,
-        ceremonyNumber: isCeremonyUpload ? selectedUploadCeremony?.ceremonyNumber : undefined,
+        ceremonyId: hasUploadCeremony ? uploadCeremonyId : undefined,
+        ceremonyNumber: hasUploadCeremony ? selectedUploadCeremony?.ceremonyNumber : undefined,
         purpose: section
           ? 'booking_requirement'
           : uploadDocumentStage === 'pre_ceremony'
@@ -585,8 +586,8 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
         data: {
           bookingId,
           bookingNumber,
-          ceremonyId: isCeremonyUpload ? uploadCeremonyId : undefined,
-          ceremonyNumber: isCeremonyUpload ? selectedUploadCeremony?.ceremonyNumber : undefined,
+          ceremonyId: hasUploadCeremony ? uploadCeremonyId : undefined,
+          ceremonyNumber: hasUploadCeremony ? selectedUploadCeremony?.ceremonyNumber : undefined,
         },
         tags: [section ? 'booking-requirement' : 'additional-medical-document', bookingNumber ? `booking-${bookingNumber}` : ''].filter(Boolean),
       });
@@ -723,6 +724,13 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                   <h4>{section.title}</h4>
                   <p>{section.description}</p>
                 </div>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-primary ml-auto shrink-0"
+                  onClick={() => openUploadModal(section.documentType, 'entry')}
+                >
+                  <Upload size={16} /> Upload
+                </button>
               </div>
 
               {latestArtifact && (
@@ -887,6 +895,23 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
             </div>
           );
         })}
+
+        <div className="booking-document-card md:col-span-2">
+          <div className="booking-document-card-header">
+            <FileText size={20} />
+            <div>
+              <h4>Additional document</h4>
+              <p>Upload another medical document and optionally link it to a ceremony.</p>
+            </div>
+            <button
+              type="button"
+              className="btn btn-sm btn-secondary ml-auto shrink-0"
+              onClick={() => openUploadModal('additional', 'additional')}
+            >
+              <Upload size={16} /> Upload document
+            </button>
+          </div>
+        </div>
       </div>
       )}
 
@@ -926,8 +951,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                 </select>
               </div>
 
-              {isCeremonyUpload && (
-                <div className="grid gap-3 rounded-lg border border-violet-200 bg-violet-50 p-3 sm:grid-cols-2">
+              <div className="grid gap-3 rounded-lg border border-violet-200 bg-violet-50 p-3 sm:grid-cols-2">
                   <div>
                     <span className="mb-1 block text-sm font-semibold text-slate-700">Retreat</span>
                     <div className="min-h-12 rounded-lg border border-violet-200 bg-white px-3 py-3 text-sm text-slate-700">
@@ -936,13 +960,15 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                     <p className="mt-1 text-xs text-slate-500">The retreat is fixed from this booking.</p>
                   </div>
                   <div>
-                    <label htmlFor="booking-medical-ceremony" className="mb-1 block text-sm font-semibold text-slate-700">Ceremony</label>
+                    <label htmlFor="booking-medical-ceremony" className="mb-1 block text-sm font-semibold text-slate-700">
+                      Ceremony {isCeremonyUpload ? '(required)' : '(optional)'}
+                    </label>
                     <select
                       id="booking-medical-ceremony"
                       value={uploadCeremonyId}
                       onChange={(event) => setUploadCeremonyId(event.target.value)}
                       disabled={loadingRetreatCeremonies}
-                      required
+                      required={isCeremonyUpload}
                       className="min-h-12 w-full rounded-lg border border-violet-200 bg-white px-3 text-base"
                     >
                       <option value="">{loadingRetreatCeremonies ? 'Loading ceremonies…' : 'Select ceremony'}</option>
@@ -957,7 +983,6 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                     )}
                   </div>
                 </div>
-              )}
 
               <div>
                 <label htmlFor="booking-medical-document-type" className="mb-1 block text-sm font-semibold text-slate-700">Document type</label>
