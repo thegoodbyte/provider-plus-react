@@ -105,6 +105,7 @@ export interface ContactBookEntry {
 export interface Referral {
   _id?: string;
   name: string;
+  defaultCommissionPercentage?: number;
   email?: string;
   phone?: string;
   notes?: string;
@@ -143,6 +144,7 @@ export interface Client {
   rejectionReason?: string;
   source?: string;
   referralId?: string | Referral;
+  referralCommissionPercentage?: number;
   tags?: string[];
   notes?: string;
   preferredName?: string;

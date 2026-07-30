@@ -15,6 +15,7 @@ interface ScreeningData {
   childhood: string;
   occupation: string;
   referralId: string;
+  referralCommissionPercentage: number | undefined;
   source: string;
   sexualAbuse: boolean;
   sexualAbuseDetails: string;
@@ -257,6 +258,7 @@ const ClientScreening: React.FC = () => {
     childhood: '',
     occupation: '',
     referralId: '',
+    referralCommissionPercentage: undefined,
     source: '',
     sexualAbuse: false,
     sexualAbuseDetails: '',
@@ -474,6 +476,7 @@ const ClientScreening: React.FC = () => {
         childhood: existingValue('childhood', 'childhood') ?? prev.childhood,
         occupation: existingValue('occupation') ?? prev.occupation,
         referralId: typeof existingReferral === 'object' ? existingReferral?._id || '' : String(existingReferral || ''),
+        referralCommissionPercentage: Number(existingValue('referralCommissionPercentage') ?? 0),
         source: String(existingValue('source', 'source') || ''),
         heartConditionOk: existingScreening.heartConditionOk === true || heartCondition === 'OK',
         heartCondition,
@@ -1063,13 +1066,34 @@ const ClientScreening: React.FC = () => {
               onChange={(event) => {
                 const referral = referrals.find((item) => item._id === event.target.value);
                 setHasChanges(true);
-                setFormData((current) => ({ ...current, referralId: event.target.value, source: referral?.name || '' }));
+                setFormData((current) => ({
+                  ...current,
+                  referralId: event.target.value,
+                  source: referral?.name || '',
+                  referralCommissionPercentage: referral ? Number(referral.defaultCommissionPercentage || 0) : undefined,
+                }));
               }}
               className="w-full px-3 py-2 border border-gray-200 rounded-md"
             >
               <option value="">{formData.source ? `Unlinked: ${formData.source}` : 'No referral selected'}</option>
               {referrals.filter((item) => item.isActive !== false || item._id === formData.referralId).map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}
             </select>
+          </div>
+          <div className="md:col-span-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Referral commission %</label>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              name="referralCommissionPercentage"
+              value={formData.referralCommissionPercentage ?? ''}
+              onChange={handleInputChange}
+              disabled={!formData.referralId}
+              placeholder="Select a referral"
+              className="w-full px-3 py-2 border border-gray-200 rounded-md disabled:bg-gray-100"
+            />
+            <p className="mt-1 text-xs text-gray-500">The referral default is copied here and may be overridden for this client.</p>
           </div>
         </div>
       </div>
