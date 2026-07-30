@@ -161,11 +161,6 @@ const CommunicationsPage: React.FC = () => {
     }, {});
   }, [seedOptions]);
 
-  const selectedSentEmail = useMemo(
-    () => sentEmails.find((email) => email._id === selectedSentEmailId) || null,
-    [sentEmails, selectedSentEmailId],
-  );
-
   const selectedClient = useMemo(
     () => clients.find((client) => client._id === composeForm.clientId) || null,
     [clients, composeForm.clientId],
@@ -1415,7 +1410,7 @@ const CommunicationsPage: React.FC = () => {
       )}
 
       {activeTab === 'sent' && (
-        <div className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
+        <div>
           <section className="rounded-lg border border-gray-200 bg-white p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -1460,20 +1455,54 @@ const CommunicationsPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredSentEmails.map((email) => (
-                    <tr
-                      key={email._id}
-                      onClick={() => setSelectedSentEmailId(email._id || '')}
-                      className={`cursor-pointer border-b hover:bg-gray-50 ${selectedSentEmailId === email._id ? 'bg-blue-50' : ''}`}
-                    >
-                      <td className="py-2 pr-3 font-mono text-gray-700">#{email.display_id || 'n/a'}</td>
-                      <td className="py-2 pr-3">{renderClientLink(email, true)}</td>
-                      <td className="py-2 pr-3 font-medium text-gray-900">{email.subject}</td>
-                      <td className="py-2 pr-3 text-gray-600">{(email.to || []).join(', ')}</td>
-                      <td className="py-2 pr-3 text-gray-600">{email.status}</td>
-                      <td className="py-2 pr-3 text-gray-600">{email.sentAt ? new Date(email.sentAt).toLocaleString() : '-'}</td>
-                    </tr>
-                  ))}
+                  {filteredSentEmails.map((email) => {
+                    const isOpen = selectedSentEmailId === email._id;
+                    return (
+                      <React.Fragment key={email._id}>
+                        <tr
+                          onClick={() => setSelectedSentEmailId(isOpen ? '' : (email._id || ''))}
+                          className={`cursor-pointer border-b hover:bg-gray-50 ${isOpen ? 'bg-blue-50' : ''}`}
+                          aria-expanded={isOpen}
+                        >
+                          <td className="py-2 pr-3 font-mono text-gray-700">#{email.display_id || 'n/a'}</td>
+                          <td className="py-2 pr-3">{renderClientLink(email, true)}</td>
+                          <td className="py-2 pr-3 font-medium text-gray-900">{email.subject}</td>
+                          <td className="py-2 pr-3 text-gray-600">{(email.to || []).join(', ')}</td>
+                          <td className="py-2 pr-3 text-gray-600">{email.status}</td>
+                          <td className="py-2 pr-3 text-gray-600">{email.sentAt ? new Date(email.sentAt).toLocaleString() : '-'}</td>
+                        </tr>
+                        {isOpen && (
+                          <tr className="border-b bg-blue-50/40">
+                            <td colSpan={6} className="px-4 py-4">
+                              <div className="space-y-3 rounded-lg border border-blue-200 bg-white p-4 shadow-sm">
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                  <div className="space-y-1 text-sm">
+                                    <div><span className="text-gray-500">Subject:</span> <span className="font-semibold text-gray-900">{email.subject}</span></div>
+                                    <div><span className="text-gray-500">To:</span> {(email.to || []).join(', ')}</div>
+                                    <div><span className="text-gray-500">CC:</span> {(email.cc || []).join(', ') || 'None'}</div>
+                                    <div><span className="text-gray-500">Status:</span> {email.status || 'queued'} · {email.sentAt ? new Date(email.sentAt).toLocaleString() : 'Not sent'}</div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteSentEmail(email._id)}
+                                    className="inline-flex items-center gap-2 rounded-md border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+                                  >
+                                    <Icon icon={FiTrash2} />
+                                    Delete Log
+                                  </button>
+                                </div>
+                                <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
+                                  <div className="mb-2 text-sm font-medium text-gray-700">Body</div>
+                                  <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-6 text-gray-800">{email.bodyText || 'No message body stored.'}</pre>
+                                </div>
+                                {email.errorMessage && <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{email.errorMessage}</div>}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
                   {filteredSentEmails.length === 0 && (
                     <tr>
                       <td colSpan={6} className="py-4 text-gray-500">{sentEmails.length ? 'No sent emails match these filters.' : 'No messages sent yet.'}</td>
@@ -1482,45 +1511,6 @@ const CommunicationsPage: React.FC = () => {
                 </tbody>
               </table>
             </div>
-          </section>
-
-          <section className="rounded-lg border border-gray-200 bg-white p-4 space-y-4">
-            <h2 className="text-lg font-semibold text-gray-900">Message Detail</h2>
-            {selectedSentEmail ? (
-              <div className="space-y-3">
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteSentEmail(selectedSentEmail._id)}
-                    className="inline-flex items-center gap-2 rounded-md border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
-                  >
-                    <Icon icon={FiTrash2} />
-                    Delete Log
-                  </button>
-                </div>
-                <div><span className="text-gray-500">Message #:</span> <span className="font-mono">#{selectedSentEmail.display_id || 'n/a'}</span></div>
-                <div><span className="text-gray-500">Client:</span> {renderClientLink(selectedSentEmail)}</div>
-                <div><span className="text-gray-500">Status:</span> {selectedSentEmail.status}</div>
-                <div><span className="text-gray-500">To:</span> {(selectedSentEmail.to || []).join(', ')}</div>
-                <div><span className="text-gray-500">CC:</span> {(selectedSentEmail.cc || []).join(', ') || 'None'}</div>
-                <div><span className="text-gray-500">Gmail ID:</span> <span className="font-mono">{selectedSentEmail.gmailMessageId || 'Not returned'}</span></div>
-                <div><span className="text-gray-500">Subject:</span> {selectedSentEmail.subject}</div>
-                <div className="text-xs text-gray-500">
-                  {selectedSentEmail.sentAt ? `Sent ${new Date(selectedSentEmail.sentAt).toLocaleString()}` : 'Not sent'}
-                </div>
-                <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
-                  <div className="mb-2 text-sm font-medium text-gray-700">Body</div>
-                  <pre className="whitespace-pre-wrap text-sm text-gray-800">{selectedSentEmail.bodyText}</pre>
-                </div>
-                {selectedSentEmail.errorMessage && (
-                  <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                    {selectedSentEmail.errorMessage}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="text-sm text-gray-500">Select a sent message to inspect it.</div>
-            )}
           </section>
         </div>
       )}
