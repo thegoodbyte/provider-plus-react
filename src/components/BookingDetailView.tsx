@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { FiArrowLeft, FiChevronDown, FiDownload, FiEdit3, FiEye, FiMail, FiSend, FiX } from 'react-icons/fi';
 import { message } from 'antd';
-import { bookingsApi, bookingDocumentsApi, bookingFlowApi, ceremoniesApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { bookingsApi, bookingDocumentsApi, bookingFlowApi, ceremoniesApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import BookingPaymentManagement from './BookingPaymentManagement';
 import BookingMedicalUpload from './BookingMedicalUpload';
 import BookingDocumentsUpload from './BookingDocumentsUpload';
@@ -14,7 +14,7 @@ import { TaskForm } from './Tasks/TaskForm';
 import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
 import { createBookingConfirmationPdf } from './BookingConfirmationPDF';
 import { Task, CreateTaskDto, taskService } from '../services/taskService';
-import { BookingDocument, BookingFlowItem, CeremonyParticipant, MedicalArtifact, MedicalReviewRequest } from '../types';
+import { BookingDocument, BookingFlowItem, CeremonyParticipant, MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
 import './BookingDetailView.css';
 
 type RequirementArtifactType = NonNullable<MedicalArtifact['artifactType']>;
@@ -1003,6 +1003,8 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [confirmationHistoryReason, setConfirmationHistoryReason] = useState('');
   const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'requirements' | 'medical' | 'ceremonies' | 'documents' | 'emails' | 'tasks' | 'workflow' | 'notes'>('overview');
   const [bookingTasks, setBookingTasks] = useState<Task[]>([]);
+  const [bookingDocuments, setBookingDocuments] = useState<BookingDocument[]>([]);
+  const [bookingPayments, setBookingPayments] = useState<Payment[]>([]);
   const [loadingBookingTasks, setLoadingBookingTasks] = useState(false);
   const [bookingTasksError, setBookingTasksError] = useState<string | null>(null);
   const [showTaskForm, setShowTaskForm] = useState(false);
@@ -1023,10 +1025,10 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   }, [bookingId]);
 
   useEffect(() => {
-    if (activeTab === 'tasks') {
-      loadBookingTasks();
-    }
-  }, [activeTab, bookingId]);
+    loadBookingTasks();
+    loadBookingDocuments();
+    loadBookingPayments();
+  }, [bookingId]);
 
   useEffect(() => {
     return () => {
@@ -1058,6 +1060,25 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
       setBookingTasksError(error?.message || 'Unable to load booking tasks.');
     } finally {
       setLoadingBookingTasks(false);
+    }
+  };
+
+  const loadBookingDocuments = async () => {
+    try {
+      const response = await bookingDocumentsApi.getAll({ bookingId });
+      setBookingDocuments(Array.isArray(response.data) ? response.data : []);
+    } catch {
+      // The booking remains usable if document totals are temporarily unavailable.
+      setBookingDocuments([]);
+    }
+  };
+
+  const loadBookingPayments = async () => {
+    try {
+      const response = await paymentsApi.getByBooking(bookingId);
+      setBookingPayments(Array.isArray(response.data) ? response.data : []);
+    } catch {
+      setBookingPayments([]);
     }
   };
 
@@ -1512,6 +1533,51 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const confirmationHistory = [...(booking.bookingConfirmationHistory || [])].sort((a: any, b: any) => (a.iteration || 0) - (b.iteration || 0));
   const firstConfirmation = confirmationHistory[0];
   const latestConfirmation = confirmationHistory[confirmationHistory.length - 1];
+  const initials = clientName
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part: string) => part[0]?.toUpperCase())
+    .join('') || 'CL';
+  const bookingStatus = String(booking.status || 'confirmed').replace(/_/g, ' ');
+  const totalAmount = Number(booking.totalAmount || 0);
+  const currency = String(booking.currency || 'EUR').toUpperCase();
+  const paidAmount = Number(
+    booking.amountPaid ??
+    booking.paidAmount ??
+    bookingPayments
+      .filter((payment) => payment.status === 'completed')
+      .reduce((sum: number, payment: Payment) => {
+      const amount = Number(
+        payment.bookingCurrencyAmount ??
+        (payment.currency === currency ? payment.amount : 0)
+      );
+      return sum + (payment.paymentType === 'refund' ? -amount : amount);
+    }, 0)
+  );
+  const balanceDue = Math.max(0, totalAmount - paidAmount);
+  const currencySymbol = currency === 'EUR' ? '€' : currency === 'PLN' ? 'zł' : currency === 'CZK' ? 'Kč' : currency;
+  const formatMoney = (amount: number) =>
+    `${currencySymbol}${currencySymbol.length > 1 ? ' ' : ''}${amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  const openTasks = bookingTasks.filter((task) => task.status !== 'completed' && task.status !== 'cancelled');
+  const openTaskNames = openTasks.slice(0, 2).map((task) => task.name).join(', ');
+  const expectedDocumentCount = Math.max(requirementDefinitions.length, bookingDocuments.length);
+  const completedDocumentCount = bookingDocuments.filter((document: any) =>
+    !['missing', 'rejected'].includes(String(document?.status || '').toLowerCase())
+  ).length;
+  const retreatStartDate = retreat?.startDate || retreat?.dates?.startDate;
+  const arrivalLabel = retreatStartDate
+    ? new Date(retreatStartDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+    : '';
+  const readinessItems = [
+    { label: 'Booking confirmed', complete: ['confirmed', 'completed'].includes(String(booking.status || '').toLowerCase()) },
+    { label: 'Screening cleared', complete: Boolean(booking.screeningCleared || booking.screeningStatus === 'cleared' || client?.screeningStatus === 'cleared') },
+    { label: 'Deposit paid', complete: paidAmount > 0 },
+    { label: 'Pre-arrival sent', complete: confirmationHistory.length > 0 },
+    { label: 'Balance paid', complete: totalAmount > 0 && balanceDue <= 0 },
+    { label: 'Documents complete', complete: expectedDocumentCount > 0 && completedDocumentCount >= expectedDocumentCount },
+  ];
+  const readinessCompleted = readinessItems.filter((item) => item.complete).length;
   const tabs = [
     { key: 'overview', label: 'Overview' },
     { key: 'payments', label: 'Payments' },
@@ -1527,13 +1593,32 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
 
   return (
     <div className="booking-detail-container">
-      <div className="detail-header">
+      <div className="detail-header booking-workspace-header">
         <button onClick={onBack} className="back-btn" title="Back to bookings" aria-label="Back to bookings">
           <HeaderIcon icon={FiArrowLeft} />
         </button>
-        <div className="booking-title-block">
-          <span className="booking-title-kicker">Booking Details</span>
-          <h1>Booking #{booking.bookingNumber || 'N/A'}</h1>
+        <div className="booking-avatar" aria-hidden="true">{initials}</div>
+        <div className="booking-title-block booking-identity">
+          <div className="booking-eyebrow-row">
+            <span>Booking {booking.bookingNumber || 'N/A'}</span>
+            <span className="booking-status-badge">{bookingStatus}</span>
+            <span className="booking-language-badge">{pdfLanguage.toUpperCase()}</span>
+          </div>
+          <h1>{clientName}</h1>
+          <div className="booking-identity-meta">
+            {clientDisplayId && clientObjectId ? (
+              <button type="button" onClick={() => navigate(`${routePrefix}/clients/${clientObjectId}`)}>
+                Client #{clientDisplayId}
+              </button>
+            ) : clientDisplayId ? <span>Client #{clientDisplayId}</span> : null}
+            <span aria-hidden="true">·</span>
+            {retreatId ? (
+              <button type="button" onClick={() => navigate(`${routePrefix}/retreats/${retreatId}`)}>{retreatCode}</button>
+            ) : <span>{retreatCode}</span>}
+            <span aria-hidden="true">·</span>
+            <span>Type {bookingTypeCode}</span>
+            {arrivalLabel && <><span aria-hidden="true">·</span><span>Arrives {arrivalLabel}</span></>}
+          </div>
         </div>
         <div className="header-actions">
           <select
@@ -1598,7 +1683,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
             data-tooltip="Download PDF"
           >
             <HeaderIcon icon={FiDownload} />
-            <span>{isGeneratingPDF ? 'Generating' : 'Download'}</span>
+            <span className="booking-action-download-label">{isGeneratingPDF ? 'Generating' : 'Download'}</span>
           </button>
         </div>
       </div>
@@ -1628,48 +1713,49 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
 
       <div className="detail-content" ref={pdfRef}>
 
-        <div className="booking-info-strip" aria-label="Booking summary">
-          <div className="booking-info-item booking-info-client">
-            <span>Client</span>
-            <strong>{clientName}</strong>
-          </div>
-          {clientDisplayId && (
-            <div className="booking-info-item">
-              <span>Client ID</span>
-              {clientObjectId ? (
-                <button
-                  type="button"
-                  className="booking-info-link"
-                  onClick={() => navigate(`${routePrefix}/clients/${clientObjectId}`)}
-                  title={`Open client #${clientDisplayId}`}
-                >
-                  #{clientDisplayId}
-                </button>
-              ) : (
-                <strong>#{clientDisplayId}</strong>
-              )}
-            </div>
-          )}
-          <div className="booking-info-item">
-            <span>Retreat</span>
-            {retreatId ? (
-              <button
-                type="button"
-                className="booking-info-link"
-                onClick={() => navigate(`${routePrefix}/retreats/${retreatId}`)}
-                title={`Open retreat ${retreatCode}`}
-              >
-                {retreatCode}
+        <section className="booking-needs-section" aria-labelledby="booking-needs-title">
+          <h2 id="booking-needs-title">Needs you</h2>
+          <div className="booking-needs-grid">
+            <article className={`booking-need-card booking-balance-card ${balanceDue > 0 ? 'needs-attention' : ''}`}>
+              <span className="booking-need-label">Balance due</span>
+              <strong>{formatMoney(balanceDue)}</strong>
+              <div className="booking-balance-track" aria-label={`${formatMoney(paidAmount)} paid of ${formatMoney(totalAmount)}`}>
+                <span style={{ width: `${totalAmount > 0 ? Math.min(100, (paidAmount / totalAmount) * 100) : 0}%` }} />
+              </div>
+              <p>{formatMoney(paidAmount)} / {formatMoney(totalAmount)}</p>
+              <button type="button" onClick={() => setActiveTab('payments')}>{balanceDue > 0 ? 'Add payment' : 'View payments'}</button>
+            </article>
+            <article className="booking-need-card">
+              <span className="booking-need-label">Open tasks</span>
+              <strong>{openTasks.length}</strong>
+              <p>{openTaskNames || 'Nothing needs attention'}</p>
+              <button type="button" onClick={() => setActiveTab('tasks')}>Open tasks</button>
+            </article>
+            <article className="booking-need-card">
+              <span className="booking-need-label">Documents</span>
+              <strong>{completedDocumentCount} / {expectedDocumentCount}</strong>
+              <p>{completedDocumentCount >= expectedDocumentCount ? 'Documents complete' : 'Documents still required'}</p>
+              <button type="button" onClick={() => setActiveTab('documents')}>
+                {completedDocumentCount >= expectedDocumentCount ? 'View' : 'Request'}
               </button>
-            ) : (
-              <strong>{retreatCode}</strong>
-            )}
+            </article>
           </div>
-          <div className="booking-info-item booking-info-type">
-            <span>Type</span>
-            <strong>{bookingTypeCode}</strong>
+        </section>
+
+        <section className="booking-readiness-card" aria-label="Retreat readiness">
+          <div className="booking-readiness-heading">
+            <div><strong>Retreat readiness</strong><span>Payment and documents outstanding</span></div>
+            <b>{readinessCompleted} <span>of {readinessItems.length}</span></b>
           </div>
-        </div>
+          <div className="booking-readiness-segments" aria-hidden="true">
+            {readinessItems.map((item) => <span key={item.label} className={item.complete ? 'complete' : ''} />)}
+          </div>
+          <div className="booking-readiness-labels">
+            {readinessItems.map((item) => (
+              <span key={item.label} className={item.complete ? 'complete' : ''}>{item.label}</span>
+            ))}
+          </div>
+        </section>
 
         <div className="booking-detail-tabs" role="tablist" aria-label="Booking sections">
           {tabs.map((tab) => (

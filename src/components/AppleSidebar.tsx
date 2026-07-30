@@ -457,13 +457,13 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
               <div className="w-10 h-10 rounded-apple overflow-hidden bg-white flex items-center justify-center flex-shrink-0 border border-apple-gray-100">
                 <img
                   src={`${process.env.PUBLIC_URL}/images/icon/retreategnine.png`}
-                  alt="Provider Plus"
+                  alt="Retreat Engine"
                   className="w-full h-full object-contain p-1"
                 />
               </div>
               {isExpanded && (
                 <span className="text-lg font-semibold text-apple-gray-900 whitespace-nowrap">
-                  Provider Plus
+                  Retreat Engine
                 </span>
               )}
             </div>

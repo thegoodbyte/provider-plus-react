@@ -1,0 +1,372 @@
+.mrr-editor-shell {
+  --mrr-bg: #fbf8f2;
+  --mrr-ink: #24231f;
+  --mrr-muted: #8b8274;
+  --mrr-line: #ddd4c5;
+  --mrr-blue: #18587a;
+  min-height: 100vh;
+  background: var(--mrr-bg);
+  color: var(--mrr-ink);
+}
+
+.mrr-editor-topbar {
+  display: flex;
+  min-height: 74px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  border-bottom: 1px solid var(--mrr-line);
+  background: rgba(255, 255, 255, .92);
+}
+
+.mrr-editor-topbar > div,
+.mrr-editor-person {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.mrr-editor-topbar span,
+.mrr-editor-topbar i {
+  color: #827969;
+  font-style: normal;
+}
+
+.mrr-editor-person b {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 50%;
+  background: #edf4f7;
+  color: var(--mrr-blue);
+  font-size: 13px;
+}
+
+.mrr-editor-form {
+  padding-bottom: 88px;
+}
+
+.mrr-editor-content {
+  width: min(100% - 40px, 820px);
+  margin: 0 auto;
+  padding: 48px 0 64px;
+}
+
+.mrr-editor-heading {
+  margin-bottom: 34px;
+}
+
+.mrr-editor-heading h1 {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1.1;
+  letter-spacing: -.025em;
+}
+
+.mrr-editor-heading p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 10px;
+  margin: 10px 0 0;
+  color: #776f63;
+  font-size: 16px;
+}
+
+.mrr-editor-heading p b {
+  color: var(--mrr-blue);
+}
+
+.mrr-editor-field {
+  margin-top: 30px;
+}
+
+.mrr-editor-field > label {
+  display: block;
+  margin-bottom: 10px;
+  color: #8d8475;
+  font-size: 13px;
+  font-weight: 850;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.mrr-editor-field > label span {
+  margin-left: 5px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.mrr-choice-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.mrr-choice-row button {
+  min-height: 46px;
+  padding: 0 20px;
+  border: 1px solid var(--mrr-line);
+  border-radius: 10px;
+  background: white;
+  color: #3d3933;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.mrr-choice-row button.selected {
+  border-color: var(--mrr-blue);
+  background: var(--mrr-blue);
+  color: white;
+}
+
+.mrr-readonly-input,
+.mrr-editor-field textarea,
+.mrr-editor-field select {
+  width: 100%;
+  border: 1px solid var(--mrr-line);
+  border-radius: 10px;
+  background: white;
+  color: var(--mrr-ink);
+  font: inherit;
+}
+
+.mrr-readonly-input,
+.mrr-editor-field select {
+  min-height: 54px;
+  padding: 15px 17px;
+}
+
+.mrr-editor-field textarea {
+  min-height: 116px;
+  padding: 16px 17px;
+  resize: vertical;
+}
+
+.mrr-editor-field textarea::placeholder {
+  color: #b1a999;
+}
+
+.mrr-retreat-card {
+  display: flex;
+  min-height: 70px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 17px;
+  border: 1px solid var(--mrr-line);
+  border-radius: 10px;
+  background: #f5f0e8;
+}
+
+.mrr-retreat-card > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.mrr-retreat-card strong {
+  font-size: 16px;
+}
+
+.mrr-retreat-card span,
+.mrr-field-help {
+  color: #81796c;
+  font-size: 14px;
+}
+
+.mrr-retreat-card > b {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #eee8de;
+  color: #736b60;
+  font-size: 12px;
+}
+
+.mrr-field-help {
+  margin: 8px 0 0;
+}
+
+.mrr-advisor-list {
+  overflow: hidden;
+  border: 1px solid var(--mrr-line);
+  border-radius: 10px;
+  background: white;
+}
+
+.mrr-advisor-list > label {
+  display: grid;
+  grid-template-columns: 22px 38px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid #eee8de;
+  cursor: pointer;
+}
+
+.mrr-advisor-list > label:last-child {
+  border-bottom: 0;
+}
+
+.mrr-advisor-list > label.selected {
+  background: #f3f8fa;
+}
+
+.mrr-advisor-list input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--mrr-blue);
+}
+
+.mrr-advisor-list label > b {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 50%;
+  background: #edf4f7;
+  color: var(--mrr-blue);
+  font-size: 12px;
+}
+
+.mrr-advisor-list label > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.mrr-advisor-list small {
+  overflow: hidden;
+  color: var(--mrr-muted);
+  text-overflow: ellipsis;
+}
+
+.mrr-reset-review {
+  margin-top: 30px;
+  padding: 10px 14px;
+  border: 1px solid #e6b6b6;
+  border-radius: 9px;
+  background: white;
+  color: #a63131;
+  font-weight: 750;
+}
+
+.mrr-editor-footer {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 30;
+  display: flex;
+  min-height: 72px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 32px;
+  border-top: 1px solid var(--mrr-line);
+  background: rgba(255, 255, 255, .96);
+  backdrop-filter: blur(10px);
+}
+
+.mrr-editor-footer > span {
+  color: #746c60;
+  font-size: 14px;
+}
+
+.mrr-editor-footer > div {
+  display: flex;
+  gap: 10px;
+}
+
+.mrr-editor-footer button {
+  min-height: 46px;
+  padding: 0 20px;
+  border: 1px solid var(--mrr-line);
+  border-radius: 10px;
+  background: white;
+  color: #3c3832;
+  font-weight: 750;
+}
+
+.mrr-editor-footer button.primary {
+  min-width: 180px;
+  border-color: var(--mrr-blue);
+  background: var(--mrr-blue);
+  color: white;
+}
+
+.mrr-editor-footer button:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+@media (max-width: 700px) {
+  .mrr-editor-topbar {
+    min-height: 66px;
+    padding: 0 16px;
+  }
+
+  .mrr-editor-topbar > div:first-child span {
+    font-size: 13px;
+  }
+
+  .mrr-editor-person > span {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mrr-editor-content {
+    width: min(100% - 32px, 820px);
+    padding: 34px 0 50px;
+  }
+
+  .mrr-editor-heading h1 {
+    font-size: 28px;
+  }
+
+  .mrr-editor-heading p {
+    font-size: 14px;
+  }
+
+  .mrr-editor-field {
+    margin-top: 26px;
+  }
+
+  .mrr-choice-row {
+    gap: 8px;
+  }
+
+  .mrr-choice-row button {
+    min-height: 44px;
+    padding: 0 15px;
+    font-size: 14px;
+  }
+
+  .mrr-editor-footer {
+    min-height: 74px;
+    padding: 10px 16px;
+  }
+
+  .mrr-editor-footer > span {
+    display: none;
+  }
+
+  .mrr-editor-footer > div {
+    width: 100%;
+  }
+
+  .mrr-editor-footer button {
+    flex: 1;
+    padding: 0 12px;
+  }
+
+  .mrr-editor-footer button.primary {
+    flex: 1.5;
+    min-width: 0;
+  }
+}
