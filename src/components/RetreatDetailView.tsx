@@ -284,6 +284,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [scheduledRetreats, setScheduledRetreats] = useState<Retreat[]>([]);
   const [clients, setClients] = useState<RetreatClientData[]>([]);
   const [expensesSummary, setExpensesSummary] = useState<ExpenseSummary | null>(null);
+  const [retreatPayments, setRetreatPayments] = useState<Payment[]>([]);
+  const [metricsUpdatedAt, setMetricsUpdatedAt] = useState<Date>(new Date());
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<RetreatDetailTab>(initialTab);
   const [viewingClientId, setViewingClientId] = useState<string | null>(null);
@@ -410,6 +412,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         return Array.from(exactBookingPayments.values());
       }));
       const payments = paymentResults.flat();
+      setRetreatPayments(payments);
+      setMetricsUpdatedAt(new Date());
       const getPaymentsForBooking = (booking: any) => {
         const bookingId = getObjectId(booking);
         return payments.filter((payment: Payment) => getObjectId(payment.bookingId) === bookingId);
@@ -997,14 +1001,45 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     (sum, client) => sum + convertAmountToUSD(client.totalAmount || 0, client.currency),
     0
   );
-  const plannedExpensesUSD = expensesSummary?.plannedExpensesUSD ?? expensesSummary?.totalExpensesUSD ?? 0;
+  const plannedExpensesUSD = expensesSummary?.plannedExpensesUSD ?? 0;
   const actualExpensesUSD = expensesSummary?.actualExpensesUSD ?? expensesSummary?.totalExpensesUSD ?? 0;
+  const expectedExpensesUSD = actualExpensesUSD + plannedExpensesUSD;
   const profitUSD = totalRevenueUSD - actualExpensesUSD;
-  const expectedProfitUSD = totalExpectedUSD - plannedExpensesUSD;
+  const expectedProfitUSD = totalExpectedUSD - expectedExpensesUSD;
   const occupancyRate = retreat.capacity ? Math.round((activeClientCount / retreat.capacity) * 100) : 0;
+  const collectedPercentage = totalExpectedUSD > 0
+    ? Math.min(100, Math.round((totalRevenueUSD / totalExpectedUSD) * 100))
+    : 0;
+  const outstandingRevenueUSD = Math.max(totalExpectedUSD - totalRevenueUSD, 0);
+  const completedPayments = retreatPayments.filter((payment) => payment.status === 'completed');
+  const lastPaymentDate = completedPayments
+    .map((payment) => new Date(payment.paymentDate || payment.createdAt || 0))
+    .filter((date) => !Number.isNaN(date.getTime()))
+    .sort((left, right) => right.getTime() - left.getTime())[0];
+  const balancesDueCount = clients.filter((client) => client.totalAmount > client.amountPaid).length;
+  const expenseCategories = Object.entries(expensesSummary?.expensesByCategoryUSD || expensesSummary?.expensesByCategory || {})
+    .filter(([, amount]) => Number(amount) > 0)
+    .sort(([, left], [, right]) => Number(right) - Number(left))
+    .slice(0, 3)
+    .map(([category]) => category.replace(/_/g, ' ').toLowerCase());
+  const overbookedBy = Math.max(activeClientCount - Number(retreat.capacity || 0), 0);
+  const formatMetricDate = (date?: Date) => date
+    ? date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
+    : '—';
+  const formatMetricDateTime = (date: Date) => date.toLocaleString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+  const formatMetricRetreatDate = (value?: string | Date) => value
+    ? new Date(value).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+    : 'Not set';
   const retreatCode = retreat.code || retreat.retreatCode || retreat.name || 'Retreat';
   const retreatCapacity = Number(retreat.capacity || 0);
   const retreatDateText = `${formatDate(retreat.startDate || '')} - ${formatDate(retreat.endDate || '')}`;
+  const metricRetreatDateText = `${formatMetricRetreatDate(retreat.startDate)} – ${formatMetricRetreatDate(retreat.endDate)}`;
   const currentRetreatIndex = scheduledRetreats.findIndex((item) => item._id === retreatId);
   const previousRetreat = currentRetreatIndex > 0 ? scheduledRetreats[currentRetreatIndex - 1] : null;
   const nextRetreat = currentRetreatIndex >= 0 && currentRetreatIndex < scheduledRetreats.length - 1
@@ -1191,55 +1226,119 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       </Modal>
 
       <Modal
-        title="Financial Metrics"
+        title={(
+          <div className="financial-metrics-title">
+            <strong>Financial metrics</strong>
+            <span>
+              {retreatCode} · {metricRetreatDateText} · {activeClientCount} active clients, {clients.filter((client) => client.status === 'confirmed').length} confirmed
+            </span>
+          </div>
+        )}
         open={!metricsCollapsed}
         onCancel={() => setMetricsCollapsed(true)}
         footer={null}
         width={1000}
+        className="financial-metrics-modal"
         destroyOnClose
       >
-          <div className="retreat-stats">
-            <div className="stat-card">
-              <div className="stat-number">{activeClientCount}</div>
-              <div className="stat-label">Active Clients</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-number">{occupancyRate}%</div>
-              <div className="stat-label">Occupancy Rate</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-number">{formatUSD(totalRevenueUSD)}</div>
-              <div className="stat-label">Revenue Collected</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-number">{formatUSD(totalExpectedUSD)}</div>
-              <div className="stat-label">Expected Revenue</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-number">{clients.filter(c => c.status === 'confirmed').length}</div>
-              <div className="stat-label">Confirmed</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-number">{formatUSD(plannedExpensesUSD)}</div>
-              <div className="stat-label">Planned Expenses</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-number">{formatUSD(actualExpensesUSD)}</div>
-              <div className="stat-label">Actual Expenses</div>
-            </div>
-            <div className="stat-card">
-              <div className={`stat-number ${profitUSD >= 0 ? 'profit-positive' : 'profit-negative'}`}>
-                {formatUSD(profitUSD)}
+        <div className="financial-metrics-content">
+          <section className="financial-progress-card">
+            <div className="financial-progress-copy">
+              <div>
+                <span className="financial-kicker">Revenue collected</span>
+                <div className="financial-revenue-line">
+                  <strong>{formatUSD(totalRevenueUSD)}</strong>
+                  <span>of {formatUSD(totalExpectedUSD)} expected</span>
+                </div>
               </div>
-              <div className="stat-label">Profit</div>
-            </div>
-            <div className="stat-card">
-              <div className={`stat-number ${expectedProfitUSD >= 0 ? 'profit-positive' : 'profit-negative'}`}>
-                {formatUSD(expectedProfitUSD)}
+              <div className="financial-progress-result">
+                <strong>{collectedPercentage}%</strong>
+                <span>{formatUSD(outstandingRevenueUSD)} outstanding</span>
               </div>
-              <div className="stat-label">Expected Profit</div>
             </div>
-          </div>
+            <div className="financial-progress-track" aria-label={`${collectedPercentage}% revenue collected`}>
+              <span style={{ width: `${collectedPercentage}%` }} />
+            </div>
+          </section>
+
+          <section className="financial-statement">
+            <h4>Revenue</h4>
+            <div className="financial-row">
+              <div><strong>Collected</strong><span>{completedPayments.length} payments · last {formatMetricDate(lastPaymentDate)}</span></div>
+              <b>{formatUSD(totalRevenueUSD)}</b>
+            </div>
+            <div className="financial-row">
+              <div><strong>Outstanding</strong><span>{balancesDueCount} balances due before arrival</span></div>
+              <b className="financial-caution">{formatUSD(outstandingRevenueUSD)}</b>
+            </div>
+            <div className="financial-row financial-total">
+              <div><strong>Expected total</strong></div>
+              <b>{formatUSD(totalExpectedUSD)}</b>
+            </div>
+
+            <h4>Expenses</h4>
+            <div className="financial-row">
+              <div>
+                <strong>Actual</strong>
+                <span>
+                  {expensesSummary?.count || 0} recorded
+                  {expenseCategories.length ? ` · ${expenseCategories.join(', ')}` : ''}
+                </span>
+              </div>
+              <b>{formatUSD(actualExpensesUSD)}</b>
+            </div>
+            <div className="financial-row financial-muted">
+              <div><strong>Planned</strong><span>{plannedExpensesUSD > 0 ? 'scheduled expenses' : 'nothing scheduled yet'}</span></div>
+              <b>{formatUSD(plannedExpensesUSD)}</b>
+            </div>
+            <div className="financial-row financial-total">
+              <div><strong>Expected total</strong></div>
+              <b>{formatUSD(expectedExpensesUSD)}</b>
+            </div>
+
+            <h4>Profit</h4>
+            <div className="financial-row financial-profit-row">
+              <div><strong>Profit so far</strong><span>collected minus actual expenses</span></div>
+              <b className={profitUSD < 0 ? 'financial-negative' : ''}>{formatUSD(profitUSD)}</b>
+            </div>
+            <div className="financial-row financial-profit-row financial-muted">
+              <div><strong>Expected profit</strong><span>if all balances are paid</span></div>
+              <b className={expectedProfitUSD < 0 ? 'financial-negative' : ''}>{formatUSD(expectedProfitUSD)}</b>
+            </div>
+          </section>
+
+          <section className={`financial-occupancy ${overbookedBy ? 'is-overbooked' : ''}`}>
+            <div>
+              <strong>
+                Occupancy {occupancyRate}%
+                {overbookedBy ? ` — overbooked by ${overbookedBy}` : ''}
+              </strong>
+              <span>
+                {activeClientCount} clients booked against {retreat.capacity || 0} spots.
+                {overbookedBy ? ' Revenue above plan, but check bed allocation.' : ''}
+              </span>
+            </div>
+            <button type="button" onClick={() => {
+              setMetricsCollapsed(true);
+              handleTabChange('clients');
+            }}>
+              Review bookings
+            </button>
+          </section>
+
+          <footer className="financial-metrics-footer">
+            <div>
+              <button type="button" className="financial-primary-action" onClick={handleExport}>Export statement</button>
+              <button type="button" onClick={() => {
+                setMetricsCollapsed(true);
+                handleTabChange('expenses');
+              }}>
+                Add expense
+              </button>
+            </div>
+            <span>Updated {formatMetricDateTime(metricsUpdatedAt)}</span>
+          </footer>
+        </div>
       </Modal>
 
       {/* Tab Navigation */}
