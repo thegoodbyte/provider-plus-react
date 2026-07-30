@@ -5,6 +5,14 @@ import AppleButton from '../components/AppleButton';
 import { clientsApi, referralsApi, screeningApi } from '../services/api';
 import { Client, Referral } from '../types';
 
+interface TruthHuntingEntry {
+  id: string;
+  date: string;
+  source: string;
+  information: string;
+  createdAt: string;
+}
+
 interface ScreeningData {
   clientId: string;
   firstName: string;
@@ -128,6 +136,7 @@ interface ScreeningData {
   handwritingImageUrl: string;
   riskNotes: string;
   generalNotes: string;
+  truthHuntingEntries: TruthHuntingEntry[];
   desiredRetreat: string;
   quotedPrice: string;
   screenedBy: string;
@@ -172,6 +181,10 @@ const sectionStyles = {
   notes: {
     container: 'bg-yellow-50 rounded-lg border border-yellow-200 p-6 mb-6 shadow-sm',
     heading: 'text-lg font-semibold mb-4 text-yellow-900',
+  },
+  truthHunting: {
+    container: 'bg-teal-50 rounded-lg border border-teal-200 p-6 mb-6 shadow-sm',
+    heading: 'text-lg font-semibold text-teal-950',
   },
 };
 
@@ -245,6 +258,12 @@ const ClientScreening: React.FC = () => {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
+  const [truthHuntingDraft, setTruthHuntingDraft] = useState({
+    date: new Date().toISOString().split('T')[0],
+    source: 'WhatsApp',
+    information: '',
+  });
+  const [truthHuntingEditingId, setTruthHuntingEditingId] = useState('');
   const mainIntentRef = useRef<HTMLTextAreaElement | null>(null);
   const saveMessageTimeoutRef = useRef<number | null>(null);
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -371,6 +390,7 @@ const ClientScreening: React.FC = () => {
     handwritingImageUrl: '',
     riskNotes: '',
     generalNotes: '',
+    truthHuntingEntries: [],
     desiredRetreat: '',
     quotedPrice: '',
     screenedBy: user?.email || '',
@@ -461,6 +481,9 @@ const ClientScreening: React.FC = () => {
       setFormData(prev => ({
         ...prev,
         ...existingScreening,
+        truthHuntingEntries: Array.isArray(existingScreening.truthHuntingEntries)
+          ? existingScreening.truthHuntingEntries
+          : [],
         clientId,
         firstName: clientData.firstName || '',
         lastName: clientData.lastName || '',
@@ -985,6 +1008,63 @@ const ClientScreening: React.FC = () => {
   };
 
   const formatButtonClass = 'inline-flex h-8 w-8 flex-none items-center justify-center rounded border border-gray-200 bg-transparent p-0 text-sm text-gray-700 hover:bg-white hover:text-gray-950 focus:outline-none focus:ring-2 focus:ring-blue-500';
+
+  const resetTruthHuntingDraft = () => {
+    setTruthHuntingDraft({
+      date: new Date().toISOString().split('T')[0],
+      source: 'WhatsApp',
+      information: '',
+    });
+    setTruthHuntingEditingId('');
+  };
+
+  const saveTruthHuntingEntry = () => {
+    const information = truthHuntingDraft.information.trim();
+    if (!truthHuntingDraft.date || !truthHuntingDraft.source.trim() || !information) {
+      flashSaveMessage('Date, source, and information are required.');
+      return;
+    }
+    const now = new Date().toISOString();
+    setFormData((current) => {
+      const existing = current.truthHuntingEntries || [];
+      const nextEntry: TruthHuntingEntry = {
+        id: truthHuntingEditingId || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        date: truthHuntingDraft.date,
+        source: truthHuntingDraft.source.trim(),
+        information,
+        createdAt: truthHuntingEditingId
+          ? existing.find((entry) => entry.id === truthHuntingEditingId)?.createdAt || now
+          : now,
+      };
+      return {
+        ...current,
+        truthHuntingEntries: truthHuntingEditingId
+          ? existing.map((entry) => entry.id === truthHuntingEditingId ? nextEntry : entry)
+          : [nextEntry, ...existing],
+      };
+    });
+    setHasChanges(true);
+    resetTruthHuntingDraft();
+  };
+
+  const editTruthHuntingEntry = (entry: TruthHuntingEntry) => {
+    setTruthHuntingEditingId(entry.id);
+    setTruthHuntingDraft({
+      date: entry.date,
+      source: entry.source,
+      information: entry.information,
+    });
+  };
+
+  const deleteTruthHuntingEntry = (id: string) => {
+    if (!window.confirm('Delete this Truth hunting entry?')) return;
+    setFormData((current) => ({
+      ...current,
+      truthHuntingEntries: (current.truthHuntingEntries || []).filter((entry) => entry.id !== id),
+    }));
+    setHasChanges(true);
+    if (truthHuntingEditingId === id) resetTruthHuntingDraft();
+  };
 
   if (loading) {
     return <div className="flex justify-center items-center h-screen">Loading...</div>;
@@ -1915,6 +1995,85 @@ const ClientScreening: React.FC = () => {
       </div>
 
       {/* Additional Notes */}
+      <div className={sectionStyles.truthHunting.container}>
+        <div className="mb-4">
+          <h2 className={sectionStyles.truthHunting.heading}>Truth hunting</h2>
+          <p className="mt-1 text-sm text-teal-800">Add new information learned after the original screening without changing its history.</p>
+        </div>
+
+        <div className="rounded-lg border border-teal-200 bg-white p-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Date *</label>
+              <input
+                type="date"
+                value={truthHuntingDraft.date}
+                onChange={(event) => setTruthHuntingDraft((current) => ({ ...current, date: event.target.value }))}
+                className="w-full rounded-md border border-gray-300 px-3 py-2"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="mb-1 block text-sm font-medium text-gray-700">Source *</label>
+              <input
+                list="truth-hunting-sources"
+                value={truthHuntingDraft.source}
+                onChange={(event) => setTruthHuntingDraft((current) => ({ ...current, source: event.target.value }))}
+                placeholder="WhatsApp, phone, email, in person..."
+                className="w-full rounded-md border border-gray-300 px-3 py-2"
+              />
+              <datalist id="truth-hunting-sources">
+                <option value="WhatsApp" />
+                <option value="Phone call" />
+                <option value="Email" />
+                <option value="In person" />
+                <option value="Family member" />
+                <option value="Medical advisor" />
+              </datalist>
+            </div>
+            <div className="md:col-span-3">
+              <label className="mb-1 block text-sm font-medium text-gray-700">New information *</label>
+              <textarea
+                value={truthHuntingDraft.information}
+                onChange={(event) => setTruthHuntingDraft((current) => ({ ...current, information: event.target.value }))}
+                rows={5}
+                placeholder="What did you learn about this client?"
+                className="w-full rounded-md border border-gray-300 px-3 py-2"
+              />
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button type="button" onClick={saveTruthHuntingEntry} className="rounded-md bg-teal-700 px-4 py-2 font-semibold text-white hover:bg-teal-800">
+              {truthHuntingEditingId ? 'Update entry' : 'Add entry'}
+            </button>
+            {truthHuntingEditingId && (
+              <button type="button" onClick={resetTruthHuntingDraft} className="rounded-md border border-gray-300 bg-white px-4 py-2 font-semibold text-gray-700">
+                Cancel edit
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          {(formData.truthHuntingEntries || []).map((entry) => (
+            <article key={entry.id} className="rounded-lg border border-teal-200 bg-white p-4">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="font-semibold text-gray-900">{entry.date} · {entry.source}</div>
+                  <p className="mt-2 whitespace-pre-wrap text-sm text-gray-700">{entry.information}</p>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <button type="button" onClick={() => editTruthHuntingEntry(entry)} className="rounded-md bg-gray-100 px-3 py-2 text-sm font-semibold text-gray-700">Edit</button>
+                  <button type="button" onClick={() => deleteTruthHuntingEntry(entry.id)} className="rounded-md bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">Delete</button>
+                </div>
+              </div>
+            </article>
+          ))}
+          {!formData.truthHuntingEntries?.length && (
+            <div className="rounded-lg border border-dashed border-teal-300 p-4 text-center text-sm text-teal-800">No additional findings yet.</div>
+          )}
+        </div>
+      </div>
+
       <div className={sectionStyles.notes.container}>
         <h2 className={sectionStyles.notes.heading}>Additional Information</h2>
 
