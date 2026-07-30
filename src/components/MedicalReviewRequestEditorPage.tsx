@@ -78,6 +78,27 @@ const formatDocumentMeta = (stage?: MedicalArtifact['documentStage'] | '', type?
   return parts.length ? parts.join(' · ') : 'No document stage/type recorded';
 };
 
+const statusFromReviewDecision = (
+  decision: FormState['reviewDecision'],
+  fallback: FormState['status'],
+): FormState['status'] => {
+  if (decision === 'OK') return 'approved';
+  if (decision === 'caution') return 'caution';
+  if (decision === 'more_info_needed') return 'needs_resubmission';
+  if (decision === 'NOT OK') return 'rejected';
+  return ['pending', 'in_review'].includes(String(fallback)) ? fallback : 'pending';
+};
+
+const formatReviewStatus = (status?: string) => ({
+  pending: 'Pending',
+  in_review: 'In review',
+  approved: 'Approved',
+  rejected: 'Declined',
+  caution: 'Caution',
+  needs_resubmission: 'More information needed',
+  completed: 'Completed',
+}[String(status || '')] || String(status || 'Pending').replace(/_/g, ' '));
+
 const getArtifactFileUrl = (file: NonNullable<MedicalArtifact['files']>[number]) => {
   const storedPath = file.url || file.filePath || file.s3Key || '';
   return /^https?:\/\//i.test(storedPath) ? storedPath : '';
@@ -329,6 +350,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
       }
 
       if (isEdit && id) {
+        const derivedStatus = statusFromReviewDecision(form.reviewDecision, form.status);
         await medicalReviewRequestsApi.update(id, {
           clientId: form.clientId,
           retreatId: form.retreatId,
@@ -339,7 +361,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           documentType: form.documentType || undefined,
           ceremonyNumber: form.ceremonyNumber || undefined,
           requestType: form.requestType,
-          status: form.status,
+          status: derivedStatus,
           requestedBy: form.requestedBy,
           ...(form.sentForReviewAt ? { sentForReviewAt: form.sentForReviewAt } : {}),
           assignedTo: form.assignedTo,
@@ -359,7 +381,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           documentType: form.documentType || undefined,
           ceremonyNumber: form.ceremonyNumber || undefined,
           requestType: form.requestType,
-          status: form.status,
+          status: statusFromReviewDecision(form.reviewDecision, form.status),
           assignedTo: form.assignedTo,
           assignedToUserId: form.assignedToUserId,
           reviewDecision: form.reviewDecision || undefined,
@@ -380,6 +402,22 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
     } catch (error) {
       console.error('Error saving medical review request:', error);
       alert(error instanceof Error ? error.message : 'Error saving medical review request');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleResetReview = async () => {
+    if (!id || user?.role !== 'admin') return;
+    const reason = window.prompt('Reason for resetting this review:', 'Decision entered by mistake');
+    if (reason === null) return;
+    if (!window.confirm('Remove the current decision and return this MRR to Pending?')) return;
+    try {
+      setSaving(true);
+      await medicalReviewRequestsApi.resetReview(id, reason.trim() || 'Decision entered by mistake');
+      navigate(`/admin/medical-review-requests/${id}`);
+    } catch (error: any) {
+      alert(error?.response?.data?.message || error?.message || 'Unable to reset this review.');
     } finally {
       setSaving(false);
     }
@@ -544,12 +582,11 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
             </select>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">Status</label>
-                <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as FormState['status'] })} className="w-full rounded-md border border-gray-300 px-3 py-2">
-                  {(['pending', 'in_review', 'approved', 'rejected', 'caution', 'needs_resubmission', 'completed'] as const).map((status) => (
-                    <option key={status} value={status}>{status}</option>
-                  ))}
-                </select>
+                <label className="mb-2 block text-sm font-medium text-gray-700">Current state</label>
+                <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 font-medium text-gray-800">
+                  {formatReviewStatus(statusFromReviewDecision(form.reviewDecision, form.status))}
+                </div>
+                <p className="mt-1 text-xs text-gray-500">Set automatically from the review decision below.</p>
               </div>
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-700">Medical Advisor <span className="text-red-600">*</span></label>
@@ -614,6 +651,11 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
                   <option value="more_info_needed">More Info Needed</option>
                   <option value="NOT OK">Declined</option>
                 </select>
+                {user?.role === 'admin' && form.reviewDecision && (
+                  <button type="button" onClick={handleResetReview} disabled={saving} className="mt-2 rounded-md border border-red-300 bg-white px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50">
+                    Reset mistaken review
+                  </button>
+                )}
               </>
             )}
             <label className="mb-2 mt-4 block text-sm font-medium text-gray-700">Overall Notes</label>
