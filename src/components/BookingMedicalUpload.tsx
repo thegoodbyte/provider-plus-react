@@ -19,8 +19,8 @@ interface BookingMedicalUploadProps {
   } | null;
 }
 
-type BookingMedicalTestType = 'ekg' | 'liver_panel';
-type BookingDocumentType = Extract<MedicalArtifact['documentType'], 'EKG' | 'Liver'>;
+type BookingMedicalTestType = 'ekg' | 'liver_panel' | 'medications_form';
+type BookingDocumentType = Extract<MedicalArtifact['documentType'], 'EKG' | 'Liver' | 'Medications'>;
 type UploadDocumentType = Extract<MedicalArtifact['documentType'], 'EKG' | 'Liver' | 'BP' | 'Medications' | 'additional' | 'other'>;
 type MedicalView = 'documents' | 'blood_pressure';
 
@@ -89,6 +89,13 @@ const medicalTestSections: Array<{
     title: 'Liver Panel',
     requestType: 'liver_panel_review',
     description: 'Required liver panel test result for this booking.',
+  },
+  {
+    type: 'medications_form',
+    documentType: 'Medications',
+    title: 'Medication Form Review',
+    requestType: 'medications_review',
+    description: 'Medication form, medical review decision, and review notes for this booking.',
   },
 ];
 
@@ -179,11 +186,17 @@ const getReviewDecisionInfo = (review?: MedicalReviewRequest) => {
   return { label: String(rawDecision).replace(/_/g, ' '), className: 'badge-default' };
 };
 
-const getFlowReceiptKey = (sectionType: BookingMedicalTestType) =>
-  sectionType === 'ekg' ? 'ekg_received' : 'liver_received';
+const getFlowReceiptKey = (sectionType: BookingMedicalTestType) => {
+  if (sectionType === 'ekg') return 'ekg_received';
+  if (sectionType === 'liver_panel') return 'liver_received';
+  return 'medications_form_initial_received';
+};
 
-const getFlowReadinessGroup = (sectionType: BookingMedicalTestType) =>
-  sectionType === 'ekg' ? 'ekg' : 'liver';
+const getFlowReadinessGroup = (sectionType: BookingMedicalTestType) => {
+  if (sectionType === 'ekg') return 'ekg';
+  if (sectionType === 'liver_panel') return 'liver';
+  return 'medications';
+};
 
 const artifactMatchesSection = (artifact: MedicalArtifact, section: (typeof medicalTestSections)[number]) =>
   artifact.artifactType === section.type ||
@@ -230,6 +243,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
   const [advisorSelections, setAdvisorSelections] = useState<Record<BookingMedicalTestType, string>>({
     ekg: '',
     liver_panel: '',
+    medications_form: '',
   });
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [uploadDocumentType, setUploadDocumentType] = useState<UploadDocumentType>('additional');
@@ -405,7 +419,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
         const advisors = (response.data || []).filter((user) => user.role === 'medical_advisor' && user.isActive !== false);
         setMedicalAdvisors(advisors);
         if (advisors.length === 1) {
-          setAdvisorSelections({ ekg: advisors[0]._id, liver_panel: advisors[0]._id });
+          setAdvisorSelections({ ekg: advisors[0]._id, liver_panel: advisors[0]._id, medications_form: advisors[0]._id });
         }
       })
       .catch((advisorError) => {
@@ -423,6 +437,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
     }, {
       ekg: [],
       liver_panel: [],
+      medications_form: [],
     });
   }, [artifacts]);
 
@@ -445,14 +460,18 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
       return;
     }
 
-    const item = items.find((candidate) => {
+    const exactItem = items.find((candidate) => candidate.key === key);
+    const configuredReceiptItem = items.find((candidate) => {
       const template = typeof candidate.templateId === 'object' ? candidate.templateId : undefined;
       const itemReadinessGroup = candidate.metadata?.readinessGroup || template?.readinessGroup;
       const itemExpectedArtifact = candidate.metadata?.expectedArtifact || template?.expectedArtifact;
-      return candidate.key === key ||
-        itemReadinessGroup === readinessGroup ||
-        itemExpectedArtifact === expectedArtifact;
+      const autoCompleteOnArtifact = candidate.metadata?.autoCompleteOnArtifact ?? template?.autoCompleteOnArtifact;
+      const isRequirement = candidate.metadata?.isRequirement ?? template?.isRequirement;
+      return itemReadinessGroup === readinessGroup
+        && itemExpectedArtifact === expectedArtifact
+        && (autoCompleteOnArtifact === true || isRequirement === true);
     });
+    const item = exactItem || configuredReceiptItem;
 
     if (!item?._id) return;
 
@@ -460,7 +479,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
     const response = await bookingFlowApi.updateItem(item._id, {
       status: 'received',
       receivedAt,
-      notes: `${sectionType === 'ekg' ? 'EKG' : 'Liver panel'} received from booking upload${artifact?.display_id ? ` (artifact #${artifact.display_id})` : ''}.`,
+      notes: `${sectionType === 'ekg' ? 'EKG' : sectionType === 'liver_panel' ? 'Liver panel' : 'Medication form'} received from booking upload${artifact?.display_id ? ` (artifact #${artifact.display_id})` : ''}.`,
       metadata: {
         ...(item.metadata || {}),
         receivedArtifactId: artifact?._id,
@@ -846,6 +865,14 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                           </span>
                           <span className={`status-badge ${decision.className}`}>{decision.label}</span>
                         </div>
+                        {review && (review.reviewNotes || review.overallNotes || review.medicalStaffNotes) && (
+                          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+                            <span className="booking-medical-required-label">Medical form review notes</span>
+                            <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">
+                              {review.reviewNotes || review.overallNotes || review.medicalStaffNotes}
+                            </p>
+                          </div>
+                        )}
                         <div className="booking-document-file-list">
                           {(artifact.files || []).length === 0 ? (
                             <span>No files attached.</span>
