@@ -351,7 +351,13 @@ export const retreatExpensesApi = {
     formData.append('receipt', receipt);
     return api.post<{ expense: RetreatExpense; receiptUrl: string }>(`/retreat-expenses/${id}/receipt`, formData);
   },
+  uploadReceipts: (id: string, receipts: File[]) => {
+    const formData = new FormData();
+    receipts.forEach((receipt) => formData.append('receipts', receipt));
+    return api.post<{ expense: RetreatExpense; receipts: Array<{ url: string; fileName?: string; mimeType?: string; uploadedAt?: string }> }>(`/retreat-expenses/${id}/receipt-images`, formData);
+  },
   getReceiptUrl: (id: string) => api.get<{ url: string; fileName?: string; mimeType?: string }>(`/retreat-expenses/${id}/receipt-url`),
+  getReceiptUrls: (id: string) => api.get<Array<{ url: string; fileName?: string; mimeType?: string; uploadedAt?: string }>>(`/retreat-expenses/${id}/receipt-urls`),
   delete: (id: string) => api.delete(`/retreat-expenses/${id}`),
   initializeRetreatExpenses: (retreatId: string) => api.post(`/retreat-expenses/retreat/${retreatId}/initialize`, {}),
   autoGenerateHouseCost: (retreatId: string) => api.post<RetreatExpense>(`/retreat-expenses/retreat/${retreatId}/auto-generate-house-cost`, {}),

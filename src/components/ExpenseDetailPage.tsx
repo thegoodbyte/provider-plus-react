@@ -11,6 +11,7 @@ const ExpenseDetailPage: React.FC = () => {
   const location = useLocation();
   const prefix = `/${location.pathname.split('/').filter(Boolean)[0] || 'admin'}`;
   const [expense, setExpense] = useState<RetreatExpense | null>(null);
+  const [receiptLinks, setReceiptLinks] = useState<Array<{ url: string; fileName?: string }>>([]);
   const [error, setError] = useState('');
   useEffect(() => {
     if (!id) return;
@@ -32,21 +33,36 @@ const ExpenseDetailPage: React.FC = () => {
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
         <div className="border-b border-slate-200 pb-4"><div className="text-sm font-bold uppercase tracking-wide text-slate-500">Expense</div><h1 className="mt-1 text-2xl font-extrabold text-slate-950">{expense.description || expense.vendor || 'Expense'}</h1><div className="mt-2 text-3xl font-black text-blue-700">{amount}</div></div>
         <dl className="divide-y divide-slate-100">{rows.map(([label, value]) => <div key={label} className="grid grid-cols-[110px_1fr] gap-3 py-3"><dt className="font-semibold text-slate-500">{label}</dt><dd className="break-words font-semibold text-slate-900">{value}</dd></div>)}</dl>
-        {expense.receiptS3Key && id && (
+        {(expense.receiptS3Key || expense.receiptImages?.length) && id && (
           <button
             type="button"
             onClick={async () => {
               try {
-                const response = await retreatExpensesApi.getReceiptUrl(id);
-                window.open(response.data.url, '_blank', 'noopener,noreferrer');
+                const response = await retreatExpensesApi.getReceiptUrls(id);
+                setReceiptLinks(response.data);
               } catch (receiptError: any) {
                 setError(receiptError?.response?.data?.message || 'Could not open the receipt.');
               }
             }}
             className="mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-blue-50 font-bold text-blue-700"
           >
-            <Image size={20} /> View receipt{expense.receiptFileName ? ` · ${expense.receiptFileName}` : ''}
+            <Image size={20} /> {receiptLinks.length ? 'Refresh receipt links' : 'Show receipt images'} ({expense.receiptImages?.length || 1})
           </button>
+        )}
+        {receiptLinks.length > 0 && (
+          <div className="mt-2 grid gap-2 sm:grid-cols-2">
+            {receiptLinks.map((receipt, index) => (
+              <a
+                key={`${receipt.fileName || 'receipt'}-${index}`}
+                href={receipt.url}
+                target="_blank"
+                rel="noreferrer"
+                className="flex min-h-12 items-center gap-2 rounded-xl border border-blue-200 px-3 font-semibold text-blue-700 hover:bg-blue-50"
+              >
+                <Image size={18} /> {receipt.fileName || `Receipt image ${index + 1}`}
+              </a>
+            ))}
+          </div>
         )}
       </div>
     </div>
