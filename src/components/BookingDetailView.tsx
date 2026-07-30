@@ -448,6 +448,10 @@ const BookingRequirementsPanel: React.FC<{
       const itemsResponse = await bookingFlowApi.getItems({ bookingId });
       timings.items = performance.now() - itemsStart;
       const bookingFlowFilters = buildBookingFlowArtifactFilters(itemsResponse.data || []);
+      // Listing booking documents reconciles legacy entry EKG/liver uploads
+      // into medical artifacts. Wait for that repair before querying the
+      // medical view so the recovered artifact appears on the first load.
+      await bookingDocumentsApi.getAll({ bookingId });
       const artifactsStart = performance.now();
       const [artifactsResponse, documentsResponse] = await Promise.all([
         Promise.all([
