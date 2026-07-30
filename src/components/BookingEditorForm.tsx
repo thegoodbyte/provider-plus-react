@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { bookingsApi, ceremoniesApi, clientsApi, retreatsApi } from '../services/api';
+import { bookingsApi, ceremoniesApi, clientsApi, configSummaryApi, retreatsApi } from '../services/api';
 import { RetreatClient, Client, Retreat, PaymentRequest, Ceremony } from '../types';
 import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
@@ -73,6 +73,39 @@ const toDateTimeInput = (value?: string | Date | null) => {
   return local.toISOString().slice(0, 16);
 };
 
+type BookingScheduleConfig = {
+  fullRetreatArrivalTime: string;
+  fullRetreatDepartureTime: string;
+  boosterCeremonyOneStayDays: number;
+  boosterCeremonyOneDepartureTime: string;
+  boosterCeremonyTwoArrivalOffsetDays: number;
+  boosterCeremonyTwoArrivalTime: string;
+};
+
+const datePart = (value?: string | Date | null) => {
+  if (!value) return '';
+  if (typeof value === 'string') {
+    const match = value.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (match) return match[1];
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
+};
+
+const addCalendarDays = (value: string | Date | undefined, days: number) => {
+  const start = datePart(value);
+  if (!start) return '';
+  const date = new Date(`${start}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+};
+
+const dateTimeValue = (value: string | Date | undefined, time?: string) => {
+  const day = datePart(value);
+  if (!day) return '';
+  return `${day}T${(time || '00:00').slice(0, 5)}`;
+};
+
 const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   mode,
   bookingId,
@@ -91,6 +124,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   const [ceremonies, setCeremonies] = useState<Ceremony[]>([]);
   const [booking, setBooking] = useState<RetreatClient | null>(initialBooking || null);
   const [formData, setFormData] = useState<BookingFormData>(emptyForm());
+  const [bookingSchedule, setBookingSchedule] = useState<BookingScheduleConfig | null>(null);
   const [bookingNumberError, setBookingNumberError] = useState('');
   const [cancellationReason, setCancellationReason] = useState('');
   const [depositTreatment, setDepositTreatment] = useState<'none' | 'retained' | 'refund_pending' | 'partially_refunded' | 'credited'>('none');
@@ -104,7 +138,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   const loadData = async () => {
     try {
       setLoading(true);
-      const [clientsResponse, retreatsResponse, nextNumberResponse] = await Promise.all([
+      const [clientsResponse, retreatsResponse, nextNumberResponse, configResponse] = await Promise.all([
         clientsApi.getBookingOptions(),
         initialRetreats?.length ? Promise.resolve({ data: initialRetreats }) : retreatsApi.getAll(),
         mode === 'create'
@@ -113,9 +147,14 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
               return { data: undefined };
             })
           : Promise.resolve({ data: undefined }),
+        configSummaryApi.get().catch((error) => {
+          console.error('Error loading booking schedule configuration:', error);
+          return { data: undefined };
+        }),
       ]);
       setClients(clientsResponse.data || []);
       setRetreats(retreatsResponse.data || []);
+      setBookingSchedule(configResponse.data?.bookingSchedule || null);
 
       let currentBooking = initialBooking || null;
       if (mode === 'edit' && bookingId && !currentBooking) {
@@ -173,6 +212,53 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
         setCeremonies([]);
       });
   }, [formData.retreatId]);
+
+  useEffect(() => {
+    if (mode !== 'create' || !bookingSchedule || !formData.retreatId) return;
+    const retreat = retreats.find((item) => item._id === formData.retreatId);
+    if (!retreat) return;
+
+    const retreatStartDate = retreat.startDate || retreat.dates?.startDate;
+    const retreatEndDate = retreat.endDate || retreat.dates?.endDate;
+    const retreatStartTime = retreat.startTime || retreat.dates?.startTime || bookingSchedule.fullRetreatArrivalTime;
+    const retreatEndTime = retreat.endTime || retreat.dates?.endTime || bookingSchedule.fullRetreatDepartureTime;
+
+    let checkInDate = dateTimeValue(retreatStartDate, retreatStartTime);
+    let checkOutDate = dateTimeValue(retreatEndDate, retreatEndTime);
+
+    if (formData.bookingType === 'booster' && formData.ceremonyNumber === '1') {
+      const departureDate = addCalendarDays(
+        retreatStartDate,
+        bookingSchedule.boosterCeremonyOneStayDays,
+      );
+      checkOutDate = dateTimeValue(
+        departureDate,
+        bookingSchedule.boosterCeremonyOneDepartureTime,
+      );
+    } else if (formData.bookingType === 'booster' && formData.ceremonyNumber === '2') {
+      const arrivalDate = addCalendarDays(
+        retreatStartDate,
+        bookingSchedule.boosterCeremonyTwoArrivalOffsetDays,
+      );
+      checkInDate = dateTimeValue(
+        arrivalDate,
+        bookingSchedule.boosterCeremonyTwoArrivalTime,
+      );
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      checkInDate,
+      checkOutDate,
+    }));
+  }, [
+    mode,
+    bookingSchedule,
+    retreats,
+    formData.retreatId,
+    formData.bookingType,
+    formData.ceremonyNumber,
+  ]);
 
   const resolveId = (value: any) => {
     if (!value) return '';
@@ -398,21 +484,6 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
 
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Arrival</label>
-            <input type="datetime-local" value={formData.checkInDate}
-              onChange={(e) => setFormData((prev) => ({ ...prev, checkInDate: e.target.value }))}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Departure</label>
-            <input type="datetime-local" value={formData.checkOutDate}
-              onChange={(e) => setFormData((prev) => ({ ...prev, checkOutDate: e.target.value }))}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Client</label>
             <SearchableClientSelect
               clients={clients}
@@ -432,6 +503,28 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
               required
             />
           </div>
+        </div>
+
+        <div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Arrival</label>
+              <input type="datetime-local" value={formData.checkInDate}
+                onChange={(e) => setFormData((prev) => ({ ...prev, checkInDate: e.target.value }))}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Departure</label>
+              <input type="datetime-local" value={formData.checkOutDate}
+                onChange={(e) => setFormData((prev) => ({ ...prev, checkOutDate: e.target.value }))}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+          </div>
+          {mode === 'create' && formData.retreatId && (
+            <p className="mt-1 text-xs text-gray-500">
+              Prefilled from the retreat and booster schedule. You can adjust either time before saving.
+            </p>
+          )}
         </div>
 
         <div>
