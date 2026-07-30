@@ -1106,12 +1106,10 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             <span className="retreat-action-label">Edit Retreat</span>
           </button>
         </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600 shadow-sm">
+        <div className="retreat-summary-line">
           <span className="font-semibold text-gray-900">{retreatCode}</span>
-          <span aria-hidden="true">·</span>
-          <span>{activeClientCount}/{retreatCapacity} spots taken</span>
-          <span aria-hidden="true">·</span>
           <span>{retreatDateText}</span>
+          <strong>{activeClientCount} / {retreatCapacity} spots</strong>
         </div>
       </div>
 
@@ -1253,7 +1251,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           aria-selected={activeTab === 'clients'}
         >
           <PeopleAltRoundedIcon className="retreat-tab-icon" />
-          <span>Clients ({activeClientCount})</span>
+          <span>Clients <b>{activeClientCount}</b></span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'holisticView' ? 'active' : ''}`}
@@ -1262,7 +1260,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           aria-selected={activeTab === 'holisticView'}
         >
           <AssignmentTurnedInRoundedIcon className="retreat-tab-icon" />
-          <span>Retreat Readiness</span>
+          <span>Readiness</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'tracking' ? 'active' : ''}`}
@@ -1271,7 +1269,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           aria-selected={activeTab === 'tracking'}
         >
           <FactCheckRoundedIcon className="retreat-tab-icon" />
-          <span>Medical Grid</span>
+          <span>Medical grid</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'expenses' ? 'active' : ''}`}
@@ -1316,7 +1314,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           aria-selected={activeTab === 'tasks'}
         >
           <TaskAltRoundedIcon className="retreat-tab-icon" />
-          <span>Tasks</span>
+          <span>Tasks <b>{0}</b></span>
         </button>
       </div>
 
@@ -1325,7 +1323,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         {activeTab === 'clients' && (
         <div className="clients-section">
           <div className="section-header">
-            <h2>📋 Retreat Clients ({activeClientCount} active)</h2>
+            <h2>Clients <span>{activeClientCount} active · {clients.length - activeClientCount} cancelled</span></h2>
             <div className="section-actions">
               <button
                 onClick={() => navigate(`${location.pathname.replace(/\/$/, '')}/clients-print`)}
@@ -1334,7 +1332,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                 aria-label="Print retreat client grid"
               >
                 <Icon icon={FiPrinter} className="w-4 h-4" />
-                <span>Print Client Grid</span>
+                <span>Print</span>
               </button>
               <label className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700">
                 <input type="checkbox" checked={showCancelledBookings} onChange={(event) => setShowCancelledBookings(event.target.checked)} />
@@ -1347,7 +1345,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                 aria-label="Quick book client"
               >
                 <Icon icon={FiPlus} className="w-4 h-4" />
-                <span>Quick Book Client</span>
+                <span>Book client</span>
               </button>
               <button
                 onClick={() => setShowExistingClientModal(true)}
@@ -1356,7 +1354,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                 aria-label="Add existing client"
               >
                 <Icon icon={FiUserPlus} className="w-4 h-4" />
-                <span>Add Existing Client</span>
+                <span>Add existing</span>
               </button>
               <button
                 onClick={openRetreatEmailModal}
@@ -1366,7 +1364,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                 aria-label={`Email retreat clients (${retreatEmailRecipientCount})`}
               >
                 <Icon icon={FiMail} className="w-4 h-4" />
-                <span>Email Retreat ({retreatEmailRecipientCount})</span>
+                <span>Email all</span>
               </button>
               <button
                 onClick={fetchRetreatData}
@@ -1380,9 +1378,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden max-h-96">
-            <div className="overflow-x-auto overflow-y-auto max-h-96">
-              <table className="min-w-full divide-y divide-gray-200">
+          <div className="retreat-client-table-shell">
+            <div className="retreat-client-table-scroll">
+              <table className="retreat-client-table">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1467,10 +1465,11 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                             </Link>
                             <Link
                               to={`/${routePrefix}/clients/${client.clientId}`}
-                              className="mt-0.5 block text-xs font-semibold text-gray-500 hover:text-gray-700 hover:underline"
+                              className="retreat-client-secondary mt-0.5 block text-xs font-semibold text-gray-500 hover:text-gray-700 hover:underline"
                               title="View client profile"
                             >
-                              {client.clientDisplayId ? `Client #${client.clientDisplayId}` : 'Client ID unavailable'}
+                              <span className="retreat-client-desktop-id">{client.clientDisplayId ? `#${client.clientDisplayId}` : 'ID unavailable'}</span>
+                              <span className="retreat-client-mobile-meta">#{client.bookingNumber || client._id?.slice(-6)} · {client.bookingType === 'booster' ? 'Booster' : 'Full retreat'}</span>
                             </Link>
                           </div>
                         </div>
@@ -1493,6 +1492,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                         <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${client.status === 'cancelled' ? 'bg-red-100 text-red-800' : client.status === 'confirmed' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-700'}`}>
                           {bookingStatusLabel(client.status)}
                         </span>
+                        <span className={`retreat-payment-status-inline rounded-full px-2.5 py-1 text-xs font-semibold ${paymentStatusClass(client)}`}>{paymentStatusLabel(client)}</span>
                         {client.status === 'cancelled' && client.cancellationReason && <div className="mt-1 max-w-44 whitespace-normal text-xs text-gray-500" title={client.cancellationNotes || client.cancellationReason}>{client.cancellationReason}</div>}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -1553,6 +1553,13 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                 </div>
               )}
             </div>
+          </div>
+          <div className="retreat-client-table-footer">
+            <label>
+              <input type="checkbox" checked={showCancelledBookings} onChange={(event) => setShowCancelledBookings(event.target.checked)} />
+              Show cancelled bookings
+            </label>
+            <span>Total {formatAmount(clients.reduce((sum, client) => sum + Number(client.totalAmount || 0), 0), clients[0]?.currency || 'EUR')}</span>
           </div>
         </div>
         )}

@@ -6,6 +6,463 @@
   animation: fadeIn 0.3s ease-out;
 }
 
+/* 2026 retreat workspace redesign */
+.retreat-detail-container {
+  --retreat-ink: #26241f;
+  --retreat-muted: #8b8273;
+  --retreat-line: #e2d9ca;
+  --retreat-blue: #18587a;
+  max-width: 1600px;
+  padding: 0 28px 60px;
+  background: #fbf8f2;
+}
+
+.retreat-detail-header {
+  position: relative;
+  display: flex;
+  min-height: 76px;
+  align-items: center;
+  gap: 18px;
+  margin: 0 -28px;
+  padding: 0 28px;
+  border-bottom: 1px solid var(--retreat-line);
+  background: white;
+}
+
+.retreat-detail-actions {
+  display: contents;
+}
+
+.retreat-summary-line {
+  order: -1;
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 14px;
+  color: #7e7568;
+  white-space: nowrap;
+}
+
+.retreat-summary-line span:first-child {
+  color: var(--retreat-ink);
+  font-size: 18px;
+  font-weight: 850;
+}
+
+.retreat-summary-line strong {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: #eaf3f7;
+  color: var(--retreat-blue);
+  font-size: 13px;
+}
+
+.retreat-detail-header .edit-retreat-btn {
+  min-height: 44px;
+  margin: 0;
+  padding: 0 16px;
+  border-color: var(--retreat-line);
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.retreat-detail-header .retreat-detail-actions > button:first-child {
+  order: -2;
+  padding-left: 0;
+  border: 0;
+  color: #746c60;
+}
+
+.retreat-detail-header .retreat-detail-actions > button:nth-child(2) {
+  margin-left: auto;
+}
+
+.retreat-detail-header .retreat-detail-actions > button:last-child {
+  border-color: var(--retreat-blue);
+  background: var(--retreat-blue);
+  color: white;
+}
+
+.tab-navigation.retreat-detail-tabs {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  gap: 32px;
+  margin: 0 -28px 28px;
+  padding: 0 28px;
+  border: 0;
+  border-bottom: 1px solid var(--retreat-line);
+  border-radius: 0;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: none;
+  scrollbar-width: thin;
+}
+
+.tab-navigation.retreat-detail-tabs .tab-btn {
+  min-width: auto;
+  min-height: 58px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #7c7365;
+  box-shadow: none;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.tab-navigation.retreat-detail-tabs .tab-btn.active {
+  border-bottom: 2px solid var(--retreat-blue);
+  background: transparent;
+  color: var(--retreat-ink);
+  box-shadow: none;
+}
+
+.tab-navigation.retreat-detail-tabs .retreat-tab-icon,
+.tab-navigation.retreat-detail-tabs .retreat-tab-icon.MuiSvgIcon-root {
+  display: none;
+}
+
+.tab-navigation.retreat-detail-tabs .tab-btn b {
+  margin-left: 5px;
+  padding: 2px 7px;
+  border-radius: 7px;
+  background: #edf4f7;
+  color: var(--retreat-blue);
+  font-size: 12px;
+}
+
+.clients-section .section-header {
+  align-items: center;
+  margin-bottom: 18px;
+  padding: 0;
+  border: 0;
+}
+
+.clients-section .section-header h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 0;
+  color: var(--retreat-ink);
+  font-size: 24px;
+}
+
+.clients-section .section-header h2 span {
+  color: var(--retreat-muted);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.clients-section .section-actions {
+  gap: 10px;
+}
+
+.clients-section .section-actions > label,
+.clients-section .retreat-client-action-print,
+.clients-section .retreat-client-action-refresh {
+  display: none;
+}
+
+.clients-section .retreat-client-action {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--retreat-line);
+  border-radius: 10px;
+  background: white;
+  color: #3b3731;
+  box-shadow: none;
+  font-weight: 700;
+}
+
+.clients-section .retreat-client-action-book {
+  border-color: var(--retreat-blue);
+  background: var(--retreat-blue);
+  color: white;
+}
+
+.retreat-client-table-shell {
+  overflow: hidden;
+  border: 1px solid var(--retreat-line);
+  border-radius: 14px;
+  background: white;
+}
+
+.retreat-client-table-scroll {
+  overflow-x: auto;
+}
+
+.retreat-client-table {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: collapse;
+}
+
+.retreat-client-table thead {
+  background: #fbf8f2;
+}
+
+.retreat-client-table th {
+  padding: 13px 18px !important;
+  color: #8a8172 !important;
+  font-size: 11px !important;
+  font-weight: 850 !important;
+  letter-spacing: .08em !important;
+}
+
+.retreat-client-table td {
+  height: 82px;
+  padding: 14px 18px !important;
+  border-top: 1px solid #ebe4d8;
+}
+
+.retreat-client-table th:nth-child(7),
+.retreat-client-table td:nth-child(7),
+.retreat-client-table th:nth-child(9),
+.retreat-client-table td:nth-child(9),
+.retreat-client-table th:nth-child(10),
+.retreat-client-table td:nth-child(10) {
+  display: none;
+}
+
+.retreat-client-table td:nth-child(8) {
+  color: var(--retreat-ink);
+  font-size: 16px;
+  font-weight: 800;
+  text-align: right;
+}
+
+.retreat-payment-status-inline {
+  display: block;
+  width: max-content;
+  margin-top: 5px;
+}
+
+.retreat-client-mobile-meta {
+  display: none;
+}
+
+.retreat-client-table-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 0;
+  color: var(--retreat-muted);
+  font-size: 14px;
+}
+
+.retreat-client-table-footer label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.retreat-client-table-footer input {
+  width: 18px;
+  height: 18px;
+}
+
+@media (max-width: 900px) {
+  .retreat-detail-header .retreat-action-label {
+    display: none;
+  }
+
+  .retreat-detail-header .retreat-detail-actions > button:nth-last-child(-n + 3) {
+    width: 44px;
+    padding: 0;
+  }
+}
+
+@media (max-width: 700px) {
+  .retreat-detail-container {
+    padding: 0 20px 48px;
+  }
+
+  .retreat-detail-header {
+    min-height: 82px;
+    margin: 0 -20px;
+    padding: 0 20px;
+    gap: 10px;
+  }
+
+  .retreat-summary-line {
+    flex: 1;
+  }
+
+  .retreat-summary-line span:nth-child(2) {
+    display: none;
+  }
+
+  .retreat-summary-line span:first-child {
+    font-size: 17px;
+  }
+
+  .retreat-detail-header .retreat-detail-actions > button:first-child {
+    width: 34px;
+    padding: 0;
+    overflow: hidden;
+    color: transparent;
+  }
+
+  .retreat-detail-header .retreat-detail-actions > button:first-child::before {
+    content: '←';
+    color: #6f675c;
+    font-size: 22px;
+  }
+
+  .retreat-detail-header .retreat-detail-actions > button:nth-child(4),
+  .retreat-detail-header .retreat-detail-actions > button:nth-child(5) {
+    display: none;
+  }
+
+  .retreat-summary-line strong {
+    padding: 6px 9px;
+    font-size: 12px;
+  }
+
+  .tab-navigation.retreat-detail-tabs {
+    gap: 26px;
+    margin: 0 -20px 24px;
+    padding: 0 20px;
+  }
+
+  .tab-navigation.retreat-detail-tabs .tab-btn {
+    width: auto;
+    min-width: auto;
+    min-height: 58px;
+    padding: 0;
+    font-size: 14px;
+  }
+
+  .tab-navigation.retreat-detail-tabs .tab-btn span {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: nowrap;
+  }
+
+  .clients-section .section-header {
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .clients-section .section-header h2 {
+    font-size: 22px;
+  }
+
+  .clients-section .section-actions {
+    display: flex;
+    width: 100%;
+    gap: 8px;
+    overflow-x: auto;
+  }
+
+  .clients-section .retreat-client-action {
+    width: auto;
+    flex: 0 0 auto;
+    min-width: auto;
+    min-height: 42px;
+    padding: 0 14px;
+  }
+
+  .retreat-client-table-shell {
+    border-radius: 13px;
+  }
+
+  .retreat-client-table-scroll {
+    overflow: visible;
+  }
+
+  .retreat-client-table {
+    display: block;
+    min-width: 0;
+  }
+
+  .retreat-client-table thead {
+    display: none;
+  }
+
+  .retreat-client-table tbody {
+    display: block;
+  }
+
+  .retreat-client-table tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 112px;
+    padding: 18px 20px;
+    border-bottom: 1px solid #e8e1d5;
+  }
+
+  .retreat-client-table tr:last-child {
+    border-bottom: 0;
+  }
+
+  .retreat-client-table td {
+    display: none;
+    height: auto;
+    padding: 0 !important;
+    border: 0;
+  }
+
+  .retreat-client-table td:nth-child(3) {
+    display: block;
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    min-width: 0;
+  }
+
+  .retreat-client-table td:nth-child(6) {
+    display: block;
+    grid-column: 1;
+    grid-row: 2;
+    margin: 55px 0 0 58px;
+  }
+
+  .retreat-client-table td:nth-child(8) {
+    display: block;
+    grid-column: 2;
+    grid-row: 1;
+    padding-left: 14px !important;
+    white-space: nowrap;
+  }
+
+  .retreat-client-table td:nth-child(3) .flex {
+    align-items: flex-start;
+  }
+
+  .retreat-client-table td:nth-child(3) a:first-of-type {
+    max-width: calc(100vw - 190px);
+    color: var(--retreat-ink);
+    font-size: 15px;
+  }
+
+  .retreat-client-desktop-id {
+    display: none;
+  }
+
+  .retreat-client-mobile-meta {
+    display: inline;
+    color: var(--retreat-muted);
+    font-weight: 500;
+  }
+
+  .retreat-payment-status-inline {
+    display: inline-block;
+    margin: 0 0 0 6px;
+  }
+
+  .retreat-client-table-footer {
+    align-items: flex-start;
+    padding-top: 18px;
+    font-size: 13px;
+  }
+}
+
 .clients-header {
   display: flex;
   justify-content: space-between;
@@ -1210,6 +1667,131 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+  }
+}
+
+/* Final retreat workspace cascade overrides. */
+.retreat-detail-container {
+  max-width: 1600px;
+  padding: 0 28px 60px;
+  background: #fbf8f2;
+}
+
+.retreat-detail-container .retreat-detail-header {
+  display: flex;
+  min-height: 76px;
+  align-items: center;
+  gap: 18px;
+  margin: 0 -28px;
+  padding: 0 28px;
+  border-bottom: 1px solid #e2d9ca;
+}
+
+.retreat-detail-container .retreat-detail-actions {
+  display: contents;
+  margin: 0;
+}
+
+.retreat-detail-container .tab-navigation.retreat-detail-tabs {
+  display: flex;
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  flex-flow: row nowrap;
+  gap: 32px;
+  margin: 0 -28px 28px;
+  padding: 0 28px;
+  overflow-x: auto;
+  border: 0;
+  border-bottom: 1px solid #e2d9ca;
+  border-radius: 0;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: none;
+}
+
+.retreat-detail-container .tab-navigation.retreat-detail-tabs .tab-btn {
+  display: flex;
+  width: auto;
+  min-width: auto;
+  min-height: 58px;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #7c7365;
+  box-shadow: none;
+  font-size: 15px;
+}
+
+.retreat-detail-container .tab-navigation.retreat-detail-tabs .tab-btn span {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: nowrap;
+}
+
+.retreat-detail-container .tab-navigation.retreat-detail-tabs .tab-btn.active {
+  border-bottom: 2px solid #18587a;
+  background: transparent;
+  color: #26241f;
+}
+
+.retreat-detail-container .tab-navigation.retreat-detail-tabs .retreat-tab-icon {
+  display: none;
+}
+
+.retreat-detail-container .clients-section .section-header h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  text-align: left;
+}
+
+.retreat-detail-container .clients-section .section-actions {
+  display: flex;
+  width: auto;
+}
+
+@media (max-width: 700px) {
+  .retreat-detail-container {
+    padding: 0 20px 48px;
+  }
+
+  .retreat-detail-container .retreat-detail-header {
+    min-height: 82px;
+    margin: 0 -20px;
+    padding: 0 20px;
+    gap: 10px;
+  }
+
+  .retreat-detail-container .tab-navigation.retreat-detail-tabs {
+    gap: 26px;
+    margin: 0 -20px 24px;
+    padding: 0 20px;
+  }
+
+  .retreat-detail-container .tab-navigation.retreat-detail-tabs .tab-btn {
+    width: auto;
+    min-width: auto;
+    min-height: 58px;
+    padding: 0;
+    font-size: 14px;
+  }
+
+  .retreat-detail-container .clients-section .section-header h2 {
+    text-align: left;
+    font-size: 22px;
+  }
+
+  .retreat-detail-container .clients-section .section-actions {
+    display: flex;
+    grid-template-columns: none;
+    width: 100%;
+    gap: 8px;
   }
 }
 
