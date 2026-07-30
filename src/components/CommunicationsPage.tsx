@@ -90,6 +90,8 @@ const CommunicationsPage: React.FC = () => {
   const [templateLanguageFilter, setTemplateLanguageFilter] = useState('en');
   const [templateStatusFilter, setTemplateStatusFilter] = useState('all');
   const [selectedSentEmailId, setSelectedSentEmailId] = useState('');
+  const [sentEmailSearch, setSentEmailSearch] = useState('');
+  const [sentEmailStatusFilter, setSentEmailStatusFilter] = useState('all');
   const [templateForm, setTemplateForm] = useState<Partial<EmailTemplate>>(defaultTemplateForm);
   const [composeForm, setComposeForm] = useState(defaultComposeForm);
   const [savingTemplate, setSavingTemplate] = useState(false);
@@ -189,6 +191,21 @@ const CommunicationsPage: React.FC = () => {
       label: displayId ? `#${displayId}` : clientId ? `#${clientId.slice(-6)}` : 'No client',
     };
   };
+
+  const filteredSentEmails = useMemo(() => {
+    const search = sentEmailSearch.trim().toLowerCase();
+    return sentEmails.filter((email) => {
+      const client = getSentEmailClient(email);
+      const searchable = [
+        email.display_id, email.subject, email.bodyText, email.templateName, email.status,
+        ...(email.to || []), ...(email.cc || []), client.displayId, client.name, client.email,
+      ].filter(Boolean).join(' ').toLowerCase();
+      return (!search || searchable.includes(search))
+        && (sentEmailStatusFilter === 'all' || email.status === sentEmailStatusFilter);
+    });
+  // getSentEmailClient also resolves clients loaded on this page.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clients, sentEmailSearch, sentEmailStatusFilter, sentEmails]);
 
   const renderClientLink = (email: SentEmail, compact = false) => {
     const client = getSentEmailClient(email);
@@ -1400,9 +1417,35 @@ const CommunicationsPage: React.FC = () => {
       {activeTab === 'sent' && (
         <div className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
           <section className="rounded-lg border border-gray-200 bg-white p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-lg font-semibold text-gray-900">Sent Mail</h2>
-              <span className="text-xs text-gray-500">{sentEmails.length} messages</span>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Sent Mail</h2>
+                <span className="text-xs text-gray-500">{filteredSentEmails.length} of {sentEmails.length} messages</span>
+              </div>
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+                <label className="relative min-w-[240px]">
+                  <span className="sr-only">Search sent emails</span>
+                  <Icon icon={FiSearch} className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+                  <input
+                    value={sentEmailSearch}
+                    onChange={(event) => setSentEmailSearch(event.target.value)}
+                    placeholder="Search subject, client, recipient or body"
+                    className="w-full rounded-md border border-gray-300 py-2 pl-9 pr-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                  />
+                </label>
+                <select
+                  value={sentEmailStatusFilter}
+                  onChange={(event) => setSentEmailStatusFilter(event.target.value)}
+                  aria-label="Filter sent emails by status"
+                  className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700"
+                >
+                  <option value="all">All statuses</option>
+                  <option value="sent">Sent</option>
+                  <option value="failed">Failed</option>
+                  <option value="queued">Queued</option>
+                  <option value="draft">Draft</option>
+                </select>
+              </div>
             </div>
             <div className="overflow-auto">
               <table className="min-w-full text-sm">
@@ -1417,7 +1460,7 @@ const CommunicationsPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {sentEmails.map((email) => (
+                  {filteredSentEmails.map((email) => (
                     <tr
                       key={email._id}
                       onClick={() => setSelectedSentEmailId(email._id || '')}
@@ -1431,9 +1474,9 @@ const CommunicationsPage: React.FC = () => {
                       <td className="py-2 pr-3 text-gray-600">{email.sentAt ? new Date(email.sentAt).toLocaleString() : '-'}</td>
                     </tr>
                   ))}
-                  {sentEmails.length === 0 && (
+                  {filteredSentEmails.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="py-4 text-gray-500">No messages sent yet.</td>
+                      <td colSpan={6} className="py-4 text-gray-500">{sentEmails.length ? 'No sent emails match these filters.' : 'No messages sent yet.'}</td>
                     </tr>
                   )}
                 </tbody>
