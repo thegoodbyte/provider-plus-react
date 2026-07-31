@@ -3,6 +3,7 @@ import { retreatExpensesApi, expenseTypesApi } from '../services/api';
 import { RetreatExpense, ExpenseType, ExpenseSummary } from '../types';
 import { FiPlus, FiEdit2, FiTrash2, FiRefreshCw, FiHome, FiSettings, FiX, FiCheck } from 'react-icons/fi';
 import './ClientsGrid.css';
+import { expenseCategoryName } from '../utils/expenseCategory';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -27,21 +28,10 @@ interface ExpenseFormData {
 interface ExpenseTypeFormData {
   name: string;
   description: string;
-  category: ExpenseType['category'];
   defaultCurrency: 'EUR' | 'USD' | 'CZK' | 'PLN';
   defaultAmount: number;
   isActive: boolean;
 }
-
-const EXPENSE_TYPE_CATEGORIES: ExpenseType['category'][] = [
-  'accommodation',
-  'transport',
-  'food',
-  'activities',
-  'staff',
-  'utilities',
-  'general'
-];
 
 const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
   const [expenses, setExpenses] = useState<RetreatExpense[]>([]);
@@ -67,7 +57,6 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
   const [typeFormData, setTypeFormData] = useState<ExpenseTypeFormData>({
     name: '',
     description: '',
-    category: 'general',
     defaultCurrency: 'CZK',
     defaultAmount: 0,
     isActive: true
@@ -88,30 +77,10 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
     return `${amount.toLocaleString()} ${currency}`;
   };
 
-  const getCategoryIcon = (category: string) => {
-    const categoryIcons: Record<string, string> = {
-      house: '🏠',
-      food: '🍽️',
-      transportation: '🚗',
-      misc: '🧾',
-      supplies: '📦',
-      other: '📦'
-    };
-    return categoryIcons[category] || '📦';
-  };
-
   const getExpenseTypeName = (expense: RetreatExpense) => {
     const expenseType = expense.expenseTypeId;
     if (typeof expenseType === 'object' && expenseType.name) {
-      return expenseType.name;
-    }
-    return '';
-  };
-
-  const getExpenseTypeCategory = (expense: RetreatExpense) => {
-    const expenseType = expense.expenseTypeId;
-    if (typeof expenseType === 'object' && expenseType.category) {
-      return expenseType.category;
+      return expenseCategoryName(expenseType);
     }
     return '';
   };
@@ -166,7 +135,6 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
     setTypeFormData({
       name: '',
       description: '',
-      category: 'general',
       defaultCurrency: 'CZK',
       defaultAmount: 0,
       isActive: true
@@ -178,7 +146,6 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
     setTypeFormData({
       name: expenseType.name || '',
       description: expenseType.description || '',
-      category: expenseType.category || 'general',
       defaultCurrency: (expenseType.defaultCurrency as 'EUR' | 'USD' | 'CZK' | 'PLN') || 'CZK',
       defaultAmount: expenseType.defaultAmount || 0,
       isActive: expenseType.isActive !== false
@@ -191,7 +158,6 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
       const payload = {
         name: typeFormData.name.trim(),
         description: typeFormData.description.trim(),
-        category: typeFormData.category,
         defaultCurrency: typeFormData.defaultCurrency,
         defaultAmount: Number(typeFormData.defaultAmount || 0),
         isActive: typeFormData.isActive
@@ -421,19 +387,6 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
               </div>
 
               <div className="form-group">
-                <label>Category</label>
-                <select
-                  value={typeFormData.category}
-                  onChange={(e) => setTypeFormData({ ...typeFormData, category: e.target.value as ExpenseType['category'] })}
-                  required
-                >
-                  {EXPENSE_TYPE_CATEGORIES.map(category => (
-                    <option key={category} value={category}>{category}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="form-group">
                 <label>Default Amount</label>
                 <input
                   type="number"
@@ -492,7 +445,6 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Category</th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Default</th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
@@ -502,10 +454,9 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
                 {allExpenseTypes.map(type => (
                   <tr key={type._id || type.name} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                      <div>{type.name}</div>
+                      <div>{expenseCategoryName(type)}</div>
                       {type.description && <div className="mt-1 text-xs font-normal text-gray-500">{type.description}</div>}
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{type.category}</td>
                     <td className="px-4 py-3 text-sm text-gray-700">
                       {type.defaultAmount ? `${type.defaultAmount.toLocaleString()} ${type.defaultCurrency || ''}` : '-'}
                     </td>
@@ -531,7 +482,7 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
                 ))}
                 {allExpenseTypes.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">No expense types found.</td>
+                    <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">No expense categories found.</td>
                   </tr>
                 )}
               </tbody>
@@ -558,17 +509,15 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
               </div>
 
               <div className="form-group">
-                <label>Expense Type</label>
+                <label>Category</label>
                 <select
                   value={formData.expenseTypeId}
                   onChange={(e) => setFormData({...formData, expenseTypeId: e.target.value})}
                   required
                 >
-                  <option value="">Select expense type...</option>
+                  <option value="">Select category...</option>
                   {expenseTypes.map(type => (
-                    <option key={type._id} value={type._id}>
-                      {type.name} ({type.category})
-                    </option>
+                    <option key={type._id} value={type._id}>{expenseCategoryName(type)}</option>
                   ))}
                 </select>
               </div>
@@ -683,9 +632,6 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Expense Type
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Category
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -722,14 +668,6 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
                 <tr key={expense._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {getExpenseTypeName(expense)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {getExpenseTypeCategory(expense) && (
-                      <span className="flex items-center">
-                        <span className="mr-1">{getCategoryIcon(getExpenseTypeCategory(expense))}</span>
-                        {getExpenseTypeCategory(expense)}
-                      </span>
-                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {formatAmount(expense.amount, expense.currency)}

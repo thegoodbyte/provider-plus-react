@@ -465,7 +465,8 @@ export interface ExpenseType {
   key?: string;
   name: string;
   description?: string;
-  category: 'accommodation' | 'transport' | 'food' | 'activities' | 'staff' | 'utilities' | 'general';
+  /** Legacy grouping retained for older records. The expense type name is the user-facing category. */
+  category?: 'accommodation' | 'transport' | 'food' | 'activities' | 'staff' | 'utilities' | 'general';
   defaultCurrency?: string;
   defaultAmount?: number;
   isActive?: boolean;

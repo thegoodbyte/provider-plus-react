@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Camera, Save, X } from 'lucide-react';
 import { expenseTypesApi, retreatExpensesApi, retreatsApi } from '../services/api';
 import { ExpenseType, Retreat, RetreatExpense } from '../types';
+import { expenseCategoryName } from '../utils/expenseCategory';
 import LoadingSpinner from './LoadingSpinner';
 import { getCurrentRetreatForDate } from './expensesQuickAdd';
 
@@ -147,7 +148,7 @@ const ExpenseEditorPage: React.FC = () => {
         </div>
         <label className="block"><span className="mb-1 block text-base font-bold">Item</span><input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className={field} placeholder="What did you buy?" /></label>
         <label className="block"><span className="mb-1 block text-base font-bold">Vendor</span><input value={form.vendor} onChange={(e) => setForm({ ...form, vendor: e.target.value })} className={field} placeholder="Store or supplier" /></label>
-        <label className="block"><span className="mb-1 block text-base font-bold">Category</span><select value={form.expenseTypeId} onChange={(e) => setForm({ ...form, expenseTypeId: e.target.value })} className={field} required><option value="">Choose category</option>{types.map((type) => <option key={type._id} value={type._id}>{type.name}</option>)}</select></label>
+        <label className="block"><span className="mb-1 block text-base font-bold">Category</span><select value={form.expenseTypeId} onChange={(e) => setForm({ ...form, expenseTypeId: e.target.value })} className={field} required><option value="">Choose category</option>{types.map((type) => <option key={type._id} value={type._id}>{expenseCategoryName(type)}</option>)}</select></label>
         <label className="block"><span className="mb-1 block text-base font-bold">Retreat</span><select value={form.retreatId} onChange={(e) => setForm({ ...form, retreatId: e.target.value })} className={field}><option value="">General company expense</option>{retreats.map((retreat) => <option key={retreat._id} value={retreat._id}>{retreat.code || retreat.retreatCode || retreat.name}</option>)}</select></label>
         <div className="rounded-xl border border-slate-300 bg-white p-3">
           <div className="mb-2 flex items-center justify-between gap-3">

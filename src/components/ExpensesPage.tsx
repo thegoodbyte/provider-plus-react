@@ -4,6 +4,7 @@ import { Eye, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { expenseTypesApi, retreatExpensesApi, retreatsApi } from '../services/api';
 import { ExpenseType, Retreat, RetreatExpense } from '../types';
 import LoadingSpinner from './LoadingSpinner';
+import { expenseCategoryName } from '../utils/expenseCategory';
 
 const retreatLabel = (value: any, retreats: Retreat[]) => {
   if (!value) return 'General';
@@ -12,8 +13,8 @@ const retreatLabel = (value: any, retreats: Retreat[]) => {
   return retreat?.code || retreat?.retreatCode || retreat?.name || value;
 };
 const typeLabel = (value: string | ExpenseType, types: ExpenseType[]) => {
-  if (typeof value === 'object') return value.name;
-  return types.find((item) => item._id === value)?.name || 'Uncategorized';
+  if (typeof value === 'object') return expenseCategoryName(value);
+  return expenseCategoryName(types.find((item) => item._id === value));
 };
 const money = (expense: RetreatExpense) => new Intl.NumberFormat(undefined, {
   style: 'currency',
