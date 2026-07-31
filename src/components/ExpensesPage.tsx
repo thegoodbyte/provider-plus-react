@@ -21,6 +21,7 @@ const money = (expense: RetreatExpense) => new Intl.NumberFormat(undefined, {
   currency: expense.currency,
 }).format(expense.amount);
 const date = (value: Date | string) => new Date(value).toLocaleDateString();
+const entityId = (value: any) => typeof value === 'object' ? String(value?._id || '') : String(value || '');
 
 const ExpensesPage: React.FC = () => {
   const navigate = useNavigate();
@@ -32,6 +33,11 @@ const ExpensesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
+  const [retreatFilter, setRetreatFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [kindFilter, setKindFilter] = useState('all');
+  const [currencyFilter, setCurrencyFilter] = useState('all');
   const [deleteTarget, setDeleteTarget] = useState<RetreatExpense | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -59,16 +65,45 @@ const ExpensesPage: React.FC = () => {
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     const sorted = [...expenses].sort((a, b) => new Date(b.expenseDate).getTime() - new Date(a.expenseDate).getTime());
-    if (!needle) return sorted;
-    return sorted.filter((expense) => [
-      expense.vendor,
-      expense.description,
-      expense.currency,
-      expense.status,
-      typeLabel(expense.expenseTypeId, types),
-      retreatLabel(expense.retreatId, retreats),
-    ].some((value) => String(value || '').toLowerCase().includes(needle)));
-  }, [expenses, query, retreats, types]);
+    return sorted.filter((expense) => {
+      const retreatId = entityId(expense.retreatId);
+      const categoryId = entityId(expense.expenseTypeId);
+      const kind = expense.expenseKind || (expense.status === 'planned' ? 'planned' : 'actual');
+      const matchesSearch = !needle || [
+        expense.vendor,
+        expense.description,
+        expense.currency,
+        expense.status,
+        typeLabel(expense.expenseTypeId, types),
+        retreatLabel(expense.retreatId, retreats),
+      ].some((value) => String(value || '').toLowerCase().includes(needle));
+      const matchesRetreat = retreatFilter === 'all'
+        || (retreatFilter === '__general__' ? !retreatId : retreatId === retreatFilter);
+
+      return matchesSearch
+        && matchesRetreat
+        && (categoryFilter === 'all' || categoryId === categoryFilter)
+        && (statusFilter === 'all' || expense.status === statusFilter)
+        && (kindFilter === 'all' || kind === kindFilter)
+        && (currencyFilter === 'all' || expense.currency === currencyFilter);
+    });
+  }, [categoryFilter, currencyFilter, expenses, kindFilter, query, retreatFilter, retreats, statusFilter, types]);
+
+  const hasFilters = Boolean(query.trim())
+    || retreatFilter !== 'all'
+    || categoryFilter !== 'all'
+    || statusFilter !== 'all'
+    || kindFilter !== 'all'
+    || currencyFilter !== 'all';
+
+  const clearFilters = () => {
+    setQuery('');
+    setRetreatFilter('all');
+    setCategoryFilter('all');
+    setStatusFilter('all');
+    setKindFilter('all');
+    setCurrencyFilter('all');
+  };
 
   const open = (path: string) => navigate(`${prefix}${path}`);
   const confirmDelete = async () => {
@@ -102,10 +137,45 @@ const ExpensesPage: React.FC = () => {
 
       {error && <div className="mb-3 rounded-xl bg-red-50 p-3 text-sm font-medium text-red-700">{error}</div>}
 
-      <label className="mb-3 flex min-h-12 items-center gap-2 rounded-xl border border-slate-300 bg-white px-3">
-        <Search size={20} className="text-slate-500" />
-        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search expenses" className="w-full border-0 bg-transparent text-base outline-none" />
-      </label>
+      <div className="mb-4 rounded-xl border border-slate-200 bg-white p-3">
+        <div className="grid gap-2 md:grid-cols-[minmax(240px,1.7fr)_repeat(5,minmax(130px,1fr))]">
+          <label className="flex min-h-12 items-center gap-2 rounded-lg border border-slate-300 px-3">
+            <Search size={20} className="shrink-0 text-slate-500" />
+            <span className="sr-only">Search expenses</span>
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search expenses" className="w-full border-0 bg-transparent text-base outline-none" />
+          </label>
+          <select value={retreatFilter} onChange={(event) => setRetreatFilter(event.target.value)} aria-label="Filter expenses by retreat" className="min-h-12 rounded-lg border border-slate-300 bg-white px-3 font-medium">
+            <option value="all">All retreats</option>
+            <option value="__general__">Company / no retreat</option>
+            {retreats.map((retreat) => <option key={retreat._id} value={retreat._id}>{retreatLabel(retreat, retreats)}</option>)}
+          </select>
+          <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)} aria-label="Filter expenses by category" className="min-h-12 rounded-lg border border-slate-300 bg-white px-3 font-medium">
+            <option value="all">All categories</option>
+            {types.map((type) => <option key={type._id} value={type._id}>{expenseCategoryName(type)}</option>)}
+          </select>
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Filter expenses by status" className="min-h-12 rounded-lg border border-slate-300 bg-white px-3 font-medium">
+            <option value="all">All statuses</option>
+            <option value="planned">Planned</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="paid">Paid</option>
+            <option value="rejected">Rejected</option>
+          </select>
+          <select value={kindFilter} onChange={(event) => setKindFilter(event.target.value)} aria-label="Filter planned or actual expenses" className="min-h-12 rounded-lg border border-slate-300 bg-white px-3 font-medium">
+            <option value="all">Planned + actual</option>
+            <option value="actual">Actual</option>
+            <option value="planned">Planned</option>
+          </select>
+          <select value={currencyFilter} onChange={(event) => setCurrencyFilter(event.target.value)} aria-label="Filter expenses by currency" className="min-h-12 rounded-lg border border-slate-300 bg-white px-3 font-medium">
+            <option value="all">All currencies</option>
+            {['CZK', 'EUR', 'PLN', 'USD'].map((currency) => <option key={currency} value={currency}>{currency}</option>)}
+          </select>
+        </div>
+        <div className="mt-2 flex min-h-6 items-center justify-between text-sm text-slate-500">
+          <span>{filtered.length} of {expenses.length} expenses</span>
+          {hasFilters && <button type="button" onClick={clearFilters} className="font-bold text-blue-700 hover:text-blue-900">Clear filters</button>}
+        </div>
+      </div>
 
       <div className="hidden overflow-hidden rounded-xl border border-slate-200 bg-white md:block">
         <table className="min-w-full divide-y divide-slate-200">
