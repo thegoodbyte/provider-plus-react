@@ -22,9 +22,18 @@ const otherRetreat = {
 
 const foodExpenseType = {
   _id: 'expense-type-food',
+  key: 'food-shopping',
   name: 'Food',
   description: 'Food supplies',
   category: 'food',
+  isActive: true,
+};
+const houseExpenseType = {
+  _id: 'expense-type-house',
+  key: 'house-cost',
+  name: 'House Cost',
+  description: 'Accommodation and house costs',
+  category: 'general',
   isActive: true,
 };
 
@@ -58,17 +67,19 @@ test.describe('Expenses', () => {
             vendor: 'Market',
             expenseDate: '2026-06-20T00:00:00.000Z',
             status: 'paid',
+            expenseKind: 'actual',
           },
           {
             _id: 'expense-other',
             retreatId: otherRetreat,
-            expenseTypeId: foodExpenseType,
+            expenseTypeId: houseExpenseType,
             amount: 90,
-            currency: 'USD',
-            description: 'JNO retreat supplies',
-            vendor: 'Market',
+            currency: 'EUR',
+            description: 'JNO house deposit',
+            vendor: 'Casa Jono',
             expenseDate: '2026-07-27T00:00:00.000Z',
-            status: 'paid',
+            status: 'planned',
+            expenseKind: 'planned',
           },
         ]),
       });
@@ -83,7 +94,7 @@ test.describe('Expenses', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify([foodExpenseType]),
+        body: JSON.stringify([foodExpenseType, houseExpenseType]),
       });
     });
 
@@ -104,16 +115,37 @@ test.describe('Expenses', () => {
   test('filters populated retreat expenses by retreat code', async ({ page }) => {
     await page.goto('/admin/expenses');
 
-    await expect(page.getByRole('heading', { name: 'Expense Management' })).toBeVisible();
-    await expect(page.getByText('BEN retreat supplies')).toBeVisible();
-    await expect(page.getByText('JNO retreat supplies')).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Expenses' })).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'BEN retreat supplies' })).toBeVisible();
+    await expect(page.getByRole('cell', { name: 'JNO house deposit' })).toBeVisible();
 
-    await page.locator('select').nth(1).selectOption('retreat-ben');
+    await page.getByLabel('Filter expenses by retreat').selectOption('retreat-ben');
 
     const rows = page.locator('tbody tr');
     await expect(rows).toHaveCount(1);
     await expect(rows.first()).toContainText('BEN retreat supplies');
     await expect(rows.first()).toContainText('BEN-06-17-26');
-    await expect(page.getByText('JNO retreat supplies')).not.toBeVisible();
+    await expect(page.getByRole('cell', { name: 'JNO house deposit' })).not.toBeVisible();
+  });
+
+  test('combines the newest expense filters and uses direct category names', async ({ page }) => {
+    await page.goto('/admin/expenses');
+    await expect(page.getByRole('cell', { name: 'JNO house deposit' })).toBeVisible();
+
+    await page.getByLabel('Filter expenses by retreat').selectOption('retreat-other');
+    await page.getByLabel('Filter expenses by category').selectOption('expense-type-house');
+    await page.getByLabel('Filter expenses by status').selectOption('planned');
+    await page.getByLabel('Filter planned or actual expenses').selectOption('planned');
+    await page.getByLabel('Filter expenses by currency').selectOption('EUR');
+
+    const rows = page.locator('tbody tr');
+    await expect(rows).toHaveCount(1);
+    await expect(rows.first()).toContainText('JNO house deposit');
+    await expect(rows.first()).toContainText('House');
+    await expect(rows.first()).not.toContainText('House Cost');
+    await expect(page.getByText('1 of 2 expenses')).toBeVisible();
+
+    await page.getByRole('button', { name: 'Clear filters' }).evaluate((button: HTMLButtonElement) => button.click());
+    await expect(page.locator('tbody tr')).toHaveCount(2);
   });
 });

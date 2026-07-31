@@ -604,15 +604,24 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const loadData = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
-      const response = await bookingFlowApi.getMatrix(retreatId);
+      // These requests do not depend on the matrix response. Start them immediately
+      // so the readiness view does not pay for an avoidable network waterfall.
+      const matrixRequest = bookingFlowApi.getMatrix(retreatId);
+      const libraryTemplateRequest = bookingFlowApi.getLibraryTemplates().catch(() => ({ data: [] as BookingFlowTemplate[] }));
+      const paymentsRequest = paymentsApi.getByRetreat(retreatId).catch(() => ({ data: [] as Payment[] }));
+      const usersRequest = usersApi.getAll().catch(() => ({ data: [] as User[] }));
+      const documentsRequest = bookingDocumentsApi.getAll({ retreatId }).catch(() => ({ data: [] as BookingDocument[] }));
+      const reviewRequestsRequest = medicalReviewRequestsApi.getAll({ retreatId }).catch(() => ({ data: [] as MedicalReviewRequest[] }));
+
+      const response = await matrixRequest;
       const bookingFlowFilters = buildBookingFlowArtifactFilters(response.data?.items || []);
       const [libraryTemplateResponse, paymentsResponse, usersResponse, documentsResponse, artifactsResponse, reviewRequestsResponse] = await Promise.all([
-        bookingFlowApi.getLibraryTemplates().catch(() => ({ data: [] as BookingFlowTemplate[] })),
-        paymentsApi.getByRetreat(retreatId).catch(() => ({ data: [] as Payment[] })),
-        usersApi.getAll().catch(() => ({ data: [] as User[] })),
-        bookingDocumentsApi.getAll({ retreatId }).catch(() => ({ data: [] as BookingDocument[] })),
+        libraryTemplateRequest,
+        paymentsRequest,
+        usersRequest,
+        documentsRequest,
         medicalArtifactsApi.getAll({ retreatId, ...bookingFlowFilters }).catch(() => ({ data: [] as MedicalArtifact[] })),
-        medicalReviewRequestsApi.getAll({ retreatId }).catch(() => ({ data: [] as MedicalReviewRequest[] })),
+        reviewRequestsRequest,
       ]);
       setBookings(response.data?.bookings || []);
       setTemplates(response.data?.templates || []);
