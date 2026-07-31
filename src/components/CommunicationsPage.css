@@ -1,0 +1,298 @@
+.communications-redesign {
+  --comms-ink: #24211d;
+  --comms-muted: #91897a;
+  --comms-border: #e4ddd0;
+  --comms-bg: #faf7f2;
+  --comms-panel: #fff;
+  --comms-blue: #195879;
+  min-height: calc(100vh - 32px);
+  margin: 16px;
+  overflow: hidden;
+  border: 1px solid var(--comms-border);
+  border-radius: 20px;
+  background: var(--comms-bg);
+  color: var(--comms-ink);
+  box-shadow: 0 12px 32px rgba(62, 52, 39, .08);
+}
+
+.communications-header {
+  display: flex;
+  min-height: 104px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 20px 32px;
+  border-bottom: 1px solid var(--comms-border);
+  background: rgba(255, 255, 255, .9);
+}
+
+.communications-title h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -.025em;
+}
+
+.communications-title p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 4px 0 0;
+  color: var(--comms-muted);
+  font-size: 14px;
+}
+
+.communications-status-dot {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 9px;
+  border-radius: 999px;
+  background: #c88123;
+}
+
+.communications-status-dot.is-connected { background: #6d8a58; }
+
+.communications-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.communications-primary-action,
+.communications-secondary-action {
+  display: inline-flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 1px solid var(--comms-border);
+  border-radius: 12px;
+  padding: 0 22px;
+  background: #fff;
+  color: var(--comms-ink);
+  font-weight: 650;
+}
+
+.communications-primary-action {
+  border-color: var(--comms-blue);
+  background: var(--comms-blue);
+  color: #fff;
+}
+
+.communications-tabs {
+  display: flex;
+  min-height: 58px;
+  align-items: stretch;
+  gap: 32px;
+  padding: 0 32px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--comms-border);
+  background: #fff;
+}
+
+.communications-tabs button {
+  display: inline-flex;
+  position: relative;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #766f64;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.communications-tabs button::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: transparent;
+  content: "";
+}
+
+.communications-tabs button.is-active { color: var(--comms-ink); }
+.communications-tabs button.is-active::after { background: var(--comms-blue); }
+
+.communications-tabs button span {
+  border-radius: 999px;
+  padding: 2px 8px;
+  background: #eee9df;
+  color: #81796c;
+  font-size: 12px;
+}
+
+.communications-tabs button.is-active span {
+  background: #e6f0f5;
+  color: var(--comms-blue);
+}
+
+.communications-warning {
+  margin: 20px auto 0;
+  max-width: 1080px;
+  border: 1px solid #efd8b5;
+  border-radius: 12px;
+  padding: 14px 18px;
+  background: #fff5e7;
+  color: #995611;
+  font-size: 14px;
+}
+
+/* Make each existing functional view feel like one focused workspace. */
+.communications-redesign > .grid,
+.communications-redesign > .space-y-4,
+.communications-redesign > section,
+.communications-redesign > div:not(.communications-warning) {
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.communications-redesign > .grid,
+.communications-redesign > .space-y-4,
+.communications-redesign > section {
+  width: min(100% - 48px, 1320px);
+  margin-top: 24px;
+  margin-bottom: 28px;
+}
+
+.communications-redesign > section {
+  border-color: var(--comms-border) !important;
+  border-radius: 14px !important;
+  background: #fff !important;
+  box-shadow: none !important;
+}
+
+.communications-redesign input,
+.communications-redesign select,
+.communications-redesign textarea {
+  border-color: #ddd4c6 !important;
+  border-radius: 10px !important;
+  background-color: #fff !important;
+}
+
+.communications-redesign input:focus,
+.communications-redesign select:focus,
+.communications-redesign textarea:focus {
+  border-color: var(--comms-blue) !important;
+  box-shadow: 0 0 0 3px rgba(25, 88, 121, .1) !important;
+  outline: none;
+}
+
+/* Settings: compact stacked cards, matching the reference hierarchy. */
+.communications-redesign > .grid.lg\:grid-cols-2 {
+  max-width: 860px;
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+
+.communications-redesign > .grid.lg\:grid-cols-2 > section {
+  border-color: var(--comms-border);
+  border-radius: 14px;
+  box-shadow: none;
+}
+
+/* Templates: narrow language list and a roomy editor. */
+.communications-redesign > .grid.lg\:grid-cols-\[320px_1fr\] {
+  width: calc(100% - 24px);
+  max-width: none;
+  grid-template-columns: 360px minmax(0, 1fr);
+  gap: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.communications-redesign > .grid.lg\:grid-cols-\[320px_1fr\] > section {
+  border-width: 0 1px 0 0;
+  border-color: var(--comms-border);
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.communications-redesign > .grid.lg\:grid-cols-\[320px_1fr\] > section:last-child {
+  border-right: 0;
+  padding: 28px 32px;
+}
+
+/* Sent mail becomes the page's compact activity list. */
+.communications-redesign > div > section {
+  width: min(100% - 48px, 1100px);
+  margin: 24px auto;
+  border-color: var(--comms-border);
+  border-radius: 14px;
+  box-shadow: none;
+}
+
+.communications-redesign table thead {
+  color: var(--comms-muted);
+  font-size: 11px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.communications-redesign table tbody tr {
+  border-color: #eee8de;
+}
+
+.communications-redesign table tbody tr:hover { background: #fbf8f3; }
+
+.communications-redesign table tbody td {
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+@media (max-width: 900px) {
+  .communications-redesign {
+    min-height: 100vh;
+    margin: 0;
+    border-width: 0;
+    border-radius: 0;
+  }
+
+  .communications-header {
+    min-height: auto;
+    align-items: flex-start;
+    padding: 18px 20px;
+  }
+
+  .communications-header-actions .communications-secondary-action { display: none; }
+
+  .communications-primary-action {
+    min-height: 42px;
+    padding: 0 16px;
+  }
+
+  .communications-tabs {
+    gap: 24px;
+    padding: 0 20px;
+  }
+
+  .communications-redesign > .grid,
+  .communications-redesign > .space-y-4,
+  .communications-redesign > section,
+  .communications-redesign > div > section {
+    width: calc(100% - 24px);
+  }
+
+  .communications-redesign > .grid.lg\:grid-cols-\[320px_1fr\] {
+    width: 100%;
+    grid-template-columns: 1fr;
+  }
+
+  .communications-redesign > .grid.lg\:grid-cols-\[320px_1fr\] > section {
+    border-right: 0;
+    border-bottom: 1px solid var(--comms-border);
+  }
+
+  .communications-redesign table {
+    min-width: 760px;
+  }
+}
+
+@media (max-width: 560px) {
+  .communications-title h1 { font-size: 20px; }
+  .communications-title p { max-width: 220px; font-size: 12px; }
+  .communications-primary-action { width: 44px; padding: 0; font-size: 0; }
+  .communications-primary-action svg { width: 18px; height: 18px; }
+}

@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FiAlertCircle, FiCheckCircle, FiInbox, FiMail, FiPlus, FiRefreshCw, FiSave, FiSearch, FiSend, FiTrash2 } from 'react-icons/fi';
+import { FiAlertCircle, FiCheckCircle, FiEdit2, FiInbox, FiMail, FiPlus, FiRefreshCw, FiSave, FiSearch, FiSend, FiTrash2 } from 'react-icons/fi';
 import { Link, useLocation } from 'react-router-dom';
 import { communicationsApi, clientsApi, retreatsApi } from '../services/api';
 import { Client, EmailTemplate, EmailTemplateSeedOption, InboundEmail, MailSettings, Retreat, SentEmail } from '../types';
 import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
+import './CommunicationsPage.css';
 
 type TabKey = 'settings' | 'templates' | 'compose' | 'sent' | 'inbound';
 const WELCOME_STEP_OPTIONS = [
@@ -75,7 +76,7 @@ const formatSentEmailReceipt = (sentEmail: SentEmail) => {
 };
 
 const CommunicationsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabKey>('settings');
+  const [activeTab, setActiveTab] = useState<TabKey>('sent');
   const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<MailSettings | null>(null);
@@ -621,29 +622,51 @@ const CommunicationsPage: React.FC = () => {
     return <div className="p-6 text-gray-500">Loading communications...</div>;
   }
 
+  const connectedEmail = settings?.gmailUserEmail || settings?.senderEmail || 'Gmail';
+  const connectionLabel = settings?.connected
+    ? 'connected'
+    : settings?.oauthConfigured
+      ? 'disconnected'
+      : 'needs re-auth';
+
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Communications</h1>
-          <p className="text-sm text-gray-500 mt-1">Gmail connection, templates, compose, and sent log.</p>
+    <div className="communications-redesign">
+      <header className="communications-header">
+        <div className="communications-title">
+          <h1>Communications</h1>
+          <p>
+            <span className={`communications-status-dot ${settings?.connected ? 'is-connected' : ''}`} />
+            Gmail · {connectedEmail} · {connectionLabel}
+          </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {(['settings', 'templates', 'compose', 'sent', 'inbound'] as TabKey[]).map((tab) => (
+        <div className="communications-header-actions">
+          <button type="button" onClick={handleTestConnection} className="communications-secondary-action">
+            Test connection
+          </button>
+          <button type="button" onClick={() => setActiveTab('compose')} className="communications-primary-action">
+            <Icon icon={FiEdit2} />
+            Compose
+          </button>
+        </div>
+      </header>
+
+      <nav className="communications-tabs" aria-label="Communication sections">
+          {(['sent', 'compose', 'templates', 'settings', 'inbound'] as TabKey[]).map((tab) => (
             <button
               key={tab}
               type="button"
               onClick={() => setActiveTab(tab)}
-              className={`px-3 py-2 rounded-md text-sm font-medium border ${activeTab === tab ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}
+              className={activeTab === tab ? 'is-active' : ''}
             >
-              {tab === 'settings' ? 'Settings' : tab === 'templates' ? 'Templates' : tab === 'compose' ? 'Compose' : tab === 'sent' ? 'Sent Mail' : 'Inbound'}
+              {tab === 'settings' ? 'Settings' : tab === 'templates' ? 'Templates' : tab === 'compose' ? 'Compose' : tab === 'sent' ? 'Sent' : 'Inbound'}
+              {tab === 'sent' && <span>{sentEmails.length}</span>}
+              {tab === 'templates' && <span>{templates.length}</span>}
             </button>
           ))}
-        </div>
-      </div>
+      </nav>
 
       {loadWarnings.length > 0 && (
-        <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <div className="communications-warning">
           <div className="font-semibold">Some communications data is temporarily unavailable.</div>
           <div className="mt-1">{loadWarnings.join(' ')}</div>
         </div>
