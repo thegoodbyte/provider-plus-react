@@ -624,8 +624,8 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
   }
 
   return (
-    <div className="space-y-5 pb-24">
-      <div className="sticky top-0 z-30 -mx-1 rounded-b-xl border-b border-gray-200 bg-white/95 px-1 pb-3 pt-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85">
+    <div className={`client-booking-workflow space-y-5 pb-24 ${isEditing ? 'is-editing' : ''}`}>
+      <div className="booking-workflow-toolbar sticky top-0 z-30 -mx-1 rounded-b-xl border-b border-gray-200 bg-white/95 px-1 pb-3 pt-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Booking Requirements</h2>
@@ -688,7 +688,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
           )}
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-2">
+        <div className="booking-workflow-filters mt-3 flex flex-wrap gap-2">
           {([
             ['all', `All (${items.length})`],
             ['past_due', `Past due (${pastDueCount})`],
@@ -712,7 +712,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
         </div>
       </div>
 
-      <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-xl border border-gray-200 bg-white/95 p-2 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-white/85">
+      <div className="booking-workflow-floating-actions fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-xl border border-gray-200 bg-white/95 p-2 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-white/85">
         {isEditing ? (
           <>
             <AppleButton onClick={cancelEditing} variant="ghost" className="px-3 py-2" disabled={savingId === 'all'}>
@@ -750,8 +750,8 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
               No booking steps match this filter.
             </div>
           ) : (
-            <div className="divide-y divide-gray-200">
-              {filteredItems.map((item) => {
+            <div className="booking-workflow-list divide-y divide-gray-200">
+              {filteredItems.map((item, index) => {
                 const id = item._id || item.key;
                 const draft = drafts[id] || makeDraft(item);
                 const isChecked = draft.checked;
@@ -779,9 +779,17 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                 const deadlineLogs = itemActionLogs.filter((log) => log.actionType === 'deadline_changed');
                 const dateTimePickerDraft = dateTimePickerDrafts[id];
                 const hasPendingDateTime = dateTimePickerDraft !== undefined && dateTimePickerDraft !== draft.dateTime;
+                const previousGroup = index > 0 ? getBookingStepGroupKey(filteredItems[index - 1]) : '';
+                const groupCount = filteredItems.filter((candidate) => getBookingStepGroupKey(candidate) === groupKey).length;
 
                 return (
-                  <div key={id} className={`grid gap-2 border-l-4 p-3 ${tone.stepStripe} ${isChecked ? 'bg-green-50/60' : overdue ? 'bg-red-50/70' : dueSoon ? 'bg-amber-50/70' : tone.stepCell}`} style={!isChecked && !overdue && !dueSoon ? stepStyle : undefined}>
+                  <React.Fragment key={id}>
+                  {groupKey !== previousGroup && (
+                    <div className="booking-workflow-group-heading">
+                      {titleizeBookingStepGroup(groupKey)} · {groupCount} {groupCount === 1 ? 'step' : 'steps'}
+                    </div>
+                  )}
+                  <div className={`booking-workflow-step grid gap-2 border-l-4 p-3 ${tone.stepStripe} ${isChecked ? 'bg-green-50/60' : overdue ? 'bg-red-50/70' : dueSoon ? 'bg-amber-50/70' : tone.stepCell}`} style={!isChecked && !overdue && !dueSoon ? stepStyle : undefined}>
                     <div className="grid gap-2 lg:grid-cols-[minmax(240px,1fr)_minmax(210px,260px)] lg:items-center">
                       <label className="flex min-w-0 items-center gap-2">
                         <input
@@ -925,6 +933,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                       </div>
                     </div>
                   </div>
+                  </React.Fragment>
                 );
               })}
             </div>
