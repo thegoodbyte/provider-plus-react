@@ -15,6 +15,7 @@ import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
 import { createBookingConfirmationPdf } from './BookingConfirmationPDF';
 import { Task, CreateTaskDto, taskService } from '../services/taskService';
 import { BookingDocument, BookingFlowItem, CeremonyParticipant, MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
+import { getBookingPaidAmount } from './bookingPaymentSummary';
 import './BookingDetailView.css';
 
 type RequirementArtifactType = NonNullable<MedicalArtifact['artifactType']>;
@@ -1542,18 +1543,10 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const bookingStatus = String(booking.status || 'confirmed').replace(/_/g, ' ');
   const totalAmount = Number(booking.totalAmount || 0);
   const currency = String(booking.currency || 'EUR').toUpperCase();
-  const paidAmount = Number(
-    booking.amountPaid ??
-    booking.paidAmount ??
-    bookingPayments
-      .filter((payment) => payment.status === 'completed')
-      .reduce((sum: number, payment: Payment) => {
-      const amount = Number(
-        payment.bookingCurrencyAmount ??
-        (payment.currency === currency ? payment.amount : 0)
-      );
-      return sum + (payment.paymentType === 'refund' ? -amount : amount);
-    }, 0)
+  const paidAmount = getBookingPaidAmount(
+    bookingPayments,
+    currency,
+    booking.amountPaid ?? booking.paidAmount,
   );
   const balanceDue = Math.max(0, totalAmount - paidAmount);
   const currencySymbol = currency === 'EUR' ? '€' : currency === 'PLN' ? 'zł' : currency === 'CZK' ? 'Kč' : currency;
