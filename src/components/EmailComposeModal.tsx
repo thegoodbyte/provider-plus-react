@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FiSend, FiX } from 'react-icons/fi';
 import { bookingsApi, communicationsApi } from '../services/api';
 import { EmailTemplate, MailSettings } from '../types';
@@ -54,6 +54,18 @@ const normalizeBookingConfirmationLanguage = (language?: string): 'pl' | 'cz' | 
   return 'en';
 };
 
+const normalizeTemplateLanguage = (language?: string) => {
+  const normalized = String(language || '').trim().toLowerCase().split(/[,_-]/)[0];
+  if (normalized === 'cs' || normalized === 'czech' || normalized === 'cesky' || normalized === 'česky') return 'cz';
+  if (normalized === 'polish' || normalized === 'polski') return 'pl';
+  if (normalized === 'english') return 'en';
+  return normalized || 'en';
+};
+
+const preferredTemplateLanguage = (values: EmailComposeInitialValues) => normalizeTemplateLanguage(
+  values.resolvedLanguage || values.requestedLanguage || values.variables?.client?.language || values.variables?.clientLanguage,
+);
+
 export interface EmailComposeInitialValues {
   to?: string;
   cc?: string;
@@ -102,6 +114,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
   const [settings, setSettings] = useState<MailSettings | null>(null);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [templateLanguage, setTemplateLanguage] = useState(() => preferredTemplateLanguage(initialValues));
   const [preparedAttachments, setPreparedAttachments] = useState(initialValues.attachments || []);
   const [attachmentPreparationError, setAttachmentPreparationError] = useState('');
   const [sending, setSending] = useState(false);
@@ -117,9 +130,15 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
     replyTo: initialValues.replyTo || '',
   });
   const selectedTemplate = templates.find((item) => item._id === selectedTemplateId);
+  const availableTemplateLanguages = useMemo(() => Array.from(new Set([...templates.map((item) => normalizeTemplateLanguage(item.language)), templateLanguage])).sort((a, b) => {
+    const order = ['en', 'cz', 'pl'];
+    return (order.indexOf(a) === -1 ? 99 : order.indexOf(a)) - (order.indexOf(b) === -1 ? 99 : order.indexOf(b)) || a.localeCompare(b);
+  }), [templateLanguage, templates]);
+  const filteredTemplates = useMemo(() => templates.filter((item) => normalizeTemplateLanguage(item.language) === templateLanguage), [templateLanguage, templates]);
 
   useEffect(() => {
     setSelectedTemplateId(initialValues.templateId || '');
+    setTemplateLanguage(preferredTemplateLanguage(initialValues));
     setPreparedAttachments(initialValues.attachments || []);
     setAttachmentPreparationError('');
     setFormData({
@@ -228,6 +247,16 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
     }));
   }, [initialValues.variables, templates]);
 
+  const handleTemplateLanguageChange = (language: string) => {
+    setTemplateLanguage(language);
+    if (!selectedTemplate) return;
+    const counterpart = templates.find((item) => item._id !== selectedTemplate._id
+      && normalizeTemplateLanguage(item.language) === language
+      && String(item.templateKey || '').trim().toLowerCase() === String(selectedTemplate.templateKey || '').trim().toLowerCase());
+    if (counterpart?._id) handleTemplateChange(counterpart._id);
+    else setSelectedTemplateId('');
+  };
+
   useEffect(() => {
     if (!initialValues.templateId || templates.length === 0) return;
     if (initialValues.subject || initialValues.bodyText) return;
@@ -320,7 +349,14 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
           {extraContent}
 
           {templates.length > 0 && (
-            <div>
+            <div className="grid gap-3 sm:grid-cols-[180px_1fr]">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Template language</label>
+                <select value={templateLanguage} onChange={(event) => handleTemplateLanguageChange(event.target.value)} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                  {availableTemplateLanguages.map((language) => <option key={language} value={language}>{language.toUpperCase()}</option>)}
+                </select>
+              </div>
+              <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">Template</label>
               <select
                 value={selectedTemplateId}
@@ -328,12 +364,14 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
               >
                 <option value="">No template</option>
-                {templates.map((template) => (
+                {filteredTemplates.map((template) => (
                   <option key={template._id} value={template._id || ''}>
-                    {template.display_id ? `#${template.display_id} ` : ''}{template.name}
+                    {template.display_id ? `#${template.display_id} ` : ''}{template.name} ({normalizeTemplateLanguage(template.language).toUpperCase()})
                   </option>
                 ))}
               </select>
+              {filteredTemplates.length === 0 && <p className="mt-1 text-xs text-amber-700">No active templates are available in this language.</p>}
+              </div>
             </div>
           )}
 

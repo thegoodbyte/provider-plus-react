@@ -1410,6 +1410,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         retreatId: retreat?._id,
         relatedEntityType: 'booking',
         relatedEntityId: bookingId,
+        requestedLanguage: language,
         attachments: [{
           fileName,
           mimeType: 'application/pdf',
@@ -2059,6 +2060,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
             retreatId={getObjectId(booking?.retreatId || booking?.retreat)}
             recipientEmail={(typeof booking?.clientId === 'object' ? booking.clientId?.email : booking?.clientDetails?.email) || booking?.clientEmail}
             recipientName={typeof booking?.clientId === 'object' ? [booking.clientId?.firstName, booking.clientId?.lastName].filter(Boolean).join(' ') : [booking?.clientDetails?.firstName, booking?.clientDetails?.lastName].filter(Boolean).join(' ')}
+            preferredLanguage={(typeof booking?.clientId === 'object' ? booking.clientId?.language || booking.clientId?.preferredLanguage : booking?.clientDetails?.language || booking?.clientDetails?.preferredLanguage) || 'EN'}
             title="Booking emails"
             subtitle="Only emails related to this booking and client."
           />

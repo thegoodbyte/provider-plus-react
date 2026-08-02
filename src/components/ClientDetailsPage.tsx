@@ -2035,6 +2035,7 @@ const ClientDetailsPage: React.FC = () => {
             clientId={clientId}
             recipientEmail={client?.email}
             recipientName={[client?.firstName, client?.lastName].filter(Boolean).join(' ')}
+            preferredLanguage={client?.language || client?.preferredLanguage || 'EN'}
             title="Client emails"
             subtitle="Sent and received emails for this client."
           />

@@ -19,6 +19,7 @@ interface EmailHistoryPanelProps {
   subtitle?: string;
   recipientEmail?: string;
   recipientName?: string;
+  preferredLanguage?: string;
 }
 
 const formatDate = (value?: string | Date) => {
@@ -47,7 +48,7 @@ const getInboundClientLabel = (email: InboundEmail) => {
   return email.fromName || email.fromEmail || 'Unknown';
 };
 
-const EmailHistoryPanel: React.FC<EmailHistoryPanelProps> = ({ clientId, bookingId, retreatId, title = 'Email history', subtitle, recipientEmail, recipientName }) => {
+const EmailHistoryPanel: React.FC<EmailHistoryPanelProps> = ({ clientId, bookingId, retreatId, title = 'Email history', subtitle, recipientEmail, recipientName, preferredLanguage }) => {
   const [loading, setLoading] = useState(true);
   const [sentEmails, setSentEmails] = useState<SentEmail[]>([]);
   const [inboundEmails, setInboundEmails] = useState<InboundEmail[]>([]);
@@ -196,8 +197,10 @@ const EmailHistoryPanel: React.FC<EmailHistoryPanelProps> = ({ clientId, booking
                 id: clientId,
                 email: recipientEmail,
                 name: recipientName || '',
+                language: preferredLanguage || 'EN',
               },
             },
+            requestedLanguage: preferredLanguage || 'EN',
           }}
           onClose={() => setComposerOpen(false)}
           onSent={async () => {
