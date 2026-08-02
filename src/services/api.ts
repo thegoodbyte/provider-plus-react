@@ -1406,6 +1406,7 @@ export const bookingFlowApi = {
 };
 
 export const bookingDocumentsApi = {
+  getSubmittedData: (category = 'all') => api.get(`/booking-documents/submitted-data/list?category=${encodeURIComponent(category)}`),
   getTypes: (includeInactive = false) => cachedGet<BookingDocumentType[]>(
     `booking-documents:types:${includeInactive}`,
     () => api.get<BookingDocumentType[]>(`/booking-documents/types${includeInactive ? '?includeInactive=true' : ''}`)
