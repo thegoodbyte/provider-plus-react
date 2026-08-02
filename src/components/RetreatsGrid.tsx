@@ -483,6 +483,7 @@ const RetreatsGrid: React.FC = () => {
                         <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Client ID</th>
                         <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Name</th>
                         <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Language</th>
+                        <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Ref.</th>
                         <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Status</th>
                         <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                           {selectedBookingStepOption ? selectedBookingStepOption.label : 'Selected step'}
@@ -493,7 +494,7 @@ const RetreatsGrid: React.FC = () => {
                     <tbody className="divide-y divide-gray-100 bg-white">
                       {retreatBookings.length === 0 ? (
                         <tr>
-                          <td colSpan={7} className="px-4 py-4 text-sm text-gray-500">No bookings for this retreat.</td>
+                          <td colSpan={8} className="px-4 py-4 text-sm text-gray-500">No bookings for this retreat.</td>
                         </tr>
                       ) : (
                         retreatBookings.map((booking: any) => {
@@ -536,6 +537,9 @@ const RetreatsGrid: React.FC = () => {
                             </td>
                             <td className="whitespace-nowrap px-4 py-2 text-sm text-gray-700">
                               {getClientLanguage(booking)}
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-2 text-sm font-black text-blue-800">
+                              {(booking.clientId as any)?.referralId?.referralCode || '-'}
                             </td>
                             <td className="whitespace-nowrap px-4 py-2 text-sm">
                               <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700">

@@ -80,6 +80,7 @@ interface RetreatClientData {
   clientName: string;
   clientEmail?: string;
   clientLanguage?: string;
+  referralCode?: string;
   clientPhone: string;
   clientProfilePictureUrl?: string;
   clientProfilePictureS3Key?: string;
@@ -439,6 +440,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             : 'Unknown Client',
           clientEmail: booking.clientId?.email || '',
           clientLanguage: booking.clientId?.language || '',
+          referralCode: booking.clientId?.referralId?.referralCode || '',
           clientPhone: booking.clientId?.phone || '',
           clientProfilePictureUrl: booking.clientId?.profilePictureUrl || '',
           clientProfilePictureS3Key: booking.clientId?.profilePictureS3Key || '',
@@ -1493,6 +1495,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                       Phone
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Ref.
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Booking Type
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1557,6 +1562,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {client.clientPhone}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-black text-blue-800">
+                        {client.referralCode || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {client.bookingType === 'booster' ? (

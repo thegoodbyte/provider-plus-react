@@ -105,6 +105,7 @@ export interface ContactBookEntry {
 export interface Referral {
   _id?: string;
   name: string;
+  referralCode?: string;
   defaultCommissionPercentage?: number;
   email?: string;
   phone?: string;
@@ -112,6 +113,14 @@ export interface Referral {
   isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface ReferralReportRow {
+  bookingId: string; bookingNumber?: number; bookingStatus?: string; registrationDate?: string;
+  clientId: string; clientDisplayId?: number; clientName: string; clientEmail?: string;
+  referralId: string; referralName: string; referralCode?: string; commissionPercentage: number;
+  retreatId: string; retreatName?: string; retreatCode?: string; retreatStartDate?: string;
+  amountOwed: number; owedCurrency: string; bookingAmount: number; bookingCurrency: string;
 }
 
 export interface Client {

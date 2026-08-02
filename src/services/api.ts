@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, PaymentMethod, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, MedicalReviewGroup, MedicalReviewGroupAccessLink, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, MailSettings, EmailTemplate, EmailTemplateSeedOption, SentEmail, RetreatArtifactSubmissionsResponse, BloodPressureReading } from '../types';
+import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, PaymentMethod, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, MedicalReviewGroup, MedicalReviewGroupAccessLink, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, MailSettings, EmailTemplate, EmailTemplateSeedOption, SentEmail, RetreatArtifactSubmissionsResponse, BloodPressureReading, ReferralReportRow } from '../types';
 import type { Referral } from '../types';
 import { authService } from './authService';
 import { cacheService } from './cacheService';
@@ -322,6 +322,7 @@ export const retreatClientsApi = bookingsApi;
 
 export const referralsApi = {
   getAll: () => api.get<Referral[]>('/referrals'),
+  getReport: () => api.get<ReferralReportRow[]>('/referrals/report'),
   create: (data: Omit<Referral, '_id'>) => api.post<Referral>('/referrals', data),
   update: (id: string, data: Partial<Referral>) => api.patch<Referral>(`/referrals/${id}`, data),
   delete: (id: string) => api.delete(`/referrals/${id}`),
