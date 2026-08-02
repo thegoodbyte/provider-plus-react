@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiCheckSquare, FiChevronDown, FiCreditCard, FiDownload, FiEdit3, FiEye, FiFileText, FiHome, FiMail, FiSend, FiX } from 'react-icons/fi';
+import { FiArrowLeft, FiChevronDown, FiDownload, FiEdit3, FiEye, FiMail, FiSend, FiX } from 'react-icons/fi';
 import { message } from 'antd';
 import { bookingsApi, bookingDocumentsApi, bookingFlowApi, ceremoniesApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import BookingPaymentManagement from './BookingPaymentManagement';
@@ -16,7 +16,6 @@ import { createBookingConfirmationPdf } from './BookingConfirmationPDF';
 import { Task, CreateTaskDto, taskService } from '../services/taskService';
 import { BookingDocument, BookingFlowItem, CeremonyParticipant, MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
 import './BookingDetailView.css';
-import './BookingDetailViewRedesign.css';
 
 type RequirementArtifactType = NonNullable<MedicalArtifact['artifactType']>;
 type BookingConfirmationLanguage = 'pl' | 'cz' | 'en';
@@ -1006,7 +1005,6 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [bookingTasks, setBookingTasks] = useState<Task[]>([]);
   const [bookingDocuments, setBookingDocuments] = useState<BookingDocument[]>([]);
   const [bookingPayments, setBookingPayments] = useState<Payment[]>([]);
-  const [bookingFlowItems, setBookingFlowItems] = useState<BookingFlowItem[]>([]);
   const [loadingBookingTasks, setLoadingBookingTasks] = useState(false);
   const [bookingTasksError, setBookingTasksError] = useState<string | null>(null);
   const [showTaskForm, setShowTaskForm] = useState(false);
@@ -1030,7 +1028,6 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     loadBookingTasks();
     loadBookingDocuments();
     loadBookingPayments();
-    loadBookingFlowSummary();
   }, [bookingId]);
 
   useEffect(() => {
@@ -1073,15 +1070,6 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     } catch {
       // The booking remains usable if document totals are temporarily unavailable.
       setBookingDocuments([]);
-    }
-  };
-
-  const loadBookingFlowSummary = async () => {
-    try {
-      const response = await bookingFlowApi.getBookingRequirements(bookingId);
-      setBookingFlowItems(response.data?.items || []);
-    } catch {
-      setBookingFlowItems([]);
     }
   };
 
@@ -1571,6 +1559,8 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const currencySymbol = currency === 'EUR' ? '€' : currency === 'PLN' ? 'zł' : currency === 'CZK' ? 'Kč' : currency;
   const formatMoney = (amount: number) =>
     `${currencySymbol}${currencySymbol.length > 1 ? ' ' : ''}${amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  const openTasks = bookingTasks.filter((task) => task.status !== 'completed' && task.status !== 'cancelled');
+  const openTaskNames = openTasks.slice(0, 2).map((task) => task.name).join(', ');
   const expectedDocumentCount = Math.max(requirementDefinitions.length, bookingDocuments.length);
   const completedDocumentCount = bookingDocuments.filter((document: any) =>
     !['missing', 'rejected'].includes(String(document?.status || '').toLowerCase())
@@ -1588,13 +1578,6 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     { label: 'Documents complete', complete: expectedDocumentCount > 0 && completedDocumentCount >= expectedDocumentCount },
   ];
   const readinessCompleted = readinessItems.filter((item) => item.complete).length;
-  const nowTime = Date.now();
-  const bookingStepIsComplete = (item: BookingFlowItem) => completedStatuses.has(String(item.status || '').toLowerCase());
-  const pastDueSteps = bookingFlowItems.filter((item) => {
-    const dueTime = item.dueDate ? new Date(item.dueDate).getTime() : Number.NaN;
-    return Number.isFinite(dueTime) && dueTime < nowTime && !bookingStepIsComplete(item);
-  }).sort((a, b) => new Date(a.dueDate || 0).getTime() - new Date(b.dueDate || 0).getTime());
-  const openBookingSteps = bookingFlowItems.filter((item) => !bookingStepIsComplete(item));
   const tabs = [
     { key: 'overview', label: 'Overview' },
     { key: 'payments', label: 'Payments' },
@@ -1604,6 +1587,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     { key: 'documents', label: 'Documents' },
     { key: 'emails', label: 'Emails' },
     { key: 'tasks', label: 'Tasks' },
+    { key: 'workflow', label: 'Booking Requirements' },
     { key: 'notes', label: 'Notes' },
   ] as const;
 
@@ -1727,43 +1711,6 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         </div>
       )}
 
-      <aside className="booking-context-sidebar" aria-label="Booking summary">
-        <section className="booking-sidebar-section booking-sidebar-money">
-          <span className="booking-sidebar-kicker">Money</span>
-          <div className="booking-sidebar-balance"><strong>{formatMoney(balanceDue)}</strong><span>balance due</span></div>
-          <div className="booking-balance-track"><span style={{ width: `${totalAmount > 0 ? Math.min(100, (paidAmount / totalAmount) * 100) : 0}%` }} /></div>
-          <dl>
-            <div><dt>Total cost</dt><dd>{formatMoney(totalAmount)}</dd></div>
-            <div><dt>Payments received</dt><dd>{formatMoney(paidAmount)} · {bookingPayments.length} records</dd></div>
-          </dl>
-          <button type="button" className="booking-sidebar-primary" onClick={() => setActiveTab('payments')}>Record payment</button>
-        </section>
-        <section className="booking-sidebar-section">
-          <div className="booking-sidebar-section-title"><span>Retreat readiness</span><b>{readinessCompleted} of {readinessItems.length}</b></div>
-          <div className="booking-sidebar-readiness">
-            {readinessItems.map((item) => <span key={item.label} className={item.complete ? 'complete' : ''}>{item.label}</span>)}
-          </div>
-        </section>
-        <section className="booking-sidebar-section">
-          <div className="booking-sidebar-section-title"><span>Retreat</span><button type="button" onClick={() => retreatId && navigate(`${routePrefix}/retreats/${retreatId}`)}>Open</button></div>
-          <dl>
-            <div><dt>Name</dt><dd>{retreatCode}</dd></div>
-            <div><dt>Type</dt><dd>{retreat?.type || 'Regular'} · {bookingTypeCode}</dd></div>
-            <div><dt>Runs</dt><dd>{formatDate(retreat?.startDate || retreat?.dates?.startDate)} – {formatDate(retreat?.endDate || retreat?.dates?.endDate)}</dd></div>
-            <div><dt>Location</dt><dd>{retreatAddress || 'Not set'}</dd></div>
-          </dl>
-        </section>
-        <section className="booking-sidebar-section">
-          <div className="booking-sidebar-section-title"><span>Client</span><button type="button" onClick={navigateToClientEdit}>Edit</button></div>
-          <dl>
-            <div><dt>Email</dt><dd>{client?.email || 'Not set'}</dd></div>
-            <div><dt>Phone</dt><dd>{client?.phone || 'Not set'}</dd></div>
-            <div><dt>City</dt><dd>{client?.city || 'Not set'}</dd></div>
-            <div><dt>Country</dt><dd>{client?.country || 'Not set'}</dd></div>
-          </dl>
-        </section>
-      </aside>
-
       <div className="detail-content" ref={pdfRef}>
 
         <section className="booking-needs-section" aria-labelledby="booking-needs-title">
@@ -1779,10 +1726,10 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
               <button type="button" onClick={() => setActiveTab('payments')}>{balanceDue > 0 ? 'Add payment' : 'View payments'}</button>
             </article>
             <article className="booking-need-card">
-              <span className="booking-need-label">Steps past due</span>
-              <strong>{pastDueSteps.length}</strong>
-              <p>{pastDueSteps[0]?.title ? `Oldest: ${pastDueSteps[0].title}` : 'No overdue requirements'}</p>
-              <button type="button" onClick={() => setActiveTab('requirements')}>Open steps</button>
+              <span className="booking-need-label">Open tasks</span>
+              <strong>{openTasks.length}</strong>
+              <p>{openTaskNames || 'Nothing needs attention'}</p>
+              <button type="button" onClick={() => setActiveTab('tasks')}>Open tasks</button>
             </article>
             <article className="booking-need-card">
               <span className="booking-need-label">Documents</span>
@@ -2074,7 +2021,12 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         )}
 
         {activeTab === 'requirements' && (
-          <ClientBookingWorkflowTab bookings={[booking]} hideBookingSelector />
+          <BookingRequirementsPanel
+            bookingId={bookingId}
+            clientId={getObjectId(client)}
+            retreatId={getObjectId(retreat)}
+            refreshKey={requirementsRefreshKey}
+          />
         )}
 
         {activeTab === 'medical' && (
@@ -2143,12 +2095,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
 
         {activeTab === 'workflow' && (
           <div className="detail-section">
-            <BookingRequirementsPanel
-              bookingId={bookingId}
-              clientId={getObjectId(client)}
-              retreatId={retreatId}
-              refreshKey={requirementsRefreshKey}
-            />
+            <ClientBookingWorkflowTab bookings={[booking]} hideBookingSelector />
           </div>
         )}
 
@@ -2176,14 +2123,6 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
           </>
         )}
       </div>
-
-      <nav className="booking-mobile-nav" aria-label="Booking navigation">
-        <button type="button" className={activeTab === 'overview' ? 'active' : ''} onClick={() => setActiveTab('overview')}><HeaderIcon icon={FiHome} /><span>Overview</span></button>
-        <button type="button" className={activeTab === 'requirements' ? 'active' : ''} onClick={() => setActiveTab('requirements')}><HeaderIcon icon={FiCheckSquare} /><span>Steps</span>{openBookingSteps.length > 0 && <b>{openBookingSteps.length}</b>}</button>
-        <button type="button" className={activeTab === 'payments' ? 'active' : ''} onClick={() => setActiveTab('payments')}><HeaderIcon icon={FiCreditCard} /><span>Money</span></button>
-        <button type="button" className={activeTab === 'documents' ? 'active' : ''} onClick={() => setActiveTab('documents')}><HeaderIcon icon={FiFileText} /><span>Docs</span></button>
-        <button type="button" className={activeTab === 'emails' ? 'active' : ''} onClick={() => setActiveTab('emails')}><HeaderIcon icon={FiMail} /><span>Emails</span></button>
-      </nav>
 
       {confirmationEmailDraft && (
         <EmailComposeModal

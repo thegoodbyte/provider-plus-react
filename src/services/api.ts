@@ -773,10 +773,11 @@ export const medicalArtifactsApi = {
     purpose?: MedicalArtifact['purpose'];
     documentStage?: MedicalArtifact['documentStage'];
     documentType?: MedicalArtifact['documentType'];
+    summary?: boolean;
   } = {}) => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
-      if (value) params.set(key, value);
+      if (value !== undefined && value !== null && value !== '') params.set(key, String(value));
     });
     const suffix = params.toString() ? `?${params.toString()}` : '';
     return cachedGet<MedicalArtifact[]>(`medical-artifacts:${suffix || 'all'}`, () => api.get<MedicalArtifact[]>(`/medical-artifacts${suffix}`));
@@ -1415,12 +1416,13 @@ export const bookingDocumentsApi = {
     cacheService.clearPattern('booking-documents:');
     return api.delete(`/booking-documents/types/${id}`);
   },
-  getAll: (params: { bookingId?: string; clientId?: string; retreatId?: string; documentType?: string } = {}) => {
+  getAll: (params: { bookingId?: string; clientId?: string; retreatId?: string; documentType?: string; summary?: boolean } = {}) => {
     const query = new URLSearchParams();
     if (params.bookingId) query.set('bookingId', params.bookingId);
     if (params.clientId) query.set('clientId', params.clientId);
     if (params.retreatId) query.set('retreatId', params.retreatId);
     if (params.documentType) query.set('documentType', params.documentType);
+    if (params.summary) query.set('summary', 'true');
     const key = `booking-documents:${query.toString()}`;
     return cachedGet<BookingDocument[]>(key, () => api.get<BookingDocument[]>(`/booking-documents?${query.toString()}`));
   },

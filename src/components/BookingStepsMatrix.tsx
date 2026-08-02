@@ -13,7 +13,6 @@ import {
   getBookingStepToneWithColor,
   titleizeBookingStepGroup,
 } from '../utils/bookingStepColors';
-import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
 import { hasBookingActionLog, reviewRequestStatusToBookingStepStatus } from './BookingStepsMatrix.helpers';
 
 const getObjectId = (value: any): string => {
@@ -610,24 +609,28 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       const libraryTemplateRequest = bookingFlowApi.getLibraryTemplates().catch(() => ({ data: [] as BookingFlowTemplate[] }));
       const paymentsRequest = paymentsApi.getByRetreat(retreatId).catch(() => ({ data: [] as Payment[] }));
       const usersRequest = usersApi.getAll().catch(() => ({ data: [] as User[] }));
-      const documentsRequest = bookingDocumentsApi.getAll({ retreatId }).catch(() => ({ data: [] as BookingDocument[] }));
+      const documentsRequest = bookingDocumentsApi.getAll({ retreatId, summary: true }).catch(() => ({ data: [] as BookingDocument[] }));
       const reviewRequestsRequest = medicalReviewRequestsApi.getAll({ retreatId }).catch(() => ({ data: [] as MedicalReviewRequest[] }));
+      const artifactsRequest = medicalArtifactsApi.getAll({ retreatId, summary: true }).catch(() => ({ data: [] as MedicalArtifact[] }));
 
       const response = await matrixRequest;
-      const bookingFlowFilters = buildBookingFlowArtifactFilters(response.data?.items || []);
+      // The matrix is the primary payload. Render it immediately instead of keeping
+      // the whole screen blocked behind documents, users, reviews and artifacts.
+      setBookings(response.data?.bookings || []);
+      setTemplates(response.data?.templates || []);
+      setItems(response.data?.items || []);
+      setActionLogs(response.data?.actionLogs || []);
+      if (showLoading) setLoading(false);
+
       const [libraryTemplateResponse, paymentsResponse, usersResponse, documentsResponse, artifactsResponse, reviewRequestsResponse] = await Promise.all([
         libraryTemplateRequest,
         paymentsRequest,
         usersRequest,
         documentsRequest,
-        medicalArtifactsApi.getAll({ retreatId, ...bookingFlowFilters }).catch(() => ({ data: [] as MedicalArtifact[] })),
+        artifactsRequest,
         reviewRequestsRequest,
       ]);
-      setBookings(response.data?.bookings || []);
-      setTemplates(response.data?.templates || []);
       setLibraryTemplates(libraryTemplateResponse.data || []);
-      setItems(response.data?.items || []);
-      setActionLogs(response.data?.actionLogs || []);
       setBookingDocuments(documentsResponse.data || []);
       setMedicalArtifacts(artifactsResponse.data || []);
       setReviewRequests(reviewRequestsResponse.data || []);
