@@ -4,10 +4,12 @@ import { communicationsApi } from '../services/api';
 import { InboundEmail, SentEmail } from '../types';
 import { taskService } from '../services/taskService';
 import EmailComposeModal from './EmailComposeModal';
+import { emailLanguageLabel, getInboundEmailLanguage, getSentEmailLanguage } from './emailLanguage';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
 type EmailDirectionFilter = 'all' | 'sent' | 'received';
+type EmailLanguageFilter = 'all' | string;
 
 interface EmailHistoryPanelProps {
   clientId?: string;
@@ -51,6 +53,7 @@ const EmailHistoryPanel: React.FC<EmailHistoryPanelProps> = ({ clientId, booking
   const [inboundEmails, setInboundEmails] = useState<InboundEmail[]>([]);
   const [error, setError] = useState('');
   const [direction, setDirection] = useState<EmailDirectionFilter>('all');
+  const [language, setLanguage] = useState<EmailLanguageFilter>('all');
   const [composerOpen, setComposerOpen] = useState(false);
   const [sendMessage, setSendMessage] = useState('');
 
@@ -86,10 +89,19 @@ const EmailHistoryPanel: React.FC<EmailHistoryPanelProps> = ({ clientId, booking
       const bDate = new Date((b.kind === 'sent' ? b.email.sentAt : b.email.receivedAt) || (b.email as any).createdAt || 0).getTime();
       return bDate - aDate;
     });
-    if (direction === 'sent') return rows.filter((row) => row.kind === 'sent');
-    if (direction === 'received') return rows.filter((row) => row.kind === 'received');
-    return rows;
-  }, [direction, inboundEmails, sentEmails]);
+    return rows.filter((row) => {
+      if (direction !== 'all' && row.kind !== direction) return false;
+      if (language === 'all') return true;
+      return row.kind === 'sent' ? getSentEmailLanguage(row.email) === language : getInboundEmailLanguage(row.email) === language;
+    });
+  }, [direction, inboundEmails, language, sentEmails]);
+
+  const availableLanguages = useMemo(() => {
+    const values = new Set<string>();
+    sentEmails.forEach((email) => values.add(getSentEmailLanguage(email)));
+    inboundEmails.forEach((email) => values.add(getInboundEmailLanguage(email)));
+    return Array.from(values).sort((a, b) => emailLanguageLabel(a).localeCompare(emailLanguageLabel(b)));
+  }, [inboundEmails, sentEmails]);
 
   const handleCreateTask = async (email: InboundEmail) => {
     const titleValue = window.prompt('Task title', email.aiClassification?.taskTitle || email.subject || 'Follow up on email');
@@ -137,6 +149,18 @@ const EmailHistoryPanel: React.FC<EmailHistoryPanelProps> = ({ clientId, booking
               </button>
             ))}
           </div>
+          <label className="flex items-center gap-2 text-xs font-medium text-gray-600">
+            <span>Language</span>
+            <select
+              aria-label="Filter emails by language"
+              value={language}
+              onChange={(event) => setLanguage(event.target.value)}
+              className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            >
+              <option value="all">All languages</option>
+              {availableLanguages.map((item) => <option key={item} value={item}>{emailLanguageLabel(item)}</option>)}
+            </select>
+          </label>
         </div>
       </div>
 
@@ -193,6 +217,7 @@ const EmailHistoryPanel: React.FC<EmailHistoryPanelProps> = ({ clientId, booking
               <th className="px-4 py-3">Subject</th>
               <th className="px-4 py-3">Client / From</th>
               <th className="px-4 py-3">Date</th>
+              <th className="px-4 py-3">Language</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Action</th>
             </tr>
@@ -200,7 +225,7 @@ const EmailHistoryPanel: React.FC<EmailHistoryPanelProps> = ({ clientId, booking
           <tbody className="divide-y divide-gray-200 bg-white">
             {loading ? (
               <tr>
-                <td className="px-4 py-8 text-center text-gray-500" colSpan={6}>Loading email history...</td>
+                <td className="px-4 py-8 text-center text-gray-500" colSpan={7}>Loading email history...</td>
               </tr>
             ) : combinedRows.length ? (
               combinedRows.map((row) => {
@@ -220,6 +245,7 @@ const EmailHistoryPanel: React.FC<EmailHistoryPanelProps> = ({ clientId, booking
                       </td>
                       <td className="px-4 py-3 text-gray-700">{getClientLabel(email)}</td>
                       <td className="px-4 py-3 text-gray-600">{formatDate(email.sentAt || email.createdAt)}</td>
+                      <td className="px-4 py-3 text-gray-600">{emailLanguageLabel(getSentEmailLanguage(email))}</td>
                       <td className="px-4 py-3">
                         <span className={`rounded-full px-2 py-1 text-xs font-semibold ${
                           email.status === 'sent' ? 'bg-green-100 text-green-800' :
@@ -251,6 +277,7 @@ const EmailHistoryPanel: React.FC<EmailHistoryPanelProps> = ({ clientId, booking
                     </td>
                     <td className="px-4 py-3 text-gray-700">{getInboundClientLabel(email)}</td>
                     <td className="px-4 py-3 text-gray-600">{formatDate(email.receivedAt || email.createdAt)}</td>
+                    <td className="px-4 py-3 text-gray-600">{emailLanguageLabel(getInboundEmailLanguage(email))}</td>
                     <td className="px-4 py-3">
                       <span className={`rounded-full px-2 py-1 text-xs font-semibold ${
                         email.status === 'task_created' ? 'bg-green-100 text-green-800' :
@@ -282,7 +309,7 @@ const EmailHistoryPanel: React.FC<EmailHistoryPanelProps> = ({ clientId, booking
               })
             ) : (
               <tr>
-                <td className="px-4 py-8 text-center text-gray-500" colSpan={6}>No email history matches this record yet.</td>
+                <td className="px-4 py-8 text-center text-gray-500" colSpan={7}>No email history matches the selected filters.</td>
               </tr>
             )}
           </tbody>
