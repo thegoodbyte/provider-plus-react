@@ -476,11 +476,23 @@ export interface ExpenseType {
   updatedAt?: string;
 }
 
+export interface PaymentMethod {
+  _id?: string;
+  name: string;
+  key?: string;
+  description?: string;
+  sortOrder?: number;
+  isActive?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface RetreatExpense {
   _id?: string;
   expenseKind?: 'planned' | 'actual';
   retreatId?: string | Retreat;
   expenseTypeId: string | ExpenseType;
+  paymentMethodId?: string | PaymentMethod;
   amount: number;
   usd_amount?: number;
   currency: 'EUR' | 'USD' | 'CZK' | 'PLN';

@@ -59,7 +59,7 @@ import AssistantPage from './AssistantPage';
 import HelperCurrentRetreatPage from './HelperCurrentRetreatPage';
 import RetreatFocusModePage from './RetreatFocusModePage';
 import RequirementsGrid from './RequirementsGrid';
-import CurrencySettings from './CurrencySettings';
+import SettingsPage from './SettingsPage';
 import MedicalAdvisorDashboard from './MedicalAdvisorDashboard';
 import MedicalReviewDetail from './MedicalReviewDetail';
 import MedicalRetreats from './MedicalRetreats';
@@ -155,7 +155,6 @@ const AppleLayout: React.FC = () => {
     const saved = localStorage.getItem('sidebarCollapsed');
     return saved === 'true';
   });
-  const [showSettings, setShowSettings] = useState(false);
   const { logout, user, startMedicalStaffPreview, stopImpersonation } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -621,7 +620,7 @@ const AppleLayout: React.FC = () => {
               </button>
             )}
             <button
-              onClick={() => setShowSettings(true)}
+              onClick={() => navigate('/admin/settings/finance/payment-methods')}
               className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-apple-gray-700 shadow-apple-sm backdrop-blur-apple transition-colors hover:bg-white"
               aria-label="Settings"
             >
@@ -695,7 +694,7 @@ const AppleLayout: React.FC = () => {
                 )}
                 {/* Settings button */}
                 <button
-                  onClick={() => setShowSettings(true)}
+                  onClick={() => navigate('/admin/settings/finance/payment-methods')}
                   className="p-2 rounded-apple hover:bg-apple-gray-100 transition-colors"
                   aria-label="Settings"
                 >
@@ -847,6 +846,8 @@ const AppleLayout: React.FC = () => {
                       <Route path="expenses/new" element={<ExpenseEditorPage />} />
                       <Route path="expenses/:id" element={<ExpenseDetailPage />} />
                       <Route path="expenses/:id/edit" element={<ExpenseEditorPage />} />
+                      <Route path="settings/finance/payment-methods" element={<SettingsPage />} />
+                      <Route path="settings/finance/expense-types" element={<SettingsPage />} />
                       <Route path="payment-requests" element={<PaymentRequestsGrid />} />
                       <Route path="payment-requests/new" element={<PaymentRequestEditorPage />} />
                       <Route path="payment-requests/:id" element={<PaymentRequestEditorPage />} />
@@ -1116,18 +1117,6 @@ const AppleLayout: React.FC = () => {
         </footer>
       </div>
 
-      {/* Settings Modal */}
-      {showSettings && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div
-            className="fixed inset-0 bg-black/30 backdrop-blur-sm"
-            onClick={() => setShowSettings(false)}
-          />
-          <div className="relative bg-white rounded-apple-xl shadow-apple-xl max-w-lg w-full">
-            <CurrencySettings onClose={() => setShowSettings(false)} />
-          </div>
-        </div>
-      )}
     </div>
   );
 };

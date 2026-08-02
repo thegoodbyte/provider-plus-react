@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, MedicalReviewGroup, MedicalReviewGroupAccessLink, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, MailSettings, EmailTemplate, EmailTemplateSeedOption, SentEmail, RetreatArtifactSubmissionsResponse, BloodPressureReading } from '../types';
+import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, PaymentMethod, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, MedicalReviewGroup, MedicalReviewGroupAccessLink, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, MailSettings, EmailTemplate, EmailTemplateSeedOption, SentEmail, RetreatArtifactSubmissionsResponse, BloodPressureReading } from '../types';
 import type { Referral } from '../types';
 import { authService } from './authService';
 import { cacheService } from './cacheService';
@@ -329,6 +329,7 @@ export const referralsApi = {
 
 export const expenseTypesApi = {
   getAll: () => api.get<ExpenseType[]>('/expense-types'),
+  getAllIncludingInactive: () => api.get<ExpenseType[]>('/expense-types?includeInactive=true'),
   getOne: (id: string) => api.get<ExpenseType>(`/expense-types/${id}`),
   create: (data: Omit<ExpenseType, '_id'>) => api.post<ExpenseType>('/expense-types', data),
   update: (id: string, data: Partial<ExpenseType>) => api.patch<ExpenseType>(`/expense-types/${id}`, data),
@@ -336,6 +337,14 @@ export const expenseTypesApi = {
   activate: (id: string) => api.patch(`/expense-types/${id}/activate`, {}),
   deactivate: (id: string) => api.patch(`/expense-types/${id}/deactivate`, {}),
   seed: (dryRun: boolean = false) => api.post(`/expense-types/seed${dryRun ? '?dryRun=true' : ''}`, {}),
+};
+
+export const paymentMethodsApi = {
+  getAll: (includeInactive = false) => api.get<PaymentMethod[]>(`/payment-methods${includeInactive ? '?includeInactive=true' : ''}`),
+  create: (data: Omit<PaymentMethod, '_id'>) => api.post<PaymentMethod>('/payment-methods', data),
+  update: (id: string, data: Partial<PaymentMethod>) => api.patch<PaymentMethod>(`/payment-methods/${id}`, data),
+  activate: (id: string) => api.patch<PaymentMethod>(`/payment-methods/${id}/activate`, {}),
+  deactivate: (id: string) => api.patch<PaymentMethod>(`/payment-methods/${id}/deactivate`, {}),
 };
 
 export const retreatExpensesApi = {

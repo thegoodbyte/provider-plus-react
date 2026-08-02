@@ -1,8 +1,8 @@
 import React, { FormEvent, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Camera, Save, X } from 'lucide-react';
-import { expenseTypesApi, retreatExpensesApi, retreatsApi } from '../services/api';
-import { ExpenseType, Retreat, RetreatExpense } from '../types';
+import { expenseTypesApi, paymentMethodsApi, retreatExpensesApi, retreatsApi } from '../services/api';
+import { ExpenseType, PaymentMethod, Retreat, RetreatExpense } from '../types';
 import { expenseCategoryName } from '../utils/expenseCategory';
 import LoadingSpinner from './LoadingSpinner';
 import { getCurrentRetreatForDate } from './expensesQuickAdd';
@@ -18,6 +18,7 @@ const ExpenseEditorPage: React.FC = () => {
   const prefix = `/${location.pathname.split('/').filter(Boolean)[0] || 'admin'}`;
   const amountRef = useRef<HTMLInputElement>(null);
   const [types, setTypes] = useState<ExpenseType[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -31,6 +32,7 @@ const ExpenseEditorPage: React.FC = () => {
     description: '',
     vendor: '',
     expenseTypeId: '',
+    paymentMethodId: '',
     retreatId: '',
     status: 'pending' as RetreatExpense['status'],
   });
@@ -38,14 +40,16 @@ const ExpenseEditorPage: React.FC = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const [typeResponse, retreatResponse, expenseResponse] = await Promise.all([
+        const [typeResponse, paymentMethodResponse, retreatResponse, expenseResponse] = await Promise.all([
           expenseTypesApi.getAll(),
+          paymentMethodsApi.getAll(),
           retreatsApi.getAll(),
           id ? retreatExpensesApi.getOne(id) : Promise.resolve({ data: null }),
         ]);
         const loadedTypes = (typeResponse.data || []).filter((type) => type.isActive !== false);
         const loadedRetreats = retreatResponse.data || [];
         setTypes(loadedTypes);
+        setPaymentMethods(paymentMethodResponse.data || []);
         setRetreats(loadedRetreats);
         if (expenseResponse.data) {
           const expense = expenseResponse.data;
@@ -60,6 +64,7 @@ const ExpenseEditorPage: React.FC = () => {
             description: expense.description || '',
             vendor: expense.vendor || '',
             expenseTypeId: idOf(expense.expenseTypeId),
+            paymentMethodId: idOf(expense.paymentMethodId),
             retreatId: idOf(expense.retreatId),
             status: expense.status,
           });
@@ -96,6 +101,7 @@ const ExpenseEditorPage: React.FC = () => {
       description: form.description.trim(),
       vendor: form.vendor.trim(),
       expenseTypeId: form.expenseTypeId,
+      paymentMethodId: form.paymentMethodId || undefined,
       retreatId: form.retreatId || undefined,
       status: form.status,
       expenseKind: 'actual' as const,
@@ -149,6 +155,7 @@ const ExpenseEditorPage: React.FC = () => {
         <label className="block"><span className="mb-1 block text-base font-bold">Item</span><input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className={field} placeholder="What did you buy?" /></label>
         <label className="block"><span className="mb-1 block text-base font-bold">Vendor</span><input value={form.vendor} onChange={(e) => setForm({ ...form, vendor: e.target.value })} className={field} placeholder="Store or supplier" /></label>
         <label className="block"><span className="mb-1 block text-base font-bold">Category</span><select value={form.expenseTypeId} onChange={(e) => setForm({ ...form, expenseTypeId: e.target.value })} className={field} required><option value="">Choose category</option>{types.map((type) => <option key={type._id} value={type._id}>{expenseCategoryName(type)}</option>)}</select></label>
+        <label className="block"><span className="mb-1 block text-base font-bold">Payment method</span><select value={form.paymentMethodId} onChange={(e) => setForm({ ...form, paymentMethodId: e.target.value })} className={field}><option value="">Not specified</option>{paymentMethods.map((method) => <option key={method._id} value={method._id}>{method.name}</option>)}</select></label>
         <label className="block"><span className="mb-1 block text-base font-bold">Retreat</span><select value={form.retreatId} onChange={(e) => setForm({ ...form, retreatId: e.target.value })} className={field}><option value="">General company expense</option>{retreats.map((retreat) => <option key={retreat._id} value={retreat._id}>{retreat.code || retreat.retreatCode || retreat.name}</option>)}</select></label>
         <div className="rounded-xl border border-slate-300 bg-white p-3">
           <div className="mb-2 flex items-center justify-between gap-3">
