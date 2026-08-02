@@ -1,12 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowUpDown, Clipboard, Database, Eye, FileText, RefreshCw, Search, SlidersHorizontal, Trash2, X } from 'lucide-react';
+import { Activity, ArrowUpDown, Clipboard, ClipboardList, Database, Eye, FileHeart, FileSignature, FileText, FlaskConical, HeartPulse, Pill, RefreshCw, Search, SlidersHorizontal, Trash2, Utensils, X } from 'lucide-react';
 import { bookingDocumentsApi } from '../services/api';
 import { BookingDocument, Client, Retreat, RetreatClient } from '../types';
 
 type SortKey = 'receivedAt' | 'documentType' | 'booking' | 'client' | 'retreat';
 type SortDirection = 'asc' | 'desc';
-type BookingDocumentFile = NonNullable<BookingDocument['files']>[number];
 type LibraryTab = 'files' | 'data';
 type DataCategory = 'all' | 'contract' | 'medical' | 'questionnaire' | 'food';
 type SubmittedDataRecord = { id: string; category: DataCategory; formType: string; submittedAt?: string; client?: { id?: string; displayId?: number; name?: string; email?: string }; bookingId?: string; retreatId?: string; data: Record<string, any> };
@@ -57,13 +56,17 @@ const titleize = (value: string) => value
   .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
   .join(' ');
 
-const isPdfFile = (file: BookingDocumentFile) => {
-  const name = `${file?.fileName || file?.s3Key || file?.filePath || ''}`.toLowerCase();
-  return file?.mimeType === 'application/pdf' || name.endsWith('.pdf');
-};
-
-const isImageFile = (file: BookingDocumentFile) => {
-  return Boolean(file?.mimeType?.startsWith('image/'));
+const documentVisual = (value?: string) => {
+  const type = normalizeKey(value);
+  if (/ceremony.*ekg|ekg.*ceremony/.test(type)) return { Icon: HeartPulse, label: 'Ceremony EKG', color: 'bg-rose-50 text-rose-700 border-rose-200' };
+  if (/ekg|electrocard/.test(type)) return { Icon: Activity, label: 'EKG', color: 'bg-red-50 text-red-700 border-red-200' };
+  if (/liver|hepatic/.test(type)) return { Icon: FlaskConical, label: 'Liver', color: 'bg-amber-50 text-amber-700 border-amber-200' };
+  if (/contract|agreement/.test(type)) return { Icon: FileSignature, label: 'Contract', color: 'bg-indigo-50 text-indigo-700 border-indigo-200' };
+  if (/medication|medicine|meds/.test(type)) return { Icon: Pill, label: 'Medications', color: 'bg-violet-50 text-violet-700 border-violet-200' };
+  if (/food|diet|nutrition/.test(type)) return { Icon: Utensils, label: 'Food', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' };
+  if (/questionnaire|screening|assessment/.test(type)) return { Icon: ClipboardList, label: 'Questionnaire', color: 'bg-sky-50 text-sky-700 border-sky-200' };
+  if (/blood|medical|health/.test(type)) return { Icon: FileHeart, label: titleize(type), color: 'bg-pink-50 text-pink-700 border-pink-200' };
+  return { Icon: FileText, label: titleize(type || 'document'), color: 'bg-slate-50 text-slate-600 border-slate-200' };
 };
 
 const SortHeader: React.FC<{
@@ -83,42 +86,6 @@ const SortHeader: React.FC<{
     {activeKey === sortKey && <span className="sr-only">sorted {direction}</span>}
   </button>
 );
-
-const FilePreview: React.FC<{ file?: BookingDocumentFile }> = ({ file }) => {
-  if (!file) {
-    return (
-      <div className="flex h-20 w-16 items-center justify-center rounded-md border border-dashed border-gray-300 bg-gray-50 text-gray-400">
-        <FileText className="h-5 w-5" />
-      </div>
-    );
-  }
-
-  if (file.thumbnailUrl || (isImageFile(file) && file.url)) {
-    return (
-      <img
-        src={file.thumbnailUrl || file.url}
-        alt={file.fileName || 'Document preview'}
-        className="h-20 w-16 rounded-md border border-gray-200 bg-white object-cover"
-      />
-    );
-  }
-
-  if (isPdfFile(file) && file.url) {
-    return (
-      <iframe
-        title={file.fileName || 'PDF preview'}
-        src={`${file.url}#page=1&toolbar=0&navpanes=0&scrollbar=0`}
-        className="h-20 w-16 overflow-hidden rounded-md border border-gray-200 bg-white"
-      />
-    );
-  }
-
-  return (
-    <div className="flex h-20 w-16 items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-gray-500">
-      <FileText className="h-5 w-5" />
-    </div>
-  );
-};
 
 const BookingDocumentsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -141,12 +108,13 @@ const BookingDocumentsPage: React.FC = () => {
   const [dataError, setDataError] = useState('');
   const [dataQuery, setDataQuery] = useState('');
   const [copiedId, setCopiedId] = useState('');
+  const [openingFile, setOpeningFile] = useState('');
 
   const loadDocuments = async () => {
     setLoading(true);
     setError('');
     try {
-      const response = await bookingDocumentsApi.getAll();
+      const response = await bookingDocumentsApi.getAll({ summary: true });
       setDocuments(response.data || []);
     } catch (loadError: any) {
       setError(loadError?.response?.data?.message || loadError?.message || 'Unable to load booking documents.');
@@ -179,8 +147,20 @@ const BookingDocumentsPage: React.FC = () => {
     setCopiedId(record.id); window.setTimeout(() => setCopiedId(''), 1500);
   };
 
+  const openFile = async (document: BookingDocument, fileIndex: number) => {
+    if (!document._id) return;
+    const key = `${document._id}-${fileIndex}`; setOpeningFile(key); setError('');
+    try {
+      const response = await bookingDocumentsApi.getOne(document._id);
+      const file = (response.data.files || [])[fileIndex];
+      if (!file?.url) throw new Error('The file URL is unavailable.');
+      window.open(file.url, '_blank', 'noopener,noreferrer');
+    } catch (openError: any) { setError(openError?.response?.data?.message || openError?.message || 'Unable to open the file.'); }
+    finally { setOpeningFile(''); }
+  };
+
   const documentTypes = useMemo(() => {
-    return Array.from(new Set(documents.map((document) => normalizeKey(document.documentType)).filter((type) => type && type !== 'ekg' && type !== 'liver_panel'))).sort();
+    return Array.from(new Set(documents.map((document) => normalizeKey(document.documentType)).filter(Boolean))).sort();
   }, [documents]);
 
   const handleSort = (key: SortKey) => {
@@ -212,7 +192,6 @@ const BookingDocumentsPage: React.FC = () => {
     const normalizedQuery = query.trim().toLowerCase();
     const filtered = documents.filter((document) => {
       const type = normalizeKey(document.documentType);
-      if (type === 'ekg' || type === 'liver_panel') return false;
       if (typeFilter !== 'all' && type !== typeFilter) return false;
 
       if (!normalizedQuery) return true;
@@ -313,7 +292,7 @@ const BookingDocumentsPage: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Preview</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Kind</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Document</th>
                 <th className="px-4 py-3 text-left"><SortHeader label="Type" sortKey="documentType" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
                 <th className="px-4 py-3 text-left"><SortHeader label="Booking" sortKey="booking" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
@@ -327,11 +306,11 @@ const BookingDocumentsPage: React.FC = () => {
             <tbody className="divide-y divide-gray-200 bg-white">
               {!loading && filteredDocuments.map((document) => {
                 const bookingId = getBookingId(document.bookingId);
-                const primaryFile = (document.files || [])[0];
+                const visual = documentVisual(document.documentType); const TypeIcon = visual.Icon;
                 return (
                   <tr key={document._id} className="hover:bg-gray-50">
                     <td className="px-4 py-4 align-top">
-                      <FilePreview file={primaryFile} />
+                      <div className={`inline-flex h-12 w-12 items-center justify-center rounded-xl border ${visual.color}`} title={visual.label}><TypeIcon className="h-6 w-6"/><span className="sr-only">{visual.label}</span></div>
                     </td>
                     <td className="px-4 py-4 align-top">
                       <div className="font-semibold text-gray-900">{document.title || titleize(document.documentType)}</div>
@@ -362,12 +341,12 @@ const BookingDocumentsPage: React.FC = () => {
                           <button
                             key={`${document._id}-${file.s3Key || file.filePath || file.fileName || index}`}
                             type="button"
-                            onClick={() => file.url && window.open(file.url, '_blank', 'noopener,noreferrer')}
-                            disabled={!file.url}
+                            onClick={() => openFile(document, index)}
+                            disabled={openingFile === `${document._id}-${index}`}
                             className="inline-flex max-w-xs items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-left text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-                            title={file.originalFileName ? `Original upload: ${file.originalFileName}` : file.url ? 'Open uploaded file' : 'File URL unavailable'}
+                            title={file.originalFileName ? `Original upload: ${file.originalFileName}` : 'Open uploaded file'}
                           >
-                            <Eye className="h-3.5 w-3.5 flex-none" />
+                            {openingFile === `${document._id}-${index}` ? <RefreshCw className="h-3.5 w-3.5 flex-none animate-spin"/> : <Eye className="h-3.5 w-3.5 flex-none" />}
                             <span className="truncate">{file.fileName || 'Uploaded file'}</span>
                             <span className="flex-none text-gray-400">({formatBytes(file.size)})</span>
                           </button>

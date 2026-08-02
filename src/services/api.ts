@@ -1437,6 +1437,7 @@ export const bookingDocumentsApi = {
     const key = `booking-documents:${query.toString()}`;
     return cachedGet<BookingDocument[]>(key, () => api.get<BookingDocument[]>(`/booking-documents?${query.toString()}`));
   },
+  getOne: (id: string) => api.get<BookingDocument>(`/booking-documents/${id}`),
   create: (data: Partial<BookingDocument> & { bookingId: string; documentType: string }) => {
     cacheService.clearPattern('booking-documents:');
     return api.post<BookingDocument>('/booking-documents', data);
