@@ -109,6 +109,9 @@ const BookingDocumentsPage: React.FC = () => {
   const [dataQuery, setDataQuery] = useState('');
   const [copiedId, setCopiedId] = useState('');
   const [openingFile, setOpeningFile] = useState('');
+  const [selectedData, setSelectedData] = useState<SubmittedDataRecord | null>(null);
+  const [findingDataFor, setFindingDataFor] = useState('');
+  const [highlightedDocument, setHighlightedDocument] = useState('');
 
   const loadDocuments = async () => {
     setLoading(true);
@@ -145,6 +148,26 @@ const BookingDocumentsPage: React.FC = () => {
   const copyJson = async (record: SubmittedDataRecord) => {
     await navigator.clipboard.writeText(JSON.stringify(record.data, null, 2));
     setCopiedId(record.id); window.setTimeout(() => setCopiedId(''), 1500);
+  };
+
+  const sourceIdForDocument = (document: BookingDocument) => String(document.metadata?.clientContractId || document.metadata?.intakeId || document.metadata?.questionnaireId || document.metadata?.foodFormId || '');
+  const linkedDocumentFor = (record: SubmittedDataRecord) => documents.find((document) => String(record.data?.booking_document_id || '') === String(document._id || '') || sourceIdForDocument(document) === String(record.id));
+  const linkedDataFor = (document: BookingDocument, records = submittedData) => records.find((record) => String(record.data?.booking_document_id || '') === String(document._id || '') || sourceIdForDocument(document) === String(record.id));
+  const showLinkedDocument = (record: SubmittedDataRecord) => {
+    const document = linkedDocumentFor(record); if (!document) return;
+    setQuery(String(document.display_id || document._id || '')); setHighlightedDocument(String(document._id)); setActiveTab('files');
+    window.setTimeout(() => document._id && window.document.getElementById(`booking-document-${document._id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
+  };
+  const showDocumentData = async (document: BookingDocument) => {
+    const existing = linkedDataFor(document); if (existing) { setSelectedData(existing); return; }
+    setFindingDataFor(String(document._id)); setError('');
+    try {
+      const response = await bookingDocumentsApi.getSubmittedData('all'); const rows = response.data || [];
+      setSubmittedData(rows); const match = linkedDataFor(document, rows);
+      if (!match) throw new Error('No structured submitted data is linked to this document.');
+      setSelectedData(match);
+    } catch (findError: any) { setError(findError?.response?.data?.message || findError?.message || 'Unable to load submitted data.'); }
+    finally { setFindingDataFor(''); }
   };
 
   const openFile = async (document: BookingDocument, fileIndex: number) => {
@@ -233,7 +256,8 @@ const BookingDocumentsPage: React.FC = () => {
       <div className="mb-4 grid gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm md:grid-cols-[1fr_220px]"><label className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400"/><input value={dataQuery} onChange={(e) => setDataQuery(e.target.value)} placeholder="Search client, email, booking, or submitted values" className="w-full rounded-md border border-gray-300 py-2 pl-9 pr-3 text-sm"/></label><select value={dataCategory} onChange={(e) => setDataCategory(e.target.value as DataCategory)} className="rounded-md border border-gray-300 px-3 py-2 text-sm"><option value="all">All form data</option><option value="contract">Contracts</option><option value="medical">Medical forms</option><option value="questionnaire">Questionnaires</option><option value="food">Food data</option></select></div>
       {dataError && <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{dataError}</div>}
       <div className="mb-3 text-sm text-gray-600">{dataLoading ? 'Loading submitted data…' : `${visibleSubmittedData.length} stored submission${visibleSubmittedData.length === 1 ? '' : 's'}`}</div>
-      <div className="space-y-4">{visibleSubmittedData.map((record) => <article key={`${record.category}-${record.id}`} className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm"><header className="flex flex-col gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3 md:flex-row md:items-center md:justify-between"><div><div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-semibold text-blue-700">{titleize(record.formType)}</span><strong className="text-sm text-gray-900">{record.client?.name || record.client?.email || `Client ${record.client?.id?.slice(-8) || '-'}`}</strong>{record.client?.displayId && <span className="text-xs text-gray-500">#{record.client.displayId}</span>}</div><div className="mt-1 text-xs text-gray-500">Submitted {formatDate(record.submittedAt)}{record.bookingId ? ` · Booking ${record.bookingId.slice(-8)}` : ''}</div></div><button onClick={() => copyJson(record)} className="inline-flex items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"><Clipboard className="h-3.5 w-3.5"/>{copiedId === record.id ? 'Copied' : 'Copy JSON'}</button></header><pre className="max-h-[520px] overflow-auto whitespace-pre-wrap break-words p-4 font-mono text-xs leading-5 text-gray-800">{JSON.stringify(record.data, null, 2)}</pre></article>)}{!dataLoading && visibleSubmittedData.length === 0 && <div className="rounded-lg border border-dashed border-gray-300 bg-white p-10 text-center text-sm text-gray-500">No stored submissions match this filter.</div>}</div>
+      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm"><div className="overflow-x-auto"><table className="min-w-full divide-y divide-gray-200"><thead className="bg-gray-50"><tr><th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Type</th><th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Client</th><th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Booking</th><th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Submitted</th><th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Document</th><th className="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-500">Data</th></tr></thead><tbody className="divide-y divide-gray-200">{visibleSubmittedData.map((record) => { const linked = linkedDocumentFor(record); const visual = documentVisual(record.formType); const TypeIcon = visual.Icon; return <tr key={`${record.category}-${record.id}`} className="hover:bg-gray-50"><td className="px-4 py-3"><span className="inline-flex items-center gap-2"><span className={`inline-flex h-9 w-9 items-center justify-center rounded-lg border ${visual.color}`}><TypeIcon className="h-4 w-4"/></span><span className="text-sm font-semibold text-gray-800">{titleize(record.formType)}</span></span></td><td className="px-4 py-3 text-sm text-gray-800">{record.client?.name || record.client?.email || `Client ${record.client?.id?.slice(-8) || '-'}`}{record.client?.displayId ? <span className="ml-1 text-xs text-gray-500">#{record.client.displayId}</span> : null}</td><td className="px-4 py-3 text-sm text-gray-600">{record.bookingId ? record.bookingId.slice(-8) : '-'}</td><td className="px-4 py-3 text-sm text-gray-600">{formatDate(record.submittedAt)}</td><td className="px-4 py-3">{linked ? <button onClick={() => showLinkedDocument(record)} className="text-sm font-semibold text-blue-700 hover:text-blue-900">{linked.title || `Document #${linked.display_id || linked._id?.slice(-8)}`}</button> : <span className="text-sm text-gray-400">Not linked</span>}</td><td className="px-4 py-3 text-right"><button onClick={() => setSelectedData(record)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"><Database className="h-3.5 w-3.5"/>View JSON</button></td></tr>;})}{!dataLoading && visibleSubmittedData.length === 0 && <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-gray-500">No stored submissions match this filter.</td></tr>}</tbody></table></div></div>
+      {selectedData && <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 p-4" role="dialog" aria-modal="true" aria-labelledby="submitted-data-title"><div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"><header className="flex items-start justify-between gap-4 border-b border-gray-200 px-5 py-4"><div><h2 id="submitted-data-title" className="text-lg font-semibold text-gray-900">{titleize(selectedData.formType)} data</h2><p className="mt-1 text-xs text-gray-500">{selectedData.client?.name || selectedData.client?.email || 'Client'} · {formatDate(selectedData.submittedAt)}</p></div><div className="flex gap-2"><button onClick={() => copyJson(selectedData)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700"><Clipboard className="h-3.5 w-3.5"/>{copiedId === selectedData.id ? 'Copied' : 'Copy JSON'}</button><button onClick={() => setSelectedData(null)} className="rounded-md p-2 text-gray-500 hover:bg-gray-100" aria-label="Close"><X className="h-5 w-5"/></button></div></header><pre className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-words bg-slate-950 p-5 font-mono text-xs leading-5 text-slate-100">{JSON.stringify(selectedData.data, null, 2)}</pre></div></div>}
     </div>
   );
 
@@ -308,7 +332,7 @@ const BookingDocumentsPage: React.FC = () => {
                 const bookingId = getBookingId(document.bookingId);
                 const visual = documentVisual(document.documentType); const TypeIcon = visual.Icon;
                 return (
-                  <tr key={document._id} className="hover:bg-gray-50">
+                  <tr id={`booking-document-${document._id}`} key={document._id} className={`hover:bg-gray-50 ${highlightedDocument === document._id ? 'bg-blue-50 ring-1 ring-inset ring-blue-300' : ''}`}>
                     <td className="px-4 py-4 align-top">
                       <div className={`inline-flex h-12 w-12 items-center justify-center rounded-xl border ${visual.color}`} title={visual.label}><TypeIcon className="h-6 w-6"/><span className="sr-only">{visual.label}</span></div>
                     </td>
@@ -353,7 +377,8 @@ const BookingDocumentsPage: React.FC = () => {
                         ))}
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-right align-top">
+                    <td className="px-4 py-4 text-right align-top"><div className="flex flex-col items-end gap-2">
+                      {sourceIdForDocument(document) && <button type="button" onClick={() => showDocumentData(document)} disabled={findingDataFor === document._id} className="inline-flex items-center gap-1.5 rounded-md border border-blue-200 bg-white px-3 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50"><Database className="h-3.5 w-3.5"/>{findingDataFor === document._id ? 'Loading…' : 'Submitted data'}</button>}
                       <button
                         type="button"
                         onClick={() => { setDeletingDocument(document); setDeleteReason(''); }}
@@ -361,7 +386,7 @@ const BookingDocumentsPage: React.FC = () => {
                       >
                         <Trash2 className="h-3.5 w-3.5" /> Delete
                       </button>
-                    </td>
+                    </div></td>
                   </tr>
                 );
               })}
@@ -403,6 +428,7 @@ const BookingDocumentsPage: React.FC = () => {
           </div>
         </div>
       )}
+      {selectedData && <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/60 p-4" role="dialog" aria-modal="true" aria-labelledby="submitted-data-title"><div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"><header className="flex items-start justify-between gap-4 border-b border-gray-200 px-5 py-4"><div><h2 id="submitted-data-title" className="text-lg font-semibold text-gray-900">{titleize(selectedData.formType)} data</h2><p className="mt-1 text-xs text-gray-500">{selectedData.client?.name || selectedData.client?.email || 'Client'} · {formatDate(selectedData.submittedAt)}</p></div><div className="flex gap-2"><button onClick={() => copyJson(selectedData)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700"><Clipboard className="h-3.5 w-3.5"/>{copiedId === selectedData.id ? 'Copied' : 'Copy JSON'}</button><button onClick={() => setSelectedData(null)} className="rounded-md p-2 text-gray-500 hover:bg-gray-100" aria-label="Close"><X className="h-5 w-5"/></button></div></header><pre className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap break-words bg-slate-950 p-5 font-mono text-xs leading-5 text-slate-100">{JSON.stringify(selectedData.data, null, 2)}</pre></div></div>}
     </div>
   );
 };
