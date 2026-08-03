@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FiAlertCircle, FiCheckCircle, FiEdit2, FiInbox, FiMail, FiPlus, FiRefreshCw, FiSave, FiSearch, FiSend, FiTrash2 } from 'react-icons/fi';
+import { FiAlertCircle, FiCheckCircle, FiCopy, FiEdit2, FiInbox, FiMail, FiPlus, FiRefreshCw, FiSave, FiSearch, FiSend, FiTrash2 } from 'react-icons/fi';
 import { Link, useLocation } from 'react-router-dom';
 import { communicationsApi, clientsApi, retreatsApi } from '../services/api';
 import { Client, EmailTemplate, EmailTemplateSeedOption, InboundEmail, MailSettings, Retreat, SentEmail } from '../types';
@@ -12,6 +12,16 @@ const WELCOME_STEP_OPTIONS = [
   ['booking_confirmation_sent', 'Booking confirmation sent'], ['medical_labs_requested', 'EKG and liver requested'],
   ['medications_form_initial_sent', 'Medications form sent'], ['questionnaire_sent', 'Questionnaire sent'],
   ['food_form_sent', 'Food form sent'], ['contract_sent', 'Contract requested'],
+];
+
+const EMAIL_TEMPLATE_TAGS = [
+  { group: 'Client', tags: ['client.firstName', 'client.fullName', 'client.email', 'client.loginPin', 'client.displayId', 'client.language'] },
+  { group: 'Booking', tags: ['booking.number', 'booking.type', 'booking.status', 'booking.specialRequests'] },
+  { group: 'Retreat', tags: ['retreat.name', 'retreat.code', 'retreat.locationTown', 'retreat.dateRange', 'retreat.checkIn', 'retreat.checkOut', 'retreat.address', 'retreat.googleMapLink', 'retreat.startDate', 'retreat.endDate', 'retreat.startTime', 'retreat.endTime'] },
+  { group: 'Deadlines', tags: ['contract.dueDate', 'medicalReview.dueDate', 'payment.balanceDueDate'] },
+  { group: 'Payment', tags: ['payment.remainingBalance', 'payment.requestNumber', 'payment.currency'] },
+  { group: 'Links', tags: ['links.clientPortal', 'links.contract', 'links.balancePayment', 'links.testingInstructions', 'links.medicationsForm', 'links.healthQuestionnaire', 'links.questionnaire', 'links.foodSurvey', 'links.bloodPressure', 'links.medicalForm', 'links.preparation'] },
+  { group: 'Sender', tags: ['sender.name', 'sender.contactInformation'] },
 ];
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -1116,6 +1126,30 @@ const CommunicationsPage: React.FC = () => {
                 HTML is detected automatically. Paste the complete HTML source here; no special label is required.
               </p>
             </div>
+            <details className="rounded-md border border-blue-200 bg-blue-50 p-3">
+              <summary className="cursor-pointer select-none text-sm font-semibold text-blue-900">Available template tags</summary>
+              <p className="mt-2 text-xs text-blue-800">Values are filled automatically from the selected booking. Click a tag to copy it.</p>
+              <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {EMAIL_TEMPLATE_TAGS.map((section) => <div key={section.group}>
+                  <div className="mb-1 text-xs font-bold uppercase tracking-wide text-blue-900">{section.group}</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {section.tags.map((tag) => {
+                      const placeholder = `{{${tag}}}`;
+                      return <button
+                        key={tag}
+                        type="button"
+                        title={`Copy ${placeholder}`}
+                        onClick={() => navigator.clipboard.writeText(placeholder)}
+                        className="inline-flex items-center gap-1 rounded border border-blue-200 bg-white px-2 py-1 font-mono text-xs text-blue-800 hover:border-blue-400 hover:bg-blue-100"
+                      >
+                        <Icon icon={FiCopy} className="shrink-0" />
+                        {placeholder}
+                      </button>;
+                    })}
+                  </div>
+                </div>)}
+              </div>
+            </details>
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
