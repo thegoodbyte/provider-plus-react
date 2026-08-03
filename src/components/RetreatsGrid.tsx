@@ -20,6 +20,9 @@ const RetreatsGrid: React.FC = () => {
   const [houses, setHouses] = useState<House[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [viewMode, setViewMode] = useState<'list' | 'holistic'>('list');
+  const [showReferralColumn, setShowReferralColumn] = useState(() => {
+    try { return window.localStorage.getItem('retreats-holistic-show-referrals') !== 'false'; } catch { return true; }
+  });
   const [isLoadingStepData, setIsLoadingStepData] = useState(false);
   const [retreatMatrices, setRetreatMatrices] = useState<Record<string, { items: BookingFlowItem[]; templates: BookingFlowTemplate[] }>>({});
   const [selectedBookingStepKey, setSelectedBookingStepKey] = useState('');
@@ -32,6 +35,10 @@ const RetreatsGrid: React.FC = () => {
     fetchRetreats();
     fetchHouses();
   }, []);
+
+  useEffect(() => {
+    try { window.localStorage.setItem('retreats-holistic-show-referrals', String(showReferralColumn)); } catch { /* Preferences remain session-only when storage is unavailable. */ }
+  }, [showReferralColumn]);
 
   const routePrefix = location.pathname.split('/').filter(Boolean)[0] || 'admin';
   const handleViewRetreat = (retreatId: string) => {
@@ -437,6 +444,10 @@ const RetreatsGrid: React.FC = () => {
                     <option key={option.key} value={option.key}>{option.label}</option>
                   ))}
                 </select>
+                <label className="inline-flex items-center gap-2 text-sm font-medium text-gray-700">
+                  <input type="checkbox" checked={showReferralColumn} onChange={(event) => setShowReferralColumn(event.target.checked)} />
+                  Show referral column
+                </label>
               </div>
             </div>
           </div>
@@ -483,7 +494,7 @@ const RetreatsGrid: React.FC = () => {
                         <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Client ID</th>
                         <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Name</th>
                         <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Language</th>
-                        <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Ref.</th>
+                        {showReferralColumn && <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Referral</th>}
                         <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Status</th>
                         <th className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">
                           {selectedBookingStepOption ? selectedBookingStepOption.label : 'Selected step'}
@@ -494,7 +505,7 @@ const RetreatsGrid: React.FC = () => {
                     <tbody className="divide-y divide-gray-100 bg-white">
                       {retreatBookings.length === 0 ? (
                         <tr>
-                          <td colSpan={8} className="px-4 py-4 text-sm text-gray-500">No bookings for this retreat.</td>
+                          <td colSpan={showReferralColumn ? 8 : 7} className="px-4 py-4 text-sm text-gray-500">No bookings for this retreat.</td>
                         </tr>
                       ) : (
                         retreatBookings.map((booking: any) => {
@@ -538,9 +549,9 @@ const RetreatsGrid: React.FC = () => {
                             <td className="whitespace-nowrap px-4 py-2 text-sm text-gray-700">
                               {getClientLanguage(booking)}
                             </td>
-                            <td className="whitespace-nowrap px-4 py-2 text-sm font-black text-blue-800">
+                            {showReferralColumn && <td className="whitespace-nowrap px-4 py-2 text-sm font-black text-blue-800">
                               {(booking.clientId as any)?.referralId?.referralCode || '-'}
-                            </td>
+                            </td>}
                             <td className="whitespace-nowrap px-4 py-2 text-sm">
                               <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700">
                                 {booking.status || 'pending'}
