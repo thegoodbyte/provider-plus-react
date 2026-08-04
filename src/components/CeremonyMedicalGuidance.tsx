@@ -3,6 +3,7 @@ import { Maximize2, Minimize2, RefreshCw } from 'lucide-react';
 import { bookingsApi, ceremoniesApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { Ceremony, CeremonyParticipant, MedicalArtifact, MedicalReviewRequest, RetreatClient } from '../types';
 import { message } from 'antd';
+import { getRetreatCeremonyPosition, orderRetreatCeremonies } from './ceremonyPosition';
 
 type GuidanceRow = {
   id: string;
@@ -37,8 +38,6 @@ const getReviewDate = (request: MedicalReviewRequest) =>
   request.requestedAt || request.createdAt || request.sentForReviewAt || request.assignedDate;
 const getReviewStage = (request: MedicalReviewRequest, linkedArtifacts: MedicalArtifact[]) =>
   request.documentStage || request.artifactSnapshot?.documentStage || linkedArtifacts[0]?.documentStage || 'entry';
-const getReviewCeremonyNumber = (request: MedicalReviewRequest, linkedArtifacts: MedicalArtifact[]) =>
-  Number(request.ceremonyNumber || request.artifactSnapshot?.ceremonyNumber || linkedArtifacts[0]?.ceremonyNumber || 0);
 const reviewHasType = (request: MedicalReviewRequest, linkedArtifacts: MedicalArtifact[], type: 'ekg' | 'liver' | 'medications' | 'questionnaire' | 'bp') => {
   const values = [
     request.requestType,
@@ -59,6 +58,7 @@ const CeremonyMedicalGuidance: React.FC<{ ceremonyId: string }> = ({ ceremonyId 
   const [bookings, setBookings] = useState<RetreatClient[]>([]);
   const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
   const [reviews, setReviews] = useState<MedicalReviewRequest[]>([]);
+  const [retreatCeremonies, setRetreatCeremonies] = useState<Ceremony[]>([]);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState('');
@@ -73,18 +73,20 @@ const CeremonyMedicalGuidance: React.FC<{ ceremonyId: string }> = ({ ceremonyId 
       ]);
       const loadedCeremony = ceremonyResponse.data;
       const retreatId = getId(loadedCeremony.retreatId);
-      const [artifactResponse, reviewResponse, bookingResponse] = retreatId
+      const [artifactResponse, reviewResponse, bookingResponse, ceremoniesResponse] = retreatId
         ? await Promise.all([
             medicalArtifactsApi.getAll({ retreatId }),
             medicalReviewRequestsApi.getAll({ retreatId }),
             bookingsApi.getByRetreatWithDetails(retreatId),
+            ceremoniesApi.getByRetreat(retreatId),
           ])
-        : [{ data: [] as MedicalArtifact[] }, { data: [] as MedicalReviewRequest[] }, { data: [] as RetreatClient[] }];
+        : [{ data: [] as MedicalArtifact[] }, { data: [] as MedicalReviewRequest[] }, { data: [] as RetreatClient[] }, { data: [] as Ceremony[] }];
       setCeremony(loadedCeremony);
       setParticipants(participantResponse.data || []);
       setBookings(bookingResponse.data || []);
       setArtifacts(artifactResponse.data || []);
       setReviews(reviewResponse.data || []);
+      setRetreatCeremonies(ceremoniesResponse.data || []);
       const nextDrafts: Record<string, string> = {};
       (participantResponse.data || []).forEach((participant: CeremonyParticipant) => {
         (participant.medicalGuidance || []).forEach((entry) => {
@@ -147,6 +149,13 @@ const CeremonyMedicalGuidance: React.FC<{ ceremonyId: string }> = ({ ceremonyId 
   }, [bookings, participants]);
 
   const rows = useMemo<GuidanceRow[]>(() => {
+    const orderedCeremonies = orderRetreatCeremonies([...(retreatCeremonies || []), ...(ceremony ? [ceremony] : [])]);
+    const reviewCeremonyPosition = (request: MedicalReviewRequest, linkedArtifacts: MedicalArtifact[]) =>
+      getRetreatCeremonyPosition(
+        orderedCeremonies,
+        (request as any).ceremonyId || (request.artifactSnapshot as any)?.ceremonyId || linkedArtifacts[0]?.ceremonyId,
+        request.ceremonyNumber || request.artifactSnapshot?.ceremonyNumber || linkedArtifacts[0]?.ceremonyNumber,
+      );
     const entryStage = (request: MedicalReviewRequest, linkedArtifacts: MedicalArtifact[]) =>
       !['pre_ceremony', 'in_ceremony', 'post_ceremony'].includes(getReviewStage(request, linkedArtifacts));
     const common: GuidanceRow[] = [
@@ -159,14 +168,13 @@ const CeremonyMedicalGuidance: React.FC<{ ceremonyId: string }> = ({ ceremonyId 
     const ceremonyNumbers = Array.from(new Set([
       1,
       2,
-      Number(ceremony?.ceremonyNumber || 0),
-      ...artifacts.map((artifact) => Number(artifact.ceremonyNumber || 0)),
-      ...reviews.map((review) => Number(review.ceremonyNumber || review.artifactSnapshot?.ceremonyNumber || 0)),
+      ...artifacts.map((artifact) => getRetreatCeremonyPosition(orderedCeremonies, artifact.ceremonyId, artifact.ceremonyNumber)),
+      ...reviews.map((review) => reviewCeremonyPosition(review, getLinkedArtifacts(review))),
     ].filter((value) => value > 0))).sort((a, b) => a - b);
     ceremonyNumbers.forEach((ceremonyNumber) => {
       common.push(
-        { id: `pre_${ceremonyNumber}_ekg`, label: `Pre-ceremony ${ceremonyNumber} · EKG`, automatic: true, matches: (request, linked) => getReviewStage(request, linked) === 'pre_ceremony' && getReviewCeremonyNumber(request, linked) === ceremonyNumber && reviewHasType(request, linked, 'ekg') },
-        { id: `pre_${ceremonyNumber}_bp`, label: `Pre-ceremony ${ceremonyNumber} · Blood pressure`, automatic: true, matches: (request, linked) => getReviewStage(request, linked) === 'pre_ceremony' && getReviewCeremonyNumber(request, linked) === ceremonyNumber && reviewHasType(request, linked, 'bp') },
+        { id: `pre_${ceremonyNumber}_ekg`, label: `Pre-ceremony ${ceremonyNumber} · EKG`, automatic: true, matches: (request, linked) => getReviewStage(request, linked) === 'pre_ceremony' && reviewCeremonyPosition(request, linked) === ceremonyNumber && reviewHasType(request, linked, 'ekg') },
+        { id: `pre_${ceremonyNumber}_bp`, label: `Pre-ceremony ${ceremonyNumber} · Blood pressure`, automatic: true, matches: (request, linked) => getReviewStage(request, linked) === 'pre_ceremony' && reviewCeremonyPosition(request, linked) === ceremonyNumber && reviewHasType(request, linked, 'bp') },
       );
     });
     const otherStageRows: Array<{ stage: MedicalArtifact['documentStage']; label: string }> = [
@@ -185,7 +193,7 @@ const CeremonyMedicalGuidance: React.FC<{ ceremonyId: string }> = ({ ceremonyId 
     common.push({ id: 'medical_notes', label: 'Medical notes' });
     return common;
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [artifacts, ceremony?.ceremonyNumber, reviews]);
+  }, [artifacts, ceremony, retreatCeremonies, reviews]);
 
   function getLinkedArtifacts(request: MedicalReviewRequest) {
     const populated = [
