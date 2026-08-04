@@ -264,12 +264,18 @@ const CeremonyMedicalGuidance: React.FC<{ ceremonyId: string }> = ({ ceremonyId 
       </div>
 
       <div className={`overflow-auto rounded-lg border border-gray-200 bg-white ${isFullScreen ? 'min-h-0 flex-1' : ''}`}>
-        <table className="min-w-max border-collapse text-sm">
-          <thead>
+        <table className="w-full table-fixed border-collapse text-sm">
+          <colgroup>
+            <col style={{ width: '12%' }} />
+            {clientColumns.map((column) => (
+              <col key={column.key} style={{ width: `${88 / Math.max(clientColumns.length, 1)}%` }} />
+            ))}
+          </colgroup>
+          <thead className="sticky top-0 z-20">
             <tr className="bg-gray-50">
-              <th className="sticky left-0 z-10 min-w-[220px] border-b border-r border-gray-200 bg-gray-50 px-3 py-3 text-left font-semibold text-gray-700">Medical guidance</th>
+              <th className="sticky left-0 top-0 z-30 border-b border-r border-gray-200 bg-gray-50 px-2 py-3 text-left font-semibold text-gray-700">Medical guidance</th>
               {clientColumns.map((column) => (
-                <th key={column.key} className="min-w-[240px] max-w-[300px] border-b border-r border-gray-200 px-3 py-3 text-left font-semibold text-gray-900">
+                <th key={column.key} className="sticky top-0 z-20 break-words border-b border-r border-gray-200 bg-gray-50 px-2 py-3 text-left font-semibold text-gray-900">
                   {column.name}
                   {column.booking?.bookingNumber && <div className="mt-1 text-xs font-normal text-gray-500">Booking #{column.booking.bookingNumber}</div>}
                 </th>
@@ -279,7 +285,7 @@ const CeremonyMedicalGuidance: React.FC<{ ceremonyId: string }> = ({ ceremonyId 
           <tbody>
             {rows.map((row) => (
               <tr key={row.id}>
-                <th className="sticky left-0 z-10 border-b border-r border-gray-200 bg-gray-50 px-3 py-3 text-left align-top font-semibold text-gray-800">
+                <th className="sticky left-0 z-10 break-words border-b border-r border-gray-200 bg-gray-50 px-2 py-3 text-left align-top font-semibold text-gray-800">
                   {row.label}
                   {row.automatic && <div className="mt-1 text-[11px] font-normal text-blue-600">From medical review</div>}
                 </th>
@@ -288,7 +294,7 @@ const CeremonyMedicalGuidance: React.FC<{ ceremonyId: string }> = ({ ceremonyId 
                   const key = `${participant?._id || column.key}:${row.id}`;
                   const value = row.automatic ? getAutomaticValue(column.clientId, row) : (participant ? (drafts[key] ?? getStoredValue(participant, row.id)) : '');
                   return (
-                    <td key={column.key} className="max-w-[300px] border-b border-r border-gray-200 p-2 align-top">
+                    <td key={column.key} className="min-w-0 break-words border-b border-r border-gray-200 p-2 align-top">
                       {row.automatic ? (
                         <div className={`min-h-[72px] whitespace-pre-wrap rounded-md p-2 text-xs ${value.startsWith('No MRR') ? 'bg-red-50 text-red-800' : value.includes('Pending —') ? 'bg-amber-50 text-gray-800' : 'bg-emerald-50 text-gray-800'}`}>{value}</div>
                       ) : !participant ? (
@@ -301,7 +307,7 @@ const CeremonyMedicalGuidance: React.FC<{ ceremonyId: string }> = ({ ceremonyId 
                           onBlur={() => saveValue(participant, row.id, drafts[key] ?? value)}
                           rows={3}
                           placeholder={`Add ${row.label.toLowerCase()}`}
-                          className="w-full min-w-[220px] resize-y rounded-md border border-gray-300 px-2 py-2 text-xs"
+                          className="w-full min-w-0 resize-y rounded-md border border-gray-300 px-2 py-2 text-xs"
                         />
                       )}
                     </td>
