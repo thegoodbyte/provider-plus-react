@@ -262,7 +262,9 @@ export const bookingsApi = {
   getActivity: (id: string) => api.get<import('../types').BookingActivityEvent[]>(`/bookings/${id}/activity`),
   getByHash: (hash: string) => cachedGet<RetreatClient>(`bookings:hash:${hash}`, () => api.get<RetreatClient>(`/bookings/by-hash/${hash}`)),
   getByRetreat: (retreatId: string) => cachedGet<RetreatClient[]>(`bookings:retreat:${retreatId}`, () => api.get<RetreatClient[]>(`/bookings/retreat/${retreatId}`)),
-  getByClient: (clientId: string) => cachedGet<RetreatClient[]>(`bookings:client:${clientId}`, () => api.get<RetreatClient[]>(`/bookings/client/${clientId}`)),
+  // Booking ownership can be corrected outside this browser session. Do not cache
+  // this relationship: medical record creation must always see the current link.
+  getByClient: (clientId: string) => api.get<RetreatClient[]>(`/bookings/client/${clientId}`),
   getByRetreatWithDetails: (retreatId: string) => cachedGet<RetreatClient[]>(`bookings:retreat-details:${retreatId}`, () => api.get<RetreatClient[]>(`/bookings/retreat/${retreatId}/with-details`)),
   getNextBookingNumber: () => api.get<number>('/bookings/next-booking-number'),
   isBookingNumberAvailable: (bookingNumber: number, excludeId?: string) => api.get<{ available: boolean }>(

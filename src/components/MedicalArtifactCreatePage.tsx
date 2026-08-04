@@ -4,6 +4,7 @@ import { ArrowLeft, Plus, Upload, Search } from 'lucide-react';
 import { bookingsApi, ceremoniesApi, clientsApi, medicalArtifactsApi, retreatsApi } from '../services/api';
 import { Ceremony, Client, MedicalArtifact, Retreat, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
+import { bookingsBelongingToClient } from './medicalArtifactBookingLookup';
 
 type DocumentStage = NonNullable<MedicalArtifact['documentStage']>;
 type DocumentType = NonNullable<MedicalArtifact['documentType']>;
@@ -73,6 +74,7 @@ const MedicalArtifactCreatePage: React.FC = () => {
   const [ceremonies, setCeremonies] = useState<Ceremony[]>([]);
   const [bookings, setBookings] = useState<RetreatClient[]>([]);
   const [loadingBookings, setLoadingBookings] = useState(false);
+  const [bookingsError, setBookingsError] = useState<string | null>(null);
   const [loadingCeremonies, setLoadingCeremonies] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -163,14 +165,26 @@ const MedicalArtifactCreatePage: React.FC = () => {
 
     let isMounted = true;
     setLoadingBookings(true);
+    setBookingsError(null);
     bookingsApi.getByClient(form.clientId)
-      .then((response) => {
+      .then(async (response) => {
         if (!isMounted) return;
-        setBookings(response.data || []);
+        const scopedBookings = response.data || [];
+        if (scopedBookings.length) {
+          setBookings(scopedBookings);
+          return;
+        }
+
+        // Defensive recovery: older deployments have returned an empty scoped
+        // result even though the booking was present in the full collection.
+        const allResponse = await bookingsApi.getAll();
+        if (!isMounted) return;
+        setBookings(bookingsBelongingToClient(allResponse.data || [], form.clientId));
       })
-      .catch(() => {
+      .catch((lookupError) => {
         if (!isMounted) return;
         setBookings([]);
+        setBookingsError(lookupError?.response?.data?.message || 'Bookings could not be loaded. Please retry.');
       })
       .finally(() => {
         if (isMounted) setLoadingBookings(false);
@@ -419,6 +433,7 @@ const MedicalArtifactCreatePage: React.FC = () => {
                 <option key={booking._id} value={booking._id}>{getBookingLabel(booking)}</option>
               ))}
             </select>
+            {bookingsError && <p className="mt-1 text-xs font-medium text-red-600">{bookingsError}</p>}
           </div>
           <div>
             <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-600">Title</label>
