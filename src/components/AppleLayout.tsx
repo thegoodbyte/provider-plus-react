@@ -622,7 +622,7 @@ const AppleLayout: React.FC = () => {
               </button>
             )}
             <button
-              onClick={() => navigate('/admin/settings/finance/payment-methods')}
+              onClick={() => setShowSettings(true)}
               className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-apple-gray-700 shadow-apple-sm backdrop-blur-apple transition-colors hover:bg-white"
               aria-label="Currency converter"
               title="Revolut currency converter"
