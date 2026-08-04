@@ -12,6 +12,7 @@ import RetreatTrackingGrid from './RetreatTrackingGrid';
 import BookingStepsMatrix from './BookingStepsMatrix';
 import BookingEditorForm from './BookingEditorForm';
 import { TasksWidget } from './Tasks/TasksWidget';
+import RetreatGuestLog from './RetreatGuestLog';
 import { Modal, Form, Input, Select, Button, Checkbox, message } from 'antd';
 import { Client } from '../types';
 import {
@@ -37,6 +38,7 @@ import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
 import SavingsRoundedIcon from '@mui/icons-material/SavingsRounded';
 import SpaRoundedIcon from '@mui/icons-material/SpaRounded';
 import TaskAltRoundedIcon from '@mui/icons-material/TaskAltRounded';
+import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded';
 import './ClientsGrid.css';
 
 // Simple wrapper to fix TypeScript icon issues
@@ -54,7 +56,7 @@ interface RetreatDetailViewProps {
   onTabChange?: (tab: RetreatDetailTab) => void;
 }
 
-export type RetreatDetailTab = 'clients' | 'holisticView' | 'tracking' | 'expenses' | 'payments' | 'ceremonies' | 'analytics' | 'tasks';
+export type RetreatDetailTab = 'clients' | 'holisticView' | 'tracking' | 'guestLog' | 'expenses' | 'payments' | 'ceremonies' | 'analytics' | 'tasks';
 
 interface QuickBookingFormData {
   firstName: string;
@@ -1355,6 +1357,15 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           <span>Medical grid</span>
         </button>
         <button
+          className={`tab-btn ${activeTab === 'guestLog' ? 'active' : ''}`}
+          onClick={() => handleTabChange('guestLog')}
+          role="tab"
+          aria-selected={activeTab === 'guestLog'}
+        >
+          <HistoryRoundedIcon className="retreat-tab-icon" />
+          <span>Guest log</span>
+        </button>
+        <button
           className={`tab-btn ${activeTab === 'expenses' ? 'active' : ''}`}
           onClick={() => handleTabChange('expenses')}
           role="tab"
@@ -1662,6 +1673,12 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         {activeTab === 'tracking' && (
         <div className="tracking-section">
           <RetreatTrackingGrid retreatId={retreatId} />
+        </div>
+        )}
+
+        {activeTab === 'guestLog' && (
+        <div className="guest-log-section">
+          <RetreatGuestLog retreatId={retreatId} />
         </div>
         )}
 

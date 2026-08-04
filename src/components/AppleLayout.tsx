@@ -113,7 +113,7 @@ const BookingDetailRoute: React.FC = () => {
   return <BookingDetailView bookingId={bookingId || ''} onBack={() => navigate(-1)} />;
 };
 
-const RETREAT_DETAIL_TABS: RetreatDetailTab[] = ['clients', 'holisticView', 'tracking', 'expenses', 'payments', 'ceremonies', 'analytics', 'tasks'];
+const RETREAT_DETAIL_TABS: RetreatDetailTab[] = ['clients', 'holisticView', 'tracking', 'guestLog', 'expenses', 'payments', 'ceremonies', 'analytics', 'tasks'];
 
 const getRetreatTabFromRoute = (tab?: string): RetreatDetailTab => (
   RETREAT_DETAIL_TABS.includes(tab as RetreatDetailTab) ? tab as RetreatDetailTab : 'clients'

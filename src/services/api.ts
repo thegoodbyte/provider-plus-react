@@ -320,6 +320,13 @@ export const bookingsApi = {
   },
 };
 
+export const retreatGuestLogApi = {
+  getByRetreat: (retreatId: string) => api.get(`/retreat-guest-log?retreatId=${encodeURIComponent(retreatId)}`),
+  create: (data: any) => api.post('/retreat-guest-log', data),
+  update: (id: string, data: any) => api.patch(`/retreat-guest-log/${id}`, data),
+  delete: (id: string) => api.delete(`/retreat-guest-log/${id}`),
+};
+
 // Keep the old retreat-clients API for backward compatibility
 export const retreatClientsApi = bookingsApi;
 
