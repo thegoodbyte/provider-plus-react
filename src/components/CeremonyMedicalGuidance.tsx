@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { Maximize2, Minimize2, RefreshCw } from 'lucide-react';
 import { bookingsApi, ceremoniesApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { Ceremony, CeremonyParticipant, MedicalArtifact, MedicalReviewRequest, RetreatClient } from '../types';
 import { message } from 'antd';
@@ -62,6 +62,7 @@ const CeremonyMedicalGuidance: React.FC<{ ceremonyId: string }> = ({ ceremonyId 
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState('');
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
   const loadData = async () => {
     try {
@@ -102,6 +103,20 @@ const CeremonyMedicalGuidance: React.FC<{ ceremonyId: string }> = ({ ceremonyId 
   useEffect(() => {
     loadData();
   }, [ceremonyId]);
+
+  useEffect(() => {
+    if (!isFullScreen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsFullScreen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [isFullScreen]);
 
   const clientColumns = useMemo(() => {
     const activeBookings = bookings.filter((booking) => !['cancelled', 'declined', 'moved'].includes(String(booking.status || '').toLowerCase()));
@@ -226,18 +241,29 @@ const CeremonyMedicalGuidance: React.FC<{ ceremonyId: string }> = ({ ceremonyId 
   if (loading) return <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-500">Loading medical guidance...</div>;
 
   return (
-    <div className="space-y-4">
+    <div className={isFullScreen ? 'fixed inset-0 z-[100] flex flex-col gap-4 overflow-hidden bg-gray-100 p-4 sm:p-6' : 'space-y-4'}>
       <div className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">Retreat summarized medical results</h3>
           <p className="text-sm text-gray-500">All MRRs for each client are grouped by medical category and ceremony stage. Attempts are shown oldest first, including pending reviews.</p>
         </div>
-        <button type="button" onClick={loadData} className="inline-flex items-center justify-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700">
-          <RefreshCw className="h-4 w-4" /> Refresh
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setIsFullScreen((current) => !current)}
+            className="inline-flex items-center justify-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            aria-label={isFullScreen ? 'Return medical guidance to normal size' : 'Enlarge medical guidance'}
+          >
+            {isFullScreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            {isFullScreen ? 'Back to small' : 'Enlarge'}
+          </button>
+          <button type="button" onClick={loadData} className="inline-flex items-center justify-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+            <RefreshCw className="h-4 w-4" /> Refresh
+          </button>
+        </div>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+      <div className={`overflow-auto rounded-lg border border-gray-200 bg-white ${isFullScreen ? 'min-h-0 flex-1' : ''}`}>
         <table className="min-w-max border-collapse text-sm">
           <thead>
             <tr className="bg-gray-50">
