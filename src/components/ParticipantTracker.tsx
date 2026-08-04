@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { bookingsApi, ceremoniesApi, fileUploadsApi, medicalArtifactsApi } from '../services/api';
 import { Ceremony, CeremonyParticipant, FileUpload, MedicalArtifact, RetreatClient } from '../types';
 import { Button, Card, Col, Form, Input, InputNumber, Modal, Row, Select, Statistic, TimePicker, message } from 'antd';
-import { Activity, ArrowLeft, Clock3, FileText, HeartPulse, Plus, Trash2, GripVertical, Save } from 'lucide-react';
+import { Activity, ArrowLeft, Clock3, FileText, HeartPulse, Maximize2, Minimize2, Plus, Trash2, GripVertical, Save } from 'lucide-react';
 import moment from 'moment';
 
 interface ParticipantTrackerProps {
@@ -331,6 +331,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
   const [trackerView, setTrackerView] = useState<TrackerView>(initialView);
   const [gridEdits, setGridEdits] = useState<Record<string, string>>({});
   const [newRows, setNewRows] = useState<Array<{ id: string; time: string }>>([]);
+  const [isSpoonsFullScreen, setIsSpoonsFullScreen] = useState(false);
   const [form] = Form.useForm();
   const [medicalForm] = Form.useForm();
 
@@ -341,6 +342,20 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
   useEffect(() => {
     setTrackerView(initialView);
   }, [initialView]);
+
+  useEffect(() => {
+    if (!isSpoonsFullScreen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsSpoonsFullScreen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [isSpoonsFullScreen]);
 
   // Drag and Drop Handlers
   const handleDragStart = (e: React.DragEvent, index: number) => {
@@ -998,7 +1013,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
   );
 
   return (
-    <div className={showHeader ? 'p-6' : 'p-0'}>
+    <div className={isSpoonsFullScreen ? 'fixed inset-0 z-[100] flex flex-col overflow-hidden bg-gray-100 p-4 sm:p-6' : showHeader ? 'p-6' : 'p-0'}>
       {onBack && (
         <button onClick={onBack} className="mb-4 inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
           <Icon icon={ArrowLeft} className="h-4 w-4" />
@@ -1018,6 +1033,9 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
         <div className="flex items-center gap-2">
           {trackerView === 'spoons' && (
             <>
+              <Button icon={<Icon icon={isSpoonsFullScreen ? Minimize2 : Maximize2} className="h-4 w-4" />} onClick={() => setIsSpoonsFullScreen((current) => !current)}>
+                {isSpoonsFullScreen ? 'Back to small' : 'Enlarge'}
+              </Button>
               <Button icon={<Icon icon={Plus} className="h-4 w-4" />} onClick={addGridRow} disabled={participants.length === 0}>
                 Add row
               </Button>
@@ -1036,13 +1054,13 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
         </div>
       </div>
 
-      <Row gutter={16} className="mb-5">
+      {!isSpoonsFullScreen && <Row gutter={16} className="mb-5">
         <Col xs={12} lg={4}><Card><Statistic title="Participants" value={stats.total} /></Card></Col>
         <Col xs={12} lg={5}><Card><Statistic title="Took Medicine" value={stats.tookMedicine} suffix={`/ ${stats.total}`} /></Card></Col>
         <Col xs={12} lg={5}><Card><Statistic title="Total Doses" value={stats.totalSpoons} /></Card></Col>
         <Col xs={12} lg={5}><Card><Statistic title="Purged" value={stats.purged} suffix={`/ ${stats.tookMedicine}`} /></Card></Col>
         <Col xs={12} lg={5}><Card><Statistic title="Abnormalities" value={stats.abnormalities} valueStyle={{ color: stats.abnormalities ? '#b91c1c' : '#166534' }} /></Card></Col>
-      </Row>
+      </Row>}
 
       {!lockedView && <div className="mb-4 flex flex-wrap gap-2">
         {[
@@ -1061,11 +1079,15 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
         ))}
       </div>}
 
-      <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
-        <table className="min-w-[1100px] w-full border-collapse">
-          <thead>
+      <div className={`overflow-auto rounded-lg border border-gray-200 bg-white ${isSpoonsFullScreen ? 'min-h-0 flex-1' : ''}`}>
+        <table className="w-full table-fixed border-collapse">
+          <colgroup>
+            <col style={{ width: '8%' }} />
+            {participants.map((participant) => <col key={participant._id} style={{ width: `${92 / Math.max(participants.length, 1)}%` }} />)}
+          </colgroup>
+          <thead className="sticky top-0 z-20">
             <tr className="bg-gray-50">
-              <th className="sticky top-0 z-20 w-28 border-b border-r border-gray-200 bg-gray-50 px-3 py-3 text-left text-xs font-semibold uppercase text-gray-500 shadow-sm">Time</th>
+              <th className="sticky left-0 top-0 z-30 border-b border-r border-gray-200 bg-gray-50 px-2 py-3 text-left text-xs font-semibold uppercase text-gray-500 shadow-sm">Time</th>
               {participants.map((participant, index) => {
                 const checks = getPreCeremonyChecks(participant);
                 const latestCheck = getLatestPreCeremonyCheck(participant);
@@ -1074,7 +1096,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                 return (
                   <th
                     key={participant._id}
-                    className={`sticky top-0 z-20 min-w-[140px] border-b border-r border-gray-200 bg-gray-50 px-2 py-3 text-left align-top shadow-sm cursor-move transition-all duration-200 ${
+                    className={`sticky top-0 z-20 min-w-0 break-words border-b border-r border-gray-200 bg-gray-50 px-2 py-3 text-left align-top shadow-sm cursor-move transition-all duration-200 ${
                       isDraggedOver ? 'border-l-4 border-l-blue-500' : ''
                     } ${isDragging && draggedIndex === index ? 'opacity-50' : ''}`}
                     draggable
@@ -1272,7 +1294,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
           <tbody>
             {trackerView === 'spoons' && timeRows.map((time) => (
               <tr key={time} className="hover:bg-gray-50">
-                <td className="border-b border-r border-gray-200 bg-white px-3 py-3 align-top text-sm font-semibold text-gray-900">{time}</td>
+                <td className="sticky left-0 z-10 border-b border-r border-gray-200 bg-white px-2 py-3 align-top text-sm font-semibold text-gray-900">{time}</td>
                 {participants.map((participant) => {
                   const key = existingCellKey(participant, time);
                   const otherEvents = eventsAtTime(participant, time).filter((event) => event.eventType !== 'medicine');
@@ -1314,7 +1336,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
             ))}
             {trackerView === 'spoons' && newRows.map((row) => (
               <tr key={row.id} className="bg-blue-50/40">
-                <td className="border-b border-r border-blue-200 bg-blue-50/40 px-3 py-3 align-top">
+                <td className="sticky left-0 z-10 border-b border-r border-blue-200 bg-blue-50 px-2 py-3 align-top">
                   <input
                     type="time"
                     value={row.time}
@@ -1360,10 +1382,14 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
           {participants.length > 0 && (
             <tfoot>
               <tr className="bg-gray-50">
-                <td className="border-r border-gray-200 bg-gray-50 px-3 py-3 text-sm font-semibold text-gray-900">Totals</td>
+                <td className="sticky left-0 z-10 border-r border-gray-200 bg-gray-50 px-2 py-3 text-sm font-semibold text-gray-900">
+                  {trackerView === 'spoons' ? (
+                    <Button size="small" icon={<Icon icon={Plus} className="h-4 w-4" />} onClick={addGridRow}>Add next row</Button>
+                  ) : 'Totals'}
+                </td>
                 {participants.map((participant) => (
-                  <td key={`${participant._id}-total`} className="border-r border-gray-200 px-3 py-3 text-sm text-gray-700">
-                    <div>{participant.spoonsTaken || 0} spoons</div>
+                  <td key={`${participant._id}-total`} className="border-r border-gray-200 px-2 py-3 text-sm text-gray-700">
+                    <div className="text-base font-bold text-gray-900">{participant.spoonsTaken || 0} spoons</div>
                     <div>{participant.purged ? `Purged ${participant.purgeTime || ''}` : 'No purge recorded'}</div>
                     {participant.purgeDetails && <div className="mt-1 whitespace-pre-wrap text-xs text-gray-500">{participant.purgeDetails}</div>}
                   </td>
@@ -1379,9 +1405,6 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
 
       {trackerView === 'spoons' && participants.length > 0 && (
         <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
-          <Button icon={<Icon icon={Plus} className="h-4 w-4" />} onClick={addGridRow}>
-            Add spoon row
-          </Button>
           <Button type="primary" onClick={saveGrid} loading={saving} disabled={!hasGridChanges}>
             Save
           </Button>
