@@ -60,6 +60,7 @@ import HelperCurrentRetreatPage from './HelperCurrentRetreatPage';
 import RetreatFocusModePage from './RetreatFocusModePage';
 import RequirementsGrid from './RequirementsGrid';
 import SettingsPage from './SettingsPage';
+import CurrencySettings from './CurrencySettings';
 import MedicalAdvisorDashboard from './MedicalAdvisorDashboard';
 import MedicalReviewDetail from './MedicalReviewDetail';
 import MedicalRetreats from './MedicalRetreats';
@@ -151,6 +152,7 @@ const AppleLayout: React.FC = () => {
   const [allowedBookingIds, setAllowedBookingIds] = useState<Set<string>>(new Set());
   const [allowedClientIds, setAllowedClientIds] = useState<Set<string>>(new Set());
   const [retreatAccessLoaded, setRetreatAccessLoaded] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
     const saved = localStorage.getItem('sidebarCollapsed');
     return saved === 'true';
@@ -622,6 +624,14 @@ const AppleLayout: React.FC = () => {
             <button
               onClick={() => navigate('/admin/settings/finance/payment-methods')}
               className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-apple-gray-700 shadow-apple-sm backdrop-blur-apple transition-colors hover:bg-white"
+              aria-label="Currency converter"
+              title="Revolut currency converter"
+            >
+              <span className="text-lg font-bold" aria-hidden="true">$↔</span>
+            </button>
+            <button
+              onClick={() => setShowSettings(true)}
+              className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-apple-gray-700 shadow-apple-sm backdrop-blur-apple transition-colors hover:bg-white"
               aria-label="Settings"
             >
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -670,6 +680,15 @@ const AppleLayout: React.FC = () => {
 
                 {/* Actions */}
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowSettings(true)}
+                  className="inline-flex items-center gap-2 rounded-apple bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 transition-colors hover:bg-emerald-100"
+                  aria-label="Currency converter"
+                  title="Revolut currency converter"
+                >
+                  <span aria-hidden="true">$↔</span>
+                  <span>Currency</span>
+                </button>
                 {user?.role === 'admin' && !isImpersonating && (
                   <button
                     onClick={async () => {
@@ -822,6 +841,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="retreat-staffing" element={<RetreatStaffingPage />} />
                       <Route path="retreat-flow-library" element={<RetreatFlowLibraryPage />} />
                       <Route path="scheduled-reminders" element={<ScheduledRemindersPage />} />
+                      <Route path="booking-step-deadlines" element={<BookingStepDeadlinesPage />} />
                       <Route path="bookings/:bookingId/medication-stop-plan" element={<MedicationStopPlanPage />} />
                       <Route path="booking-flow" element={<BookingFlowPage />} />
                       <Route path="booking-flow/:bookingId" element={<BookingFlowPage />} />
@@ -925,6 +945,7 @@ const AppleLayout: React.FC = () => {
                         <Route path="retreat-flow/:retreatId" element={<RetreatFlowPage />} />
                         <Route path="retreat-flow-library" element={<RetreatFlowLibraryPage />} />
                         <Route path="scheduled-reminders" element={<ScheduledRemindersPage />} />
+                        <Route path="booking-step-deadlines" element={<BookingStepDeadlinesPage />} />
                         <Route path="bookings/:bookingId/medication-stop-plan" element={<MedicationStopPlanPage />} />
                         <Route path="booking-flow" element={<BookingFlowPage />} />
                         <Route path="booking-flow/:bookingId" element={<BookingFlowPage />} />
@@ -1117,6 +1138,7 @@ const AppleLayout: React.FC = () => {
         </footer>
       </div>
 
+      {showSettings && <CurrencySettings onClose={() => setShowSettings(false)} />}
     </div>
   );
 };

@@ -150,10 +150,10 @@ export interface Client {
   initialContactDate?: Date | string;
   conversionDate?: Date | string;
   firstContactDate?: Date | string;
-  rejectionReason?: string;
   source?: string;
   referralId?: string | Referral;
   referralCommissionPercentage?: number;
+  rejectionReason?: string;
   tags?: string[];
   notes?: string;
   preferredName?: string;
@@ -300,6 +300,20 @@ export interface BookingConfirmationHistoryEntry {
     currency?: string;
     amountPaid?: number;
   };
+}
+
+export interface BookingActivityEvent {
+  id: string;
+  type: 'file_uploaded' | 'step' | 'email' | 'payment' | 'medical_decision' | 'packet' | 'status_change' | 'booking';
+  title: string;
+  description?: string;
+  occurredAt: string;
+  actor?: string;
+  automatic: boolean;
+  source: string;
+  sourceId?: string;
+  href?: string;
+  metadata?: Record<string, any>;
 }
 
 export interface ClientMedical {

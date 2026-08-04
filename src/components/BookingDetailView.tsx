@@ -9,6 +9,7 @@ import BookingDocumentsUpload from './BookingDocumentsUpload';
 import ClientBookingWorkflowTab from './ClientBookingWorkflowTab';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 import EmailHistoryPanel from './EmailHistoryPanel';
+import BookingActivityTimeline from './BookingActivityTimeline';
 import { TaskList } from './Tasks/TaskList';
 import { TaskForm } from './Tasks/TaskForm';
 import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
@@ -1002,7 +1003,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [confirmationEmailDraft, setConfirmationEmailDraft] = useState<EmailComposeInitialValues | null>(null);
   const [showQuickSendConfirm, setShowQuickSendConfirm] = useState(false);
   const [confirmationHistoryReason, setConfirmationHistoryReason] = useState('');
-  const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'requirements' | 'medical' | 'ceremonies' | 'documents' | 'emails' | 'tasks' | 'workflow' | 'notes'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'activity' | 'payments' | 'requirements' | 'medical' | 'ceremonies' | 'documents' | 'emails' | 'tasks' | 'workflow' | 'notes'>('overview');
   const [bookingTasks, setBookingTasks] = useState<Task[]>([]);
   const [bookingDocuments, setBookingDocuments] = useState<BookingDocument[]>([]);
   const [bookingPayments, setBookingPayments] = useState<Payment[]>([]);
@@ -1574,6 +1575,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const readinessCompleted = readinessItems.filter((item) => item.complete).length;
   const tabs = [
     { key: 'overview', label: 'Overview' },
+    { key: 'activity', label: 'Activity' },
     { key: 'payments', label: 'Payments' },
     { key: 'requirements', label: 'Requirements' },
     { key: 'medical', label: 'Medical' },
@@ -2013,6 +2015,8 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
             onPaymentUpdate={fetchBookingDetails}
           />
         )}
+
+        {activeTab === 'activity' && <BookingActivityTimeline bookingId={bookingId} />}
 
         {activeTab === 'requirements' && (
           <BookingRequirementsPanel

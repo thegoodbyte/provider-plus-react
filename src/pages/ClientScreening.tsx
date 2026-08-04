@@ -70,6 +70,10 @@ interface ScreeningData {
   heroinDetails: string;
   benzos: boolean;
   benzosDetails: string;
+  opioids: boolean;
+  opioidsDetails: string;
+  otherDrugs: boolean;
+  otherDrugsDetails: string;
   alcoholSober: boolean;
   alcoholUse: {
     wine: AlcoholUseEntry;
@@ -324,6 +328,10 @@ const ClientScreening: React.FC = () => {
     heroinDetails: '',
     benzos: false,
     benzosDetails: '',
+    opioids: false,
+    opioidsDetails: '',
+    otherDrugs: false,
+    otherDrugsDetails: '',
     alcoholSober: false,
     alcoholUse: {
       wine: { selected: false, frequency: '', amount: '' },
@@ -519,6 +527,20 @@ const ClientScreening: React.FC = () => {
         psychiatristCareDetails: existingValue('psychiatristCareDetails', 'psychiatristDetails') ?? prev.psychiatristCareDetails,
         medications: existingValue('medications', 'currentMedications') ?? prev.medications,
         drugsHistory: existingValue('drugsHistory', 'recreationalDrugs', 'addictionHistory') ?? prev.drugsHistory,
+        marijuana: existingScreening.marijuana === true,
+        marijuanaDetails: existingValue('marijuanaDetails') ?? prev.marijuanaDetails,
+        cocaine: existingScreening.cocaine === true,
+        cocaineDetails: existingValue('cocaineDetails') ?? prev.cocaineDetails,
+        meth: existingScreening.meth === true,
+        methDetails: existingValue('methDetails') ?? prev.methDetails,
+        heroin: existingScreening.heroin === true,
+        heroinDetails: existingValue('heroinDetails') ?? prev.heroinDetails,
+        benzos: existingScreening.benzos === true,
+        benzosDetails: existingValue('benzosDetails') ?? prev.benzosDetails,
+        opioids: existingScreening.opioids === true,
+        opioidsDetails: existingValue('opioidsDetails') ?? prev.opioidsDetails,
+        otherDrugs: existingScreening.otherDrugs === true,
+        otherDrugsDetails: existingValue('otherDrugsDetails') ?? prev.otherDrugsDetails,
         nicotineCurrent: existingScreening.nicotineCurrent === true,
         nicotineDoesNotSmoke: existingScreening.nicotineDoesNotSmoke === true,
         nicotineWantsToQuit: existingScreening.nicotineWantsToQuit === true,
@@ -1791,7 +1813,9 @@ const ClientScreening: React.FC = () => {
             { name: 'cocaine', label: 'Cocaine' },
             { name: 'meth', label: 'Meth' },
             { name: 'heroin', label: 'Heroin' },
-            { name: 'benzos', label: 'Benzos' }
+            { name: 'benzos', label: 'Benzos' },
+            { name: 'opioids', label: 'Opioids', multiline: true },
+            { name: 'otherDrugs', label: 'Other drugs', multiline: true }
           ].map(drug => (
             <div key={drug.name}>
               <label className="flex items-center space-x-2">
@@ -1804,7 +1828,16 @@ const ClientScreening: React.FC = () => {
                 />
                 <span className="text-sm font-medium text-gray-700">{drug.label}</span>
               </label>
-              {formData[drug.name as keyof ScreeningData] && (
+              {formData[drug.name as keyof ScreeningData] && (drug.multiline ? (
+                <textarea
+                  name={`${drug.name}Details`}
+                  value={formData[`${drug.name}Details` as keyof ScreeningData] as string}
+                  onChange={handleInputChange}
+                  rows={3}
+                  className="w-full mt-2 px-3 py-2 border border-gray-200 rounded-md"
+                  placeholder={drug.name === 'otherDrugs' ? 'List other drugs and provide details...' : 'Type, dose, frequency, last use, and other details...'}
+                />
+              ) : (
                 <input
                   type="text"
                   name={`${drug.name}Details`}
@@ -1813,7 +1846,7 @@ const ClientScreening: React.FC = () => {
                   className="w-full mt-2 px-3 py-2 border border-gray-200 rounded-md"
                   placeholder="Details..."
                 />
-              )}
+              ))}
             </div>
           ))}
         </div>

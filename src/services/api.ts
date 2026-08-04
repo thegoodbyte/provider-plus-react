@@ -259,6 +259,7 @@ export const remindersApi = {
 export const bookingsApi = {
   getAll: () => cachedGet<RetreatClient[]>('bookings:all', () => api.get<RetreatClient[]>('/bookings')),
   getOne: (id: string) => cachedGet<RetreatClient>(`bookings:${id}`, () => api.get<RetreatClient>(`/bookings/${id}`)),
+  getActivity: (id: string) => api.get<import('../types').BookingActivityEvent[]>(`/bookings/${id}/activity`),
   getByHash: (hash: string) => cachedGet<RetreatClient>(`bookings:hash:${hash}`, () => api.get<RetreatClient>(`/bookings/by-hash/${hash}`)),
   getByRetreat: (retreatId: string) => cachedGet<RetreatClient[]>(`bookings:retreat:${retreatId}`, () => api.get<RetreatClient[]>(`/bookings/retreat/${retreatId}`)),
   getByClient: (clientId: string) => cachedGet<RetreatClient[]>(`bookings:client:${clientId}`, () => api.get<RetreatClient[]>(`/bookings/client/${clientId}`)),
