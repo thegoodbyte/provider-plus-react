@@ -3,6 +3,7 @@ import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical,
 import { authService } from './authService';
 import { cacheService } from './cacheService';
 import { API_BASE_URL } from '../config/api.config';
+import type { Referral } from '../types';
 
 
 const api = axios.create({
@@ -258,6 +259,7 @@ export const remindersApi = {
 export const bookingsApi = {
   getAll: () => cachedGet<RetreatClient[]>('bookings:all', () => api.get<RetreatClient[]>('/bookings')),
   getOne: (id: string) => cachedGet<RetreatClient>(`bookings:${id}`, () => api.get<RetreatClient>(`/bookings/${id}`)),
+  getActivity: (id: string) => api.get<import('../types').BookingActivityEvent[]>(`/bookings/${id}/activity`),
   getByHash: (hash: string) => cachedGet<RetreatClient>(`bookings:hash:${hash}`, () => api.get<RetreatClient>(`/bookings/by-hash/${hash}`)),
   getByRetreat: (retreatId: string) => cachedGet<RetreatClient[]>(`bookings:retreat:${retreatId}`, () => api.get<RetreatClient[]>(`/bookings/retreat/${retreatId}`)),
   getByClient: (clientId: string) => cachedGet<RetreatClient[]>(`bookings:client:${clientId}`, () => api.get<RetreatClient[]>(`/bookings/client/${clientId}`)),
@@ -330,6 +332,13 @@ export const bookingsApi = {
 // Keep the old retreat-clients API for backward compatibility
 export const retreatClientsApi = bookingsApi;
 
+export const referralsApi = {
+  getAll: () => api.get<Referral[]>('/referrals'),
+  create: (data: Omit<Referral, '_id'>) => api.post<Referral>('/referrals', data),
+  update: (id: string, data: Partial<Referral>) => api.patch<Referral>(`/referrals/${id}`, data),
+  delete: (id: string) => api.delete(`/referrals/${id}`),
+};
+
 export const expenseTypesApi = {
   getAll: () => api.get<ExpenseType[]>('/expense-types'),
   getOne: (id: string) => api.get<ExpenseType>(`/expense-types/${id}`),
@@ -349,6 +358,12 @@ export const retreatExpensesApi = {
   getRetreatSummary: (retreatId: string) => api.get<ExpenseSummary>(`/retreat-expenses/retreat/${retreatId}/summary`),
   create: (data: Omit<RetreatExpense, '_id'>) => api.post<RetreatExpense>('/retreat-expenses', data),
   update: (id: string, data: Partial<RetreatExpense>) => api.patch<RetreatExpense>(`/retreat-expenses/${id}`, data),
+  uploadReceipt: (id: string, receipt: File) => {
+    const formData = new FormData();
+    formData.append('receipt', receipt);
+    return api.post<{ expense: RetreatExpense; receiptUrl: string }>(`/retreat-expenses/${id}/receipt`, formData);
+  },
+  getReceiptUrl: (id: string) => api.get<{ url: string; fileName?: string; mimeType?: string }>(`/retreat-expenses/${id}/receipt-url`),
   delete: (id: string) => api.delete(`/retreat-expenses/${id}`),
   initializeRetreatExpenses: (retreatId: string) => api.post(`/retreat-expenses/retreat/${retreatId}/initialize`, {}),
   autoGenerateHouseCost: (retreatId: string) => api.post<RetreatExpense>(`/retreat-expenses/retreat/${retreatId}/auto-generate-house-cost`, {}),

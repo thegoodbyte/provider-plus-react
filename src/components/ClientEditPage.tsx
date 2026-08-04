@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { clientsApi } from '../services/api';
-import { Client } from '../types';
+import { clientsApi, referralsApi } from '../services/api';
+import { Client, Referral } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import AppleButton from './AppleButton';
 import { FiArrowLeft, FiCamera, FiSave, FiUser } from 'react-icons/fi';
@@ -81,6 +81,7 @@ const ClientEditPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
   const [uploadingProfilePicture, setUploadingProfilePicture] = useState(false);
+  const [referrals, setReferrals] = useState<Referral[]>([]);
 
   const getApiErrorMessage = (error: any, fallback: string) => {
     const message = error?.response?.data?.message || error?.response?.data?.error || error?.message;
@@ -91,6 +92,7 @@ const ClientEditPage: React.FC = () => {
     if (clientId) {
       fetchClient();
     }
+    referralsApi.getAll().then((response) => setReferrals(response.data || [])).catch(() => setReferrals([]));
   }, [clientId]);
 
   useEffect(() => {
@@ -450,15 +452,19 @@ const ClientEditPage: React.FC = () => {
 
             <div>
               <label htmlFor="source" className="block text-sm font-medium text-gray-700 mb-1">Referral</label>
-              <input
-                type="text"
+              <select
                 id="source"
-                name="source"
-                value={formData.source || ''}
-                onChange={handleInputChange}
-                placeholder="Who referred them or how they found us"
+                value={typeof formData.referralId === 'object' ? formData.referralId?._id || '' : formData.referralId || ''}
+                onChange={(event) => {
+                  const referral = referrals.find((item) => item._id === event.target.value);
+                  setFormData({ ...formData, referralId: event.target.value || undefined, source: referral?.name || '' });
+                }}
                 className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              >
+                <option value="">{formData.source ? `Unlinked: ${formData.source}` : 'No referral selected'}</option>
+                {referrals.filter((item) => item.isActive !== false || item._id === (typeof formData.referralId === 'object' ? formData.referralId?._id : formData.referralId)).map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}
+              </select>
+              {!formData.referralId && <input type="text" name="source" value={formData.source || ''} onChange={handleInputChange} placeholder="Legacy referral or how they found us" className="mt-2 w-full p-2 border border-gray-300 rounded-md" />}
             </div>
 
             <div className="col-span-full">

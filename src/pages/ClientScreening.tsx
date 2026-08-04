@@ -2,8 +2,8 @@ import React, { useState, useEffect, ChangeEvent, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AppleButton from '../components/AppleButton';
-import { clientsApi, screeningApi } from '../services/api';
-import { Client } from '../types';
+import { clientsApi, referralsApi, screeningApi } from '../services/api';
+import { Client, Referral } from '../types';
 
 interface ScreeningData {
   clientId: string;
@@ -14,6 +14,8 @@ interface ScreeningData {
   mainIntent: string;
   childhood: string;
   occupation: string;
+  referralId: string;
+  source: string;
   sexualAbuse: boolean;
   sexualAbuseDetails: string;
   physicalAbuse: boolean;
@@ -59,6 +61,10 @@ interface ScreeningData {
   heroinDetails: string;
   benzos: boolean;
   benzosDetails: string;
+  opioids: boolean;
+  opioidsDetails: string;
+  otherDrugs: boolean;
+  otherDrugsDetails: string;
   alcoholSober: boolean;
   alcoholUse: {
     wine: AlcoholUseEntry;
@@ -240,6 +246,7 @@ const ClientScreening: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [referrals, setReferrals] = useState<Referral[]>([]);
   const [hasChanges, setHasChanges] = useState(false);
   const mainIntentRef = useRef<HTMLTextAreaElement | null>(null);
   const saveMessageTimeoutRef = useRef<number | null>(null);
@@ -253,6 +260,8 @@ const ClientScreening: React.FC = () => {
     mainIntent: '',
     childhood: '',
     occupation: '',
+    referralId: '',
+    source: '',
     sexualAbuse: false,
     sexualAbuseDetails: '',
     physicalAbuse: false,
@@ -298,6 +307,10 @@ const ClientScreening: React.FC = () => {
     heroinDetails: '',
     benzos: false,
     benzosDetails: '',
+    opioids: false,
+    opioidsDetails: '',
+    otherDrugs: false,
+    otherDrugsDetails: '',
     alcoholSober: false,
     alcoholUse: {
       wine: { selected: false, frequency: '', amount: '' },
@@ -372,6 +385,7 @@ const ClientScreening: React.FC = () => {
 
   useEffect(() => {
     fetchClient();
+    referralsApi.getAll().then((response) => setReferrals(response.data || [])).catch(() => setReferrals([]));
   }, [clientId]);
 
   useEffect(() => {
@@ -447,6 +461,7 @@ const ClientScreening: React.FC = () => {
       const dateOfBirthYear = (clientData as any).dateOfBirth
         ? new Date((clientData as any).dateOfBirth).getFullYear()
         : undefined;
+      const existingReferral = existingValue('referralId', 'referralId') as string | Referral | undefined;
 
       // Pre-populate client info
       setFormData(prev => ({
@@ -466,6 +481,8 @@ const ClientScreening: React.FC = () => {
         riskNotes: existingValue('riskNotes', 'whatToChange') ?? prev.riskNotes,
         childhood: existingValue('childhood', 'childhood') ?? prev.childhood,
         occupation: existingValue('occupation') ?? prev.occupation,
+        referralId: typeof existingReferral === 'object' ? existingReferral?._id || '' : String(existingReferral || ''),
+        source: String(existingValue('source', 'source') || ''),
         heartConditionOk: existingScreening.heartConditionOk === true || heartCondition === 'OK',
         heartCondition,
         liverConditionOk: existingScreening.liverConditionOk === true || liverCondition === 'OK',
@@ -484,6 +501,20 @@ const ClientScreening: React.FC = () => {
         psychiatristCareDetails: existingValue('psychiatristCareDetails', 'psychiatristDetails') ?? prev.psychiatristCareDetails,
         medications: existingValue('medications', 'currentMedications') ?? prev.medications,
         drugsHistory: existingValue('drugsHistory', 'recreationalDrugs', 'addictionHistory') ?? prev.drugsHistory,
+        marijuana: existingScreening.marijuana === true,
+        marijuanaDetails: existingValue('marijuanaDetails') ?? prev.marijuanaDetails,
+        cocaine: existingScreening.cocaine === true,
+        cocaineDetails: existingValue('cocaineDetails') ?? prev.cocaineDetails,
+        meth: existingScreening.meth === true,
+        methDetails: existingValue('methDetails') ?? prev.methDetails,
+        heroin: existingScreening.heroin === true,
+        heroinDetails: existingValue('heroinDetails') ?? prev.heroinDetails,
+        benzos: existingScreening.benzos === true,
+        benzosDetails: existingValue('benzosDetails') ?? prev.benzosDetails,
+        opioids: existingScreening.opioids === true,
+        opioidsDetails: existingValue('opioidsDetails') ?? prev.opioidsDetails,
+        otherDrugs: existingScreening.otherDrugs === true,
+        otherDrugsDetails: existingValue('otherDrugsDetails') ?? prev.otherDrugsDetails,
         nicotineCurrent: existingScreening.nicotineCurrent === true,
         nicotineDoesNotSmoke: existingScreening.nicotineDoesNotSmoke === true,
         nicotineWantsToQuit: existingScreening.nicotineWantsToQuit === true,
@@ -1046,6 +1077,21 @@ const ClientScreening: React.FC = () => {
               className="w-full px-3 py-2 border border-gray-200 rounded-md"
               placeholder="Occupation, role, work situation, or daily structure"
             />
+          </div>
+          <div className="md:col-span-4">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Referral</label>
+            <select
+              value={formData.referralId}
+              onChange={(event) => {
+                const referral = referrals.find((item) => item._id === event.target.value);
+                setHasChanges(true);
+                setFormData((current) => ({ ...current, referralId: event.target.value, source: referral?.name || '' }));
+              }}
+              className="w-full px-3 py-2 border border-gray-200 rounded-md"
+            >
+              <option value="">{formData.source ? `Unlinked: ${formData.source}` : 'No referral selected'}</option>
+              {referrals.filter((item) => item.isActive !== false || item._id === formData.referralId).map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}
+            </select>
           </div>
         </div>
       </div>
@@ -1663,7 +1709,9 @@ const ClientScreening: React.FC = () => {
             { name: 'cocaine', label: 'Cocaine' },
             { name: 'meth', label: 'Meth' },
             { name: 'heroin', label: 'Heroin' },
-            { name: 'benzos', label: 'Benzos' }
+            { name: 'benzos', label: 'Benzos' },
+            { name: 'opioids', label: 'Opioids', multiline: true },
+            { name: 'otherDrugs', label: 'Other drugs', multiline: true }
           ].map(drug => (
             <div key={drug.name}>
               <label className="flex items-center space-x-2">
@@ -1676,7 +1724,16 @@ const ClientScreening: React.FC = () => {
                 />
                 <span className="text-sm font-medium text-gray-700">{drug.label}</span>
               </label>
-              {formData[drug.name as keyof ScreeningData] && (
+              {formData[drug.name as keyof ScreeningData] && (drug.multiline ? (
+                <textarea
+                  name={`${drug.name}Details`}
+                  value={formData[`${drug.name}Details` as keyof ScreeningData] as string}
+                  onChange={handleInputChange}
+                  rows={3}
+                  className="w-full mt-2 px-3 py-2 border border-gray-200 rounded-md"
+                  placeholder={drug.name === 'otherDrugs' ? 'List other drugs and provide details...' : 'Type, dose, frequency, last use, and other details...'}
+                />
+              ) : (
                 <input
                   type="text"
                   name={`${drug.name}Details`}
@@ -1685,7 +1742,7 @@ const ClientScreening: React.FC = () => {
                   className="w-full mt-2 px-3 py-2 border border-gray-200 rounded-md"
                   placeholder="Details..."
                 />
-              )}
+              ))}
             </div>
           ))}
         </div>

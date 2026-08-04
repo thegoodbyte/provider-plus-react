@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, Eye, FileText, Pencil, RefreshCw, Send, Trash2, Upload, X } from 'lucide-react';
+import { Check, Eye, FileText, LoaderCircle, Pencil, RefreshCw, Send, Trash2, Upload, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { bloodPressureReadingsApi, bookingFlowApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
@@ -196,7 +196,9 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
   const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
   const [flowItems, setFlowItems] = useState<BookingFlowItem[]>([]);
   const [reviewsByArtifact, setReviewsByArtifact] = useState<Record<string, MedicalReviewRequest[]>>({});
-  const [loading, setLoading] = useState(false);
+  // Start in loading state because effects run after the first paint. Starting false briefly
+  // presented empty EKG/liver states before the artifact requests had even begun.
+  const [loading, setLoading] = useState(true);
   const [uploadingType, setUploadingType] = useState<NonNullable<MedicalArtifact['artifactType']> | null>(null);
   const [creatingReviewFor, setCreatingReviewFor] = useState<string | null>(null);
   const [markingReceivedType, setMarkingReceivedType] = useState<BookingMedicalTestType | null>(null);
@@ -582,17 +584,24 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                 </div>
               )}
 
-              <div className="booking-medical-status-row">
-                <span className={`status-badge ${latestArtifact ? 'badge-received' : 'badge-pending'}`}>
-                  {latestArtifact ? 'artifact stored' : 'missing artifact'}
-                </span>
-                <span className={`status-badge ${getReviewBadgeClass(latestReview)}`}>
-                  {getReviewLabel(latestReview)}
-                </span>
-                <span className={`status-badge ${latestResult ? 'badge-approved' : 'badge-pending'}`}>
-                  {latestResult ? 'results saved' : 'results missing'}
-                </span>
-              </div>
+              {loading ? (
+                <div className="booking-medical-loading" role="status" aria-live="polite">
+                  <LoaderCircle className="booking-medical-loading-spinner" size={20} aria-hidden="true" />
+                  <span>Loading {section.title} files…</span>
+                </div>
+              ) : (
+                <div className="booking-medical-status-row">
+                  <span className={`status-badge ${latestArtifact ? 'badge-received' : 'badge-pending'}`}>
+                    {latestArtifact ? 'artifact stored' : 'missing artifact'}
+                  </span>
+                  <span className={`status-badge ${getReviewBadgeClass(latestReview)}`}>
+                    {getReviewLabel(latestReview)}
+                  </span>
+                  <span className={`status-badge ${latestResult ? 'badge-approved' : 'badge-pending'}`}>
+                    {latestResult ? 'results saved' : 'results missing'}
+                  </span>
+                </div>
+              )}
 
               <div className="booking-medical-required-item">
                 <div>
@@ -601,7 +610,9 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                 </div>
                 <div>
                   <span className="booking-medical-required-label">Medical review</span>
-                  {latestReview?._id ? (
+                  {loading ? (
+                    <span>Loading…</span>
+                  ) : latestReview?._id ? (
                     <button
                       type="button"
                       className="booking-medical-inline-link"
@@ -615,7 +626,9 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                 </div>
                 <div>
                   <span className="booking-medical-required-label">Medical advisor (optional)</span>
-                  {latestReview?._id ? (
+                  {loading ? (
+                    <span>Loading…</span>
+                  ) : latestReview?._id ? (
                     <span>{!latestReview.assignedToUserId ? 'Unassigned review queue' : typeof latestReview.assignedToUserId === 'object'
                       ? [latestReview.assignedToUserId.firstName, latestReview.assignedToUserId.lastName].filter(Boolean).join(' ') || latestReview.assignedToUserId.email || 'Assigned'
                       : 'Assigned'}</span>
@@ -636,12 +649,17 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                 </div>
                 <div>
                   <span className="booking-medical-required-label">Decision</span>
-                  <span className={`status-badge ${latestDecision.className}`}>{latestDecision.label}</span>
+                  {loading ? <span>Loading…</span> : <span className={`status-badge ${latestDecision.className}`}>{latestDecision.label}</span>}
                 </div>
               </div>
 
               <div className="booking-document-files">
-                {!latestArtifact ? (
+                {loading ? (
+                  <div className="booking-document-empty booking-document-loading-placeholder" aria-hidden="true">
+                    <span className="booking-medical-loading-line" />
+                    <span className="booking-medical-loading-line booking-medical-loading-line-short" />
+                  </div>
+                ) : !latestArtifact ? (
                   <div className="booking-document-empty">No {section.title} file uploaded yet.</div>
                 ) : (
                   sectionArtifacts.map((artifact) => {

@@ -1,6 +1,6 @@
 import React, { FormEvent, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Camera, Save, X } from 'lucide-react';
 import { expenseTypesApi, retreatExpensesApi, retreatsApi } from '../services/api';
 import { ExpenseType, Retreat, RetreatExpense } from '../types';
 import LoadingSpinner from './LoadingSpinner';
@@ -21,6 +21,8 @@ const ExpenseEditorPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [receipt, setReceipt] = useState<File | null>(null);
+  const [existingReceiptName, setExistingReceiptName] = useState('');
   const [form, setForm] = useState({
     expenseDate: today(),
     amount: '',
@@ -46,6 +48,7 @@ const ExpenseEditorPage: React.FC = () => {
         setRetreats(loadedRetreats);
         if (expenseResponse.data) {
           const expense = expenseResponse.data;
+          setExistingReceiptName(expense.receiptFileName || '');
           setForm({
             expenseDate: new Date(expense.expenseDate).toISOString().slice(0, 10),
             amount: String(expense.amount),
@@ -94,16 +97,26 @@ const ExpenseEditorPage: React.FC = () => {
       expenseKind: 'actual' as const,
     };
     try {
+      let expenseId = id || '';
       if (id) {
         await retreatExpensesApi.update(id, payload);
-        navigate(`${prefix}/expenses/${id}`);
       } else {
         const response = await retreatExpensesApi.create(payload as Omit<RetreatExpense, '_id'>);
+        expenseId = response.data._id || '';
+      }
+      if (receipt && expenseId) {
+        await retreatExpensesApi.uploadReceipt(expenseId, receipt);
+      }
+      if (id) {
+        navigate(`${prefix}/expenses/${id}`);
+      } else {
         if (next) {
           setForm((current) => ({ ...current, amount: '', description: '', vendor: '' }));
+          setReceipt(null);
+          setExistingReceiptName('');
           amountRef.current?.focus();
         } else {
-          navigate(`${prefix}/expenses/${response.data._id}`);
+          navigate(`${prefix}/expenses/${expenseId}`);
         }
       }
     } catch (saveError: any) {
@@ -133,6 +146,16 @@ const ExpenseEditorPage: React.FC = () => {
         <label className="block"><span className="mb-1 block text-base font-bold">Vendor</span><input value={form.vendor} onChange={(e) => setForm({ ...form, vendor: e.target.value })} className={field} placeholder="Store or supplier" /></label>
         <label className="block"><span className="mb-1 block text-base font-bold">Category</span><select value={form.expenseTypeId} onChange={(e) => setForm({ ...form, expenseTypeId: e.target.value })} className={field} required><option value="">Choose category</option>{types.map((type) => <option key={type._id} value={type._id}>{type.name}</option>)}</select></label>
         <label className="block"><span className="mb-1 block text-base font-bold">Retreat</span><select value={form.retreatId} onChange={(e) => setForm({ ...form, retreatId: e.target.value })} className={field}><option value="">General company expense</option>{retreats.map((retreat) => <option key={retreat._id} value={retreat._id}>{retreat.code || retreat.retreatCode || retreat.name}</option>)}</select></label>
+        <div className="rounded-xl border border-slate-300 bg-white p-3">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <div><div className="text-base font-bold">Receipt image</div><div className="text-sm text-slate-500">Photo or image, maximum 10 MB</div></div>
+            {(receipt || existingReceiptName) && <button type="button" onClick={() => { setReceipt(null); setExistingReceiptName(''); }} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="Clear selected receipt"><X size={18} /></button>}
+          </div>
+          <label className="flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-blue-300 bg-blue-50 px-4 font-bold text-blue-700">
+            <Camera size={21} /> {receipt ? receipt.name : existingReceiptName || 'Add receipt photo'}
+            <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(event) => setReceipt(event.target.files?.[0] || null)} />
+          </label>
+        </div>
         {editing && <label className="block"><span className="mb-1 block text-base font-bold">Status</span><select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as RetreatExpense['status'] })} className={field}><option value="pending">Pending</option><option value="approved">Approved</option><option value="paid">Paid</option><option value="rejected">Rejected</option></select></label>}
         <div className={`sticky bottom-0 grid gap-2 border-t border-slate-200 bg-white py-3 ${editing ? 'grid-cols-2' : 'grid-cols-3'}`}>
           <button type="button" onClick={() => navigate(`${prefix}/expenses`)} disabled={saving} className="min-h-14 rounded-xl border border-slate-300 text-base font-bold">Cancel</button>

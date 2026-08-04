@@ -95,9 +95,24 @@
 
 .converter-controls {
   display: grid;
-  grid-template-columns: minmax(160px, 1fr) minmax(140px, 180px) auto;
+  grid-template-columns: minmax(150px, 1fr) minmax(90px, 130px) auto minmax(90px, 130px) auto;
   gap: 12px;
   align-items: end;
+}
+
+.swap-currencies-btn {
+  width: 42px;
+  height: 42px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.swap-currencies-btn:hover {
+  background: #e2e8f0;
 }
 
 .converter-controls label {
@@ -175,6 +190,21 @@
   color: #c62828;
   font-size: 14px;
   font-weight: 500;
+}
+
+@media (max-width: 700px) {
+  .converter-controls {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .converter-controls label:first-child,
+  .convert-btn {
+    grid-column: 1 / -1;
+  }
+
+  .swap-currencies-btn {
+    display: none;
+  }
 }
 
 .exchange-rates-table {

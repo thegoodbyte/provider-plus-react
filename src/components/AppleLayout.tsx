@@ -52,6 +52,7 @@ import ExpenseDetailPage from './ExpenseDetailPage';
 import ExpenseEditorPage from './ExpenseEditorPage';
 import CommunicationsPage from './CommunicationsPage';
 import ContactBookPage from './ContactBookPage';
+import ReferralsPage from './ReferralsPage';
 import AssistantPage from './AssistantPage';
 import HelperCurrentRetreatPage from './HelperCurrentRetreatPage';
 import RetreatFocusModePage from './RetreatFocusModePage';
@@ -208,6 +209,7 @@ const AppleLayout: React.FC = () => {
     if (route === 'bookings') return 'bookings';
     if (route === 'reminders') return 'reminders';
     if (route === 'contact-book') return 'contact-book';
+    if (route === 'referrals') return 'referrals';
     if (route === 'payments') return 'payments';
     if (route === 'payment-requests') return 'payment-requests';
     if (route === 'communications') return 'communications';
@@ -622,6 +624,14 @@ const AppleLayout: React.FC = () => {
             <button
               onClick={() => setShowSettings(true)}
               className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-apple-gray-700 shadow-apple-sm backdrop-blur-apple transition-colors hover:bg-white"
+              aria-label="Currency converter"
+              title="Revolut currency converter"
+            >
+              <span className="text-lg font-bold" aria-hidden="true">$↔</span>
+            </button>
+            <button
+              onClick={() => setShowSettings(true)}
+              className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-apple-gray-700 shadow-apple-sm backdrop-blur-apple transition-colors hover:bg-white"
               aria-label="Settings"
             >
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -670,6 +680,15 @@ const AppleLayout: React.FC = () => {
 
                 {/* Actions */}
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowSettings(true)}
+                  className="inline-flex items-center gap-2 rounded-apple bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 transition-colors hover:bg-emerald-100"
+                  aria-label="Currency converter"
+                  title="Revolut currency converter"
+                >
+                  <span aria-hidden="true">$↔</span>
+                  <span>Currency</span>
+                </button>
                 {user?.role === 'admin' && !isImpersonating && (
                   <button
                     onClick={async () => {
@@ -821,6 +840,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="retreat-flow/:retreatId" element={<RetreatFlowPage />} />
                       <Route path="retreat-flow-library" element={<RetreatFlowLibraryPage />} />
                       <Route path="scheduled-reminders" element={<ScheduledRemindersPage />} />
+                      <Route path="booking-step-deadlines" element={<BookingStepDeadlinesPage />} />
                       <Route path="bookings/:bookingId/medication-stop-plan" element={<MedicationStopPlanPage />} />
                       <Route path="booking-flow" element={<BookingFlowPage />} />
                       <Route path="booking-flow/:bookingId" element={<BookingFlowPage />} />
@@ -852,6 +872,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="communications" element={<CommunicationsPage />} />
                       <Route path="assistant" element={<AssistantPage />} />
                       <Route path="contact-book" element={<ContactBookPage />} />
+                      <Route path="referrals" element={<ReferralsPage />} />
                       <Route path="requirements" element={<RequirementsGrid />} />
                       <Route path="permissions" element={<PermissionsMatrix />} />
                       <Route path="client-medications" element={<ClientMedicationsGrid />} />
@@ -922,6 +943,7 @@ const AppleLayout: React.FC = () => {
                         <Route path="retreat-flow/:retreatId" element={<RetreatFlowPage />} />
                         <Route path="retreat-flow-library" element={<RetreatFlowLibraryPage />} />
                         <Route path="scheduled-reminders" element={<ScheduledRemindersPage />} />
+                        <Route path="booking-step-deadlines" element={<BookingStepDeadlinesPage />} />
                         <Route path="bookings/:bookingId/medication-stop-plan" element={<MedicationStopPlanPage />} />
                         <Route path="booking-flow" element={<BookingFlowPage />} />
                         <Route path="booking-flow/:bookingId" element={<BookingFlowPage />} />
@@ -1055,6 +1077,8 @@ const AppleLayout: React.FC = () => {
                 <Route path="/admin/assistant" element={<ProtectedRoute requiredRole={['admin']}><AssistantPage /></ProtectedRoute>} />
                 <Route path="/medical/assistant" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><AssistantPage /></ProtectedRoute>} />
                 <Route path="/contact-book" element={<ProtectedRoute><ContactBookPage /></ProtectedRoute>} />
+                <Route path="/referrals" element={<ProtectedRoute requiredRole={['admin']}><ReferralsPage /></ProtectedRoute>} />
+                <Route path="/admin/referrals" element={<ProtectedRoute requiredRole={['admin']}><ReferralsPage /></ProtectedRoute>} />
                 <Route path="/admin/contact-book" element={<ProtectedRoute><ContactBookPage /></ProtectedRoute>} />
                 <Route path="/medical/contact-book" element={<ProtectedRoute><ContactBookPage /></ProtectedRoute>} />
                 <Route path="/staff/contact-book" element={<ProtectedRoute><ContactBookPage /></ProtectedRoute>} />

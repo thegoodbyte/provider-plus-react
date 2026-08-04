@@ -110,6 +110,7 @@ const FULL_MENU_SECTIONS: MenuSection[] = [
       { id: 'tasks', label: 'General Tasks', Icon: Fi.FiCheckSquare },
       { id: 'reminders', label: 'Reminders', Icon: Fi.FiBell },
       { id: 'contact-book', label: 'Contact Book', Icon: Fi.FiBook },
+      { id: 'referrals', label: 'Referrals', Icon: Fi.FiShare2 },
       { id: 'communications', label: 'Communications', Icon: Fi.FiMail },
     ],
   },

@@ -5,6 +5,32 @@ export type ClientMedicalArtifactUploadContext = {
   retreatId?: string;
 };
 
+export const getMedicalArtifactEntityId = (value: any): string => {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  return String(value._id || value.id || '');
+};
+
+export const getClientEntryMedicalArtifacts = (
+  artifacts: MedicalArtifact[] = [],
+  clientId: string,
+  artifactType: 'ekg' | 'liver_panel',
+  documentType: 'EKG' | 'Liver',
+) => artifacts
+  .filter((artifact) => (
+    getMedicalArtifactEntityId(artifact.clientId) === clientId
+    && (artifact.documentStage === 'entry' || !artifact.documentStage)
+    && (artifact.documentType === documentType || artifact.artifactType === artifactType)
+    && artifact.status !== 'voided'
+  ))
+  .sort((a, b) => new Date(b.receivedAt || b.createdAt || 0).getTime() - new Date(a.receivedAt || a.createdAt || 0).getTime());
+
+export const upsertMedicalArtifact = (artifacts: MedicalArtifact[], artifact: MedicalArtifact) => {
+  const artifactId = getMedicalArtifactEntityId(artifact._id);
+  if (!artifactId) return [artifact, ...artifacts];
+  return [artifact, ...artifacts.filter((candidate) => getMedicalArtifactEntityId(candidate._id) !== artifactId)];
+};
+
 export const getClientMedicalArtifactUploadContext = (
   bookings: any[] = [],
   medicalInfo: any = null,
