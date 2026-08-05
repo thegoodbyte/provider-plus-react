@@ -1375,9 +1375,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
             <tfoot>
               <tr className="bg-gray-50">
                 <td className="sticky left-0 z-10 border-r border-gray-200 bg-gray-50 px-2 py-3 text-sm font-semibold text-gray-900">
-                  {trackerView === 'spoons' ? (
-                    <Button size="small" icon={<Icon icon={Plus} className="h-4 w-4" />} onClick={addGridRow}>Add next row</Button>
-                  ) : 'Totals'}
+                  Totals
                 </td>
                 {participants.map((participant) => (
                   <td key={`${participant._id}-total`} className="border-r border-gray-200 px-2 py-3 text-sm text-gray-700">
@@ -1387,6 +1385,13 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                   </td>
                 ))}
               </tr>
+              {trackerView === 'spoons' && (
+                <tr className="bg-white">
+                  <td colSpan={participants.length + 1} className="border-t border-gray-200 px-2 py-3">
+                    <Button size="small" icon={<Icon icon={Plus} className="h-4 w-4" />} onClick={addGridRow}>Add next row</Button>
+                  </td>
+                </tr>
+              )}
             </tfoot>
           )}
         </table>
