@@ -1034,6 +1034,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const navigateToRetreat = (targetRetreat?: Retreat | null) => {
     if (!targetRetreat?._id) return;
     const tabSuffix = activeTab === 'clients' ? '' : `/${activeTab}`;
+    setViewingClientId(null);
+    setIsLoading(true);
     navigate(`/${routePrefix}/retreats/${targetRetreat._id}${tabSuffix}`);
   };
 

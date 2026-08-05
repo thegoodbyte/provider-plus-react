@@ -128,6 +128,7 @@ const RetreatDetailRoute: React.FC = () => {
 
   return (
     <RetreatDetailView
+      key={retreatId || 'retreat'}
       retreatId={retreatId || ''}
       initialTab={activeTab}
       onBack={() => navigate(`/${routePrefix}/retreats`)}
