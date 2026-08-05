@@ -679,8 +679,9 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
     };
 
     participants.forEach((participant, index) => {
-      // Add position if it's been set
-      if (participant.position !== undefined) {
+      // Position is unrelated to spoon entry. Only include it when the user
+      // actually reordered columns; otherwise an empty row could report success.
+      if (hasPositionChanges && participant.position !== undefined) {
         const key = getParticipantKey(participant);
         if (!changesByParticipantKey.has(key)) changesByParticipantKey.set(key, { participant, updates: [], position: participant.position });
         else changesByParticipantKey.get(key)!.position = participant.position;
@@ -697,12 +698,13 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
     });
 
     if (changesByParticipantKey.size === 0) {
-      discardGridChanges();
+      message.warning('Enter at least one spoon amount before saving.');
       return;
     }
 
     try {
       setSaving(true);
+      let savedSpoonCells = 0;
       for (const { participant, updates, position } of Array.from(changesByParticipantKey.values())) {
         // Only touch participants whose edits add a number or clear an existing value, or if position has changed
         const meaningful = updates.some(({ time, value }) => /\d/.test(value) || getSpoonCellValue(participant, time) !== '') || position !== undefined;
@@ -720,14 +722,30 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
           updateData.position = position;
         }
 
-        await ceremoniesApi.updateParticipant(participantToUpdate._id!, updateData);
+        const response = await ceremoniesApi.updateParticipant(participantToUpdate._id!, updateData);
+        const persistedEvents = response.data.eventLog || [];
+        for (const { time, value } of updates) {
+          const numericMatch = value.trim().replace(',', '.').match(/\d+(?:\.\d+)?/);
+          const expected = numericMatch ? Number(numericMatch[0]) : NaN;
+          if (!Number.isFinite(expected) || expected <= 0) continue;
+          const persisted = persistedEvents
+            .filter((event) => event.time === time && event.eventType === 'medicine')
+            .reduce((sum, event) => sum + Number(event.spoonCount || 0), 0);
+          if (Math.abs(persisted - expected) > 0.0001) {
+            throw new Error(`Spoon amount for ${time} was not persisted`);
+          }
+          savedSpoonCells += 1;
+        }
       }
 
-      message.success('Spoon matrix saved');
+      if (savedSpoonCells === 0) {
+        throw new Error('No spoon amounts were persisted');
+      }
+      message.success(`${savedSpoonCells} spoon ${savedSpoonCells === 1 ? 'entry' : 'entries'} saved`);
       discardGridChanges();
       await loadData();
-    } catch (error) {
-      message.error('Failed to save spoon matrix');
+    } catch (error: any) {
+      message.error(error?.response?.data?.message || error?.message || 'Failed to save spoon matrix');
       console.error('Error saving spoon matrix:', error);
     } finally {
       setSaving(false);
