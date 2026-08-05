@@ -335,6 +335,11 @@ const UnifiedClientManager: React.FC = () => {
       return;
     }
 
+    if (formData.display_id !== undefined && (!Number.isInteger(Number(formData.display_id)) || Number(formData.display_id) < 1)) {
+      alert('Client ID must be a whole number of 1 or higher');
+      return;
+    }
+
     try {
       // Define allowed fields for client creation/update
       const allowedFields = [
