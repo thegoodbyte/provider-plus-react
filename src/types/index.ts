@@ -248,6 +248,9 @@ export interface RetreatClient {
   bookingHash?: string; // 20-character alphanumeric hash for linking payments
   retreatId: string;
   clientId: string;
+  referralAttribution?: 'referral' | 'self';
+  referralId?: string | Referral | null;
+  referralCommissionPercentage?: number;
   paymentRequestId?: string | PaymentRequest;
   bookingType?: 'full_retreat' | 'booster'; // Type of booking
   ceremonyId?: string | Ceremony;

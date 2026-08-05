@@ -64,7 +64,8 @@ const ExpensesPage: React.FC = () => {
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    const sorted = [...expenses].sort((a, b) => new Date(b.expenseDate).getTime() - new Date(a.expenseDate).getTime());
+    const sorted = [...expenses].sort((a, b) =>
+      new Date(b.createdAt || b.expenseDate).getTime() - new Date(a.createdAt || a.expenseDate).getTime());
     return sorted.filter((expense) => {
       const retreatId = entityId(expense.retreatId);
       const categoryId = entityId(expense.expenseTypeId);

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { bookingsApi, ceremoniesApi, clientsApi, configSummaryApi, retreatsApi } from '../services/api';
-import { RetreatClient, Client, Retreat, PaymentRequest, Ceremony } from '../types';
+import { bookingsApi, ceremoniesApi, clientsApi, configSummaryApi, referralsApi, retreatsApi } from '../services/api';
+import { RetreatClient, Client, Retreat, PaymentRequest, Ceremony, Referral } from '../types';
 import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
@@ -21,6 +21,9 @@ type BookingFormData = {
   ceremonyNumber: string;
   checkInDate: string;
   checkOutDate: string;
+  referralAttribution: 'referral' | 'self';
+  referralId: string;
+  referralCommissionPercentage: number;
 };
 
 const bookingStatusValues = ['pending', 'confirmed', 'checked-in', 'checked-out', 'cancelled'] as const;
@@ -63,6 +66,9 @@ const emptyForm = (): BookingFormData => ({
   ceremonyNumber: '',
   checkInDate: '',
   checkOutDate: '',
+  referralAttribution: 'self',
+  referralId: '',
+  referralCommissionPercentage: 0,
 });
 
 const toDateTimeInput = (value?: string | Date | null) => {
@@ -122,6 +128,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   const [clients, setClients] = useState<Client[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>(initialRetreats || []);
   const [ceremonies, setCeremonies] = useState<Ceremony[]>([]);
+  const [referrals, setReferrals] = useState<Referral[]>([]);
   const [booking, setBooking] = useState<RetreatClient | null>(initialBooking || null);
   const [formData, setFormData] = useState<BookingFormData>(emptyForm());
   const [bookingSchedule, setBookingSchedule] = useState<BookingScheduleConfig | null>(null);
@@ -138,7 +145,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   const loadData = async () => {
     try {
       setLoading(true);
-      const [clientsResponse, retreatsResponse, nextNumberResponse, configResponse] = await Promise.all([
+      const [clientsResponse, retreatsResponse, nextNumberResponse, configResponse, referralsResponse] = await Promise.all([
         clientsApi.getBookingOptions(),
         initialRetreats?.length ? Promise.resolve({ data: initialRetreats }) : retreatsApi.getAll(),
         mode === 'create'
@@ -151,10 +158,12 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
           console.error('Error loading booking schedule configuration:', error);
           return { data: undefined };
         }),
+        referralsApi.getAll().catch(() => ({ data: [] as Referral[] })),
       ]);
       setClients(clientsResponse.data || []);
       setRetreats(retreatsResponse.data || []);
       setBookingSchedule(configResponse.data?.bookingSchedule || null);
+      setReferrals(referralsResponse.data || []);
 
       let currentBooking = initialBooking || null;
       if (mode === 'edit' && bookingId && !currentBooking) {
@@ -168,8 +177,12 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       setCancellationRefundAmount((currentBooking as any)?.cancellationRefundAmount ? String((currentBooking as any).cancellationRefundAmount) : '');
 
       if (currentBooking) {
+        const currentClientId = typeof currentBooking.clientId === 'string' ? currentBooking.clientId : (currentBooking.clientId as any)?._id || '';
+        const currentClient = (clientsResponse.data || []).find((client: Client) => client._id === currentClientId);
+        const inheritedReferralId = resolveId(currentClient?.referralId);
+        const savedAttribution = currentBooking.referralAttribution;
         setFormData({
-          clientId: typeof currentBooking.clientId === 'string' ? currentBooking.clientId : (currentBooking.clientId as any)?._id || '',
+          clientId: currentClientId,
           retreatId: typeof currentBooking.retreatId === 'string' ? currentBooking.retreatId : (currentBooking.retreatId as any)?._id || '',
           paymentRequestId: typeof currentBooking.paymentRequestId === 'string' ? currentBooking.paymentRequestId : (currentBooking.paymentRequestId as any)?._id || '',
           totalAmount: Number(currentBooking.totalAmount || 0),
@@ -182,12 +195,21 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
           ceremonyNumber: currentBooking.ceremonyNumber?.toString() || '',
           checkInDate: toDateTimeInput(currentBooking.checkInDate),
           checkOutDate: toDateTimeInput(currentBooking.checkOutDate),
+          referralAttribution: savedAttribution || (inheritedReferralId ? 'referral' : 'self'),
+          referralId: savedAttribution === 'self' ? '' : resolveId(currentBooking.referralId) || inheritedReferralId,
+          referralCommissionPercentage: savedAttribution === 'self' ? 0 : Number(currentBooking.referralCommissionPercentage ?? currentClient?.referralCommissionPercentage ?? 0),
         });
       } else {
+        const initialClientId = initialBookingData?.clientId || '';
+        const initialClient = (clientsResponse.data || []).find((client: Client) => client._id === initialClientId);
+        const inheritedReferralId = resolveId(initialClient?.referralId);
         setFormData({
           ...emptyForm(),
           ...initialBookingData,
           bookingNumber: nextNumberResponse.data ? String(nextNumberResponse.data) : '',
+          referralAttribution: inheritedReferralId ? 'referral' : 'self',
+          referralId: inheritedReferralId,
+          referralCommissionPercentage: inheritedReferralId ? Number(initialClient?.referralCommissionPercentage || 0) : 0,
         });
       }
     } catch (error) {
@@ -267,6 +289,9 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   };
 
   const handlePaymentRequestSelect = (paymentRequestId: string, paymentRequest?: PaymentRequest) => {
+    const paymentClientId = paymentRequest?.clientId ? resolveId(paymentRequest.clientId) : '';
+    const paymentClient = clients.find((client) => client._id === paymentClientId);
+    const inheritedReferralId = resolveId(paymentClient?.referralId);
     setFormData((prev) => ({
       ...prev,
       paymentRequestId,
@@ -282,14 +307,26 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       ceremonyNumber: paymentRequest?.bookingType === 'booster'
         ? String(paymentRequest.ceremonyNumber || '')
         : prev.ceremonyNumber,
+      ...(paymentClientId && paymentClientId !== prev.clientId ? {
+        referralAttribution: inheritedReferralId ? 'referral' as const : 'self' as const,
+        referralId: inheritedReferralId,
+        referralCommissionPercentage: inheritedReferralId ? Number(paymentClient?.referralCommissionPercentage || 0) : 0,
+      } : {}),
     }));
   };
 
   const handleClientSelect = (clientId: string) => {
+    const selectedClient = clients.find((client) => client._id === clientId);
+    const inheritedReferralId = resolveId(selectedClient?.referralId);
     setFormData((prev) => ({
       ...prev,
       clientId,
       paymentRequestId: clientId === prev.clientId ? prev.paymentRequestId : '',
+      ...(mode === 'create' || clientId !== prev.clientId ? {
+        referralAttribution: inheritedReferralId ? 'referral' as const : 'self' as const,
+        referralId: inheritedReferralId,
+        referralCommissionPercentage: inheritedReferralId ? Number(selectedClient?.referralCommissionPercentage || 0) : 0,
+      } : {}),
     }));
   };
 
@@ -343,6 +380,9 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
         roomAssignment: (booking as any)?.roomAssignment || '',
         specialRequests: (booking as any)?.specialRequests || '',
         notes: (booking as any)?.notes || '',
+        referralAttribution: formData.referralAttribution,
+        referralId: formData.referralAttribution === 'referral' ? formData.referralId : undefined,
+        referralCommissionPercentage: formData.referralAttribution === 'referral' ? Number(formData.referralCommissionPercentage || 0) : 0,
       };
 
       if (payload.bookingNumber != null) {
@@ -428,6 +468,41 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
               <div>Check-out: {formatDate(booking?.checkOutDate)}</div>
             </div>
           </div>
+        </div>
+
+        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Booking referral</label>
+              <select
+                value={formData.referralAttribution === 'self' ? 'SELF' : formData.referralId}
+                onChange={(event) => {
+                  const value = event.target.value;
+                  const referral = referrals.find((item) => item._id === value);
+                  setFormData((prev) => ({
+                    ...prev,
+                    referralAttribution: value === 'SELF' ? 'self' : 'referral',
+                    referralId: value === 'SELF' ? '' : value,
+                    referralCommissionPercentage: value === 'SELF' ? 0 : Number(referral?.defaultCommissionPercentage || 0),
+                  }));
+                }}
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2"
+              >
+                <option value="SELF">SELF — no referral commission</option>
+                {referrals.filter((item) => item.isActive !== false || item._id === formData.referralId).map((item) => (
+                  <option key={item._id} value={item._id}>{item.referralCode ? `${item.referralCode} · ` : ''}{item.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Referral commission %</label>
+              <input type="number" min="0" max="100" step="0.01" value={formData.referralCommissionPercentage}
+                disabled={formData.referralAttribution === 'self'}
+                onChange={(event) => setFormData((prev) => ({ ...prev, referralCommissionPercentage: Number(event.target.value) }))}
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 disabled:bg-gray-100" />
+            </div>
+          </div>
+          <p className="mt-2 text-xs text-emerald-800">Inherited from the client for a new booking. Choose SELF for a repeat booking that was not generated by the original referrer.</p>
         </div>
 
         <div className="rounded-lg border border-blue-100 bg-blue-50 p-4">

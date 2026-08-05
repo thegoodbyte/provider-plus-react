@@ -115,7 +115,8 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
         retreatExpensesApi.getRetreatSummary(retreatId)
       ]);
 
-      setExpenses(expensesResponse.data);
+      setExpenses([...(expensesResponse.data || [])].sort((a, b) =>
+        new Date(b.createdAt || b.expenseDate).getTime() - new Date(a.createdAt || a.expenseDate).getTime()));
       setAllExpenseTypes(typesResponse.data);
       setExpenseTypes(typesResponse.data.filter(type => type.isActive !== false));
       setSummary(summaryResponse.data);
@@ -235,8 +236,14 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
         const response = await retreatExpensesApi.create(submitData);
         expenseId = response.data._id || '';
       }
+      let receiptUploadError = '';
       if (receiptFiles.length && expenseId) {
-        await retreatExpensesApi.uploadReceipts(expenseId, receiptFiles);
+        try {
+          await retreatExpensesApi.uploadReceipts(expenseId, receiptFiles);
+        } catch (error: any) {
+          console.error('Expense saved but receipt upload failed:', error);
+          receiptUploadError = error?.response?.data?.message || error?.message || 'Unknown upload error';
+        }
       }
 
       setShowAddForm(false);
@@ -253,9 +260,10 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
         status: 'pending'
       });
       await fetchData();
-    } catch (error) {
+      if (receiptUploadError) alert(`Expense was saved, but the receipt image was not uploaded: ${receiptUploadError}`);
+    } catch (error: any) {
       console.error('Error saving expense:', error);
-      alert('Error saving expense');
+      alert(error?.response?.data?.message || error?.message || 'Error saving expense');
     }
   };
 
@@ -591,7 +599,7 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
                 <label>Receipt images</label>
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/*,.heic,.heif"
                   multiple
                   onChange={(e) => setReceiptFiles(Array.from(e.target.files || []))}
                 />
@@ -600,7 +608,7 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
                     ? `${receiptFiles.length} new image${receiptFiles.length === 1 ? '' : 's'} selected`
                     : editingExpense?.receiptImages?.length
                       ? `${editingExpense.receiptImages.length} saved image${editingExpense.receiptImages.length === 1 ? '' : 's'}`
-                      : editingExpense?.receiptFileName || 'Optional photos, maximum 10 MB each'}
+                      : editingExpense?.receiptFileName || 'Optional photos, maximum 25 MB each'}
                 </p>
               </div>
             </div>
