@@ -681,6 +681,8 @@ export const ceremoniesApi = {
   getParticipants: (ceremonyId: string) => api.get<CeremonyParticipant[]>(`/ceremonies/${ceremonyId}/participants`),
   getClientParticipations: (clientId: string) => api.get<CeremonyParticipant[]>(`/ceremonies/client/${clientId}/participations`),
   updateParticipant: (id: string, data: Partial<CeremonyParticipant>) => api.patch<CeremonyParticipant>(`/ceremonies/participant/${id}`, data),
+  saveSpoonMatrix: (ceremonyId: string, entries: Array<{ clientId: string; time: string; spoonCount: number }>) =>
+    api.patch<{ savedCells: number; participants: CeremonyParticipant[] }>(`/ceremonies/${ceremonyId}/spoon-matrix`, { entries }),
   updateMedicalCheck: (id: string, medicalData: any) => api.patch<CeremonyParticipant>(`/ceremonies/participant/${id}/medical`, medicalData),
   recordSpoonIntake: (id: string, spoonData: any) => api.patch<CeremonyParticipant>(`/ceremonies/participant/${id}/spoons`, spoonData),
   recordPurge: (id: string, purgeData: any) => api.patch<CeremonyParticipant>(`/ceremonies/participant/${id}/purge`, purgeData),

@@ -704,44 +704,18 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
 
     try {
       setSaving(true);
-      let savedSpoonCells = 0;
-      for (const { participant, updates, position } of Array.from(changesByParticipantKey.values())) {
-        // Only touch participants whose edits add a number or clear an existing value, or if position has changed
-        const meaningful = updates.some(({ time, value }) => /\d/.test(value) || getSpoonCellValue(participant, time) !== '') || position !== undefined;
-        if (!meaningful) continue;
-
-        const participantToUpdate = await ensureSavedParticipant(participant);
-        let eventLog = [...(participantToUpdate.eventLog || [])];
-        updates.forEach(({ time, value }) => {
-          eventLog = applyMedicineValue(eventLog, time, value);
-        });
-
-        // Include position in the update if it's been set
-        const updateData: any = buildParticipantUpdate(participantToUpdate, eventLog);
-        if (position !== undefined) {
-          updateData.position = position;
-        }
-
-        const response = await ceremoniesApi.updateParticipant(participantToUpdate._id!, updateData);
-        const persistedEvents = response.data.eventLog || [];
-        for (const { time, value } of updates) {
-          const numericMatch = value.trim().replace(',', '.').match(/\d+(?:\.\d+)?/);
-          const expected = numericMatch ? Number(numericMatch[0]) : NaN;
-          if (!Number.isFinite(expected) || expected <= 0) continue;
-          const persisted = persistedEvents
-            .filter((event) => event.time === time && event.eventType === 'medicine')
-            .reduce((sum, event) => sum + Number(event.spoonCount || 0), 0);
-          if (Math.abs(persisted - expected) > 0.0001) {
-            throw new Error(`Spoon amount for ${time} was not persisted`);
-          }
-          savedSpoonCells += 1;
-        }
-      }
-
-      if (savedSpoonCells === 0) {
-        throw new Error('No spoon amounts were persisted');
-      }
-      message.success(`${savedSpoonCells} spoon ${savedSpoonCells === 1 ? 'entry' : 'entries'} saved`);
+      const entries = Array.from(changesByParticipantKey.values()).flatMap(({ participant, updates }) =>
+        updates
+          .filter(({ time, value }) => /\d/.test(value) || getSpoonCellValue(participant, time) !== '')
+          .map(({ time, value }) => {
+            const numericMatch = value.trim().replace(',', '.').match(/\d+(?:\.\d+)?/);
+            return { clientId: getObjectId(participant.clientId), time, spoonCount: numericMatch ? Number(numericMatch[0]) : 0 };
+          }),
+      );
+      if (!entries.length) throw new Error('Enter at least one spoon amount before saving.');
+      const response = await ceremoniesApi.saveSpoonMatrix(ceremony._id!, entries);
+      if (response.data.savedCells !== entries.length) throw new Error('The server did not confirm every spoon entry');
+      message.success(`${response.data.savedCells} spoon ${response.data.savedCells === 1 ? 'entry' : 'entries'} saved`);
       discardGridChanges();
       await loadData();
     } catch (error: any) {
