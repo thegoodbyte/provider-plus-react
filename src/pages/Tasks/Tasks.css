@@ -43,6 +43,8 @@
   background: #334155;
   color: #fff;
 }
+.tasks-source-tabs button:first-child { border-color:#9fb8aa; background:#edf7f1; color:#17583d; }
+.tasks-source-tabs button:first-child.active { border-color:#1f6a49; background:#1f6a49; color:#fff; }
 
 .tasks-source-tabs button span {
   margin-left: 6px;
@@ -69,6 +71,22 @@
   background: #fffbeb;
   color: #92400e;
 }
+.tasks-source-help.focus { background:#edf7f1; color:#17583d; }
+.tasks-source-help.system,.tasks-source-help.done { background:#f8fafc; color:#475569; }
+.tasks-source-help.reminders { background:#fffbeb; color:#92400e; }
+.focus-task-groups { display:grid; gap:20px; }
+.focus-task-group { overflow:hidden; border:1px solid #e2e8f0; border-radius:14px; background:#fff; }
+.focus-task-group>header { display:flex; align-items:center; justify-content:space-between; padding:13px 16px; background:#f8fafc; }
+.focus-task-group>header h2 { margin:0; color:#334155; font-size:16px; }
+.focus-task-group>header span { min-width:28px; padding:3px 8px; border-radius:999px; background:#e2e8f0; text-align:center; font-weight:800; }
+.focus-task-group.overdue { border-color:#fecaca; }
+.focus-task-group.overdue>header { background:#fff1f2; }
+.focus-task-group.overdue>header h2 { color:#b91c1c; }
+.focus-task-group.today { border-color:#fde68a; }
+.focus-task-group.today>header { background:#fffbeb; }
+.focus-task-group.today>header h2 { color:#92400e; }
+.focus-empty { display:grid; gap:7px; padding:36px; border:1px dashed #a7c4b4; border-radius:16px; background:#f3faf6; color:#38634e; text-align:center; }
+.focus-empty strong { font-size:18px; }
 
 .header-content {
   display: flex;
