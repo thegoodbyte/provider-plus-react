@@ -269,6 +269,11 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
       setError('Enter SYS, DIA, and the reading date/time.');
       return;
     }
+    const selectedCeremony = retreatCeremonies.find((ceremony) => ceremony._id === newReading.ceremonyId);
+    if (newReading.context === 'pre_ceremony' && !selectedCeremony) {
+      setError('Select the ceremony for this pre-ceremony blood-pressure reading.');
+      return;
+    }
     setSavingReading(true);
     setError(null);
     try {
@@ -282,7 +287,8 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
         recordedAt: newReading.recordedAt,
         notes: newReading.notes,
         context: newReading.context || 'other',
-        ceremonyNumber: newReading.ceremonyNumber,
+        ceremonyId: selectedCeremony?._id,
+        ceremonyNumber: selectedCeremony?.ceremonyNumber,
       });
       const response = await bloodPressureReadingsApi.getByClient(clientId);
       setBloodPressureReadings(response.data || []);
@@ -309,8 +315,9 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
           artifactType: 'blood_pressure',
           documentType: 'BP',
           documentStage: documentStageForBloodPressure(reading.context),
+          ceremonyId: reading.ceremonyId,
           ceremonyNumber: reading.ceremonyNumber,
-          contextType: reading.ceremonyNumber ? 'ceremony' : 'booking',
+          contextType: reading.ceremonyId ? 'ceremony' : 'booking',
           purpose: reading.context === 'pre_ceremony' ? 'pre_ceremony' : 'general',
           title: `Blood pressure ${reading.systolic}/${reading.diastolic}`,
           textContent: `${reading.systolic}/${reading.diastolic} mmHg${reading.pulse ? ` · pulse ${reading.pulse} bpm` : ''}`,
@@ -321,6 +328,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
             pulse: reading.pulse,
             recordedAt: reading.recordedAt,
             context: reading.context,
+            ceremonyId: reading.ceremonyId,
             ceremonyNumber: reading.ceremonyNumber,
           },
           receivedAt: reading.recordedAt,
@@ -345,9 +353,18 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
 
   const saveReading = async () => {
     if (!editingReading?._id) return;
+    const selectedCeremony = retreatCeremonies.find((ceremony) => ceremony._id === editingReading.ceremonyId);
+    if (editingReading.context === 'pre_ceremony' && !selectedCeremony) {
+      setError('Select the ceremony for this pre-ceremony blood-pressure reading.');
+      return;
+    }
     setSavingReading(true);
     try {
-      await bloodPressureReadingsApi.update(editingReading._id, editingReading);
+      await bloodPressureReadingsApi.update(editingReading._id, {
+        ...editingReading,
+        ceremonyId: editingReading.context === 'pre_ceremony' ? selectedCeremony?._id : undefined,
+        ceremonyNumber: editingReading.context === 'pre_ceremony' ? selectedCeremony?.ceremonyNumber : undefined,
+      });
       setEditingReading(null);
       const response = await bloodPressureReadingsApi.getByClient(clientId);
       setBloodPressureReadings(response.data || []);
@@ -546,19 +563,22 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
   const hasUploadCeremony = Boolean(uploadCeremonyId && selectedUploadCeremony?.ceremonyNumber);
 
   useEffect(() => {
-    if (!uploadModalOpen || !retreatId) {
+    if ((!uploadModalOpen && medicalView !== 'blood_pressure') || !retreatId) {
       setRetreatCeremonies([]);
       return;
     }
     setLoadingRetreatCeremonies(true);
-    ceremoniesApi.getByRetreat(retreatId)
+    const ceremonyRequest = medicalView === 'blood_pressure'
+      ? bloodPressureReadingsApi.getCeremoniesForBooking(bookingId)
+      : ceremoniesApi.getByRetreat(retreatId);
+    ceremonyRequest
       .then((response) => setRetreatCeremonies((response.data || []).sort((a, b) => a.ceremonyNumber - b.ceremonyNumber)))
       .catch(() => {
         setRetreatCeremonies([]);
         setError('Unable to load ceremonies for this retreat.');
       })
       .finally(() => setLoadingRetreatCeremonies(false));
-  }, [retreatId, uploadModalOpen]);
+  }, [bookingId, medicalView, retreatId, uploadModalOpen]);
 
   useEffect(() => {
     if (!uploadRequest) return;
@@ -679,8 +699,8 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
             <label className="text-xs font-semibold text-slate-600">DIA<input type="number" value={newReading.diastolic || ''} onChange={(event) => setNewReading({ ...newReading, diastolic: Number(event.target.value) || undefined })} className="mt-1 w-full rounded border px-3 py-2 text-base" /></label>
             <label className="text-xs font-semibold text-slate-600">Pulse<input type="number" value={newReading.pulse || ''} onChange={(event) => setNewReading({ ...newReading, pulse: Number(event.target.value) || undefined })} className="mt-1 w-full rounded border px-3 py-2 text-base" /></label>
             <label className="text-xs font-semibold text-slate-600">Measured at<input type="datetime-local" value={newReading.recordedAt ? new Date(newReading.recordedAt).toISOString().slice(0, 16) : ''} onChange={(event) => setNewReading({ ...newReading, recordedAt: new Date(event.target.value).toISOString() })} className="mt-1 w-full rounded border px-3 py-2 text-sm" /></label>
-            <label className="text-xs font-semibold text-slate-600">Context<select value={newReading.context || 'other'} onChange={(event) => setNewReading({ ...newReading, context: event.target.value as BloodPressureReading['context'] })} className="mt-1 w-full rounded border px-3 py-2 text-sm">{Object.entries(bloodPressureContextLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-            <label className="text-xs font-semibold text-slate-600">Ceremony #<input type="number" min="1" value={newReading.ceremonyNumber || ''} onChange={(event) => setNewReading({ ...newReading, ceremonyNumber: Number(event.target.value) || undefined })} className="mt-1 w-full rounded border px-3 py-2 text-sm" /></label>
+            <label className="text-xs font-semibold text-slate-600">Context<select value={newReading.context || 'other'} onChange={(event) => { const context = event.target.value as BloodPressureReading['context']; setNewReading({ ...newReading, context, ...(context === 'pre_ceremony' ? {} : { ceremonyId: undefined, ceremonyNumber: undefined }) }); }} className="mt-1 w-full rounded border px-3 py-2 text-sm">{Object.entries(bloodPressureContextLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+            {newReading.context === 'pre_ceremony' && <label className="text-xs font-semibold text-slate-600">Ceremony *<select required disabled={loadingRetreatCeremonies} value={typeof newReading.ceremonyId === 'string' ? newReading.ceremonyId : ''} onChange={(event) => { const ceremony = retreatCeremonies.find((item) => item._id === event.target.value); setNewReading({ ...newReading, ceremonyId: event.target.value || undefined, ceremonyNumber: ceremony?.ceremonyNumber }); }} className="mt-1 w-full rounded border px-3 py-2 text-sm"><option value="">{loadingRetreatCeremonies ? 'Loading ceremonies…' : 'Select ceremony'}</option>{retreatCeremonies.map((ceremony) => <option key={ceremony._id} value={ceremony._id}>Ceremony #{ceremony.ceremonyNumber} · {new Date(ceremony.date).toLocaleDateString()}</option>)}</select></label>}
             <label className="text-xs font-semibold text-slate-600 md:col-span-2">Notes<input value={newReading.notes || ''} onChange={(event) => setNewReading({ ...newReading, notes: event.target.value })} className="mt-1 w-full rounded border px-3 py-2 text-sm" /></label>
             <div className="flex gap-2 md:col-span-4 md:justify-end"><button type="button" className="btn btn-sm btn-secondary" onClick={() => setAddingReading(false)}>Cancel</button><button type="button" className="btn btn-sm btn-primary" onClick={addReading} disabled={savingReading}>{savingReading ? 'Saving…' : 'Save reading'}</button></div>
           </div>
@@ -701,7 +721,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                   return (
                     <tr key={reading._id || reading.recordedAt}>
                       <td className="px-3 py-2">{isEditing ? <input type="datetime-local" className="rounded border px-2 py-1" value={new Date(activeEdit.recordedAt).toISOString().slice(0, 16)} onChange={(event) => setEditingReading({ ...activeEdit, recordedAt: new Date(event.target.value).toISOString() })} /> : new Date(reading.recordedAt).toLocaleString()}</td>
-                      <td className="px-3 py-2">{isEditing ? <div className="space-y-1"><select className="rounded border px-2 py-1" value={activeEdit.context || 'client_monitoring'} onChange={(event) => setEditingReading({ ...activeEdit, context: event.target.value as BloodPressureReading['context'] })}>{Object.entries(bloodPressureContextLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><input type="number" min="1" className="w-24 rounded border px-2 py-1" placeholder="Ceremony #" value={activeEdit.ceremonyNumber || ''} onChange={(event) => setEditingReading({ ...activeEdit, ceremonyNumber: Number(event.target.value) || undefined })} /></div> : <>{bloodPressureContextLabels[reading.context || 'client_monitoring']}{reading.ceremonyNumber ? ` · Ceremony #${reading.ceremonyNumber}` : ''}</>}</td>
+                      <td className="px-3 py-2">{isEditing ? <div className="space-y-1"><select className="rounded border px-2 py-1" value={activeEdit.context || 'client_monitoring'} onChange={(event) => { const context = event.target.value as BloodPressureReading['context']; setEditingReading({ ...activeEdit, context, ...(context === 'pre_ceremony' ? {} : { ceremonyId: undefined, ceremonyNumber: undefined }) }); }}>{Object.entries(bloodPressureContextLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>{activeEdit.context === 'pre_ceremony' && <select className="block rounded border px-2 py-1" value={typeof activeEdit.ceremonyId === 'string' ? activeEdit.ceremonyId : ''} onChange={(event) => { const ceremony = retreatCeremonies.find((item) => item._id === event.target.value); setEditingReading({ ...activeEdit, ceremonyId: event.target.value || undefined, ceremonyNumber: ceremony?.ceremonyNumber }); }}><option value="">Select ceremony</option>{retreatCeremonies.map((ceremony) => <option key={ceremony._id} value={ceremony._id}>Ceremony #{ceremony.ceremonyNumber}</option>)}</select>}</div> : <>{bloodPressureContextLabels[reading.context || 'client_monitoring']}{reading.ceremonyNumber ? ` · Ceremony #${reading.ceremonyNumber}` : ''}</>}</td>
                       <td className={`px-3 py-2 font-semibold ${high ? 'text-red-700' : 'text-slate-900'}`}>
                         {isEditing ? <span className="flex items-center gap-1"><input type="number" className="w-16 rounded border px-2 py-1" value={activeEdit.systolic} onChange={(event) => setEditingReading({ ...activeEdit, systolic: Number(event.target.value) })} /><span>/</span><input type="number" className="w-16 rounded border px-2 py-1" value={activeEdit.diastolic} onChange={(event) => setEditingReading({ ...activeEdit, diastolic: Number(event.target.value) })} /></span> : <>{reading.systolic}/{reading.diastolic} mmHg {high ? '— HIGH' : ''}</>}
                       </td>
