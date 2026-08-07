@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { auditLogsApi } from '../services/api';
+import { auditLogsApi, clientsApi, retreatsApi } from '../services/api';
+import type { Client, Retreat } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 
 type AuditLog = {
@@ -19,7 +20,12 @@ type AuditLog = {
   createdAt: string;
 };
 
-const actions = ['', 'create', 'update', 'delete', 'view', 'login', 'client_portal_login_success', 'client_portal_login_failed'];
+const actions = ['', 'create', 'update', 'delete', 'view', 'login', 'client_portal_login_success', 'client_portal_login_failed', 'client_portal_page_view'];
+
+const emptyFilters = {
+  keyword: '', action: '', entityType: '', entityId: '', actorEmail: '', clientId: '',
+  bookingId: '', retreatId: '', pageKey: '', dateFrom: '', dateTo: '',
+};
 
 const AuditLogsPage: React.FC = () => {
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -27,15 +33,9 @@ const AuditLogsPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [selected, setSelected] = useState<AuditLog | null>(null);
-  const [filters, setFilters] = useState({
-    keyword: '',
-    action: '',
-    entityType: '',
-    entityId: '',
-    actorEmail: '',
-    dateFrom: '',
-    dateTo: '',
-  });
+  const [clients, setClients] = useState<Client[]>([]);
+  const [retreats, setRetreats] = useState<Retreat[]>([]);
+  const [filters, setFilters] = useState(emptyFilters);
   const limit = 50;
 
   const query = useMemo(() => ({
@@ -60,6 +60,13 @@ const AuditLogsPage: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
+  useEffect(() => {
+    Promise.all([clientsApi.getAll(), retreatsApi.getAll()]).then(([clientResponse, retreatResponse]) => {
+      setClients(Array.isArray(clientResponse.data) ? clientResponse.data : []);
+      setRetreats(Array.isArray(retreatResponse.data) ? retreatResponse.data : []);
+    }).catch(() => { /* ID filters remain available if lookup data cannot be loaded. */ });
+  }, []);
+
   const updateFilter = (key: keyof typeof filters, value: string) => {
     setPage(1);
     setFilters((current) => ({ ...current, [key]: value }));
@@ -71,8 +78,11 @@ const AuditLogsPage: React.FC = () => {
     <div className="p-4 sm:p-6">
       <div className="mb-5">
         <h1 className="text-2xl font-semibold text-gray-900">Audit Logs</h1>
-        <p className="mt-1 text-sm text-gray-600">Search user activity across creates, updates, deletes, and detail views.</p>
-        <button type="button" className="mt-3 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700" onClick={() => { setPage(1); setFilters((current) => ({ ...current, action: '', entityType: 'client_portal_access' })); }}>Show ibogaready.com logins</button>
+        <p className="mt-1 text-sm text-gray-600">Search RE audit events and privacy-safe ibogaready.com access activity.</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button type="button" className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700" onClick={() => { setPage(1); setFilters({ ...emptyFilters, entityType: 'client_portal_activity' }); }}>IR page activity</button>
+          <button type="button" className="rounded-md border border-blue-300 bg-white px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50" onClick={() => { setPage(1); setFilters({ ...emptyFilters, entityType: 'client_portal_access' }); }}>IR login history</button>
+        </div>
       </div>
 
       <div className="mb-4 grid gap-3 rounded-md border border-gray-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -83,6 +93,20 @@ const AuditLogsPage: React.FC = () => {
         <input className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Entity type" value={filters.entityType} onChange={(e) => updateFilter('entityType', e.target.value)} />
         <input className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Entity ID" value={filters.entityId} onChange={(e) => updateFilter('entityId', e.target.value)} />
         <input className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Actor email" value={filters.actorEmail} onChange={(e) => updateFilter('actorEmail', e.target.value)} />
+        <select className="rounded-md border border-gray-300 px-3 py-2 text-sm" value={filters.clientId} onChange={(e) => updateFilter('clientId', e.target.value)}>
+          <option value="">All clients</option>
+          {clients.slice().sort((a, b) => `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`)).map((client) => (
+            <option key={client._id} value={client._id}>{client.firstName} {client.lastName} · {client.email}</option>
+          ))}
+        </select>
+        <input className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Booking ID" value={filters.bookingId} onChange={(e) => updateFilter('bookingId', e.target.value)} />
+        <select className="rounded-md border border-gray-300 px-3 py-2 text-sm" value={filters.retreatId} onChange={(e) => updateFilter('retreatId', e.target.value)}>
+          <option value="">All retreats</option>
+          {retreats.slice().sort((a, b) => String(b.startDate || '').localeCompare(String(a.startDate || ''))).map((retreat) => (
+            <option key={retreat._id} value={retreat._id}>{retreat.code || retreat.retreatCode || retreat.name} · {retreat.startDate ? new Date(retreat.startDate).toLocaleDateString() : 'No date'}</option>
+          ))}
+        </select>
+        <input className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Page (for example workflow:home)" value={filters.pageKey} onChange={(e) => updateFilter('pageKey', e.target.value)} />
         <input className="rounded-md border border-gray-300 px-3 py-2 text-sm" type="date" value={filters.dateFrom} onChange={(e) => updateFilter('dateFrom', e.target.value)} />
         <input className="rounded-md border border-gray-300 px-3 py-2 text-sm" type="date" value={filters.dateTo} onChange={(e) => updateFilter('dateTo', e.target.value)} />
         <button
@@ -90,7 +114,7 @@ const AuditLogsPage: React.FC = () => {
           className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           onClick={() => {
             setPage(1);
-            setFilters({ keyword: '', action: '', entityType: '', entityId: '', actorEmail: '', dateFrom: '', dateTo: '' });
+            setFilters(emptyFilters);
           }}
         >
           Clear
@@ -131,6 +155,7 @@ const AuditLogsPage: React.FC = () => {
                         {log.summary}
                       </button>
                       <div className="text-xs text-gray-500">{log.method} {log.path} · {log.statusCode}</div>
+                      {log.metadata?.pageKey && <div className="mt-1 text-xs text-blue-700">Page: {log.metadata.pageKey} · Booking: {log.metadata.bookingNumber || log.metadata.bookingId || '-'}</div>}
                     </td>
                     <td className="px-4 py-3 text-gray-600">{log.ipAddress || '-'}</td>
                   </tr>

@@ -996,6 +996,10 @@ export const auditLogsApi = {
     entityType?: string;
     entityId?: string;
     actorEmail?: string;
+    clientId?: string;
+    bookingId?: string;
+    retreatId?: string;
+    pageKey?: string;
     keyword?: string;
     dateFrom?: string;
     dateTo?: string;
