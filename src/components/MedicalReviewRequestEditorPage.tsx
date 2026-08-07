@@ -151,6 +151,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
   const { id } = useParams();
   const isEdit = Boolean(id);
   const artifactId = new URLSearchParams(location.search).get('artifactId') || '';
+  const routePrefix = location.pathname.startsWith('/medical') ? '/medical' : '/admin';
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [trackingItems, setTrackingItems] = useState<MedicalItem[]>([]);
@@ -399,7 +400,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           await medicalReviewRequestsApi.create({ ...payload, medicalTrackingId: form.medicalTrackingId } as any);
         }
       }
-      navigate('/admin/medical-review-requests');
+      navigate(selectedArtifact?._id ? `${routePrefix}/medical-artifacts` : `${routePrefix}/medical-review-requests`);
     } catch (error) {
       console.error('Error saving medical review request:', error);
       alert(error instanceof Error ? error.message : 'Error saving medical review request');

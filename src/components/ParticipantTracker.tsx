@@ -390,6 +390,21 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
   }, []);
 
   useEffect(() => {
+    if (selectedMedicalReviewBucketId || !ceremony || medicalReviewBuckets.length === 0) return;
+    const retreatId = getObjectId(ceremony.retreatId);
+    if (!retreatId) return;
+    const matchingPackets = medicalReviewBuckets.filter((packet) => (
+      packet._id && !packet.revokedAt && getObjectId(packet.retreatId) === retreatId
+    ));
+    const selectedPacket = matchingPackets.find((packet) => (
+      packet.groupType === 'ceremony' && Number(packet.ceremonyNumber) === Number(ceremony.ceremonyNumber)
+    )) || matchingPackets.find((packet) => (
+      packet.groupType === 'retreat' && packet.ceremonyNumber == null
+    )) || matchingPackets[0];
+    if (selectedPacket?._id) setSelectedMedicalReviewBucketId(selectedPacket._id);
+  }, [ceremony, medicalReviewBuckets, selectedMedicalReviewBucketId]);
+
+  useEffect(() => {
     if (trackerView !== 'pre') return;
     setPreCeremonyMatrix((current) => {
       const next = { ...current };
@@ -1119,17 +1134,25 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
     setPreCeremonyDirty((current) => ({ ...current, [key]: true }));
   };
 
-  const savePreCeremonyMatrix = async () => {
+  const savePreCeremonyMatrix = async (
+    participantOverride?: CeremonyParticipant,
+    draftOverride?: PreCeremonyMatrixDraft,
+  ) => {
     if (!ceremony?._id) return;
-    const changedParticipants = participants.filter((participant) => preCeremonyDirty[getParticipantKey(participant)]);
+    const changedParticipants = participantOverride
+      ? [participantOverride]
+      : participants.filter((participant) => preCeremonyDirty[getParticipantKey(participant)]);
     if (!changedParticipants.length) return;
 
     for (const participant of changedParticipants) {
-      const draft = preCeremonyMatrix[getParticipantKey(participant)] || { systolic: '', diastolic: '', pulse: '' };
-      const systolic = Number(draft.systolic || 0);
-      const diastolic = Number(draft.diastolic || 0);
-      const pulse = Number(draft.pulse || 0);
-      const hasAnyBp = Boolean(draft.systolic || draft.diastolic || draft.pulse);
+      const draft = participantOverride && getParticipantKey(participantOverride) === getParticipantKey(participant)
+        ? draftOverride || preCeremonyMatrix[getParticipantKey(participant)]
+        : preCeremonyMatrix[getParticipantKey(participant)];
+      const resolvedDraft = draft || { systolic: '', diastolic: '', pulse: '' };
+      const systolic = Number(resolvedDraft.systolic || 0);
+      const diastolic = Number(resolvedDraft.diastolic || 0);
+      const pulse = Number(resolvedDraft.pulse || 0);
+      const hasAnyBp = Boolean(resolvedDraft.systolic || resolvedDraft.diastolic || resolvedDraft.pulse);
       if (hasAnyBp && (!systolic || !diastolic || systolic < 60 || systolic > 250 || diastolic < 40 || diastolic > 150 || (pulse && (pulse < 30 || pulse > 220)))) {
         message.error(`Check the blood pressure values for ${getClientName(participant)}`);
         return;
@@ -1144,7 +1167,9 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
           throw new Error(`Participant ${getClientName(participant)} is not assigned to the selected ceremony`);
         }
         const key = getParticipantKey(participant);
-        const draft = preCeremonyMatrix[key] || { systolic: '', diastolic: '', pulse: '' };
+        const draft = participantOverride && getParticipantKey(participantOverride) === key
+          ? draftOverride || preCeremonyMatrix[key] || { systolic: '', diastolic: '', pulse: '' }
+          : preCeremonyMatrix[key] || { systolic: '', diastolic: '', pulse: '' };
         const allChecks = getPreCeremonyChecks(participantToUpdate);
         const storedChecks = allChecks.filter((check) => !String(check.id || '').startsWith('artifact-'));
         const latestStored = storedChecks[storedChecks.length - 1];
@@ -1222,7 +1247,11 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
           await ceremoniesApi.updateMedicalCheck(participantToUpdate._id!, buildMedicalPayload());
         }
       }));
-      setPreCeremonyDirty({});
+      setPreCeremonyDirty((current) => {
+        const next = { ...current };
+        changedParticipants.forEach((participant) => delete next[getParticipantKey(participant)]);
+        return next;
+      });
       message.success(`Pre-ceremony data saved for Ceremony #${ceremony.ceremonyNumber}`);
       await loadData();
     } catch (error) {
@@ -1231,6 +1260,19 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
     } finally {
       setSavingPreCeremonyMatrix(false);
     }
+  };
+
+  const handlePreCeremonyEkgSelection = async (participant: CeremonyParticipant, file?: File) => {
+    if (!file) return;
+    const key = getParticipantKey(participant);
+    const nextDraft = {
+      ...(preCeremonyMatrix[key] || { systolic: '', diastolic: '', pulse: '' }),
+      ekgFile: file,
+    };
+    setPreCeremonyMatrix((current) => ({ ...current, [key]: nextDraft }));
+    setPreCeremonyDirty((current) => ({ ...current, [key]: true }));
+    message.info(`Uploading replacement EKG for ${getClientName(participant)}...`);
+    await savePreCeremonyMatrix(participant, nextDraft);
   };
 
   const createPreCeremonyMedicalReviews = async () => {
@@ -1333,7 +1375,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
             <Button
               type="primary"
               icon={<Icon icon={Save} className="h-4 w-4" />}
-              onClick={savePreCeremonyMatrix}
+              onClick={() => savePreCeremonyMatrix()}
               loading={savingPreCeremonyMatrix}
               disabled={!Object.values(preCeremonyDirty).some(Boolean)}
             >
@@ -1408,7 +1450,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                   type="primary"
                   size="large"
                   icon={<Icon icon={Save} className="h-4 w-4" />}
-                  onClick={savePreCeremonyMatrix}
+                  onClick={() => savePreCeremonyMatrix()}
                   loading={savingPreCeremonyMatrix}
                   disabled={!Object.values(preCeremonyDirty).some(Boolean)}
                 >
@@ -1467,7 +1509,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                       {existingEkg?.fileName && <button type="button" onClick={() => openFilePreview(participant, existingEkg.fileUrl, existingEkg.fileName)} className="mt-2 block max-w-[230px] truncate text-xs font-semibold text-blue-700 hover:underline" title={existingEkg.fileName}>View {existingEkg.fileName}</button>}
                       <label className="mt-2 block w-fit cursor-pointer text-xs font-semibold text-blue-700 hover:underline">
                         {draft.ekgFile ? 'Change selected EKG' : existingEkg?.fileName ? 'Replace EKG' : 'Upload EKG'}
-                        <input type="file" accept=".pdf,.jpg,.jpeg,.png,image/*,application/pdf" className="sr-only" onChange={(event) => updatePreCeremonyDraft(participant, { ekgFile: event.target.files?.[0] })} />
+                        <input type="file" accept=".pdf,.jpg,.jpeg,.png,image/*,application/pdf" className="sr-only" onChange={(event) => void handlePreCeremonyEkgSelection(participant, event.target.files?.[0])} />
                       </label>
                       {draft.ekgFile && <div className="mt-1 max-w-[230px] truncate text-xs text-slate-500" title={draft.ekgFile.name}>{draft.ekgFile.name}</div>}
                     </td>
@@ -1486,7 +1528,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
             <Button
               type="primary"
               icon={<Icon icon={Save} className="h-4 w-4" />}
-              onClick={savePreCeremonyMatrix}
+              onClick={() => savePreCeremonyMatrix()}
               loading={savingPreCeremonyMatrix}
               disabled={!Object.values(preCeremonyDirty).some(Boolean)}
             >
@@ -1828,7 +1870,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                         )}
                         <label className="block cursor-pointer rounded-md border border-dashed border-indigo-300 bg-indigo-50 px-3 py-3 text-center text-sm font-medium text-indigo-700 hover:bg-indigo-100">
                           {draft.ekgFile ? 'Replace selected file' : existingEkg?.fileName ? 'Replace EKG' : 'Upload EKG'}
-                          <input type="file" accept=".pdf,.jpg,.jpeg,.png,image/*,application/pdf" className="sr-only" onChange={(event) => updatePreCeremonyDraft(participant, { ekgFile: event.target.files?.[0] })} />
+                          <input type="file" accept=".pdf,.jpg,.jpeg,.png,image/*,application/pdf" className="sr-only" onChange={(event) => void handlePreCeremonyEkgSelection(participant, event.target.files?.[0])} />
                         </label>
                         {draft.ekgFile && <div className="mt-2 truncate text-xs font-medium text-gray-700" title={draft.ekgFile.name}>{draft.ekgFile.name}</div>}
                       </td>
