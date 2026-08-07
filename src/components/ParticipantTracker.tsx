@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
-import { bookingsApi, ceremoniesApi, fileUploadsApi, medicalArtifactsApi } from '../services/api';
-import { Ceremony, CeremonyParticipant, FileUpload, MedicalArtifact, RetreatClient } from '../types';
+import { bookingsApi, ceremoniesApi, fileUploadsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { usersApi, User } from '../services/usersApi';
+import { Ceremony, CeremonyParticipant, FileUpload, MedicalArtifact, MedicalReviewGroup, MedicalReviewRequest, RetreatClient } from '../types';
 import { Button, Card, Col, Form, Input, InputNumber, Modal, Row, Select, Statistic, TimePicker, message } from 'antd';
 import { Activity, ArrowLeft, Clock3, FileText, HeartPulse, Maximize2, Minimize2, Plus, Trash2, GripVertical, Save } from 'lucide-react';
 import moment from 'moment';
@@ -20,6 +21,22 @@ type PreCeremonyCheck = NonNullable<CeremonyParticipant['preCeremonyChecks']>[nu
 type PostCeremonyCheck = NonNullable<CeremonyParticipant['postCeremonyChecks']>[number];
 type MedicalCheckPhase = 'pre' | 'post';
 type PreMedicalFormKind = 'ekg' | 'bp';
+type PreCeremonyMatrixDraft = {
+  systolic: string;
+  diastolic: string;
+  pulse: string;
+  ekgFile?: File;
+};
+type ReviewCreationLog = {
+  id: string;
+  time: string;
+  client: string;
+  type: string;
+  status: 'created' | 'skipped' | 'error';
+  requestNumber?: number | string;
+  bucket?: string;
+  detail: string;
+};
 
 const eventTypeLabels: Record<EventType, string> = {
   medicine: 'Medicine',
@@ -332,6 +349,15 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
   const [gridEdits, setGridEdits] = useState<Record<string, string>>({});
   const [newRows, setNewRows] = useState<Array<{ id: string; time: string }>>([]);
   const [isSpoonsFullScreen, setIsSpoonsFullScreen] = useState(false);
+  const [preCeremonyMatrix, setPreCeremonyMatrix] = useState<Record<string, PreCeremonyMatrixDraft>>({});
+  const [preCeremonyDirty, setPreCeremonyDirty] = useState<Record<string, boolean>>({});
+  const [savingPreCeremonyMatrix, setSavingPreCeremonyMatrix] = useState(false);
+  const [medicalAdvisors, setMedicalAdvisors] = useState<User[]>([]);
+  const [medicalReviewBuckets, setMedicalReviewBuckets] = useState<MedicalReviewGroup[]>([]);
+  const [selectedMedicalAdvisorId, setSelectedMedicalAdvisorId] = useState('');
+  const [selectedMedicalReviewBucketId, setSelectedMedicalReviewBucketId] = useState('');
+  const [creatingMedicalReviews, setCreatingMedicalReviews] = useState(false);
+  const [reviewCreationLog, setReviewCreationLog] = useState<ReviewCreationLog[]>([]);
   const [form] = Form.useForm();
   const [medicalForm] = Form.useForm();
 
@@ -342,6 +368,33 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
   useEffect(() => {
     setTrackerView(initialView);
   }, [initialView]);
+
+  useEffect(() => {
+    Promise.all([usersApi.getAll(), medicalReviewRequestsApi.getGroups()]).then(([usersResponse, groupsResponse]) => {
+      const advisors = (usersResponse.data || []).filter((user) => user.role === 'medical_advisor' && user.isActive !== false);
+      setMedicalAdvisors(advisors);
+      setMedicalReviewBuckets(groupsResponse.data || []);
+      setSelectedMedicalAdvisorId((current) => current || (advisors.length === 1 ? advisors[0]._id : ''));
+    }).catch(() => { setMedicalAdvisors([]); setMedicalReviewBuckets([]); });
+  }, []);
+
+  useEffect(() => {
+    if (trackerView !== 'pre') return;
+    setPreCeremonyMatrix((current) => {
+      const next = { ...current };
+      participants.forEach((participant) => {
+        const key = getParticipantKey(participant);
+        if (preCeremonyDirty[key]) return;
+        const bp = getLatestPreCeremonyCheck(participant)?.preCeremonyBloodPressure;
+        next[key] = {
+          systolic: bp?.systolic ? String(bp.systolic) : '',
+          diastolic: bp?.diastolic ? String(bp.diastolic) : '',
+          pulse: bp?.pulse ? String(bp.pulse) : '',
+        };
+      });
+      return next;
+    });
+  }, [participants, preCeremonyDirty, trackerView]);
 
   useEffect(() => {
     if (!isSpoonsFullScreen) return;
@@ -1004,6 +1057,177 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
     sortEvents(participant.eventLog || []).filter((event) => event.time === time)
   );
 
+  const updatePreCeremonyDraft = (participant: CeremonyParticipant, patch: Partial<PreCeremonyMatrixDraft>) => {
+    const key = getParticipantKey(participant);
+    setPreCeremonyMatrix((current) => ({
+      ...current,
+      [key]: { ...(current[key] || { systolic: '', diastolic: '', pulse: '' }), ...patch },
+    }));
+    setPreCeremonyDirty((current) => ({ ...current, [key]: true }));
+  };
+
+  const savePreCeremonyMatrix = async () => {
+    if (!ceremony?._id) return;
+    const changedParticipants = participants.filter((participant) => preCeremonyDirty[getParticipantKey(participant)]);
+    if (!changedParticipants.length) return;
+
+    for (const participant of changedParticipants) {
+      const draft = preCeremonyMatrix[getParticipantKey(participant)] || { systolic: '', diastolic: '', pulse: '' };
+      const systolic = Number(draft.systolic || 0);
+      const diastolic = Number(draft.diastolic || 0);
+      const pulse = Number(draft.pulse || 0);
+      const hasAnyBp = Boolean(draft.systolic || draft.diastolic || draft.pulse);
+      if (hasAnyBp && (!systolic || !diastolic || systolic < 60 || systolic > 250 || diastolic < 40 || diastolic > 150 || (pulse && (pulse < 30 || pulse > 220)))) {
+        message.error(`Check the blood pressure values for ${getClientName(participant)}`);
+        return;
+      }
+    }
+
+    try {
+      setSavingPreCeremonyMatrix(true);
+      await Promise.all(changedParticipants.map(async (participant) => {
+        const participantToUpdate = await ensureSavedParticipant(participant);
+        if (getObjectId(participantToUpdate.ceremonyId) !== ceremony._id) {
+          throw new Error(`Participant ${getClientName(participant)} is not assigned to the selected ceremony`);
+        }
+        const key = getParticipantKey(participant);
+        const draft = preCeremonyMatrix[key] || { systolic: '', diastolic: '', pulse: '' };
+        const allChecks = getPreCeremonyChecks(participantToUpdate);
+        const storedChecks = allChecks.filter((check) => !String(check.id || '').startsWith('artifact-'));
+        const latestStored = storedChecks[storedChecks.length - 1];
+        const latestVisible = getLatestPreCeremonyCheck(participantToUpdate);
+        let ekg = latestStored?.preCeremonyEkg || latestVisible?.preCeremonyEkg;
+
+        if (draft.ekgFile) {
+          const formData = new FormData();
+          formData.append('file', draft.ekgFile);
+          formData.append('documentKind', 'client_medical');
+          formData.append('foreignKey', participantToUpdate._id!);
+          formData.append('description', `Pre-ceremony EKG · Ceremony #${ceremony.ceremonyNumber} · ${getClientName(participantToUpdate)}`);
+          const uploadResponse = await fileUploadsApi.upload(formData);
+          ekg = {
+            fileUrl: `/file-uploads/view/${uploadResponse.data.fileHash}`,
+            fileName: uploadResponse.data.originalFileName,
+            uploadedAt: uploadResponse.data.uploadedAt || new Date().toISOString(),
+            approved: undefined,
+            notes: '',
+          };
+        }
+
+        const hasBp = Boolean(draft.systolic && draft.diastolic);
+        const checkId = latestStored?.id || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        const nextCheck: PreCeremonyCheck = {
+          ...latestStored,
+          id: checkId,
+          recordedAt: new Date().toISOString(),
+          preCeremonyEkg: ekg,
+          preCeremonyBloodPressure: hasBp ? {
+            ...latestStored?.preCeremonyBloodPressure,
+            systolic: Number(draft.systolic),
+            diastolic: Number(draft.diastolic),
+            pulse: draft.pulse ? Number(draft.pulse) : undefined,
+            recordedAt: new Date().toISOString(),
+          } : latestStored?.preCeremonyBloodPressure || latestVisible?.preCeremonyBloodPressure,
+          medicalClearance: latestStored?.medicalClearance || 'pending',
+          medicalClearanceNotes: latestStored?.medicalClearanceNotes || '',
+        };
+        const nextChecks = latestStored
+          ? storedChecks.map((check) => check.id === latestStored.id ? nextCheck : check)
+          : [...storedChecks, nextCheck];
+
+        await ceremoniesApi.updateMedicalCheck(participantToUpdate._id!, {
+          ceremonyId: ceremony._id,
+          context: 'pre_ceremony',
+          preCeremonyChecks: nextChecks,
+          preCeremonyEkg: nextCheck.preCeremonyEkg,
+          preCeremonyBloodPressure: nextCheck.preCeremonyBloodPressure,
+          medicalClearance: nextCheck.medicalClearance || 'pending',
+          medicalClearanceNotes: nextCheck.medicalClearanceNotes || '',
+        } as any);
+      }));
+      setPreCeremonyDirty({});
+      message.success(`Pre-ceremony data saved for Ceremony #${ceremony.ceremonyNumber}`);
+      await loadData();
+    } catch (error) {
+      message.error('Failed to save all pre-ceremony data. Existing successful uploads were preserved.');
+      console.error('Error saving pre-ceremony matrix:', error);
+    } finally {
+      setSavingPreCeremonyMatrix(false);
+    }
+  };
+
+  const createPreCeremonyMedicalReviews = async () => {
+    if (!ceremony?._id) return;
+    if (!selectedMedicalAdvisorId) return void message.error('Select a medical advisor.');
+    if (!selectedMedicalReviewBucketId) return void message.error('Select an MRR bucket.');
+    if (Object.values(preCeremonyDirty).some(Boolean)) return void message.error('Save the pre-ceremony data before creating its medical reviews.');
+
+    const bucket = medicalReviewBuckets.find((item) => item._id === selectedMedicalReviewBucketId);
+    const bucketReviewerId = getObjectId(bucket?.reviewerUserId);
+    if (bucketReviewerId && bucketReviewerId !== selectedMedicalAdvisorId) {
+      return void message.error('The selected bucket is assigned to a different medical advisor. Select a matching advisor or bucket.');
+    }
+    const advisor = medicalAdvisors.find((item) => item._id === selectedMedicalAdvisorId);
+    const advisorName = advisor ? [advisor.firstName, advisor.lastName].filter(Boolean).join(' ') || advisor.email : 'Selected advisor';
+    const participantNameByClientId = new Map(participants.map((participant) => [getObjectId(participant.clientId), getClientName(participant)]));
+    setReviewCreationLog([]);
+    setCreatingMedicalReviews(true);
+
+    try {
+      const artifactsResponse = await medicalArtifactsApi.getAll({ ceremonyId: ceremony._id, documentStage: 'pre_ceremony' });
+      const artifacts: MedicalArtifact[] = (artifactsResponse.data || []).filter((artifact: MedicalArtifact) => (
+        artifact._id && ['EKG', 'BP'].includes(String(artifact.documentType || '').toUpperCase())
+      ));
+      if (!artifacts.length) {
+        message.warning('No saved pre-ceremony EKG or blood-pressure records were found for this ceremony.');
+        return;
+      }
+      const existingResponse = await medicalReviewRequestsApi.getByArtifacts(artifacts.map((artifact) => artifact._id!));
+      const existingByArtifact = new Map<string, MedicalReviewRequest>();
+      (existingResponse.data || []).forEach((request: MedicalReviewRequest) => {
+        const ids = (request.artifactIds || []).map((artifact: any) => getObjectId(artifact));
+        ids.forEach((id) => { if (id && !existingByArtifact.has(id)) existingByArtifact.set(id, request); });
+      });
+
+      for (const artifact of artifacts) {
+        const artifactId = artifact._id!;
+        const type = String(artifact.documentType).toUpperCase() === 'BP' ? 'Blood pressure' : 'Pre-ceremony EKG';
+        const client = participantNameByClientId.get(getObjectId(artifact.clientId)) || 'Client';
+        const existing = existingByArtifact.get(artifactId);
+        if (existing) {
+          setReviewCreationLog((current) => [...current, {
+            id: `${artifactId}-skip`, time: new Date().toLocaleTimeString(), client, type, status: 'skipped',
+            requestNumber: existing.display_id, bucket: bucket?.title, detail: `Existing MRR #${existing.display_id || existing._id} was not duplicated.`,
+          }]);
+          continue;
+        }
+        try {
+          const requestType: MedicalReviewRequest['requestType'] = type === 'Blood pressure' ? 'blood_pressure_review' : 'ceremony_ekg_review';
+          const createdResponse = await medicalReviewRequestsApi.createFromArtifact(artifactId, requestType, {
+            assignedToUserId: selectedMedicalAdvisorId,
+            medicalReviewGroupId: selectedMedicalReviewBucketId,
+          });
+          const created = createdResponse.data;
+          await medicalReviewRequestsApi.addRequestsToGroup(selectedMedicalReviewBucketId, [created._id!]);
+          setReviewCreationLog((current) => [...current, {
+            id: created._id!, time: new Date().toLocaleTimeString(), client, type, status: 'created',
+            requestNumber: created.display_id, bucket: bucket?.title, detail: `Assigned to ${advisorName}.`,
+          }]);
+        } catch (error: any) {
+          setReviewCreationLog((current) => [...current, {
+            id: `${artifactId}-error`, time: new Date().toLocaleTimeString(), client, type, status: 'error',
+            bucket: bucket?.title, detail: error?.response?.data?.message || 'MRR creation failed.',
+          }]);
+        }
+      }
+      message.success(`Finished creating pre-ceremony reviews for Ceremony #${ceremony.ceremonyNumber}.`);
+    } catch (error: any) {
+      message.error(error?.response?.data?.message || 'Unable to create pre-ceremony medical reviews.');
+    } finally {
+      setCreatingMedicalReviews(false);
+    }
+  };
+
   return (
     <div className={isSpoonsFullScreen ? 'fixed inset-0 z-[100] flex flex-col overflow-hidden bg-gray-100 p-4 sm:p-6' : showHeader ? 'p-6' : 'p-0'}>
       {onBack && (
@@ -1021,8 +1245,24 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
             {trackerView === 'spoons' ? ' - type a spoon amount (e.g. 1, 0.5, 0.75) into each client cell, add time rows, then Save.' : ''}
             {ceremony?.date ? ` ${moment(ceremony.date).format('MMMM DD, YYYY')}` : ''}
           </p>
+          {trackerView === 'pre' && ceremony && (
+            <p className="mt-1 text-sm font-semibold text-indigo-700">
+              All entries below will be saved as pre-ceremony data for Ceremony #{ceremony.ceremonyNumber}.
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
+          {trackerView === 'pre' && (
+            <Button
+              type="primary"
+              icon={<Icon icon={Save} className="h-4 w-4" />}
+              onClick={savePreCeremonyMatrix}
+              loading={savingPreCeremonyMatrix}
+              disabled={!Object.values(preCeremonyDirty).some(Boolean)}
+            >
+              Save all pre-ceremony data
+            </Button>
+          )}
           {trackerView === 'spoons' && (
             <>
               <Button icon={<Icon icon={isSpoonsFullScreen ? Minimize2 : Maximize2} className="h-4 w-4" />} onClick={() => setIsSpoonsFullScreen((current) => !current)}>
@@ -1135,7 +1375,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                         Missing pre-ceremony EKG and BP
                       </div>
                     )}
-                    {trackerView === 'pre' && checks.length > 0 && (
+                    {trackerView === 'pre' && !lockedView && checks.length > 0 && (
                       <div className="mt-2 space-y-2">
                         {checks.map((check, index) => (
                           <div key={check.id || index} className="rounded-md border border-gray-200 bg-gray-50 px-2 py-2 text-xs text-gray-700">
@@ -1203,7 +1443,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                         ))}
                       </div>
                     )}
-                    {trackerView === 'pre' && (
+                    {trackerView === 'pre' && !lockedView && (
                       <div className="mt-1 flex flex-wrap gap-3">
                         <Button size="small" type="link" className="p-0" onClick={() => openMedicalModal(participant, undefined, 'pre', 'ekg')}>
                           <span className="inline-flex items-center gap-1">
@@ -1363,15 +1603,75 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
                 </td>
               </tr>
             )}
-            {trackerView !== 'spoons' && (
+            {trackerView === 'pre' && (
+              <>
+                <tr className="bg-white">
+                  <td className="sticky left-0 z-10 border-b border-r border-gray-200 bg-white px-3 py-4 align-top text-sm font-semibold text-gray-900">
+                    Blood pressure
+                    <div className="mt-1 text-xs font-normal text-gray-500">Systolic / diastolic / pulse</div>
+                  </td>
+                  {participants.map((participant) => {
+                    const key = getParticipantKey(participant);
+                    const draft = preCeremonyMatrix[key] || { systolic: '', diastolic: '', pulse: '' };
+                    return (
+                      <td key={`${key}-pre-bp`} className="min-w-[220px] border-b border-r border-gray-200 p-3 align-top">
+                        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-1">
+                          <input type="number" min="60" max="250" aria-label={`Systolic for ${getClientName(participant)}`} placeholder="SYS" value={draft.systolic} onChange={(event) => updatePreCeremonyDraft(participant, { systolic: event.target.value })} className="min-w-0 rounded-md border border-gray-300 px-2 py-2 text-center text-sm" />
+                          <span className="font-semibold text-gray-500">/</span>
+                          <input type="number" min="40" max="150" aria-label={`Diastolic for ${getClientName(participant)}`} placeholder="DIA" value={draft.diastolic} onChange={(event) => updatePreCeremonyDraft(participant, { diastolic: event.target.value })} className="min-w-0 rounded-md border border-gray-300 px-2 py-2 text-center text-sm" />
+                        </div>
+                        <input type="number" min="30" max="220" aria-label={`Pulse for ${getClientName(participant)}`} placeholder="Pulse (optional)" value={draft.pulse} onChange={(event) => updatePreCeremonyDraft(participant, { pulse: event.target.value })} className="mt-2 w-full rounded-md border border-gray-300 px-2 py-2 text-center text-sm" />
+                      </td>
+                    );
+                  })}
+                </tr>
+                <tr className="bg-gray-50/40">
+                  <td className="sticky left-0 z-10 border-b border-r border-gray-200 bg-gray-50 px-3 py-4 align-top text-sm font-semibold text-gray-900">
+                    Pre-ceremony EKG
+                    <div className="mt-1 text-xs font-normal text-gray-500">PDF or image</div>
+                  </td>
+                  {participants.map((participant) => {
+                    const key = getParticipantKey(participant);
+                    const draft = preCeremonyMatrix[key] || { systolic: '', diastolic: '', pulse: '' };
+                    const existingEkg = getLatestPreCeremonyCheck(participant)?.preCeremonyEkg;
+                    return (
+                      <td key={`${key}-pre-ekg`} className="min-w-[220px] border-b border-r border-gray-200 p-3 align-top">
+                        {existingEkg?.fileName && (
+                          <button type="button" onClick={() => openFilePreview(participant, existingEkg.fileUrl, existingEkg.fileName)} className="mb-2 block max-w-full truncate text-sm font-semibold text-blue-700 hover:text-blue-900" title={existingEkg.fileName}>
+                            View: {existingEkg.fileName}
+                          </button>
+                        )}
+                        <label className="block cursor-pointer rounded-md border border-dashed border-indigo-300 bg-indigo-50 px-3 py-3 text-center text-sm font-medium text-indigo-700 hover:bg-indigo-100">
+                          {draft.ekgFile ? 'Replace selected file' : existingEkg?.fileName ? 'Replace EKG' : 'Upload EKG'}
+                          <input type="file" accept=".pdf,.jpg,.jpeg,.png,image/*,application/pdf" className="sr-only" onChange={(event) => updatePreCeremonyDraft(participant, { ekgFile: event.target.files?.[0] })} />
+                        </label>
+                        {draft.ekgFile && <div className="mt-2 truncate text-xs font-medium text-gray-700" title={draft.ekgFile.name}>{draft.ekgFile.name}</div>}
+                      </td>
+                    );
+                  })}
+                </tr>
+                <tr className="bg-white">
+                  <td className="sticky left-0 z-10 border-r border-gray-200 bg-white px-3 py-3 text-sm font-semibold text-gray-900">Completion</td>
+                  {participants.map((participant) => {
+                    const key = getParticipantKey(participant);
+                    const draft = preCeremonyMatrix[key] || { systolic: '', diastolic: '', pulse: '' };
+                    const check = getLatestPreCeremonyCheck(participant);
+                    const hasBp = Boolean(draft.systolic && draft.diastolic);
+                    const hasEkg = Boolean(draft.ekgFile || check?.preCeremonyEkg?.fileName || check?.preCeremonyEkg?.fileUrl);
+                    return <td key={`${key}-pre-status`} className="border-r border-gray-200 px-3 py-3 text-center text-sm"><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${hasBp && hasEkg ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{hasBp && hasEkg ? 'BP + EKG ready' : `Missing ${[!hasBp ? 'BP' : '', !hasEkg ? 'EKG' : ''].filter(Boolean).join(' + ')}`}</span></td>;
+                  })}
+                </tr>
+              </>
+            )}
+            {trackerView === 'post' && (
               <tr>
                 <td colSpan={participants.length + 1} className="px-4 py-8 text-center text-sm text-gray-500">
-                  Use the controls under each participant name above to manage {trackerView === 'pre' ? 'pre-ceremony EKG and blood pressure checks' : 'post-ceremony EKG checks'}.
+                  Use the controls under each participant name above to manage post-ceremony EKG checks.
                 </td>
               </tr>
             )}
           </tbody>
-          {participants.length > 0 && (
+          {participants.length > 0 && trackerView !== 'pre' && (
             <tfoot>
               <tr className="bg-gray-50">
                 <td className="sticky left-0 z-10 border-r border-gray-200 bg-gray-50 px-2 py-3 text-sm font-semibold text-gray-900">
@@ -1399,6 +1699,61 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
           <div className="px-4 py-8 text-center text-sm text-gray-500">No participants found for this ceremony.</div>
         )}
       </div>
+
+      {trackerView === 'pre' && participants.length > 0 && (
+        <section className="mt-4 rounded-lg border border-indigo-200 bg-indigo-50/50 p-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
+            <label className="flex-1 text-sm font-semibold text-gray-800">
+              Medical advisor
+              <Select
+                className="mt-1 w-full"
+                value={selectedMedicalAdvisorId || undefined}
+                placeholder="Select medical advisor"
+                onChange={setSelectedMedicalAdvisorId}
+                options={medicalAdvisors.map((advisor) => ({
+                  value: advisor._id,
+                  label: [advisor.firstName, advisor.lastName].filter(Boolean).join(' ') || advisor.email,
+                }))}
+              />
+            </label>
+            <label className="flex-1 text-sm font-semibold text-gray-800">
+              MRR bucket
+              <Select
+                className="mt-1 w-full"
+                value={selectedMedicalReviewBucketId || undefined}
+                placeholder="Select review bucket"
+                onChange={setSelectedMedicalReviewBucketId}
+                options={medicalReviewBuckets.filter((bucket) => bucket._id).map((bucket) => ({
+                  value: bucket._id!,
+                  label: `${bucket.title}${bucket.reviewerName || bucket.reviewerEmail ? ` · ${bucket.reviewerName || bucket.reviewerEmail}` : ''}`,
+                }))}
+              />
+            </label>
+            <Button
+              type="primary"
+              icon={<Icon icon={FileText} className="h-4 w-4" />}
+              onClick={createPreCeremonyMedicalReviews}
+              loading={creatingMedicalReviews}
+              disabled={!selectedMedicalAdvisorId || !selectedMedicalReviewBucketId || Object.values(preCeremonyDirty).some(Boolean)}
+            >
+              Create missing MRRs
+            </Button>
+          </div>
+          <p className="mt-2 text-xs text-gray-600">
+            Creates one review per saved pre-ceremony EKG or BP for Ceremony #{ceremony?.ceremonyNumber}. Existing MRRs are skipped.
+          </p>
+          {reviewCreationLog.length > 0 && (
+            <div className="mt-4 overflow-x-auto rounded-md border border-gray-200 bg-white">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-50 text-left text-xs uppercase tracking-wide text-gray-500"><tr><th className="px-3 py-2">Time</th><th className="px-3 py-2">Client</th><th className="px-3 py-2">Type</th><th className="px-3 py-2">MRR</th><th className="px-3 py-2">Bucket</th><th className="px-3 py-2">Result</th></tr></thead>
+                <tbody className="divide-y divide-gray-100">
+                  {reviewCreationLog.map((entry) => <tr key={entry.id}><td className="whitespace-nowrap px-3 py-2 text-gray-600">{entry.time}</td><td className="px-3 py-2 font-medium text-gray-900">{entry.client}</td><td className="px-3 py-2">{entry.type}</td><td className="px-3 py-2 font-semibold">{entry.requestNumber ? `#${entry.requestNumber}` : '—'}</td><td className="px-3 py-2">{entry.bucket || '—'}</td><td className={`px-3 py-2 font-medium ${entry.status === 'created' ? 'text-emerald-700' : entry.status === 'skipped' ? 'text-amber-700' : 'text-red-700'}`}>{entry.status.toUpperCase()} · {entry.detail}</td></tr>)}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
 
       {trackerView === 'spoons' && participants.length > 0 && (
         <div className="mt-4 flex flex-wrap items-center justify-end gap-2">

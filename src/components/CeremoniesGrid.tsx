@@ -274,9 +274,23 @@ const CeremoniesGrid: React.FC<CeremoniesGridProps> = ({ retreatId, retreats = [
                 )}
               </p>
             </div>
-            <span className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold ${getStatusColor(selectedCeremony.status || 'scheduled')}`}>
-              {(selectedCeremony.status || 'scheduled').replace('_', ' ').toUpperCase()}
-            </span>
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                Selected ceremony
+                <Select
+                  value={trackingCeremonyId}
+                  onChange={(value) => setTrackingCeremonyId(value)}
+                  className="min-w-[230px]"
+                  options={ceremonies.filter((item) => item._id).map((item) => ({
+                    value: item._id!,
+                    label: `Ceremony #${item.ceremonyNumber} · ${formatDate(item.date)}`,
+                  }))}
+                />
+              </label>
+              <span className={`inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold ${getStatusColor(selectedCeremony.status || 'scheduled')}`}>
+                {(selectedCeremony.status || 'scheduled').replace('_', ' ').toUpperCase()}
+              </span>
+            </div>
           </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
