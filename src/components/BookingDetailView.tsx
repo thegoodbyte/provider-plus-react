@@ -16,7 +16,7 @@ import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
 import { createBookingConfirmationPdf } from './BookingConfirmationPDF';
 import { Task, CreateTaskDto, taskService } from '../services/taskService';
 import { BookingDocument, BookingFlowItem, CeremonyParticipant, MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
-import { getBookingPaidAmount } from './bookingPaymentSummary';
+import { getBookingPaidAmount, getBookingUsdBalance } from './bookingPaymentSummary';
 import './BookingDetailView.css';
 
 type RequirementArtifactType = NonNullable<MedicalArtifact['artifactType']>;
@@ -1007,6 +1007,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [bookingTasks, setBookingTasks] = useState<Task[]>([]);
   const [bookingDocuments, setBookingDocuments] = useState<BookingDocument[]>([]);
   const [bookingPayments, setBookingPayments] = useState<Payment[]>([]);
+  const [bookingTotalUsd, setBookingTotalUsd] = useState<number | null>(null);
   const [loadingBookingTasks, setLoadingBookingTasks] = useState(false);
   const [bookingTasksError, setBookingTasksError] = useState<string | null>(null);
   const [showTaskForm, setShowTaskForm] = useState(false);
@@ -1031,6 +1032,26 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     loadBookingDocuments();
     loadBookingPayments();
   }, [bookingId]);
+
+  useEffect(() => {
+    const total = Number(booking?.totalAmount || 0);
+    const currency = String(booking?.currency || 'EUR').toUpperCase();
+    if (!booking || !Number.isFinite(total) || total <= 0) {
+      setBookingTotalUsd(null);
+      return;
+    }
+    if (currency === 'USD') {
+      setBookingTotalUsd(total);
+      return;
+    }
+    let active = true;
+    paymentsApi.convertToUsd(total, currency).then((response) => {
+      if (active) setBookingTotalUsd(Number(response.data.usd_amount));
+    }).catch(() => {
+      if (active) setBookingTotalUsd(null);
+    });
+    return () => { active = false; };
+  }, [booking]);
 
   useEffect(() => {
     return () => {
@@ -1551,9 +1572,11 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     booking.amountPaid ?? booking.paidAmount,
   );
   const balanceDue = Math.max(0, totalAmount - paidAmount);
+  const usdSummary = getBookingUsdBalance(bookingTotalUsd, bookingPayments);
   const currencySymbol = currency === 'EUR' ? '€' : currency === 'PLN' ? 'zł' : currency === 'CZK' ? 'Kč' : currency;
   const formatMoney = (amount: number) =>
     `${currencySymbol}${currencySymbol.length > 1 ? ' ' : ''}${amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+  const formatUsdMoney = (amount: number) => `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   const openTasks = bookingTasks.filter((task) => task.status !== 'completed' && task.status !== 'cancelled');
   const openTaskNames = openTasks.slice(0, 2).map((task) => task.name).join(', ');
   const expectedDocumentCount = Math.max(requirementDefinitions.length, bookingDocuments.length);
@@ -1714,11 +1737,11 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
           <div className="booking-needs-grid">
             <article className={`booking-need-card booking-balance-card ${balanceDue > 0 ? 'needs-attention' : ''}`}>
               <span className="booking-need-label">Balance due</span>
-              <strong>{formatMoney(balanceDue)}</strong>
-              <div className="booking-balance-track" aria-label={`${formatMoney(paidAmount)} paid of ${formatMoney(totalAmount)}`}>
-                <span style={{ width: `${totalAmount > 0 ? Math.min(100, (paidAmount / totalAmount) * 100) : 0}%` }} />
+              <strong>{usdSummary ? formatUsdMoney(usdSummary.balanceUsd) : formatMoney(balanceDue)}</strong>
+              <div className="booking-balance-track" aria-label={usdSummary ? `${formatUsdMoney(usdSummary.paidUsd)} paid of ${formatUsdMoney(bookingTotalUsd || 0)}` : `${formatMoney(paidAmount)} paid of ${formatMoney(totalAmount)}`}>
+                <span style={{ width: `${usdSummary && bookingTotalUsd ? Math.min(100, (usdSummary.paidUsd / bookingTotalUsd) * 100) : totalAmount > 0 ? Math.min(100, (paidAmount / totalAmount) * 100) : 0}%` }} />
               </div>
-              <p>{formatMoney(paidAmount)} / {formatMoney(totalAmount)}</p>
+              <p>{usdSummary ? `${formatUsdMoney(usdSummary.paidUsd)} / ${formatUsdMoney(bookingTotalUsd || 0)}` : `${formatMoney(paidAmount)} / ${formatMoney(totalAmount)}`}</p>
               <button type="button" onClick={() => setActiveTab('payments')}>{balanceDue > 0 ? 'Add payment' : 'View payments'}</button>
             </article>
             <article className="booking-need-card">

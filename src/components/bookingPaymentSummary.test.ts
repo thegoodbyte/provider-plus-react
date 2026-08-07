@@ -1,5 +1,5 @@
 import { Payment } from '../types';
-import { getBookingPaidAmount } from './bookingPaymentSummary';
+import { getBookingPaidAmount, getBookingUsdBalance } from './bookingPaymentSummary';
 
 const payment = (overrides: Partial<Payment>): Payment => ({
   clientId: 'client-1',
@@ -14,6 +14,18 @@ const payment = (overrides: Partial<Payment>): Payment => ({
   isFinalPayment: false,
   isRefundable: true,
   ...overrides,
+});
+
+describe('getBookingUsdBalance', () => {
+  it('uses the same USD amounts shown in payment management for mixed currencies', () => {
+    const payments = [
+      payment({ amount: 800, currency: 'EUR', usd_amount: 922.72 }),
+      payment({ amount: 800, currency: 'EUR', usd_amount: 922.72 }),
+      payment({ amount: 1005.76, currency: 'USD', usd_amount: 1005.76 }),
+    ];
+
+    expect(getBookingUsdBalance(2860, payments)).toEqual({ paidUsd: 2851.2, balanceUsd: 8.8 });
+  });
 });
 
 describe('getBookingPaidAmount', () => {

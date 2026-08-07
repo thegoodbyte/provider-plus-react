@@ -28,3 +28,18 @@ export const getBookingPaidAmount = (
 
   return Math.max(0, Number(storedAmountPaid || 0));
 };
+
+export const getBookingUsdBalance = (totalUsd: number | null, payments: Payment[]): { paidUsd: number; balanceUsd: number } | null => {
+  if (totalUsd === null || !Number.isFinite(totalUsd)) return null;
+  const paidUsd = payments
+    .filter((payment) => payment.status === 'completed')
+    .reduce((sum, payment) => {
+      const amount = payment.currency === 'USD' ? Number(payment.amount || 0) : Number(payment.usd_amount);
+      if (!Number.isFinite(amount)) return sum;
+      const direction = payment.paymentType === 'refund' ? -1 : 1;
+      return sum + (Math.abs(amount) * direction);
+    }, 0);
+  const roundedPaidUsd = Math.round(Math.max(0, paidUsd) * 100) / 100;
+  const balanceUsd = Math.round(Math.max(0, totalUsd - roundedPaidUsd) * 100) / 100;
+  return { paidUsd: roundedPaidUsd, balanceUsd };
+};
