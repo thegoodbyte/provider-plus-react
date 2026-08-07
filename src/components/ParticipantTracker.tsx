@@ -1396,10 +1396,25 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
               <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-950">Vitals board</h2>
               <div className="mt-1 text-sm text-slate-500">Ceremony #{ceremony?.ceremonyNumber} · enter all readings and EKGs in one place</div>
             </div>
-            <div className="flex items-center gap-5 text-sm text-slate-600">
-              <div className="flex items-baseline gap-2"><span className="text-3xl font-extrabold text-amber-700">{preCeremonyBoardStats.incomplete}</span><span>incomplete</span></div>
-              <div className="h-10 w-px bg-slate-200" />
-              <div className="flex items-baseline gap-2"><span className="text-3xl font-extrabold text-emerald-700">{preCeremonyBoardStats.complete}</span><span>complete</span></div>
+            <div className="flex flex-wrap items-center gap-5 text-sm text-slate-600">
+              <div className="flex items-center gap-5">
+                <div className="flex items-baseline gap-2"><span className="text-3xl font-extrabold text-amber-700">{preCeremonyBoardStats.incomplete}</span><span>incomplete</span></div>
+                <div className="h-10 w-px bg-slate-200" />
+                <div className="flex items-baseline gap-2"><span className="text-3xl font-extrabold text-emerald-700">{preCeremonyBoardStats.complete}</span><span>complete</span></div>
+              </div>
+              <div className="flex flex-col items-start gap-1 sm:items-end">
+                {Object.values(preCeremonyDirty).some(Boolean) && <span className="text-xs font-bold uppercase tracking-wide text-amber-700">Unsaved changes</span>}
+                <Button
+                  type="primary"
+                  size="large"
+                  icon={<Icon icon={Save} className="h-4 w-4" />}
+                  onClick={savePreCeremonyMatrix}
+                  loading={savingPreCeremonyMatrix}
+                  disabled={!Object.values(preCeremonyDirty).some(Boolean)}
+                >
+                  Save vitals
+                </Button>
+              </div>
             </div>
           </div>
           <div className="overflow-auto">
@@ -1466,7 +1481,18 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
           </table>
           </div>
           {participants.length === 0 && !loading && <div className="px-4 py-8 text-center text-sm text-gray-500">No participants found for this ceremony.</div>}
-          <div className="border-t border-slate-200 px-6 py-4 text-xs text-slate-400">Last refreshed {moment().format('HH:mm')} · Ceremony #{ceremony?.ceremonyNumber}</div>
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-6 py-4">
+            <div className="text-xs text-slate-400">Last refreshed {moment().format('HH:mm')} · Ceremony #{ceremony?.ceremonyNumber}</div>
+            <Button
+              type="primary"
+              icon={<Icon icon={Save} className="h-4 w-4" />}
+              onClick={savePreCeremonyMatrix}
+              loading={savingPreCeremonyMatrix}
+              disabled={!Object.values(preCeremonyDirty).some(Boolean)}
+            >
+              {Object.values(preCeremonyDirty).some(Boolean) ? 'Save vitals' : 'All changes saved'}
+            </Button>
+          </div>
         </div>
       )}
 
