@@ -5,6 +5,7 @@ import { Ceremony, CeremonyParticipant, FileUpload, MedicalArtifact, MedicalRevi
 import { Button, Card, Col, Form, Input, InputNumber, Modal, Row, Select, Statistic, TimePicker, message } from 'antd';
 import { Activity, ArrowLeft, Clock3, FileText, HeartPulse, Maximize2, Minimize2, Plus, Trash2, GripVertical, Save } from 'lucide-react';
 import moment from 'moment';
+import { Link } from 'react-router-dom';
 
 interface ParticipantTrackerProps {
   ceremonyId: string;
@@ -292,6 +293,7 @@ const participantFromBooking = (ceremony: Ceremony, booking: RetreatClient): Cer
     _id: `pending-${clientId}`,
     ceremonyId: ceremony._id || '',
     clientId: booking.clientId as any,
+    bookingId: booking._id,
     retreatId,
     medicalClearance: 'pending',
     participated: false,
@@ -315,7 +317,16 @@ const mergeParticipantsWithBookings = (
 
   bookings.forEach((booking) => {
     const clientId = getObjectId(booking.clientId);
-    if (!clientId || participantsByClientId.has(clientId)) return;
+    if (!clientId) return;
+
+    const existingParticipant = participantsByClientId.get(clientId);
+    if (existingParticipant) {
+      participantsByClientId.set(clientId, {
+        ...existingParticipant,
+        bookingId: getParticipantBookingId(existingParticipant) || booking._id,
+      });
+      return;
+    }
 
     const participant = participantFromBooking(ceremony, booking);
     if (participant) participantsByClientId.set(clientId, participant);
@@ -518,7 +529,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
         const [bookingsResponse, preCeremonyArtifactsResponse] = await Promise.all([
           bookingsApi.getByRetreatWithDetails(retreatId),
           medicalArtifactsApi.getAll({
-            retreatId,
+            ceremonyId,
             documentStage: 'pre_ceremony',
           }).catch(() => ({ data: [] as MedicalArtifact[] })),
         ]);
@@ -571,6 +582,17 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
     const totalSpoons = participants.reduce((sum, participant) => sum + Number(participant.spoonsTaken || 0), 0);
     return { total, tookMedicine, purged, abnormalities, totalSpoons };
   }, [participants]);
+
+  const preCeremonyBoardStats = useMemo(() => participants.reduce((totals, participant) => {
+    const key = getParticipantKey(participant);
+    const draft = preCeremonyMatrix[key] || { systolic: '', diastolic: '', pulse: '' };
+    const latest = getLatestPreCeremonyCheck(participant);
+    const hasBp = Boolean(draft.systolic && draft.diastolic);
+    const hasEkg = Boolean(draft.ekgFile || latest?.preCeremonyEkg?.fileName || latest?.preCeremonyEkg?.fileUrl);
+    if (hasBp && hasEkg) totals.complete += 1;
+    else totals.incomplete += 1;
+    return totals;
+  }, { complete: 0, incomplete: 0 }), [participants, preCeremonyMatrix]);
 
   const openEventModal = (participant: CeremonyParticipant, event?: CeremonyEvent, defaultTime?: string) => {
     setSelectedParticipant(participant);
@@ -980,6 +1002,28 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
       setPreviewLoading(true);
       if (previewUrl) URL.revokeObjectURL(previewUrl);
 
+      if (!savedFileHash && fileUrl && ceremony?._id) {
+        const artifactResponse = await medicalArtifactsApi.getAll({
+          ceremonyId: ceremony._id,
+          clientId: getObjectId(participant.clientId),
+          documentStage: 'pre_ceremony',
+          documentType: 'EKG',
+        });
+        const matchingArtifact = ((artifactResponse.data || []) as MedicalArtifact[]).find((artifact: MedicalArtifact) => (
+          artifact.files?.some((file: NonNullable<MedicalArtifact['files']>[number]) => file.s3Key === fileUrl || file.filePath === fileUrl || file.fileName === fileName)
+        ));
+        const matchingFile = matchingArtifact?.files?.find((file: NonNullable<MedicalArtifact['files']>[number]) => (
+          file.s3Key === fileUrl || file.filePath === fileUrl || file.fileName === fileName
+        ));
+        const storedPath = matchingFile?.s3Key || matchingFile?.filePath;
+        if (matchingArtifact?._id && storedPath) {
+          const response = await medicalArtifactsApi.getFileBlob(matchingArtifact._id, storedPath);
+          setPreviewUrl(URL.createObjectURL(response.data as Blob));
+          setPreviewFileName(matchingFile.fileName || fileName || 'Pre-ceremony EKG');
+          return;
+        }
+      }
+
       const participantUploadsResponse = await fileUploadsApi.getAll({
         documentKind: 'client_medical',
         foreignKey: getParticipantKey(participant),
@@ -1099,16 +1143,9 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
         let ekg = latestStored?.preCeremonyEkg || latestVisible?.preCeremonyEkg;
 
         if (draft.ekgFile) {
-          const formData = new FormData();
-          formData.append('file', draft.ekgFile);
-          formData.append('documentKind', 'client_medical');
-          formData.append('foreignKey', participantToUpdate._id!);
-          formData.append('description', `Pre-ceremony EKG · Ceremony #${ceremony.ceremonyNumber} · ${getClientName(participantToUpdate)}`);
-          const uploadResponse = await fileUploadsApi.upload(formData);
           ekg = {
-            fileUrl: `/file-uploads/view/${uploadResponse.data.fileHash}`,
-            fileName: uploadResponse.data.originalFileName,
-            uploadedAt: uploadResponse.data.uploadedAt || new Date().toISOString(),
+            fileName: draft.ekgFile.name,
+            uploadedAt: new Date().toISOString(),
             approved: undefined,
             notes: '',
           };
@@ -1131,11 +1168,11 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
           medicalClearance: latestStored?.medicalClearance || 'pending',
           medicalClearanceNotes: latestStored?.medicalClearanceNotes || '',
         };
-        const nextChecks = latestStored
+        let nextChecks = latestStored
           ? storedChecks.map((check) => check.id === latestStored.id ? nextCheck : check)
           : [...storedChecks, nextCheck];
 
-        await ceremoniesApi.updateMedicalCheck(participantToUpdate._id!, {
+        const buildMedicalPayload = () => ({
           ceremonyId: ceremony._id,
           context: 'pre_ceremony',
           preCeremonyChecks: nextChecks,
@@ -1144,6 +1181,37 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
           medicalClearance: nextCheck.medicalClearance || 'pending',
           medicalClearanceNotes: nextCheck.medicalClearanceNotes || '',
         } as any);
+
+        await ceremoniesApi.updateMedicalCheck(participantToUpdate._id!, buildMedicalPayload());
+
+        if (draft.ekgFile) {
+          const artifactResponse = await medicalArtifactsApi.getAll({
+            ceremonyId: ceremony._id,
+            clientId: getObjectId(participantToUpdate.clientId),
+            documentStage: 'pre_ceremony',
+            documentType: 'EKG',
+          });
+          const ekgArtifacts = (artifactResponse.data || []) as MedicalArtifact[];
+          const ekgArtifact = ekgArtifacts.find((artifact: MedicalArtifact) => (
+            String((artifact.data as any)?.preCeremonyCheckId || '') === String(checkId)
+          )) || ekgArtifacts[0];
+          if (!ekgArtifact?._id) throw new Error(`The EKG artifact for ${getClientName(participantToUpdate)} was not created`);
+
+          const uploadResponse = await medicalArtifactsApi.uploadFiles(ekgArtifact._id, [draft.ekgFile]);
+          const uploadedArtifact = (uploadResponse.data as any)?.artifact as MedicalArtifact | undefined;
+          const uploadedFile = uploadedArtifact?.files?.[uploadedArtifact.files.length - 1];
+          const durablePath = uploadedFile?.s3Key || uploadedFile?.filePath;
+          if (!durablePath) throw new Error(`The EKG file for ${getClientName(participantToUpdate)} was not stored`);
+
+          nextCheck.preCeremonyEkg = {
+            ...nextCheck.preCeremonyEkg,
+            fileUrl: durablePath,
+            fileName: uploadedFile?.fileName || draft.ekgFile.name,
+            uploadedAt: uploadedFile?.uploadedAt || new Date().toISOString(),
+          };
+          nextChecks = nextChecks.map((check) => check.id === checkId ? nextCheck : check);
+          await ceremoniesApi.updateMedicalCheck(participantToUpdate._id!, buildMedicalPayload());
+        }
       }));
       setPreCeremonyDirty({});
       message.success(`Pre-ceremony data saved for Ceremony #${ceremony.ceremonyNumber}`);
@@ -1286,7 +1354,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
         </div>
       </div>
 
-      {!isSpoonsFullScreen && <Row gutter={16} className="mb-5">
+      {!isSpoonsFullScreen && trackerView !== 'pre' && <Row gutter={16} className="mb-5">
         <Col xs={12} lg={4}><Card><Statistic title="Participants" value={stats.total} /></Card></Col>
         <Col xs={12} lg={5}><Card><Statistic title="Took Medicine" value={stats.tookMedicine} suffix={`/ ${stats.total}`} /></Card></Col>
         <Col xs={12} lg={5}><Card><Statistic title="Total Doses" value={stats.totalSpoons} /></Card></Col>
@@ -1311,7 +1379,89 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
         ))}
       </div>}
 
-      <div className={`overflow-auto rounded-lg border border-gray-200 bg-white ${isSpoonsFullScreen ? 'min-h-0 flex-1' : ''}`}>
+      {trackerView === 'pre' && (
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex flex-col gap-5 border-b-[3px] border-slate-900 px-6 py-6 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <div className="text-xs font-bold uppercase tracking-[0.22em] text-slate-500">Pre-ceremony clearance</div>
+              <h2 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-950">Vitals board</h2>
+              <div className="mt-1 text-sm text-slate-500">Ceremony #{ceremony?.ceremonyNumber} · enter all readings and EKGs in one place</div>
+            </div>
+            <div className="flex items-center gap-5 text-sm text-slate-600">
+              <div className="flex items-baseline gap-2"><span className="text-3xl font-extrabold text-amber-700">{preCeremonyBoardStats.incomplete}</span><span>incomplete</span></div>
+              <div className="h-10 w-px bg-slate-200" />
+              <div className="flex items-baseline gap-2"><span className="text-3xl font-extrabold text-emerald-700">{preCeremonyBoardStats.complete}</span><span>complete</span></div>
+            </div>
+          </div>
+          <div className="overflow-auto">
+          <table className="min-w-[1040px] w-full border-collapse text-sm">
+            <thead className="sticky top-0 z-20 bg-white">
+              <tr>
+                <th className="sticky left-0 z-30 w-[27%] border-b border-slate-200 bg-white px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.15em] text-slate-500">Client</th>
+                <th className="w-[27%] border-b border-slate-200 px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.15em] text-slate-500">Blood pressure</th>
+                <th className="w-[25%] border-b border-slate-200 px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.15em] text-slate-500">EKG</th>
+                <th className="w-[21%] border-b border-slate-200 px-6 py-4 text-left text-xs font-bold uppercase tracking-[0.15em] text-slate-500">Earlier readings</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {participants.map((participant) => {
+                const key = getParticipantKey(participant);
+                const draft = preCeremonyMatrix[key] || { systolic: '', diastolic: '', pulse: '' };
+                const check = getLatestPreCeremonyCheck(participant);
+                const checks = getPreCeremonyChecks(participant);
+                const earlierChecks = checks.slice(0, -1).reverse();
+                const existingEkg = check?.preCeremonyEkg;
+                const hasBp = Boolean(draft.systolic && draft.diastolic);
+                const hasEkg = Boolean(draft.ekgFile || existingEkg?.fileName || existingEkg?.fileUrl);
+                const complete = hasBp && hasEkg;
+                const statusText = complete ? 'Ready for review' : `Missing ${[!hasEkg ? 'EKG' : '', !hasBp ? 'BP' : ''].filter(Boolean).join(' and ')}`;
+                return (
+                  <tr key={`${key}-pre-row`} className="align-middle hover:bg-slate-50/70">
+                    <th className="sticky left-0 z-10 bg-white px-6 py-5 text-left">
+                      <div className="flex gap-4">
+                        <span className={`mt-2 h-2.5 w-2.5 shrink-0 rounded-full ${complete ? 'bg-emerald-500' : hasBp || hasEkg ? 'bg-slate-400' : 'bg-amber-500'}`} />
+                        <div className="min-w-0">
+                          <div className="text-base font-extrabold text-slate-950">{getClientFirstName(participant)} {getClientLastName(participant)}</div>
+                          <div className={`mt-1 font-semibold ${complete ? 'text-emerald-700' : 'text-amber-700'}`}>{statusText}</div>
+                          <div className="mt-2 space-y-0.5 text-[11px] font-normal text-slate-400">
+                            <div>Client <Link to={`/admin/clients/${getObjectId(participant.clientId)}`} className="font-semibold text-blue-700 hover:underline">{getObjectId(participant.clientId)}</Link></div>
+                            {getParticipantBookingId(participant) && <div>Booking <Link to={`/admin/bookings/${getParticipantBookingId(participant)}`} className="font-semibold text-blue-700 hover:underline">{getParticipantBookingId(participant)}</Link></div>}
+                          </div>
+                        </div>
+                      </div>
+                    </th>
+                    <td className="px-6 py-5">
+                      <div className="flex items-center gap-2">
+                        <input type="number" min="60" max="250" aria-label={`Systolic for ${getClientName(participant)}`} placeholder="—" value={draft.systolic} onChange={(event) => updatePreCeremonyDraft(participant, { systolic: event.target.value })} className="w-20 rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 text-center text-2xl font-extrabold text-slate-950 outline-none focus:border-blue-500 focus:bg-white" />
+                        <span className="text-3xl font-light text-slate-300">/</span>
+                        <input type="number" min="40" max="150" aria-label={`Diastolic for ${getClientName(participant)}`} placeholder="—" value={draft.diastolic} onChange={(event) => updatePreCeremonyDraft(participant, { diastolic: event.target.value })} className="w-20 rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 text-center text-2xl font-extrabold text-slate-950 outline-none focus:border-blue-500 focus:bg-white" />
+                      </div>
+                      <div className="mt-2 flex items-center gap-2 text-xs text-slate-500"><span>Pulse</span><input type="number" min="30" max="220" aria-label={`Pulse for ${getClientName(participant)}`} placeholder="—" value={draft.pulse} onChange={(event) => updatePreCeremonyDraft(participant, { pulse: event.target.value })} className="w-16 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-center font-bold text-slate-700 outline-none focus:border-blue-500" /></div>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 font-bold ${hasEkg ? 'bg-slate-100 text-slate-700' : 'bg-amber-100 text-amber-700'}`}><Icon icon={Activity} className="h-4 w-4" />{hasEkg ? 'Pending' : 'Not taken'}</div>
+                      {existingEkg?.fileName && <button type="button" onClick={() => openFilePreview(participant, existingEkg.fileUrl, existingEkg.fileName)} className="mt-2 block max-w-[230px] truncate text-xs font-semibold text-blue-700 hover:underline" title={existingEkg.fileName}>View {existingEkg.fileName}</button>}
+                      <label className="mt-2 block w-fit cursor-pointer text-xs font-semibold text-blue-700 hover:underline">
+                        {draft.ekgFile ? 'Change selected EKG' : existingEkg?.fileName ? 'Replace EKG' : 'Upload EKG'}
+                        <input type="file" accept=".pdf,.jpg,.jpeg,.png,image/*,application/pdf" className="sr-only" onChange={(event) => updatePreCeremonyDraft(participant, { ekgFile: event.target.files?.[0] })} />
+                      </label>
+                      {draft.ekgFile && <div className="mt-1 max-w-[230px] truncate text-xs text-slate-500" title={draft.ekgFile.name}>{draft.ekgFile.name}</div>}
+                    </td>
+                    <td className="px-6 py-5 text-slate-400">
+                      {earlierChecks.length ? earlierChecks.slice(0, 2).map((earlier, index) => <div key={earlier.id || index} className="mb-1 text-xs"><span className="font-bold text-slate-600">{getBloodPressureLabel(earlier)}</span> · {getCheckTimeLabel(earlier)}</div>) : <span className="text-sm">nothing recorded</span>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          </div>
+          {participants.length === 0 && !loading && <div className="px-4 py-8 text-center text-sm text-gray-500">No participants found for this ceremony.</div>}
+          <div className="border-t border-slate-200 px-6 py-4 text-xs text-slate-400">Last refreshed {moment().format('HH:mm')} · Ceremony #{ceremony?.ceremonyNumber}</div>
+        </div>
+      )}
+
+      <div className={`${trackerView === 'pre' ? 'hidden' : ''} overflow-auto rounded-lg border border-gray-200 bg-white ${isSpoonsFullScreen ? 'min-h-0 flex-1' : ''}`}>
         <table className="w-full table-fixed border-collapse">
           <colgroup>
             <col style={{ width: '8%' }} />

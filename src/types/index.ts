@@ -772,6 +772,7 @@ export interface CeremonyParticipant {
   _id?: string;
   ceremonyId: string;
   clientId: string;
+  bookingId?: string | RetreatClient;
   retreatId?: string | Retreat | null;
   position?: number;  // Seating position for ceremony
 
