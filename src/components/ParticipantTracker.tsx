@@ -526,13 +526,22 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
 
       const retreatId = getObjectId(ceremonyResponse.data.retreatId);
       if (retreatId) {
-        const [bookingsResponse, preCeremonyArtifactsResponse] = await Promise.all([
+        const [bookingsResponse, ceremonyArtifactsResponse, legacyRetreatArtifactsResponse] = await Promise.all([
           bookingsApi.getByRetreatWithDetails(retreatId),
           medicalArtifactsApi.getAll({
             ceremonyId,
             documentStage: 'pre_ceremony',
           }).catch(() => ({ data: [] as MedicalArtifact[] })),
+          medicalArtifactsApi.getAll({
+            retreatId,
+            documentStage: 'pre_ceremony',
+          }).catch(() => ({ data: [] as MedicalArtifact[] })),
         ]);
+        const artifactsById = new Map<string, MedicalArtifact>();
+        [...(legacyRetreatArtifactsResponse.data || []), ...(ceremonyArtifactsResponse.data || [])].forEach((artifact) => {
+          const artifactId = artifact._id || `${getObjectId(artifact.clientId)}:${artifact.documentType}:${artifact.receivedAt || ''}`;
+          artifactsById.set(artifactId, artifact);
+        });
         nextParticipants = mergeParticipantsWithBookings(
           ceremonyResponse.data,
           nextParticipants,
@@ -540,7 +549,7 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
         );
         nextParticipants = enrichParticipantsWithPreCeremonyArtifacts(
           nextParticipants,
-          preCeremonyArtifactsResponse.data || [],
+          Array.from(artifactsById.values()),
           ceremonyResponse.data.ceremonyNumber,
         );
       }
