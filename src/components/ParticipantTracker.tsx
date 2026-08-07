@@ -1225,7 +1225,18 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
             documentStage: 'pre_ceremony',
             documentType: 'EKG',
           });
-          const ekgArtifacts = (artifactResponse.data || []) as MedicalArtifact[];
+          let ekgArtifacts = (artifactResponse.data || []) as MedicalArtifact[];
+          if (ekgArtifacts.length === 0 && getObjectId(ceremony.retreatId)) {
+            const retreatArtifactResponse = await medicalArtifactsApi.getAll({
+              retreatId: getObjectId(ceremony.retreatId),
+              documentStage: 'pre_ceremony',
+              documentType: 'EKG',
+            });
+            ekgArtifacts = ((retreatArtifactResponse.data || []) as MedicalArtifact[]).filter((artifact) => (
+              getObjectId(artifact.clientId) === getObjectId(participantToUpdate.clientId)
+              && (!artifact.ceremonyNumber || Number(artifact.ceremonyNumber) === Number(ceremony.ceremonyNumber))
+            ));
+          }
           const ekgArtifact = ekgArtifacts.find((artifact: MedicalArtifact) => (
             String((artifact.data as any)?.preCeremonyCheckId || '') === String(checkId)
           )) || ekgArtifacts[0];
@@ -1254,8 +1265,9 @@ const ParticipantTracker: React.FC<ParticipantTrackerProps> = ({ ceremonyId, onB
       });
       message.success(`Pre-ceremony data saved for Ceremony #${ceremony.ceremonyNumber}`);
       await loadData();
-    } catch (error) {
-      message.error('Failed to save all pre-ceremony data. Existing successful uploads were preserved.');
+    } catch (error: any) {
+      const failureDetail = error?.response?.data?.message || error?.message || 'Unknown save error';
+      message.error(`Failed to save pre-ceremony data: ${failureDetail}. Existing successful uploads were preserved.`);
       console.error('Error saving pre-ceremony matrix:', error);
     } finally {
       setSavingPreCeremonyMatrix(false);
