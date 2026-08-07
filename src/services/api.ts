@@ -256,6 +256,28 @@ export const remindersApi = {
   delete: (id: string) => api.delete(`/reminders/${id}`),
 };
 
+const refreshCanonicalBookingConfirmation = async (bookingId: string) => {
+  try {
+    cacheService.clearPattern(`bookings:${bookingId}`);
+    const bookingResponse = await api.get<RetreatClient>(`/bookings/${bookingId}`);
+    const booking: any = bookingResponse.data;
+    const rawLanguage = String(booking?.clientId?.language || booking?.clientId?.preferredLanguage || 'en').toLowerCase();
+    const language: 'en' | 'cz' | 'pl' = rawLanguage === 'pl' ? 'pl' : ['cz', 'cs'].includes(rawLanguage) ? 'cz' : 'en';
+    const { createBookingConfirmationPdf } = await import('../components/BookingConfirmationPDF');
+    const { blob, fileName } = await createBookingConfirmationPdf({ booking, language });
+    const formData = new FormData();
+    formData.append('file', blob, fileName);
+    await api.post(`/bookings/${bookingId}/confirmation-pdf?language=${language}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    cacheService.clearPattern(`bookings:${bookingId}`);
+  } catch (error) {
+    // The booking has already been saved. Keep editing usable and let RE retry on
+    // the next update or PDF preview instead of reporting a false save failure.
+    console.error(`Unable to refresh canonical booking confirmation ${bookingId}:`, error);
+  }
+};
+
 export const bookingsApi = {
   getAll: () => cachedGet<RetreatClient[]>('bookings:all', () => api.get<RetreatClient[]>('/bookings')),
   getOne: (id: string) => cachedGet<RetreatClient>(`bookings:${id}`, () => api.get<RetreatClient>(`/bookings/${id}`)),
@@ -270,15 +292,19 @@ export const bookingsApi = {
   isBookingNumberAvailable: (bookingNumber: number, excludeId?: string) => api.get<{ available: boolean }>(
     `/bookings/booking-number-available?bookingNumber=${encodeURIComponent(String(bookingNumber))}${excludeId ? `&excludeId=${encodeURIComponent(excludeId)}` : ''}`
   ),
-  create: (data: Omit<RetreatClient, '_id'>) => {
+  create: async (data: Omit<RetreatClient, '_id'>) => {
     cacheService.clearPattern('bookings:');
     cacheService.clearPattern('payments:');
-    return api.post<RetreatClient>('/bookings', data);
+    const response = await api.post<RetreatClient>('/bookings', data);
+    await refreshCanonicalBookingConfirmation(String(response.data._id));
+    return response;
   },
-  update: (id: string, data: Partial<RetreatClient>) => {
+  update: async (id: string, data: Partial<RetreatClient>) => {
     cacheService.clearPattern('bookings:');
     cacheService.clearPattern('payments:');
-    return api.patch<RetreatClient>(`/bookings/${id}`, data);
+    const response = await api.patch<RetreatClient>(`/bookings/${id}`, data);
+    await refreshCanonicalBookingConfirmation(id);
+    return response;
   },
   cancel: (id: string, data: { cancellationDate: string; cancellationReason: string; cancellationNotes?: string; cancellationDepositTreatment: 'none' | 'retained' | 'refund_pending' | 'partially_refunded' | 'credited'; cancellationRefundAmount?: number }) => {
     cacheService.clearPattern('bookings:');
