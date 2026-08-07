@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
 import './DebugOverlay.css';
+import { useAuth } from '../context/AuthContext';
+import { initializeApiDebug } from '../utils/apiDebug';
 
 interface ConnectionStatus {
   isConnected: boolean;
@@ -11,6 +13,8 @@ interface ConnectionStatus {
 }
 
 const DebugOverlay: React.FC = () => {
+  const { user } = useAuth();
+  const [debugEnabled, setDebugEnabled] = useState(() => initializeApiDebug(user));
   const [isVisible, setIsVisible] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
@@ -62,6 +66,14 @@ const DebugOverlay: React.FC = () => {
   };
 
   useEffect(() => {
+    setDebugEnabled(initializeApiDebug(user));
+    const handleDebugChange = () => setDebugEnabled(initializeApiDebug(user));
+    window.addEventListener('api-debug-change', handleDebugChange);
+    return () => window.removeEventListener('api-debug-change', handleDebugChange);
+  }, [user]);
+
+  useEffect(() => {
+    if (!debugEnabled) return;
     // Initial check
     checkConnection();
 
@@ -81,7 +93,9 @@ const DebugOverlay: React.FC = () => {
       clearInterval(interval);
       window.removeEventListener('keydown', handleKeyPress);
     };
-  }, []);
+  }, [debugEnabled]);
+
+  if (!debugEnabled) return null;
 
   if (!isVisible) {
     return (
