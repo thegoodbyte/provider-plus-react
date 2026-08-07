@@ -158,38 +158,50 @@ const parseBloodPressureText = (artifact: MedicalArtifact) => {
   };
 };
 
-const buildPreCeremonyCheckFromArtifacts = (artifacts: MedicalArtifact[] = []): PreCeremonyCheck | undefined => {
-  const bpArtifact = [...artifacts].reverse().find((artifact) => (
-    artifact.documentStage === 'pre_ceremony' &&
-    (artifact.documentType === 'BP' || artifact.artifactType === 'blood_pressure')
-  ));
-  const ekgArtifact = [...artifacts].reverse().find((artifact) => (
-    artifact.documentStage === 'pre_ceremony' &&
-    (artifact.documentType === 'EKG' || artifact.artifactType === 'ceremony_ekg' || artifact.artifactType === 'ekg')
-  ));
+const buildPreCeremonyChecksFromArtifacts = (artifacts: MedicalArtifact[] = []): PreCeremonyCheck[] => {
+  const checksById = new Map<string, PreCeremonyCheck>();
+  [...artifacts]
+    .filter((artifact) => artifact.documentStage === 'pre_ceremony')
+    .sort((a, b) => new Date(a.receivedAt || 0).getTime() - new Date(b.receivedAt || 0).getTime())
+    .forEach((artifact) => {
+      const checkReference = String((artifact.data as any)?.preCeremonyCheckId || artifact._id || 'pre-ceremony');
+      const checkId = (artifact.data as any)?.preCeremonyCheckId ? checkReference : `artifact-${checkReference}`;
+      const current = checksById.get(checkId) || { id: checkId };
+      const isBp = artifact.documentType === 'BP' || artifact.artifactType === 'blood_pressure';
+      const isEkg = artifact.documentType === 'EKG' || artifact.artifactType === 'ceremony_ekg' || artifact.artifactType === 'ekg';
+      const artifactTime = artifact.receivedAt || current.recordedAt;
 
-  if (!bpArtifact && !ekgArtifact) return undefined;
+      if (isBp) {
+        const bpData = artifact.data || {};
+        const parsedBp = parseBloodPressureText(artifact);
+        current.preCeremonyBloodPressure = {
+          systolic: Number(bpData.systolic || parsedBp.systolic) || undefined,
+          diastolic: Number(bpData.diastolic || parsedBp.diastolic) || undefined,
+          pulse: Number(bpData.pulse || bpData.heartRate || parsedBp.pulse) || undefined,
+          recordedAt: bpData.measuredAt || bpData.resultRecordedAt || artifact.receivedAt,
+          notes: artifact.notes || artifact.textContent || '',
+        };
+      }
 
-  const bpData = bpArtifact?.data || {};
-  const parsedBp = bpArtifact ? parseBloodPressureText(bpArtifact) : {};
-  const firstEkgFile = ekgArtifact?.files?.[0];
-  return {
-    id: `artifact-${bpArtifact?._id || ekgArtifact?._id || 'pre-ceremony'}`,
-    recordedAt: bpArtifact?.receivedAt || ekgArtifact?.receivedAt,
-    preCeremonyEkg: ekgArtifact ? {
-      fileUrl: firstEkgFile?.url || firstEkgFile?.filePath,
-      fileName: firstEkgFile?.fileName,
-      uploadedAt: firstEkgFile?.uploadedAt || ekgArtifact.receivedAt,
-      notes: ekgArtifact.notes || ekgArtifact.textContent || '',
-    } : undefined,
-    preCeremonyBloodPressure: bpArtifact ? {
-      systolic: Number(bpData.systolic || parsedBp.systolic) || undefined,
-      diastolic: Number(bpData.diastolic || parsedBp.diastolic) || undefined,
-      pulse: Number(bpData.pulse || bpData.heartRate || parsedBp.pulse) || undefined,
-      recordedAt: bpData.measuredAt || bpData.resultRecordedAt || bpArtifact.receivedAt,
-      notes: bpArtifact.notes || bpArtifact.textContent || '',
-    } : undefined,
-  };
+      if (isEkg) {
+        const latestEkgFile = [...(artifact.files || [])].reverse().find((file) => file.s3Key || file.filePath || file.url || file.fileName);
+        current.preCeremonyEkg = {
+          fileUrl: latestEkgFile?.s3Key || latestEkgFile?.filePath || latestEkgFile?.url,
+          fileName: latestEkgFile?.fileName,
+          uploadedAt: latestEkgFile?.uploadedAt || artifact.receivedAt,
+          notes: artifact.notes || artifact.textContent || '',
+        };
+      }
+
+      if (isBp || isEkg) {
+        current.recordedAt = artifactTime;
+        checksById.set(checkId, current);
+      }
+    });
+
+  return Array.from(checksById.values()).sort((a, b) => (
+    new Date(a.recordedAt || 0).getTime() - new Date(b.recordedAt || 0).getTime()
+  ));
 };
 
 const enrichParticipantsWithPreCeremonyArtifacts = (
@@ -206,15 +218,31 @@ const enrichParticipantsWithPreCeremonyArtifacts = (
       Boolean(bookingId && getObjectId(artifact.bookingId) === bookingId)
     )
   ));
-  const artifactCheck = buildPreCeremonyCheckFromArtifacts(participantArtifacts);
-  if (!artifactCheck) return participant;
-
+  const artifactChecks = buildPreCeremonyChecksFromArtifacts(participantArtifacts);
+  if (!artifactChecks.length) return participant;
   const existingChecks = getPreCeremonyChecks(participant);
+  const checksById = new Map<string, PreCeremonyCheck>();
+  existingChecks.forEach((check, index) => checksById.set(String(check.id || `stored-${index}`), check));
+  artifactChecks.forEach((artifactCheck) => {
+    const checkId = String(artifactCheck.id);
+    const storedCheck = checksById.get(checkId);
+    checksById.set(checkId, storedCheck ? {
+      ...storedCheck,
+      ...artifactCheck,
+      preCeremonyEkg: artifactCheck.preCeremonyEkg || storedCheck.preCeremonyEkg,
+      preCeremonyBloodPressure: artifactCheck.preCeremonyBloodPressure || storedCheck.preCeremonyBloodPressure,
+    } : artifactCheck);
+  });
+  const mergedChecks = Array.from(checksById.values()).sort((a, b) => (
+    new Date(a.recordedAt || 0).getTime() - new Date(b.recordedAt || 0).getTime()
+  ));
+  const latestEkg = [...mergedChecks].reverse().find((check) => check.preCeremonyEkg)?.preCeremonyEkg;
+  const latestBp = [...mergedChecks].reverse().find((check) => check.preCeremonyBloodPressure)?.preCeremonyBloodPressure;
   return {
     ...participant,
-    preCeremonyChecks: [...existingChecks, artifactCheck],
-    preCeremonyEkg: participant.preCeremonyEkg || artifactCheck.preCeremonyEkg,
-    preCeremonyBloodPressure: participant.preCeremonyBloodPressure || artifactCheck.preCeremonyBloodPressure,
+    preCeremonyChecks: mergedChecks,
+    preCeremonyEkg: latestEkg || participant.preCeremonyEkg,
+    preCeremonyBloodPressure: latestBp || participant.preCeremonyBloodPressure,
   };
 });
 
