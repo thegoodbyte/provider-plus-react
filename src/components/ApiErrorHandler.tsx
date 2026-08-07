@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import { canUseApiDebug, initializeApiDebug, setApiDebugEnabled } from '../utils/apiDebug';
 import './ApiErrorHandler.css';
 
 interface ApiError {
   message: string;
+  isNetworkError?: boolean;
   code?: string;
   timestamp: Date;
   url?: string;
@@ -23,9 +26,16 @@ export const ApiErrorContext = React.createContext<{
 });
 
 const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
+  const { user } = useAuth();
   const [error, setError] = useState<ApiError | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [showDetails, setShowDetails] = useState(false);
+  const [debugEnabled, setDebugEnabled] = useState(() => initializeApiDebug(user));
+  const debugAllowed = canUseApiDebug(user);
+
+  useEffect(() => {
+    setDebugEnabled(initializeApiDebug(user));
+  }, [user]);
 
   useEffect(() => {
     // Add response interceptor to catch API errors
@@ -48,12 +58,15 @@ const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
 
         if (error.response) {
           // Server responded with error
-          apiError.code = `${error.response.status}`;
+          if (debugEnabled) apiError.code = `${error.response.status}`;
           const responseMessage = error.response.data?.message;
 
           switch (error.response.status) {
             case 404:
-              apiError.message = 'Requested resource not found';
+              apiError.message = debugEnabled ? 'Requested resource not found' : 'The requested information is not available.';
+              break;
+            case 403:
+              apiError.message = debugEnabled ? responseMessage || 'Access denied' : 'You do not have permission to perform this action.';
               break;
             case 500:
               apiError.message = 'Server error occurred. Please try again later.';
@@ -62,7 +75,9 @@ const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
               apiError.message = 'API gateway error. The backend did not return a valid response.';
               break;
             case 503:
-              apiError.message = /storage|s3|configured|configuration|upload/i.test(responseMessage || '')
+              apiError.message = !debugEnabled
+                ? 'The service is temporarily unavailable. Please try again shortly.'
+                : /storage|s3|configured|configuration|upload/i.test(responseMessage || '')
                 ? [
                     'Upload error: storage is misconfigured.',
                     error.response.data?.details?.storageDetails?.errorName
@@ -73,19 +88,20 @@ const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
                 : responseMessage || 'Service temporarily unavailable';
               break;
             default:
-              apiError.message = responseMessage || 'An error occurred while loading data';
+              apiError.message = debugEnabled ? responseMessage || 'An error occurred while loading data' : 'This action could not be completed. Please try again.';
           }
         } else if (error.request) {
           // No response received
-          apiError.message = 'The API request failed before the browser received a valid response. This is usually a backend deploy/gateway issue or a CORS-blocked server error.';
-          apiError.code = 'NETWORK_ERROR';
+          apiError.isNetworkError = true;
+          apiError.message = debugEnabled ? 'The API request failed before the browser received a valid response. This may be a backend deploy, gateway, or CORS issue.' : 'The server could not be reached. Please check your connection and try again.';
+          if (debugEnabled) apiError.code = 'NETWORK_ERROR';
         } else {
           // Request setup error
-          apiError.message = error.message || 'An unexpected error occurred';
+          apiError.message = debugEnabled ? error.message || 'An unexpected error occurred' : 'This action could not be completed. Please try again.';
         }
 
         // Add request details
-        if (error.config) {
+        if (debugEnabled && error.config) {
           apiError.url = error.config.url;
           apiError.method = error.config.method?.toUpperCase();
         }
@@ -100,7 +116,7 @@ const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
     return () => {
       api.interceptors.response.eject(interceptor);
     };
-  }, []);
+  }, [debugEnabled]);
 
   const clearError = () => {
     setError(null);
@@ -142,9 +158,9 @@ const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
             🔌
           </div>
 
-          <h2 className="api-error-title">Connection to server lost</h2>
+          <h2 className="api-error-title">{error.isNetworkError ? 'Connection to server lost' : 'Request could not be completed'}</h2>
 
-          <p className="api-error-message">Please retry the connection or dismiss this message.</p>
+          <p className="api-error-message">{error.message}</p>
 
           {showDetails && (
             <div className="api-error-expanded">
@@ -177,9 +193,12 @@ const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
             </button>
           </div>
 
-          <button type="button" className="api-error-more" onClick={() => setShowDetails((visible) => !visible)} aria-expanded={showDetails}>
+          {debugEnabled && <button type="button" className="api-error-more" onClick={() => setShowDetails((visible) => !visible)} aria-expanded={showDetails}>
             {showDetails ? 'Hide details' : 'More info'}
-          </button>
+          </button>}
+          {debugAllowed && <button type="button" className="api-error-more" onClick={() => { const enabled = setApiDebugEnabled(!debugEnabled, user); setDebugEnabled(enabled); setShowDetails(false); }}>
+            API debug: {debugEnabled ? 'on' : 'off'}
+          </button>}
           {showDetails && <button type="button" onClick={handleGoHome} className="api-error-home-link">Go to home</button>}
         </div>
 
