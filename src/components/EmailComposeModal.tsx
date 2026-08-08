@@ -103,6 +103,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [preparedAttachments, setPreparedAttachments] = useState(initialValues.attachments || []);
+  const [preparedVariables, setPreparedVariables] = useState(initialValues.variables || {});
   const [attachmentPreparationError, setAttachmentPreparationError] = useState('');
   const [sending, setSending] = useState(false);
   const [formData, setFormData] = useState({
@@ -121,6 +122,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
   useEffect(() => {
     setSelectedTemplateId(initialValues.templateId || '');
     setPreparedAttachments(initialValues.attachments || []);
+    setPreparedVariables(initialValues.variables || {});
     setAttachmentPreparationError('');
     setFormData({
       to: initialValues.to || '',
@@ -142,6 +144,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
         initialValues.templateKey === 'booking_confirmation' ||
         initialValues.bookingFlowStepKey === 'booking_confirmation_sent' ||
         selectedTemplate?.templateKey === 'welcome_booking' || selectedTemplate?.templateKey === 'booking_confirmation' ||
+        selectedTemplate?.category === 'booking_confirmation' ||
         selectedTemplate?.bookingFlowStepKeys?.includes('booking_confirmation_sent');
       const bookingId =
         initialValues.bookingId ||
@@ -198,6 +201,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
     initialValues.templateKey,
     initialValues.variables,
     selectedTemplate?.templateKey,
+    selectedTemplate?.category,
     selectedTemplate?.bookingFlowStepKeys,
     preparedAttachments.length,
   ]);
@@ -227,6 +231,43 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    const bookingId = initialValues.bookingId || initialValues.variables?.bookingId || initialValues.variables?.booking?._id || initialValues.variables?.booking?.id;
+    if (!selectedTemplateId || !bookingId) return () => { active = false; };
+    communicationsApi.previewEmail({
+      templateId: selectedTemplateId,
+      bookingId: String(bookingId),
+      clientId: initialValues.clientId,
+      retreatId: initialValues.retreatId,
+      relatedEntityType: initialValues.relatedEntityType || 'booking',
+      relatedEntityId: initialValues.relatedEntityId,
+      bookingFlowStepKey: initialValues.bookingFlowStepKey,
+      variables: initialValues.variables,
+    }).then((response) => {
+      if (!active) return;
+      setPreparedVariables(response.data.variables || {});
+      setFormData((previous) => ({
+        ...previous,
+        subject: response.data.subject || previous.subject,
+        bodyText: response.data.bodyText || previous.bodyText,
+        bodyHtml: response.data.bodyHtml || '',
+      }));
+    }).catch((error) => {
+      console.error('Unable to prepare email preview:', error);
+    });
+    return () => { active = false; };
+  }, [
+    initialValues.bookingFlowStepKey,
+    initialValues.bookingId,
+    initialValues.clientId,
+    initialValues.relatedEntityId,
+    initialValues.relatedEntityType,
+    initialValues.retreatId,
+    initialValues.variables,
+    selectedTemplateId,
+  ]);
+
   const updateField = (field: keyof typeof formData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -237,11 +278,11 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
     if (!template) return;
     setFormData((prev) => ({
       ...prev,
-      subject: template.subject ? interpolateTemplate(template.subject, initialValues.variables) : prev.subject,
-      bodyText: template.bodyText ? interpolateTemplate(template.bodyText, initialValues.variables) : prev.bodyText,
-      bodyHtml: template.bodyHtml ? interpolateTemplate(template.bodyHtml, initialValues.variables) : '',
+      subject: template.subject ? interpolateTemplate(template.subject, preparedVariables) : prev.subject,
+      bodyText: template.bodyText ? interpolateTemplate(template.bodyText, preparedVariables) : prev.bodyText,
+      bodyHtml: template.bodyHtml ? interpolateTemplate(template.bodyHtml, preparedVariables) : '',
     }));
-  }, [initialValues.variables, templates]);
+  }, [preparedVariables, templates]);
 
   useEffect(() => {
     if (!initialValues.templateId || templates.length === 0) return;
@@ -256,6 +297,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
       initialValues.templateKey === 'booking_confirmation' ||
       initialValues.bookingFlowStepKey === 'booking_confirmation_sent' ||
       selectedTemplate?.templateKey === 'welcome_booking' ||
+      selectedTemplate?.category === 'booking_confirmation' ||
       selectedTemplate?.bookingFlowStepKeys?.includes('booking_confirmation_sent') ||
       title.toLowerCase().includes('booking confirmation')
     );
@@ -299,7 +341,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
         actionLabel: initialValues.actionLabel || undefined,
         bookingFlowStepKey: initialValues.bookingFlowStepKey || undefined,
         bookingFlowStatusOnSend: initialValues.bookingFlowStatusOnSend || undefined,
-        variables: initialValues.variables,
+        variables: preparedVariables,
         attachments: preparedAttachments.length > 0 ? preparedAttachments : undefined,
       });
       await onSent?.(response.data);
