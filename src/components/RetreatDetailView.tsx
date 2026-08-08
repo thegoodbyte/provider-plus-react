@@ -391,21 +391,37 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       const payments = Array.isArray(paymentsResponse.data) ? paymentsResponse.data : [];
       setRetreatPayments(payments);
       setMetricsUpdatedAt(new Date());
-      const totalUsdResults = await Promise.all((clientsResponse.data || []).map(async (booking: any) => {
-        const currency = booking.currency || 'EUR';
-        try {
-          const response = await paymentsApi.convertToUsd(Number(booking.totalAmount || 0), currency);
-          return Number(response.data.usd_amount || 0);
-        } catch {
-          return convertAmountToUSD(Number(booking.totalAmount || 0), currency);
-        }
-      }));
+      const [bookingPaymentResults, totalUsdResults] = await Promise.all([
+        Promise.all((clientsResponse.data || []).map(async (booking: any) => {
+          const bookingId = getObjectId(booking);
+          const lookups = await Promise.allSettled([
+            paymentsApi.getByBooking(bookingId),
+            booking.bookingHash
+              ? paymentsApi.getByBookingHash(booking.bookingHash)
+              : Promise.resolve({ data: [] as Payment[] }),
+          ]);
+          const exactPayments = new Map<string, Payment>();
+          lookups.forEach((lookup) => {
+            if (lookup.status !== 'fulfilled') return;
+            (lookup.value.data || []).forEach((payment: Payment) => {
+              if (payment._id) exactPayments.set(payment._id, payment);
+            });
+          });
+          return Array.from(exactPayments.values());
+        })),
+        Promise.all((clientsResponse.data || []).map(async (booking: any) => {
+          const currency = booking.currency || 'EUR';
+          try {
+            const response = await paymentsApi.convertToUsd(Number(booking.totalAmount || 0), currency);
+            return Number(response.data.usd_amount || 0);
+          } catch {
+            return convertAmountToUSD(Number(booking.totalAmount || 0), currency);
+          }
+        })),
+      ]);
       const getPaymentsForBooking = (booking: any) => {
-        const bookingId = getObjectId(booking);
-        return payments.filter((payment: Payment) =>
-          getObjectId(payment.bookingId) === bookingId
-          || Boolean(booking.bookingHash && payment.bookingHash === booking.bookingHash)
-        );
+        const bookingIndex = (clientsResponse.data || []).findIndex((item: any) => getObjectId(item) === getObjectId(booking));
+        return bookingIndex >= 0 ? bookingPaymentResults[bookingIndex] : [];
       };
       const getPaymentNetAmount = (payment: Payment) => Math.max((payment.amount || 0) - (payment.refundedAmount || 0), 0);
       const getPaymentNetUSD = (payment: Payment) => {
