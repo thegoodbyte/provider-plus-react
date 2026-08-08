@@ -602,6 +602,25 @@ export const communicationsApi = {
     cacheService.clearPattern('communications:sent-emails');
     return api.post<SentEmail>('/communications/send', data);
   },
+  previewEmail: (data: {
+    templateId?: string;
+    bookingId?: string;
+    clientId?: string;
+    retreatId?: string;
+    relatedEntityType?: string;
+    relatedEntityId?: string;
+    bookingFlowStepKey?: string;
+    variables?: Record<string, any>;
+  }) => api.post<{
+    templateId?: string;
+    templateKey?: string;
+    category?: string;
+    subject: string;
+    bodyText: string;
+    bodyHtml: string;
+    variables: Record<string, any>;
+    bookingConfirmation: boolean;
+  }>('/communications/preview', data),
   sendRetreatEmail: (retreatId: string, data: {
     subject: string;
     bodyText: string;
@@ -1096,6 +1115,7 @@ export const medicalReviewRequestsApi = {
   getQueue: () => cachedGet<MedicalReviewRequest[]>('medical-review-requests:queue', () => api.get<MedicalReviewRequest[]>('/medical-review-requests/queue')),
   getOne: (id: string) => cachedGet<MedicalReviewRequest>(`medical-review-requests:${id}`, () => api.get<MedicalReviewRequest>(`/medical-review-requests/${id}`)),
   getContext: (id: string) => cachedGet<any>(`medical-review-requests:${id}:context`, () => api.get<any>(`/medical-review-requests/${id}/context`)),
+  generateMedicalSummary: (id: string) => api.post<{ summary: string; generatedBy: 'rules' | 'openai'; model?: string; unavailableReason?: string; generatedAt: string }>(`/medical-review-requests/${id}/medical-summary/generate`),
   getByClientAndRetreat: (clientId: string, retreatId: string) => cachedGet<MedicalReviewRequest[]>(`medical-review-requests:${clientId}:${retreatId}`, () => api.get<MedicalReviewRequest[]>(`/medical-review-requests?clientId=${clientId}&retreatId=${retreatId}`)),
   getByMedicalTracking: (medicalTrackingId: string) => cachedGet<MedicalReviewRequest[]>(`medical-review-requests:tracking:${medicalTrackingId}`, () => api.get<MedicalReviewRequest[]>(`/medical-review-requests?medicalTrackingId=${medicalTrackingId}`)),
   getByArtifact: (artifactId: string) => cachedGet<MedicalReviewRequest[]>(`medical-review-requests:artifact:${artifactId}`, () => api.get<MedicalReviewRequest[]>(`/medical-review-requests?artifactId=${artifactId}`)),
