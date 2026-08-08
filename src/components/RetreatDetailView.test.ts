@@ -1,4 +1,4 @@
-import { getPaymentAmountInBookingCurrency } from './retreatPaymentUtils';
+import { getEffectivePaidAmount, getPaymentAmountInBookingCurrency } from './retreatPaymentUtils';
 import { Payment } from '../types';
 
 const payment = (overrides: Partial<Payment>): Payment => ({
@@ -34,5 +34,15 @@ describe('getPaymentAmountInBookingCurrency', () => {
     expect(getPaymentAmountInBookingCurrency(payment({ amount: 1000, refundedAmount: 250 }), 'EUR')).toBe(750);
     expect(getPaymentAmountInBookingCurrency(payment({ amount: 1000, status: 'pending' }), 'EUR')).toBe(0);
     expect(getPaymentAmountInBookingCurrency(payment({ amount: 100, paymentType: 'refund' }), 'EUR')).toBe(-100);
+  });
+});
+
+describe('getEffectivePaidAmount', () => {
+  it('recognizes a legacy cross-currency booking as paid from its USD totals', () => {
+    expect(getEffectivePaidAmount(9500, 2470, 0, 2470)).toBeCloseTo(9500);
+  });
+
+  it('converts a partial USD payment proportionally into the booking currency', () => {
+    expect(getEffectivePaidAmount(9500, 2470, 0, 1235)).toBeCloseTo(4750);
   });
 });
