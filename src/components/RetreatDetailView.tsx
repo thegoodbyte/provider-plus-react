@@ -366,9 +366,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     }
   };
 
-  const fetchRetreatData = useCallback(async () => {
+  const fetchRetreatData = useCallback(async (showLoading = true) => {
     try {
-      setIsLoading(true);
+      if (showLoading) setIsLoading(true);
       const [retreatResponse, clientsResponse, expensesSummaryResponse, retreatsResponse] = await Promise.all([
         retreatsApi.getOne(retreatId),
         bookingsApi.getByRetreatWithDetails(retreatId),
@@ -494,7 +494,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       setClients([]);
       setExpensesSummary(null);
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
   }, [retreatId]);
 
@@ -772,7 +772,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       message.success(`${values.firstName} ${values.lastName} has been booked for this retreat!`);
       quickBookingForm.resetFields();
       setShowQuickBookingModal(false);
-      await fetchRetreatData(); // Refresh the data
+      void fetchRetreatData(false); // Refresh silently without holding the booking dialog open.
     } catch (error: any) {
       console.error('Error creating quick booking:', error);
       message.error(error.response?.data?.message || 'Failed to create booking');
@@ -1418,7 +1418,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                 <span>Email Retreat ({retreatEmailRecipientCount})</span>
               </button>
               <button
-                onClick={fetchRetreatData}
+                onClick={() => fetchRetreatData()}
                 className="retreat-client-action retreat-client-action-refresh"
                 title="Refresh"
                 aria-label="Refresh retreat clients"
