@@ -27,6 +27,8 @@ const RetreatsGrid: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [formData, setFormData] = useState<Partial<Retreat>>({});
+  const [pastRetreatsOpen, setPastRetreatsOpen] = useState(false);
+  const [cancelledRetreatsOpen, setCancelledRetreatsOpen] = useState(false);
 
   useEffect(() => {
     fetchRetreats();
@@ -136,6 +138,31 @@ const RetreatsGrid: React.FC = () => {
     if (typeof value === 'string') return value;
     return value._id || value.id || '';
   };
+
+  const { operationalRetreats, pastRetreats, cancelledRetreats } = useMemo(() => {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+    const cancelled = retreats.filter((retreat) => retreat.status === 'cancelled');
+    const past = retreats.filter((retreat) => {
+      if (retreat.status === 'cancelled') return false;
+      const endTime = retreat.endDate ? new Date(retreat.endDate).getTime() : NaN;
+      return retreat.status === 'completed' || (Number.isFinite(endTime) && endTime < startOfToday.getTime());
+    }).sort((left, right) => new Date(right.endDate || right.startDate || 0).getTime() - new Date(left.endDate || left.startDate || 0).getTime());
+    const pastIds = new Set(past.map((retreat) => getObjectId(retreat)));
+    const operational = retreats.filter((retreat) => retreat.status !== 'cancelled' && !pastIds.has(getObjectId(retreat)))
+      .sort((left, right) => {
+        const isCurrent = (retreat: Retreat) => {
+          if (retreat.status === 'active') return true;
+          const start = retreat.startDate ? new Date(retreat.startDate).getTime() : Number.POSITIVE_INFINITY;
+          const end = retreat.endDate ? new Date(retreat.endDate).getTime() : Number.NEGATIVE_INFINITY;
+          return start <= Date.now() && end >= startOfToday.getTime();
+        };
+        const currentDifference = Number(isCurrent(right)) - Number(isCurrent(left));
+        if (currentDifference) return currentDifference;
+        return new Date(left.startDate || 8640000000000000).getTime() - new Date(right.startDate || 8640000000000000).getTime();
+      });
+    return { operationalRetreats: operational, pastRetreats: past, cancelledRetreats: cancelled };
+  }, [retreats]);
 
   const getRetreatBookings = (retreat: Retreat) => {
     const retreatId = getObjectId(retreat);
@@ -441,7 +468,7 @@ const RetreatsGrid: React.FC = () => {
             </div>
           </div>
 
-          {retreats.map((retreat, index) => {
+          {operationalRetreats.map((retreat, index) => {
             const retreatBookings = getRetreatBookings(retreat);
             const retreatCode = getRetreatCodeValue(retreat) || retreat.name;
             const headerStyle = retreat.backgroundColor || retreat.textColor
@@ -598,7 +625,7 @@ const RetreatsGrid: React.FC = () => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {retreats.map((retreat, index) => (
+              {operationalRetreats.map((retreat, index) => (
                 <tr key={retreat._id} className={getRetreatRowColor(retreat._id!, index)}>
                   <td className="hidden px-6 py-4 whitespace-nowrap md:table-cell">
                     <div className="flex items-center gap-2">
@@ -707,7 +734,7 @@ const RetreatsGrid: React.FC = () => {
               ))}
             </tbody>
           </table>
-          {retreats.length === 0 && (
+          {operationalRetreats.length === 0 && (
             <div className="text-center py-8 text-gray-500">
               No retreats found
             </div>
@@ -716,9 +743,43 @@ const RetreatsGrid: React.FC = () => {
       </div>
       )}
 
+      {pastRetreats.length > 0 && (
+        <div className="mt-4 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+          <button type="button" onClick={() => setPastRetreatsOpen((open) => !open)} className="flex w-full items-center justify-between px-5 py-4 text-left font-semibold text-gray-700 hover:bg-gray-50" aria-expanded={pastRetreatsOpen}>
+            <span>Past retreats ({pastRetreats.length})</span>
+            <span aria-hidden="true">{pastRetreatsOpen ? '▲' : '▼'}</span>
+          </button>
+          {pastRetreatsOpen && (
+            <div className="divide-y divide-gray-100 border-t border-gray-200">
+              {pastRetreats.map((retreat) => (
+                <button key={retreat._id} type="button" onClick={() => handleViewRetreat(retreat._id!)} className="grid w-full grid-cols-1 gap-1 px-5 py-3 text-left hover:bg-gray-50 sm:grid-cols-[1fr_auto_auto] sm:items-center sm:gap-6">
+                  <strong>{getRetreatCodeValue(retreat) || retreat.name}</strong>
+                  <span className="text-sm text-gray-500">{formatDate(retreat.startDate)} – {formatDate(retreat.endDate)}</span>
+                  <span className="text-sm text-gray-500">{getRetreatTown(retreat) || 'No location'}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {cancelledRetreats.length > 0 && (
+        <div className="mt-3 overflow-hidden rounded-lg border border-gray-200 bg-white">
+          <button type="button" onClick={() => setCancelledRetreatsOpen((open) => !open)} className="flex w-full items-center justify-between px-5 py-3 text-left text-sm font-semibold text-gray-500 hover:bg-gray-50" aria-expanded={cancelledRetreatsOpen}>
+            <span>Cancelled retreats ({cancelledRetreats.length})</span>
+            <span aria-hidden="true">{cancelledRetreatsOpen ? '▲' : '▼'}</span>
+          </button>
+          {cancelledRetreatsOpen && cancelledRetreats.map((retreat) => (
+            <button key={retreat._id} type="button" onClick={() => handleViewRetreat(retreat._id!)} className="flex w-full justify-between border-t border-gray-100 px-5 py-3 text-left text-sm text-gray-500 hover:bg-gray-50">
+              <span>{getRetreatCodeValue(retreat) || retreat.name}</span><span>{formatDate(retreat.startDate)}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       <div className="mt-4 flex items-center justify-between">
         <div className="text-sm text-gray-700">
-          Showing {retreats.length} retreat{retreats.length !== 1 ? 's' : ''}
+          Showing {operationalRetreats.length} current or upcoming retreat{operationalRetreats.length !== 1 ? 's' : ''}
         </div>
         <div className="hidden items-center gap-4 md:flex">
           <div className="text-sm text-gray-700">

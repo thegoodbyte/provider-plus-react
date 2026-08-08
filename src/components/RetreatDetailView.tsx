@@ -96,6 +96,7 @@ interface RetreatClientData {
   totalAmountUSD: number;
   amountPaid: number;
   amountPaidUSD: number;
+  cashPaidUSD: number;
   currency: string;
   roomAssignment?: string;
   specialRequests?: string;
@@ -445,6 +446,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       const getPaidUsdForBooking = (booking: any) => getPaymentsForBooking(booking)
         .filter((payment: Payment) => payment.status === 'completed')
         .reduce((sum: number, payment: Payment) => sum + getPaymentNetUSD(payment), 0);
+      const getCashPaidUsdForBooking = (booking: any) => getPaymentsForBooking(booking)
+        .filter((payment: Payment) => payment.status === 'completed' && payment.paymentType !== 'currency_adjustment')
+        .reduce((sum: number, payment: Payment) => sum + getPaymentNetUSD(payment), 0);
 
       // Transform booking data to client data format
       const transformedClients: RetreatClientData[] = clientsResponse.data.map((booking: any, bookingIndex: number) => {
@@ -475,6 +479,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           totalAmountUSD: totalUsdResults[bookingIndex] || convertAmountToUSD(Number(booking.totalAmount || 0), currency),
           amountPaid: getPaidAmountForBooking({ ...booking, currency }),
           amountPaidUSD: getPaidUsdForBooking(booking),
+          cashPaidUSD: getCashPaidUsdForBooking(booking),
           currency,
           roomAssignment: booking.roomAssignment,
           specialRequests: booking.specialRequests,
@@ -763,6 +768,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         registrationDate: new Date().toISOString(),
         amountPaid: 0,
         amountPaidUSD: 0,
+        cashPaidUSD: 0,
       };
       if (retreat?.startDate) bookingData.checkInDate = retreat.startDate;
       if (retreat?.endDate) bookingData.checkOutDate = retreat.endDate;
@@ -1023,7 +1029,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     );
   }
 
-  const totalRevenueUSD = clients.reduce((sum, client) => sum + (client.amountPaidUSD || 0), 0);
+  const totalRevenueUSD = clients.reduce((sum, client) => sum + (client.cashPaidUSD || 0), 0);
   const totalExpectedUSD = clients.reduce(
     (sum, client) => sum + convertAmountToUSD(client.totalAmount || 0, client.currency),
     0

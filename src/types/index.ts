@@ -545,7 +545,7 @@ export interface Payment {
   bookingCurrencyExchangeDate?: Date | string;
   status: 'pending' | 'completed' | 'failed' | 'refunded';
   paymentMethod: 'bank_transfer' | 'card' | 'cash' | 'paypal' | 'crypto' | 'stripe' | 'wise' | 'revolut' | 'other';
-  paymentType: 'deposit_non_refundable' | 'deposit_refundable' | 'regular_payment' | 'balance_payment' | 'refund' | 'adjustment';
+  paymentType: 'deposit_non_refundable' | 'deposit_refundable' | 'regular_payment' | 'balance_payment' | 'refund' | 'adjustment' | 'currency_adjustment';
   description?: string;
   transactionId?: string;
   transactionReference?: string;
@@ -1525,6 +1525,16 @@ export interface MailSettings {
   replyTo?: string;
   autoCcEnabled?: boolean;
   autoCcEmail?: string;
+  clientMedicalReviewEmailsEnabled?: boolean;
+  clientMedicalApprovedEmailsEnabled?: boolean;
+  clientMedicalNeedsInfoEmailsEnabled?: boolean;
+  clientMedicalDeclinedEmailsEnabled?: boolean;
+  medicalReviewInternalNotificationsEnabled?: boolean;
+  medicalReviewEmailTestMode?: boolean;
+  medicalReviewEmailTestRecipient?: string;
+  medicalReviewApprovedTemplates?: Record<string, { subject: string; body: string }>;
+  medicalReviewNeedsInfoTemplates?: Record<string, { subject: string; body: string }>;
+  medicalReviewDeclinedTemplates?: Record<string, { subject: string; body: string }>;
   gmailUserEmail?: string;
   gmailAccountName?: string;
   scopes?: string[];

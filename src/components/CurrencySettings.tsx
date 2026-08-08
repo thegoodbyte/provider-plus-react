@@ -8,6 +8,7 @@ interface CurrencySettingsProps {
 }
 
 type ConverterCurrency = 'USD' | 'EUR' | 'CZK' | 'PLN';
+type PaymentTypeSetting = { key: string; label: string; active: boolean; sortOrder: number; system: boolean; behavior: string };
 const converterCurrencies: ConverterCurrency[] = ['PLN', 'USD', 'EUR', 'CZK'];
 
 const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
@@ -25,6 +26,10 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
   const [converterSource, setConverterSource] = useState<string>('');
   const [converterError, setConverterError] = useState<string | null>(null);
   const [isConverting, setIsConverting] = useState(false);
+  const [activeTab, setActiveTab] = useState<'currency' | 'payment-types'>('currency');
+  const [paymentTypes, setPaymentTypes] = useState<PaymentTypeSetting[]>([]);
+  const [paymentTypesSaving, setPaymentTypesSaving] = useState(false);
+  const [newPaymentType, setNewPaymentType] = useState({ key: '', label: '' });
 
   useEffect(() => {
     loadExchangeRates();
@@ -42,11 +47,40 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
       setLastUpdated(info.lastUpdated);
       setNextUpdate(info.nextUpdate);
       setConfigSummary(configResponse?.data || null);
+      const typeResponse = await paymentsApi.getTypes().catch(() => null);
+      setPaymentTypes(typeResponse?.data || []);
     } catch (err) {
       setError('Failed to load exchange rates');
       console.error('Error loading exchange rates:', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const savePaymentType = async (item: PaymentTypeSetting) => {
+    try {
+      setPaymentTypesSaving(true);
+      await paymentsApi.updateType(item.key, { label: item.label, active: item.active, sortOrder: item.sortOrder });
+      const response = await paymentsApi.getTypes();
+      setPaymentTypes(response.data || []);
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Could not save the payment type.');
+    } finally {
+      setPaymentTypesSaving(false);
+    }
+  };
+
+  const addPaymentType = async () => {
+    try {
+      setPaymentTypesSaving(true);
+      await paymentsApi.createType({ ...newPaymentType, sortOrder: paymentTypes.length * 10 + 100 });
+      setNewPaymentType({ key: '', label: '' });
+      const response = await paymentsApi.getTypes();
+      setPaymentTypes(response.data || []);
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Could not create the payment type.');
+    } finally {
+      setPaymentTypesSaving(false);
     }
   };
 
@@ -111,9 +145,38 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
     <div className="modal-overlay" onClick={onClose}>
       <div className="currency-settings-modal" onClick={(e) => e.stopPropagation()}>
         <div className="currency-header">
-          <h2>💱 Revolut Currency Converter</h2>
+          <h2>Settings</h2>
           <button onClick={onClose} className="close-btn" aria-label="Close currency converter">✕</button>
         </div>
+
+        <div className="settings-tabs">
+          <button className={activeTab === 'currency' ? 'active' : ''} onClick={() => setActiveTab('currency')}>Currency</button>
+          <button className={activeTab === 'payment-types' ? 'active' : ''} onClick={() => setActiveTab('payment-types')}>Payment types</button>
+        </div>
+
+        {activeTab === 'payment-types' ? (
+          <div className="payment-types-settings">
+            <h3>Payment types</h3>
+            <p>IDs are permanent. Existing types can be renamed, reordered, or deactivated, but never deleted.</p>
+            <div className="payment-type-list">
+              {paymentTypes.map((item, index) => (
+                <div className="payment-type-row" key={item.key}>
+                  <code>{item.key}</code>
+                  <input value={item.label} onChange={(event) => setPaymentTypes(current => current.map((entry, entryIndex) => entryIndex === index ? { ...entry, label: event.target.value } : entry))} />
+                  <input type="number" value={item.sortOrder} onChange={(event) => setPaymentTypes(current => current.map((entry, entryIndex) => entryIndex === index ? { ...entry, sortOrder: Number(event.target.value) } : entry))} />
+                  <label><input type="checkbox" checked={item.active} onChange={(event) => setPaymentTypes(current => current.map((entry, entryIndex) => entryIndex === index ? { ...entry, active: event.target.checked } : entry))} /> Active</label>
+                  <button disabled={paymentTypesSaving} onClick={() => savePaymentType(item)}>Save</button>
+                </div>
+              ))}
+            </div>
+            <div className="new-payment-type">
+              <h4>Add payment type</h4>
+              <input placeholder="immutable_id" value={newPaymentType.key} onChange={(event) => setNewPaymentType(current => ({ ...current, key: event.target.value }))} />
+              <input placeholder="Display label" value={newPaymentType.label} onChange={(event) => setNewPaymentType(current => ({ ...current, label: event.target.value }))} />
+              <button disabled={paymentTypesSaving || !newPaymentType.key || !newPaymentType.label} onClick={addPaymentType}>Add</button>
+            </div>
+          </div>
+        ) : <>
 
         {error && (
           <div className="error-message">
@@ -294,6 +357,7 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
             All amounts in the application will show USD equivalents in parentheses.</p>
           </div>
         </div>
+        </>}
 
         <div className="currency-footer">
           <button onClick={onClose} className="close-settings-btn">

@@ -43,6 +43,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   const [linkExistingLoading, setLinkExistingLoading] = useState(false);
   const [linkExistingError, setLinkExistingError] = useState('');
   const [autoLinkLoading, setAutoLinkLoading] = useState(false);
+  const [currencyAdjustmentLoading, setCurrencyAdjustmentLoading] = useState(false);
   const [autoLinkMessage, setAutoLinkMessage] = useState('');
   const [usdPreview, setUsdPreview] = useState<number | null>(null);
   const [usdPreviewLoading, setUsdPreviewLoading] = useState(false);
@@ -76,13 +77,31 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
     { value: 'other', label: '🔧 Other' }
   ];
 
-  const paymentTypes = [
+  const defaultPaymentTypes = [
     { value: 'deposit_non_refundable', label: '💰 Deposit (Non-Refundable)', refundable: false },
     { value: 'deposit_refundable', label: '💳 Deposit (Refundable)', refundable: true },
     { value: 'regular_payment', label: '💵 Regular Payment', refundable: true },
     { value: 'balance_payment', label: '⚖️ Balance Payment', refundable: true },
-    { value: 'adjustment', label: '🔧 Adjustment', refundable: true }
+    { value: 'adjustment', label: '🔧 Adjustment', refundable: true },
+    { value: 'currency_adjustment', label: '💱 Foreign currency balance adjustment', refundable: false },
   ];
+  const [paymentTypes, setPaymentTypes] = useState(defaultPaymentTypes);
+
+  useEffect(() => {
+    let active = true;
+    paymentsApi.getTypes().then((response) => {
+      if (!active) return;
+      const configured = (response.data || [])
+        .filter((item) => item.active)
+        .map((item) => ({
+          value: item.key,
+          label: item.behavior === 'currency_adjustment' ? `💱 ${item.label}` : item.label,
+          refundable: item.behavior !== 'currency_adjustment' && item.behavior !== 'refund',
+        }));
+      if (configured.length) setPaymentTypes(configured);
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     setNewPayment((current) => ({
@@ -319,6 +338,51 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
     }
   };
 
+  const handleCurrencyAdjustment = async () => {
+    if (balanceUsd === null || balanceUsd <= 0.005) return;
+    const reason = window.prompt(
+      `This will create a non-cash currency adjustment of ${formatUsd(balanceUsd)} and bring the USD balance to zero. Enter a reason:`,
+      'Small foreign-currency conversion difference written off.',
+    );
+    if (!reason?.trim()) return;
+
+    try {
+      setCurrencyAdjustmentLoading(true);
+      const bookingCurrencyAmount = bookingCurrency === 'USD'
+        ? balanceUsd
+        : Number((await paymentsApi.convert(balanceUsd, 'USD', bookingCurrency)).data.amount || 0);
+      await paymentsApi.create({
+        clientId,
+        retreatId,
+        bookingId,
+        bookingHash,
+        amount: balanceUsd,
+        currency: 'USD',
+        bookingCurrency,
+        bookingCurrencyAmount,
+        bookingCurrencyExchangeSource: exchangeRateProviderLabel,
+        bookingCurrencyExchangeDate: new Date().toISOString(),
+        paymentMethod: 'other',
+        paymentType: 'currency_adjustment',
+        description: 'Foreign currency balance adjustment',
+        notes: reason.trim(),
+        paymentDate: new Date().toISOString(),
+        status: 'completed',
+        isDeposit: false,
+        isFinalPayment: true,
+        isRefundable: false,
+        processedBy: 'System Admin',
+        processedDate: new Date().toISOString(),
+      });
+      await fetchPayments();
+      onPaymentUpdate?.();
+    } catch (error: any) {
+      alert(error?.response?.data?.message || 'Could not create the currency adjustment.');
+    } finally {
+      setCurrencyAdjustmentLoading(false);
+    }
+  };
+
   const handleAddPayment = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -341,7 +405,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
         bookingCurrencyExchangeSource: isMixedBookingCurrencyPayment ? exchangeRateProviderLabel : undefined,
         bookingCurrencyExchangeDate: isMixedBookingCurrencyPayment ? (newPayment.bookingCurrencyExchangeDate || newPayment.paymentDate) : undefined,
         paymentMethod: newPayment.paymentMethod as 'bank_transfer' | 'card' | 'cash' | 'paypal' | 'crypto' | 'stripe' | 'wise' | 'revolut' | 'other',
-        paymentType: newPayment.paymentType as 'deposit_non_refundable' | 'deposit_refundable' | 'regular_payment' | 'balance_payment' | 'refund' | 'adjustment',
+        paymentType: newPayment.paymentType as Payment['paymentType'],
         description: newPayment.description || `${selectedPaymentType?.label} for booking ${bookingHash || bookingId}`,
         transactionReference: newPayment.transactionReference,
         notes: newPayment.notes,
@@ -471,6 +535,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       case 'regular_payment': return 'Regular';
       case 'balance_payment': return 'Balance';
       case 'adjustment': return 'Adjust';
+      case 'currency_adjustment': return 'FX Adjust';
       case 'refund': return 'Refund';
       default: return type.replace(/_/g, ' ');
     }
@@ -502,6 +567,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       case 'regular_payment': return '#28a745';
       case 'balance_payment': return '#374151';
       case 'adjustment': return '#6c757d';
+      case 'currency_adjustment': return '#7c3aed';
       default: return '#6c757d';
     }
   };
@@ -606,6 +672,18 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
         <div className="payment-history-header">
           <h4>Payment History ({payments.length})</h4>
           <div style={{ display: 'flex', gap: '8px' }}>
+            {balanceUsd !== null && balanceUsd > 0.005 && (
+              <button
+                type="button"
+                onClick={handleCurrencyAdjustment}
+                className="add-payment-btn"
+                title={`Clear ${formatUsd(balanceUsd)} currency difference`}
+                aria-label="Clear foreign currency balance difference"
+                disabled={currencyAdjustmentLoading}
+              >
+                {currencyAdjustmentLoading ? '...' : 'FX'}
+              </button>
+            )}
             <button
               onClick={() => {
                 setShowLinkExisting(false);
