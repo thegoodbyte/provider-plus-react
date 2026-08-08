@@ -508,6 +508,16 @@ const CommunicationsPage: React.FC = () => {
         replyTo: settings?.replyTo || '',
         autoCcEnabled: settings?.autoCcEnabled !== false,
         autoCcEmail: settings?.autoCcEmail || 'info@ibogaspirit.cz',
+        clientMedicalReviewEmailsEnabled: settings?.clientMedicalReviewEmailsEnabled !== false,
+        clientMedicalApprovedEmailsEnabled: settings?.clientMedicalApprovedEmailsEnabled !== false,
+        clientMedicalNeedsInfoEmailsEnabled: settings?.clientMedicalNeedsInfoEmailsEnabled === true,
+        clientMedicalDeclinedEmailsEnabled: settings?.clientMedicalDeclinedEmailsEnabled === true,
+        medicalReviewInternalNotificationsEnabled: settings?.medicalReviewInternalNotificationsEnabled !== false,
+        medicalReviewEmailTestMode: settings?.medicalReviewEmailTestMode === true,
+        medicalReviewEmailTestRecipient: settings?.medicalReviewEmailTestRecipient || '',
+        medicalReviewApprovedTemplates: settings?.medicalReviewApprovedTemplates,
+        medicalReviewNeedsInfoTemplates: settings?.medicalReviewNeedsInfoTemplates,
+        medicalReviewDeclinedTemplates: settings?.medicalReviewDeclinedTemplates,
       });
       setSettings(response.data);
       alert('Settings saved');
@@ -784,6 +794,38 @@ const CommunicationsPage: React.FC = () => {
                 Disconnect
               </button>
             </div>
+          </section>
+          <section className="rounded-lg border border-gray-200 bg-white p-5 space-y-4 lg:col-span-2">
+            <div><h2 className="text-lg font-semibold text-gray-900">Client medical-review notifications</h2><p className="text-sm text-gray-500">Emails contain only a generic status and never include reviewer notes or medical findings.</p></div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                ['clientMedicalReviewEmailsEnabled', 'Master email switch'],
+                ['clientMedicalApprovedEmailsEnabled', 'Approved emails'],
+                ['clientMedicalNeedsInfoEmailsEnabled', 'Needs-info emails'],
+                ['clientMedicalDeclinedEmailsEnabled', 'Declined emails'],
+                ['medicalReviewInternalNotificationsEnabled', 'Internal RE notifications'],
+                ['medicalReviewEmailTestMode', 'Test mode'],
+              ].map(([key, label]) => {
+                const defaultOff = ['clientMedicalNeedsInfoEmailsEnabled', 'clientMedicalDeclinedEmailsEnabled', 'medicalReviewEmailTestMode'].includes(key);
+                const checked = defaultOff ? (settings as any)?.[key] === true : (settings as any)?.[key] !== false;
+                return <label key={key} className="flex items-center gap-2 rounded-md border p-3 text-sm font-medium"><input type="checkbox" checked={checked} onChange={(event) => setSettings((prev) => ({ ...(prev || {}), [key]: event.target.checked }))}/>{label}</label>;
+              })}
+            </div>
+            {settings?.medicalReviewEmailTestMode && <label className="block"><span className="text-sm font-medium">Test recipient override</span><input type="email" className="mt-1 w-full rounded-md border px-3 py-2" value={settings.medicalReviewEmailTestRecipient || ''} onChange={(event) => setSettings((prev) => ({ ...(prev || {}), medicalReviewEmailTestRecipient: event.target.value }))}/></label>}
+            <h3 className="font-semibold text-gray-900">Approved email templates</h3>
+            <div className="grid gap-4 lg:grid-cols-3">
+              {[['en','English'],['cs','Czech'],['pl','Polish']].map(([language, label]) => {
+                const defaults: any = {
+                  en: { subject: 'Your medical document was approved', body: 'Your medical document has been reviewed and approved.\n\nYou can see its status in the IbogaReady app: https://ibogaready.com\n\nSign in using your existing credentials.' },
+                  cs: { subject: 'Váš zdravotní dokument byl schválen', body: 'Váš zdravotní dokument byl zkontrolován a schválen.\n\nJeho stav si můžete zobrazit v aplikaci IbogaReady: https://ibogaready.com\n\nPřihlaste se pomocí svých stávajících přihlašovacích údajů.' },
+                  pl: { subject: 'Twój dokument medyczny został zatwierdzony', body: 'Twój dokument medyczny został sprawdzony i zatwierdzony.\n\nJego status możesz zobaczyć w aplikacji IbogaReady: https://ibogaready.com\n\nZaloguj się przy użyciu swoich dotychczasowych danych logowania.' },
+                };
+                const template = settings?.medicalReviewApprovedTemplates?.[language] || defaults[language];
+                const update = (field: 'subject'|'body', value: string) => setSettings((prev) => ({ ...(prev || {}), medicalReviewApprovedTemplates: { ...(prev?.medicalReviewApprovedTemplates || {}), [language]: { ...template, [field]: value } } }));
+                return <div key={language} className="rounded-md border p-3"><h3 className="font-semibold">{label}</h3><input className="mt-2 w-full rounded-md border px-3 py-2 text-sm" value={template.subject} onChange={(event) => update('subject', event.target.value)}/><textarea className="mt-2 min-h-36 w-full rounded-md border px-3 py-2 text-sm" value={template.body} onChange={(event) => update('body', event.target.value)}/></div>;
+              })}
+            </div>
+            <button type="button" onClick={handleSettingsSave} disabled={savingSettings} className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white">Save notification settings</button>
           </section>
 
           <section className="rounded-lg border border-gray-200 bg-white p-5 space-y-3">

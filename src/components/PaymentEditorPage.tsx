@@ -102,7 +102,7 @@ const PaymentEditorPage: React.FC = () => {
     isDeposit: false,
     isFinalPayment: false,
     isRefundable: false,
-    paymentType: 'regular_payment' as 'deposit_non_refundable' | 'deposit_refundable' | 'regular_payment' | 'balance_payment' | 'refund' | 'adjustment',
+    paymentType: 'regular_payment' as 'deposit_non_refundable' | 'deposit_refundable' | 'regular_payment' | 'balance_payment' | 'refund' | 'adjustment' | 'currency_adjustment',
     bookingCurrencyAmount: '',
     bookingCurrencyExchangeDate: '',
   });
@@ -624,6 +624,7 @@ const PaymentEditorPage: React.FC = () => {
                 <option value="balance_payment">Balance Payment</option>
                 <option value="refund">Refund</option>
                 <option value="adjustment">Adjustment</option>
+                <option value="currency_adjustment">Foreign currency balance adjustment</option>
               </select>
             </div>
 

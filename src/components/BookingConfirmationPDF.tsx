@@ -637,6 +637,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
       case 'balance_payment': return t.balance;
       case 'regular_payment': return language === 'pl' ? 'Płatność' : language === 'cz' ? 'Platba' : 'Payment';
       case 'adjustment': return language === 'pl' ? 'Korekta' : language === 'cz' ? 'Úprava' : 'Adjustment';
+      case 'currency_adjustment': return language === 'pl' ? 'Korekta walutowa' : language === 'cz' ? 'Měnové vyrovnání' : 'Currency adjustment';
       case 'refund': return language === 'pl' ? 'Zwrot' : language === 'cz' ? 'Refundace' : 'Refund';
       default: return String(payment.paymentType).replace(/_/g, ' ');
     }
