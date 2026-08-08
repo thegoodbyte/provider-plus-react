@@ -21,3 +21,13 @@ export const getPaymentAmountInBookingCurrency = (payment: Payment, bookingCurre
 
   return 0;
 };
+
+export const getEffectivePaidAmount = (
+  totalAmount: number,
+  totalAmountUSD: number,
+  amountPaid: number,
+  amountPaidUSD: number,
+) => {
+  const paidFromUsd = totalAmountUSD > 0 ? (amountPaidUSD / totalAmountUSD) * totalAmount : 0;
+  return Math.max(amountPaid, paidFromUsd);
+};

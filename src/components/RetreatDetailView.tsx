@@ -40,7 +40,7 @@ import SpaRoundedIcon from '@mui/icons-material/SpaRounded';
 import TaskAltRoundedIcon from '@mui/icons-material/TaskAltRounded';
 import HistoryRoundedIcon from '@mui/icons-material/HistoryRounded';
 import './ClientsGrid.css';
-import { getPaymentAmountInBookingCurrency } from './retreatPaymentUtils';
+import { getEffectivePaidAmount, getPaymentAmountInBookingCurrency } from './retreatPaymentUtils';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -93,6 +93,7 @@ interface RetreatClientData {
   checkOutDate?: string;
   status: string;
   totalAmount: number;
+  totalAmountUSD: number;
   amountPaid: number;
   amountPaidUSD: number;
   currency: string;
@@ -390,9 +391,21 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       const payments = Array.isArray(paymentsResponse.data) ? paymentsResponse.data : [];
       setRetreatPayments(payments);
       setMetricsUpdatedAt(new Date());
+      const totalUsdResults = await Promise.all((clientsResponse.data || []).map(async (booking: any) => {
+        const currency = booking.currency || 'EUR';
+        try {
+          const response = await paymentsApi.convertToUsd(Number(booking.totalAmount || 0), currency);
+          return Number(response.data.usd_amount || 0);
+        } catch {
+          return convertAmountToUSD(Number(booking.totalAmount || 0), currency);
+        }
+      }));
       const getPaymentsForBooking = (booking: any) => {
         const bookingId = getObjectId(booking);
-        return payments.filter((payment: Payment) => getObjectId(payment.bookingId) === bookingId);
+        return payments.filter((payment: Payment) =>
+          getObjectId(payment.bookingId) === bookingId
+          || Boolean(booking.bookingHash && payment.bookingHash === booking.bookingHash)
+        );
       };
       const getPaymentNetAmount = (payment: Payment) => Math.max((payment.amount || 0) - (payment.refundedAmount || 0), 0);
       const getPaymentNetUSD = (payment: Payment) => {
@@ -415,7 +428,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         .reduce((sum: number, payment: Payment) => sum + getPaymentNetUSD(payment), 0);
 
       // Transform booking data to client data format
-      const transformedClients: RetreatClientData[] = clientsResponse.data.map((booking: any) => {
+      const transformedClients: RetreatClientData[] = clientsResponse.data.map((booking: any, bookingIndex: number) => {
         const currency = booking.currency || 'EUR';
         return {
           _id: booking._id,
@@ -441,6 +454,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           checkOutDate: booking.checkOutDate,
           status: booking.status || 'pending',
           totalAmount: booking.totalAmount || 0,
+          totalAmountUSD: totalUsdResults[bookingIndex] || convertAmountToUSD(Number(booking.totalAmount || 0), currency),
           amountPaid: getPaidAmountForBooking({ ...booking, currency }),
           amountPaidUSD: getPaidUsdForBooking(booking),
           currency,
@@ -902,21 +916,28 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   );
 
   const bookingStatusLabel = (status: string) => ({ pending: 'Conditional', confirmed: 'Confirmed', 'checked-in': 'Checked in', 'checked-out': 'Completed', cancelled: 'Cancelled' }[status] || status);
+  const effectiveAmountPaid = (client: RetreatClientData) => getEffectivePaidAmount(
+    client.totalAmount,
+    client.totalAmountUSD,
+    client.amountPaid,
+    client.amountPaidUSD,
+  );
   const paymentStatusLabel = (client: RetreatClientData) => {
+    const paidAmount = effectiveAmountPaid(client);
     if (client.status === 'cancelled') {
       if (client.cancellationDepositTreatment === 'none') return 'No payment';
       if (client.cancellationDepositTreatment === 'retained') return 'Deposit retained';
       if (client.cancellationDepositTreatment === 'credited') return 'Credit transferred';
       if (client.cancellationDepositTreatment === 'partially_refunded') return 'Partial refund';
-      if (client.cancellationDepositTreatment === 'refund_pending') return client.amountPaid <= 0 ? 'Refunded' : 'Refund pending';
+      if (client.cancellationDepositTreatment === 'refund_pending') return paidAmount <= 0 ? 'Refunded' : 'Refund pending';
     }
-    if (client.totalAmount > 0 && client.amountPaid >= client.totalAmount - 0.01) {
-      return client.amountPaid > client.totalAmount + 0.01 ? 'Overpaid' : 'Paid in full';
+    if (client.totalAmount > 0 && paidAmount >= client.totalAmount - 0.01) {
+      return paidAmount > client.totalAmount + 0.01 ? 'Overpaid' : 'Paid in full';
     }
-    const remainingBalance = Math.max(client.totalAmount - client.amountPaid, 0);
+    const remainingBalance = Math.max(client.totalAmount - paidAmount, 0);
     return `Balance ${formatAmount(remainingBalance, client.currency)}`;
   };
-  const paymentStatusClass = (client: RetreatClientData) => client.amountPaid >= client.totalAmount && client.totalAmount > 0 ? 'bg-green-100 text-green-800' : client.status === 'cancelled' ? 'bg-gray-100 text-gray-700' : 'bg-amber-100 text-amber-800';
+  const paymentStatusClass = (client: RetreatClientData) => effectiveAmountPaid(client) >= client.totalAmount - 0.01 && client.totalAmount > 0 ? 'bg-green-100 text-green-800' : client.status === 'cancelled' ? 'bg-gray-100 text-gray-700' : 'bg-amber-100 text-amber-800';
 
   const openCancellation = (client: RetreatClientData) => {
     setCancellingBooking(client);
