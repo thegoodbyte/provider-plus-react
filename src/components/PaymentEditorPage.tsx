@@ -433,12 +433,24 @@ const PaymentEditorPage: React.FC = () => {
 
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Payment Request</label>
-              <SearchablePaymentRequestSelect
-                selectedPaymentRequestId={formData.paymentRequestId}
-                onPaymentRequestSelect={(paymentRequestId, paymentRequest) => handlePaymentRequestSelect(paymentRequestId, paymentRequest as any)}
-                placeholder="Search invoice number, client, or retreat"
-                className="w-full"
-              />
+              {isView ? (
+                formData.paymentRequestId ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/admin/payment-requests/${formData.paymentRequestId}`)}
+                    className="inline-flex rounded-md border border-blue-200 bg-blue-50 px-3 py-2 font-semibold text-blue-700 hover:bg-blue-100 hover:underline"
+                  >
+                    Payment request {selectedPaymentRequest?.invoiceNumber || (selectedPaymentRequest?.display_id ? `#${selectedPaymentRequest.display_id}` : `#${formData.paymentRequestId.slice(-8)}`)}
+                  </button>
+                ) : <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-gray-500">No payment request linked</div>
+              ) : (
+                <SearchablePaymentRequestSelect
+                  selectedPaymentRequestId={formData.paymentRequestId}
+                  onPaymentRequestSelect={(paymentRequestId, paymentRequest) => handlePaymentRequestSelect(paymentRequestId, paymentRequest as any)}
+                  placeholder="Search invoice number, client, or retreat"
+                  className="w-full"
+                />
+              )}
               {selectedPaymentRequest && (
                 <div className="mt-3 rounded-md border border-gray-200 bg-white p-3 text-sm text-gray-800">
                   <div className="font-semibold">

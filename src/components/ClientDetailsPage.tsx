@@ -1928,6 +1928,9 @@ const ClientDetailsPage: React.FC = () => {
                         Retreat
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Payment Request
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Type
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1966,6 +1969,16 @@ const ClientDetailsPage: React.FC = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {paymentRetreat ? getRetreatLabel(paymentRetreat) : 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {payment.paymentRequestId ? (() => {
+                              const request: any = payment.paymentRequestId;
+                              const requestId = getId(request);
+                              const label = typeof request === 'object'
+                                ? request.invoiceNumber || (request.display_id ? `#${request.display_id}` : `#${requestId.slice(-8)}`)
+                                : `#${requestId.slice(-8)}`;
+                              return <button type="button" onClick={() => navigate(`/admin/payment-requests/${requestId}`)} className="font-semibold text-blue-700 hover:underline">{label}</button>;
+                            })() : '—'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {payment.paymentType || payment.type || 'Payment'}

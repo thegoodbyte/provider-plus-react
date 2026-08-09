@@ -975,7 +975,18 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
                           </div>
                         )}
                       </td>
-                      <td>{formatPaymentRequestLabel(payment.paymentRequestId)}</td>
+                      <td>
+                        {payment.paymentRequestId ? (
+                          <button
+                            type="button"
+                            onClick={() => navigate(`${routePrefix}/payment-requests/${resolvePaymentId(payment.paymentRequestId)}`)}
+                            className="payment-request-link"
+                            title="Open payment request"
+                          >
+                            {formatPaymentRequestLabel(payment.paymentRequestId)}
+                          </button>
+                        ) : '-'}
+                      </td>
                       <td>
                         <span
                           className="payment-type-badge"
