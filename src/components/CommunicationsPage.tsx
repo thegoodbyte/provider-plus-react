@@ -485,6 +485,7 @@ const CommunicationsPage: React.FC = () => {
         replyTo: settings?.replyTo || '',
         autoCcEnabled: settings?.autoCcEnabled !== false,
         autoCcEmail: settings?.autoCcEmail || 'info@ibogaspirit.cz',
+        automatedBookingRemindersEnabled: settings?.automatedBookingRemindersEnabled === true,
         clientMedicalReviewEmailsEnabled: settings?.clientMedicalReviewEmailsEnabled !== false,
         clientMedicalApprovedEmailsEnabled: settings?.clientMedicalApprovedEmailsEnabled !== false,
         clientMedicalNeedsInfoEmailsEnabled: settings?.clientMedicalNeedsInfoEmailsEnabled === true,
@@ -712,6 +713,30 @@ const CommunicationsPage: React.FC = () => {
                 />
               </div>
               <p className="mt-2 text-xs text-blue-900">Applied by the API to popup sends, direct sends, and retreat bulk emails.</p>
+            </div>
+
+            <div className={`rounded-md border p-4 ${settings?.automatedBookingRemindersEnabled === true ? 'border-amber-300 bg-amber-50' : 'border-green-200 bg-green-50'}`}>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="font-semibold text-gray-900">Automated booking reminders</h3>
+                  <p className="mt-1 text-sm text-gray-700">
+                    Sends deadline and overdue emails for incomplete booking requirements. This is OFF by default and must be explicitly enabled here.
+                  </p>
+                </div>
+                <label className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold">
+                  <input
+                    type="checkbox"
+                    checked={settings?.automatedBookingRemindersEnabled === true}
+                    onChange={(event) => setSettings((prev) => ({ ...(prev || {}), automatedBookingRemindersEnabled: event.target.checked }))}
+                  />
+                  {settings?.automatedBookingRemindersEnabled === true ? 'ON' : 'OFF'}
+                </label>
+              </div>
+              <p className={`mt-3 text-sm font-semibold ${settings?.automatedBookingRemindersEnabled === true ? 'text-amber-800' : 'text-green-800'}`}>
+                {settings?.automatedBookingRemindersEnabled === true
+                  ? 'Warning: the background worker may email clients automatically.'
+                  : 'Kill switch active — no automatic booking reminder emails will be sent.'}
+              </p>
             </div>
 
             <div className="flex flex-wrap gap-2">

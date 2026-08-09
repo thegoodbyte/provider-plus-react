@@ -1529,6 +1529,7 @@ export interface MailSettings {
   replyTo?: string;
   autoCcEnabled?: boolean;
   autoCcEmail?: string;
+  automatedBookingRemindersEnabled?: boolean;
   clientMedicalReviewEmailsEnabled?: boolean;
   clientMedicalApprovedEmailsEnabled?: boolean;
   clientMedicalNeedsInfoEmailsEnabled?: boolean;
