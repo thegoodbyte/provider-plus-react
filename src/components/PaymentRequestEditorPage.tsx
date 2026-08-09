@@ -92,6 +92,8 @@ const PaymentRequestEditorPage: React.FC = () => {
 
   if (isView && id && paymentRequest) {
     const invoiceNumber = paymentRequest.invoiceNumber || paymentRequest.display_id || id;
+    const linkedPayment: any = paymentRequest.paymentId && typeof paymentRequest.paymentId === 'object' ? paymentRequest.paymentId : null;
+    const linkedPaymentId = linkedPayment?._id || (typeof paymentRequest.paymentId === 'string' ? paymentRequest.paymentId : '');
     return (
       <div className="p-6 max-w-5xl mx-auto">
         <div className="mb-6 flex items-center justify-between gap-4">
@@ -103,13 +105,13 @@ const PaymentRequestEditorPage: React.FC = () => {
             Back
           </button>
           <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => navigate(`/admin/payments/new?paymentRequestId=${id}`, { state: { returnTo: '/admin/payment-requests' } })}
-              className="px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700"
-            >
-              Add Payment
-            </button>
+            {!linkedPaymentId && paymentRequest.status !== 'paid' && <button
+                type="button"
+                onClick={() => navigate(`/admin/payments/new?paymentRequestId=${id}`, { state: { returnTo: '/admin/payment-requests' } })}
+                className="px-4 py-2 rounded-md bg-green-600 text-white hover:bg-green-700"
+              >
+                Add Payment
+              </button>}
             <button
               type="button"
               onClick={() => navigate(`/admin/payment-requests/${id}/edit`)}
@@ -167,6 +169,24 @@ const PaymentRequestEditorPage: React.FC = () => {
               <div className="text-xs font-semibold uppercase text-gray-500">Note</div>
               <div className="mt-1 whitespace-pre-wrap text-gray-900">{paymentRequest.note || paymentRequest.notes || '-'}</div>
             </div>
+          </div>
+
+          <div className="mt-6 border-t border-gray-200 pt-6">
+            <h2 className="text-lg font-semibold text-gray-900">Associated Payment</h2>
+            {linkedPaymentId ? (
+              <div className="mt-3 rounded-lg border border-green-200 bg-green-50 p-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div><div className="text-xs font-semibold uppercase text-green-700">Payment</div><div className="mt-1 font-semibold text-gray-900">#{linkedPayment?.display_id || linkedPaymentId}</div></div>
+                  <div><div className="text-xs font-semibold uppercase text-green-700">Amount</div><div className="mt-1 font-semibold text-gray-900">{formatAmount(linkedPayment?.bookingCurrencyAmount ?? linkedPayment?.amount, linkedPayment?.bookingCurrency || linkedPayment?.currency || paymentRequest.currency)}</div></div>
+                  <div><div className="text-xs font-semibold uppercase text-green-700">Paid Date</div><div className="mt-1 font-semibold text-gray-900">{formatDate(linkedPayment?.paymentDate || linkedPayment?.processedDate || paymentRequest.paidDate)}</div></div>
+                  <div><div className="text-xs font-semibold uppercase text-green-700">Method / Status</div><div className="mt-1 font-semibold text-gray-900">{[linkedPayment?.paymentMethod, linkedPayment?.status].filter(Boolean).join(' · ') || 'Linked'}</div></div>
+                  {(linkedPayment?.transactionReference || linkedPayment?.transactionId) && <div className="md:col-span-2"><div className="text-xs font-semibold uppercase text-green-700">Reference</div><div className="mt-1 font-semibold text-gray-900">{linkedPayment.transactionReference || linkedPayment.transactionId}</div></div>}
+                </div>
+                <button type="button" onClick={() => navigate(`/admin/payments/${linkedPaymentId}`)} className="mt-4 rounded-md bg-green-700 px-4 py-2 font-semibold text-white hover:bg-green-800">View Payment</button>
+              </div>
+            ) : (
+              <p className="mt-2 rounded-md bg-gray-50 p-4 text-gray-600">No payment is linked to this request.</p>
+            )}
           </div>
         </div>
       </div>

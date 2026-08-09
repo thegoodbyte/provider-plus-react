@@ -1515,7 +1515,7 @@ export interface PaymentRequest {
   requestedAmount?: number;
   fullPrice?: number;
   notes?: string;
-  paymentId?: string;
+  paymentId?: string | Payment;
   sentToClient?: boolean;
   clientNotified?: Date | string;
   lastReminderDate?: Date | string;
