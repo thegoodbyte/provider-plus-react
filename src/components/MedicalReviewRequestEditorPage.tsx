@@ -27,6 +27,7 @@ type FormState = {
   reviewNotes: string;
   overallNotes: string;
   medicalStaffNotes: string;
+  clientVisibleAdminNote: string;
 };
 
 const reviewTypeByArtifact = (artifactType: MedicalArtifact['artifactType']): NonNullable<MedicalReviewRequest['requestType']> => {
@@ -158,7 +159,10 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
     reviewNotes: '',
     overallNotes: '',
     medicalStaffNotes: '',
+    clientVisibleAdminNote: '',
   });
+
+  const [loadedClientVisibleAdminNote, setLoadedClientVisibleAdminNote] = useState('');
 
   const [requestNumber, setRequestNumber] = useState<number | null>(null);
 
@@ -235,7 +239,9 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           reviewNotes: record.reviewNotes || '',
           overallNotes: record.overallNotes || '',
           medicalStaffNotes: record.medicalStaffNotes || '',
+          clientVisibleAdminNote: record.clientVisibleAdminNote || '',
         });
+        setLoadedClientVisibleAdminNote(record.clientVisibleAdminNote || '');
       }
     } catch (error) {
       console.error('Error loading review request editor data:', error);
@@ -349,6 +355,9 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           overallNotes: form.overallNotes,
           medicalStaffNotes: form.medicalStaffNotes,
         });
+        if (isAdmin && form.clientVisibleAdminNote.trim() !== loadedClientVisibleAdminNote.trim()) {
+          await medicalReviewRequestsApi.updateClientVisibleAdminNote(id, form.clientVisibleAdminNote);
+        }
       } else {
         const payload = {
           clientId: form.clientId,
@@ -390,6 +399,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
   }
 
   const selectedArtifacts = clientArtifacts.filter((artifact) => artifact._id && form.artifactIds.includes(artifact._id));
+  const isAdmin = user?.role === 'admin' || user?.originalRole === 'admin';
 
   return (
     <div className="min-h-[calc(100vh-96px)] bg-white px-3 py-4 sm:px-6">
@@ -597,6 +607,27 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
             </label>
           </div>
         </div>
+
+        {isEdit && isAdmin && (
+          <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+            <label htmlFor="client-visible-admin-note" className="mb-2 block text-sm font-semibold text-indigo-950">
+              Client-visible admin note
+            </label>
+            <p className="mb-3 text-sm text-indigo-800">
+              This message is shown to the client in IbogaReady below their submitted medical form. Medical advisor notes above remain private.
+            </p>
+            <textarea
+              id="client-visible-admin-note"
+              value={form.clientVisibleAdminNote}
+              onChange={(event) => setForm({ ...form, clientVisibleAdminNote: event.target.value })}
+              rows={5}
+              maxLength={5000}
+              className="w-full rounded-md border border-indigo-200 bg-white px-3 py-2 text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              placeholder="Write the message the client should see..."
+            />
+            <div className="mt-1 text-right text-xs text-indigo-700">{form.clientVisibleAdminNote.length}/5000</div>
+          </div>
+        )}
 
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="rounded-lg border border-gray-200 bg-white p-4">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiChevronDown, FiDownload, FiEdit3, FiEye, FiMail, FiSend, FiX } from 'react-icons/fi';
+import { FiArrowLeft, FiCheck, FiChevronDown, FiDownload, FiEdit3, FiEye, FiMail, FiSend, FiX } from 'react-icons/fi';
 import { message } from 'antd';
 import { bookingsApi, bookingDocumentsApi, bookingFlowApi, ceremoniesApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import BookingPaymentManagement from './BookingPaymentManagement';
@@ -32,6 +32,8 @@ type RequirementDefinition = {
   documentTypes?: MedicalArtifact['documentType'][];
   bookingDocumentTypes?: string[];
   readinessGroups: string[];
+  library: 'medical_artifacts' | 'booking_documents' | 'both';
+  matchTerms?: string[];
 };
 
 interface BookingDetailViewProps {
@@ -42,12 +44,12 @@ interface BookingDetailViewProps {
 const HeaderIcon: React.FC<{ icon: any }> = ({ icon: IconComponent }) => <IconComponent />;
 
 const requirementDefinitions: RequirementDefinition[] = [
-  { key: 'contract', label: 'Contract', artifactTypes: ['contract'], bookingDocumentTypes: ['contract'], readinessGroups: ['contract'] },
-  { key: 'ekg', label: 'Entry EKG', artifactTypes: ['ekg'], documentTypes: ['EKG'], readinessGroups: ['ekg'] },
-  { key: 'liver', label: 'Entry Liver Panel', artifactTypes: ['liver_panel'], documentTypes: ['Liver'], bookingDocumentTypes: ['liver_panel'], readinessGroups: ['liver'] },
-  { key: 'medications', label: 'Medications Form', artifactTypes: ['medications_form', 'medication_list'], documentTypes: ['Medications'], bookingDocumentTypes: ['medications_form'], readinessGroups: ['medications'] },
-  { key: 'questionnaire', label: 'Questionnaire', artifactTypes: ['questionnaire'], bookingDocumentTypes: ['questionnaire'], readinessGroups: ['questionnaire'] },
-  { key: 'food', label: 'Food Form', artifactTypes: ['food_intake'], bookingDocumentTypes: ['food_intake'], readinessGroups: ['food'] },
+  { key: 'contract', label: 'Contract', artifactTypes: ['contract'], bookingDocumentTypes: ['contract'], readinessGroups: ['contract'], library: 'booking_documents', matchTerms: ['contract'] },
+  { key: 'ekg', label: 'Entry EKG', artifactTypes: ['ekg'], documentTypes: ['EKG'], readinessGroups: ['ekg'], library: 'medical_artifacts', matchTerms: ['ekg'] },
+  { key: 'liver', label: 'Entry Liver Panel', artifactTypes: ['liver_panel'], documentTypes: ['Liver'], bookingDocumentTypes: ['liver_panel'], readinessGroups: ['liver'], library: 'medical_artifacts', matchTerms: ['liver'] },
+  { key: 'medications', label: 'Medications Form', artifactTypes: ['medications_form', 'medication_list'], documentTypes: ['Medications', 'meds'], bookingDocumentTypes: ['medications_form'], readinessGroups: ['medications'], library: 'both', matchTerms: ['medication', 'medications', 'meds'] },
+  { key: 'questionnaire', label: 'Questionnaire', artifactTypes: ['questionnaire'], bookingDocumentTypes: ['questionnaire'], readinessGroups: ['questionnaire'], library: 'both', matchTerms: ['questionnaire', 'health questionnaire'] },
+  { key: 'food', label: 'Food Form', artifactTypes: ['food_intake'], bookingDocumentTypes: ['food_intake'], readinessGroups: ['food'], library: 'both', matchTerms: ['food intake', 'food form', 'dietary'] },
 ];
 
 const completedStatuses = new Set(['received', 'reviewed', 'approved', 'completed', 'caution']);
@@ -111,6 +113,27 @@ const getClientDisplayId = (client: any, booking?: any) =>
 
 const normalizeBookingDocumentKey = (value?: string) =>
   String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+
+const artifactMatchesRequirement = (artifact: MedicalArtifact, definition: RequirementDefinition) => {
+  if (artifact.artifactType && definition.artifactTypes.includes(artifact.artifactType)) return true;
+  if (definition.documentTypes?.includes(artifact.documentType)) return true;
+  const searchable = [
+    artifact.title,
+    artifact.description,
+    artifact.source,
+    artifact.documentType,
+    artifact.artifactType,
+    ...(artifact.tags || []),
+  ].filter(Boolean).join(' ').toLowerCase();
+  return Boolean(definition.matchTerms?.some((term) => searchable.includes(term.toLowerCase())));
+};
+
+const documentMatchesRequirement = (document: BookingDocument, definition: RequirementDefinition) => {
+  const documentType = normalizeBookingDocumentKey(document.documentType);
+  if (definition.bookingDocumentTypes?.includes(documentType)) return true;
+  const searchable = [document.title, document.description, document.documentType].filter(Boolean).join(' ').toLowerCase();
+  return Boolean(definition.matchTerms?.some((term) => searchable.includes(term.toLowerCase())));
+};
 
 const getRetreatCode = (retreat: any) => {
   const explicitCode = String(retreat?.code || retreat?.retreatCode || '').trim();
@@ -425,7 +448,8 @@ const BookingRequirementsPanel: React.FC<{
   clientId?: string;
   retreatId?: string;
   refreshKey: number;
-}> = ({ bookingId, clientId, retreatId, refreshKey }) => {
+  onStatusChange?: (status: { missing: number; total: number }) => void;
+}> = ({ bookingId, clientId, retreatId, refreshKey, onStatusChange }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const routePrefix = useMemo(() => {
@@ -434,10 +458,14 @@ const BookingRequirementsPanel: React.FC<{
   }, [location.pathname]);
   const [items, setItems] = useState<BookingFlowItem[]>([]);
   const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
+  const [libraryArtifacts, setLibraryArtifacts] = useState<MedicalArtifact[]>([]);
   const [documents, setDocuments] = useState<BookingDocument[]>([]);
+  const [libraryDocuments, setLibraryDocuments] = useState<BookingDocument[]>([]);
   const [reviewsByArtifact, setReviewsByArtifact] = useState<Record<string, MedicalReviewRequest[]>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [linkingRequirement, setLinkingRequirement] = useState<RequirementDefinition | null>(null);
+  const [linkingRecordId, setLinkingRecordId] = useState('');
 
   const loadRequirements = async () => {
     const loadStart = performance.now();
@@ -450,8 +478,9 @@ const BookingRequirementsPanel: React.FC<{
       timings.items = performance.now() - itemsStart;
       const bookingFlowFilters = buildBookingFlowArtifactFilters(itemsResponse.data || []);
       const artifactsStart = performance.now();
-      const [artifactsResponse, documentsResponse] = await Promise.all([
+      const [artifactsResponse, documentsResponse, libraryDocumentsResponse] = await Promise.all([
         Promise.all([
+          medicalArtifactsApi.getForBooking(bookingId),
           medicalArtifactsApi.getAll({ bookingId, ...bookingFlowFilters }),
           medicalArtifactsApi.getAll({ bookingId }),
           clientId && retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId, ...bookingFlowFilters }) : Promise.resolve({ data: [] }),
@@ -459,16 +488,20 @@ const BookingRequirementsPanel: React.FC<{
           clientId ? medicalArtifactsApi.getAll({ clientId }) : Promise.resolve({ data: [] }),
         ]),
         bookingDocumentsApi.getAll({ bookingId }),
+        clientId ? bookingDocumentsApi.getAll({ clientId }) : Promise.resolve({ data: [] as BookingDocument[] }),
       ]);
       timings.artifacts = performance.now() - artifactsStart;
-      const loadedArtifacts: MedicalArtifact[] = mergeArtifacts(artifactsResponse.map((response) => response.data || []))
+      const allClientArtifacts: MedicalArtifact[] = mergeArtifacts(artifactsResponse.map((response) => response.data || []));
+      const loadedArtifacts = allClientArtifacts
         .filter((artifact) => isArtifactRelevantToBooking(artifact, bookingId, retreatId));
       const artifactIds = loadedArtifacts.map((artifact) => artifact._id).filter(Boolean) as string[];
       const reviewLoad = await loadReviewsByArtifactIds(artifactIds);
       timings.reviews = reviewLoad.duration;
       setItems(itemsResponse.data || []);
       setArtifacts(loadedArtifacts);
+      setLibraryArtifacts(allClientArtifacts);
       setDocuments(documentsResponse.data || []);
+      setLibraryDocuments(libraryDocumentsResponse.data || []);
       setReviewsByArtifact(reviewLoad.reviewsByArtifact);
       timings.total = performance.now() - loadStart;
       timings.reviewCount = reviewLoad.count;
@@ -492,15 +525,17 @@ const BookingRequirementsPanel: React.FC<{
       const expectedArtifact = item.metadata?.expectedArtifact || template?.expectedArtifact;
       return definition.readinessGroups.includes(readinessGroup) || definition.artifactTypes.includes(expectedArtifact);
     });
-    const relatedArtifacts = artifacts
-      .filter((artifact) => {
-        const matchesLegacyType = artifact.artifactType && definition.artifactTypes.includes(artifact.artifactType);
-        const matchesDocumentType = artifact.documentStage === 'entry' && definition.documentTypes?.includes(artifact.documentType);
-        return matchesLegacyType || matchesDocumentType;
-      })
+    const explicitlyLinkedArtifactIds = new Set(relatedItems.flatMap((item) => [
+      item.metadata?.linkedMedicalArtifactId,
+      ...(Array.isArray(item.metadata?.linkedMedicalArtifactIds) ? item.metadata?.linkedMedicalArtifactIds || [] : []),
+    ]).filter(Boolean).map(String));
+    const explicitlyLinkedDocumentIds = new Set(relatedItems.map((item) => item.metadata?.linkedBookingDocumentId).filter(Boolean).map(String));
+    const relatedArtifacts = mergeArtifacts([artifacts, libraryArtifacts.filter((artifact) => artifact._id && explicitlyLinkedArtifactIds.has(artifact._id))])
+      .filter((artifact) => artifactMatchesRequirement(artifact, definition))
       .sort(compareArtifactsForDisplay);
-    const relatedDocuments = documents
-      .filter((document) => definition.bookingDocumentTypes?.includes(normalizeBookingDocumentKey(document.documentType)) && (document.files || []).length > 0)
+    const relatedDocuments = [...documents, ...libraryDocuments.filter((document) => document._id && explicitlyLinkedDocumentIds.has(document._id))]
+      .filter((document, index, list) => document._id && list.findIndex((candidate) => candidate._id === document._id) === index)
+      .filter((document) => documentMatchesRequirement(document, definition) && (document.files || []).length > 0)
       .sort((a, b) => new Date(b.receivedAt || b.createdAt || 0).getTime() - new Date(a.receivedAt || a.createdAt || 0).getTime());
     const latestArtifact = relatedArtifacts[0];
     const latestDocument = relatedDocuments[0];
@@ -524,6 +559,55 @@ const BookingRequirementsPanel: React.FC<{
       relatedItems,
     };
   });
+  const missingCount = rows.filter((row) => row.required && !row.uploaded).length;
+  const requiredCount = rows.filter((row) => row.required).length;
+
+  useEffect(() => {
+    if (!loading && !error) {
+      onStatusChange?.({ missing: missingCount, total: requiredCount });
+    }
+  }, [error, loading, missingCount, onStatusChange, requiredCount]);
+
+  const linkExistingRecord = async (definition: RequirementDefinition, kind: 'artifact' | 'document', recordId: string) => {
+    const row = rows.find((candidate) => candidate.key === definition.key);
+    const flowItem = row?.relatedItems.find((item) => item._id) || row?.relatedItems[0];
+    try {
+      setLinkingRecordId(`${kind}:${recordId}`);
+      if (flowItem?._id) {
+        await bookingFlowApi.updateItem(flowItem._id, {
+          status: 'received',
+          completedAt: new Date().toISOString(),
+          metadata: {
+            ...(flowItem.metadata || {}),
+            ...(kind === 'artifact'
+              ? { linkedMedicalArtifactId: recordId, linkedMedicalArtifactIds: [recordId] }
+              : { linkedBookingDocumentId: recordId }),
+            linkedRequirementLibrary: kind === 'artifact' ? 'medical_artifacts' : 'booking_documents',
+            linkedRequirementKey: definition.key,
+          },
+        });
+      } else if (kind === 'artifact') {
+        await medicalArtifactsApi.update(recordId, { bookingId, retreatId, clientId } as Partial<MedicalArtifact>);
+      } else {
+        await bookingDocumentsApi.update(recordId, { bookingId });
+      }
+      setLinkingRequirement(null);
+      await loadRequirements();
+    } catch (linkError: any) {
+      setError(linkError?.response?.data?.message || linkError?.message || 'Unable to link the selected record.');
+    } finally {
+      setLinkingRecordId('');
+    }
+  };
+
+  const candidateArtifacts = linkingRequirement
+    ? libraryArtifacts.filter((artifact) => artifact._id && artifactMatchesRequirement(artifact, linkingRequirement)).sort(compareArtifactsForDisplay)
+    : [];
+  const candidateDocuments = linkingRequirement
+    ? libraryDocuments
+      .filter((document) => document._id && documentMatchesRequirement(document, linkingRequirement) && (document.files || []).length > 0)
+      .sort((a, b) => new Date(b.receivedAt || b.createdAt || 0).getTime() - new Date(a.receivedAt || a.createdAt || 0).getTime())
+    : [];
 
   return (
     <div className="detail-section">
@@ -580,7 +664,13 @@ const BookingRequirementsPanel: React.FC<{
                         Review #{row.latestReview.display_id || row.latestReview._id}
                       </button>
                     )}
-                    {!row.latestArtifact && !row.latestDocument && !row.latestReview && <span className="text-gray-500">No linked record</span>}
+                    <button
+                      type="button"
+                      className="font-semibold text-indigo-700 hover:underline"
+                      onClick={() => setLinkingRequirement(row)}
+                    >
+                      {row.latestArtifact || row.latestDocument ? 'Change linked record' : 'Find and link existing record'}
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -588,6 +678,65 @@ const BookingRequirementsPanel: React.FC<{
           </tbody>
         </table>
       </div>
+      {linkingRequirement && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="requirement-link-title">
+          <section className="max-h-[85vh] w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-2xl">
+            <header className="flex items-start justify-between gap-4 border-b border-gray-200 px-5 py-4">
+              <div>
+                <h2 id="requirement-link-title" className="text-lg font-semibold text-gray-900">Link {linkingRequirement.label}</h2>
+                <p className="mt-1 text-sm text-gray-500">
+                  Looking in {linkingRequirement.library === 'both' ? 'Medical Artifacts and Booking Documents' : linkingRequirement.library === 'medical_artifacts' ? 'Medical Artifacts' : 'Booking Documents'} for this client. Newest records are shown first.
+                </p>
+              </div>
+              <button type="button" onClick={() => setLinkingRequirement(null)} className="rounded-md border border-gray-300 p-2 text-gray-600 hover:bg-gray-50" aria-label="Close record lookup">
+                <HeaderIcon icon={FiX} />
+              </button>
+            </header>
+            <div className="max-h-[68vh] space-y-5 overflow-y-auto p-5">
+              {(linkingRequirement.library === 'medical_artifacts' || linkingRequirement.library === 'both') && (
+                <div>
+                  <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-600">Medical Artifacts</h3>
+                  {candidateArtifacts.length ? (
+                    <div className="space-y-2">
+                      {candidateArtifacts.map((artifact, index) => (
+                        <div key={artifact._id} className={`flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between ${index === 0 ? 'border-indigo-300 bg-indigo-50' : 'border-gray-200'}`}>
+                          <div>
+                            <div className="font-semibold text-gray-900">#{artifact.display_id || artifact._id} {artifact.title || artifact.documentType || artifact.artifactType}</div>
+                            <div className="mt-1 text-xs text-gray-500">{artifact.artifactType || 'artifact'} · {artifact.documentStage || 'entry'} · {formatShortDateTime(artifact.receivedAt || artifact.createdAt)} · {(artifact.files || []).length} file(s){index === 0 ? ' · latest' : ''}</div>
+                          </div>
+                          <button type="button" disabled={Boolean(linkingRecordId)} onClick={() => artifact._id && linkExistingRecord(linkingRequirement, 'artifact', artifact._id)} className="rounded-md bg-indigo-700 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-800 disabled:opacity-50">
+                            {linkingRecordId === `artifact:${artifact._id}` ? 'Linking...' : 'Link artifact'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : <p className="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-500">No matching medical artifacts found for this client.</p>}
+                </div>
+              )}
+              {(linkingRequirement.library === 'booking_documents' || linkingRequirement.library === 'both') && (
+                <div>
+                  <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-600">Booking Documents</h3>
+                  {candidateDocuments.length ? (
+                    <div className="space-y-2">
+                      {candidateDocuments.map((document, index) => (
+                        <div key={document._id} className={`flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between ${index === 0 ? 'border-blue-300 bg-blue-50' : 'border-gray-200'}`}>
+                          <div>
+                            <div className="font-semibold text-gray-900">#{document.display_id || document._id} {document.title || document.documentType}</div>
+                            <div className="mt-1 text-xs text-gray-500">{document.documentType} · {formatShortDateTime(document.receivedAt || document.createdAt)} · {(document.files || []).length} file(s){index === 0 ? ' · latest' : ''}</div>
+                          </div>
+                          <button type="button" disabled={Boolean(linkingRecordId)} onClick={() => document._id && linkExistingRecord(linkingRequirement, 'document', document._id)} className="rounded-md bg-blue-700 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-50">
+                            {linkingRecordId === `document:${document._id}` ? 'Linking...' : 'Link document'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : <p className="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-500">No matching booking documents found for this client.</p>}
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 };
@@ -990,6 +1139,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [pdfLanguage, setPdfLanguage] = useState<BookingConfirmationLanguage>('en');
   const [requirementsRefreshKey, setRequirementsRefreshKey] = useState(0);
+  const [requirementsStatus, setRequirementsStatus] = useState<{ missing: number; total: number } | null>(null);
   const [previewUrl, setPreviewUrl] = useState('');
   const [previewFileName, setPreviewFileName] = useState('');
   const [isPreviewingPDF, setIsPreviewingPDF] = useState(false);
@@ -1667,7 +1817,18 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
               role="tab"
               aria-selected={activeTab === tab.key}
             >
-              {tab.label}
+              <span>{tab.label}</span>
+              {tab.key === 'requirements' && requirementsStatus && (
+                requirementsStatus.missing > 0 ? (
+                  <span className="booking-requirements-tab-badge is-missing" aria-label={`${requirementsStatus.missing} missing requirements`}>
+                    {requirementsStatus.missing}
+                  </span>
+                ) : (
+                  <span className="booking-requirements-tab-badge is-complete" aria-label="All requirements complete">
+                    <HeaderIcon icon={FiCheck} />
+                  </span>
+                )
+              )}
             </button>
           ))}
         </div>
@@ -1922,14 +2083,15 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
 
         {activeTab === 'activity' && <BookingActivityTimeline bookingId={bookingId} />}
 
-        {activeTab === 'requirements' && (
+        <div hidden={activeTab !== 'requirements'}>
           <BookingRequirementsPanel
             bookingId={bookingId}
             clientId={getObjectId(client)}
             retreatId={getObjectId(retreat)}
             refreshKey={requirementsRefreshKey}
+            onStatusChange={setRequirementsStatus}
           />
-        )}
+        </div>
 
         {activeTab === 'medical' && (
           <BookingMedicalOverviewPanel

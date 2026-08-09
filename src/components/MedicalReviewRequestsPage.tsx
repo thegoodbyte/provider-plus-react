@@ -444,6 +444,9 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [reviewDecision, setReviewDecision] = useState<(typeof decisionOptions)[number] | ''>('');
   const [medicalStaffNotes, setMedicalStaffNotes] = useState('');
   const [savingReview, setSavingReview] = useState(false);
+  const [clientVisibleAdminNote, setClientVisibleAdminNote] = useState('');
+  const [savingClientVisibleAdminNote, setSavingClientVisibleAdminNote] = useState(false);
+  const [clientVisibleAdminNoteStatus, setClientVisibleAdminNoteStatus] = useState('');
   const [fileReviews, setFileReviews] = useState<FileReviewDraft[]>([]);
   const [reviewContext, setReviewContext] = useState<ReviewContext | null>(null);
   const [generatedMedicalSummary, setGeneratedMedicalSummary] = useState<{ summary: string; generatedBy: 'rules' | 'openai'; model?: string; unavailableReason?: string; generatedAt: string } | null>(null);
@@ -507,6 +510,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
         }
         setReviewDecision(normalizeMedicalReviewDecision(selectedItem.reviewDecision) as (typeof decisionOptions)[number] | '');
         setMedicalStaffNotes(selectedItem.medicalStaffNotes || selectedItem.overallNotes || selectedItem.reviewNotes || '');
+        setClientVisibleAdminNote(selectedItem.clientVisibleAdminNote || '');
+        setClientVisibleAdminNoteStatus('');
         setFileReviews((selectedItem.fileReviews || []).map((review: NonNullable<MedicalReviewRequest['fileReviews']>[number]) => ({
           ...sanitizeFileReviewDraft(review),
           decision: normalizeMedicalReviewDecision(review.decision) || '',
@@ -647,6 +652,25 @@ const MedicalReviewRequestsPage: React.FC = () => {
       alert(error?.response?.data?.message || error?.message || 'Unable to generate medical review access link.');
     } finally {
       setAccessLinkBusy(false);
+    }
+  };
+
+  const handleSaveClientVisibleAdminNote = async () => {
+    if (!selected?._id || user?.role !== 'admin') return;
+    try {
+      setSavingClientVisibleAdminNote(true);
+      setClientVisibleAdminNoteStatus('');
+      const response = await medicalReviewRequestsApi.updateClientVisibleAdminNote(
+        selected._id,
+        clientVisibleAdminNote,
+      );
+      setSelected(response.data);
+      setClientVisibleAdminNote(response.data.clientVisibleAdminNote || '');
+      setClientVisibleAdminNoteStatus(clientVisibleAdminNote.trim() ? 'Client message saved.' : 'Client message removed.');
+    } catch (error: any) {
+      setClientVisibleAdminNoteStatus(error?.response?.data?.message || 'Unable to save the client message.');
+    } finally {
+      setSavingClientVisibleAdminNote(false);
     }
   };
 
@@ -1900,6 +1924,42 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   </>
                 )}
               </div>
+
+              {user?.role === 'admin' && (
+                <section className="rounded-md border border-indigo-200 bg-indigo-50 p-3">
+                  <label htmlFor="mrr-client-visible-admin-note" className="block text-sm font-semibold text-indigo-950">
+                    Client-visible admin note
+                  </label>
+                  <p className="mt-1 text-xs leading-relaxed text-indigo-800">
+                    This is the message shown below the client’s submitted medical form in IbogaReady. The medical advisor’s notes remain private.
+                  </p>
+                  <textarea
+                    id="mrr-client-visible-admin-note"
+                    value={clientVisibleAdminNote}
+                    onChange={(event) => {
+                      setClientVisibleAdminNote(event.target.value);
+                      setClientVisibleAdminNoteStatus('');
+                    }}
+                    rows={4}
+                    maxLength={5000}
+                    className="mt-3 w-full rounded-md border border-indigo-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                    placeholder="Write the client-safe explanation here..."
+                  />
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs text-indigo-700">
+                      {clientVisibleAdminNoteStatus || `${clientVisibleAdminNote.length}/5000 characters`}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleSaveClientVisibleAdminNote}
+                      disabled={savingClientVisibleAdminNote}
+                      className="rounded-md bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-800 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {savingClientVisibleAdminNote ? 'Saving...' : 'Save client message'}
+                    </button>
+                  </div>
+                </section>
+              )}
 
               {validationError && (
                 <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

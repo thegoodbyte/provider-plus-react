@@ -474,7 +474,10 @@
 }
 
 .booking-detail-tab {
+  align-items: center;
+  display: inline-flex;
   flex: 0 0 auto;
+  gap: 7px;
   min-height: 40px;
   padding: 0 14px;
   border: 1px solid #d1d5db;
@@ -484,6 +487,39 @@
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
+}
+
+.booking-requirements-tab-badge {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 800;
+  height: 20px;
+  justify-content: center;
+  line-height: 1;
+  min-width: 20px;
+  padding: 0 5px;
+}
+
+.booking-requirements-tab-badge.is-missing {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.booking-requirements-tab-badge.is-complete {
+  background: #16a34a;
+  color: #ffffff;
+  padding: 0;
+}
+
+.booking-requirements-tab-badge.is-complete svg {
+  height: 13px;
+  width: 13px;
+}
+
+.booking-detail-tab.active .booking-requirements-tab-badge {
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.28);
 }
 
 .booking-detail-tab:hover {

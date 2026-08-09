@@ -1190,6 +1190,10 @@ export interface MedicalReviewRequest {
   reviewDecision?: 'OK' | 'caution' | 'more_info_needed' | 'NOT OK';
   overallNotes?: string;
   medicalStaffNotes?: string;
+  clientVisibleAdminNote?: string;
+  clientVisibleAdminNoteUpdatedAt?: Date | string;
+  clientVisibleAdminNoteUpdatedByUserId?: string | any;
+  clientVisibleAdminNoteUpdatedBy?: string;
   fileReviews?: Array<{
     artifactId?: string;
     fileKey?: string;

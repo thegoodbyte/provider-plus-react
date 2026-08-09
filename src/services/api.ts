@@ -1126,6 +1126,10 @@ export const medicalReviewRequestsApi = {
     cacheService.clearPattern('medical-review-requests:');
     return api.patch<MedicalReviewRequest>(`/medical-review-requests/${id}`, data);
   },
+  updateClientVisibleAdminNote: (id: string, note: string) => {
+    cacheService.clearPattern('medical-review-requests:');
+    return api.patch<MedicalReviewRequest>(`/medical-review-requests/${id}/client-visible-admin-note`, { note });
+  },
   getPublic: (token: string) => api.get<{ request: MedicalReviewRequest; artifacts: MedicalArtifact[] }>(
     `/medical-review-public/${encodeURIComponent(token)}`,
     { suppressAuthRedirect: true, suppressGlobalError: true } as any
