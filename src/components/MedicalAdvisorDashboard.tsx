@@ -189,15 +189,15 @@ const MedicalAdvisorDashboard: React.FC = () => {
         </button>
         <button type="button" className="medical-stat-card attention" onClick={() => setFilter('needs_resubmission')}>
           <span className="medical-stat-value">{stats.attention}</span>
-          <span className="medical-stat-label">Needs Info / Caution</span>
+          <span className="medical-stat-label">Need more info / Caution</span>
         </button>
         <button type="button" className="medical-stat-card approved" onClick={() => setFilter('approved')}>
           <span className="medical-stat-value">{stats.approved}</span>
-          <span className="medical-stat-label">Approved</span>
+          <span className="medical-stat-label">Approved / OK</span>
         </button>
         <button type="button" className="medical-stat-card rejected" onClick={() => setFilter('rejected')}>
           <span className="medical-stat-value">{stats.rejected}</span>
-          <span className="medical-stat-label">Denied</span>
+          <span className="medical-stat-label">Declined / Not OK</span>
         </button>
       </div>
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { retreatsApi, bookingsApi, retreatExpensesApi, paymentsApi, clientsApi, housesApi, communicationsApi, contactBookApi } from '../services/api';
-import { Retreat, ExpenseSummary, House, Payment, EmailTemplate, ContactBookEntry, RetreatStaffAssignment } from '../types';
+import { retreatsApi, bookingsApi, retreatExpensesApi, paymentsApi, clientsApi, housesApi, communicationsApi, contactBookApi, bookingFlowApi } from '../services/api';
+import { Retreat, ExpenseSummary, House, Payment, EmailTemplate, ContactBookEntry, RetreatStaffAssignment, BookingFlowTemplate } from '../types';
 import ExpensesTab from './ExpensesTab';
 import PaymentsTab from './PaymentsTab';
 import ClientDetailView from './ClientDetailView';
@@ -9,8 +9,10 @@ import CeremoniesGrid from './CeremoniesGrid';
 import CeremonyAnalytics from './CeremonyAnalytics';
 import SearchableClientSelector from './SearchableClientSelector';
 import RetreatTrackingGrid from './RetreatTrackingGrid';
+import DrugScreeningTab from './DrugScreeningTab';
 import BookingStepsMatrix from './BookingStepsMatrix';
 import BookingEditorForm from './BookingEditorForm';
+import RetreatReserveListPanel from './RetreatReserveListPanel';
 import { TasksWidget } from './Tasks/TasksWidget';
 import { Modal, Form, Input, Select, Button, Checkbox, message } from 'antd';
 import { Client } from '../types';
@@ -37,7 +39,9 @@ import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
 import SavingsRoundedIcon from '@mui/icons-material/SavingsRounded';
 import SpaRoundedIcon from '@mui/icons-material/SpaRounded';
 import TaskAltRoundedIcon from '@mui/icons-material/TaskAltRounded';
+import BiotechRoundedIcon from '@mui/icons-material/BiotechRounded';
 import './ClientsGrid.css';
+import { getEffectivePaidAmount, getPaymentAmountInBookingCurrency } from './retreatPaymentUtils';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -54,7 +58,7 @@ interface RetreatDetailViewProps {
   onTabChange?: (tab: RetreatDetailTab) => void;
 }
 
-export type RetreatDetailTab = 'clients' | 'holisticView' | 'tracking' | 'expenses' | 'payments' | 'ceremonies' | 'analytics' | 'tasks';
+export type RetreatDetailTab = 'clients' | 'reserveList' | 'holisticView' | 'tracking' | 'drugScreening' | 'expenses' | 'payments' | 'ceremonies' | 'analytics' | 'tasks';
 
 interface QuickBookingFormData {
   firstName: string;
@@ -80,7 +84,6 @@ interface RetreatClientData {
   clientName: string;
   clientEmail?: string;
   clientLanguage?: string;
-  referralCode?: string;
   clientPhone: string;
   clientProfilePictureUrl?: string;
   clientProfilePictureS3Key?: string;
@@ -90,8 +93,10 @@ interface RetreatClientData {
   checkOutDate?: string;
   status: string;
   totalAmount: number;
+  totalAmountUSD: number;
   amountPaid: number;
   amountPaidUSD: number;
+  cashPaidUSD: number;
   currency: string;
   roomAssignment?: string;
   specialRequests?: string;
@@ -113,16 +118,6 @@ const USD_FALLBACK_RATES: Record<string, number> = {
 const convertAmountToUSD = (amount: number, currency?: string) => {
   const rate = USD_FALLBACK_RATES[(currency || 'USD').toUpperCase()] || 1;
   return amount * rate;
-};
-
-const convertUSDToAmount = (amountUSD: number, currency?: string) => {
-  const rate = USD_FALLBACK_RATES[(currency || 'USD').toUpperCase()] || 1;
-  return rate ? amountUSD / rate : amountUSD;
-};
-
-const convertAmount = (amount: number, fromCurrency?: string, toCurrency?: string) => {
-  if ((fromCurrency || '').toUpperCase() === (toCurrency || '').toUpperCase()) return amount;
-  return convertUSDToAmount(convertAmountToUSD(amount, fromCurrency), toCurrency);
 };
 
 const formatUSD = (amount: number) => {
@@ -285,8 +280,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [scheduledRetreats, setScheduledRetreats] = useState<Retreat[]>([]);
   const [clients, setClients] = useState<RetreatClientData[]>([]);
   const [expensesSummary, setExpensesSummary] = useState<ExpenseSummary | null>(null);
-  const [retreatPayments, setRetreatPayments] = useState<Payment[]>([]);
-  const [metricsUpdatedAt, setMetricsUpdatedAt] = useState<Date>(new Date());
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<RetreatDetailTab>(initialTab);
   const [viewingClientId, setViewingClientId] = useState<string | null>(null);
@@ -306,6 +299,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   });
   const [showRetreatEmailModal, setShowRetreatEmailModal] = useState(false);
   const [retreatEmailTemplates, setRetreatEmailTemplates] = useState<EmailTemplate[]>([]);
+  const [retreatEmailStepTemplates, setRetreatEmailStepTemplates] = useState<BookingFlowTemplate[]>([]);
   const [retreatEmailLoading, setRetreatEmailLoading] = useState(false);
   const [excludedRetreatEmailClientIds, setExcludedRetreatEmailClientIds] = useState<string[]>([]);
   const [metricsCollapsed, setMetricsCollapsed] = useState(true);
@@ -373,15 +367,14 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     }
   };
 
-  const fetchRetreatData = useCallback(async () => {
+  const fetchRetreatData = useCallback(async (showLoading = true) => {
     try {
-      setIsLoading(true);
-      const [retreatResponse, clientsResponse, expensesSummaryResponse, retreatsResponse, paymentsResponse] = await Promise.all([
+      if (showLoading) setIsLoading(true);
+      const [retreatResponse, clientsResponse, expensesSummaryResponse, retreatsResponse] = await Promise.all([
         retreatsApi.getOne(retreatId),
         bookingsApi.getByRetreatWithDetails(retreatId),
         retreatExpensesApi.getRetreatSummary(retreatId),
-        retreatsApi.getAll(),
-        paymentsApi.getByRetreat(retreatId),
+        retreatsApi.getAll()
       ]);
 
       setRetreat(retreatResponse.data);
@@ -391,17 +384,50 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           const dateDifference = new Date(left.startDate!).getTime() - new Date(right.startDate!).getTime();
           return dateDifference || String(left._id).localeCompare(String(right._id));
         }));
+      await loadHeroImageUrl(retreatResponse.data);
       setExpensesSummary(expensesSummaryResponse.data);
 
       const getObjectId = (value: any) => typeof value === 'object' ? value?._id || value?.id : value;
-      const payments = Array.isArray(paymentsResponse.data) ? paymentsResponse.data : [];
-      setRetreatPayments(payments);
-      setMetricsUpdatedAt(new Date());
+      const [paymentResults, totalUsdResults] = await Promise.all([
+        Promise.all((clientsResponse.data || []).map(async (booking: any) => {
+        const bookingId = getObjectId(booking);
+        const lookups = await Promise.allSettled([
+          paymentsApi.getByBooking(bookingId),
+          booking.bookingHash
+            ? paymentsApi.getByBookingHash(booking.bookingHash)
+            : Promise.resolve({ data: [] as Payment[] }),
+        ]);
+        const exactBookingPayments = new Map<string, Payment>();
+        lookups.forEach((lookup) => {
+          if (lookup.status !== 'fulfilled') return;
+          (lookup.value.data || []).forEach((payment: Payment) => {
+            if (!payment._id) return;
+            exactBookingPayments.set(payment._id, { ...payment, bookingId } as Payment);
+          });
+        });
+        return Array.from(exactBookingPayments.values());
+        })),
+        Promise.all((clientsResponse.data || []).map(async (booking: any) => {
+          const currency = booking.currency || 'EUR';
+          try {
+            const response = await paymentsApi.convertToUsd(Number(booking.totalAmount || 0), currency);
+            return Number(response.data.usd_amount || 0);
+          } catch {
+            return convertAmountToUSD(Number(booking.totalAmount || 0), currency);
+          }
+        })),
+      ]);
+      const payments = paymentResults.flat();
       const getPaymentsForBooking = (booking: any) => {
         const bookingId = getObjectId(booking);
-        return payments.filter((payment: Payment) => getObjectId(payment.bookingId) === bookingId);
+        return payments.filter((payment: Payment) =>
+          getObjectId(payment.bookingId) === bookingId
+          || Boolean(booking.bookingHash && payment.bookingHash === booking.bookingHash)
+        );
       };
-      const getPaymentNetAmount = (payment: Payment) => Math.max((payment.amount || 0) - (payment.refundedAmount || 0), 0);
+      const getPaymentNetAmount = (payment: Payment) => payment.paymentType === 'refund'
+        ? -Math.abs(payment.amount || 0)
+        : Math.max((payment.amount || 0) - (payment.refundedAmount || 0), 0);
       const getPaymentNetUSD = (payment: Payment) => {
         const netAmount = getPaymentNetAmount(payment);
         if (typeof payment.usd_amount === 'number') {
@@ -412,19 +438,20 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       };
       const getPaidAmountForBooking = (booking: any) => {
         const targetCurrency = booking.currency || 'EUR';
-        const matchedPayments = getPaymentsForBooking(booking);
-        return matchedPayments
-          .filter((payment: Payment) => payment.status === 'completed')
-          .reduce((sum: number, payment: Payment) => {
-            return sum + convertAmount(getPaymentNetAmount(payment), payment.currency, targetCurrency);
-          }, 0);
+        return getPaymentsForBooking(booking).reduce(
+          (sum: number, payment: Payment) => sum + getPaymentAmountInBookingCurrency(payment, targetCurrency),
+          0,
+        );
       };
       const getPaidUsdForBooking = (booking: any) => getPaymentsForBooking(booking)
         .filter((payment: Payment) => payment.status === 'completed')
         .reduce((sum: number, payment: Payment) => sum + getPaymentNetUSD(payment), 0);
+      const getCashPaidUsdForBooking = (booking: any) => getPaymentsForBooking(booking)
+        .filter((payment: Payment) => payment.status === 'completed' && payment.paymentType !== 'currency_adjustment')
+        .reduce((sum: number, payment: Payment) => sum + getPaymentNetUSD(payment), 0);
 
       // Transform booking data to client data format
-      const transformedClients: RetreatClientData[] = clientsResponse.data.map((booking: any) => {
+      const transformedClients: RetreatClientData[] = clientsResponse.data.map((booking: any, bookingIndex: number) => {
         const currency = booking.currency || 'EUR';
         return {
           _id: booking._id,
@@ -440,7 +467,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             : 'Unknown Client',
           clientEmail: booking.clientId?.email || '',
           clientLanguage: booking.clientId?.language || '',
-          referralCode: booking.clientId?.referralId?.referralCode || '',
           clientPhone: booking.clientId?.phone || '',
           clientProfilePictureUrl: booking.clientId?.profilePictureUrl || '',
           clientProfilePictureS3Key: booking.clientId?.profilePictureS3Key || '',
@@ -450,8 +476,10 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           checkOutDate: booking.checkOutDate,
           status: booking.status || 'pending',
           totalAmount: booking.totalAmount || 0,
+          totalAmountUSD: totalUsdResults[bookingIndex] || convertAmountToUSD(Number(booking.totalAmount || 0), currency),
           amountPaid: getPaidAmountForBooking({ ...booking, currency }),
           amountPaidUSD: getPaidUsdForBooking(booking),
+          cashPaidUSD: getCashPaidUsdForBooking(booking),
           currency,
           roomAssignment: booking.roomAssignment,
           specialRequests: booking.specialRequests,
@@ -471,7 +499,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       setClients([]);
       setExpensesSummary(null);
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
   }, [retreatId]);
 
@@ -740,6 +768,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         registrationDate: new Date().toISOString(),
         amountPaid: 0,
         amountPaidUSD: 0,
+        cashPaidUSD: 0,
       };
       if (retreat?.startDate) bookingData.checkInDate = retreat.startDate;
       if (retreat?.endDate) bookingData.checkOutDate = retreat.endDate;
@@ -749,7 +778,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       message.success(`${values.firstName} ${values.lastName} has been booked for this retreat!`);
       quickBookingForm.resetFields();
       setShowQuickBookingModal(false);
-      await fetchRetreatData(); // Refresh the data
+      void fetchRetreatData(false); // Refresh silently without holding the booking dialog open.
     } catch (error: any) {
       console.error('Error creating quick booking:', error);
       message.error(error.response?.data?.message || 'Failed to create booking');
@@ -769,14 +798,20 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       templateId: '',
       subject: `Information for ${retreatLabel}`,
       bodyText: '',
+      bookingFlowStepKey: '',
+      bookingFlowStatusOnSend: 'completed',
     });
     setExcludedRetreatEmailClientIds([]);
     setShowRetreatEmailModal(true);
 
-    if (retreatEmailTemplates.length === 0) {
+    if (retreatEmailTemplates.length === 0 || retreatEmailStepTemplates.length === 0) {
       try {
-        const response = await communicationsApi.getTemplates();
-        setRetreatEmailTemplates((response.data || []).filter((template: EmailTemplate) => template.active !== false));
+        const [templateResponse, stepResponse] = await Promise.all([
+          retreatEmailTemplates.length === 0 ? communicationsApi.getTemplates() : Promise.resolve({ data: retreatEmailTemplates }),
+          retreatEmailStepTemplates.length === 0 && retreatId ? bookingFlowApi.getTemplates(retreatId) : Promise.resolve({ data: retreatEmailStepTemplates }),
+        ]);
+        setRetreatEmailTemplates((templateResponse.data || []).filter((template: EmailTemplate) => template.active !== false));
+        setRetreatEmailStepTemplates((stepResponse.data || []).filter((step: BookingFlowTemplate) => step.active !== false));
       } catch (error) {
         console.error('Error loading email templates:', error);
         message.warning('Email templates could not be loaded. You can still write the email manually.');
@@ -786,14 +821,19 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
 
   const handleRetreatEmailTemplateChange = (templateId: string) => {
     const template = retreatEmailTemplates.find((item) => item._id === templateId);
-    if (!template) return;
+    if (!template) {
+      retreatEmailForm.setFieldsValue({ bookingFlowStepKey: '', bookingFlowStatusOnSend: 'completed' });
+      return;
+    }
     retreatEmailForm.setFieldsValue({
       subject: template.subject || '',
       bodyText: template.bodyText || '',
+      bookingFlowStepKey: template.bookingFlowStepKey || '',
+      bookingFlowStatusOnSend: template.bookingFlowStatusOnSend || (template.bookingFlowStepKey ? 'completed' : undefined),
     });
   };
 
-  const handleRetreatEmailSend = async (values: { templateId?: string; subject: string; bodyText: string }) => {
+  const handleRetreatEmailSend = async (values: { templateId?: string; subject: string; bodyText: string; bookingFlowStepKey?: string; bookingFlowStatusOnSend?: string }) => {
     try {
       setRetreatEmailLoading(true);
       const response = await communicationsApi.sendRetreatEmail(retreatId, {
@@ -911,19 +951,28 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   );
 
   const bookingStatusLabel = (status: string) => ({ pending: 'Conditional', confirmed: 'Confirmed', 'checked-in': 'Checked in', 'checked-out': 'Completed', cancelled: 'Cancelled' }[status] || status);
+  const effectiveAmountPaid = (client: RetreatClientData) => getEffectivePaidAmount(
+    client.totalAmount,
+    client.totalAmountUSD,
+    client.amountPaid,
+    client.amountPaidUSD,
+  );
   const paymentStatusLabel = (client: RetreatClientData) => {
+    const paidAmount = effectiveAmountPaid(client);
     if (client.status === 'cancelled') {
       if (client.cancellationDepositTreatment === 'none') return 'No payment';
       if (client.cancellationDepositTreatment === 'retained') return 'Deposit retained';
       if (client.cancellationDepositTreatment === 'credited') return 'Credit transferred';
       if (client.cancellationDepositTreatment === 'partially_refunded') return 'Partial refund';
-      if (client.cancellationDepositTreatment === 'refund_pending') return client.amountPaid <= 0 ? 'Refunded' : 'Refund pending';
+      if (client.cancellationDepositTreatment === 'refund_pending') return paidAmount <= 0 ? 'Refunded' : 'Refund pending';
     }
-    if (client.amountPaid <= 0) return 'No payment';
-    if (client.amountPaid >= client.totalAmount) return client.amountPaid > client.totalAmount ? 'Overpaid' : 'Paid in full';
-    return 'Deposit paid · Balance due';
+    if (client.totalAmount > 0 && paidAmount >= client.totalAmount - 0.01) {
+      return paidAmount > client.totalAmount + 0.01 ? 'Overpaid' : 'Paid in full';
+    }
+    const remainingBalance = Math.max(client.totalAmount - paidAmount, 0);
+    return `Balance ${formatAmount(remainingBalance, client.currency)}`;
   };
-  const paymentStatusClass = (client: RetreatClientData) => client.amountPaid >= client.totalAmount && client.totalAmount > 0 ? 'bg-green-100 text-green-800' : client.status === 'cancelled' ? 'bg-gray-100 text-gray-700' : 'bg-amber-100 text-amber-800';
+  const paymentStatusClass = (client: RetreatClientData) => effectiveAmountPaid(client) >= client.totalAmount - 0.01 && client.totalAmount > 0 ? 'bg-green-100 text-green-800' : client.status === 'cancelled' ? 'bg-gray-100 text-gray-700' : 'bg-amber-100 text-amber-800';
 
   const openCancellation = (client: RetreatClientData) => {
     setCancellingBooking(client);
@@ -980,50 +1029,19 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     );
   }
 
-  const totalRevenueUSD = clients.reduce((sum, client) => sum + (client.amountPaidUSD || 0), 0);
+  const totalRevenueUSD = clients.reduce((sum, client) => sum + (client.cashPaidUSD || 0), 0);
   const totalExpectedUSD = clients.reduce(
     (sum, client) => sum + convertAmountToUSD(client.totalAmount || 0, client.currency),
     0
   );
-  const plannedExpensesUSD = expensesSummary?.plannedExpensesUSD ?? 0;
+  const plannedExpensesUSD = expensesSummary?.plannedExpensesUSD ?? expensesSummary?.totalExpensesUSD ?? 0;
   const actualExpensesUSD = expensesSummary?.actualExpensesUSD ?? expensesSummary?.totalExpensesUSD ?? 0;
-  const expectedExpensesUSD = actualExpensesUSD + plannedExpensesUSD;
   const profitUSD = totalRevenueUSD - actualExpensesUSD;
-  const expectedProfitUSD = totalExpectedUSD - expectedExpensesUSD;
+  const expectedProfitUSD = totalExpectedUSD - plannedExpensesUSD;
   const occupancyRate = retreat.capacity ? Math.round((activeClientCount / retreat.capacity) * 100) : 0;
-  const collectedPercentage = totalExpectedUSD > 0
-    ? Math.min(100, Math.round((totalRevenueUSD / totalExpectedUSD) * 100))
-    : 0;
-  const outstandingRevenueUSD = Math.max(totalExpectedUSD - totalRevenueUSD, 0);
-  const completedPayments = retreatPayments.filter((payment) => payment.status === 'completed');
-  const lastPaymentDate = completedPayments
-    .map((payment) => new Date(payment.paymentDate || payment.createdAt || 0))
-    .filter((date) => !Number.isNaN(date.getTime()))
-    .sort((left, right) => right.getTime() - left.getTime())[0];
-  const balancesDueCount = clients.filter((client) => client.totalAmount > client.amountPaid).length;
-  const expenseCategories = Object.entries(expensesSummary?.expensesByCategoryUSD || expensesSummary?.expensesByCategory || {})
-    .filter(([, amount]) => Number(amount) > 0)
-    .sort(([, left], [, right]) => Number(right) - Number(left))
-    .slice(0, 3)
-    .map(([category]) => category.replace(/_/g, ' ').toLowerCase());
-  const overbookedBy = Math.max(activeClientCount - Number(retreat.capacity || 0), 0);
-  const formatMetricDate = (date?: Date) => date
-    ? date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
-    : '—';
-  const formatMetricDateTime = (date: Date) => date.toLocaleString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
-  const formatMetricRetreatDate = (value?: string | Date) => value
-    ? new Date(value).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-    : 'Not set';
   const retreatCode = retreat.code || retreat.retreatCode || retreat.name || 'Retreat';
   const retreatCapacity = Number(retreat.capacity || 0);
   const retreatDateText = `${formatDate(retreat.startDate || '')} - ${formatDate(retreat.endDate || '')}`;
-  const metricRetreatDateText = `${formatMetricRetreatDate(retreat.startDate)} – ${formatMetricRetreatDate(retreat.endDate)}`;
   const currentRetreatIndex = scheduledRetreats.findIndex((item) => item._id === retreatId);
   const previousRetreat = currentRetreatIndex > 0 ? scheduledRetreats[currentRetreatIndex - 1] : null;
   const nextRetreat = currentRetreatIndex >= 0 && currentRetreatIndex < scheduledRetreats.length - 1
@@ -1125,10 +1143,12 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             <span className="retreat-action-label">Edit Retreat</span>
           </button>
         </div>
-        <div className="retreat-summary-line">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-600 shadow-sm">
           <span className="font-semibold text-gray-900">{retreatCode}</span>
+          <span aria-hidden="true">·</span>
+          <span>{activeClientCount}/{retreatCapacity} spots taken</span>
+          <span aria-hidden="true">·</span>
           <span>{retreatDateText}</span>
-          <strong>{activeClientCount} / {retreatCapacity} spots</strong>
         </div>
       </div>
 
@@ -1210,123 +1230,68 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       </Modal>
 
       <Modal
-        title={(
-          <div className="financial-metrics-title">
-            <strong>Financial metrics</strong>
-            <span>
-              {retreatCode} · {metricRetreatDateText} · {activeClientCount} active clients, {clients.filter((client) => client.status === 'confirmed').length} confirmed
-            </span>
-          </div>
-        )}
+        title="Financial Metrics"
         open={!metricsCollapsed}
         onCancel={() => setMetricsCollapsed(true)}
         footer={null}
         width={1000}
-        className="financial-metrics-modal"
         destroyOnClose
       >
-        <div className="financial-metrics-content">
-          <section className="financial-progress-card">
-            <div className="financial-progress-copy">
-              <div>
-                <span className="financial-kicker">Revenue collected</span>
-                <div className="financial-revenue-line">
-                  <strong>{formatUSD(totalRevenueUSD)}</strong>
-                  <span>of {formatUSD(totalExpectedUSD)} expected</span>
-                </div>
+          <div className="retreat-stats">
+            <div className="stat-card">
+              <div className="stat-number">{activeClientCount}</div>
+              <div className="stat-label">Active Clients</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number">{occupancyRate}%</div>
+              <div className="stat-label">Occupancy Rate</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number">{formatUSD(totalRevenueUSD)}</div>
+              <div className="stat-label">Revenue Collected</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number">{formatUSD(totalExpectedUSD)}</div>
+              <div className="stat-label">Expected Revenue</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number">{clients.filter(c => c.status === 'confirmed').length}</div>
+              <div className="stat-label">Confirmed</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number">{formatUSD(plannedExpensesUSD)}</div>
+              <div className="stat-label">Planned Expenses</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-number">{formatUSD(actualExpensesUSD)}</div>
+              <div className="stat-label">Actual Expenses</div>
+            </div>
+            <div className="stat-card">
+              <div className={`stat-number ${profitUSD >= 0 ? 'profit-positive' : 'profit-negative'}`}>
+                {formatUSD(profitUSD)}
               </div>
-              <div className="financial-progress-result">
-                <strong>{collectedPercentage}%</strong>
-                <span>{formatUSD(outstandingRevenueUSD)} outstanding</span>
+              <div className="stat-label">Profit</div>
+            </div>
+            <div className="stat-card">
+              <div className={`stat-number ${expectedProfitUSD >= 0 ? 'profit-positive' : 'profit-negative'}`}>
+                {formatUSD(expectedProfitUSD)}
               </div>
+              <div className="stat-label">Expected Profit</div>
             </div>
-            <div className="financial-progress-track" aria-label={`${collectedPercentage}% revenue collected`}>
-              <span style={{ width: `${collectedPercentage}%` }} />
-            </div>
-          </section>
-
-          <section className="financial-statement">
-            <h4>Revenue</h4>
-            <div className="financial-row">
-              <div><strong>Collected</strong><span>{completedPayments.length} payments · last {formatMetricDate(lastPaymentDate)}</span></div>
-              <b>{formatUSD(totalRevenueUSD)}</b>
-            </div>
-            <div className="financial-row">
-              <div><strong>Outstanding</strong><span>{balancesDueCount} balances due before arrival</span></div>
-              <b className="financial-caution">{formatUSD(outstandingRevenueUSD)}</b>
-            </div>
-            <div className="financial-row financial-total">
-              <div><strong>Expected total</strong></div>
-              <b>{formatUSD(totalExpectedUSD)}</b>
-            </div>
-
-            <h4>Expenses</h4>
-            <div className="financial-row">
-              <div>
-                <strong>Actual</strong>
-                <span>
-                  {expensesSummary?.count || 0} recorded
-                  {expenseCategories.length ? ` · ${expenseCategories.join(', ')}` : ''}
-                </span>
-              </div>
-              <b>{formatUSD(actualExpensesUSD)}</b>
-            </div>
-            <div className="financial-row financial-muted">
-              <div><strong>Planned</strong><span>{plannedExpensesUSD > 0 ? 'scheduled expenses' : 'nothing scheduled yet'}</span></div>
-              <b>{formatUSD(plannedExpensesUSD)}</b>
-            </div>
-            <div className="financial-row financial-total">
-              <div><strong>Expected total</strong></div>
-              <b>{formatUSD(expectedExpensesUSD)}</b>
-            </div>
-
-            <h4>Profit</h4>
-            <div className="financial-row financial-profit-row">
-              <div><strong>Profit so far</strong><span>collected minus actual expenses</span></div>
-              <b className={profitUSD < 0 ? 'financial-negative' : ''}>{formatUSD(profitUSD)}</b>
-            </div>
-            <div className="financial-row financial-profit-row financial-muted">
-              <div><strong>Expected profit</strong><span>if all balances are paid</span></div>
-              <b className={expectedProfitUSD < 0 ? 'financial-negative' : ''}>{formatUSD(expectedProfitUSD)}</b>
-            </div>
-          </section>
-
-          <section className={`financial-occupancy ${overbookedBy ? 'is-overbooked' : ''}`}>
-            <div>
-              <strong>
-                Occupancy {occupancyRate}%
-                {overbookedBy ? ` — overbooked by ${overbookedBy}` : ''}
-              </strong>
-              <span>
-                {activeClientCount} clients booked against {retreat.capacity || 0} spots.
-                {overbookedBy ? ' Revenue above plan, but check bed allocation.' : ''}
-              </span>
-            </div>
-            <button type="button" onClick={() => {
-              setMetricsCollapsed(true);
-              handleTabChange('clients');
-            }}>
-              Review bookings
-            </button>
-          </section>
-
-          <footer className="financial-metrics-footer">
-            <div>
-              <button type="button" className="financial-primary-action" onClick={handleExport}>Export statement</button>
-              <button type="button" onClick={() => {
-                setMetricsCollapsed(true);
-                handleTabChange('expenses');
-              }}>
-                Add expense
-              </button>
-            </div>
-            <span>Updated {formatMetricDateTime(metricsUpdatedAt)}</span>
-          </footer>
-        </div>
+          </div>
       </Modal>
 
       {/* Tab Navigation */}
       <div className="tab-navigation retreat-detail-tabs" role="tablist" aria-label="Retreat sections">
+        <button
+          className={`tab-btn ${activeTab === 'drugScreening' ? 'active' : ''}`}
+          onClick={() => handleTabChange('drugScreening')}
+          role="tab"
+          aria-selected={activeTab === 'drugScreening'}
+        >
+          <BiotechRoundedIcon className="retreat-tab-icon" />
+          <span>Drug Screening</span>
+        </button>
         <button
           className={`tab-btn ${activeTab === 'clients' ? 'active' : ''}`}
           onClick={() => handleTabChange('clients')}
@@ -1334,7 +1299,16 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           aria-selected={activeTab === 'clients'}
         >
           <PeopleAltRoundedIcon className="retreat-tab-icon" />
-          <span>Clients <b>{activeClientCount}</b></span>
+          <span>Clients ({activeClientCount})</span>
+        </button>
+        <button
+          className={`tab-btn ${activeTab === 'reserveList' ? 'active' : ''}`}
+          onClick={() => handleTabChange('reserveList')}
+          role="tab"
+          aria-selected={activeTab === 'reserveList'}
+        >
+          <Icon icon={FiUserPlus} className="w-5 h-5 retreat-tab-icon" />
+          <span>Reserve List</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'holisticView' ? 'active' : ''}`}
@@ -1343,7 +1317,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           aria-selected={activeTab === 'holisticView'}
         >
           <AssignmentTurnedInRoundedIcon className="retreat-tab-icon" />
-          <span>Readiness</span>
+          <span>Retreat Readiness</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'tracking' ? 'active' : ''}`}
@@ -1352,7 +1326,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           aria-selected={activeTab === 'tracking'}
         >
           <FactCheckRoundedIcon className="retreat-tab-icon" />
-          <span>Medical grid</span>
+          <span>Medical Grid</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'expenses' ? 'active' : ''}`}
@@ -1397,7 +1371,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           aria-selected={activeTab === 'tasks'}
         >
           <TaskAltRoundedIcon className="retreat-tab-icon" />
-          <span>Tasks <b>{0}</b></span>
+          <span>Tasks</span>
         </button>
       </div>
 
@@ -1406,7 +1380,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         {activeTab === 'clients' && (
         <div className="clients-section">
           <div className="section-header">
-            <h2>Clients <span>{activeClientCount} active · {clients.length - activeClientCount} cancelled</span></h2>
+            <h2>📋 Retreat Clients ({activeClientCount} active)</h2>
             <div className="section-actions">
               <button
                 onClick={() => navigate(`${location.pathname.replace(/\/$/, '')}/clients-print`)}
@@ -1415,7 +1389,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                 aria-label="Print retreat client grid"
               >
                 <Icon icon={FiPrinter} className="w-4 h-4" />
-                <span>Print</span>
+                <span>Print Client Grid</span>
               </button>
               <label className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700">
                 <input type="checkbox" checked={showCancelledBookings} onChange={(event) => setShowCancelledBookings(event.target.checked)} />
@@ -1428,7 +1402,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                 aria-label="Quick book client"
               >
                 <Icon icon={FiPlus} className="w-4 h-4" />
-                <span>Book client</span>
+                <span>Quick Book Client</span>
               </button>
               <button
                 onClick={() => setShowExistingClientModal(true)}
@@ -1437,7 +1411,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                 aria-label="Add existing client"
               >
                 <Icon icon={FiUserPlus} className="w-4 h-4" />
-                <span>Add existing</span>
+                <span>Add Existing Client</span>
               </button>
               <button
                 onClick={openRetreatEmailModal}
@@ -1447,10 +1421,10 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                 aria-label={`Email retreat clients (${retreatEmailRecipientCount})`}
               >
                 <Icon icon={FiMail} className="w-4 h-4" />
-                <span>Email all</span>
+                <span>Email Retreat ({retreatEmailRecipientCount})</span>
               </button>
               <button
-                onClick={fetchRetreatData}
+                onClick={() => fetchRetreatData()}
                 className="retreat-client-action retreat-client-action-refresh"
                 title="Refresh"
                 aria-label="Refresh retreat clients"
@@ -1461,9 +1435,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             </div>
           </div>
 
-          <div className="retreat-client-table-shell">
-            <div className="retreat-client-table-scroll">
-              <table className="retreat-client-table">
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden max-h-96">
+            <div className="overflow-x-auto overflow-y-auto max-h-96">
+              <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1495,9 +1469,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                       Phone
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Ref.
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Booking Type
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1512,6 +1483,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Amount Paid
                     </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
@@ -1551,20 +1523,16 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                             </Link>
                             <Link
                               to={`/${routePrefix}/clients/${client.clientId}`}
-                              className="retreat-client-secondary mt-0.5 block text-xs font-semibold text-gray-500 hover:text-gray-700 hover:underline"
+                              className="mt-0.5 block text-xs font-semibold text-gray-500 hover:text-gray-700 hover:underline"
                               title="View client profile"
                             >
-                              <span className="retreat-client-desktop-id">{client.clientDisplayId ? `#${client.clientDisplayId}` : 'ID unavailable'}</span>
-                              <span className="retreat-client-mobile-meta">#{client.bookingNumber || client._id?.slice(-6)} · {client.bookingType === 'booster' ? 'Booster' : 'Full retreat'}</span>
+                              {client.clientDisplayId ? `Client #${client.clientDisplayId}` : 'Client ID unavailable'}
                             </Link>
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {client.clientPhone}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-black text-blue-800">
-                        {client.referralCode || '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {client.bookingType === 'booster' ? (
@@ -1581,7 +1549,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                         <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${client.status === 'cancelled' ? 'bg-red-100 text-red-800' : client.status === 'confirmed' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-700'}`}>
                           {bookingStatusLabel(client.status)}
                         </span>
-                        <span className={`retreat-payment-status-inline rounded-full px-2.5 py-1 text-xs font-semibold ${paymentStatusClass(client)}`}>{paymentStatusLabel(client)}</span>
                         {client.status === 'cancelled' && client.cancellationReason && <div className="mt-1 max-w-44 whitespace-normal text-xs text-gray-500" title={client.cancellationNotes || client.cancellationReason}>{client.cancellationReason}</div>}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -1592,6 +1559,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {formatAmount(client.amountPaid, client.currency)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {(() => { const difference = client.amountPaid - client.totalAmount; const status = client.amountPaid <= 0 ? ['Unpaid','bg-gray-100 text-gray-700'] : Math.abs(difference) < 0.01 ? ['Paid in full','bg-green-100 text-green-800'] : difference > 0 ? ['Overpaid','bg-purple-100 text-purple-800'] : ['Partially paid','bg-amber-100 text-amber-800']; return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${status[1]}`}>{status[0]}</span>; })()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center gap-2">
@@ -1643,13 +1613,15 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
               )}
             </div>
           </div>
-          <div className="retreat-client-table-footer">
-            <label>
-              <input type="checkbox" checked={showCancelledBookings} onChange={(event) => setShowCancelledBookings(event.target.checked)} />
-              Show cancelled bookings
-            </label>
-            <span>Total {formatAmount(clients.reduce((sum, client) => sum + Number(client.totalAmount || 0), 0), clients[0]?.currency || 'EUR')}</span>
-          </div>
+        </div>
+        )}
+
+        {activeTab === 'reserveList' && (
+        <div className="reserve-list-section">
+          <RetreatReserveListPanel
+            retreatId={retreatId}
+            retreatName={retreat?.name || retreat?.code || retreat?.retreatCode || 'Retreat'}
+          />
         </div>
         )}
 
@@ -1662,6 +1634,12 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         {activeTab === 'tracking' && (
         <div className="tracking-section">
           <RetreatTrackingGrid retreatId={retreatId} />
+        </div>
+        )}
+
+        {activeTab === 'drugScreening' && (
+        <div className="drug-screening-section">
+          <DrugScreeningTab retreatId={retreatId} clients={clients} />
         </div>
         )}
 
@@ -2073,6 +2051,35 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           </Form.Item>
 
           <Form.Item
+            name="bookingFlowStepKey"
+            label="Mark booking step"
+            extra="Inherited from the selected email template. Every successfully sent group email updates the matching client's booking step."
+          >
+            <Select allowClear placeholder="Skip marking a booking step">
+              <Option value="">Skip</Option>
+              {retreatEmailStepTemplates.map((step) => (
+                <Option key={step.key} value={step.key}>
+                  {step.display_id ? `#${step.display_id} ` : ''}{step.title || step.key}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+
+          <Form.Item noStyle shouldUpdate={(previous, current) => previous.bookingFlowStepKey !== current.bookingFlowStepKey}>
+            {({ getFieldValue }) => getFieldValue('bookingFlowStepKey') ? (
+              <Form.Item name="bookingFlowStatusOnSend" label="Booking step status after send" initialValue="completed">
+                <Select>
+                  <Option value="completed">Completed</Option>
+                  <Option value="sent">Sent</Option>
+                  <Option value="received">Received</Option>
+                  <Option value="approved">Approved</Option>
+                  <Option value="waived">Waived</Option>
+                </Select>
+              </Form.Item>
+            ) : null}
+          </Form.Item>
+
+          <Form.Item
             name="subject"
             label="Subject"
             rules={[{ required: true, message: 'Subject is required' }]}
@@ -2283,7 +2290,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                             <option value="">Select helper or cook</option>
                             {staffDirectory.map((contact) => (
                               <option key={contact._id} value={contact._id}>
-                                {contact.name} ({Array.from(new Set([...(contact.roles || []), contact.role].filter(Boolean))).join(', ')}){contact.phone ? ` - ${contact.phone}` : ''}
+                                {contact.name} ({contact.role}){contact.phone ? ` - ${contact.phone}` : ''}
                               </option>
                             ))}
                           </select>

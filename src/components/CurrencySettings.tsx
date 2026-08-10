@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { currencyService, ExchangeRates } from '../services/currencyService';
 import { configSummaryApi, paymentsApi } from '../services/api';
-import { API_BASE_URL } from '../config/api.config';
 import './CurrencySettings.css';
 
 interface CurrencySettingsProps {
   onClose: () => void;
 }
+
+type ConverterCurrency = 'USD' | 'EUR' | 'CZK' | 'PLN';
+type PaymentTypeSetting = { key: string; label: string; active: boolean; sortOrder: number; system: boolean; behavior: string };
+const converterCurrencies: ConverterCurrency[] = ['PLN', 'USD', 'EUR', 'CZK'];
 
 const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
   const [rates, setRates] = useState<ExchangeRates | null>(null);
@@ -16,12 +19,17 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [converterAmount, setConverterAmount] = useState('1000');
-  const [converterCurrency, setConverterCurrency] = useState<'USD' | 'EUR' | 'CZK' | 'PLN'>('PLN');
+  const [converterAmount, setConverterAmount] = useState('4500');
+  const [converterFromCurrency, setConverterFromCurrency] = useState<ConverterCurrency>('PLN');
+  const [converterToCurrency, setConverterToCurrency] = useState<ConverterCurrency>('USD');
   const [converterResult, setConverterResult] = useState<number | null>(null);
   const [converterSource, setConverterSource] = useState<string>('');
   const [converterError, setConverterError] = useState<string | null>(null);
   const [isConverting, setIsConverting] = useState(false);
+  const [activeTab, setActiveTab] = useState<'currency' | 'payment-types'>('currency');
+  const [paymentTypes, setPaymentTypes] = useState<PaymentTypeSetting[]>([]);
+  const [paymentTypesSaving, setPaymentTypesSaving] = useState(false);
+  const [newPaymentType, setNewPaymentType] = useState({ key: '', label: '' });
 
   useEffect(() => {
     loadExchangeRates();
@@ -39,11 +47,40 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
       setLastUpdated(info.lastUpdated);
       setNextUpdate(info.nextUpdate);
       setConfigSummary(configResponse?.data || null);
+      const typeResponse = await paymentsApi.getTypes().catch(() => null);
+      setPaymentTypes(typeResponse?.data || []);
     } catch (err) {
       setError('Failed to load exchange rates');
       console.error('Error loading exchange rates:', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const savePaymentType = async (item: PaymentTypeSetting) => {
+    try {
+      setPaymentTypesSaving(true);
+      await paymentsApi.updateType(item.key, { label: item.label, active: item.active, sortOrder: item.sortOrder });
+      const response = await paymentsApi.getTypes();
+      setPaymentTypes(response.data || []);
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Could not save the payment type.');
+    } finally {
+      setPaymentTypesSaving(false);
+    }
+  };
+
+  const addPaymentType = async () => {
+    try {
+      setPaymentTypesSaving(true);
+      await paymentsApi.createType({ ...newPaymentType, sortOrder: paymentTypes.length * 10 + 100 });
+      setNewPaymentType({ key: '', label: '' });
+      const response = await paymentsApi.getTypes();
+      setPaymentTypes(response.data || []);
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Could not create the payment type.');
+    } finally {
+      setPaymentTypesSaving(false);
     }
   };
 
@@ -65,7 +102,7 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
     }
   };
 
-  const convertAmountToUsd = async () => {
+  const convertAmount = async () => {
     const amount = Number(converterAmount);
     if (!Number.isFinite(amount) || amount <= 0) {
       setConverterResult(null);
@@ -76,13 +113,14 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
     try {
       setIsConverting(true);
       setConverterError(null);
-      const response = await paymentsApi.convertToUsd(amount, converterCurrency);
-      setConverterResult(response.data.usd_amount);
-      setConverterSource('API rate');
+      const response = await paymentsApi.convert(amount, converterFromCurrency, converterToCurrency);
+      setConverterResult(response.data.amount);
+      setConverterSource(response.data.provider || 'Revolut');
     } catch (err) {
       try {
-        const usdAmount = await currencyService.convertToUSD(amount, converterCurrency);
-        setConverterResult(usdAmount);
+        const usdAmount = await currencyService.convertToUSD(amount, converterFromCurrency);
+        const convertedAmount = await currencyService.convertFromUSD(usdAmount, converterToCurrency);
+        setConverterResult(convertedAmount);
         setConverterSource('cached browser rate');
       } catch (fallbackErr) {
         setConverterResult(null);
@@ -103,26 +141,42 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="modal-overlay" onClick={onClose}>
-        <div className="currency-settings-modal" onClick={(e) => e.stopPropagation()}>
-          <div className="currency-loading">
-            <div className="loading-spinner">💱</div>
-            <p>Loading exchange rates...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="currency-settings-modal" onClick={(e) => e.stopPropagation()}>
         <div className="currency-header">
-          <h2>💱 Currency Exchange Rates</h2>
-          <button onClick={onClose} className="close-btn">✕</button>
+          <h2>Settings</h2>
+          <button onClick={onClose} className="close-btn" aria-label="Close currency converter">✕</button>
         </div>
+
+        <div className="settings-tabs">
+          <button className={activeTab === 'currency' ? 'active' : ''} onClick={() => setActiveTab('currency')}>Currency</button>
+          <button className={activeTab === 'payment-types' ? 'active' : ''} onClick={() => setActiveTab('payment-types')}>Payment types</button>
+        </div>
+
+        {activeTab === 'payment-types' ? (
+          <div className="payment-types-settings">
+            <h3>Payment types</h3>
+            <p>IDs are permanent. Existing types can be renamed, reordered, or deactivated, but never deleted.</p>
+            <div className="payment-type-list">
+              {paymentTypes.map((item, index) => (
+                <div className="payment-type-row" key={item.key}>
+                  <code>{item.key}</code>
+                  <input value={item.label} onChange={(event) => setPaymentTypes(current => current.map((entry, entryIndex) => entryIndex === index ? { ...entry, label: event.target.value } : entry))} />
+                  <input type="number" value={item.sortOrder} onChange={(event) => setPaymentTypes(current => current.map((entry, entryIndex) => entryIndex === index ? { ...entry, sortOrder: Number(event.target.value) } : entry))} />
+                  <label><input type="checkbox" checked={item.active} onChange={(event) => setPaymentTypes(current => current.map((entry, entryIndex) => entryIndex === index ? { ...entry, active: event.target.checked } : entry))} /> Active</label>
+                  <button disabled={paymentTypesSaving} onClick={() => savePaymentType(item)}>Save</button>
+                </div>
+              ))}
+            </div>
+            <div className="new-payment-type">
+              <h4>Add payment type</h4>
+              <input placeholder="immutable_id" value={newPaymentType.key} onChange={(event) => setNewPaymentType(current => ({ ...current, key: event.target.value }))} />
+              <input placeholder="Display label" value={newPaymentType.label} onChange={(event) => setNewPaymentType(current => ({ ...current, label: event.target.value }))} />
+              <button disabled={paymentTypesSaving || !newPaymentType.key || !newPaymentType.label} onClick={addPaymentType}>Add</button>
+            </div>
+          </div>
+        ) : <>
 
         {error && (
           <div className="error-message">
@@ -130,16 +184,9 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
           </div>
         )}
 
-        <div className="currency-info">
-          <p><strong>Frontend API URL:</strong> {API_BASE_URL}</p>
-          <p><strong>Base Currency:</strong> USD (US Dollar)</p>
-          <p><strong>Last Updated:</strong> {lastUpdated}</p>
-          <p><strong>Next Auto Update:</strong> {nextUpdate}</p>
-        </div>
-
         <div className="currency-converter">
-          <h3>Convert to USD</h3>
-          <div className="converter-controls">
+          <h3>Look up an exchange rate</h3>
+          <form className="converter-controls" onSubmit={(event) => { event.preventDefault(); void convertAmount(); }}>
             <label>
               <span>Amount</span>
               <input
@@ -148,39 +195,52 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
                 step="0.01"
                 value={converterAmount}
                 onChange={(event) => setConverterAmount(event.target.value)}
-                placeholder="1000"
+                placeholder="4500"
               />
             </label>
             <label>
-              <span>Currency</span>
+              <span>From</span>
               <select
-                value={converterCurrency}
-                onChange={(event) => setConverterCurrency(event.target.value as 'USD' | 'EUR' | 'CZK' | 'PLN')}
+                value={converterFromCurrency}
+                onChange={(event) => setConverterFromCurrency(event.target.value as ConverterCurrency)}
               >
-                <option value="PLN">PLN</option>
-                <option value="CZK">CZK</option>
-                <option value="EUR">EUR</option>
-                <option value="USD">USD</option>
+                {converterCurrencies.map((code) => <option key={code} value={code}>{code}</option>)}
+              </select>
+            </label>
+            <button type="button" className="swap-currencies-btn" aria-label="Swap currencies" onClick={() => {
+              setConverterFromCurrency(converterToCurrency);
+              setConverterToCurrency(converterFromCurrency);
+              setConverterResult(null);
+            }}>⇄</button>
+            <label>
+              <span>To</span>
+              <select value={converterToCurrency} onChange={(event) => setConverterToCurrency(event.target.value as ConverterCurrency)}>
+                {converterCurrencies.map((code) => <option key={code} value={code}>{code}</option>)}
               </select>
             </label>
             <button
-              type="button"
-              onClick={convertAmountToUsd}
+              type="submit"
               disabled={isConverting}
               className="convert-btn"
             >
               {isConverting ? 'Converting...' : 'Convert'}
             </button>
-          </div>
+          </form>
           {converterResult !== null && (
             <div className="converter-result">
-              <strong>{Number(converterAmount).toLocaleString(undefined, { maximumFractionDigits: 2 })} {converterCurrency}</strong>
+              <strong>{Number(converterAmount).toLocaleString(undefined, { maximumFractionDigits: 2 })} {converterFromCurrency}</strong>
               <span>=</span>
-              <strong>{converterResult.toLocaleString(undefined, { style: 'currency', currency: 'USD' })}</strong>
+              <strong>{converterResult.toLocaleString(undefined, { style: 'currency', currency: converterToCurrency })}</strong>
               {converterSource && <small>{converterSource}</small>}
             </div>
           )}
           {converterError && <div className="converter-error">{converterError}</div>}
+        </div>
+
+        <div className="currency-info">
+          <p><strong>Rate provider:</strong> {configSummary?.integrations?.exchangeRateProviderLabel || 'Revolut'}</p>
+          <p><strong>Rate data:</strong> {isLoading ? 'Loading…' : error ? 'Live lookup remains available' : `Updated ${lastUpdated}`}</p>
+          {!isLoading && nextUpdate && <p><strong>Next cached-rate update:</strong> {nextUpdate}</p>}
         </div>
 
         <div className="currency-info">
@@ -297,6 +357,7 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
             All amounts in the application will show USD equivalents in parentheses.</p>
           </div>
         </div>
+        </>}
 
         <div className="currency-footer">
           <button onClick={onClose} className="close-settings-btn">

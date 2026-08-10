@@ -57,7 +57,6 @@ const FULL_MENU_SECTIONS: MenuSection[] = [
     Icon: Fi.FiCalendar,
     items: [
       { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
-      { id: 'retreat-staffing', label: 'Helpers & Cooks', Icon: Fi.FiUsers },
       { id: 'ceremonies', label: 'Ceremonies', Icon: Fi.FiClock },
       { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
       { id: 'houses', label: 'Houses', Icon: Fi.FiHome },
@@ -66,6 +65,7 @@ const FULL_MENU_SECTIONS: MenuSection[] = [
       { id: 'booking-flow', label: 'Booking Flow', Icon: Fi.FiCheckSquare },
       { id: 'booking-step-deadlines', label: 'Step Deadlines', Icon: Fi.FiCalendar },
       { id: 'scheduled-reminders', label: 'Scheduled Reminders', Icon: Fi.FiBell },
+      { id: 'reserve-lists', label: 'Reserve Lists', Icon: Fi.FiBookmark },
       { id: 'booking-documents', label: 'Document Library', Icon: Fi.FiFileText },
       { id: 'booking-document-types', label: 'Booking Document Types', Icon: Fi.FiSettings },
     ],
@@ -86,6 +86,7 @@ const FULL_MENU_SECTIONS: MenuSection[] = [
       { id: 'medical-tracking', label: 'Medical Readiness', Icon: Fi.FiHeart },
       { id: 'medical-review-requests', label: 'Review Requests', Icon: Fi.FiInbox },
       { id: 'client-medications', label: 'Client Medications', Icon: Fi.FiPlusSquare },
+      { id: 'client-food-forms', label: 'Client Food Forms', Icon: Fi.FiCoffee },
     ],
   },
   {
@@ -207,6 +208,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
   });
   const [permissionVersion, setPermissionVersion] = useState(0);
   const [notificationCount, setNotificationCount] = useState(0);
+  const [menuSearch, setMenuSearch] = useState('');
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
     const saved = localStorage.getItem('sidebarOpenSections');
     if (!saved) return {};
@@ -372,6 +374,22 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
     return roleSections;
   }, [appMode, getMenuSectionsForRole, selectedRetreatLabel]);
 
+  const normalizedMenuSearch = menuSearch.trim().toLocaleLowerCase();
+  const visibleMenuSections = useMemo(() => {
+    if (!normalizedMenuSearch) return menuSections;
+
+    return menuSections
+      .map((section) => ({
+        ...section,
+        items: section.items.filter((item) =>
+          `${item.label} ${item.id.replace(/-/g, ' ')}`
+            .toLocaleLowerCase()
+            .includes(normalizedMenuSearch)
+        ),
+      }))
+      .filter((section) => section.items.length > 0);
+  }, [menuSections, normalizedMenuSearch]);
+
   const isExpanded = !isCollapsed;
   const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
   const displayEmail = user?.email || '';
@@ -457,13 +475,13 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
               <div className="w-10 h-10 rounded-apple overflow-hidden bg-white flex items-center justify-center flex-shrink-0 border border-apple-gray-100">
                 <img
                   src={`${process.env.PUBLIC_URL}/images/icon/retreategnine.png`}
-                  alt="Retreat Engine"
+                  alt="Provider Plus"
                   className="w-full h-full object-contain p-1"
                 />
               </div>
               {isExpanded && (
                 <span className="text-lg font-semibold text-apple-gray-900 whitespace-nowrap">
-                  Retreat Engine
+                  Provider Plus
                 </span>
               )}
             </div>
@@ -489,10 +507,43 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
 
           {/* Navigation Items */}
           <div className="flex-1 overflow-y-auto py-2">
+            {isExpanded && (
+              <div className="px-3 pb-2">
+                <label htmlFor="sidebar-menu-search" className="sr-only">
+                  Search menu
+                </label>
+                <div className="relative">
+                  {React.createElement(Fi.FiSearch as any, {
+                    className: "pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-apple-gray-400",
+                  })}
+                  <input
+                    id="sidebar-menu-search"
+                    type="search"
+                    value={menuSearch}
+                    onChange={(event) => setMenuSearch(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Escape') setMenuSearch('');
+                    }}
+                    placeholder="Filter menu..."
+                    className="w-full rounded-apple border border-apple-gray-200 bg-white/80 py-2 pl-9 pr-8 text-sm text-apple-gray-900 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                  />
+                  {menuSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setMenuSearch('')}
+                      aria-label="Clear menu search"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-apple-gray-400 hover:bg-apple-gray-100 hover:text-apple-gray-700"
+                    >
+                      {React.createElement(Fi.FiX as any, { className: "h-4 w-4" })}
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
             <ul className={`px-3 space-y-1 ${!isExpanded && 'px-2'}`}>
-              {menuSections.map((section) => {
+              {visibleMenuSections.map((section) => {
                 const sectionIsActive = section.items.some((item) => item.id === activeItem);
-                const sectionIsOpen = openSections[section.id] || sectionIsActive;
+                const sectionIsOpen = Boolean(normalizedMenuSearch) || openSections[section.id] || sectionIsActive;
                 const SectionIcon = section.Icon;
                 const sectionTextColor = getTextColor(sectionIsActive);
                 const sectionButton = (
@@ -552,7 +603,10 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                           return (
                             <li key={item.id}>
                               <button
-                                onClick={() => onItemClick(item.id)}
+                                onClick={() => {
+                                  setMenuSearch('');
+                                  onItemClick(item.id);
+                                }}
                                 style={{
                                   backgroundColor: accent ? (isActive ? accent.activeBackground : accent.background) : 'transparent',
                                   borderColor: accent ? accent.border : isActive ? 'rgba(17, 24, 39, 0.24)' : 'transparent',
@@ -588,6 +642,11 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                 );
               })}
             </ul>
+            {isExpanded && normalizedMenuSearch && visibleMenuSections.length === 0 && (
+              <p className="px-5 py-6 text-center text-sm text-apple-gray-500">
+                No menu items found
+              </p>
+            )}
           </div>
 
           {/* User Section */}

@@ -7,7 +7,6 @@ import { usersApi, User } from '../services/usersApi';
 import { useAuth } from '../context/AuthContext';
 import { Client, MedicalArtifact, MedicalItem, MedicalReviewGroup, MedicalReviewRequest, Retreat } from '../types';
 import { groupMatchesRetreat } from './MedicalReviewRequestEditorPage.helpers';
-import './MedicalReviewRequestEditorPage.css';
 
 type FormState = {
   medicalTrackingId: string;
@@ -28,6 +27,7 @@ type FormState = {
   reviewNotes: string;
   overallNotes: string;
   medicalStaffNotes: string;
+  clientVisibleAdminNote: string;
 };
 
 const reviewTypeByArtifact = (artifactType: MedicalArtifact['artifactType']): NonNullable<MedicalReviewRequest['requestType']> => {
@@ -78,27 +78,6 @@ const formatDocumentMeta = (stage?: MedicalArtifact['documentStage'] | '', type?
   ].filter(Boolean);
   return parts.length ? parts.join(' · ') : 'No document stage/type recorded';
 };
-
-const statusFromReviewDecision = (
-  decision: FormState['reviewDecision'],
-  fallback: FormState['status'],
-): FormState['status'] => {
-  if (decision === 'OK') return 'approved';
-  if (decision === 'caution') return 'caution';
-  if (decision === 'more_info_needed') return 'needs_resubmission';
-  if (decision === 'NOT OK') return 'rejected';
-  return ['pending', 'in_review'].includes(String(fallback)) ? fallback : 'pending';
-};
-
-const formatReviewStatus = (status?: string) => ({
-  pending: 'Pending',
-  in_review: 'In review',
-  approved: 'Approved',
-  rejected: 'Declined',
-  caution: 'Caution',
-  needs_resubmission: 'More information needed',
-  completed: 'Completed',
-}[String(status || '')] || String(status || 'Pending').replace(/_/g, ' '));
 
 const getArtifactFileUrl = (file: NonNullable<MedicalArtifact['files']>[number]) => {
   const storedPath = file.url || file.filePath || file.s3Key || '';
@@ -180,7 +159,10 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
     reviewNotes: '',
     overallNotes: '',
     medicalStaffNotes: '',
+    clientVisibleAdminNote: '',
   });
+
+  const [loadedClientVisibleAdminNote, setLoadedClientVisibleAdminNote] = useState('');
 
   const [requestNumber, setRequestNumber] = useState<number | null>(null);
 
@@ -257,7 +239,9 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           reviewNotes: record.reviewNotes || '',
           overallNotes: record.overallNotes || '',
           medicalStaffNotes: record.medicalStaffNotes || '',
+          clientVisibleAdminNote: record.clientVisibleAdminNote || '',
         });
+        setLoadedClientVisibleAdminNote(record.clientVisibleAdminNote || '');
       }
     } catch (error) {
       console.error('Error loading review request editor data:', error);
@@ -351,7 +335,6 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
       }
 
       if (isEdit && id) {
-        const derivedStatus = statusFromReviewDecision(form.reviewDecision, form.status);
         await medicalReviewRequestsApi.update(id, {
           clientId: form.clientId,
           retreatId: form.retreatId,
@@ -362,7 +345,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           documentType: form.documentType || undefined,
           ceremonyNumber: form.ceremonyNumber || undefined,
           requestType: form.requestType,
-          status: derivedStatus,
+          status: form.status,
           requestedBy: form.requestedBy,
           ...(form.sentForReviewAt ? { sentForReviewAt: form.sentForReviewAt } : {}),
           assignedTo: form.assignedTo,
@@ -372,6 +355,9 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           overallNotes: form.overallNotes,
           medicalStaffNotes: form.medicalStaffNotes,
         });
+        if (isAdmin && form.clientVisibleAdminNote.trim() !== loadedClientVisibleAdminNote.trim()) {
+          await medicalReviewRequestsApi.updateClientVisibleAdminNote(id, form.clientVisibleAdminNote);
+        }
       } else {
         const payload = {
           clientId: form.clientId,
@@ -382,7 +368,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           documentType: form.documentType || undefined,
           ceremonyNumber: form.ceremonyNumber || undefined,
           requestType: form.requestType,
-          status: statusFromReviewDecision(form.reviewDecision, form.status),
+          status: form.status,
           assignedTo: form.assignedTo,
           assignedToUserId: form.assignedToUserId,
           reviewDecision: form.reviewDecision || undefined,
@@ -408,219 +394,12 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
     }
   };
 
-  const handleResetReview = async () => {
-    if (!id || user?.role !== 'admin') return;
-    const reason = window.prompt('Reason for resetting this review:', 'Decision entered by mistake');
-    if (reason === null) return;
-    if (!window.confirm('Remove the current decision and return this MRR to Pending?')) return;
-    try {
-      setSaving(true);
-      await medicalReviewRequestsApi.resetReview(id, reason.trim() || 'Decision entered by mistake');
-      navigate(`/admin/medical-review-requests/${id}`);
-    } catch (error: any) {
-      alert(error?.response?.data?.message || error?.message || 'Unable to reset this review.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   if (loading) {
     return <LoadingSpinner message="Loading medical review request..." />;
   }
 
   const selectedArtifacts = clientArtifacts.filter((artifact) => artifact._id && form.artifactIds.includes(artifact._id));
-
-  const artifactTypeOptions: Array<{
-    label: string;
-    requestType: FormState['requestType'];
-    documentType: FormState['documentType'];
-  }> = [
-    { label: 'EKG', requestType: 'ekg_review', documentType: 'EKG' },
-    { label: 'Liver panel', requestType: 'liver_panel_review', documentType: 'Liver' },
-    { label: 'Blood pressure', requestType: 'blood_pressure_review', documentType: 'BP' },
-    { label: 'Medications', requestType: 'medications_review', documentType: 'Medications' },
-    { label: 'Other', requestType: 'general_clearance', documentType: 'other' },
-  ];
-  const stageOptions: Array<{ label: string; value: FormState['documentStage'] }> = [
-    { label: 'Entry', value: 'entry' },
-    { label: 'Pre-ceremony', value: 'pre_ceremony' },
-    { label: 'In-ceremony', value: 'in_ceremony' },
-    { label: 'Post-ceremony', value: 'post_ceremony' },
-    { label: 'Other', value: 'other' },
-  ];
-  const selectedArtifactType =
-    artifactTypeOptions.find((option) => option.requestType === form.requestType)
-    || artifactTypeOptions.find((option) => option.documentType === form.documentType)
-    || artifactTypeOptions[4];
-  const clientName = selectedClient
-    ? [selectedClient.firstName || selectedClient.fname, selectedClient.lastName || selectedClient.lname].filter(Boolean).join(' ')
-    : getClientLabel(selectedArtifact?.clientId || null).replace(/^Client #[^·]+·\s*/, '');
-  const retreatLabel = selectedRetreat?.code || selectedRetreat?.retreatCode || selectedRetreat?.name || 'No retreat selected';
-  const retreatDate = selectedRetreat?.startDate
-    ? new Date(selectedRetreat.startDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
-    : '';
-  const editorTitle = selectedArtifact?.title
-    || `${selectedArtifactType.label}${clientName ? ` — ${clientName}` : ''}`;
-  const submitLabel = saving ? 'Saving…' : isEdit ? 'Save changes' : 'Send for review';
-
-  if (!loading) return (
-    <div className="mrr-editor-shell">
-      <header className="mrr-editor-topbar">
-        <div><span>Medical reviews</span><i>/</i><strong>{requestNumber || 'New'}</strong></div>
-        <div className="mrr-editor-person">
-          <span>{clientName || 'Client'}</span>
-          <b>{(clientName || 'CL').split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase()}</b>
-        </div>
-      </header>
-
-      <form onSubmit={handleSubmit} className="mrr-editor-form">
-        <main className="mrr-editor-content">
-          <div className="mrr-editor-heading">
-            <h1>{isEdit ? 'Edit medical review request' : 'Medical review request'}</h1>
-            <p>
-              Request #{requestNumber || '—'}
-              {selectedClient?.display_id ? <><span>·</span>Client #{selectedClient.display_id}</> : null}
-              {retreatLabel ? <><span>·</span><b>{retreatLabel}</b></> : null}
-            </p>
-          </div>
-
-          {!selectedArtifact && (
-            <section className="mrr-editor-field">
-              <label>Artifact</label>
-              <SearchableMedicalTrackingSelect
-                items={trackingItems}
-                value={form.medicalTrackingId}
-                onChange={(medicalTrackingId) => {
-                  const tracking = trackingItems.find((item) => item._id === medicalTrackingId);
-                  setForm((previous) => ({
-                    ...previous,
-                    medicalTrackingId,
-                    clientId: tracking?.client_id || previous.clientId,
-                    retreatId: tracking?.retreatId || previous.retreatId,
-                  }));
-                }}
-              />
-            </section>
-          )}
-
-          <section className="mrr-editor-field">
-            <label>Artifact type</label>
-            <div className="mrr-choice-row">
-              {artifactTypeOptions.map((option) => (
-                <button
-                  key={option.label}
-                  type="button"
-                  className={selectedArtifactType.label === option.label ? 'selected' : ''}
-                  onClick={() => setForm((previous) => ({
-                    ...previous,
-                    requestType: option.requestType,
-                    documentType: option.documentType,
-                  }))}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </section>
-
-          <section className="mrr-editor-field">
-            <label>Stage</label>
-            <div className="mrr-choice-row">
-              {stageOptions.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  className={form.documentStage === option.value ? 'selected' : ''}
-                  onClick={() => setForm((previous) => ({ ...previous, documentStage: option.value }))}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          </section>
-
-          <section className="mrr-editor-field">
-            <label>Title</label>
-            <div className="mrr-readonly-input">{editorTitle}</div>
-          </section>
-
-          <section className="mrr-editor-field">
-            <label>Description <span>optional</span></label>
-            <textarea
-              value={form.medicalStaffNotes}
-              onChange={(event) => setForm((previous) => ({ ...previous, medicalStaffNotes: event.target.value }))}
-              rows={4}
-              placeholder="Anything the advisor should know before reading the artifact."
-            />
-          </section>
-
-          <section className="mrr-editor-field">
-            <label>Retreat</label>
-            <div className="mrr-retreat-card">
-              <div><strong>{retreatLabel}</strong><span>{retreatDate}</span></div>
-              <b>Fixed</b>
-            </div>
-          </section>
-
-          <section className="mrr-editor-field">
-            <label>Packet</label>
-            <select
-              value={form.medicalReviewGroupId}
-              required
-              onChange={(event) => setForm((previous) => ({ ...previous, medicalReviewGroupId: event.target.value }))}
-            >
-              <option value="">Select packet</option>
-              {packetOptions.map((group) => (
-                <option key={group._id} value={group._id}>{getGroupLabel(group)}</option>
-              ))}
-            </select>
-            <p className="mrr-field-help">Shared review packet for this retreat.</p>
-          </section>
-
-          <section className="mrr-editor-field">
-            <label>Send to advisor <span>{form.assignedToUserId ? '1 selected' : 'required'}</span></label>
-            <div className="mrr-advisor-list">
-              {medicalUsers.map((medicalUser) => {
-                const name = [medicalUser.firstName, medicalUser.lastName].filter(Boolean).join(' ') || medicalUser.email;
-                const checked = form.assignedToUserId === medicalUser._id;
-                return (
-                  <label key={medicalUser._id} className={checked ? 'selected' : ''}>
-                    <input
-                      type="radio"
-                      name="medical-advisor"
-                      value={medicalUser._id}
-                      checked={checked}
-                      onChange={() => setForm((previous) => ({
-                        ...previous,
-                        assignedToUserId: medicalUser._id || '',
-                        assignedTo: name,
-                      }))}
-                    />
-                    <b>{name.split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase()}</b>
-                    <span><strong>{name}</strong><small>{medicalUser.email}</small></span>
-                  </label>
-                );
-              })}
-            </div>
-          </section>
-
-          {isEdit && user?.role === 'admin' && form.reviewDecision && (
-            <button type="button" onClick={handleResetReview} disabled={saving} className="mrr-reset-review">
-              Reset mistaken review
-            </button>
-          )}
-        </main>
-
-        <footer className="mrr-editor-footer">
-          <span>{selectedArtifactType.label} · {form.documentStage ? documentStageLabels[form.documentStage] : 'No stage'} · {form.assignedToUserId ? '1 advisor' : 'No advisor'}</span>
-          <div>
-            <button type="button" onClick={() => navigate('/admin/medical-review-requests')}>Cancel</button>
-            <button type="submit" disabled={saving || !form.assignedToUserId} className="primary">{submitLabel}</button>
-          </div>
-        </footer>
-      </form>
-    </div>
-  );
+  const isAdmin = user?.role === 'admin' || user?.originalRole === 'admin';
 
   return (
     <div className="min-h-[calc(100vh-96px)] bg-white px-3 py-4 sm:px-6">
@@ -775,11 +554,12 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
             </select>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">Current state</label>
-                <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 font-medium text-gray-800">
-                  {formatReviewStatus(statusFromReviewDecision(form.reviewDecision, form.status))}
-                </div>
-                <p className="mt-1 text-xs text-gray-500">Set automatically from the review decision below.</p>
+                <label className="mb-2 block text-sm font-medium text-gray-700">Status</label>
+                <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as FormState['status'] })} className="w-full rounded-md border border-gray-300 px-3 py-2">
+                  {(['pending', 'in_review', 'approved', 'rejected', 'caution', 'needs_resubmission', 'completed'] as const).map((status) => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="mb-2 block text-sm font-medium text-gray-700">Medical Advisor <span className="text-red-600">*</span></label>
@@ -828,6 +608,27 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           </div>
         </div>
 
+        {isEdit && isAdmin && (
+          <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+            <label htmlFor="client-visible-admin-note" className="mb-2 block text-sm font-semibold text-indigo-950">
+              Client-visible admin note
+            </label>
+            <p className="mb-3 text-sm text-indigo-800">
+              This message is shown to the client in IbogaReady below their submitted medical form. Medical advisor notes above remain private.
+            </p>
+            <textarea
+              id="client-visible-admin-note"
+              value={form.clientVisibleAdminNote}
+              onChange={(event) => setForm({ ...form, clientVisibleAdminNote: event.target.value })}
+              rows={5}
+              maxLength={5000}
+              className="w-full rounded-md border border-indigo-200 bg-white px-3 py-2 text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+              placeholder="Write the message the client should see..."
+            />
+            <div className="mt-1 text-right text-xs text-indigo-700">{form.clientVisibleAdminNote.length}/5000</div>
+          </div>
+        )}
+
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="rounded-lg border border-gray-200 bg-white p-4">
             <label className="mb-2 block text-sm font-medium text-gray-700">Requested By</label>
@@ -844,11 +645,6 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
                   <option value="more_info_needed">More Info Needed</option>
                   <option value="NOT OK">Declined</option>
                 </select>
-                {user?.role === 'admin' && form.reviewDecision && (
-                  <button type="button" onClick={handleResetReview} disabled={saving} className="mt-2 rounded-md border border-red-300 bg-white px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50">
-                    Reset mistaken review
-                  </button>
-                )}
               </>
             )}
             <label className="mb-2 mt-4 block text-sm font-medium text-gray-700">Overall Notes</label>

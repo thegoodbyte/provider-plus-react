@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { bookingsApi, ceremoniesApi, clientsApi, configSummaryApi, retreatsApi } from '../services/api';
+import { bookingsApi, ceremoniesApi, clientsApi, retreatsApi } from '../services/api';
 import { RetreatClient, Client, Retreat, PaymentRequest, Ceremony } from '../types';
 import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
@@ -73,39 +73,6 @@ const toDateTimeInput = (value?: string | Date | null) => {
   return local.toISOString().slice(0, 16);
 };
 
-type BookingScheduleConfig = {
-  fullRetreatArrivalTime: string;
-  fullRetreatDepartureTime: string;
-  boosterCeremonyOneStayDays: number;
-  boosterCeremonyOneDepartureTime: string;
-  boosterCeremonyTwoArrivalOffsetDays: number;
-  boosterCeremonyTwoArrivalTime: string;
-};
-
-const datePart = (value?: string | Date | null) => {
-  if (!value) return '';
-  if (typeof value === 'string') {
-    const match = value.match(/^(\d{4}-\d{2}-\d{2})/);
-    if (match) return match[1];
-  }
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
-};
-
-const addCalendarDays = (value: string | Date | undefined, days: number) => {
-  const start = datePart(value);
-  if (!start) return '';
-  const date = new Date(`${start}T12:00:00Z`);
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
-};
-
-const dateTimeValue = (value: string | Date | undefined, time?: string) => {
-  const day = datePart(value);
-  if (!day) return '';
-  return `${day}T${(time || '00:00').slice(0, 5)}`;
-};
-
 const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   mode,
   bookingId,
@@ -124,12 +91,10 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   const [ceremonies, setCeremonies] = useState<Ceremony[]>([]);
   const [booking, setBooking] = useState<RetreatClient | null>(initialBooking || null);
   const [formData, setFormData] = useState<BookingFormData>(emptyForm());
-  const [bookingSchedule, setBookingSchedule] = useState<BookingScheduleConfig | null>(null);
   const [bookingNumberError, setBookingNumberError] = useState('');
   const [cancellationReason, setCancellationReason] = useState('');
-  const [depositTreatment, setDepositTreatment] = useState<'none' | 'retained' | 'refund_pending' | 'partially_refunded' | 'credited'>('none');
+  const [depositTreatment, setDepositTreatment] = useState<'no_refund' | 'partial_refund' | 'full_refund' | 'credit_transfer'>('no_refund');
   const [cancellationNotes, setCancellationNotes] = useState('');
-  const [cancellationRefundAmount, setCancellationRefundAmount] = useState('');
 
   useEffect(() => {
     loadData();
@@ -138,7 +103,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   const loadData = async () => {
     try {
       setLoading(true);
-      const [clientsResponse, retreatsResponse, nextNumberResponse, configResponse] = await Promise.all([
+      const [clientsResponse, retreatsResponse, nextNumberResponse] = await Promise.all([
         clientsApi.getBookingOptions(),
         initialRetreats?.length ? Promise.resolve({ data: initialRetreats }) : retreatsApi.getAll(),
         mode === 'create'
@@ -147,14 +112,9 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
               return { data: undefined };
             })
           : Promise.resolve({ data: undefined }),
-        configSummaryApi.get().catch((error) => {
-          console.error('Error loading booking schedule configuration:', error);
-          return { data: undefined };
-        }),
       ]);
       setClients(clientsResponse.data || []);
       setRetreats(retreatsResponse.data || []);
-      setBookingSchedule(configResponse.data?.bookingSchedule || null);
 
       let currentBooking = initialBooking || null;
       if (mode === 'edit' && bookingId && !currentBooking) {
@@ -162,10 +122,9 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
         currentBooking = response.data || null;
       }
       setBooking(currentBooking);
-      setCancellationReason((currentBooking as any)?.cancellationReason || '');
-      setDepositTreatment((currentBooking as any)?.cancellationDepositTreatment || 'none');
-      setCancellationNotes((currentBooking as any)?.cancellationNotes || '');
-      setCancellationRefundAmount((currentBooking as any)?.cancellationRefundAmount ? String((currentBooking as any).cancellationRefundAmount) : '');
+      setCancellationReason(currentBooking?.cancellationReason || '');
+      setDepositTreatment(currentBooking?.cancellationDepositTreatment || 'no_refund');
+      setCancellationNotes(currentBooking?.cancellationNotes || '');
 
       if (currentBooking) {
         setFormData({
@@ -212,53 +171,6 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
         setCeremonies([]);
       });
   }, [formData.retreatId]);
-
-  useEffect(() => {
-    if (mode !== 'create' || !bookingSchedule || !formData.retreatId) return;
-    const retreat = retreats.find((item) => item._id === formData.retreatId);
-    if (!retreat) return;
-
-    const retreatStartDate = retreat.startDate || retreat.dates?.startDate;
-    const retreatEndDate = retreat.endDate || retreat.dates?.endDate;
-    const retreatStartTime = retreat.startTime || retreat.dates?.startTime || bookingSchedule.fullRetreatArrivalTime;
-    const retreatEndTime = retreat.endTime || retreat.dates?.endTime || bookingSchedule.fullRetreatDepartureTime;
-
-    let checkInDate = dateTimeValue(retreatStartDate, retreatStartTime);
-    let checkOutDate = dateTimeValue(retreatEndDate, retreatEndTime);
-
-    if (formData.bookingType === 'booster' && formData.ceremonyNumber === '1') {
-      const departureDate = addCalendarDays(
-        retreatStartDate,
-        bookingSchedule.boosterCeremonyOneStayDays,
-      );
-      checkOutDate = dateTimeValue(
-        departureDate,
-        bookingSchedule.boosterCeremonyOneDepartureTime,
-      );
-    } else if (formData.bookingType === 'booster' && formData.ceremonyNumber === '2') {
-      const arrivalDate = addCalendarDays(
-        retreatStartDate,
-        bookingSchedule.boosterCeremonyTwoArrivalOffsetDays,
-      );
-      checkInDate = dateTimeValue(
-        arrivalDate,
-        bookingSchedule.boosterCeremonyTwoArrivalTime,
-      );
-    }
-
-    setFormData((prev) => ({
-      ...prev,
-      checkInDate,
-      checkOutDate,
-    }));
-  }, [
-    mode,
-    bookingSchedule,
-    retreats,
-    formData.retreatId,
-    formData.bookingType,
-    formData.ceremonyNumber,
-  ]);
 
   const resolveId = (value: any) => {
     if (!value) return '';
@@ -359,23 +271,24 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       }
 
       if (mode === 'edit' && bookingId) {
-        if (formData.status === 'cancelled') {
-          if (cancellationReason.trim().length < 2) {
+        if (formData.status === 'cancelled' && booking?.status !== 'cancelled') {
+          if (!cancellationReason.trim()) {
             alert('Please enter a cancellation reason.');
-            return;
-          }
-          if (depositTreatment === 'partially_refunded' && Number(cancellationRefundAmount) <= 0) {
-            alert('Please enter the planned partial refund amount.');
             return;
           }
           const { status: _status, ...bookingChanges } = payload;
           await bookingsApi.update(bookingId, bookingChanges as any);
-          await bookingsApi.cancel(bookingId, {
+          const depositTreatmentMap = {
+            no_refund: 'retained',
+            partial_refund: 'partially_refunded',
+            full_refund: 'refund_pending',
+            credit_transfer: 'credited',
+          } as const;
+          await bookingsApi.cancelBooking(bookingId, {
             cancellationDate: new Date().toISOString(),
             cancellationReason: cancellationReason.trim(),
+            cancellationDepositTreatment: depositTreatmentMap[depositTreatment],
             cancellationNotes: cancellationNotes.trim() || undefined,
-            cancellationDepositTreatment: depositTreatment,
-            cancellationRefundAmount: depositTreatment === 'partially_refunded' ? Number(cancellationRefundAmount) : undefined,
           });
         } else {
           await bookingsApi.update(bookingId, payload as any);
@@ -484,6 +397,21 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
 
         <div className="grid gap-4 md:grid-cols-2">
           <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Arrival</label>
+            <input type="datetime-local" value={formData.checkInDate}
+              onChange={(e) => setFormData((prev) => ({ ...prev, checkInDate: e.target.value }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Departure</label>
+            <input type="datetime-local" value={formData.checkOutDate}
+              onChange={(e) => setFormData((prev) => ({ ...prev, checkOutDate: e.target.value }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Client</label>
             <SearchableClientSelect
               clients={clients}
@@ -503,28 +431,6 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
               required
             />
           </div>
-        </div>
-
-        <div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Arrival</label>
-              <input type="datetime-local" value={formData.checkInDate}
-                onChange={(e) => setFormData((prev) => ({ ...prev, checkInDate: e.target.value }))}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Departure</label>
-              <input type="datetime-local" value={formData.checkOutDate}
-                onChange={(e) => setFormData((prev) => ({ ...prev, checkOutDate: e.target.value }))}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            </div>
-          </div>
-          {mode === 'create' && formData.retreatId && (
-            <p className="mt-1 text-xs text-gray-500">
-              Prefilled from the retreat and booster schedule. You can adjust either time before saving.
-            </p>
-          )}
         </div>
 
         <div>
@@ -605,36 +511,12 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
           </div>
         </div>
 
-        {mode === 'edit' && formData.status === 'cancelled' && (
-          <div className="space-y-4 rounded-lg border border-red-200 bg-red-50 p-4">
-            <div>
-              <h3 className="font-semibold text-red-900">Cancel this booking</h3>
-              <p className="text-sm text-red-700">Record why it was cancelled and what happens to the deposit.</p>
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Cancellation reason *</label>
-              <textarea rows={3} value={cancellationReason} onChange={(event) => setCancellationReason(event.target.value)} className="w-full rounded-md border border-gray-300 px-3 py-2" required minLength={2} />
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Deposit treatment *</label>
-              <select value={depositTreatment} onChange={(event) => setDepositTreatment(event.target.value as typeof depositTreatment)} className="w-full rounded-md border border-gray-300 px-3 py-2">
-                <option value="none">No payment was received</option>
-                <option value="retained">Deposit retained</option>
-                <option value="refund_pending">Full refund pending</option>
-                <option value="partially_refunded">Partial refund</option>
-                <option value="credited">Credit transferred to another booking</option>
-              </select>
-            </div>
-            {depositTreatment === 'partially_refunded' && (
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Planned refund amount *</label>
-                <input type="number" min="0.01" step="0.01" value={cancellationRefundAmount} onChange={(event) => setCancellationRefundAmount(event.target.value)} className="w-full rounded-md border border-gray-300 px-3 py-2" required />
-              </div>
-            )}
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Cancellation notes</label>
-              <textarea rows={2} value={cancellationNotes} onChange={(event) => setCancellationNotes(event.target.value)} className="w-full rounded-md border border-gray-300 px-3 py-2" />
-            </div>
+        {mode === 'edit' && formData.status === 'cancelled' && booking?.status !== 'cancelled' && (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4 space-y-4">
+            <div><h3 className="font-semibold text-red-900">Cancel this booking</h3><p className="text-sm text-red-700">This records the cancellation on the booking. The client profile remains active.</p></div>
+            <div><label className="mb-1 block text-sm font-medium text-gray-700">Cancellation reason *</label><textarea rows={3} value={cancellationReason} onChange={e => setCancellationReason(e.target.value)} className="w-full rounded-md border border-gray-300 px-3 py-2" placeholder="Why is this booking being cancelled?" required /></div>
+            <div><label className="mb-1 block text-sm font-medium text-gray-700">Deposit treatment *</label><select value={depositTreatment} onChange={e => setDepositTreatment(e.target.value as any)} className="w-full rounded-md border border-gray-300 px-3 py-2"><option value="no_refund">No refund — deposit retained</option><option value="partial_refund">Partial refund</option><option value="full_refund">Full refund</option><option value="credit_transfer">Credit / transfer to another booking</option></select></div>
+            <div><label className="mb-1 block text-sm font-medium text-gray-700">Cancellation notes</label><textarea rows={2} value={cancellationNotes} onChange={e => setCancellationNotes(e.target.value)} className="w-full rounded-md border border-gray-300 px-3 py-2" placeholder="Optional internal details" /></div>
           </div>
         )}
 

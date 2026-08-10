@@ -118,7 +118,7 @@ const WaitingListMatrix: React.FC = () => {
   };
 
   const removeFromWaitingList = async (entryId: string) => {
-    if (!confirm('Are you sure you want to remove this client from the waiting list?')) {
+    if (!window.confirm('Are you sure you want to remove this client from the waiting list?')) {
       return;
     }
 

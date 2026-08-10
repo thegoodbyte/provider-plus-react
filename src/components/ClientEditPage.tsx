@@ -239,10 +239,6 @@ const ClientEditPage: React.FC = () => {
         dietaryRestrictions: formData.dietaryRestrictions,
         notes: formData.notes,
         source: normalizeOptionalValue(formData.source),
-        referralId: typeof formData.referralId === 'object' ? formData.referralId?._id : formData.referralId,
-        referralCommissionPercentage: formData.referralId
-          ? Number(formData.referralCommissionPercentage || 0)
-          : undefined,
         status: normalizeOptionalValue(formData.status) as 'active' | 'inactive' | 'suspended' | undefined,
         workflowStatus: normalizeOptionalValue(formData.workflowStatus) as Client['workflowStatus'],
         language: normalizeOptionalValue(formData.language) as Client['language']
@@ -461,12 +457,7 @@ const ClientEditPage: React.FC = () => {
                 value={typeof formData.referralId === 'object' ? formData.referralId?._id || '' : formData.referralId || ''}
                 onChange={(event) => {
                   const referral = referrals.find((item) => item._id === event.target.value);
-                  setFormData({
-                    ...formData,
-                    referralId: event.target.value || undefined,
-                    source: referral?.name || '',
-                    referralCommissionPercentage: referral ? Number(referral.defaultCommissionPercentage || 0) : undefined,
-                  });
+                  setFormData({ ...formData, referralId: event.target.value || undefined, source: referral?.name || '' });
                 }}
                 className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
@@ -474,26 +465,6 @@ const ClientEditPage: React.FC = () => {
                 {referrals.filter((item) => item.isActive !== false || item._id === (typeof formData.referralId === 'object' ? formData.referralId?._id : formData.referralId)).map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}
               </select>
               {!formData.referralId && <input type="text" name="source" value={formData.source || ''} onChange={handleInputChange} placeholder="Legacy referral or how they found us" className="mt-2 w-full p-2 border border-gray-300 rounded-md" />}
-            </div>
-            <div>
-              <label htmlFor="referralCommissionPercentage" className="block text-sm font-medium text-gray-700 mb-1">Referral commission %</label>
-              <input
-                type="number"
-                id="referralCommissionPercentage"
-                name="referralCommissionPercentage"
-                min="0"
-                max="100"
-                step="0.01"
-                value={formData.referralCommissionPercentage ?? ''}
-                onChange={(event) => setFormData((current) => ({
-                  ...current,
-                  referralCommissionPercentage: event.target.value === '' ? undefined : Number(event.target.value),
-                }))}
-                disabled={!formData.referralId}
-                placeholder="Select a referral"
-                className="w-full p-2 border border-gray-300 rounded-md disabled:bg-gray-100"
-              />
-              <p className="mt-1 text-xs text-gray-500">Prefilled from the referral and editable for this client.</p>
             </div>
 
             <div className="col-span-full">

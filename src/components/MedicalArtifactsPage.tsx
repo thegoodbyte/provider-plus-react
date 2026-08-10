@@ -4,7 +4,6 @@ import { AlertTriangle, CheckCircle2, Eye, FileText, HeartPulse, Leaf, Pencil, P
 import { medicalArtifactsApi, medicalReviewRequestsApi, retreatsApi } from '../services/api';
 import { Client, MedicalArtifact, MedicalReviewRequest, Retreat, RetreatArtifactSubmissionRow, RetreatArtifactSubmissionsResponse, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
-import './MedicalArtifactsPage.css';
 
 const artifactTypeLabels: Record<NonNullable<MedicalArtifact['artifactType']>, string> = {
   ekg: 'EKG',
@@ -436,68 +435,69 @@ const MedicalArtifactsPage: React.FC = () => {
   }
 
   return (
-    <div className="medical-artifacts-workspace">
-      <div className="medical-artifacts-header">
-        <div className="medical-artifacts-title">
-          <h1>Medical artifacts</h1>
-          <span>{filteredArtifacts.length} of {artifacts.length} stored records</span>
+    <div className="p-3 md:p-6">
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Medical Artifacts</h1>
+          <p className="text-sm text-gray-600">Stored EKGs, liver panels, medication forms, questions, and other medical records.</p>
         </div>
-        <div className="medical-artifacts-header-actions">
-          <button onClick={() => navigate('new')} className="medical-artifacts-add">
+        <div className="flex items-center gap-2">
+          <button onClick={() => navigate('new')} className="inline-flex items-center gap-2 rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-black">
             <Plus className="h-4 w-4" />
-            <span>Add artifact</span>
+            Add New
           </button>
-          <button onClick={loadData} className="medical-artifacts-refresh" title="Refresh" aria-label="Refresh medical artifacts">
+          <button onClick={loadData} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
             <RefreshCw className="h-4 w-4" />
+            Refresh
           </button>
         </div>
       </div>
 
-      <div className="medical-artifacts-tabs">
+      <div className="mb-4 inline-flex rounded-md border border-gray-200 bg-white p-1">
         <button
           type="button"
           onClick={() => setActiveView('artifacts')}
           className={`rounded px-3 py-2 text-sm font-medium ${activeView === 'artifacts' ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
         >
-          Uploaded
+          Uploaded Artifacts
         </button>
         <button
           type="button"
           onClick={() => setActiveView('retreat_submissions')}
           className={`rounded px-3 py-2 text-sm font-medium ${activeView === 'retreat_submissions' ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
         >
-          Retreat submissions
+          Retreat Submissions
         </button>
       </div>
 
       {activeView === 'artifacts' ? (
         <>
-      <div className="medical-artifacts-filters">
-        <div className="medical-artifacts-filter-grid">
+      <div className="mb-4 rounded-md border border-gray-200 bg-white p-3">
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
           <input
             value={searchFilter}
             onChange={(event) => setSearchFilter(event.target.value)}
-            placeholder="Client, booking, retreat or artifact ID"
-            className="medical-artifacts-search"
+            placeholder="Search client, booking, retreat, artifact..."
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
           />
           <input
             value={bookingIdFilter}
             onChange={(event) => setBookingIdFilter(event.target.value)}
             placeholder="Booking ID"
-            className="medical-artifacts-hidden-filter"
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
           />
           <input
             value={clientIdFilter}
             onChange={(event) => setClientIdFilter(event.target.value)}
             placeholder="Client ID"
-            className="medical-artifacts-hidden-filter"
+            className="rounded-md border border-gray-300 px-3 py-2 text-sm"
           />
           <select
             value={retreatIdFilter}
             onChange={(event) => setRetreatIdFilter(event.target.value)}
             className="rounded-md border border-gray-300 px-3 py-2 text-sm"
           >
-            <option value="">Retreat</option>
+            <option value="">All retreats</option>
             {retreatOptions.map((retreat) => (
               <option key={retreat.value} value={retreat.value}>
                 {retreat.label}
@@ -505,25 +505,25 @@ const MedicalArtifactsPage: React.FC = () => {
             ))}
           </select>
           <select value={stageFilter} onChange={(event) => setStageFilter(event.target.value as typeof stageFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-            <option value="all">Stage</option>
+            <option value="all">All document stages</option>
             {Object.entries(documentStageLabels).map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
             ))}
           </select>
           <select value={documentTypeFilter} onChange={(event) => setDocumentTypeFilter(event.target.value as typeof documentTypeFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-            <option value="all">Document type</option>
+            <option value="all">All document types</option>
             {Object.entries(documentTypeLabels).map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
             ))}
           </select>
-          <select value={artifactTypeFilter} onChange={(event) => setArtifactTypeFilter(event.target.value as typeof artifactTypeFilter)} className="medical-artifacts-hidden-filter">
+          <select value={artifactTypeFilter} onChange={(event) => setArtifactTypeFilter(event.target.value as typeof artifactTypeFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
             <option value="all">All artifact types</option>
             {Object.entries(artifactTypeLabels).map(([value, label]) => (
               <option key={value} value={value}>{label}</option>
             ))}
           </select>
           <select value={reviewFilter} onChange={(event) => setReviewFilter(event.target.value as typeof reviewFilter)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-            <option value="all">Review state</option>
+            <option value="all">All MRR states</option>
             <option value="has_review">Has MRR</option>
             <option value="no_review">No MRR</option>
           </select>
@@ -540,19 +540,22 @@ const MedicalArtifactsPage: React.FC = () => {
               setStatusFilter('all');
               setReviewFilter('all');
             }}
-            className="medical-artifacts-clear"
+            className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             Clear filters
           </button>
+          <div className="flex items-center text-sm text-gray-500">
+            Showing {filteredArtifacts.length} of {artifacts.length}
+          </div>
         </div>
       </div>
 
-      <div className="medical-artifacts-table-shell">
-        <table className="medical-artifacts-table">
+      <div className="max-w-full overflow-x-auto rounded-md border border-gray-200">
+        <table className="min-w-[1280px] divide-y divide-gray-200 text-sm">
           <thead className="bg-gray-50 text-left text-xs font-semibold uppercase text-gray-500">
             <tr>
-              <th className="px-4 py-3">Artifact</th>
-              <th className="min-w-[170px] px-4 py-3">Review</th>
+              <th className="px-4 py-3">ID</th>
+              <th className="min-w-[170px] px-4 py-3">MRR</th>
               <th className="sticky right-0 z-20 min-w-[184px] border-l border-gray-200 bg-gray-50 px-4 py-3">Actions</th>
               <th className="px-4 py-3">Preview</th>
               <th className="hidden px-4 py-3 sm:table-cell">Stage</th>
@@ -572,7 +575,7 @@ const MedicalArtifactsPage: React.FC = () => {
               const retreatCode = getRetreatCode(artifact.retreatId as any);
               return (
               <tr key={artifact._id} className="hover:bg-gray-50">
-                <td className="medical-artifact-primary px-4 py-3 font-medium text-gray-900">
+                <td className="px-4 py-3 font-medium text-gray-900">
                   {artifact._id ? (
                     <button
                       type="button"
@@ -584,8 +587,6 @@ const MedicalArtifactsPage: React.FC = () => {
                   ) : (
                     `#${artifact.display_id}`
                   )}
-                  <span className="medical-artifact-type-label">{getDocumentTypeLabel(artifact.documentType, artifact.artifactType)}</span>
-                  <small>Uploaded {artifact.receivedAt ? new Date(artifact.receivedAt).toLocaleDateString() : '—'} · {getSourceLabel(artifact.source)}{retreatCode ? ` · ${retreatCode}` : ''}</small>
                 </td>
                 <td className="min-w-[170px] px-4 py-3">
                   <div className="flex flex-col gap-1">

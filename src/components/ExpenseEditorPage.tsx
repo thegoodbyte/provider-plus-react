@@ -1,9 +1,8 @@
 import React, { FormEvent, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Camera, Save, X } from 'lucide-react';
-import { expenseTypesApi, paymentMethodsApi, retreatExpensesApi, retreatsApi } from '../services/api';
-import { ExpenseType, PaymentMethod, Retreat, RetreatExpense } from '../types';
-import { expenseCategoryName } from '../utils/expenseCategory';
+import { expenseTypesApi, retreatExpensesApi, retreatsApi } from '../services/api';
+import { ExpenseType, Retreat, RetreatExpense } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import { getCurrentRetreatForDate } from './expensesQuickAdd';
 
@@ -18,13 +17,12 @@ const ExpenseEditorPage: React.FC = () => {
   const prefix = `/${location.pathname.split('/').filter(Boolean)[0] || 'admin'}`;
   const amountRef = useRef<HTMLInputElement>(null);
   const [types, setTypes] = useState<ExpenseType[]>([]);
-  const [paymentMethods, setPaymentMethods] = useState<PaymentMethod[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [receipts, setReceipts] = useState<File[]>([]);
-  const [existingReceiptNames, setExistingReceiptNames] = useState<string[]>([]);
+  const [receipt, setReceipt] = useState<File | null>(null);
+  const [existingReceiptName, setExistingReceiptName] = useState('');
   const [form, setForm] = useState({
     expenseDate: today(),
     amount: '',
@@ -32,7 +30,6 @@ const ExpenseEditorPage: React.FC = () => {
     description: '',
     vendor: '',
     expenseTypeId: '',
-    paymentMethodId: '',
     retreatId: '',
     status: 'pending' as RetreatExpense['status'],
   });
@@ -40,23 +37,18 @@ const ExpenseEditorPage: React.FC = () => {
   useEffect(() => {
     const load = async () => {
       try {
-        const [typeResponse, paymentMethodResponse, retreatResponse, expenseResponse] = await Promise.all([
+        const [typeResponse, retreatResponse, expenseResponse] = await Promise.all([
           expenseTypesApi.getAll(),
-          paymentMethodsApi.getAll(),
           retreatsApi.getAll(),
           id ? retreatExpensesApi.getOne(id) : Promise.resolve({ data: null }),
         ]);
         const loadedTypes = (typeResponse.data || []).filter((type) => type.isActive !== false);
         const loadedRetreats = retreatResponse.data || [];
         setTypes(loadedTypes);
-        setPaymentMethods(paymentMethodResponse.data || []);
         setRetreats(loadedRetreats);
         if (expenseResponse.data) {
           const expense = expenseResponse.data;
-          setExistingReceiptNames(
-            expense.receiptImages?.map((item) => item.fileName || 'Receipt image')
-              || (expense.receiptFileName ? [expense.receiptFileName] : [])
-          );
+          setExistingReceiptName(expense.receiptFileName || '');
           setForm({
             expenseDate: new Date(expense.expenseDate).toISOString().slice(0, 10),
             amount: String(expense.amount),
@@ -64,7 +56,6 @@ const ExpenseEditorPage: React.FC = () => {
             description: expense.description || '',
             vendor: expense.vendor || '',
             expenseTypeId: idOf(expense.expenseTypeId),
-            paymentMethodId: idOf(expense.paymentMethodId),
             retreatId: idOf(expense.retreatId),
             status: expense.status,
           });
@@ -101,7 +92,6 @@ const ExpenseEditorPage: React.FC = () => {
       description: form.description.trim(),
       vendor: form.vendor.trim(),
       expenseTypeId: form.expenseTypeId,
-      paymentMethodId: form.paymentMethodId || undefined,
       retreatId: form.retreatId || undefined,
       status: form.status,
       expenseKind: 'actual' as const,
@@ -114,16 +104,16 @@ const ExpenseEditorPage: React.FC = () => {
         const response = await retreatExpensesApi.create(payload as Omit<RetreatExpense, '_id'>);
         expenseId = response.data._id || '';
       }
-      if (receipts.length && expenseId) {
-        await retreatExpensesApi.uploadReceipts(expenseId, receipts);
+      if (receipt && expenseId) {
+        await retreatExpensesApi.uploadReceipt(expenseId, receipt);
       }
       if (id) {
         navigate(`${prefix}/expenses/${id}`);
       } else {
         if (next) {
           setForm((current) => ({ ...current, amount: '', description: '', vendor: '' }));
-          setReceipts([]);
-          setExistingReceiptNames([]);
+          setReceipt(null);
+          setExistingReceiptName('');
           amountRef.current?.focus();
         } else {
           navigate(`${prefix}/expenses/${expenseId}`);
@@ -154,24 +144,17 @@ const ExpenseEditorPage: React.FC = () => {
         </div>
         <label className="block"><span className="mb-1 block text-base font-bold">Item</span><input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className={field} placeholder="What did you buy?" /></label>
         <label className="block"><span className="mb-1 block text-base font-bold">Vendor</span><input value={form.vendor} onChange={(e) => setForm({ ...form, vendor: e.target.value })} className={field} placeholder="Store or supplier" /></label>
-        <label className="block"><span className="mb-1 block text-base font-bold">Category</span><select value={form.expenseTypeId} onChange={(e) => setForm({ ...form, expenseTypeId: e.target.value })} className={field} required><option value="">Choose category</option>{types.map((type) => <option key={type._id} value={type._id}>{expenseCategoryName(type)}</option>)}</select></label>
-        <label className="block"><span className="mb-1 block text-base font-bold">Payment method</span><select value={form.paymentMethodId} onChange={(e) => setForm({ ...form, paymentMethodId: e.target.value })} className={field}><option value="">Not specified</option>{paymentMethods.map((method) => <option key={method._id} value={method._id}>{method.name}</option>)}</select></label>
+        <label className="block"><span className="mb-1 block text-base font-bold">Category</span><select value={form.expenseTypeId} onChange={(e) => setForm({ ...form, expenseTypeId: e.target.value })} className={field} required><option value="">Choose category</option>{types.map((type) => <option key={type._id} value={type._id}>{type.name}</option>)}</select></label>
         <label className="block"><span className="mb-1 block text-base font-bold">Retreat</span><select value={form.retreatId} onChange={(e) => setForm({ ...form, retreatId: e.target.value })} className={field}><option value="">General company expense</option>{retreats.map((retreat) => <option key={retreat._id} value={retreat._id}>{retreat.code || retreat.retreatCode || retreat.name}</option>)}</select></label>
         <div className="rounded-xl border border-slate-300 bg-white p-3">
           <div className="mb-2 flex items-center justify-between gap-3">
-            <div><div className="text-base font-bold">Receipt images</div><div className="text-sm text-slate-500">Select multiple photos, maximum 10 MB each</div></div>
-            {receipts.length > 0 && <button type="button" onClick={() => setReceipts([])} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="Clear selected receipts"><X size={18} /></button>}
+            <div><div className="text-base font-bold">Receipt image</div><div className="text-sm text-slate-500">Photo or image, maximum 10 MB</div></div>
+            {(receipt || existingReceiptName) && <button type="button" onClick={() => { setReceipt(null); setExistingReceiptName(''); }} className="rounded-lg p-2 text-slate-500 hover:bg-slate-100" aria-label="Clear selected receipt"><X size={18} /></button>}
           </div>
           <label className="flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-blue-300 bg-blue-50 px-4 font-bold text-blue-700">
-            <Camera size={21} /> {receipts.length ? `${receipts.length} image${receipts.length === 1 ? '' : 's'} selected` : 'Add receipt photos'}
-            <input type="file" accept="image/*" multiple className="sr-only" onChange={(event) => setReceipts(Array.from(event.target.files || []))} />
+            <Camera size={21} /> {receipt ? receipt.name : existingReceiptName || 'Add receipt photo'}
+            <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(event) => setReceipt(event.target.files?.[0] || null)} />
           </label>
-          {(existingReceiptNames.length > 0 || receipts.length > 0) && (
-            <ul className="mt-2 space-y-1 text-sm text-slate-600">
-              {existingReceiptNames.map((name, index) => <li key={`existing-${index}`}>Saved: {name}</li>)}
-              {receipts.map((file, index) => <li key={`${file.name}-${index}`}>New: {file.name}</li>)}
-            </ul>
-          )}
         </div>
         {editing && <label className="block"><span className="mb-1 block text-base font-bold">Status</span><select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as RetreatExpense['status'] })} className={field}><option value="pending">Pending</option><option value="approved">Approved</option><option value="paid">Paid</option><option value="rejected">Rejected</option></select></label>}
         <div className={`sticky bottom-0 grid gap-2 border-t border-slate-200 bg-white py-3 ${editing ? 'grid-cols-2' : 'grid-cols-3'}`}>

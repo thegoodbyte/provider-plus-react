@@ -20,7 +20,7 @@ interface PaymentWithDetails extends Payment {
   clientPhone?: string;
 }
 
-type PaymentSortKey = 'display' | 'date' | 'client' | 'retreat' | 'booking' | 'amount' | 'usd' | 'method' | 'status' | 'type';
+type PaymentSortKey = 'display' | 'date' | 'client' | 'retreat' | 'booking' | 'request' | 'amount' | 'usd' | 'method' | 'status' | 'type';
 type SortDirection = 'asc' | 'desc';
 
 const getRetreatCode = (retreat?: Retreat) => {
@@ -149,6 +149,12 @@ const PaymentsPage: React.FC = () => {
         return String(payment.retreatName || '').toLowerCase();
       case 'booking':
         return Number(payment.bookingNumber || 0);
+      case 'request': {
+        const request = payment.paymentRequestId;
+        if (!request) return '';
+        if (typeof request === 'string') return request;
+        return String(request.invoiceNumber || request.display_id || request._id || '');
+      }
       case 'amount':
         return Number(payment.amount || 0);
       case 'usd':
@@ -241,6 +247,7 @@ const PaymentsPage: React.FC = () => {
                 <th className="px-6 py-3 text-left">{renderSortableHeader('client', 'Client')}</th>
                 <th className="px-6 py-3 text-left">{renderSortableHeader('retreat', 'Retreat')}</th>
                 <th className="px-6 py-3 text-left">{renderSortableHeader('booking', 'Booking #')}</th>
+                <th className="px-6 py-3 text-left">{renderSortableHeader('request', 'Payment Request')}</th>
                 <th className="px-6 py-3 text-left">{renderSortableHeader('amount', 'Amount')}</th>
                 <th className="px-6 py-3 text-left">{renderSortableHeader('usd', 'USD')}</th>
                 <th className="px-6 py-3 text-left">{renderSortableHeader('method', 'Method')}</th>
@@ -299,6 +306,16 @@ const PaymentsPage: React.FC = () => {
                     ) : (
                       '-'
                     )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {payment.paymentRequestId ? (() => {
+                      const request = payment.paymentRequestId;
+                      const requestId = typeof request === 'string' ? request : request._id;
+                      const label = typeof request === 'string'
+                        ? `#${request.slice(-8)}`
+                        : request.invoiceNumber || (request.display_id ? `#${request.display_id}` : `#${request._id?.slice(-8) || ''}`);
+                      return requestId ? <Link to={`/admin/payment-requests/${requestId}`} className="font-semibold text-blue-600 hover:underline">{label}</Link> : label;
+                    })() : '-'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     <CurrencyDisplay amount={payment.amount} currency={payment.currency} />

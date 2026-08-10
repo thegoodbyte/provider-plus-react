@@ -11,7 +11,6 @@ import ClientEditPage from './ClientEditPage';
 import AddClient from '../pages/AddClient';
 import ClientScreening from '../pages/ClientScreening';
 import RetreatDetailView, { RetreatDetailTab } from './RetreatDetailView';
-import RetreatStaffingPage from './RetreatStaffingPage';
 // import ClientsGrid from './ClientsGrid'; // Now using UnifiedClientManager
 import BookingsGrid from './BookingsGrid';
 import BookingEditorPage from './BookingEditorPage';
@@ -32,7 +31,6 @@ import WorkflowDashboard from './WorkflowDashboard';
 import RetreatFlowPage from './RetreatFlowPage';
 import RetreatFlowLibraryPage from './RetreatFlowLibraryPage';
 import BookingFlowPage from './BookingFlowPage';
-import BookingStepDeadlinesPage from './BookingStepDeadlinesPage';
 import NeedsAttentionPage from './NeedsAttentionPage';
 import BookingDocumentsPage from './BookingDocumentsPage';
 import BookingDocumentTypesPage from './BookingDocumentTypesPage';
@@ -59,7 +57,7 @@ import AssistantPage from './AssistantPage';
 import HelperCurrentRetreatPage from './HelperCurrentRetreatPage';
 import RetreatFocusModePage from './RetreatFocusModePage';
 import RequirementsGrid from './RequirementsGrid';
-import SettingsPage from './SettingsPage';
+import CurrencySettings from './CurrencySettings';
 import MedicalAdvisorDashboard from './MedicalAdvisorDashboard';
 import MedicalReviewDetail from './MedicalReviewDetail';
 import MedicalRetreats from './MedicalRetreats';
@@ -67,11 +65,14 @@ import MedicalProfile from './MedicalProfile';
 import MedicalClientView from './MedicalClientView';
 import MedicalAdvisorReview from './MedicalAdvisorReview';
 import ModuleLauncherPage from './ModuleLauncherPage';
+import ReserveListsPage from './ReserveListsPage';
 import ProtectedRoute from './ProtectedRoute';
 import Unauthorized from './Unauthorized';
 import PermissionsMatrix from './PermissionsMatrix';
 import ClientMedicationsGrid from './ClientMedicationsGrid';
 import ClientMedicationForm from './ClientMedicationForm';
+import ClientFoodFormsPage from './ClientFoodFormsPage';
+import BookingStepDeadlinesPage from './BookingStepDeadlinesPage';
 import ScheduledRemindersPage from './ScheduledRemindersPage';
 import MedicationStopPlanPage from './MedicationStopPlanPage';
 import UserManagement from './UserManagement';
@@ -112,7 +113,7 @@ const BookingDetailRoute: React.FC = () => {
   return <BookingDetailView bookingId={bookingId || ''} onBack={() => navigate(-1)} />;
 };
 
-const RETREAT_DETAIL_TABS: RetreatDetailTab[] = ['clients', 'holisticView', 'tracking', 'expenses', 'payments', 'ceremonies', 'analytics', 'tasks'];
+const RETREAT_DETAIL_TABS: RetreatDetailTab[] = ['clients', 'holisticView', 'tracking', 'drugScreening', 'expenses', 'payments', 'ceremonies', 'analytics', 'tasks'];
 
 const getRetreatTabFromRoute = (tab?: string): RetreatDetailTab => (
   RETREAT_DETAIL_TABS.includes(tab as RetreatDetailTab) ? tab as RetreatDetailTab : 'clients'
@@ -155,6 +156,7 @@ const AppleLayout: React.FC = () => {
     const saved = localStorage.getItem('sidebarCollapsed');
     return saved === 'true';
   });
+  const [showSettings, setShowSettings] = useState(false);
   const { logout, user, startMedicalStaffPreview, stopImpersonation } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -198,10 +200,10 @@ const AppleLayout: React.FC = () => {
     if (route === 'booking-step-deadlines') return 'booking-step-deadlines';
     if (route === 'booking-documents') return 'booking-documents';
     if (route === 'booking-document-types') return 'booking-document-types';
+    if (route === 'reserve-lists') return 'reserve-lists';
     if (route === 'flow-tasks') return 'flow-tasks';
     if (route === 'ir-notifications') return 'ir-notifications';
     if (route === 'retreats') return 'retreats';
-    if (route === 'retreat-staffing') return 'retreat-staffing';
     if (route === 'ceremonies') return 'ceremonies';
     if (route === 'houses') return 'houses';
     if (route === 'bookings') return 'bookings';
@@ -620,7 +622,15 @@ const AppleLayout: React.FC = () => {
               </button>
             )}
             <button
-              onClick={() => navigate('/admin/settings/finance/payment-methods')}
+              onClick={() => setShowSettings(true)}
+              className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-apple-gray-700 shadow-apple-sm backdrop-blur-apple transition-colors hover:bg-white"
+              aria-label="Currency converter"
+              title="Revolut currency converter"
+            >
+              <span className="text-lg font-bold" aria-hidden="true">$↔</span>
+            </button>
+            <button
+              onClick={() => setShowSettings(true)}
               className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-apple-gray-700 shadow-apple-sm backdrop-blur-apple transition-colors hover:bg-white"
               aria-label="Settings"
             >
@@ -670,6 +680,15 @@ const AppleLayout: React.FC = () => {
 
                 {/* Actions */}
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowSettings(true)}
+                  className="inline-flex items-center gap-2 rounded-apple bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 transition-colors hover:bg-emerald-100"
+                  aria-label="Currency converter"
+                  title="Revolut currency converter"
+                >
+                  <span aria-hidden="true">$↔</span>
+                  <span>Currency</span>
+                </button>
                 {user?.role === 'admin' && !isImpersonating && (
                   <button
                     onClick={async () => {
@@ -694,7 +713,7 @@ const AppleLayout: React.FC = () => {
                 )}
                 {/* Settings button */}
                 <button
-                  onClick={() => navigate('/admin/settings/finance/payment-methods')}
+                  onClick={() => setShowSettings(true)}
                   className="p-2 rounded-apple hover:bg-apple-gray-100 transition-colors"
                   aria-label="Settings"
                 >
@@ -819,17 +838,17 @@ const AppleLayout: React.FC = () => {
                       <Route path="workflow/bookings/:bookingId" element={<WorkflowDashboard />} />
                       <Route path="retreat-flow" element={<RetreatFlowPage />} />
                       <Route path="retreat-flow/:retreatId" element={<RetreatFlowPage />} />
-                      <Route path="retreat-staffing" element={<RetreatStaffingPage />} />
                       <Route path="retreat-flow-library" element={<RetreatFlowLibraryPage />} />
                       <Route path="scheduled-reminders" element={<ScheduledRemindersPage />} />
+                      <Route path="booking-step-deadlines" element={<BookingStepDeadlinesPage />} />
                       <Route path="bookings/:bookingId/medication-stop-plan" element={<MedicationStopPlanPage />} />
                       <Route path="booking-flow" element={<BookingFlowPage />} />
                       <Route path="booking-flow/:bookingId" element={<BookingFlowPage />} />
-                      <Route path="booking-step-deadlines" element={<BookingStepDeadlinesPage />} />
                       <Route path="needs-attention" element={<NeedsAttentionPage />} />
                       <Route path="ir-notifications" element={<SubmissionNotificationsPage />} />
                       <Route path="booking-documents" element={<BookingDocumentsPage />} />
                       <Route path="booking-document-types" element={<BookingDocumentTypesPage />} />
+                      <Route path="reserve-lists" element={<ReserveListsPage />} />
                       <Route path="flow-tasks" element={<FlowTaskInboxPage />} />
                       <Route path="medical-dashboard" element={<MedicalAdvisorDashboard />} />
                       <Route path="medical-review/:bookingId" element={<MedicalReviewDetail />} />
@@ -846,8 +865,6 @@ const AppleLayout: React.FC = () => {
                       <Route path="expenses/new" element={<ExpenseEditorPage />} />
                       <Route path="expenses/:id" element={<ExpenseDetailPage />} />
                       <Route path="expenses/:id/edit" element={<ExpenseEditorPage />} />
-                      <Route path="settings/finance/payment-methods" element={<SettingsPage />} />
-                      <Route path="settings/finance/expense-types" element={<SettingsPage />} />
                       <Route path="payment-requests" element={<PaymentRequestsGrid />} />
                       <Route path="payment-requests/new" element={<PaymentRequestEditorPage />} />
                       <Route path="payment-requests/:id" element={<PaymentRequestEditorPage />} />
@@ -862,6 +879,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="client-medications/create" element={<ClientMedicationForm mode="create" />} />
                       <Route path="client-medications/edit/:id" element={<ClientMedicationForm mode="edit" />} />
                       <Route path="client-medications/view/:id" element={<ClientMedicationForm mode="view" />} />
+                      <Route path="client-food-forms" element={<ClientFoodFormsPage />} />
                       <Route path="analytics" element={<div className="p-6">Analytics - Coming Soon</div>} />
                       <Route path="users" element={<UserManagement />} />
                       <Route path="audit-logs" element={<AuditLogsPage />} />
@@ -925,14 +943,15 @@ const AppleLayout: React.FC = () => {
                         <Route path="retreat-flow/:retreatId" element={<RetreatFlowPage />} />
                         <Route path="retreat-flow-library" element={<RetreatFlowLibraryPage />} />
                         <Route path="scheduled-reminders" element={<ScheduledRemindersPage />} />
+                        <Route path="booking-step-deadlines" element={<BookingStepDeadlinesPage />} />
                         <Route path="bookings/:bookingId/medication-stop-plan" element={<MedicationStopPlanPage />} />
                         <Route path="booking-flow" element={<BookingFlowPage />} />
                         <Route path="booking-flow/:bookingId" element={<BookingFlowPage />} />
-                        <Route path="booking-step-deadlines" element={<BookingStepDeadlinesPage />} />
                         <Route path="needs-attention" element={<NeedsAttentionPage />} />
                         <Route path="ir-notifications" element={<SubmissionNotificationsPage />} />
                         <Route path="booking-documents" element={<BookingDocumentsPage />} />
                         <Route path="booking-document-types" element={<BookingDocumentTypesPage />} />
+                        <Route path="reserve-lists" element={<ReserveListsPage />} />
                         <Route path="flow-tasks" element={<FlowTaskInboxPage />} />
                         <Route path="review/:id" element={<MedicalAdvisorReview />} />
                         <Route path="medical-review/:id" element={<MedicalAdvisorReview />} />
@@ -984,7 +1003,6 @@ const AppleLayout: React.FC = () => {
                       <Route path="launcher" element={<ModuleLauncherPage />} />
                       <Route path="bookings" element={<BookingsGrid />} />
                       <Route path="retreats" element={<RetreatsGrid />} />
-                      <Route path="retreat-staffing" element={<RetreatStaffingPage />} />
                       <Route path="retreats/:retreatId/clients-print" element={<RetreatClientsPrintPage />} />
                       <Route path="retreats/:retreatId" element={<RetreatDetailRoute />} />
                       <Route path="retreats/:retreatId/:tab" element={<RetreatDetailRoute />} />
@@ -1081,6 +1099,11 @@ const AppleLayout: React.FC = () => {
                 <Route path="/bookings/:bookingId/medication-stop-plan" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><MedicationStopPlanPage /></ProtectedRoute>} />
                 <Route path="/booking-documents" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><BookingDocumentsPage /></ProtectedRoute>} />
                 <Route path="/booking-document-types" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><BookingDocumentTypesPage /></ProtectedRoute>} />
+                <Route path="/reserve-lists" element={<ProtectedRoute><ReserveListsPage /></ProtectedRoute>} />
+                <Route path="/admin/reserve-lists" element={<ProtectedRoute><ReserveListsPage /></ProtectedRoute>} />
+                <Route path="/medical/reserve-lists" element={<ProtectedRoute><ReserveListsPage /></ProtectedRoute>} />
+                <Route path="/staff/reserve-lists" element={<ProtectedRoute><ReserveListsPage /></ProtectedRoute>} />
+                <Route path="/user/reserve-lists" element={<ProtectedRoute><ReserveListsPage /></ProtectedRoute>} />
                 <Route path="/flow-tasks" element={<ProtectedRoute requiredRole={['medical_staff', 'admin']}><FlowTaskInboxPage /></ProtectedRoute>} />
                 <Route path="/clients" element={<ProtectedRoute><UnifiedClientManager /></ProtectedRoute>} />
                 <Route path="/clients/add" element={<ProtectedRoute><AddClient /></ProtectedRoute>} />
@@ -1117,6 +1140,18 @@ const AppleLayout: React.FC = () => {
         </footer>
       </div>
 
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm"
+            onClick={() => setShowSettings(false)}
+          />
+          <div className="relative bg-white rounded-apple-xl shadow-apple-xl max-w-lg w-full">
+            <CurrencySettings onClose={() => setShowSettings(false)} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

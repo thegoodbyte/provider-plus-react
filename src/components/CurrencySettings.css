@@ -26,6 +26,17 @@
   font-weight: 600;
 }
 
+.settings-tabs { display: flex; gap: 8px; padding: 16px 24px 0; border-bottom: 1px solid #e5e7eb; }
+.settings-tabs button { border: 0; background: transparent; padding: 10px 14px; cursor: pointer; font-weight: 700; color: #64748b; }
+.settings-tabs button.active { color: #155e75; border-bottom: 3px solid #155e75; }
+.payment-types-settings { padding: 24px; }
+.payment-type-list { display: grid; gap: 10px; margin: 20px 0; }
+.payment-type-row { display: grid; grid-template-columns: minmax(150px, 1.4fr) minmax(180px, 2fr) 80px 90px 70px; gap: 10px; align-items: center; }
+.payment-type-row input, .new-payment-type input { border: 1px solid #cbd5e1; border-radius: 6px; padding: 9px; }
+.payment-type-row button, .new-payment-type button { border: 0; border-radius: 6px; padding: 9px 12px; background: #155e75; color: white; cursor: pointer; }
+.new-payment-type { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding-top: 16px; border-top: 1px solid #e5e7eb; }
+.new-payment-type h4 { width: 100%; margin: 0; }
+
 .close-btn {
   background: rgba(255,255,255,0.2);
   border: none;
@@ -95,9 +106,24 @@
 
 .converter-controls {
   display: grid;
-  grid-template-columns: minmax(160px, 1fr) minmax(140px, 180px) auto;
+  grid-template-columns: minmax(150px, 1fr) minmax(90px, 130px) auto minmax(90px, 130px) auto;
   gap: 12px;
   align-items: end;
+}
+
+.swap-currencies-btn {
+  width: 42px;
+  height: 42px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.swap-currencies-btn:hover {
+  background: #e2e8f0;
 }
 
 .converter-controls label {
@@ -175,6 +201,21 @@
   color: #c62828;
   font-size: 14px;
   font-weight: 500;
+}
+
+@media (max-width: 700px) {
+  .converter-controls {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .converter-controls label:first-child,
+  .convert-btn {
+    grid-column: 1 / -1;
+  }
+
+  .swap-currencies-btn {
+    display: none;
+  }
 }
 
 .exchange-rates-table {

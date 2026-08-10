@@ -9,10 +9,28 @@ interface Props {
   mode: 'create' | 'edit';
 }
 
+const toFiniteNumber = (value: string | null) => {
+  if (value === null || value === '') return undefined;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : undefined;
+};
+
 const BookingEditorPage: React.FC<Props> = ({ mode }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { bookingId } = useParams();
+  const createPrefill = React.useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return {
+      clientId: params.get('clientId') || undefined,
+      retreatId: params.get('retreatId') || undefined,
+      paymentRequestId: params.get('paymentRequestId') || undefined,
+      totalAmount: toFiniteNumber(params.get('totalAmount')),
+      amountPaid: toFiniteNumber(params.get('amountPaid')),
+      currency: (params.get('currency') as 'EUR' | 'USD' | 'CZK' | 'PLN' | null) || undefined,
+      status: (params.get('status') as 'pending' | 'confirmed' | 'checked-in' | 'checked-out' | 'cancelled' | null) || undefined,
+    };
+  }, [location.search]);
   const routePrefix = React.useMemo(() => {
     const firstSegment = location.pathname.split('/').filter(Boolean)[0];
     return ['admin', 'medical', 'staff', 'user'].includes(firstSegment) ? `/${firstSegment}` : '';
@@ -40,6 +58,7 @@ const BookingEditorPage: React.FC<Props> = ({ mode }) => {
         <BookingEditorForm
           mode={mode}
           bookingId={bookingId}
+          initialBookingData={createPrefill}
           onCancel={() => navigate(-1)}
           onSaved={() => navigate(routePrefix ? `${routePrefix}/bookings` : '/bookings')}
         />

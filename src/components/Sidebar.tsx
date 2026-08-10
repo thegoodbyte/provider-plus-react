@@ -107,6 +107,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeItem, onItemClick, isCollapsed,
       description: 'All booking-step deadlines across retreats'
     },
     {
+      id: 'reserve-lists',
+      label: 'Reserve Lists',
+      icon: FiUsers,
+      description: 'Waiting list and reserve list management'
+    },
+    {
       id: 'houses',
       label: 'Houses',
       icon: FiHome,

@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useLocation } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, Circle, FileText, Filter, Link2, ListPlus, Lock, Mail, OctagonX, RefreshCw, Save, ThumbsDown, Unlock, Upload, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Circle, FileText, Filter, Link2, ListPlus, Lock, Mail, OctagonX, RefreshCw, Save, ThumbsDown, ThumbsUp, Unlock, Upload, X } from 'lucide-react';
 import { bookingDocumentsApi, bookingFlowApi, clientsApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { BookingDocument, BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, Client, MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
@@ -13,6 +13,7 @@ import {
   getBookingStepToneWithColor,
   titleizeBookingStepGroup,
 } from '../utils/bookingStepColors';
+import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
 import { hasBookingActionLog, reviewRequestStatusToBookingStepStatus } from './BookingStepsMatrix.helpers';
 
 const getObjectId = (value: any): string => {
@@ -80,6 +81,7 @@ const artifactStepConfigByKey: Record<string, Pick<ReviewStepConfig, 'documentSt
   ekg_received: { documentStage: 'entry', documentType: 'EKG', artifactType: 'ekg', label: 'Entry EKG' },
   liver_received: { documentStage: 'entry', documentType: 'Liver', artifactType: 'liver_panel', label: 'Entry liver panel' },
   medications_form_initial_received: { documentStage: 'entry', documentType: 'Medications', artifactType: 'medications_form', label: 'Medication form' },
+  medications_form_30_day_received: { documentStage: 'additional', documentType: 'Medications', artifactType: 'medications_form', label: '30-day medications form' },
 };
 
 const getArtifactStepConfig = (item: Pick<BookingFlowItem, 'key' | 'title' | 'metadata'>) => {
@@ -476,7 +478,7 @@ const getSimpleStatus = (item?: BookingFlowItem) => {
     return {
       label: item.status.replace(/_/g, ' '),
       className: 'bg-red-100 text-red-800',
-      icon: <OctagonX className="h-5 w-5" />,
+      icon: <ThumbsDown className="h-5 w-5" />,
     };
   }
   if (attentionStatuses.has(item.status)) {
@@ -490,7 +492,7 @@ const getSimpleStatus = (item?: BookingFlowItem) => {
     return {
       label: item.status.replace(/_/g, ' '),
       className: 'bg-green-50 text-green-700',
-      icon: <ThumbsDown className="h-5 w-5" />,
+      icon: <ThumbsUp className="h-5 w-5" />,
     };
   }
   return {
@@ -595,6 +597,27 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     action?: BookingFlowAction;
     initialValues: EmailComposeInitialValues;
   } | null>(null);
+  const [reminderState, setReminderState] = useState<{
+    item: BookingFlowItem;
+    to: string;
+    subject: string;
+    bodyText: string;
+    dueDate?: string;
+    uploadUrl: string;
+    reminderCount: number;
+    lastReminderAt?: string;
+    duplicateBlocked: boolean;
+    duplicateWarning: boolean;
+    suggestedFollowUpDate: string;
+    history: BookingFlowActionLog[];
+  } | null>(null);
+  const [automationState, setAutomationState] = useState<{
+    item: BookingFlowItem;
+    paused: boolean;
+    pauseReason?: string;
+    resumeAt?: string;
+    schedules: Array<{ _id: string; ruleKey: string; actionType: 'send_email' | 'create_staff_task'; scheduledFor: string; status: string; executedAt?: string; lastError?: string }>;
+  } | null>(null);
   const routePrefix = useMemo(() => {
     const firstSegment = location.pathname.split('/').filter(Boolean)[0];
     return ['admin', 'medical', 'staff', 'user', 'helper'].includes(firstSegment) ? firstSegment : 'admin';
@@ -603,34 +626,21 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const loadData = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
-      // These requests do not depend on the matrix response. Start them immediately
-      // so the readiness view does not pay for an avoidable network waterfall.
-      const matrixRequest = bookingFlowApi.getMatrix(retreatId);
-      const libraryTemplateRequest = bookingFlowApi.getLibraryTemplates().catch(() => ({ data: [] as BookingFlowTemplate[] }));
-      const paymentsRequest = paymentsApi.getByRetreat(retreatId).catch(() => ({ data: [] as Payment[] }));
-      const usersRequest = usersApi.getAll().catch(() => ({ data: [] as User[] }));
-      const documentsRequest = bookingDocumentsApi.getAll({ retreatId, summary: true }).catch(() => ({ data: [] as BookingDocument[] }));
-      const reviewRequestsRequest = medicalReviewRequestsApi.getAll({ retreatId }).catch(() => ({ data: [] as MedicalReviewRequest[] }));
-      const artifactsRequest = medicalArtifactsApi.getAll({ retreatId, summary: true }).catch(() => ({ data: [] as MedicalArtifact[] }));
-
-      const response = await matrixRequest;
-      // The matrix is the primary payload. Render it immediately instead of keeping
-      // the whole screen blocked behind documents, users, reviews and artifacts.
+      const response = await bookingFlowApi.getMatrix(retreatId);
+      const bookingFlowFilters = buildBookingFlowArtifactFilters(response.data?.items || []);
+      const [libraryTemplateResponse, paymentsResponse, usersResponse, documentsResponse, artifactsResponse, reviewRequestsResponse] = await Promise.all([
+        bookingFlowApi.getLibraryTemplates().catch(() => ({ data: [] as BookingFlowTemplate[] })),
+        paymentsApi.getByRetreat(retreatId).catch(() => ({ data: [] as Payment[] })),
+        usersApi.getAll().catch(() => ({ data: [] as User[] })),
+        bookingDocumentsApi.getAll({ retreatId }).catch(() => ({ data: [] as BookingDocument[] })),
+        medicalArtifactsApi.getAll({ retreatId, ...bookingFlowFilters }).catch(() => ({ data: [] as MedicalArtifact[] })),
+        medicalReviewRequestsApi.getAll({ retreatId }).catch(() => ({ data: [] as MedicalReviewRequest[] })),
+      ]);
       setBookings(response.data?.bookings || []);
       setTemplates(response.data?.templates || []);
+      setLibraryTemplates(libraryTemplateResponse.data || []);
       setItems(response.data?.items || []);
       setActionLogs(response.data?.actionLogs || []);
-      if (showLoading) setLoading(false);
-
-      const [libraryTemplateResponse, paymentsResponse, usersResponse, documentsResponse, artifactsResponse, reviewRequestsResponse] = await Promise.all([
-        libraryTemplateRequest,
-        paymentsRequest,
-        usersRequest,
-        documentsRequest,
-        artifactsRequest,
-        reviewRequestsRequest,
-      ]);
-      setLibraryTemplates(libraryTemplateResponse.data || []);
       setBookingDocuments(documentsResponse.data || []);
       setMedicalArtifacts(artifactsResponse.data || []);
       setReviewRequests(reviewRequestsResponse.data || []);
@@ -743,10 +753,8 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       return;
     }
     const rect = actionFilterButtonRef.current?.getBoundingClientRect();
-    const panelHeight = Math.min(620, window.innerHeight - 24);
-    const preferredTop = (rect?.bottom || 0) + 6;
     setActionFilterPosition({
-      top: Math.max(12, Math.min(preferredTop, window.innerHeight - panelHeight - 12)),
+      top: (rect?.bottom || 0) + 6,
       left: Math.max(12, Math.min(rect?.left || 12, window.innerWidth - 352)),
     });
     setActionFilterDraft(selectedActionKeys === null ? rows.map((row) => row.key) : selectedActionKeys);
@@ -830,7 +838,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const medicalArtifactsByBookingContext = useMemo(() => {
     const map = new Map<string, MedicalArtifact[]>();
     medicalArtifacts.forEach((artifact) => {
-      const bookingId = getObjectId(artifact.bookingId);
+      const bookingId = getObjectId(artifact.bookingId) || getObjectId(artifact.data?.bookingId || artifact.data?.booking_id);
       if (!bookingId || !artifact.documentStage || !artifact.documentType || !artifact.artifactType) return;
       const key = makeArtifactContextKey(bookingId, {
         documentStage: artifact.documentStage,
@@ -1292,6 +1300,19 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
         order: -1,
       });
     }
+    const isContractSentStep = normalizeDocumentKey(item.key) === 'contract_sent'
+      || /\bcontract\b.*\bsent\b/i.test(item.title || '');
+    if (isContractSentStep && !actions.some((action) => action.type === 'email')) {
+      actions.unshift({
+        key: 'send_contract',
+        label: 'Send contract',
+        type: 'email',
+        statusAfterSuccess: 'sent',
+        allowRepeat: true,
+        openComposer: true,
+        order: -2,
+      });
+    }
     return actions.sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
   };
 
@@ -1467,6 +1488,81 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     if (!composeState?.item?._id || !sentEmail?._id) return;
     await bookingFlowApi.recordItemEmailSent(composeState.item._id, sentEmail._id, composeState.action?.key);
     await loadData(false);
+  };
+
+  const canSendReminder = (item?: BookingFlowItem) => Boolean(
+    item?._id
+    && !['received', 'reviewed', 'approved', 'completed', 'waived'].includes(item.status)
+    && getClientEmail(bookings.find((booking) => getObjectId(booking) === getObjectId(item.bookingId)))
+  );
+
+  const openReminderPreview = async (item?: BookingFlowItem) => {
+    if (!item?._id) return;
+    setSaving(`reminder-preview:${item._id}`);
+    try {
+      const response = await bookingFlowApi.getItemReminderPreview(item._id);
+      setReminderState({ item, ...response.data });
+    } catch (error: any) {
+      alert(error?.response?.data?.message || error?.message || 'Unable to prepare reminder.');
+    } finally {
+      setSaving('');
+    }
+  };
+
+  const sendReminder = async (overrideDuplicate = false) => {
+    if (!reminderState?.item?._id) return;
+    if (reminderState.duplicateBlocked && !overrideDuplicate) {
+      const lastSent = reminderState.lastReminderAt ? formatDateTime(reminderState.lastReminderAt) : 'recently';
+      if (!window.confirm(`A reminder was sent ${lastSent}. Send another reminder anyway?`)) return;
+      overrideDuplicate = true;
+    }
+    setSaving(`reminder-send:${reminderState.item._id}`);
+    try {
+      const response = await bookingFlowApi.sendItemReminder(reminderState.item._id, {
+        subject: reminderState.subject,
+        bodyText: reminderState.bodyText,
+        followUpDate: reminderState.suggestedFollowUpDate,
+        overrideDuplicate,
+      });
+      if (response.data?.sentEmail?.status === 'failed') {
+        alert(response.data.sentEmail.errorMessage || 'The reminder could not be sent.');
+        return;
+      }
+      setReminderState(null);
+      await loadData(false);
+      alert('Reminder sent and recorded.');
+    } catch (error: any) {
+      alert(error?.response?.data?.message || error?.message || 'Unable to send reminder.');
+    } finally {
+      setSaving('');
+    }
+  };
+
+  const openReminderAutomation = async (item?: BookingFlowItem) => {
+    if (!item?._id) return;
+    setSaving(`automation:${item._id}`);
+    try {
+      const response = await bookingFlowApi.getItemReminderAutomation(item._id);
+      setAutomationState({ item, ...response.data });
+    } catch (error: any) {
+      alert(error?.response?.data?.message || error?.message || 'Unable to load reminder automation.');
+    } finally {
+      setSaving('');
+    }
+  };
+
+  const toggleReminderAutomation = async () => {
+    if (!automationState?.item?._id) return;
+    const paused = !automationState.paused;
+    const reason = paused ? window.prompt('Why are reminders being paused for this client?', automationState.pauseReason || '') || '' : undefined;
+    setSaving(`automation-toggle:${automationState.item._id}`);
+    try {
+      const response = await bookingFlowApi.setItemReminderAutomationPaused(automationState.item._id, { paused, reason });
+      setAutomationState((current) => current ? { ...current, ...response.data } : current);
+      await loadData(false);
+    } finally {
+      setSaving('');
+    }
   };
 
   const sendRowEmail = async (row: MatrixRow) => {
@@ -1791,7 +1887,9 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                       const documentTypeForStep = item ? resolveBookingDocumentType(item) : normalizeDocumentKey(row.key);
                       const relatedBookingDocument = bookingDocumentMap.get(`${getObjectId(booking)}:${documentTypeForStep}`)?.[0];
                       const artifactStepConfig = getArtifactStepConfig(row) || (reviewStepConfig ? artifactStepConfigByKey[reviewStepConfig.receivedStepKey] : undefined);
-                      const configuredBookingDocumentType = normalizeDocumentKey(bookingDocumentTypeByStep[row.key] || item?.metadata?.expectedBookingDocument || item?.metadata?.expectedDocument || (!artifactStepConfig ? item?.metadata?.expectedArtifact : '') || '');
+                      const configuredBookingDocumentType = row.key === 'questionnaire_sent'
+                        ? ''
+                        : normalizeDocumentKey(bookingDocumentTypeByStep[row.key] || item?.metadata?.expectedBookingDocument || item?.metadata?.expectedDocument || (!artifactStepConfig ? item?.metadata?.expectedArtifact : '') || '');
                       const linkableArtifacts = artifactStepConfig ? getArtifactLinkCandidates(booking, medicalArtifacts, artifactStepConfig) : [];
                       const relatedMedicalArtifact = linkedArtifactId
                         ? medicalArtifactById.get(linkedArtifactId)
@@ -1989,6 +2087,29 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                                 </button>
                               );
                             })}
+                            {canSendReminder(item) && (
+                              <>
+                                <button
+                                  type="button"
+                                  disabled={saving === `reminder-preview:${item._id}`}
+                                  onClick={() => openReminderPreview(item)}
+                                  className="inline-flex items-center justify-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-50"
+                                  title={`Preview a reminder for ${item.title}`}
+                                >
+                                  <Mail className="h-3.5 w-3.5" />
+                                  {saving === `reminder-preview:${item._id}` ? 'Preparing...' : `Remind: ${item.title}`}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => openReminderAutomation(item)}
+                                  className={`inline-flex items-center justify-center gap-1 rounded-md border px-2 py-1 text-xs font-medium ${item.automationPaused ? 'border-gray-300 bg-gray-100 text-gray-600' : 'border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100'}`}
+                                  title="View automated reminder sequence"
+                                >
+                                  <ListPlus className="h-3.5 w-3.5" />
+                                  {item.automationPaused ? 'Automation paused' : 'Automation'}
+                                </button>
+                              </>
+                            )}
                             {shouldShowArtifactUploadFallback(artifactStepConfig, isEditing, configuredActions.some((action) => action.type === 'upload')) && (
                               <label
                                 className={`inline-flex items-center justify-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 ${!isEditing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
@@ -2092,19 +2213,19 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       {actionFilterOpen && createPortal(
         <>
           <button type="button" className="fixed inset-0 z-[1090] cursor-default bg-transparent" onClick={() => setActionFilterOpen(false)} aria-label="Close action filter" />
-          <div className="fixed z-[1100] flex w-[340px] max-w-[calc(100vw-24px)] flex-col overflow-hidden rounded-lg border border-gray-300 bg-white normal-case shadow-2xl" style={{ top: actionFilterPosition.top, left: actionFilterPosition.left, maxHeight: 'calc(100vh - 24px)' }} role="dialog" aria-label="Filter booking actions">
-            <div className="shrink-0 border-b border-gray-200 p-3">
+          <div className="fixed z-[1100] w-[340px] rounded-lg border border-gray-300 bg-white normal-case shadow-2xl" style={{ top: actionFilterPosition.top, left: actionFilterPosition.left }} role="dialog" aria-label="Filter booking actions">
+            <div className="border-b border-gray-200 p-3">
               <div className="text-sm font-semibold text-gray-900">Filter booking actions</div>
               <input autoFocus value={actionFilterSearch} onChange={(event) => setActionFilterSearch(event.target.value)} placeholder="Search actions" className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
             </div>
-            <div className="flex shrink-0 items-center justify-between border-b border-gray-100 px-3 py-2 text-xs font-semibold">
+            <div className="flex items-center justify-between border-b border-gray-100 px-3 py-2 text-xs font-semibold">
               <label className="flex cursor-pointer items-center gap-2 text-gray-700">
                 <input type="checkbox" checked={actionFilterDraft.length === rows.length && rows.length > 0} onChange={(event) => setActionFilterDraft(event.target.checked ? rows.map((row) => row.key) : [])} className="h-4 w-4 rounded border-gray-300 text-blue-600" />
                 Select all
               </label>
               <span className="text-gray-500">{actionFilterDraft.length} of {rows.length}</span>
             </div>
-            <div className="min-h-0 flex-1 space-y-0.5 overflow-y-auto p-2">
+            <div className="max-h-80 space-y-0.5 overflow-y-auto p-2">
               {visibleActionFilterRows.map((row) => {
                 const originalIndex = rows.findIndex((candidate) => candidate.key === row.key);
                 return (
@@ -2116,7 +2237,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
               })}
               {visibleActionFilterRows.length === 0 && <div className="px-2 py-6 text-center text-sm text-gray-500">No actions match your search.</div>}
             </div>
-            <div className="sticky bottom-0 flex shrink-0 justify-end gap-2 border-t border-gray-200 bg-white p-3 shadow-[0_-4px_12px_rgba(15,23,42,0.08)]">
+            <div className="flex justify-end gap-2 border-t border-gray-200 p-3">
               <button type="button" onClick={() => setActionFilterOpen(false)} className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
               <button type="button" onClick={() => { setSelectedActionKeys(actionFilterDraft.length === rows.length ? null : actionFilterDraft); setActionFilterOpen(false); }} className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Apply filter</button>
             </div>
@@ -2131,6 +2252,94 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
           onClose={() => setComposeState(null)}
           onSent={handleComposedEmailSent}
         />
+      )}
+      {reminderState && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="flex max-h-[92vh] w-full max-w-3xl flex-col rounded-xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between border-b border-gray-200 px-5 py-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Reminder: {reminderState.item.title}</h2>
+                <p className="mt-1 text-sm text-gray-500">Preview and edit before sending to {reminderState.to}.</p>
+              </div>
+              <button type="button" onClick={() => setReminderState(null)} className="rounded-md p-2 text-gray-500 hover:bg-gray-100" aria-label="Close reminder preview">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
+              {(reminderState.duplicateWarning || reminderState.reminderCount > 0) && (
+                <div className={`rounded-lg border p-3 text-sm ${reminderState.duplicateBlocked ? 'border-red-300 bg-red-50 text-red-900' : 'border-amber-300 bg-amber-50 text-amber-900'}`}>
+                  <strong>{reminderState.reminderCount} previous reminder{reminderState.reminderCount === 1 ? '' : 's'}.</strong>
+                  {reminderState.lastReminderAt && ` Last sent ${formatDateTime(reminderState.lastReminderAt)}.`}
+                  {reminderState.duplicateBlocked && ' Another reminder requires confirmation because the last one was sent less than 24 hours ago.'}
+                </div>
+              )}
+              <div className="grid gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm sm:grid-cols-3">
+                <div><span className="block text-xs uppercase text-gray-500">Deadline</span><strong>{reminderState.dueDate || 'Not set'}</strong></div>
+                <div><span className="block text-xs uppercase text-gray-500">Follow up</span><input type="date" value={reminderState.suggestedFollowUpDate} onChange={(event) => setReminderState((current) => current ? { ...current, suggestedFollowUpDate: event.target.value } : current)} className="mt-1 rounded border border-gray-300 px-2 py-1" /></div>
+                <div><span className="block text-xs uppercase text-gray-500">Upload link</span><a href={reminderState.uploadUrl} target="_blank" rel="noreferrer" className="font-medium text-blue-700 underline">Open client step</a></div>
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Subject</label>
+                <input value={reminderState.subject} onChange={(event) => setReminderState((current) => current ? { ...current, subject: event.target.value } : current)} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Message</label>
+                <textarea value={reminderState.bodyText} onChange={(event) => setReminderState((current) => current ? { ...current, bodyText: event.target.value } : current)} rows={13} className="w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-sm" />
+              </div>
+              {reminderState.history.length > 0 && (
+                <details className="rounded-lg border border-gray-200 p-3 text-sm">
+                  <summary className="cursor-pointer font-medium">Previous reminders</summary>
+                  <ul className="mt-2 space-y-2 text-gray-600">
+                    {reminderState.history.map((log, index) => <li key={log._id || index}>{formatDateTime(log.performedAt)}{log.performedByEmail ? ` · ${log.performedByEmail}` : ''}</li>)}
+                  </ul>
+                </details>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 border-t border-gray-200 px-5 py-4">
+              <button type="button" onClick={() => setReminderState(null)} className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700">Cancel</button>
+              <button type="button" disabled={!reminderState.subject.trim() || !reminderState.bodyText.trim() || saving === `reminder-send:${reminderState.item._id}`} onClick={() => sendReminder()} className="rounded-md bg-amber-700 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-800 disabled:opacity-50">
+                {saving === `reminder-send:${reminderState.item._id}` ? 'Sending...' : 'Send reminder'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {automationState && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-2xl rounded-xl bg-white shadow-2xl">
+            <div className="flex items-start justify-between border-b border-gray-200 px-5 py-4">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Automated reminders: {automationState.item.title}</h2>
+                <p className="mt-1 text-sm text-gray-500">Generated from the step deadline. Completed steps cancel future actions automatically.</p>
+              </div>
+              <button type="button" onClick={() => setAutomationState(null)} className="rounded-md p-2 text-gray-500 hover:bg-gray-100"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="space-y-4 p-5">
+              {automationState.paused && (
+                <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+                  <strong>Automation paused.</strong>{automationState.pauseReason ? ` ${automationState.pauseReason}` : ''}
+                </div>
+              )}
+              <div className="overflow-hidden rounded-lg border border-gray-200">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-gray-50 text-xs uppercase text-gray-500"><tr><th className="px-3 py-2">When</th><th className="px-3 py-2">Action</th><th className="px-3 py-2">Status</th></tr></thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {automationState.schedules.map((schedule) => (
+                      <tr key={schedule._id}><td className="px-3 py-2">{formatDateTime(schedule.scheduledFor)}</td><td className="px-3 py-2">{schedule.ruleKey.replace(/_/g, ' ')}</td><td className="px-3 py-2 font-medium">{schedule.status.replace(/_/g, ' ')}</td></tr>
+                    ))}
+                    {automationState.schedules.length === 0 && <tr><td colSpan={3} className="px-3 py-6 text-center text-gray-500">No automation is scheduled for this step.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div className="flex justify-between border-t border-gray-200 px-5 py-4">
+              <button type="button" onClick={toggleReminderAutomation} disabled={saving === `automation-toggle:${automationState.item._id}`} className={`rounded-md px-4 py-2 text-sm font-semibold ${automationState.paused ? 'bg-green-700 text-white' : 'border border-gray-300 text-gray-700'}`}>
+                {automationState.paused ? 'Resume automation' : 'Pause for this client'}
+              </button>
+              <button type="button" onClick={() => setAutomationState(null)} className="rounded-md bg-gray-900 px-4 py-2 text-sm font-semibold text-white">Close</button>
+            </div>
+          </div>
+        </div>
       )}
       {reviewRequestLinkModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">

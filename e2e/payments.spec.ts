@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 
+test.skip(process.env.PLAYWRIGHT_LIVE !== '1', 'Requires a seeded live API and authorized test credentials');
+
 test.describe('Payments Management', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to the payments page

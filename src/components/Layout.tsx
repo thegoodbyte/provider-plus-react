@@ -16,6 +16,7 @@ import MedicalAdvisorDashboard from './MedicalAdvisorDashboard';
 import MedicalReviewDetail from './MedicalReviewDetail';
 import MedicalRetreats from './MedicalRetreats';
 import MedicalProfile from './MedicalProfile';
+import ReserveListsPage from './ReserveListsPage';
 import BookingStepDeadlinesPage from './BookingStepDeadlinesPage';
 import { useAuth } from '../context/AuthContext';
 import './Layout.css';
@@ -41,11 +42,12 @@ const Layout: React.FC = () => {
     if (path.startsWith('/screening')) return 'screening';
     if (path.startsWith('/clients')) return 'clients';
     if (path.startsWith('/bookings')) return 'bookings';
-    if (path.startsWith('/booking-step-deadlines')) return 'booking-step-deadlines';
     if (path.startsWith('/medical')) return 'medical';
+    if (path.startsWith('/booking-step-deadlines')) return 'booking-step-deadlines';
     if (path.startsWith('/reminders')) return 'reminders';
     if (path.startsWith('/payments')) return 'payments';
     if (path.startsWith('/requirements')) return 'requirements';
+    if (path.startsWith('/reserve-lists')) return 'reserve-lists';
     if (path.startsWith('/analytics')) return 'analytics';
     return isMedicalAdvisor ? 'medical-dashboard' : 'clients'; // default based on role
   };
@@ -132,6 +134,7 @@ const Layout: React.FC = () => {
             <Route path="/reminders" element={<RemindersPage />} />
             <Route path="/payments" element={<PaymentsPage />} />
             <Route path="/requirements" element={<RequirementsGrid />} />
+            <Route path="/reserve-lists" element={<ReserveListsPage />} />
             <Route path="/analytics" element={
               <div className="coming-soon">
                 <h2>Analytics & Reports</h2>

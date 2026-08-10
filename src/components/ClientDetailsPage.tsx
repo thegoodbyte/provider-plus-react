@@ -13,7 +13,7 @@ import { CreateTaskDto, Task, taskService } from '../services/taskService';
 import { cacheService } from '../services/cacheService';
 import { TaskForm } from './Tasks/TaskForm';
 import { TaskList } from './Tasks/TaskList';
-import { buildClientMedicalArtifactInput, getClientMedicalArtifactUploadContext } from './clientMedicalArtifactUpload';
+import { buildClientMedicalArtifactInput, getClientEntryMedicalArtifacts, getClientMedicalArtifactUploadContext, upsertMedicalArtifact } from './clientMedicalArtifactUpload';
 import { buildBookingCreateUrlFromPayment } from './bookingFromPayment.helpers';
 import './ClientsGrid.css';
 
@@ -557,7 +557,9 @@ const ClientDetailsPage: React.FC = () => {
       setBookings(bookingData);
       setRetreats(retreatData);
       await loadRetreatHeroUrls(bookingData, retreatData);
-      setMedicalInfo(medicalResponse.data);
+      // Artifact uploads are valid medical information even when no legacy ClientMedical row exists.
+      // Keep the section mounted so newly uploaded EKG/liver artifacts are always visible.
+      setMedicalInfo(medicalResponse.data || ({} as any));
       setMedicalArtifacts(artifactsResponse.data || []);
       await loadClientTasks();
     } catch (error: any) {
@@ -900,6 +902,10 @@ const ClientDetailsPage: React.FC = () => {
     'heroinDetails',
     'benzos',
     'benzosDetails',
+    'opioids',
+    'opioidsDetails',
+    'otherDrugs',
+    'otherDrugsDetails',
     'alcoholSober',
     'alcoholUse',
     'alcoholHistory',
@@ -969,21 +975,25 @@ const ClientDetailsPage: React.FC = () => {
       if (!created.data?._id) {
         throw new Error('Medical artifact was created without an id.');
       }
-      await medicalArtifactsApi.uploadFiles(created.data._id, files);
-
-      // Add files to state for UI display
-      setFiles((prevFiles) => [...prevFiles, ...files.map(file => ({
-        name: file.name,
-        size: file.size,
-        type: file.type
-      }))]);
+      const uploadResponse = await medicalArtifactsApi.uploadFiles(created.data._id, files);
+      const uploadedArtifact = uploadResponse.data?.artifact as MedicalArtifact | undefined;
+      if (uploadedArtifact) {
+        // Show the persisted artifact immediately; do not depend on a second request to update the page.
+        setMedicalArtifacts((current) => upsertMedicalArtifact(current, uploadedArtifact));
+      }
 
       closeModal(false);
-      // Optionally refresh client data to get updated medical info
+      setFiles([]);
       cacheService.clearPattern('medical:');
       cacheService.clearPattern('medical-artifacts:');
       setMedicalRecordsRefreshKey((value) => value + 1);
-      fetchClientData();
+      // Reconcile with the server and await it. If this refresh fails, retain the successful upload response above.
+      try {
+        const refreshed = await medicalArtifactsApi.getAll({ clientId });
+        setMedicalArtifacts(refreshed.data || (uploadedArtifact ? [uploadedArtifact] : []));
+      } catch (refreshError) {
+        console.warn(`Uploaded ${artifactType}, but could not refresh the artifact list:`, refreshError);
+      }
     } catch (error) {
       console.error(`Error uploading ${artifactType} files:`, error);
       alert('Error uploading files. Please try again.');
@@ -1396,6 +1406,8 @@ const ClientDetailsPage: React.FC = () => {
                 { label: 'Meth', value: getBooleanDetailValue('meth', 'methDetails') },
                 { label: 'Heroin', value: getBooleanDetailValue('heroin', 'heroinDetails') },
                 { label: 'Benzos', value: getBooleanDetailValue('benzos', 'benzosDetails') },
+                { label: 'Opioids', value: getBooleanDetailValue('opioids', 'opioidsDetails') },
+                { label: 'Other drugs', value: getBooleanDetailValue('otherDrugs', 'otherDrugsDetails') },
               ])}
 
               {renderScreeningGrid([
@@ -1531,12 +1543,7 @@ const ClientDetailsPage: React.FC = () => {
                     </h3>
                     {(() => {
                       // Find entry EKG artifacts from medical artifacts
-                      const entryEkgArtifacts = medicalArtifacts.filter(
-                        artifact =>
-                          artifact.clientId === clientId &&
-                          (artifact.documentStage === 'entry' || !artifact.documentStage) &&
-                          (artifact.documentType === 'EKG' || artifact.artifactType === 'ekg')
-                      ).sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+                      const entryEkgArtifacts = getClientEntryMedicalArtifacts(medicalArtifacts, clientId || '', 'ekg', 'EKG');
 
                       const latestEkg = entryEkgArtifacts[0];
                       const hasEkg = !!latestEkg;
@@ -1629,12 +1636,7 @@ const ClientDetailsPage: React.FC = () => {
                     </h3>
                     {(() => {
                       // Find entry Liver Panel artifacts from medical artifacts
-                      const entryLiverArtifacts = medicalArtifacts.filter(
-                        artifact =>
-                          artifact.clientId === clientId &&
-                          (artifact.documentStage === 'entry' || !artifact.documentStage) &&
-                          (artifact.documentType === 'Liver' || artifact.artifactType === 'liver_panel')
-                      ).sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+                      const entryLiverArtifacts = getClientEntryMedicalArtifacts(medicalArtifacts, clientId || '', 'liver_panel', 'Liver');
 
                       const latestLiver = entryLiverArtifacts[0];
                       const hasLiver = !!latestLiver;
@@ -1926,6 +1928,9 @@ const ClientDetailsPage: React.FC = () => {
                         Retreat
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Payment Request
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Type
                       </th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -1964,6 +1969,16 @@ const ClientDetailsPage: React.FC = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {paymentRetreat ? getRetreatLabel(paymentRetreat) : 'N/A'}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {payment.paymentRequestId ? (() => {
+                              const request: any = payment.paymentRequestId;
+                              const requestId = getId(request);
+                              const label = typeof request === 'object'
+                                ? request.invoiceNumber || (request.display_id ? `#${request.display_id}` : `#${requestId.slice(-8)}`)
+                                : `#${requestId.slice(-8)}`;
+                              return <button type="button" onClick={() => navigate(`/admin/payment-requests/${requestId}`)} className="font-semibold text-blue-700 hover:underline">{label}</button>;
+                            })() : '—'}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {payment.paymentType || payment.type || 'Payment'}
@@ -2035,7 +2050,6 @@ const ClientDetailsPage: React.FC = () => {
             clientId={clientId}
             recipientEmail={client?.email}
             recipientName={[client?.firstName, client?.lastName].filter(Boolean).join(' ')}
-            preferredLanguage={client?.language || client?.preferredLanguage || 'EN'}
             title="Client emails"
             subtitle="Sent and received emails for this client."
           />

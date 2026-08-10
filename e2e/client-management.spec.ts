@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 
+test.skip(process.env.PLAYWRIGHT_LIVE !== '1', 'Requires a seeded live API and authorized test credentials');
+
 test.describe('Client Management', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/admin/clients');
@@ -7,11 +9,11 @@ test.describe('Client Management', () => {
   });
 
   test('should display clients page with display_id column', async ({ page }) => {
-    await expect(page.locator('h1')).toContainText('Client Management');
+    await expect(page.getByRole('heading', { name: 'Clients', exact: true })).toBeVisible();
 
     // Check if display_id column exists
     await expect(page.locator('th').filter({ hasText: 'ID' })).toBeVisible();
-    await expect(page.locator('th').filter({ hasText: 'Full Name' })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: 'Name', exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: /Add Client/i })).toBeVisible();
   });
 

@@ -1,27 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FiAlertCircle, FiCheckCircle, FiCopy, FiEdit2, FiInbox, FiMail, FiPlus, FiRefreshCw, FiSave, FiSearch, FiSend, FiTrash2 } from 'react-icons/fi';
+import { FiAlertCircle, FiCheckCircle, FiInbox, FiMail, FiPlus, FiRefreshCw, FiSave, FiSearch, FiSend, FiTrash2 } from 'react-icons/fi';
 import { Link, useLocation } from 'react-router-dom';
-import { communicationsApi, clientsApi, retreatsApi } from '../services/api';
-import { Client, EmailTemplate, EmailTemplateSeedOption, InboundEmail, MailSettings, Retreat, SentEmail } from '../types';
+import { bookingFlowApi, communicationsApi, clientsApi, retreatsApi } from '../services/api';
+import { BookingFlowTemplate, Client, EmailTemplate, EmailTemplateSeedOption, InboundEmail, MailSettings, Retreat, SentEmail } from '../types';
 import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
-import './CommunicationsPage.css';
+import { buildTemplateBookingActionPayload, normalizeTemplateBookingStepKeys } from './emailTemplateBookingActions';
 
 type TabKey = 'settings' | 'templates' | 'compose' | 'sent' | 'inbound';
 const WELCOME_STEP_OPTIONS = [
   ['booking_confirmation_sent', 'Booking confirmation sent'], ['medical_labs_requested', 'EKG and liver requested'],
   ['medications_form_initial_sent', 'Medications form sent'], ['questionnaire_sent', 'Questionnaire sent'],
   ['food_form_sent', 'Food form sent'], ['contract_sent', 'Contract requested'],
-];
-
-const EMAIL_TEMPLATE_TAGS = [
-  { group: 'Client', tags: ['client.firstName', 'client.fullName', 'client.email', 'client.loginPin', 'client.displayId', 'client.language'] },
-  { group: 'Booking', tags: ['booking.number', 'booking.type', 'booking.status', 'booking.specialRequests'] },
-  { group: 'Retreat', tags: ['retreat.name', 'retreat.code', 'retreat.locationTown', 'retreat.dateRange', 'retreat.checkIn', 'retreat.checkOut', 'retreat.address', 'retreat.googleMapLink', 'retreat.startDate', 'retreat.endDate', 'retreat.startTime', 'retreat.endTime'] },
-  { group: 'Deadlines', tags: ['contract.dueDate', 'medicalReview.dueDate', 'payment.balanceDueDate'] },
-  { group: 'Payment', tags: ['payment.remainingBalance', 'payment.requestNumber', 'payment.currency'] },
-  { group: 'Links', tags: ['links.clientPortal', 'links.contract', 'links.balancePayment', 'links.testingInstructions', 'links.medicationsForm', 'links.healthQuestionnaire', 'links.questionnaire', 'links.foodSurvey', 'links.bloodPressure', 'links.medicalForm', 'links.preparation'] },
-  { group: 'Sender', tags: ['sender.name', 'sender.contactInformation'] },
 ];
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -86,7 +76,7 @@ const formatSentEmailReceipt = (sentEmail: SentEmail) => {
 };
 
 const CommunicationsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabKey>('sent');
+  const [activeTab, setActiveTab] = useState<TabKey>('settings');
   const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<MailSettings | null>(null);
@@ -101,8 +91,6 @@ const CommunicationsPage: React.FC = () => {
   const [templateLanguageFilter, setTemplateLanguageFilter] = useState('en');
   const [templateStatusFilter, setTemplateStatusFilter] = useState('all');
   const [selectedSentEmailId, setSelectedSentEmailId] = useState('');
-  const [sentEmailSearch, setSentEmailSearch] = useState('');
-  const [sentEmailStatusFilter, setSentEmailStatusFilter] = useState('all');
   const [templateForm, setTemplateForm] = useState<Partial<EmailTemplate>>(defaultTemplateForm);
   const [composeForm, setComposeForm] = useState(defaultComposeForm);
   const [savingTemplate, setSavingTemplate] = useState(false);
@@ -115,11 +103,35 @@ const CommunicationsPage: React.FC = () => {
   const [savingSettings, setSavingSettings] = useState(false);
   const [processingInbound, setProcessingInbound] = useState(false);
   const [loadWarnings, setLoadWarnings] = useState<string[]>([]);
+  const [bookingStepTemplates, setBookingStepTemplates] = useState<BookingFlowTemplate[]>([]);
+  const [bookingStepSearch, setBookingStepSearch] = useState('');
 
   const selectedTemplate = useMemo(
     () => templates.find((template) => template._id === selectedTemplateId) || null,
     [templates, selectedTemplateId],
   );
+
+  const selectedBookingStepKeys = useMemo(
+    () => normalizeTemplateBookingStepKeys(templateForm.bookingFlowStepKeys, templateForm.bookingFlowStepKey),
+    [templateForm.bookingFlowStepKey, templateForm.bookingFlowStepKeys],
+  );
+
+  const bookingStepOptions = useMemo(() => {
+    const byKey = new Map<string, { key: string; label: string; category?: string }>();
+    bookingStepTemplates.forEach((step) => {
+      if (step.key) byKey.set(step.key, { key: step.key, label: step.title || step.key, category: step.category });
+    });
+    WELCOME_STEP_OPTIONS.forEach(([key, label]) => {
+      if (!byKey.has(key)) byKey.set(key, { key, label });
+    });
+    selectedBookingStepKeys.forEach((key) => {
+      if (!byKey.has(key)) byKey.set(key, { key, label: key });
+    });
+    const search = bookingStepSearch.trim().toLowerCase();
+    return Array.from(byKey.values())
+      .filter((step) => !search || `${step.label} ${step.key} ${step.category || ''}`.toLowerCase().includes(search))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [bookingStepSearch, bookingStepTemplates, selectedBookingStepKeys]);
 
   const selectedTemplateCounterparts = useMemo(() => {
     const key = String(selectedTemplate?.templateKey || '').trim().toLowerCase();
@@ -172,6 +184,11 @@ const CommunicationsPage: React.FC = () => {
     }, {});
   }, [seedOptions]);
 
+  const selectedSentEmail = useMemo(
+    () => sentEmails.find((email) => email._id === selectedSentEmailId) || null,
+    [sentEmails, selectedSentEmailId],
+  );
+
   const selectedClient = useMemo(
     () => clients.find((client) => client._id === composeForm.clientId) || null,
     [clients, composeForm.clientId],
@@ -198,21 +215,6 @@ const CommunicationsPage: React.FC = () => {
     };
   };
 
-  const filteredSentEmails = useMemo(() => {
-    const search = sentEmailSearch.trim().toLowerCase();
-    return sentEmails.filter((email) => {
-      const client = getSentEmailClient(email);
-      const searchable = [
-        email.display_id, email.subject, email.bodyText, email.templateName, email.status,
-        ...(email.to || []), ...(email.cc || []), client.displayId, client.name, client.email,
-      ].filter(Boolean).join(' ').toLowerCase();
-      return (!search || searchable.includes(search))
-        && (sentEmailStatusFilter === 'all' || email.status === sentEmailStatusFilter);
-    });
-  // getSentEmailClient also resolves clients loaded on this page.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clients, sentEmailSearch, sentEmailStatusFilter, sentEmails]);
-
   const renderClientLink = (email: SentEmail, compact = false) => {
     const client = getSentEmailClient(email);
     if (!client.clientId) {
@@ -234,7 +236,7 @@ const CommunicationsPage: React.FC = () => {
     setLoadWarnings([]);
     try {
       const quietRequest = { suppressGlobalError: true };
-      const [settingsRes, templatesRes, sentRes, inboundRes, clientsRes, retreatsRes, seedOptionsRes] = await Promise.allSettled([
+      const [settingsRes, templatesRes, sentRes, inboundRes, clientsRes, retreatsRes, seedOptionsRes, bookingStepsRes] = await Promise.allSettled([
         communicationsApi.getSettings(quietRequest),
         communicationsApi.getTemplates(),
         communicationsApi.getSentEmails({}, quietRequest),
@@ -242,6 +244,7 @@ const CommunicationsPage: React.FC = () => {
         clientsApi.getAll(),
         retreatsApi.getAll(),
         communicationsApi.getTemplateSeedOptions(),
+        bookingFlowApi.getLibraryTemplates(),
       ]);
       const warnings: string[] = [];
       if (settingsRes.status === 'fulfilled') setSettings(settingsRes.value.data);
@@ -273,6 +276,8 @@ const CommunicationsPage: React.FC = () => {
       } else {
         warnings.push('Template seed options could not be loaded.');
       }
+      if (bookingStepsRes.status === 'fulfilled') setBookingStepTemplates(Array.isArray(bookingStepsRes.value.data) ? bookingStepsRes.value.data : []);
+      else warnings.push('Booking-item actions could not be loaded.');
       setLoadWarnings(warnings);
     } catch (error) {
       console.error('Error loading communications data:', error);
@@ -313,8 +318,10 @@ const CommunicationsPage: React.FC = () => {
     }
     const template = templates.find((item) => item._id === selectedTemplateId);
     if (template) {
+      const bookingFlowStepKeys = normalizeTemplateBookingStepKeys(template.bookingFlowStepKeys, template.bookingFlowStepKey);
       setTemplateForm({
         ...template,
+        bookingFlowStepKeys,
         bodyHtml: template.bodyHtml || '',
         active: template.active !== false,
       });
@@ -351,7 +358,7 @@ const CommunicationsPage: React.FC = () => {
         bodyHtml: String(templateForm.bodyHtml || '').trim() || undefined,
         language: String(templateForm.language || 'en').trim().toLowerCase(),
         templateKey: String(templateForm.templateKey || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || undefined,
-        bookingFlowStepKey: String(templateForm.bookingFlowStepKey || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || undefined,
+        ...buildTemplateBookingActionPayload(selectedBookingStepKeys),
         bookingFlowStatusOnSend: String(templateForm.bookingFlowStatusOnSend || 'sent').trim().toLowerCase(),
       };
 
@@ -508,6 +515,17 @@ const CommunicationsPage: React.FC = () => {
         replyTo: settings?.replyTo || '',
         autoCcEnabled: settings?.autoCcEnabled !== false,
         autoCcEmail: settings?.autoCcEmail || 'info@ibogaspirit.cz',
+        automatedBookingRemindersEnabled: settings?.automatedBookingRemindersEnabled === true,
+        clientMedicalReviewEmailsEnabled: settings?.clientMedicalReviewEmailsEnabled !== false,
+        clientMedicalApprovedEmailsEnabled: settings?.clientMedicalApprovedEmailsEnabled !== false,
+        clientMedicalNeedsInfoEmailsEnabled: settings?.clientMedicalNeedsInfoEmailsEnabled === true,
+        clientMedicalDeclinedEmailsEnabled: settings?.clientMedicalDeclinedEmailsEnabled === true,
+        medicalReviewInternalNotificationsEnabled: settings?.medicalReviewInternalNotificationsEnabled !== false,
+        medicalReviewEmailTestMode: settings?.medicalReviewEmailTestMode === true,
+        medicalReviewEmailTestRecipient: settings?.medicalReviewEmailTestRecipient || '',
+        medicalReviewApprovedTemplates: settings?.medicalReviewApprovedTemplates,
+        medicalReviewNeedsInfoTemplates: settings?.medicalReviewNeedsInfoTemplates,
+        medicalReviewDeclinedTemplates: settings?.medicalReviewDeclinedTemplates,
       });
       setSettings(response.data);
       alert('Settings saved');
@@ -632,51 +650,29 @@ const CommunicationsPage: React.FC = () => {
     return <div className="p-6 text-gray-500">Loading communications...</div>;
   }
 
-  const connectedEmail = settings?.gmailUserEmail || settings?.senderEmail || 'Gmail';
-  const connectionLabel = settings?.connected
-    ? 'connected'
-    : settings?.oauthConfigured
-      ? 'disconnected'
-      : 'needs re-auth';
-
   return (
-    <div className="communications-redesign">
-      <header className="communications-header">
-        <div className="communications-title">
-          <h1>Communications</h1>
-          <p>
-            <span className={`communications-status-dot ${settings?.connected ? 'is-connected' : ''}`} />
-            Gmail · {connectedEmail} · {connectionLabel}
-          </p>
+    <div className="p-6 space-y-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900">Communications</h1>
+          <p className="text-sm text-gray-500 mt-1">Gmail connection, templates, compose, and sent log.</p>
         </div>
-        <div className="communications-header-actions">
-          <button type="button" onClick={handleTestConnection} className="communications-secondary-action">
-            Test connection
-          </button>
-          <button type="button" onClick={() => setActiveTab('compose')} className="communications-primary-action">
-            <Icon icon={FiEdit2} />
-            Compose
-          </button>
-        </div>
-      </header>
-
-      <nav className="communications-tabs" aria-label="Communication sections">
-          {(['sent', 'compose', 'templates', 'settings', 'inbound'] as TabKey[]).map((tab) => (
+        <div className="flex flex-wrap gap-2">
+          {(['settings', 'templates', 'compose', 'sent', 'inbound'] as TabKey[]).map((tab) => (
             <button
               key={tab}
               type="button"
               onClick={() => setActiveTab(tab)}
-              className={activeTab === tab ? 'is-active' : ''}
+              className={`px-3 py-2 rounded-md text-sm font-medium border ${activeTab === tab ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'}`}
             >
-              {tab === 'settings' ? 'Settings' : tab === 'templates' ? 'Templates' : tab === 'compose' ? 'Compose' : tab === 'sent' ? 'Sent' : 'Inbound'}
-              {tab === 'sent' && <span>{sentEmails.length}</span>}
-              {tab === 'templates' && <span>{templates.length}</span>}
+              {tab === 'settings' ? 'Settings' : tab === 'templates' ? 'Templates' : tab === 'compose' ? 'Compose' : tab === 'sent' ? 'Sent Mail' : 'Inbound'}
             </button>
           ))}
-      </nav>
+        </div>
+      </div>
 
       {loadWarnings.length > 0 && (
-        <div className="communications-warning">
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
           <div className="font-semibold">Some communications data is temporarily unavailable.</div>
           <div className="mt-1">{loadWarnings.join(' ')}</div>
         </div>
@@ -749,6 +745,30 @@ const CommunicationsPage: React.FC = () => {
               <p className="mt-2 text-xs text-blue-900">Applied by the API to popup sends, direct sends, and retreat bulk emails.</p>
             </div>
 
+            <div className={`rounded-md border p-4 ${settings?.automatedBookingRemindersEnabled === true ? 'border-amber-300 bg-amber-50' : 'border-green-200 bg-green-50'}`}>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="font-semibold text-gray-900">Automated booking reminders</h3>
+                  <p className="mt-1 text-sm text-gray-700">
+                    Sends deadline and overdue emails for incomplete booking requirements. This is OFF by default and must be explicitly enabled here.
+                  </p>
+                </div>
+                <label className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold">
+                  <input
+                    type="checkbox"
+                    checked={settings?.automatedBookingRemindersEnabled === true}
+                    onChange={(event) => setSettings((prev) => ({ ...(prev || {}), automatedBookingRemindersEnabled: event.target.checked }))}
+                  />
+                  {settings?.automatedBookingRemindersEnabled === true ? 'ON' : 'OFF'}
+                </label>
+              </div>
+              <p className={`mt-3 text-sm font-semibold ${settings?.automatedBookingRemindersEnabled === true ? 'text-amber-800' : 'text-green-800'}`}>
+                {settings?.automatedBookingRemindersEnabled === true
+                  ? 'Warning: the background worker may email clients automatically.'
+                  : 'Kill switch active — no automatic booking reminder emails will be sent.'}
+              </p>
+            </div>
+
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
@@ -784,6 +804,38 @@ const CommunicationsPage: React.FC = () => {
                 Disconnect
               </button>
             </div>
+          </section>
+          <section className="rounded-lg border border-gray-200 bg-white p-5 space-y-4 lg:col-span-2">
+            <div><h2 className="text-lg font-semibold text-gray-900">Client medical-review notifications</h2><p className="text-sm text-gray-500">Emails contain only a generic status and never include reviewer notes or medical findings.</p></div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                ['clientMedicalReviewEmailsEnabled', 'Master email switch'],
+                ['clientMedicalApprovedEmailsEnabled', 'Approved emails'],
+                ['clientMedicalNeedsInfoEmailsEnabled', 'Needs-info emails'],
+                ['clientMedicalDeclinedEmailsEnabled', 'Declined emails'],
+                ['medicalReviewInternalNotificationsEnabled', 'Internal RE notifications'],
+                ['medicalReviewEmailTestMode', 'Test mode'],
+              ].map(([key, label]) => {
+                const defaultOff = ['clientMedicalNeedsInfoEmailsEnabled', 'clientMedicalDeclinedEmailsEnabled', 'medicalReviewEmailTestMode'].includes(key);
+                const checked = defaultOff ? (settings as any)?.[key] === true : (settings as any)?.[key] !== false;
+                return <label key={key} className="flex items-center gap-2 rounded-md border p-3 text-sm font-medium"><input type="checkbox" checked={checked} onChange={(event) => setSettings((prev) => ({ ...(prev || {}), [key]: event.target.checked }))}/>{label}</label>;
+              })}
+            </div>
+            {settings?.medicalReviewEmailTestMode && <label className="block"><span className="text-sm font-medium">Test recipient override</span><input type="email" className="mt-1 w-full rounded-md border px-3 py-2" value={settings.medicalReviewEmailTestRecipient || ''} onChange={(event) => setSettings((prev) => ({ ...(prev || {}), medicalReviewEmailTestRecipient: event.target.value }))}/></label>}
+            <h3 className="font-semibold text-gray-900">Approved email templates</h3>
+            <div className="grid gap-4 lg:grid-cols-3">
+              {[['en','English'],['cs','Czech'],['pl','Polish']].map(([language, label]) => {
+                const defaults: any = {
+                  en: { subject: 'Your medical document was approved', body: 'Your medical document has been reviewed and approved.\n\nYou can see its status in the IbogaReady app: https://ibogaready.com\n\nSign in using your existing credentials.' },
+                  cs: { subject: 'Váš zdravotní dokument byl schválen', body: 'Váš zdravotní dokument byl zkontrolován a schválen.\n\nJeho stav si můžete zobrazit v aplikaci IbogaReady: https://ibogaready.com\n\nPřihlaste se pomocí svých stávajících přihlašovacích údajů.' },
+                  pl: { subject: 'Twój dokument medyczny został zatwierdzony', body: 'Twój dokument medyczny został sprawdzony i zatwierdzony.\n\nJego status możesz zobaczyć w aplikacji IbogaReady: https://ibogaready.com\n\nZaloguj się przy użyciu swoich dotychczasowych danych logowania.' },
+                };
+                const template = settings?.medicalReviewApprovedTemplates?.[language] || defaults[language];
+                const update = (field: 'subject'|'body', value: string) => setSettings((prev) => ({ ...(prev || {}), medicalReviewApprovedTemplates: { ...(prev?.medicalReviewApprovedTemplates || {}), [language]: { ...template, [field]: value } } }));
+                return <div key={language} className="rounded-md border p-3"><h3 className="font-semibold">{label}</h3><input className="mt-2 w-full rounded-md border px-3 py-2 text-sm" value={template.subject} onChange={(event) => update('subject', event.target.value)}/><textarea className="mt-2 min-h-36 w-full rounded-md border px-3 py-2 text-sm" value={template.body} onChange={(event) => update('body', event.target.value)}/></div>;
+              })}
+            </div>
+            <button type="button" onClick={handleSettingsSave} disabled={savingSettings} className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white">Save notification settings</button>
           </section>
 
           <section className="rounded-lg border border-gray-200 bg-white p-5 space-y-3">
@@ -987,6 +1039,9 @@ const CommunicationsPage: React.FC = () => {
                       <div className="mt-1 text-[11px] uppercase text-gray-400">
                         {template.language || 'en'}{template.templateKey ? ` / ${template.templateKey}` : ''}
                       </div>
+                      <div className="mt-1 text-xs font-medium text-blue-700">
+                        Updates {new Set([...(template.bookingFlowStepKeys || []), template.bookingFlowStepKey].filter(Boolean)).size} booking item(s)
+                      </div>
                     </div>
                     <div className="text-right text-xs text-gray-500">
                       <div>#{template.display_id || 'n/a'}</div>
@@ -996,6 +1051,11 @@ const CommunicationsPage: React.FC = () => {
                 </button>
               ))}
               {templates.length === 0 && <div className="text-sm text-gray-500">No templates yet.</div>}
+              {templates.length > 0 && filteredTemplates.length === 0 && (
+                <div className="rounded-md border border-dashed border-gray-300 p-4 text-center text-sm text-gray-500">
+                  No templates match these filters.
+                </div>
+              )}
             </div>
           </section>
 
@@ -1035,6 +1095,9 @@ const CommunicationsPage: React.FC = () => {
                 )}
               </div>
             )}
+            <div className={`rounded-md border px-3 py-2 text-sm font-semibold ${selectedBookingStepKeys.length ? 'border-blue-200 bg-blue-50 text-blue-900' : 'border-gray-200 bg-gray-50 text-gray-600'}`}>
+              This template updates {selectedBookingStepKeys.length} booking item{selectedBookingStepKeys.length === 1 ? '' : 's'} after a successful send.
+            </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
@@ -1079,9 +1142,17 @@ const CommunicationsPage: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Booking Steps Updated After Successful Send</label>
                 <div className="space-y-2 rounded-md border border-gray-300 bg-white p-3">
-                  {WELCOME_STEP_OPTIONS.map(([key, label]) => <label key={key} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={(templateForm.bookingFlowStepKeys || []).includes(key)} onChange={(event) => setTemplateForm((prev) => ({ ...prev, bookingFlowStepKeys: event.target.checked ? Array.from(new Set([...(prev.bookingFlowStepKeys || []), key])) : (prev.bookingFlowStepKeys || []).filter((item) => item !== key) }))}/><span>{label}</span><code className="ml-auto text-xs text-gray-400">{key}</code></label>)}
+                  <input type="search" value={bookingStepSearch} onChange={(event) => setBookingStepSearch(event.target.value)} placeholder="Search booking items..." className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+                  <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+                    {bookingStepOptions.map(({ key, label, category }) => <label key={key} className="flex items-center gap-2 rounded px-1 py-1 text-sm hover:bg-gray-50"><input type="checkbox" checked={selectedBookingStepKeys.includes(key)} onChange={(event) => setTemplateForm((prev) => {
+                      const current = Array.from(new Set([...(prev.bookingFlowStepKeys || []), prev.bookingFlowStepKey].filter(Boolean).map(String)));
+                      const next = event.target.checked ? Array.from(new Set([...current, key])) : current.filter((item) => item !== key);
+                      return { ...prev, bookingFlowStepKeys: next, bookingFlowStepKey: next[0] || '' };
+                    })}/><span>{label}</span>{category && <span className="text-xs text-gray-400">{category}</span>}<code className="ml-auto text-xs text-gray-400">{key}</code></label>)}
+                    {bookingStepOptions.length === 0 && <div className="py-3 text-center text-sm text-gray-500">No booking items match.</div>}
+                  </div>
                 </div>
-                <p className="mt-1 text-xs text-gray-500">All selected steps are updated only after Gmail confirms the email was sent.</p>
+                <p className="mt-1 text-xs text-gray-500">{selectedBookingStepKeys.length} selected. All selected items are updated only after Gmail confirms the email was sent.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status After Send</label>
@@ -1126,30 +1197,6 @@ const CommunicationsPage: React.FC = () => {
                 HTML is detected automatically. Paste the complete HTML source here; no special label is required.
               </p>
             </div>
-            <details className="rounded-md border border-blue-200 bg-blue-50 p-3">
-              <summary className="cursor-pointer select-none text-sm font-semibold text-blue-900">Available template tags</summary>
-              <p className="mt-2 text-xs text-blue-800">Values are filled automatically from the selected booking. Click a tag to copy it.</p>
-              <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {EMAIL_TEMPLATE_TAGS.map((section) => <div key={section.group}>
-                  <div className="mb-1 text-xs font-bold uppercase tracking-wide text-blue-900">{section.group}</div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {section.tags.map((tag) => {
-                      const placeholder = `{{${tag}}}`;
-                      return <button
-                        key={tag}
-                        type="button"
-                        title={`Copy ${placeholder}`}
-                        onClick={() => navigator.clipboard.writeText(placeholder)}
-                        className="inline-flex items-center gap-1 rounded border border-blue-200 bg-white px-2 py-1 font-mono text-xs text-blue-800 hover:border-blue-400 hover:bg-blue-100"
-                      >
-                        <Icon icon={FiCopy} className="shrink-0" />
-                        {placeholder}
-                      </button>;
-                    })}
-                  </div>
-                </div>)}
-              </div>
-            </details>
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
@@ -1467,37 +1514,11 @@ const CommunicationsPage: React.FC = () => {
       )}
 
       {activeTab === 'sent' && (
-        <div>
+        <div className="grid gap-6 lg:grid-cols-[1.3fr_1fr]">
           <section className="rounded-lg border border-gray-200 bg-white p-4">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Sent Mail</h2>
-                <span className="text-xs text-gray-500">{filteredSentEmails.length} of {sentEmails.length} messages</span>
-              </div>
-              <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-                <label className="relative min-w-[240px]">
-                  <span className="sr-only">Search sent emails</span>
-                  <Icon icon={FiSearch} className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-                  <input
-                    value={sentEmailSearch}
-                    onChange={(event) => setSentEmailSearch(event.target.value)}
-                    placeholder="Search subject, client, recipient or body"
-                    className="w-full rounded-md border border-gray-300 py-2 pl-9 pr-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-                  />
-                </label>
-                <select
-                  value={sentEmailStatusFilter}
-                  onChange={(event) => setSentEmailStatusFilter(event.target.value)}
-                  aria-label="Filter sent emails by status"
-                  className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700"
-                >
-                  <option value="all">All statuses</option>
-                  <option value="sent">Sent</option>
-                  <option value="failed">Failed</option>
-                  <option value="queued">Queued</option>
-                  <option value="draft">Draft</option>
-                </select>
-              </div>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold text-gray-900">Sent Mail</h2>
+              <span className="text-xs text-gray-500">{sentEmails.length} messages</span>
             </div>
             <div className="overflow-auto">
               <table className="min-w-full text-sm">
@@ -1512,62 +1533,67 @@ const CommunicationsPage: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredSentEmails.map((email) => {
-                    const isOpen = selectedSentEmailId === email._id;
-                    return (
-                      <React.Fragment key={email._id}>
-                        <tr
-                          onClick={() => setSelectedSentEmailId(isOpen ? '' : (email._id || ''))}
-                          className={`cursor-pointer border-b hover:bg-gray-50 ${isOpen ? 'bg-blue-50' : ''}`}
-                          aria-expanded={isOpen}
-                        >
-                          <td className="py-2 pr-3 font-mono text-gray-700">#{email.display_id || 'n/a'}</td>
-                          <td className="py-2 pr-3">{renderClientLink(email, true)}</td>
-                          <td className="py-2 pr-3 font-medium text-gray-900">{email.subject}</td>
-                          <td className="py-2 pr-3 text-gray-600">{(email.to || []).join(', ')}</td>
-                          <td className="py-2 pr-3 text-gray-600">{email.status}</td>
-                          <td className="py-2 pr-3 text-gray-600">{email.sentAt ? new Date(email.sentAt).toLocaleString() : '-'}</td>
-                        </tr>
-                        {isOpen && (
-                          <tr className="border-b bg-blue-50/40">
-                            <td colSpan={6} className="px-4 py-4">
-                              <div className="space-y-3 rounded-lg border border-blue-200 bg-white p-4 shadow-sm">
-                                <div className="flex flex-wrap items-start justify-between gap-3">
-                                  <div className="space-y-1 text-sm">
-                                    <div><span className="text-gray-500">Subject:</span> <span className="font-semibold text-gray-900">{email.subject}</span></div>
-                                    <div><span className="text-gray-500">To:</span> {(email.to || []).join(', ')}</div>
-                                    <div><span className="text-gray-500">CC:</span> {(email.cc || []).join(', ') || 'None'}</div>
-                                    <div><span className="text-gray-500">Status:</span> {email.status || 'queued'} · {email.sentAt ? new Date(email.sentAt).toLocaleString() : 'Not sent'}</div>
-                                  </div>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteSentEmail(email._id)}
-                                    className="inline-flex items-center gap-2 rounded-md border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
-                                  >
-                                    <Icon icon={FiTrash2} />
-                                    Delete Log
-                                  </button>
-                                </div>
-                                <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
-                                  <div className="mb-2 text-sm font-medium text-gray-700">Body</div>
-                                  <pre className="whitespace-pre-wrap break-words font-sans text-sm leading-6 text-gray-800">{email.bodyText || 'No message body stored.'}</pre>
-                                </div>
-                                {email.errorMessage && <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{email.errorMessage}</div>}
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </React.Fragment>
-                    );
-                  })}
-                  {filteredSentEmails.length === 0 && (
+                  {sentEmails.map((email) => (
+                    <tr
+                      key={email._id}
+                      onClick={() => setSelectedSentEmailId(email._id || '')}
+                      className={`cursor-pointer border-b hover:bg-gray-50 ${selectedSentEmailId === email._id ? 'bg-blue-50' : ''}`}
+                    >
+                      <td className="py-2 pr-3 font-mono text-gray-700">#{email.display_id || 'n/a'}</td>
+                      <td className="py-2 pr-3">{renderClientLink(email, true)}</td>
+                      <td className="py-2 pr-3 font-medium text-gray-900">{email.subject}</td>
+                      <td className="py-2 pr-3 text-gray-600">{(email.to || []).join(', ')}</td>
+                      <td className="py-2 pr-3 text-gray-600">{email.status}</td>
+                      <td className="py-2 pr-3 text-gray-600">{email.sentAt ? new Date(email.sentAt).toLocaleString() : '-'}</td>
+                    </tr>
+                  ))}
+                  {sentEmails.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="py-4 text-gray-500">{sentEmails.length ? 'No sent emails match these filters.' : 'No messages sent yet.'}</td>
+                      <td colSpan={6} className="py-4 text-gray-500">No messages sent yet.</td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
+          </section>
+
+          <section className="rounded-lg border border-gray-200 bg-white p-4 space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900">Message Detail</h2>
+            {selectedSentEmail ? (
+              <div className="space-y-3">
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteSentEmail(selectedSentEmail._id)}
+                    className="inline-flex items-center gap-2 rounded-md border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+                  >
+                    <Icon icon={FiTrash2} />
+                    Delete Log
+                  </button>
+                </div>
+                <div><span className="text-gray-500">Message #:</span> <span className="font-mono">#{selectedSentEmail.display_id || 'n/a'}</span></div>
+                <div><span className="text-gray-500">Client:</span> {renderClientLink(selectedSentEmail)}</div>
+                <div><span className="text-gray-500">Status:</span> {selectedSentEmail.status}</div>
+                <div><span className="text-gray-500">To:</span> {(selectedSentEmail.to || []).join(', ')}</div>
+                <div><span className="text-gray-500">CC:</span> {(selectedSentEmail.cc || []).join(', ') || 'None'}</div>
+                <div><span className="text-gray-500">Gmail ID:</span> <span className="font-mono">{selectedSentEmail.gmailMessageId || 'Not returned'}</span></div>
+                <div><span className="text-gray-500">Subject:</span> {selectedSentEmail.subject}</div>
+                <div className="text-xs text-gray-500">
+                  {selectedSentEmail.sentAt ? `Sent ${new Date(selectedSentEmail.sentAt).toLocaleString()}` : 'Not sent'}
+                </div>
+                <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
+                  <div className="mb-2 text-sm font-medium text-gray-700">Body</div>
+                  <pre className="whitespace-pre-wrap text-sm text-gray-800">{selectedSentEmail.bodyText}</pre>
+                </div>
+                {selectedSentEmail.errorMessage && (
+                  <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                    {selectedSentEmail.errorMessage}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-sm text-gray-500">Select a sent message to inspect it.</div>
+            )}
           </section>
         </div>
       )}

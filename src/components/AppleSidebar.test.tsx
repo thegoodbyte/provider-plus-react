@@ -99,4 +99,45 @@ describe('AppleSidebar impersonation navigation', () => {
     expect(screen.queryByText('Payment Requests')).not.toBeInTheDocument();
     expect(screen.queryByText('Users')).not.toBeInTheDocument();
   });
+
+  it('filters permitted menu items and keeps matching sections open', () => {
+    render(
+      <AppleSidebar
+        activeItem="launcher"
+        isOpen
+        onClose={jest.fn()}
+        onItemClick={jest.fn()}
+        onLogout={jest.fn()}
+        userRole="admin"
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText('Search menu'), { target: { value: 'booking' } });
+
+    expect(screen.getByText('Bookings')).toBeInTheDocument();
+    expect(screen.getByText('Booking Step Setup')).toBeInTheDocument();
+    expect(screen.getByText('Booking Flow')).toBeInTheDocument();
+    expect(screen.getByText('Booking Document Types')).toBeInTheDocument();
+    expect(screen.queryByText('Clients')).not.toBeInTheDocument();
+    expect(screen.queryByText('Payments')).not.toBeInTheDocument();
+  });
+
+  it('shows an empty state and can clear the menu filter', () => {
+    render(
+      <AppleSidebar
+        activeItem="launcher"
+        isOpen
+        onClose={jest.fn()}
+        onItemClick={jest.fn()}
+        onLogout={jest.fn()}
+        userRole="admin"
+      />
+    );
+
+    fireEvent.change(screen.getByLabelText('Search menu'), { target: { value: 'not-a-menu-item' } });
+    expect(screen.getByText('No menu items found')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText('Clear menu search'));
+    expect(screen.getByText('Clients')).toBeInTheDocument();
+  });
 });

@@ -1,9 +1,9 @@
 import axios from 'axios';
-import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, PaymentMethod, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, MedicalReviewGroup, MedicalReviewGroupAccessLink, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, MailSettings, EmailTemplate, EmailTemplateSeedOption, SentEmail, RetreatArtifactSubmissionsResponse, BloodPressureReading, ReferralReportRow } from '../types';
-import type { Referral } from '../types';
+import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, MedicalReviewGroup, MedicalReviewGroupAccessLink, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, MailSettings, EmailTemplate, EmailTemplateSeedOption, SentEmail, RetreatArtifactSubmissionsResponse, BloodPressureReading } from '../types';
 import { authService } from './authService';
 import { cacheService } from './cacheService';
 import { API_BASE_URL } from '../config/api.config';
+import type { Referral } from '../types';
 
 
 const api = axios.create({
@@ -256,26 +256,55 @@ export const remindersApi = {
   delete: (id: string) => api.delete(`/reminders/${id}`),
 };
 
+const refreshCanonicalBookingConfirmation = async (bookingId: string) => {
+  try {
+    cacheService.clearPattern(`bookings:${bookingId}`);
+    const bookingResponse = await api.get<RetreatClient>(`/bookings/${bookingId}`);
+    const booking: any = bookingResponse.data;
+    const rawLanguage = String(booking?.clientId?.language || booking?.clientId?.preferredLanguage || 'en').toLowerCase();
+    const language: 'en' | 'cz' | 'pl' = rawLanguage === 'pl' ? 'pl' : ['cz', 'cs'].includes(rawLanguage) ? 'cz' : 'en';
+    const { createBookingConfirmationPdf } = await import('../components/BookingConfirmationPDF');
+    const { blob, fileName } = await createBookingConfirmationPdf({ booking, language });
+    const formData = new FormData();
+    formData.append('file', blob, fileName);
+    await api.post(`/bookings/${bookingId}/confirmation-pdf?language=${language}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    cacheService.clearPattern(`bookings:${bookingId}`);
+  } catch (error) {
+    // The booking has already been saved. Keep editing usable and let RE retry on
+    // the next update or PDF preview instead of reporting a false save failure.
+    console.error(`Unable to refresh canonical booking confirmation ${bookingId}:`, error);
+  }
+};
+
 export const bookingsApi = {
   getAll: () => cachedGet<RetreatClient[]>('bookings:all', () => api.get<RetreatClient[]>('/bookings')),
   getOne: (id: string) => cachedGet<RetreatClient>(`bookings:${id}`, () => api.get<RetreatClient>(`/bookings/${id}`)),
+  getActivity: (id: string) => api.get<import('../types').BookingActivityEvent[]>(`/bookings/${id}/activity`),
   getByHash: (hash: string) => cachedGet<RetreatClient>(`bookings:hash:${hash}`, () => api.get<RetreatClient>(`/bookings/by-hash/${hash}`)),
   getByRetreat: (retreatId: string) => cachedGet<RetreatClient[]>(`bookings:retreat:${retreatId}`, () => api.get<RetreatClient[]>(`/bookings/retreat/${retreatId}`)),
-  getByClient: (clientId: string) => cachedGet<RetreatClient[]>(`bookings:client:${clientId}`, () => api.get<RetreatClient[]>(`/bookings/client/${clientId}`)),
+  // Booking ownership can be corrected outside this browser session. Do not cache
+  // this relationship: medical record creation must always see the current link.
+  getByClient: (clientId: string) => api.get<RetreatClient[]>(`/bookings/client/${clientId}`),
   getByRetreatWithDetails: (retreatId: string) => cachedGet<RetreatClient[]>(`bookings:retreat-details:${retreatId}`, () => api.get<RetreatClient[]>(`/bookings/retreat/${retreatId}/with-details`)),
   getNextBookingNumber: () => api.get<number>('/bookings/next-booking-number'),
   isBookingNumberAvailable: (bookingNumber: number, excludeId?: string) => api.get<{ available: boolean }>(
     `/bookings/booking-number-available?bookingNumber=${encodeURIComponent(String(bookingNumber))}${excludeId ? `&excludeId=${encodeURIComponent(excludeId)}` : ''}`
   ),
-  create: (data: Omit<RetreatClient, '_id'>) => {
+  create: async (data: Omit<RetreatClient, '_id'>) => {
     cacheService.clearPattern('bookings:');
     cacheService.clearPattern('payments:');
-    return api.post<RetreatClient>('/bookings', data);
+    const response = await api.post<RetreatClient>('/bookings', data);
+    await refreshCanonicalBookingConfirmation(String(response.data._id));
+    return response;
   },
-  update: (id: string, data: Partial<RetreatClient>) => {
+  update: async (id: string, data: Partial<RetreatClient>) => {
     cacheService.clearPattern('bookings:');
     cacheService.clearPattern('payments:');
-    return api.patch<RetreatClient>(`/bookings/${id}`, data);
+    const response = await api.patch<RetreatClient>(`/bookings/${id}`, data);
+    await refreshCanonicalBookingConfirmation(id);
+    return response;
   },
   cancel: (id: string, data: { cancellationDate: string; cancellationReason: string; cancellationNotes?: string; cancellationDepositTreatment: 'none' | 'retained' | 'refund_pending' | 'partially_refunded' | 'credited'; cancellationRefundAmount?: number }) => {
     cacheService.clearPattern('bookings:');
@@ -307,6 +336,17 @@ export const bookingsApi = {
     cacheService.clearPattern('bookings:');
     return api.patch<RetreatClient>(`/bookings/${id}/check-out`, {});
   },
+  cancelBooking: (id: string, data: {
+    cancellationDate: string;
+    cancellationReason: string;
+    cancellationDepositTreatment: 'none' | 'retained' | 'refund_pending' | 'partially_refunded' | 'credited';
+    cancellationNotes?: string;
+    cancellationRefundAmount?: number;
+  }) => {
+    cacheService.clearPattern('bookings:');
+    cacheService.clearPattern('payments:');
+    return api.patch<RetreatClient>(`/bookings/${id}/cancel`, data);
+  },
   delete: (id: string) => {
     cacheService.clearPattern('bookings:');
     return api.delete(`/bookings/${id}`);
@@ -322,7 +362,6 @@ export const retreatClientsApi = bookingsApi;
 
 export const referralsApi = {
   getAll: () => api.get<Referral[]>('/referrals'),
-  getReport: () => api.get<ReferralReportRow[]>('/referrals/report'),
   create: (data: Omit<Referral, '_id'>) => api.post<Referral>('/referrals', data),
   update: (id: string, data: Partial<Referral>) => api.patch<Referral>(`/referrals/${id}`, data),
   delete: (id: string) => api.delete(`/referrals/${id}`),
@@ -330,7 +369,6 @@ export const referralsApi = {
 
 export const expenseTypesApi = {
   getAll: () => api.get<ExpenseType[]>('/expense-types'),
-  getAllIncludingInactive: () => api.get<ExpenseType[]>('/expense-types?includeInactive=true'),
   getOne: (id: string) => api.get<ExpenseType>(`/expense-types/${id}`),
   create: (data: Omit<ExpenseType, '_id'>) => api.post<ExpenseType>('/expense-types', data),
   update: (id: string, data: Partial<ExpenseType>) => api.patch<ExpenseType>(`/expense-types/${id}`, data),
@@ -338,14 +376,6 @@ export const expenseTypesApi = {
   activate: (id: string) => api.patch(`/expense-types/${id}/activate`, {}),
   deactivate: (id: string) => api.patch(`/expense-types/${id}/deactivate`, {}),
   seed: (dryRun: boolean = false) => api.post(`/expense-types/seed${dryRun ? '?dryRun=true' : ''}`, {}),
-};
-
-export const paymentMethodsApi = {
-  getAll: (includeInactive = false) => api.get<PaymentMethod[]>(`/payment-methods${includeInactive ? '?includeInactive=true' : ''}`),
-  create: (data: Omit<PaymentMethod, '_id'>) => api.post<PaymentMethod>('/payment-methods', data),
-  update: (id: string, data: Partial<PaymentMethod>) => api.patch<PaymentMethod>(`/payment-methods/${id}`, data),
-  activate: (id: string) => api.patch<PaymentMethod>(`/payment-methods/${id}/activate`, {}),
-  deactivate: (id: string) => api.patch<PaymentMethod>(`/payment-methods/${id}/deactivate`, {}),
 };
 
 export const retreatExpensesApi = {
@@ -361,19 +391,16 @@ export const retreatExpensesApi = {
     formData.append('receipt', receipt);
     return api.post<{ expense: RetreatExpense; receiptUrl: string }>(`/retreat-expenses/${id}/receipt`, formData);
   },
-  uploadReceipts: (id: string, receipts: File[]) => {
-    const formData = new FormData();
-    receipts.forEach((receipt) => formData.append('receipts', receipt));
-    return api.post<{ expense: RetreatExpense; receipts: Array<{ url: string; fileName?: string; mimeType?: string; uploadedAt?: string }> }>(`/retreat-expenses/${id}/receipt-images`, formData);
-  },
   getReceiptUrl: (id: string) => api.get<{ url: string; fileName?: string; mimeType?: string }>(`/retreat-expenses/${id}/receipt-url`),
-  getReceiptUrls: (id: string) => api.get<Array<{ url: string; fileName?: string; mimeType?: string; uploadedAt?: string }>>(`/retreat-expenses/${id}/receipt-urls`),
   delete: (id: string) => api.delete(`/retreat-expenses/${id}`),
   initializeRetreatExpenses: (retreatId: string) => api.post(`/retreat-expenses/retreat/${retreatId}/initialize`, {}),
   autoGenerateHouseCost: (retreatId: string) => api.post<RetreatExpense>(`/retreat-expenses/retreat/${retreatId}/auto-generate-house-cost`, {}),
 };
 
 export const paymentsApi = {
+  getTypes: () => api.get<Array<{ key: string; label: string; active: boolean; sortOrder: number; system: boolean; behavior: string }>>('/payments/types/configuration'),
+  createType: (data: { key: string; label: string; active?: boolean; sortOrder?: number }) => api.post('/payments/types/configuration', data),
+  updateType: (key: string, data: { label?: string; active?: boolean; sortOrder?: number }) => api.patch(`/payments/types/configuration/${encodeURIComponent(key)}`, data),
   getAll: () => cachedGet<Payment[]>('payments:all', () => api.get<Payment[]>('/payments')),
   getOne: (id: string) => cachedGet<Payment>(`payments:${id}`, () => api.get<Payment>(`/payments/${id}`)),
   getByRetreat: (retreatId: string) => cachedGet<Payment[]>(`payments:retreat:${retreatId}`, () => api.get<Payment[]>(`/payments/by-retreat/${retreatId}`)),
@@ -459,7 +486,6 @@ export const paymentRequestsApi = {
 
 export const bloodPressureReadingsApi = {
   getByClient: (clientId: string) => api.get<BloodPressureReading[]>(`/blood-pressure-readings?clientId=${encodeURIComponent(clientId)}`),
-  create: (data: Partial<BloodPressureReading> & { clientId: string; systolic: number; diastolic: number; recordedAt: string }) => api.post<BloodPressureReading>('/blood-pressure-readings', data),
   update: (id: string, data: Partial<BloodPressureReading>) => api.patch<BloodPressureReading>(`/blood-pressure-readings/${id}`, data),
   delete: (id: string) => api.delete<{ deleted: boolean; id: string }>(`/blood-pressure-readings/${id}`),
 };
@@ -563,6 +589,25 @@ export const communicationsApi = {
     cacheService.clearPattern('communications:sent-emails');
     return api.post<SentEmail>('/communications/send', data);
   },
+  previewEmail: (data: {
+    templateId?: string;
+    bookingId?: string;
+    clientId?: string;
+    retreatId?: string;
+    relatedEntityType?: string;
+    relatedEntityId?: string;
+    bookingFlowStepKey?: string;
+    variables?: Record<string, any>;
+  }) => api.post<{
+    templateId?: string;
+    templateKey?: string;
+    category?: string;
+    subject: string;
+    bodyText: string;
+    bodyHtml: string;
+    variables: Record<string, any>;
+    bookingConfirmation: boolean;
+  }>('/communications/preview', data),
   sendRetreatEmail: (retreatId: string, data: {
     subject: string;
     bodyText: string;
@@ -783,11 +828,10 @@ export const medicalArtifactsApi = {
     purpose?: MedicalArtifact['purpose'];
     documentStage?: MedicalArtifact['documentStage'];
     documentType?: MedicalArtifact['documentType'];
-    summary?: boolean;
   } = {}) => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
-      if (value !== undefined && value !== null && value !== '') params.set(key, String(value));
+      if (value) params.set(key, value);
     });
     const suffix = params.toString() ? `?${params.toString()}` : '';
     return cachedGet<MedicalArtifact[]>(`medical-artifacts:${suffix || 'all'}`, () => api.get<MedicalArtifact[]>(`/medical-artifacts${suffix}`));
@@ -1051,6 +1095,7 @@ export const medicalReviewRequestsApi = {
   getQueue: () => cachedGet<MedicalReviewRequest[]>('medical-review-requests:queue', () => api.get<MedicalReviewRequest[]>('/medical-review-requests/queue')),
   getOne: (id: string) => cachedGet<MedicalReviewRequest>(`medical-review-requests:${id}`, () => api.get<MedicalReviewRequest>(`/medical-review-requests/${id}`)),
   getContext: (id: string) => cachedGet<any>(`medical-review-requests:${id}:context`, () => api.get<any>(`/medical-review-requests/${id}/context`)),
+  generateMedicalSummary: (id: string) => api.post<{ summary: string; generatedBy: 'rules' | 'openai'; model?: string; unavailableReason?: string; generatedAt: string }>(`/medical-review-requests/${id}/medical-summary/generate`),
   getByClientAndRetreat: (clientId: string, retreatId: string) => cachedGet<MedicalReviewRequest[]>(`medical-review-requests:${clientId}:${retreatId}`, () => api.get<MedicalReviewRequest[]>(`/medical-review-requests?clientId=${clientId}&retreatId=${retreatId}`)),
   getByMedicalTracking: (medicalTrackingId: string) => cachedGet<MedicalReviewRequest[]>(`medical-review-requests:tracking:${medicalTrackingId}`, () => api.get<MedicalReviewRequest[]>(`/medical-review-requests?medicalTrackingId=${medicalTrackingId}`)),
   getByArtifact: (artifactId: string) => cachedGet<MedicalReviewRequest[]>(`medical-review-requests:artifact:${artifactId}`, () => api.get<MedicalReviewRequest[]>(`/medical-review-requests?artifactId=${artifactId}`)),
@@ -1080,6 +1125,10 @@ export const medicalReviewRequestsApi = {
   update: (id: string, data: Partial<MedicalReviewRequest>) => {
     cacheService.clearPattern('medical-review-requests:');
     return api.patch<MedicalReviewRequest>(`/medical-review-requests/${id}`, data);
+  },
+  updateClientVisibleAdminNote: (id: string, note: string) => {
+    cacheService.clearPattern('medical-review-requests:');
+    return api.patch<MedicalReviewRequest>(`/medical-review-requests/${id}/client-visible-admin-note`, { note });
   },
   getPublic: (token: string) => api.get<{ request: MedicalReviewRequest; artifacts: MedicalArtifact[] }>(
     `/medical-review-public/${encodeURIComponent(token)}`,
@@ -1182,15 +1231,9 @@ export const medicalReviewRequestsApi = {
     liverReviewDecision?: 'OK' | 'caution' | 'NOT OK';
     liverReviewNotes?: string;
     reviewedBy?: string;
-    followUpDeadline?: string;
-    followUpEmailTemplateId?: string;
   }) => {
     cacheService.clearPattern('medical-review-requests:');
     return api.patch<MedicalReviewRequest>(`/medical-review-requests/${id}/review`, reviewData);
-  },
-  resetReview: (id: string, reason?: string) => {
-    cacheService.clearPattern('medical-review-requests:');
-    return api.patch<MedicalReviewRequest>(`/medical-review-requests/${id}/reset-review`, { reason });
   },
   delete: (id: string) => {
     cacheService.clearPattern('medical-review-requests:');
@@ -1406,7 +1449,6 @@ export const bookingFlowApi = {
 };
 
 export const bookingDocumentsApi = {
-  getSubmittedData: (category = 'all') => api.get(`/booking-documents/submitted-data/list?category=${encodeURIComponent(category)}`),
   getTypes: (includeInactive = false) => cachedGet<BookingDocumentType[]>(
     `booking-documents:types:${includeInactive}`,
     () => api.get<BookingDocumentType[]>(`/booking-documents/types${includeInactive ? '?includeInactive=true' : ''}`)
@@ -1427,17 +1469,15 @@ export const bookingDocumentsApi = {
     cacheService.clearPattern('booking-documents:');
     return api.delete(`/booking-documents/types/${id}`);
   },
-  getAll: (params: { bookingId?: string; clientId?: string; retreatId?: string; documentType?: string; summary?: boolean } = {}) => {
+  getAll: (params: { bookingId?: string; clientId?: string; retreatId?: string; documentType?: string } = {}) => {
     const query = new URLSearchParams();
     if (params.bookingId) query.set('bookingId', params.bookingId);
     if (params.clientId) query.set('clientId', params.clientId);
     if (params.retreatId) query.set('retreatId', params.retreatId);
     if (params.documentType) query.set('documentType', params.documentType);
-    if (params.summary) query.set('summary', 'true');
     const key = `booking-documents:${query.toString()}`;
     return cachedGet<BookingDocument[]>(key, () => api.get<BookingDocument[]>(`/booking-documents?${query.toString()}`));
   },
-  getOne: (id: string) => api.get<BookingDocument>(`/booking-documents/${id}`),
   create: (data: Partial<BookingDocument> & { bookingId: string; documentType: string }) => {
     cacheService.clearPattern('booking-documents:');
     return api.post<BookingDocument>('/booking-documents', data);
@@ -1455,6 +1495,10 @@ export const bookingDocumentsApi = {
     });
   },
   getFileViewUrl: (id: string, storedPath: string) => `${api.defaults.baseURL}/booking-documents/${id}/files/view?storedPath=${encodeURIComponent(storedPath)}`,
+  getFile: (id: string, storedPath: string) => api.get(
+    `/booking-documents/${id}/files/view?storedPath=${encodeURIComponent(storedPath)}`,
+    { responseType: 'blob' },
+  ),
   delete: (id: string, reason = 'Upload rollback') => {
     cacheService.clearPattern('booking-documents:');
     return api.delete(`/booking-documents/${id}`, { data: { reason } });
@@ -1697,4 +1741,14 @@ export const assistantApi = {
     api.get<RetreatReadinessAssistantResult>(`/assistant/retreat-readiness/${retreatId}`),
   chat: (data: { scope: 'retreat' | 'booking'; retreatId?: string; bookingId?: string; message: string }) =>
     api.post<AssistantChatResponse>('/assistant/chat', data),
+};
+
+export const drugScreeningsApi = {
+  list: (retreatId: string) => api.get('/drug-screenings', { params: { retreatId } }),
+  save: (retreatId: string, bookingId: string, data: { clientId: string; administeredAt: string; testedFor: string[]; result: string; notes?: string }, image?: File) => {
+    const form = new FormData();
+    form.append('clientId', data.clientId); form.append('administeredAt', data.administeredAt); form.append('testedFor', JSON.stringify(data.testedFor)); form.append('result', data.result); form.append('notes', data.notes || '');
+    if (image) form.append('image', image);
+    return api.put(`/drug-screenings/retreat/${retreatId}/booking/${bookingId}`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  },
 };

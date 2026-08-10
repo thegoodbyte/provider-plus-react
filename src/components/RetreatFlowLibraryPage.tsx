@@ -4,7 +4,7 @@ import { CheckCircle2, Copy, Download, GripVertical, Plus, RefreshCw, Save, Tras
 import LoadingSpinner from './LoadingSpinner';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 import { bookingFlowApi, communicationsApi, retreatsApi } from '../services/api';
-import { BookingFlowAction, BookingFlowTemplate, EmailTemplate, Retreat } from '../types';
+import { BookingFlowAction, BookingFlowTemplate, BookingReminderRule, EmailTemplate, Retreat } from '../types';
 import {
   getBookingStepDefaultColor,
   getBookingStepColorStyles,
@@ -46,6 +46,7 @@ type TemplateForm = {
   emailEnabled: boolean;
   emailTemplateId: string;
   actions: BookingFlowAction[];
+  reminderRules: BookingReminderRule[];
 };
 
 const emptyForm = (): TemplateForm => ({
@@ -78,6 +79,7 @@ const emptyForm = (): TemplateForm => ({
   emailEnabled: false,
   emailTemplateId: '',
   actions: [],
+  reminderRules: [],
 });
 
 const formatDeadlineLabel = (template: BookingFlowTemplate) => {
@@ -211,8 +213,29 @@ const RetreatFlowLibraryPage: React.FC = () => {
       emailEnabled: !!template.emailEnabled,
       emailTemplateId: typeof template.emailTemplateId === 'string' ? template.emailTemplateId : template.emailTemplateId?._id || '',
       actions: normalizeTemplateActionsForForm(template),
+      reminderRules: template.reminderRules || [],
     });
   };
+
+  const addReminderRule = () => setForm((current) => ({
+    ...current,
+    reminderRules: [...current.reminderRules, {
+      key: `reminder_${current.reminderRules.length + 1}`,
+      offsetDays: 0,
+      actionType: 'send_email',
+      active: true,
+    }],
+  }));
+
+  const updateReminderRule = (index: number, patch: Partial<BookingReminderRule>) => setForm((current) => ({
+    ...current,
+    reminderRules: current.reminderRules.map((rule, ruleIndex) => ruleIndex === index ? { ...rule, ...patch } : rule),
+  }));
+
+  const removeReminderRule = (index: number) => setForm((current) => ({
+    ...current,
+    reminderRules: current.reminderRules.filter((_rule, ruleIndex) => ruleIndex !== index),
+  }));
 
   const handleSave = async () => {
     try {
@@ -258,6 +281,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
         emailEnabled: Boolean(primaryEmailAction),
         emailTemplateId: primaryEmailAction?.emailTemplateId,
         actions: normalizedActions,
+        reminderRules: form.reminderRules,
       };
 
       if (selectedTemplateId) {
@@ -655,6 +679,24 @@ const RetreatFlowLibraryPage: React.FC = () => {
         </label>
       </div>
 
+      <div className="mt-3 rounded-md border border-violet-200 bg-violet-50/40 p-3">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div><div className="text-xs font-semibold uppercase text-violet-700">Automated reminder sequence</div><div className="text-xs text-gray-500">Offsets are relative to this step’s deadline. Negative days run before it.</div></div>
+          <button type="button" onClick={addReminderRule} className="rounded-md border border-violet-300 bg-white px-3 py-1.5 text-xs font-medium text-violet-800">Add rule</button>
+        </div>
+        <div className="space-y-2">
+          {form.reminderRules.length === 0 && <div className="rounded border border-dashed border-violet-200 bg-white p-3 text-sm text-gray-500">Uses the default sequence: −7 days, deadline day, +3 days, then a staff task at +7 days.</div>}
+          {form.reminderRules.map((rule, index) => (
+            <div key={`${rule.key}-${index}`} className="grid gap-2 rounded-md border border-violet-100 bg-white p-2 sm:grid-cols-[1fr_100px_170px_auto]">
+              <input value={rule.key} onChange={(event) => updateReminderRule(index, { key: event.target.value })} className="rounded border border-gray-300 px-2 py-1.5 text-sm" placeholder="friendly_7_days_before" />
+              <input type="number" value={rule.offsetDays} onChange={(event) => updateReminderRule(index, { offsetDays: Number(event.target.value) })} className="rounded border border-gray-300 px-2 py-1.5 text-sm" title="Days relative to deadline" />
+              <select value={rule.actionType} onChange={(event) => updateReminderRule(index, { actionType: event.target.value as BookingReminderRule['actionType'] })} className="rounded border border-gray-300 px-2 py-1.5 text-sm"><option value="send_email">Send email</option><option value="create_staff_task">Create staff task</option></select>
+              <button type="button" onClick={() => removeReminderRule(index)} className="px-2 text-xs font-medium text-red-600">Remove</button>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="mt-3 rounded-md border border-gray-200 bg-white p-3">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
@@ -719,7 +761,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
                 </label>
               ) : action.type === 'upload' ? (
                 <div className="mt-2 rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-xs text-blue-800">
-                  Shows an upload button on the booking step. Uploaded files are saved into Booking Documents and mark the step received.
+                  Shows an upload button on the booking step. When Expected artifact is configured for a supported medical artifact, the file is stored in Medical Artifacts; otherwise it is stored in Booking Documents.
                 </div>
               ) : action.type === 'link_mrr' ? (
                 <div className="mt-2 rounded-md border border-indigo-100 bg-indigo-50 px-3 py-2 text-xs text-indigo-800">

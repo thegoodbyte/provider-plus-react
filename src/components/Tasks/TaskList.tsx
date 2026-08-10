@@ -7,7 +7,6 @@ interface TaskListProps {
   onEditTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
   onCompleteTask: (taskId: string) => void;
-  systemManaged?: boolean;
 }
 
 export const TaskList: React.FC<TaskListProps> = ({
@@ -15,7 +14,6 @@ export const TaskList: React.FC<TaskListProps> = ({
   onEditTask,
   onDeleteTask,
   onCompleteTask,
-  systemManaged = false,
 }) => {
   const [sortField, setSortField] = useState<string>('dueDate');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -254,11 +252,6 @@ export const TaskList: React.FC<TaskListProps> = ({
 
             <div className="task-cell actions">
               <span className="task-cell-label">Actions</span>
-              {systemManaged ? (
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600" title="This task completes when its source booking step or reminder is resolved.">
-                  Managed automatically
-                </span>
-              ) : (
               <div className="action-buttons">
                 {task.status !== 'completed' && (
                   <button
@@ -287,7 +280,6 @@ export const TaskList: React.FC<TaskListProps> = ({
                   ✗
                 </button>
               </div>
-              )}
             </div>
           </div>
         ))}

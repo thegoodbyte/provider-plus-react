@@ -1,21 +1,21 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiChevronDown, FiDownload, FiEdit3, FiEye, FiMail, FiSend, FiX } from 'react-icons/fi';
+import { FiArrowLeft, FiCheck, FiChevronDown, FiDownload, FiEdit3, FiEye, FiMail, FiSend, FiX } from 'react-icons/fi';
 import { message } from 'antd';
-import { bookingsApi, bookingDocumentsApi, bookingFlowApi, ceremoniesApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
+import { bookingsApi, bookingDocumentsApi, bookingFlowApi, ceremoniesApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import BookingPaymentManagement from './BookingPaymentManagement';
 import BookingMedicalUpload from './BookingMedicalUpload';
 import BookingDocumentsUpload from './BookingDocumentsUpload';
 import ClientBookingWorkflowTab from './ClientBookingWorkflowTab';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 import EmailHistoryPanel from './EmailHistoryPanel';
+import BookingActivityTimeline from './BookingActivityTimeline';
 import { TaskList } from './Tasks/TaskList';
 import { TaskForm } from './Tasks/TaskForm';
 import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
 import { createBookingConfirmationPdf } from './BookingConfirmationPDF';
 import { Task, CreateTaskDto, taskService } from '../services/taskService';
-import { BookingDocument, BookingFlowItem, CeremonyParticipant, MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
-import { getBookingPaidAmount } from './bookingPaymentSummary';
+import { BookingDocument, BookingFlowItem, CeremonyParticipant, MedicalArtifact, MedicalReviewRequest } from '../types';
 import './BookingDetailView.css';
 
 type RequirementArtifactType = NonNullable<MedicalArtifact['artifactType']>;
@@ -32,6 +32,8 @@ type RequirementDefinition = {
   documentTypes?: MedicalArtifact['documentType'][];
   bookingDocumentTypes?: string[];
   readinessGroups: string[];
+  library: 'medical_artifacts' | 'booking_documents' | 'both';
+  matchTerms?: string[];
 };
 
 interface BookingDetailViewProps {
@@ -42,12 +44,12 @@ interface BookingDetailViewProps {
 const HeaderIcon: React.FC<{ icon: any }> = ({ icon: IconComponent }) => <IconComponent />;
 
 const requirementDefinitions: RequirementDefinition[] = [
-  { key: 'contract', label: 'Contract', artifactTypes: ['contract'], bookingDocumentTypes: ['contract'], readinessGroups: ['contract'] },
-  { key: 'ekg', label: 'Entry EKG', artifactTypes: ['ekg'], documentTypes: ['EKG'], readinessGroups: ['ekg'] },
-  { key: 'liver', label: 'Entry Liver Panel', artifactTypes: ['liver_panel'], documentTypes: ['Liver'], bookingDocumentTypes: ['liver_panel'], readinessGroups: ['liver'] },
-  { key: 'medications', label: 'Medications Form', artifactTypes: ['medications_form', 'medication_list'], documentTypes: ['Medications'], bookingDocumentTypes: ['medications_form'], readinessGroups: ['medications'] },
-  { key: 'questionnaire', label: 'Questionnaire', artifactTypes: ['questionnaire'], bookingDocumentTypes: ['questionnaire'], readinessGroups: ['questionnaire'] },
-  { key: 'food', label: 'Food Form', artifactTypes: ['food_intake'], bookingDocumentTypes: ['food_intake'], readinessGroups: ['food'] },
+  { key: 'contract', label: 'Contract', artifactTypes: ['contract'], bookingDocumentTypes: ['contract'], readinessGroups: ['contract'], library: 'booking_documents', matchTerms: ['contract'] },
+  { key: 'ekg', label: 'Entry EKG', artifactTypes: ['ekg'], documentTypes: ['EKG'], readinessGroups: ['ekg'], library: 'medical_artifacts', matchTerms: ['ekg', 'ecg', 'electrocardiogram'] },
+  { key: 'liver', label: 'Entry Liver Panel', artifactTypes: ['liver_panel'], documentTypes: ['Liver'], bookingDocumentTypes: ['liver_panel'], readinessGroups: ['liver'], library: 'medical_artifacts', matchTerms: ['liver', 'hepatic panel', 'liver panel'] },
+  { key: 'medications', label: 'Medications Form', artifactTypes: ['medications_form', 'medication_list'], documentTypes: ['Medications', 'meds'], bookingDocumentTypes: ['medications_form'], readinessGroups: ['medications'], library: 'both', matchTerms: ['medication', 'medications', 'meds'] },
+  { key: 'questionnaire', label: 'Questionnaire', artifactTypes: ['questionnaire'], bookingDocumentTypes: ['questionnaire'], readinessGroups: ['questionnaire'], library: 'both', matchTerms: ['questionnaire', 'health questionnaire'] },
+  { key: 'food', label: 'Food Form', artifactTypes: ['food_intake'], bookingDocumentTypes: ['food_intake'], readinessGroups: ['food'], library: 'both', matchTerms: ['food intake', 'food form', 'dietary'] },
 ];
 
 const completedStatuses = new Set(['received', 'reviewed', 'approved', 'completed', 'caution']);
@@ -111,6 +113,41 @@ const getClientDisplayId = (client: any, booking?: any) =>
 
 const normalizeBookingDocumentKey = (value?: string) =>
   String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+
+const artifactMatchesRequirement = (artifact: MedicalArtifact, definition: RequirementDefinition) => {
+  if (artifact.artifactType && definition.artifactTypes.includes(artifact.artifactType)) return true;
+  if (definition.documentTypes?.includes(artifact.documentType)) return true;
+  const legacyData = artifact.data || {};
+  const searchable = [
+    artifact.title,
+    artifact.description,
+    artifact.source,
+    artifact.documentType,
+    artifact.artifactType,
+    legacyData.artifactType,
+    legacyData.documentType,
+    legacyData.title,
+    legacyData.fileName,
+    legacyData.originalName,
+    ...(artifact.files || []).flatMap((file) => [file.fileName, file.filePath, file.s3Key]),
+    ...(artifact.tags || []),
+  ].filter(Boolean).join(' ').toLowerCase();
+  return Boolean(definition.matchTerms?.some((term) => searchable.includes(term.toLowerCase())));
+};
+
+const artifactHasReceivedContent = (artifact: MedicalArtifact) => {
+  if ((artifact.files || []).some((file) => file.fileName || file.filePath || file.s3Key || file.url)) return true;
+  if (String(artifact.textContent || '').trim()) return true;
+  const data = artifact.data || {};
+  return Boolean(data.fileName || data.filePath || data.s3Key || data.url || data.fileUrl || data.downloadUrl);
+};
+
+const documentMatchesRequirement = (document: BookingDocument, definition: RequirementDefinition) => {
+  const documentType = normalizeBookingDocumentKey(document.documentType);
+  if (definition.bookingDocumentTypes?.includes(documentType)) return true;
+  const searchable = [document.title, document.description, document.documentType].filter(Boolean).join(' ').toLowerCase();
+  return Boolean(definition.matchTerms?.some((term) => searchable.includes(term.toLowerCase())));
+};
 
 const getRetreatCode = (retreat: any) => {
   const explicitCode = String(retreat?.code || retreat?.retreatCode || '').trim();
@@ -425,7 +462,8 @@ const BookingRequirementsPanel: React.FC<{
   clientId?: string;
   retreatId?: string;
   refreshKey: number;
-}> = ({ bookingId, clientId, retreatId, refreshKey }) => {
+  onStatusChange?: (status: { missing: number; total: number }) => void;
+}> = ({ bookingId, clientId, retreatId, refreshKey, onStatusChange }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const routePrefix = useMemo(() => {
@@ -434,10 +472,14 @@ const BookingRequirementsPanel: React.FC<{
   }, [location.pathname]);
   const [items, setItems] = useState<BookingFlowItem[]>([]);
   const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
+  const [libraryArtifacts, setLibraryArtifacts] = useState<MedicalArtifact[]>([]);
   const [documents, setDocuments] = useState<BookingDocument[]>([]);
+  const [libraryDocuments, setLibraryDocuments] = useState<BookingDocument[]>([]);
   const [reviewsByArtifact, setReviewsByArtifact] = useState<Record<string, MedicalReviewRequest[]>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [linkingRequirement, setLinkingRequirement] = useState<RequirementDefinition | null>(null);
+  const [linkingRecordId, setLinkingRecordId] = useState('');
 
   const loadRequirements = async () => {
     const loadStart = performance.now();
@@ -449,13 +491,10 @@ const BookingRequirementsPanel: React.FC<{
       const itemsResponse = await bookingFlowApi.getItems({ bookingId });
       timings.items = performance.now() - itemsStart;
       const bookingFlowFilters = buildBookingFlowArtifactFilters(itemsResponse.data || []);
-      // Listing booking documents reconciles legacy entry EKG/liver uploads
-      // into medical artifacts. Wait for that repair before querying the
-      // medical view so the recovered artifact appears on the first load.
-      await bookingDocumentsApi.getAll({ bookingId });
       const artifactsStart = performance.now();
-      const [artifactsResponse, documentsResponse] = await Promise.all([
+      const [artifactsResponse, documentsResponse, libraryDocumentsResponse] = await Promise.all([
         Promise.all([
+          medicalArtifactsApi.getForBooking(bookingId),
           medicalArtifactsApi.getAll({ bookingId, ...bookingFlowFilters }),
           medicalArtifactsApi.getAll({ bookingId }),
           clientId && retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId, ...bookingFlowFilters }) : Promise.resolve({ data: [] }),
@@ -463,16 +502,20 @@ const BookingRequirementsPanel: React.FC<{
           clientId ? medicalArtifactsApi.getAll({ clientId }) : Promise.resolve({ data: [] }),
         ]),
         bookingDocumentsApi.getAll({ bookingId }),
+        clientId ? bookingDocumentsApi.getAll({ clientId }) : Promise.resolve({ data: [] as BookingDocument[] }),
       ]);
       timings.artifacts = performance.now() - artifactsStart;
-      const loadedArtifacts: MedicalArtifact[] = mergeArtifacts(artifactsResponse.map((response) => response.data || []))
+      const allClientArtifacts: MedicalArtifact[] = mergeArtifacts(artifactsResponse.map((response) => response.data || []));
+      const loadedArtifacts = allClientArtifacts
         .filter((artifact) => isArtifactRelevantToBooking(artifact, bookingId, retreatId));
       const artifactIds = loadedArtifacts.map((artifact) => artifact._id).filter(Boolean) as string[];
       const reviewLoad = await loadReviewsByArtifactIds(artifactIds);
       timings.reviews = reviewLoad.duration;
       setItems(itemsResponse.data || []);
       setArtifacts(loadedArtifacts);
+      setLibraryArtifacts(allClientArtifacts);
       setDocuments(documentsResponse.data || []);
+      setLibraryDocuments(libraryDocumentsResponse.data || []);
       setReviewsByArtifact(reviewLoad.reviewsByArtifact);
       timings.total = performance.now() - loadStart;
       timings.reviewCount = reviewLoad.count;
@@ -496,21 +539,23 @@ const BookingRequirementsPanel: React.FC<{
       const expectedArtifact = item.metadata?.expectedArtifact || template?.expectedArtifact;
       return definition.readinessGroups.includes(readinessGroup) || definition.artifactTypes.includes(expectedArtifact);
     });
-    const relatedArtifacts = artifacts
-      .filter((artifact) => {
-        const matchesLegacyType = artifact.artifactType && definition.artifactTypes.includes(artifact.artifactType);
-        const matchesDocumentType = artifact.documentStage === 'entry' && definition.documentTypes?.includes(artifact.documentType);
-        return matchesLegacyType || matchesDocumentType;
-      })
+    const explicitlyLinkedArtifactIds = new Set(relatedItems.flatMap((item) => [
+      item.metadata?.linkedMedicalArtifactId,
+      ...(Array.isArray(item.metadata?.linkedMedicalArtifactIds) ? item.metadata?.linkedMedicalArtifactIds || [] : []),
+    ]).filter(Boolean).map(String));
+    const explicitlyLinkedDocumentIds = new Set(relatedItems.map((item) => item.metadata?.linkedBookingDocumentId).filter(Boolean).map(String));
+    const relatedArtifacts = mergeArtifacts([artifacts, libraryArtifacts.filter((artifact) => artifact._id && explicitlyLinkedArtifactIds.has(artifact._id))])
+      .filter((artifact) => artifactMatchesRequirement(artifact, definition))
       .sort(compareArtifactsForDisplay);
-    const relatedDocuments = documents
-      .filter((document) => definition.bookingDocumentTypes?.includes(normalizeBookingDocumentKey(document.documentType)) && (document.files || []).length > 0)
+    const relatedDocuments = [...documents, ...libraryDocuments.filter((document) => document._id && explicitlyLinkedDocumentIds.has(document._id))]
+      .filter((document, index, list) => document._id && list.findIndex((candidate) => candidate._id === document._id) === index)
+      .filter((document) => documentMatchesRequirement(document, definition) && (document.files || []).length > 0)
       .sort((a, b) => new Date(b.receivedAt || b.createdAt || 0).getTime() - new Date(a.receivedAt || a.createdAt || 0).getTime());
     const latestArtifact = relatedArtifacts[0];
     const latestDocument = relatedDocuments[0];
     const reviews = latestArtifact?._id ? (reviewsByArtifact[latestArtifact._id] || []) : [];
     const latestReview = [...reviews].sort((a, b) => getReviewTime(b) - getReviewTime(a))[0];
-    const uploaded = relatedArtifacts.some((artifact) => (artifact.files || []).length > 0);
+    const uploaded = relatedArtifacts.some(artifactHasReceivedContent);
     const documentUploaded = relatedDocuments.length > 0;
     const flowReceived = relatedItems.some((item) => completedStatuses.has(item.status));
     const reviewed = Boolean(latestReview && reviewedStatuses.has(latestReview.status)) ||
@@ -528,6 +573,55 @@ const BookingRequirementsPanel: React.FC<{
       relatedItems,
     };
   });
+  const missingCount = rows.filter((row) => row.required && !row.uploaded).length;
+  const requiredCount = rows.filter((row) => row.required).length;
+
+  useEffect(() => {
+    if (!loading && !error) {
+      onStatusChange?.({ missing: missingCount, total: requiredCount });
+    }
+  }, [error, loading, missingCount, onStatusChange, requiredCount]);
+
+  const linkExistingRecord = async (definition: RequirementDefinition, kind: 'artifact' | 'document', recordId: string) => {
+    const row = rows.find((candidate) => candidate.key === definition.key);
+    const flowItem = row?.relatedItems.find((item) => item._id) || row?.relatedItems[0];
+    try {
+      setLinkingRecordId(`${kind}:${recordId}`);
+      if (flowItem?._id) {
+        await bookingFlowApi.updateItem(flowItem._id, {
+          status: 'received',
+          completedAt: new Date().toISOString(),
+          metadata: {
+            ...(flowItem.metadata || {}),
+            ...(kind === 'artifact'
+              ? { linkedMedicalArtifactId: recordId, linkedMedicalArtifactIds: [recordId] }
+              : { linkedBookingDocumentId: recordId }),
+            linkedRequirementLibrary: kind === 'artifact' ? 'medical_artifacts' : 'booking_documents',
+            linkedRequirementKey: definition.key,
+          },
+        });
+      } else if (kind === 'artifact') {
+        await medicalArtifactsApi.update(recordId, { bookingId, retreatId, clientId } as Partial<MedicalArtifact>);
+      } else {
+        await bookingDocumentsApi.update(recordId, { bookingId });
+      }
+      setLinkingRequirement(null);
+      await loadRequirements();
+    } catch (linkError: any) {
+      setError(linkError?.response?.data?.message || linkError?.message || 'Unable to link the selected record.');
+    } finally {
+      setLinkingRecordId('');
+    }
+  };
+
+  const candidateArtifacts = linkingRequirement
+    ? libraryArtifacts.filter((artifact) => artifact._id && artifactMatchesRequirement(artifact, linkingRequirement)).sort(compareArtifactsForDisplay)
+    : [];
+  const candidateDocuments = linkingRequirement
+    ? libraryDocuments
+      .filter((document) => document._id && documentMatchesRequirement(document, linkingRequirement) && (document.files || []).length > 0)
+      .sort((a, b) => new Date(b.receivedAt || b.createdAt || 0).getTime() - new Date(a.receivedAt || a.createdAt || 0).getTime())
+    : [];
 
   return (
     <div className="detail-section">
@@ -584,7 +678,13 @@ const BookingRequirementsPanel: React.FC<{
                         Review #{row.latestReview.display_id || row.latestReview._id}
                       </button>
                     )}
-                    {!row.latestArtifact && !row.latestDocument && !row.latestReview && <span className="text-gray-500">No linked record</span>}
+                    <button
+                      type="button"
+                      className="font-semibold text-indigo-700 hover:underline"
+                      onClick={() => setLinkingRequirement(row)}
+                    >
+                      {row.latestArtifact || row.latestDocument ? 'Change linked record' : 'Find and link existing record'}
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -592,6 +692,65 @@ const BookingRequirementsPanel: React.FC<{
           </tbody>
         </table>
       </div>
+      {linkingRequirement && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" role="dialog" aria-modal="true" aria-labelledby="requirement-link-title">
+          <section className="max-h-[85vh] w-full max-w-4xl overflow-hidden rounded-xl bg-white shadow-2xl">
+            <header className="flex items-start justify-between gap-4 border-b border-gray-200 px-5 py-4">
+              <div>
+                <h2 id="requirement-link-title" className="text-lg font-semibold text-gray-900">Link {linkingRequirement.label}</h2>
+                <p className="mt-1 text-sm text-gray-500">
+                  Looking in {linkingRequirement.library === 'both' ? 'Medical Artifacts and Booking Documents' : linkingRequirement.library === 'medical_artifacts' ? 'Medical Artifacts' : 'Booking Documents'} for this client. Newest records are shown first.
+                </p>
+              </div>
+              <button type="button" onClick={() => setLinkingRequirement(null)} className="rounded-md border border-gray-300 p-2 text-gray-600 hover:bg-gray-50" aria-label="Close record lookup">
+                <HeaderIcon icon={FiX} />
+              </button>
+            </header>
+            <div className="max-h-[68vh] space-y-5 overflow-y-auto p-5">
+              {(linkingRequirement.library === 'medical_artifacts' || linkingRequirement.library === 'both') && (
+                <div>
+                  <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-600">Medical Artifacts</h3>
+                  {candidateArtifacts.length ? (
+                    <div className="space-y-2">
+                      {candidateArtifacts.map((artifact, index) => (
+                        <div key={artifact._id} className={`flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between ${index === 0 ? 'border-indigo-300 bg-indigo-50' : 'border-gray-200'}`}>
+                          <div>
+                            <div className="font-semibold text-gray-900">#{artifact.display_id || artifact._id} {artifact.title || artifact.documentType || artifact.artifactType}</div>
+                            <div className="mt-1 text-xs text-gray-500">{artifact.artifactType || 'artifact'} · {artifact.documentStage || 'entry'} · {formatShortDateTime(artifact.receivedAt || artifact.createdAt)} · {(artifact.files || []).length} file(s){index === 0 ? ' · latest' : ''}</div>
+                          </div>
+                          <button type="button" disabled={Boolean(linkingRecordId)} onClick={() => artifact._id && linkExistingRecord(linkingRequirement, 'artifact', artifact._id)} className="rounded-md bg-indigo-700 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-800 disabled:opacity-50">
+                            {linkingRecordId === `artifact:${artifact._id}` ? 'Linking...' : 'Link artifact'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : <p className="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-500">No matching medical artifacts found for this client.</p>}
+                </div>
+              )}
+              {(linkingRequirement.library === 'booking_documents' || linkingRequirement.library === 'both') && (
+                <div>
+                  <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-600">Booking Documents</h3>
+                  {candidateDocuments.length ? (
+                    <div className="space-y-2">
+                      {candidateDocuments.map((document, index) => (
+                        <div key={document._id} className={`flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between ${index === 0 ? 'border-blue-300 bg-blue-50' : 'border-gray-200'}`}>
+                          <div>
+                            <div className="font-semibold text-gray-900">#{document.display_id || document._id} {document.title || document.documentType}</div>
+                            <div className="mt-1 text-xs text-gray-500">{document.documentType} · {formatShortDateTime(document.receivedAt || document.createdAt)} · {(document.files || []).length} file(s){index === 0 ? ' · latest' : ''}</div>
+                          </div>
+                          <button type="button" disabled={Boolean(linkingRecordId)} onClick={() => document._id && linkExistingRecord(linkingRequirement, 'document', document._id)} className="rounded-md bg-blue-700 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-50">
+                            {linkingRecordId === `document:${document._id}` ? 'Linking...' : 'Link document'}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : <p className="rounded-lg border border-dashed border-gray-300 p-4 text-sm text-gray-500">No matching booking documents found for this client.</p>}
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 };
@@ -994,6 +1153,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [pdfLanguage, setPdfLanguage] = useState<BookingConfirmationLanguage>('en');
   const [requirementsRefreshKey, setRequirementsRefreshKey] = useState(0);
+  const [requirementsStatus, setRequirementsStatus] = useState<{ missing: number; total: number } | null>(null);
   const [previewUrl, setPreviewUrl] = useState('');
   const [previewFileName, setPreviewFileName] = useState('');
   const [isPreviewingPDF, setIsPreviewingPDF] = useState(false);
@@ -1002,10 +1162,8 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [confirmationEmailDraft, setConfirmationEmailDraft] = useState<EmailComposeInitialValues | null>(null);
   const [showQuickSendConfirm, setShowQuickSendConfirm] = useState(false);
   const [confirmationHistoryReason, setConfirmationHistoryReason] = useState('');
-  const [activeTab, setActiveTab] = useState<'overview' | 'payments' | 'requirements' | 'medical' | 'ceremonies' | 'documents' | 'emails' | 'tasks' | 'workflow' | 'notes'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'activity' | 'payments' | 'requirements' | 'medical' | 'ceremonies' | 'documents' | 'emails' | 'tasks' | 'workflow' | 'notes'>('overview');
   const [bookingTasks, setBookingTasks] = useState<Task[]>([]);
-  const [bookingDocuments, setBookingDocuments] = useState<BookingDocument[]>([]);
-  const [bookingPayments, setBookingPayments] = useState<Payment[]>([]);
   const [loadingBookingTasks, setLoadingBookingTasks] = useState(false);
   const [bookingTasksError, setBookingTasksError] = useState<string | null>(null);
   const [showTaskForm, setShowTaskForm] = useState(false);
@@ -1026,10 +1184,10 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   }, [bookingId]);
 
   useEffect(() => {
-    loadBookingTasks();
-    loadBookingDocuments();
-    loadBookingPayments();
-  }, [bookingId]);
+    if (activeTab === 'tasks') {
+      loadBookingTasks();
+    }
+  }, [activeTab, bookingId]);
 
   useEffect(() => {
     return () => {
@@ -1061,25 +1219,6 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
       setBookingTasksError(error?.message || 'Unable to load booking tasks.');
     } finally {
       setLoadingBookingTasks(false);
-    }
-  };
-
-  const loadBookingDocuments = async () => {
-    try {
-      const response = await bookingDocumentsApi.getAll({ bookingId });
-      setBookingDocuments(Array.isArray(response.data) ? response.data : []);
-    } catch {
-      // The booking remains usable if document totals are temporarily unavailable.
-      setBookingDocuments([]);
-    }
-  };
-
-  const loadBookingPayments = async () => {
-    try {
-      const response = await paymentsApi.getByBooking(bookingId);
-      setBookingPayments(Array.isArray(response.data) ? response.data : []);
-    } catch {
-      setBookingPayments([]);
     }
   };
 
@@ -1410,7 +1549,6 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         retreatId: retreat?._id,
         relatedEntityType: 'booking',
         relatedEntityId: bookingId,
-        requestedLanguage: language,
         attachments: [{
           fileName,
           mimeType: 'application/pdf',
@@ -1527,7 +1665,6 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const retreat = booking.retreatId || booking.retreatDetails;
   const clientName = getClientName(client) || 'N/A';
   const clientDisplayId = getClientDisplayId(client, booking);
-  const clientObjectId = getObjectId(client);
   const bookingTypeCode = booking.bookingType === 'booster' ? 'B' : 'F';
   const retreatCode = getRetreatCode(retreat);
   const retreatId = getObjectId(retreat);
@@ -1535,45 +1672,9 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const confirmationHistory = [...(booking.bookingConfirmationHistory || [])].sort((a: any, b: any) => (a.iteration || 0) - (b.iteration || 0));
   const firstConfirmation = confirmationHistory[0];
   const latestConfirmation = confirmationHistory[confirmationHistory.length - 1];
-  const initials = clientName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part: string) => part[0]?.toUpperCase())
-    .join('') || 'CL';
-  const bookingStatus = String(booking.status || 'confirmed').replace(/_/g, ' ');
-  const totalAmount = Number(booking.totalAmount || 0);
-  const currency = String(booking.currency || 'EUR').toUpperCase();
-  const paidAmount = getBookingPaidAmount(
-    bookingPayments,
-    currency,
-    booking.amountPaid ?? booking.paidAmount,
-  );
-  const balanceDue = Math.max(0, totalAmount - paidAmount);
-  const currencySymbol = currency === 'EUR' ? '€' : currency === 'PLN' ? 'zł' : currency === 'CZK' ? 'Kč' : currency;
-  const formatMoney = (amount: number) =>
-    `${currencySymbol}${currencySymbol.length > 1 ? ' ' : ''}${amount.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
-  const openTasks = bookingTasks.filter((task) => task.status !== 'completed' && task.status !== 'cancelled');
-  const openTaskNames = openTasks.slice(0, 2).map((task) => task.name).join(', ');
-  const expectedDocumentCount = Math.max(requirementDefinitions.length, bookingDocuments.length);
-  const completedDocumentCount = bookingDocuments.filter((document: any) =>
-    !['missing', 'rejected'].includes(String(document?.status || '').toLowerCase())
-  ).length;
-  const retreatStartDate = retreat?.startDate || retreat?.dates?.startDate;
-  const arrivalLabel = retreatStartDate
-    ? new Date(retreatStartDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short', timeZone: 'UTC' })
-    : '';
-  const readinessItems = [
-    { label: 'Booking confirmed', complete: ['confirmed', 'completed'].includes(String(booking.status || '').toLowerCase()) },
-    { label: 'Screening cleared', complete: Boolean(booking.screeningCleared || booking.screeningStatus === 'cleared' || client?.screeningStatus === 'cleared') },
-    { label: 'Deposit paid', complete: paidAmount > 0 },
-    { label: 'Pre-arrival sent', complete: confirmationHistory.length > 0 },
-    { label: 'Balance paid', complete: totalAmount > 0 && balanceDue <= 0 },
-    { label: 'Documents complete', complete: expectedDocumentCount > 0 && completedDocumentCount >= expectedDocumentCount },
-  ];
-  const readinessCompleted = readinessItems.filter((item) => item.complete).length;
   const tabs = [
     { key: 'overview', label: 'Overview' },
+    { key: 'activity', label: 'Activity' },
     { key: 'payments', label: 'Payments' },
     { key: 'requirements', label: 'Requirements' },
     { key: 'medical', label: 'Medical' },
@@ -1587,32 +1688,13 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
 
   return (
     <div className="booking-detail-container">
-      <div className="detail-header booking-workspace-header">
+      <div className="detail-header">
         <button onClick={onBack} className="back-btn" title="Back to bookings" aria-label="Back to bookings">
           <HeaderIcon icon={FiArrowLeft} />
         </button>
-        <div className="booking-avatar" aria-hidden="true">{initials}</div>
-        <div className="booking-title-block booking-identity">
-          <div className="booking-eyebrow-row">
-            <span>Booking {booking.bookingNumber || 'N/A'}</span>
-            <span className="booking-status-badge">{bookingStatus}</span>
-            <span className="booking-language-badge">{pdfLanguage.toUpperCase()}</span>
-          </div>
-          <h1>{clientName}</h1>
-          <div className="booking-identity-meta">
-            {clientDisplayId && clientObjectId ? (
-              <button type="button" onClick={() => navigate(`${routePrefix}/clients/${clientObjectId}`)}>
-                Client #{clientDisplayId}
-              </button>
-            ) : clientDisplayId ? <span>Client #{clientDisplayId}</span> : null}
-            <span aria-hidden="true">·</span>
-            {retreatId ? (
-              <button type="button" onClick={() => navigate(`${routePrefix}/retreats/${retreatId}`)}>{retreatCode}</button>
-            ) : <span>{retreatCode}</span>}
-            <span aria-hidden="true">·</span>
-            <span>Type {bookingTypeCode}</span>
-            {arrivalLabel && <><span aria-hidden="true">·</span><span>Arrives {arrivalLabel}</span></>}
-          </div>
+        <div className="booking-title-block">
+          <span className="booking-title-kicker">Booking Details</span>
+          <h1>Booking #{booking.bookingNumber || 'N/A'}</h1>
         </div>
         <div className="header-actions">
           <select
@@ -1677,7 +1759,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
             data-tooltip="Download PDF"
           >
             <HeaderIcon icon={FiDownload} />
-            <span className="booking-action-download-label">{isGeneratingPDF ? 'Generating' : 'Download'}</span>
+            <span>{isGeneratingPDF ? 'Generating' : 'Download'}</span>
           </button>
         </div>
       </div>
@@ -1707,49 +1789,37 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
 
       <div className="detail-content" ref={pdfRef}>
 
-        <section className="booking-needs-section" aria-labelledby="booking-needs-title">
-          <h2 id="booking-needs-title">Needs you</h2>
-          <div className="booking-needs-grid">
-            <article className={`booking-need-card booking-balance-card ${balanceDue > 0 ? 'needs-attention' : ''}`}>
-              <span className="booking-need-label">Balance due</span>
-              <strong>{formatMoney(balanceDue)}</strong>
-              <div className="booking-balance-track" aria-label={`${formatMoney(paidAmount)} paid of ${formatMoney(totalAmount)}`}>
-                <span style={{ width: `${totalAmount > 0 ? Math.min(100, (paidAmount / totalAmount) * 100) : 0}%` }} />
-              </div>
-              <p>{formatMoney(paidAmount)} / {formatMoney(totalAmount)}</p>
-              <button type="button" onClick={() => setActiveTab('payments')}>{balanceDue > 0 ? 'Add payment' : 'View payments'}</button>
-            </article>
-            <article className="booking-need-card">
-              <span className="booking-need-label">Open tasks</span>
-              <strong>{openTasks.length}</strong>
-              <p>{openTaskNames || 'Nothing needs attention'}</p>
-              <button type="button" onClick={() => setActiveTab('tasks')}>Open tasks</button>
-            </article>
-            <article className="booking-need-card">
-              <span className="booking-need-label">Documents</span>
-              <strong>{completedDocumentCount} / {expectedDocumentCount}</strong>
-              <p>{completedDocumentCount >= expectedDocumentCount ? 'Documents complete' : 'Documents still required'}</p>
-              <button type="button" onClick={() => setActiveTab('documents')}>
-                {completedDocumentCount >= expectedDocumentCount ? 'View' : 'Request'}
+        <div className="booking-info-strip" aria-label="Booking summary">
+          <div className="booking-info-item booking-info-client">
+            <span>Client</span>
+            <strong>{clientName}</strong>
+          </div>
+          {clientDisplayId && (
+            <div className="booking-info-item">
+              <span>Client ID</span>
+              <strong>#{clientDisplayId}</strong>
+            </div>
+          )}
+          <div className="booking-info-item">
+            <span>Retreat</span>
+            {retreatId ? (
+              <button
+                type="button"
+                className="booking-info-link"
+                onClick={() => navigate(`${routePrefix}/retreats/${retreatId}`)}
+                title={`Open retreat ${retreatCode}`}
+              >
+                {retreatCode}
               </button>
-            </article>
+            ) : (
+              <strong>{retreatCode}</strong>
+            )}
           </div>
-        </section>
-
-        <section className="booking-readiness-card" aria-label="Retreat readiness">
-          <div className="booking-readiness-heading">
-            <div><strong>Retreat readiness</strong><span>Payment and documents outstanding</span></div>
-            <b>{readinessCompleted} <span>of {readinessItems.length}</span></b>
+          <div className="booking-info-item booking-info-type">
+            <span>Type</span>
+            <strong>{bookingTypeCode}</strong>
           </div>
-          <div className="booking-readiness-segments" aria-hidden="true">
-            {readinessItems.map((item) => <span key={item.label} className={item.complete ? 'complete' : ''} />)}
-          </div>
-          <div className="booking-readiness-labels">
-            {readinessItems.map((item) => (
-              <span key={item.label} className={item.complete ? 'complete' : ''}>{item.label}</span>
-            ))}
-          </div>
-        </section>
+        </div>
 
         <div className="booking-detail-tabs" role="tablist" aria-label="Booking sections">
           {tabs.map((tab) => (
@@ -1761,7 +1831,18 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
               role="tab"
               aria-selected={activeTab === tab.key}
             >
-              {tab.label}
+              <span>{tab.label}</span>
+              {tab.key === 'requirements' && requirementsStatus && (
+                requirementsStatus.missing > 0 ? (
+                  <span className="booking-requirements-tab-badge is-missing" aria-label={`${requirementsStatus.missing} missing requirements`}>
+                    {requirementsStatus.missing}
+                  </span>
+                ) : (
+                  <span className="booking-requirements-tab-badge is-complete" aria-label="All requirements complete">
+                    <HeaderIcon icon={FiCheck} />
+                  </span>
+                )
+              )}
             </button>
           ))}
         </div>
@@ -2014,14 +2095,17 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
           />
         )}
 
-        {activeTab === 'requirements' && (
+        {activeTab === 'activity' && <BookingActivityTimeline bookingId={bookingId} />}
+
+        <div hidden={activeTab !== 'requirements'}>
           <BookingRequirementsPanel
             bookingId={bookingId}
             clientId={getObjectId(client)}
             retreatId={getObjectId(retreat)}
             refreshKey={requirementsRefreshKey}
+            onStatusChange={setRequirementsStatus}
           />
-        )}
+        </div>
 
         {activeTab === 'medical' && (
           <BookingMedicalOverviewPanel
@@ -2060,7 +2144,6 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
             retreatId={getObjectId(booking?.retreatId || booking?.retreat)}
             recipientEmail={(typeof booking?.clientId === 'object' ? booking.clientId?.email : booking?.clientDetails?.email) || booking?.clientEmail}
             recipientName={typeof booking?.clientId === 'object' ? [booking.clientId?.firstName, booking.clientId?.lastName].filter(Boolean).join(' ') : [booking?.clientDetails?.firstName, booking?.clientDetails?.lastName].filter(Boolean).join(' ')}
-            preferredLanguage={(typeof booking?.clientId === 'object' ? booking.clientId?.language || booking.clientId?.preferredLanguage : booking?.clientDetails?.language || booking?.clientDetails?.preferredLanguage) || 'EN'}
             title="Booking emails"
             subtitle="Only emails related to this booking and client."
           />

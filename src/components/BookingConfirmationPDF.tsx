@@ -637,6 +637,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
       case 'balance_payment': return t.balance;
       case 'regular_payment': return language === 'pl' ? 'Płatność' : language === 'cz' ? 'Platba' : 'Payment';
       case 'adjustment': return language === 'pl' ? 'Korekta' : language === 'cz' ? 'Úprava' : 'Adjustment';
+      case 'currency_adjustment': return language === 'pl' ? 'Korekta walutowa' : language === 'cz' ? 'Měnové vyrovnání' : 'Currency adjustment';
       case 'refund': return language === 'pl' ? 'Zwrot' : language === 'cz' ? 'Refundace' : 'Refund';
       default: return String(payment.paymentType).replace(/_/g, ' ');
     }
@@ -905,12 +906,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
 
     pdf.addImage(imgData, 'JPEG', 0, y, imgWidth, imgHeight);
 
-    const localizedFilePrefix = language === 'cz'
-      ? 'Podminene_potvrzeni_rezervace'
-      : language === 'pl'
-        ? 'Warunkowe_potwierdzenie_rezerwacji'
-        : 'Conditional_booking_confirmation';
-    const fileName = `${localizedFilePrefix}_${booking.bookingNumber || 'Unknown'}_${language.toUpperCase()}_${new Date().toISOString().split('T')[0]}.pdf`;
+    const fileName = `Booking_Confirmation_${booking.bookingNumber || 'Unknown'}_${language.toUpperCase()}_${new Date().toISOString().split('T')[0]}.pdf`;
     return { pdf, fileName, blob: pdf.output('blob') };
   } catch (error) {
     console.error('Error generating PDF:', error);

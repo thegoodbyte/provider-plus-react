@@ -1,5 +1,7 @@
 import { test, expect } from '@playwright/test';
 
+test.skip(process.env.PLAYWRIGHT_LIVE !== '1', 'Requires a seeded live API and authorized test credentials');
+
 test.describe('Navigation and Core App Flow', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/');
@@ -16,11 +18,11 @@ test.describe('Navigation and Core App Flow', () => {
       test.skip('Authentication required - skipping navigation test');
     } else if (url.includes('/admin')) {
       // We're already in admin
-      await expect(page.locator('h1, text=Dashboard, text=Admin')).toBeVisible();
+      await expect(page.locator('h1').or(page.getByText(/Dashboard|Admin/)).first()).toBeVisible();
     } else {
       // Try to navigate to admin
       await page.goto('/admin');
-      await expect(page.locator('h1, text=Dashboard, text=Admin')).toBeVisible();
+      await expect(page.locator('h1').or(page.getByText(/Dashboard|Admin/)).first()).toBeVisible();
     }
   });
 
@@ -29,7 +31,7 @@ test.describe('Navigation and Core App Flow', () => {
     await page.goto('/admin');
 
     // Test navigation to Clients section
-    const clientsLink = page.locator('a[href*="/admin/clients"], text=Clients').first();
+    const clientsLink = page.locator('a[href*="/admin/clients"]').or(page.getByText('Clients', { exact: true })).first();
     if (await clientsLink.isVisible()) {
       await clientsLink.click();
       await expect(page.locator('h1')).toContainText('Client');
@@ -37,7 +39,7 @@ test.describe('Navigation and Core App Flow', () => {
     }
 
     // Test navigation to Retreats section
-    const retreatsLink = page.locator('a[href*="/admin/retreats"], text=Retreats').first();
+    const retreatsLink = page.locator('a[href*="/admin/retreats"]').or(page.getByText('Retreats', { exact: true })).first();
     if (await retreatsLink.isVisible()) {
       await retreatsLink.click();
       await expect(page.locator('h1')).toContainText('Retreat');
@@ -45,7 +47,7 @@ test.describe('Navigation and Core App Flow', () => {
     }
 
     // Test navigation to Payments section
-    const paymentsLink = page.locator('a[href*="/payments"], text=Payments').first();
+    const paymentsLink = page.locator('a[href*="/payments"]').or(page.getByText('Payments', { exact: true })).first();
     if (await paymentsLink.isVisible()) {
       await paymentsLink.click();
       await expect(page.locator('h1')).toContainText('Payment');
@@ -53,7 +55,7 @@ test.describe('Navigation and Core App Flow', () => {
     }
 
     // Test navigation to Bookings section
-    const bookingsLink = page.locator('a[href*="/bookings"], text=Bookings').first();
+    const bookingsLink = page.locator('a[href*="/bookings"]').or(page.getByText('Bookings', { exact: true })).first();
     if (await bookingsLink.isVisible()) {
       await bookingsLink.click();
       await expect(page.locator('h1')).toContainText('Booking');

@@ -3,7 +3,6 @@ import { retreatExpensesApi, expenseTypesApi } from '../services/api';
 import { RetreatExpense, ExpenseType, ExpenseSummary } from '../types';
 import { FiPlus, FiEdit2, FiTrash2, FiRefreshCw, FiHome, FiSettings, FiX, FiCheck } from 'react-icons/fi';
 import './ClientsGrid.css';
-import { expenseCategoryName } from '../utils/expenseCategory';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -28,10 +27,21 @@ interface ExpenseFormData {
 interface ExpenseTypeFormData {
   name: string;
   description: string;
+  category: ExpenseType['category'];
   defaultCurrency: 'EUR' | 'USD' | 'CZK' | 'PLN';
   defaultAmount: number;
   isActive: boolean;
 }
+
+const EXPENSE_TYPE_CATEGORIES: ExpenseType['category'][] = [
+  'accommodation',
+  'transport',
+  'food',
+  'activities',
+  'staff',
+  'utilities',
+  'general'
+];
 
 const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
   const [expenses, setExpenses] = useState<RetreatExpense[]>([]);
@@ -42,7 +52,7 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
   const [showAddForm, setShowAddForm] = useState(false);
   const [showTypeManager, setShowTypeManager] = useState(false);
   const [editingExpense, setEditingExpense] = useState<RetreatExpense | null>(null);
-  const [receiptFiles, setReceiptFiles] = useState<File[]>([]);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [editingExpenseType, setEditingExpenseType] = useState<ExpenseType | null>(null);
   const [formData, setFormData] = useState<ExpenseFormData>({
     expenseKind: 'actual',
@@ -57,6 +67,7 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
   const [typeFormData, setTypeFormData] = useState<ExpenseTypeFormData>({
     name: '',
     description: '',
+    category: 'general',
     defaultCurrency: 'CZK',
     defaultAmount: 0,
     isActive: true
@@ -77,10 +88,30 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
     return `${amount.toLocaleString()} ${currency}`;
   };
 
+  const getCategoryIcon = (category: string) => {
+    const categoryIcons: Record<string, string> = {
+      house: '🏠',
+      food: '🍽️',
+      transportation: '🚗',
+      misc: '🧾',
+      supplies: '📦',
+      other: '📦'
+    };
+    return categoryIcons[category] || '📦';
+  };
+
   const getExpenseTypeName = (expense: RetreatExpense) => {
     const expenseType = expense.expenseTypeId;
     if (typeof expenseType === 'object' && expenseType.name) {
-      return expenseCategoryName(expenseType);
+      return expenseType.name;
+    }
+    return '';
+  };
+
+  const getExpenseTypeCategory = (expense: RetreatExpense) => {
+    const expenseType = expense.expenseTypeId;
+    if (typeof expenseType === 'object' && expenseType.category) {
+      return expenseType.category;
     }
     return '';
   };
@@ -92,7 +123,7 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
 
   const handleEditExpense = (expense: RetreatExpense) => {
     setEditingExpense(expense);
-    setReceiptFiles([]);
+    setReceiptFile(null);
     setFormData({
       expenseKind: expense.expenseKind || 'actual',
       expenseTypeId: typeof expense.expenseTypeId === 'string' ? expense.expenseTypeId : expense.expenseTypeId._id || '',
@@ -135,6 +166,7 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
     setTypeFormData({
       name: '',
       description: '',
+      category: 'general',
       defaultCurrency: 'CZK',
       defaultAmount: 0,
       isActive: true
@@ -146,6 +178,7 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
     setTypeFormData({
       name: expenseType.name || '',
       description: expenseType.description || '',
+      category: expenseType.category || 'general',
       defaultCurrency: (expenseType.defaultCurrency as 'EUR' | 'USD' | 'CZK' | 'PLN') || 'CZK',
       defaultAmount: expenseType.defaultAmount || 0,
       isActive: expenseType.isActive !== false
@@ -158,6 +191,7 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
       const payload = {
         name: typeFormData.name.trim(),
         description: typeFormData.description.trim(),
+        category: typeFormData.category,
         defaultCurrency: typeFormData.defaultCurrency,
         defaultAmount: Number(typeFormData.defaultAmount || 0),
         isActive: typeFormData.isActive
@@ -235,13 +269,13 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
         const response = await retreatExpensesApi.create(submitData);
         expenseId = response.data._id || '';
       }
-      if (receiptFiles.length && expenseId) {
-        await retreatExpensesApi.uploadReceipts(expenseId, receiptFiles);
+      if (receiptFile && expenseId) {
+        await retreatExpensesApi.uploadReceipt(expenseId, receiptFile);
       }
 
       setShowAddForm(false);
       setEditingExpense(null);
-      setReceiptFiles([]);
+      setReceiptFile(null);
       setFormData({
         expenseKind: 'actual',
         expenseTypeId: '',
@@ -331,7 +365,7 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
       {/* Actions */}
       <div className="flex gap-2 mb-6">
         <button
-          onClick={() => { setReceiptFiles([]); setShowAddForm(true); }}
+          onClick={() => { setReceiptFile(null); setShowAddForm(true); }}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50"
           disabled={showAddForm}
         >
@@ -384,6 +418,19 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
                   placeholder="e.g. Medicine supplies"
                   required
                 />
+              </div>
+
+              <div className="form-group">
+                <label>Category</label>
+                <select
+                  value={typeFormData.category}
+                  onChange={(e) => setTypeFormData({ ...typeFormData, category: e.target.value as ExpenseType['category'] })}
+                  required
+                >
+                  {EXPENSE_TYPE_CATEGORIES.map(category => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
               </div>
 
               <div className="form-group">
@@ -445,6 +492,7 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Name</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Category</th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Default</th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
                   <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
@@ -454,9 +502,10 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
                 {allExpenseTypes.map(type => (
                   <tr key={type._id || type.name} className="hover:bg-gray-50">
                     <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                      <div>{expenseCategoryName(type)}</div>
+                      <div>{type.name}</div>
                       {type.description && <div className="mt-1 text-xs font-normal text-gray-500">{type.description}</div>}
                     </td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{type.category}</td>
                     <td className="px-4 py-3 text-sm text-gray-700">
                       {type.defaultAmount ? `${type.defaultAmount.toLocaleString()} ${type.defaultCurrency || ''}` : '-'}
                     </td>
@@ -482,7 +531,7 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
                 ))}
                 {allExpenseTypes.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">No expense categories found.</td>
+                    <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">No expense types found.</td>
                   </tr>
                 )}
               </tbody>
@@ -509,15 +558,17 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
               </div>
 
               <div className="form-group">
-                <label>Category</label>
+                <label>Expense Type</label>
                 <select
                   value={formData.expenseTypeId}
                   onChange={(e) => setFormData({...formData, expenseTypeId: e.target.value})}
                   required
                 >
-                  <option value="">Select category...</option>
+                  <option value="">Select expense type...</option>
                   {expenseTypes.map(type => (
-                    <option key={type._id} value={type._id}>{expenseCategoryName(type)}</option>
+                    <option key={type._id} value={type._id}>
+                      {type.name} ({type.category})
+                    </option>
                   ))}
                 </select>
               </div>
@@ -588,19 +639,15 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
               </div>
 
               <div className="form-group full-width">
-                <label>Receipt images</label>
+                <label>Receipt image</label>
                 <input
                   type="file"
                   accept="image/*"
-                  multiple
-                  onChange={(e) => setReceiptFiles(Array.from(e.target.files || []))}
+                  capture="environment"
+                  onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
                 />
                 <p className="mt-1 text-sm text-gray-500">
-                  {receiptFiles.length
-                    ? `${receiptFiles.length} new image${receiptFiles.length === 1 ? '' : 's'} selected`
-                    : editingExpense?.receiptImages?.length
-                      ? `${editingExpense.receiptImages.length} saved image${editingExpense.receiptImages.length === 1 ? '' : 's'}`
-                      : editingExpense?.receiptFileName || 'Optional photos, maximum 10 MB each'}
+                  {receiptFile?.name || editingExpense?.receiptFileName || 'Optional photo or image, maximum 10 MB'}
                 </p>
               </div>
             </div>
@@ -611,7 +658,7 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
                 onClick={() => {
                   setShowAddForm(false);
                   setEditingExpense(null);
-                  setReceiptFiles([]);
+                  setReceiptFile(null);
                 }}
                 className="cancel-btn"
               >
@@ -631,6 +678,9 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Expense Type
+                </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Category
                 </th>
@@ -664,10 +714,21 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {expenses.map((expense) => (
+              {[...expenses].sort((a, b) => {
+                const createdDifference = new Date(b.createdAt || b.expenseDate).getTime() - new Date(a.createdAt || a.expenseDate).getTime();
+                return createdDifference || new Date(b.expenseDate).getTime() - new Date(a.expenseDate).getTime();
+              }).map((expense) => (
                 <tr key={expense._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {getExpenseTypeName(expense)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {getExpenseTypeCategory(expense) && (
+                      <span className="flex items-center">
+                        <span className="mr-1">{getCategoryIcon(getExpenseTypeCategory(expense))}</span>
+                        {getExpenseTypeCategory(expense)}
+                      </span>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {formatAmount(expense.amount, expense.currency)}

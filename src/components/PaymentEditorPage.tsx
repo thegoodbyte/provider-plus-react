@@ -84,6 +84,7 @@ const PaymentEditorPage: React.FC = () => {
   const [usdPreview, setUsdPreview] = useState<number | null>(null);
   const [usdPreviewLoading, setUsdPreviewLoading] = useState(false);
   const [usdPreviewError, setUsdPreviewError] = useState('');
+  const [bookingCurrencyLoading, setBookingCurrencyLoading] = useState(false);
   const [formError, setFormError] = useState('');
   const [formData, setFormData] = useState({
     display_id: '',
@@ -102,7 +103,7 @@ const PaymentEditorPage: React.FC = () => {
     isDeposit: false,
     isFinalPayment: false,
     isRefundable: false,
-    paymentType: 'regular_payment' as 'deposit_non_refundable' | 'deposit_refundable' | 'regular_payment' | 'balance_payment' | 'refund' | 'adjustment',
+    paymentType: 'regular_payment' as 'deposit_non_refundable' | 'deposit_refundable' | 'regular_payment' | 'balance_payment' | 'refund' | 'adjustment' | 'currency_adjustment',
     bookingCurrencyAmount: '',
     bookingCurrencyExchangeDate: '',
   });
@@ -193,6 +194,23 @@ const PaymentEditorPage: React.FC = () => {
   );
   const bookingCurrency = (selectedBooking?.currency || formData.currency) as Payment['currency'];
   const showBookingCurrencySettlement = Boolean(selectedBooking?.currency && formData.currency !== selectedBooking.currency);
+
+  useEffect(() => {
+    if (!showBookingCurrencySettlement) return;
+    const amount = Number(formData.amount);
+    if (!Number.isFinite(amount) || amount <= 0) return;
+    let active = true;
+    const timeout = window.setTimeout(async () => {
+      try {
+        setBookingCurrencyLoading(true);
+        const response = await paymentsApi.convert(amount, formData.currency, bookingCurrency);
+        if (active) setFormData(prev => ({ ...prev, bookingCurrencyAmount: response.data.amount.toFixed(2) }));
+      } catch (error) {
+        console.error('Error converting payment to booking currency:', error);
+      } finally { if (active) setBookingCurrencyLoading(false); }
+    }, 350);
+    return () => { active = false; window.clearTimeout(timeout); };
+  }, [formData.amount, formData.currency, bookingCurrency, showBookingCurrencySettlement]);
 
   useEffect(() => {
     const amount = Number(formData.amount);
@@ -322,7 +340,7 @@ const PaymentEditorPage: React.FC = () => {
       clientId: formData.clientId,
       retreatId: formData.retreatId,
       bookingId: formData.bookingId || undefined,
-      amount: parseFloat(formData.amount),
+      amount: formData.paymentType === 'refund' ? -Math.abs(parseFloat(formData.amount)) : parseFloat(formData.amount),
       currency: formData.currency,
       status: formData.status,
       paymentMethod: formData.paymentMethod,
@@ -415,12 +433,24 @@ const PaymentEditorPage: React.FC = () => {
 
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Payment Request</label>
-              <SearchablePaymentRequestSelect
-                selectedPaymentRequestId={formData.paymentRequestId}
-                onPaymentRequestSelect={(paymentRequestId, paymentRequest) => handlePaymentRequestSelect(paymentRequestId, paymentRequest as any)}
-                placeholder="Search invoice number, client, or retreat"
-                className="w-full"
-              />
+              {isView ? (
+                formData.paymentRequestId ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/admin/payment-requests/${formData.paymentRequestId}`)}
+                    className="inline-flex rounded-md border border-blue-200 bg-blue-50 px-3 py-2 font-semibold text-blue-700 hover:bg-blue-100 hover:underline"
+                  >
+                    Payment request {selectedPaymentRequest?.invoiceNumber || (selectedPaymentRequest?.display_id ? `#${selectedPaymentRequest.display_id}` : `#${formData.paymentRequestId.slice(-8)}`)}
+                  </button>
+                ) : <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-gray-500">No payment request linked</div>
+              ) : (
+                <SearchablePaymentRequestSelect
+                  selectedPaymentRequestId={formData.paymentRequestId}
+                  onPaymentRequestSelect={(paymentRequestId, paymentRequest) => handlePaymentRequestSelect(paymentRequestId, paymentRequest as any)}
+                  placeholder="Search invoice number, client, or retreat"
+                  className="w-full"
+                />
+              )}
               {selectedPaymentRequest && (
                 <div className="mt-3 rounded-md border border-gray-200 bg-white p-3 text-sm text-gray-800">
                   <div className="font-semibold">
@@ -486,17 +516,18 @@ const PaymentEditorPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Amount *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{formData.paymentType === 'refund' ? 'Refund Amount *' : 'Amount *'}</label>
               <input
                 type="number"
-                min="0"
+                min={formData.paymentType === 'refund' ? '0.01' : undefined}
                 step="0.01"
                 value={formData.amount}
                 onChange={(e) => handleChange('amount', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="0.00"
+                placeholder={formData.paymentType === 'refund' ? 'Enter 91.00 — it will be recorded as −91.00' : '0.00'}
                 required
               />
+              {formData.paymentType === 'refund' && <p className="mt-1 text-xs text-amber-700">Enter a positive amount. Refunds are automatically saved as negative transactions.</p>}
             </div>
 
             <div>
@@ -530,20 +561,17 @@ const PaymentEditorPage: React.FC = () => {
               <div className="md:col-span-2 rounded-md border border-amber-200 bg-amber-50 p-4">
                 <h3 className="text-sm font-semibold text-amber-900">Booking currency settlement</h3>
                 <p className="mt-1 text-xs text-amber-800">
-                  This payment is in {formData.currency}, but the booking is in {bookingCurrency}. Enter the exact {bookingCurrency} amount used for the balance, plus source and date.
+                  This payment is in {formData.currency}, but the booking is in {bookingCurrency}. The equivalent is calculated automatically using the {exchangeRateProviderLabel} rate.
                 </p>
                 <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">{bookingCurrency} Equivalent *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{bookingCurrency} Equivalent</label>
                     <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={formData.bookingCurrencyAmount}
-                      onChange={(e) => handleChange('bookingCurrencyAmount', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder={`Amount in ${bookingCurrency}`}
-                      required={showBookingCurrencySettlement}
+                      type="text"
+                      value={bookingCurrencyLoading ? 'Calculating...' : formData.bookingCurrencyAmount ? `${formData.bookingCurrencyAmount} ${bookingCurrency}` : ''}
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50 text-gray-700"
+                      placeholder={`Calculated automatically in ${bookingCurrency}`}
                     />
                   </div>
                 <div>
@@ -624,6 +652,7 @@ const PaymentEditorPage: React.FC = () => {
                 <option value="balance_payment">Balance Payment</option>
                 <option value="refund">Refund</option>
                 <option value="adjustment">Adjustment</option>
+                <option value="currency_adjustment">Foreign currency balance adjustment</option>
               </select>
             </div>
 

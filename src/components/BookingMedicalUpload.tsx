@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, Eye, FileText, Pencil, Plus, RefreshCw, Send, Trash2, Upload, X } from 'lucide-react';
+import { Check, Eye, FileText, LoaderCircle, Pencil, RefreshCw, Send, Trash2, Upload, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { bloodPressureReadingsApi, bookingFlowApi, ceremoniesApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { bloodPressureReadingsApi, bookingFlowApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
-import { BloodPressureReading, BookingFlowItem, Ceremony, MedicalArtifact, MedicalReviewRequest } from '../types';
+import { BloodPressureReading, BookingFlowItem, MedicalArtifact, MedicalReviewRequest } from '../types';
 import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
 import './BookingMedicalUpload.css';
 
@@ -19,35 +19,9 @@ interface BookingMedicalUploadProps {
   } | null;
 }
 
-type BookingMedicalTestType = 'ekg' | 'liver_panel' | 'medications_form';
-type BookingDocumentType = Extract<MedicalArtifact['documentType'], 'EKG' | 'Liver' | 'Medications'>;
+type BookingMedicalTestType = 'ekg' | 'liver_panel';
+type BookingDocumentType = Extract<MedicalArtifact['documentType'], 'EKG' | 'Liver'>;
 type UploadDocumentType = Extract<MedicalArtifact['documentType'], 'EKG' | 'Liver' | 'BP' | 'Medications' | 'additional' | 'other'>;
-type MedicalView = 'documents' | 'blood_pressure';
-
-const newBloodPressureReading = (): Partial<BloodPressureReading> => ({
-  systolic: undefined,
-  diastolic: undefined,
-  pulse: undefined,
-  recordedAt: new Date().toISOString(),
-  notes: '',
-  context: 'other',
-});
-
-const bloodPressureContextLabels: Record<NonNullable<BloodPressureReading['context']>, string> = {
-  client_monitoring: 'Client monitoring',
-  arrival: 'On arrival',
-  pre_ceremony: 'Before ceremony',
-  in_ceremony: 'During ceremony',
-  post_ceremony: 'After ceremony',
-  other: 'Other',
-};
-
-const documentStageForBloodPressure = (context?: BloodPressureReading['context']): NonNullable<MedicalArtifact['documentStage']> => {
-  if (context === 'pre_ceremony') return 'pre_ceremony';
-  if (context === 'in_ceremony') return 'in_ceremony';
-  if (context === 'post_ceremony') return 'post_ceremony';
-  return context === 'client_monitoring' || context === 'arrival' ? 'entry' : 'other';
-};
 
 const uploadDocumentOptions: Array<{ value: UploadDocumentType; label: string }> = [
   { value: 'EKG', label: 'EKG' },
@@ -89,13 +63,6 @@ const medicalTestSections: Array<{
     title: 'Liver Panel',
     requestType: 'liver_panel_review',
     description: 'Required liver panel test result for this booking.',
-  },
-  {
-    type: 'medications_form',
-    documentType: 'Medications',
-    title: 'Medication Form Review',
-    requestType: 'medications_review',
-    description: 'Medication form, medical review decision, and review notes for this booking.',
   },
 ];
 
@@ -186,17 +153,11 @@ const getReviewDecisionInfo = (review?: MedicalReviewRequest) => {
   return { label: String(rawDecision).replace(/_/g, ' '), className: 'badge-default' };
 };
 
-const getFlowReceiptKey = (sectionType: BookingMedicalTestType) => {
-  if (sectionType === 'ekg') return 'ekg_received';
-  if (sectionType === 'liver_panel') return 'liver_received';
-  return 'medications_form_initial_received';
-};
+const getFlowReceiptKey = (sectionType: BookingMedicalTestType) =>
+  sectionType === 'ekg' ? 'ekg_received' : 'liver_received';
 
-const getFlowReadinessGroup = (sectionType: BookingMedicalTestType) => {
-  if (sectionType === 'ekg') return 'ekg';
-  if (sectionType === 'liver_panel') return 'liver';
-  return 'medications';
-};
+const getFlowReadinessGroup = (sectionType: BookingMedicalTestType) =>
+  sectionType === 'ekg' ? 'ekg' : 'liver';
 
 const artifactMatchesSection = (artifact: MedicalArtifact, section: (typeof medicalTestSections)[number]) =>
   artifact.artifactType === section.type ||
@@ -235,7 +196,9 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
   const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
   const [flowItems, setFlowItems] = useState<BookingFlowItem[]>([]);
   const [reviewsByArtifact, setReviewsByArtifact] = useState<Record<string, MedicalReviewRequest[]>>({});
-  const [loading, setLoading] = useState(false);
+  // Start in loading state because effects run after the first paint. Starting false briefly
+  // presented empty EKG/liver states before the artifact requests had even begun.
+  const [loading, setLoading] = useState(true);
   const [uploadingType, setUploadingType] = useState<NonNullable<MedicalArtifact['artifactType']> | null>(null);
   const [creatingReviewFor, setCreatingReviewFor] = useState<string | null>(null);
   const [markingReceivedType, setMarkingReceivedType] = useState<BookingMedicalTestType | null>(null);
@@ -243,103 +206,16 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
   const [advisorSelections, setAdvisorSelections] = useState<Record<BookingMedicalTestType, string>>({
     ekg: '',
     liver_panel: '',
-    medications_form: '',
   });
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [uploadDocumentType, setUploadDocumentType] = useState<UploadDocumentType>('additional');
   const [uploadDocumentStage, setUploadDocumentStage] = useState<NonNullable<MedicalArtifact['documentStage']>>('entry');
   const [uploadTitle, setUploadTitle] = useState('');
-  const [uploadCeremonyId, setUploadCeremonyId] = useState('');
-  const [retreatCeremonies, setRetreatCeremonies] = useState<Ceremony[]>([]);
-  const [loadingRetreatCeremonies, setLoadingRetreatCeremonies] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [bloodPressureReadings, setBloodPressureReadings] = useState<BloodPressureReading[]>([]);
   const [editingReading, setEditingReading] = useState<BloodPressureReading | null>(null);
   const [savingReading, setSavingReading] = useState(false);
-  const [medicalView, setMedicalView] = useState<MedicalView>('documents');
-  const [addingReading, setAddingReading] = useState(false);
-  const [newReading, setNewReading] = useState<Partial<BloodPressureReading>>(newBloodPressureReading);
-  const [creatingBpReviewFor, setCreatingBpReviewFor] = useState<string | null>(null);
-
-  const addReading = async () => {
-    if (!newReading.systolic || !newReading.diastolic || !newReading.recordedAt) {
-      setError('Enter SYS, DIA, and the reading date/time.');
-      return;
-    }
-    setSavingReading(true);
-    setError(null);
-    try {
-      await bloodPressureReadingsApi.create({
-        clientId,
-        bookingId,
-        retreatId,
-        systolic: Number(newReading.systolic),
-        diastolic: Number(newReading.diastolic),
-        pulse: newReading.pulse ? Number(newReading.pulse) : undefined,
-        recordedAt: newReading.recordedAt,
-        notes: newReading.notes,
-        context: newReading.context || 'other',
-        ceremonyNumber: newReading.ceremonyNumber,
-      });
-      const response = await bloodPressureReadingsApi.getByClient(clientId);
-      setBloodPressureReadings(response.data || []);
-      setNewReading(newBloodPressureReading());
-      setAddingReading(false);
-    } catch (readingError: any) {
-      setError(readingError?.response?.data?.message || 'Unable to add blood-pressure reading.');
-    } finally {
-      setSavingReading(false);
-    }
-  };
-
-  const createBloodPressureReview = async (reading: BloodPressureReading) => {
-    if (!reading._id) return;
-    setCreatingBpReviewFor(reading._id);
-    setError(null);
-    try {
-      let artifactId = typeof reading.medicalArtifactId === 'string' ? reading.medicalArtifactId : '';
-      if (!artifactId) {
-        const created = await medicalArtifactsApi.create({
-          clientId,
-          bookingId,
-          retreatId,
-          artifactType: 'blood_pressure',
-          documentType: 'BP',
-          documentStage: documentStageForBloodPressure(reading.context),
-          ceremonyNumber: reading.ceremonyNumber,
-          contextType: reading.ceremonyNumber ? 'ceremony' : 'booking',
-          purpose: reading.context === 'pre_ceremony' ? 'pre_ceremony' : 'general',
-          title: `Blood pressure ${reading.systolic}/${reading.diastolic}`,
-          textContent: `${reading.systolic}/${reading.diastolic} mmHg${reading.pulse ? ` · pulse ${reading.pulse} bpm` : ''}`,
-          data: {
-            bloodPressureReadingId: reading._id,
-            systolic: reading.systolic,
-            diastolic: reading.diastolic,
-            pulse: reading.pulse,
-            recordedAt: reading.recordedAt,
-            context: reading.context,
-            ceremonyNumber: reading.ceremonyNumber,
-          },
-          receivedAt: reading.recordedAt,
-          source: reading.source === 'ibogaready' ? 'client_upload' : 'manual',
-          notes: reading.notes,
-        });
-        artifactId = created.data._id || '';
-        if (artifactId) await bloodPressureReadingsApi.update(reading._id, { medicalArtifactId: artifactId });
-      }
-      if (!artifactId) throw new Error('Unable to create a BP medical artifact.');
-      const response = await medicalReviewRequestsApi.createFromArtifact(artifactId, 'blood_pressure_review', {
-        medicalStaffNotes: `Review BP ${reading.systolic}/${reading.diastolic}${reading.pulse ? `, pulse ${reading.pulse}` : ''} recorded ${new Date(reading.recordedAt).toLocaleString()}.`,
-      });
-      await loadMedicalArtifacts();
-      if (response.data?._id) navigate(`/medical-review-requests/${response.data._id}`);
-    } catch (reviewError: any) {
-      setError(reviewError?.response?.data?.message || reviewError?.message || 'Unable to create BP medical review request.');
-    } finally {
-      setCreatingBpReviewFor(null);
-    }
-  };
 
   const saveReading = async () => {
     if (!editingReading?._id) return;
@@ -419,7 +295,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
         const advisors = (response.data || []).filter((user) => user.role === 'medical_advisor' && user.isActive !== false);
         setMedicalAdvisors(advisors);
         if (advisors.length === 1) {
-          setAdvisorSelections({ ekg: advisors[0]._id, liver_panel: advisors[0]._id, medications_form: advisors[0]._id });
+          setAdvisorSelections({ ekg: advisors[0]._id, liver_panel: advisors[0]._id });
         }
       })
       .catch((advisorError) => {
@@ -437,7 +313,6 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
     }, {
       ekg: [],
       liver_panel: [],
-      medications_form: [],
     });
   }, [artifacts]);
 
@@ -460,18 +335,14 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
       return;
     }
 
-    const exactItem = items.find((candidate) => candidate.key === key);
-    const configuredReceiptItem = items.find((candidate) => {
+    const item = items.find((candidate) => {
       const template = typeof candidate.templateId === 'object' ? candidate.templateId : undefined;
       const itemReadinessGroup = candidate.metadata?.readinessGroup || template?.readinessGroup;
       const itemExpectedArtifact = candidate.metadata?.expectedArtifact || template?.expectedArtifact;
-      const autoCompleteOnArtifact = candidate.metadata?.autoCompleteOnArtifact ?? template?.autoCompleteOnArtifact;
-      const isRequirement = candidate.metadata?.isRequirement ?? template?.isRequirement;
-      return itemReadinessGroup === readinessGroup
-        && itemExpectedArtifact === expectedArtifact
-        && (autoCompleteOnArtifact === true || isRequirement === true);
+      return candidate.key === key ||
+        itemReadinessGroup === readinessGroup ||
+        itemExpectedArtifact === expectedArtifact;
     });
-    const item = exactItem || configuredReceiptItem;
 
     if (!item?._id) return;
 
@@ -479,7 +350,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
     const response = await bookingFlowApi.updateItem(item._id, {
       status: 'received',
       receivedAt,
-      notes: `${sectionType === 'ekg' ? 'EKG' : sectionType === 'liver_panel' ? 'Liver panel' : 'Medication form'} received from booking upload${artifact?.display_id ? ` (artifact #${artifact.display_id})` : ''}.`,
+      notes: `${sectionType === 'ekg' ? 'EKG' : 'Liver panel'} received from booking upload${artifact?.display_id ? ` (artifact #${artifact.display_id})` : ''}.`,
       metadata: {
         ...(item.metadata || {}),
         receivedArtifactId: artifact?._id,
@@ -533,30 +404,10 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
     setUploadDocumentType(documentType);
     setUploadDocumentStage(stage);
     setUploadTitle('');
-    setUploadCeremonyId('');
     setSelectedFiles([]);
     setError(null);
     setUploadModalOpen(true);
   };
-
-  const isCeremonyUpload = ['pre_ceremony', 'in_ceremony', 'post_ceremony'].includes(uploadDocumentStage);
-  const selectedUploadCeremony = retreatCeremonies.find((ceremony) => ceremony._id === uploadCeremonyId);
-  const hasUploadCeremony = Boolean(uploadCeremonyId && selectedUploadCeremony?.ceremonyNumber);
-
-  useEffect(() => {
-    if (!uploadModalOpen || !retreatId) {
-      setRetreatCeremonies([]);
-      return;
-    }
-    setLoadingRetreatCeremonies(true);
-    ceremoniesApi.getByRetreat(retreatId)
-      .then((response) => setRetreatCeremonies((response.data || []).sort((a, b) => a.ceremonyNumber - b.ceremonyNumber)))
-      .catch(() => {
-        setRetreatCeremonies([]);
-        setError('Unable to load ceremonies for this retreat.');
-      })
-      .finally(() => setLoadingRetreatCeremonies(false));
-  }, [retreatId, uploadModalOpen]);
 
   useEffect(() => {
     if (!uploadRequest) return;
@@ -566,10 +417,6 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
   const handleUpload = async () => {
     if (!selectedFiles.length) {
       setError('Choose at least one document to upload.');
-      return;
-    }
-    if (isCeremonyUpload && (!uploadCeremonyId || !selectedUploadCeremony?.ceremonyNumber)) {
-      setError('Select the ceremony for this pre-, in-, or post-ceremony medical artifact.');
       return;
     }
 
@@ -586,11 +433,9 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
         retreatId,
         bookingId,
         artifactType,
-        contextType: hasUploadCeremony ? 'ceremony' : 'booking',
+        contextType: 'booking',
         documentStage: uploadDocumentStage,
         documentType: uploadDocumentType,
-        ceremonyId: hasUploadCeremony ? uploadCeremonyId : undefined,
-        ceremonyNumber: hasUploadCeremony ? selectedUploadCeremony?.ceremonyNumber : undefined,
         purpose: section
           ? 'booking_requirement'
           : uploadDocumentStage === 'pre_ceremony'
@@ -605,8 +450,6 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
         data: {
           bookingId,
           bookingNumber,
-          ceremonyId: hasUploadCeremony ? uploadCeremonyId : undefined,
-          ceremonyNumber: hasUploadCeremony ? selectedUploadCeremony?.ceremonyNumber : undefined,
         },
         tags: [section ? 'booking-requirement' : 'additional-medical-document', bookingNumber ? `booking-${bookingNumber}` : ''].filter(Boolean),
       });
@@ -654,42 +497,23 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
 
       {error && <div className="alert alert-danger">{error}</div>}
 
-      <div className="mb-4 flex gap-2 border-b border-slate-200">
-        <button type="button" onClick={() => setMedicalView('documents')} className={`border-b-2 px-4 py-2 text-sm font-semibold ${medicalView === 'documents' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500'}`}>Medical documents</button>
-        <button type="button" onClick={() => setMedicalView('blood_pressure')} className={`border-b-2 px-4 py-2 text-sm font-semibold ${medicalView === 'blood_pressure' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500'}`}>All BP readings ({bloodPressureReadings.length})</button>
-      </div>
-
-      {medicalView === 'blood_pressure' && (
       <section className="mb-5 rounded-xl border border-sky-200 bg-sky-50/60 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h4 className="font-semibold text-slate-900">All Blood Pressure Readings</h4>
-            <p className="text-sm text-slate-600">Client monitoring and readings taken on arrival, before, during, or after ceremonies.</p>
+            <h4 className="font-semibold text-slate-900">Blood Pressure Monitoring</h4>
+            <p className="text-sm text-slate-600">Readings submitted by this client through IbogaReady.</p>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-white px-3 py-1 text-sm font-medium text-sky-800">{bloodPressureReadings.length} reading{bloodPressureReadings.length === 1 ? '' : 's'}</span>
-            <button type="button" className="btn btn-sm btn-primary" onClick={() => setAddingReading((value) => !value)}><Plus size={16} /> Add BP</button>
-          </div>
+          <span className="rounded-full bg-white px-3 py-1 text-sm font-medium text-sky-800">
+            {bloodPressureReadings.length} reading{bloodPressureReadings.length === 1 ? '' : 's'}
+          </span>
         </div>
-        {addingReading && (
-          <div className="mt-4 grid gap-3 rounded-lg border border-sky-200 bg-white p-3 md:grid-cols-4">
-            <label className="text-xs font-semibold text-slate-600">SYS<input type="number" value={newReading.systolic || ''} onChange={(event) => setNewReading({ ...newReading, systolic: Number(event.target.value) || undefined })} className="mt-1 w-full rounded border px-3 py-2 text-base" /></label>
-            <label className="text-xs font-semibold text-slate-600">DIA<input type="number" value={newReading.diastolic || ''} onChange={(event) => setNewReading({ ...newReading, diastolic: Number(event.target.value) || undefined })} className="mt-1 w-full rounded border px-3 py-2 text-base" /></label>
-            <label className="text-xs font-semibold text-slate-600">Pulse<input type="number" value={newReading.pulse || ''} onChange={(event) => setNewReading({ ...newReading, pulse: Number(event.target.value) || undefined })} className="mt-1 w-full rounded border px-3 py-2 text-base" /></label>
-            <label className="text-xs font-semibold text-slate-600">Measured at<input type="datetime-local" value={newReading.recordedAt ? new Date(newReading.recordedAt).toISOString().slice(0, 16) : ''} onChange={(event) => setNewReading({ ...newReading, recordedAt: new Date(event.target.value).toISOString() })} className="mt-1 w-full rounded border px-3 py-2 text-sm" /></label>
-            <label className="text-xs font-semibold text-slate-600">Context<select value={newReading.context || 'other'} onChange={(event) => setNewReading({ ...newReading, context: event.target.value as BloodPressureReading['context'] })} className="mt-1 w-full rounded border px-3 py-2 text-sm">{Object.entries(bloodPressureContextLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-            <label className="text-xs font-semibold text-slate-600">Ceremony #<input type="number" min="1" value={newReading.ceremonyNumber || ''} onChange={(event) => setNewReading({ ...newReading, ceremonyNumber: Number(event.target.value) || undefined })} className="mt-1 w-full rounded border px-3 py-2 text-sm" /></label>
-            <label className="text-xs font-semibold text-slate-600 md:col-span-2">Notes<input value={newReading.notes || ''} onChange={(event) => setNewReading({ ...newReading, notes: event.target.value })} className="mt-1 w-full rounded border px-3 py-2 text-sm" /></label>
-            <div className="flex gap-2 md:col-span-4 md:justify-end"><button type="button" className="btn btn-sm btn-secondary" onClick={() => setAddingReading(false)}>Cancel</button><button type="button" className="btn btn-sm btn-primary" onClick={addReading} disabled={savingReading}>{savingReading ? 'Saving…' : 'Save reading'}</button></div>
-          </div>
-        )}
         {bloodPressureReadings.length === 0 ? (
           <p className="mt-3 text-sm text-slate-500">No blood-pressure readings have been submitted yet.</p>
         ) : (
           <div className="mt-3 overflow-x-auto rounded-lg border border-sky-100 bg-white">
             <table className="min-w-full text-sm">
               <thead className="bg-sky-50 text-left text-xs uppercase text-slate-500">
-                <tr><th className="px-3 py-2">Date and time</th><th className="px-3 py-2">Context</th><th className="px-3 py-2">Reading</th><th className="px-3 py-2">Pulse</th><th className="px-3 py-2">Notes</th><th className="px-3 py-2 text-right">Actions</th></tr>
+                <tr><th className="px-3 py-2">Date and time</th><th className="px-3 py-2">Reading</th><th className="px-3 py-2">Pulse</th><th className="px-3 py-2">Notes</th><th className="px-3 py-2 text-right">Actions</th></tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {bloodPressureReadings.map((reading) => {
@@ -699,13 +523,12 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                   return (
                     <tr key={reading._id || reading.recordedAt}>
                       <td className="px-3 py-2">{isEditing ? <input type="datetime-local" className="rounded border px-2 py-1" value={new Date(activeEdit.recordedAt).toISOString().slice(0, 16)} onChange={(event) => setEditingReading({ ...activeEdit, recordedAt: new Date(event.target.value).toISOString() })} /> : new Date(reading.recordedAt).toLocaleString()}</td>
-                      <td className="px-3 py-2">{isEditing ? <div className="space-y-1"><select className="rounded border px-2 py-1" value={activeEdit.context || 'client_monitoring'} onChange={(event) => setEditingReading({ ...activeEdit, context: event.target.value as BloodPressureReading['context'] })}>{Object.entries(bloodPressureContextLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select><input type="number" min="1" className="w-24 rounded border px-2 py-1" placeholder="Ceremony #" value={activeEdit.ceremonyNumber || ''} onChange={(event) => setEditingReading({ ...activeEdit, ceremonyNumber: Number(event.target.value) || undefined })} /></div> : <>{bloodPressureContextLabels[reading.context || 'client_monitoring']}{reading.ceremonyNumber ? ` · Ceremony #${reading.ceremonyNumber}` : ''}</>}</td>
                       <td className={`px-3 py-2 font-semibold ${high ? 'text-red-700' : 'text-slate-900'}`}>
                         {isEditing ? <span className="flex items-center gap-1"><input type="number" className="w-16 rounded border px-2 py-1" value={activeEdit.systolic} onChange={(event) => setEditingReading({ ...activeEdit, systolic: Number(event.target.value) })} /><span>/</span><input type="number" className="w-16 rounded border px-2 py-1" value={activeEdit.diastolic} onChange={(event) => setEditingReading({ ...activeEdit, diastolic: Number(event.target.value) })} /></span> : <>{reading.systolic}/{reading.diastolic} mmHg {high ? '— HIGH' : ''}</>}
                       </td>
                       <td className="px-3 py-2">{isEditing ? <input type="number" className="w-16 rounded border px-2 py-1" value={activeEdit.pulse || ''} onChange={(event) => setEditingReading({ ...activeEdit, pulse: event.target.value ? Number(event.target.value) : undefined })} /> : reading.pulse || '—'}</td>
                       <td className="px-3 py-2 text-slate-600">{isEditing ? <input className="min-w-40 rounded border px-2 py-1" value={activeEdit.notes || ''} onChange={(event) => setEditingReading({ ...activeEdit, notes: event.target.value })} /> : reading.notes || '—'}</td>
-                      <td className="px-3 py-2"><div className="flex justify-end gap-1">{isEditing ? <><button type="button" className="rounded p-2 text-green-700 hover:bg-green-50" onClick={saveReading} disabled={savingReading} title="Save reading"><Check size={16} /></button><button type="button" className="rounded p-2 text-slate-600 hover:bg-slate-100" onClick={() => setEditingReading(null)} title="Cancel edit"><X size={16} /></button></> : <><button type="button" className="rounded p-2 text-blue-700 hover:bg-blue-50" onClick={() => setEditingReading({ ...reading })} title="Edit reading"><Pencil size={16} /></button><button type="button" className="rounded p-2 text-violet-700 hover:bg-violet-50" onClick={() => createBloodPressureReview(reading)} disabled={creatingBpReviewFor === reading._id} title="Create BP medical review request"><Send size={16} /></button></>}<button type="button" className="rounded p-2 text-red-700 hover:bg-red-50" onClick={() => deleteReading(reading)} title="Delete reading"><Trash2 size={16} /></button></div></td>
+                      <td className="px-3 py-2"><div className="flex justify-end gap-1">{isEditing ? <><button type="button" className="rounded p-2 text-green-700 hover:bg-green-50" onClick={saveReading} disabled={savingReading} title="Save reading"><Check size={16} /></button><button type="button" className="rounded p-2 text-slate-600 hover:bg-slate-100" onClick={() => setEditingReading(null)} title="Cancel edit"><X size={16} /></button></> : <button type="button" className="rounded p-2 text-blue-700 hover:bg-blue-50" onClick={() => setEditingReading({ ...reading })} title="Edit reading"><Pencil size={16} /></button>}<button type="button" className="rounded p-2 text-red-700 hover:bg-red-50" onClick={() => deleteReading(reading)} title="Delete reading"><Trash2 size={16} /></button></div></td>
                     </tr>
                   );
                 })}
@@ -714,9 +537,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
           </div>
         )}
       </section>
-      )}
 
-      {medicalView === 'documents' && (
       <div className="booking-documents-grid">
         {medicalTestSections.map((section) => {
           const sectionArtifacts = artifactsByType[section.type];
@@ -743,13 +564,6 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                   <h4>{section.title}</h4>
                   <p>{section.description}</p>
                 </div>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-primary ml-auto shrink-0"
-                  onClick={() => openUploadModal(section.documentType, 'entry')}
-                >
-                  <Upload size={16} /> Upload
-                </button>
               </div>
 
               {latestArtifact && (
@@ -770,17 +584,24 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                 </div>
               )}
 
-              <div className="booking-medical-status-row">
-                <span className={`status-badge ${latestArtifact ? 'badge-received' : 'badge-pending'}`}>
-                  {latestArtifact ? 'artifact stored' : 'missing artifact'}
-                </span>
-                <span className={`status-badge ${getReviewBadgeClass(latestReview)}`}>
-                  {getReviewLabel(latestReview)}
-                </span>
-                <span className={`status-badge ${latestResult ? 'badge-approved' : 'badge-pending'}`}>
-                  {latestResult ? 'results saved' : 'results missing'}
-                </span>
-              </div>
+              {loading ? (
+                <div className="booking-medical-loading" role="status" aria-live="polite">
+                  <LoaderCircle className="booking-medical-loading-spinner" size={20} aria-hidden="true" />
+                  <span>Loading {section.title} files…</span>
+                </div>
+              ) : (
+                <div className="booking-medical-status-row">
+                  <span className={`status-badge ${latestArtifact ? 'badge-received' : 'badge-pending'}`}>
+                    {latestArtifact ? 'artifact stored' : 'missing artifact'}
+                  </span>
+                  <span className={`status-badge ${getReviewBadgeClass(latestReview)}`}>
+                    {getReviewLabel(latestReview)}
+                  </span>
+                  <span className={`status-badge ${latestResult ? 'badge-approved' : 'badge-pending'}`}>
+                    {latestResult ? 'results saved' : 'results missing'}
+                  </span>
+                </div>
+              )}
 
               <div className="booking-medical-required-item">
                 <div>
@@ -789,7 +610,9 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                 </div>
                 <div>
                   <span className="booking-medical-required-label">Medical review</span>
-                  {latestReview?._id ? (
+                  {loading ? (
+                    <span>Loading…</span>
+                  ) : latestReview?._id ? (
                     <button
                       type="button"
                       className="booking-medical-inline-link"
@@ -803,7 +626,9 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                 </div>
                 <div>
                   <span className="booking-medical-required-label">Medical advisor (optional)</span>
-                  {latestReview?._id ? (
+                  {loading ? (
+                    <span>Loading…</span>
+                  ) : latestReview?._id ? (
                     <span>{!latestReview.assignedToUserId ? 'Unassigned review queue' : typeof latestReview.assignedToUserId === 'object'
                       ? [latestReview.assignedToUserId.firstName, latestReview.assignedToUserId.lastName].filter(Boolean).join(' ') || latestReview.assignedToUserId.email || 'Assigned'
                       : 'Assigned'}</span>
@@ -824,12 +649,17 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                 </div>
                 <div>
                   <span className="booking-medical-required-label">Decision</span>
-                  <span className={`status-badge ${latestDecision.className}`}>{latestDecision.label}</span>
+                  {loading ? <span>Loading…</span> : <span className={`status-badge ${latestDecision.className}`}>{latestDecision.label}</span>}
                 </div>
               </div>
 
               <div className="booking-document-files">
-                {!latestArtifact ? (
+                {loading ? (
+                  <div className="booking-document-empty booking-document-loading-placeholder" aria-hidden="true">
+                    <span className="booking-medical-loading-line" />
+                    <span className="booking-medical-loading-line booking-medical-loading-line-short" />
+                  </div>
+                ) : !latestArtifact ? (
                   <div className="booking-document-empty">No {section.title} file uploaded yet.</div>
                 ) : (
                   sectionArtifacts.map((artifact) => {
@@ -865,14 +695,6 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                           </span>
                           <span className={`status-badge ${decision.className}`}>{decision.label}</span>
                         </div>
-                        {review && (review.reviewNotes || review.overallNotes || review.medicalStaffNotes) && (
-                          <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
-                            <span className="booking-medical-required-label">Medical form review notes</span>
-                            <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">
-                              {review.reviewNotes || review.overallNotes || review.medicalStaffNotes}
-                            </p>
-                          </div>
-                        )}
                         <div className="booking-document-file-list">
                           {(artifact.files || []).length === 0 ? (
                             <span>No files attached.</span>
@@ -922,25 +744,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
             </div>
           );
         })}
-
-        <div className="booking-document-card md:col-span-2">
-          <div className="booking-document-card-header">
-            <FileText size={20} />
-            <div>
-              <h4>Additional document</h4>
-              <p>Upload another medical document and optionally link it to a ceremony.</p>
-            </div>
-            <button
-              type="button"
-              className="btn btn-sm btn-secondary ml-auto shrink-0"
-              onClick={() => openUploadModal('additional', 'additional')}
-            >
-              <Upload size={16} /> Upload document
-            </button>
-          </div>
-        </div>
       </div>
-      )}
 
       {uploadModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="booking-medical-upload-title">
@@ -963,10 +767,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                 <select
                   id="booking-medical-document-stage"
                   value={uploadDocumentStage}
-                  onChange={(event) => {
-                    setUploadDocumentStage(event.target.value as NonNullable<MedicalArtifact['documentStage']>);
-                    setUploadCeremonyId('');
-                  }}
+                  onChange={(event) => setUploadDocumentStage(event.target.value as NonNullable<MedicalArtifact['documentStage']>)}
                   className="min-h-12 w-full rounded-lg border border-slate-300 bg-white px-3 text-base"
                 >
                   <option value="entry">Entry</option>
@@ -977,39 +778,6 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
                   <option value="additional">Additional</option>
                 </select>
               </div>
-
-              <div className="grid gap-3 rounded-lg border border-violet-200 bg-violet-50 p-3 sm:grid-cols-2">
-                  <div>
-                    <span className="mb-1 block text-sm font-semibold text-slate-700">Retreat</span>
-                    <div className="min-h-12 rounded-lg border border-violet-200 bg-white px-3 py-3 text-sm text-slate-700">
-                      Booking retreat · {retreatId}
-                    </div>
-                    <p className="mt-1 text-xs text-slate-500">The retreat is fixed from this booking.</p>
-                  </div>
-                  <div>
-                    <label htmlFor="booking-medical-ceremony" className="mb-1 block text-sm font-semibold text-slate-700">
-                      Ceremony {isCeremonyUpload ? '(required)' : '(optional)'}
-                    </label>
-                    <select
-                      id="booking-medical-ceremony"
-                      value={uploadCeremonyId}
-                      onChange={(event) => setUploadCeremonyId(event.target.value)}
-                      disabled={loadingRetreatCeremonies}
-                      required={isCeremonyUpload}
-                      className="min-h-12 w-full rounded-lg border border-violet-200 bg-white px-3 text-base"
-                    >
-                      <option value="">{loadingRetreatCeremonies ? 'Loading ceremonies…' : 'Select ceremony'}</option>
-                      {retreatCeremonies.map((ceremony) => (
-                        <option key={ceremony._id} value={ceremony._id}>
-                          Ceremony #{ceremony.ceremonyNumber} · {new Date(ceremony.date).toLocaleDateString()}
-                        </option>
-                      ))}
-                    </select>
-                    {!loadingRetreatCeremonies && retreatCeremonies.length === 0 && (
-                      <p className="mt-1 text-xs font-medium text-amber-700">No ceremonies are configured for this retreat.</p>
-                    )}
-                  </div>
-                </div>
 
               <div>
                 <label htmlFor="booking-medical-document-type" className="mb-1 block text-sm font-semibold text-slate-700">Document type</label>

@@ -2,9 +2,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner';
 import { useAuth } from '../context/AuthContext';
-import { communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
-import { Client, EmailTemplate, MedicalArtifact, MedicalReviewRequest, Retreat } from '../types';
+import { Client, MedicalArtifact, MedicalReviewRequest, Retreat } from '../types';
 import { AlertTriangle, ThumbsDown, ThumbsUp } from 'lucide-react';
 import {
   formatMedicalReviewDecisionLabel,
@@ -185,6 +185,8 @@ type ReviewContext = {
   screenings?: any[];
   medicalRecords?: any[];
   medications?: any[];
+  questionnaires?: any[];
+  bloodPressureReadings?: any[];
   artifacts?: {
     all?: MedicalArtifact[];
     entryEkg?: MedicalArtifact[];
@@ -213,6 +215,26 @@ type MedicalReviewAccessLink = {
 };
 
 const getArtifactFileUrl = (file: ArtifactFile) => file.url || file.filePath || file.s3Key || '';
+
+const humanizeMedicalKey = (value: string) => value
+  .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+  .replace(/_/g, ' ')
+  .replace(/^./, (letter) => letter.toUpperCase());
+
+const flattenMedicalValues = (value: any, prefix = ''): Array<{ label: string; value: string }> => {
+  if (value === null || value === undefined || value === '') return [];
+  if (Array.isArray(value)) {
+    const printable = value.filter((item) => item !== null && item !== undefined && item !== '');
+    if (!printable.length) return [];
+    if (printable.every((item) => typeof item !== 'object')) return [{ label: humanizeMedicalKey(prefix), value: printable.join(', ') }];
+    return printable.flatMap((item, index) => flattenMedicalValues(item, `${prefix} ${index + 1}`.trim()));
+  }
+  if (typeof value === 'object') {
+    return Object.entries(value).flatMap(([key, child]) => flattenMedicalValues(child, prefix ? `${prefix} — ${key}` : key));
+  }
+  if (typeof value === 'boolean') return [{ label: humanizeMedicalKey(prefix), value: value ? 'Yes' : 'No' }];
+  return [{ label: humanizeMedicalKey(prefix), value: String(value) }];
+};
 const getArtifactFileKey = (file: ArtifactFile) => file.s3Key || file.filePath || file.url || file.fileName || '';
 const getArtifactReviewTargets = (artifact: MedicalArtifact) => {
   if (artifact.files?.length) {
@@ -267,20 +289,6 @@ const formatArtifactDocumentMeta = (artifact: MedicalArtifact) => {
     artifact.ceremonyNumber ? `Ceremony #${artifact.ceremonyNumber}` : '',
   ].filter(Boolean);
   return parts.join(' • ');
-};
-const BloodPressureArtifactSummary: React.FC<{ artifact: MedicalArtifact }> = ({ artifact }) => {
-  if (artifact.artifactType !== 'blood_pressure' && artifact.documentType !== 'BP') return null;
-  const systolic = artifact.data?.systolic;
-  const diastolic = artifact.data?.diastolic;
-  const pulse = artifact.data?.pulse || artifact.data?.heartRate;
-  if (!systolic || !diastolic) return null;
-  return (
-    <div className="grid grid-cols-3 gap-2 rounded-lg border border-sky-200 bg-sky-50 p-3 text-center">
-      <div><div className="text-[11px] font-semibold uppercase text-sky-700">SYS</div><div className="text-3xl font-bold text-slate-950">{systolic}</div></div>
-      <div><div className="text-[11px] font-semibold uppercase text-sky-700">DIA</div><div className="text-3xl font-bold text-slate-950">{diastolic}</div></div>
-      <div><div className="text-[11px] font-semibold uppercase text-sky-700">Pulse</div><div className="text-3xl font-bold text-slate-950">{pulse || '—'}</div></div>
-    </div>
-  );
 };
 const formatDateTime = (value?: string | Date | null) => {
   if (!value) return 'Not set';
@@ -436,9 +444,13 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [reviewDecision, setReviewDecision] = useState<(typeof decisionOptions)[number] | ''>('');
   const [medicalStaffNotes, setMedicalStaffNotes] = useState('');
   const [savingReview, setSavingReview] = useState(false);
-  const [resettingReview, setResettingReview] = useState(false);
+  const [clientVisibleAdminNote, setClientVisibleAdminNote] = useState('');
+  const [savingClientVisibleAdminNote, setSavingClientVisibleAdminNote] = useState(false);
+  const [clientVisibleAdminNoteStatus, setClientVisibleAdminNoteStatus] = useState('');
   const [fileReviews, setFileReviews] = useState<FileReviewDraft[]>([]);
   const [reviewContext, setReviewContext] = useState<ReviewContext | null>(null);
+  const [generatedMedicalSummary, setGeneratedMedicalSummary] = useState<{ summary: string; generatedBy: 'rules' | 'openai'; model?: string; unavailableReason?: string; generatedAt: string } | null>(null);
+  const [generatingMedicalSummary, setGeneratingMedicalSummary] = useState(false);
   const [accessLinks, setAccessLinks] = useState<MedicalReviewAccessLink[]>([]);
   const [generatedAccessUrl, setGeneratedAccessUrl] = useState('');
   const [accessLinkBusy, setAccessLinkBusy] = useState(false);
@@ -447,26 +459,10 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [retreatFilter, setRetreatFilter] = useState('');
   const [requestSearchFilter, setRequestSearchFilter] = useState('');
   const [validationError, setValidationError] = useState('');
-  const [followUpDeadline, setFollowUpDeadline] = useState(() => new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0]);
-  const [followUpEmailTemplateId, setFollowUpEmailTemplateId] = useState('');
-  const [followUpTemplates, setFollowUpTemplates] = useState<EmailTemplate[]>([]);
   const reviewDecisionSectionRef = useRef<HTMLDivElement | null>(null);
-  const canEditReview = isEditRoute || (isAdvisorReviewRoute && selected?.status === 'pending' && !isMagicReviewSession);
-
-  useEffect(() => {
-    if (reviewDecision !== 'more_info_needed') return;
-    communicationsApi.getTemplates()
-      .then((response) => {
-        const templates = (response.data || []).filter((template: EmailTemplate) =>
-          template.active !== false && (
-            template.templateKey === 'medical_more_information'
-            || template.category === 'medical'
-          ));
-        setFollowUpTemplates(templates);
-        if (!followUpEmailTemplateId && templates[0]?._id) setFollowUpEmailTemplateId(templates[0]._id);
-      })
-      .catch(() => setFollowUpTemplates([]));
-  }, [reviewDecision, followUpEmailTemplateId]);
+  const canEditReview = user?.role === 'admin'
+    || isEditRoute
+    || (isAdvisorReviewRoute && selected?.status === 'pending' && !isMagicReviewSession);
 
   const loadRequests = useCallback(async () => {
     try {
@@ -491,6 +487,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
       }
       setSelected(selectedItem);
       setGeneratedAccessUrl('');
+      setGeneratedMedicalSummary(null);
 
       if (selectedItem) {
         if (selectedItem._id) {
@@ -513,6 +510,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
         }
         setReviewDecision(normalizeMedicalReviewDecision(selectedItem.reviewDecision) as (typeof decisionOptions)[number] | '');
         setMedicalStaffNotes(selectedItem.medicalStaffNotes || selectedItem.overallNotes || selectedItem.reviewNotes || '');
+        setClientVisibleAdminNote(selectedItem.clientVisibleAdminNote || '');
+        setClientVisibleAdminNoteStatus('');
         setFileReviews((selectedItem.fileReviews || []).map((review: NonNullable<MedicalReviewRequest['fileReviews']>[number]) => ({
           ...sanitizeFileReviewDraft(review),
           decision: normalizeMedicalReviewDecision(review.decision) || '',
@@ -631,10 +630,6 @@ const MedicalReviewRequestsPage: React.FC = () => {
         medicalStaffNotes: effectiveNotes,
         fileReviews: cleanedFileReviews,
         reviewedBy: [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || 'medical_staff',
-        ...(effectiveDecision === 'more_info_needed' ? {
-          followUpDeadline,
-          followUpEmailTemplateId: followUpEmailTemplateId || undefined,
-        } : {}),
       });
       await loadRequests();
       if (options?.redirectAfterSave) {
@@ -660,26 +655,22 @@ const MedicalReviewRequestsPage: React.FC = () => {
     }
   };
 
-  const handleResetReview = async () => {
+  const handleSaveClientVisibleAdminNote = async () => {
     if (!selected?._id || user?.role !== 'admin') return;
-    const reason = window.prompt(
-      `Reset the decision for MRR #${selected.display_id || selected._id}?\n\nEnter the reason for this administrative correction:`,
-      'Decision entered by mistake',
-    );
-    if (reason === null) return;
-    if (!window.confirm('This will remove the current decision and return the MRR to the pending review queue. Continue?')) return;
     try {
-      setResettingReview(true);
-      const response = await medicalReviewRequestsApi.resetReview(selected._id, reason.trim() || 'Decision entered by mistake');
+      setSavingClientVisibleAdminNote(true);
+      setClientVisibleAdminNoteStatus('');
+      const response = await medicalReviewRequestsApi.updateClientVisibleAdminNote(
+        selected._id,
+        clientVisibleAdminNote,
+      );
       setSelected(response.data);
-      setReviewDecision('');
-      setMedicalStaffNotes('');
-      setFileReviews([]);
-      await loadRequests();
+      setClientVisibleAdminNote(response.data.clientVisibleAdminNote || '');
+      setClientVisibleAdminNoteStatus(clientVisibleAdminNote.trim() ? 'Client message saved.' : 'Client message removed.');
     } catch (error: any) {
-      alert(error?.response?.data?.message || error?.message || 'Unable to reset this medical review.');
+      setClientVisibleAdminNoteStatus(error?.response?.data?.message || 'Unable to save the client message.');
     } finally {
-      setResettingReview(false);
+      setSavingClientVisibleAdminNote(false);
     }
   };
 
@@ -1008,6 +999,97 @@ const MedicalReviewRequestsPage: React.FC = () => {
 
   const contextSummary = (count: number, empty = 'No records') => count ? `${count} record${count === 1 ? '' : 's'}` : empty;
 
+  const handlePrintMedicalSummary = () => {
+    const content = document.getElementById('mrr-medical-summary');
+    if (!content) return;
+    const popup = window.open('', '_blank', 'noopener,noreferrer');
+    if (!popup) {
+      alert('Allow pop-ups to print or save the medical summary as PDF.');
+      return;
+    }
+    const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style')).map((node) => node.outerHTML).join('');
+    popup.document.write(`<!doctype html><html><head><title>Medical Summary - MRR #${selected?.display_id || ''}</title>${styles}<style>body{padding:28px;background:white}.no-print{display:none!important}@media print{body{padding:0}}</style></head><body>${content.outerHTML}</body></html>`);
+    popup.document.close();
+    popup.focus();
+    window.setTimeout(() => popup.print(), 300);
+  };
+
+  const handleGenerateMedicalSummary = async () => {
+    if (!selected?._id) return;
+    setGeneratingMedicalSummary(true);
+    try {
+      const response = await medicalReviewRequestsApi.generateMedicalSummary(selected._id);
+      setGeneratedMedicalSummary(response.data);
+    } catch (error: any) {
+      alert(error?.response?.data?.message || error?.message || 'Unable to generate the medical summary.');
+    } finally {
+      setGeneratingMedicalSummary(false);
+    }
+  };
+
+  const renderMedicalSummary = () => {
+    const screening = contextScreenings[0];
+    const questionnaire = reviewContext?.questionnaires?.[0];
+    const medicalRecord = reviewContext?.medicalRecords?.[0];
+    const medicationRecords = reviewContext?.medications || [];
+    const bpReadings = reviewContext?.bloodPressureReadings || [];
+    const allArtifacts = reviewContext?.artifacts?.all || [];
+    const entryEkg = allArtifacts.filter((artifact) => artifact.documentStage === 'entry' && (artifact.artifactType === 'ekg' || artifact.documentType === 'EKG'));
+    const entryLiver = allArtifacts.filter((artifact) => artifact.documentStage === 'entry' && (artifact.artifactType === 'liver_panel' || artifact.documentType === 'Liver'));
+    const preCeremony = allArtifacts.filter((artifact) => artifact.documentStage === 'pre_ceremony');
+    const ceremonyData = allArtifacts.filter((artifact) => artifact.documentStage === 'in_ceremony' || artifact.documentStage === 'post_ceremony');
+    const questionnaireValues = flattenMedicalValues(questionnaire?.answers || {});
+    const latestBp = bpReadings[0];
+    const generatedOverview = [
+      screening ? 'Screening form received.' : 'Screening form not received.',
+      questionnaire ? `Questionnaire #${questionnaire.display_id || '—'} received.` : 'Questionnaire not received.',
+      medicalRecord ? 'Overall medical record received.' : 'Overall medical record not received.',
+      medicationRecords.length ? `${medicationRecords.length} medication form${medicationRecords.length === 1 ? '' : 's'} received.` : 'Medication form not received.',
+      entryEkg.length ? `${entryEkg.length} entry EKG record${entryEkg.length === 1 ? '' : 's'} available.` : 'Entry EKG not received.',
+      entryLiver.length ? `${entryLiver.length} entry liver record${entryLiver.length === 1 ? '' : 's'} available.` : 'Entry liver panel not received.',
+      latestBp ? `Latest BP ${latestBp.systolic}/${latestBp.diastolic}${latestBp.pulse ? `, pulse ${latestBp.pulse}` : ''}, recorded ${formatDateTime(latestBp.recordedAt)}.` : 'No pre-retreat BP readings received.',
+      ceremonyData.length ? `${ceremonyData.length} in/post-ceremony medical record${ceremonyData.length === 1 ? '' : 's'} available.` : 'No in-ceremony data received.',
+    ];
+    const sourceHeader = (source: string, received?: string, id?: string | number) => (
+      <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-gray-500">
+        <span className="rounded-full bg-blue-100 px-2 py-1 font-semibold text-blue-800">Source: {source}{id ? ` #${id}` : ''}</span>
+        {received && <span>Received {formatDateTime(received)}</span>}
+      </div>
+    );
+    const missing = (label: string) => <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-3 text-sm font-medium text-amber-900">Not received: {label}</div>;
+    const valuesGrid = (values: Array<{ label: string; value: string }>) => (
+      <div className="grid gap-2 sm:grid-cols-2">
+        {values.map((item, index) => <div key={`${item.label}-${index}`} className="rounded-md bg-gray-50 px-3 py-2"><div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{item.label}</div><div className="mt-1 whitespace-pre-wrap text-sm text-gray-900">{item.value}</div></div>)}
+      </div>
+    );
+
+    return <section id="mrr-medical-summary" className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm sm:p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-200 pb-4">
+        <div><div className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">Source-backed clinical context</div><h2 className="mt-1 text-xl font-semibold text-gray-950">Client Medical Summary</h2><p className="mt-1 text-sm text-gray-600">Compiled for MRR #{selected?.display_id || '—'} on {new Date().toLocaleString()}. Verify clinical decisions against the linked source records.</p></div>
+        <button type="button" onClick={handlePrintMedicalSummary} className="no-print rounded-md border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50">Print / Save PDF</button>
+      </div>
+
+      <div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="text-sm font-semibold text-blue-950">Generated overview</div><div className="mt-1 text-xs text-blue-800">Automatically compiled from the records listed below; it is not a diagnosis.</div></div><button type="button" disabled={generatingMedicalSummary} onClick={handleGenerateMedicalSummary} className="no-print rounded-md bg-blue-700 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-800 disabled:opacity-60">{generatingMedicalSummary ? 'Generating…' : 'Generate AI summary'}</button></div>
+        {generatedMedicalSummary ? <div className="mt-3"><div className="whitespace-pre-wrap rounded-md bg-white/80 p-3 text-sm text-blue-950">{generatedMedicalSummary.summary}</div><div className="mt-2 text-[11px] text-blue-800">Generated {formatDateTime(generatedMedicalSummary.generatedAt)} · {generatedMedicalSummary.generatedBy === 'openai' ? `AI (${generatedMedicalSummary.model || 'OpenAI'})` : 'Source rules fallback'}{generatedMedicalSummary.unavailableReason ? ` · ${generatedMedicalSummary.unavailableReason}` : ''}</div></div> : <ul className="mt-3 list-disc space-y-1 pl-5 text-sm text-blue-950">{generatedOverview.map((line) => <li key={line}>{line}</li>)}</ul>}
+      </div>
+
+      <div className="mt-4 space-y-3">
+        <details className="rounded-md border border-gray-200 p-3" open><summary className="cursor-pointer font-semibold text-gray-900">Screening form</summary><div className="mt-3">{screening ? <>{sourceHeader('Screening form', screening.screeningCompletedDate || screening.updatedAt || screening.createdAt, screening.display_id)}{renderReadOnlyScreening(screening)}</> : missing('Screening form')}</div></details>
+        <details className="rounded-md border border-gray-200 p-3" open><summary className="cursor-pointer font-semibold text-gray-900">Questionnaire</summary><div className="mt-3">{questionnaire ? <>{sourceHeader('Initial questionnaire', questionnaire.submitted_at || questionnaire.createdAt, questionnaire.display_id)}{questionnaireValues.length ? valuesGrid(questionnaireValues) : <div className="text-sm text-gray-500">The questionnaire record exists but contains no answers.</div>}</> : missing('Initial questionnaire')}</div></details>
+        <details className="rounded-md border border-gray-200 p-3"><summary className="cursor-pointer font-semibold text-gray-900">Overall medical form / history</summary><div className="mt-3">{medicalRecord ? <>{sourceHeader('Overall medical record', medicalRecord.updatedAt || medicalRecord.createdAt, medicalRecord.display_id)}{valuesGrid([
+          { label: 'General notes', value: medicalRecord.generalNotes }, { label: 'Final medical clearance', value: medicalRecord.finalMedicalClearance === true ? 'Yes' : medicalRecord.finalMedicalClearance === false ? 'No' : '' }, { label: 'Clearance notes', value: medicalRecord.medicalClearanceNotes }, { label: 'EKG result', value: medicalRecord.ekgResults }, { label: 'Liver result', value: medicalRecord.liverPanelResults }, { label: 'Blood pressure', value: medicalRecord.bloodPressureSystolic && medicalRecord.bloodPressureDiastolic ? `${medicalRecord.bloodPressureSystolic}/${medicalRecord.bloodPressureDiastolic}` : '' },
+        ].filter((item) => item.value))}</> : missing('Overall medical form')}</div></details>
+        <details className="rounded-md border border-gray-200 p-3"><summary className="cursor-pointer font-semibold text-gray-900">Medication forms · {medicationRecords.length || 'Not received'}</summary><div className="mt-3 space-y-2">{medicationRecords.length ? medicationRecords.map((medication) => <div key={medication._id} className="rounded-md bg-gray-50 p-3">{sourceHeader('Medication form', medication.date_collected || medication.createdAt, medication.display_id)}{medication.admin_notes && <div className="text-sm text-gray-800">Admin notes: {medication.admin_notes}</div>}{medication.medstaff_review_notes && <div className="mt-1 text-sm text-gray-800">Medical notes: {medication.medstaff_review_notes}</div>}{medication.pdf_file && <a href={getMedicationPdfUrl(medication.pdf_file)} target="_blank" rel="noreferrer" className="no-print mt-2 inline-block text-xs font-semibold text-blue-700">Open source PDF</a>}</div>) : missing('Medication form')}</div></details>
+        <details className="rounded-md border border-gray-200 p-3" open><summary className="cursor-pointer font-semibold text-gray-900">Entry EKG and liver panel</summary><div className="mt-3 grid gap-3 lg:grid-cols-2"><div><div className="mb-2 text-xs font-bold uppercase text-gray-500">Entry EKG</div>{entryEkg.length ? renderArtifactList(entryEkg, '') : missing('Entry EKG')}</div><div><div className="mb-2 text-xs font-bold uppercase text-gray-500">Entry liver panel</div>{entryLiver.length ? renderArtifactList(entryLiver, '') : missing('Entry liver panel')}</div></div></details>
+        <details className="rounded-md border border-gray-200 p-3" open><summary className="cursor-pointer font-semibold text-gray-900">Pre-retreat blood pressures · {bpReadings.length || 'Not received'}</summary><div className="mt-3">{bpReadings.length ? <div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead><tr className="border-b text-xs uppercase text-gray-500"><th className="p-2">Recorded</th><th className="p-2">BP</th><th className="p-2">Pulse</th><th className="p-2">Source</th><th className="p-2">Notes</th></tr></thead><tbody>{bpReadings.map((reading) => <tr key={reading._id} className="border-b border-gray-100"><td className="p-2">{formatDateTime(reading.recordedAt)}</td><td className="p-2 font-semibold">{reading.systolic}/{reading.diastolic}</td><td className="p-2">{reading.pulse || '—'}</td><td className="p-2">{reading.source || 'record'}</td><td className="p-2">{reading.notes || '—'}</td></tr>)}</tbody></table></div> : missing('Pre-retreat blood pressure readings')}</div></details>
+        <details className="rounded-md border border-gray-200 p-3"><summary className="cursor-pointer font-semibold text-gray-900">Pre-ceremony data · {preCeremony.length || 'Not received'}</summary><div className="mt-3">{preCeremony.length ? renderArtifactList(preCeremony, '') : missing('Pre-ceremony BP / EKG data')}</div></details>
+        <details className="rounded-md border border-gray-200 p-3"><summary className="cursor-pointer font-semibold text-gray-900">In- and post-ceremony data · {ceremonyData.length || 'Not received'}</summary><div className="mt-3">{ceremonyData.length ? renderArtifactList(ceremonyData, '') : missing('In-ceremony and post-ceremony data')}</div></details>
+        <details className="rounded-md border border-gray-200 p-3"><summary className="cursor-pointer font-semibold text-gray-900">Medical review history · {reviewContext?.reviewHistory?.length || 0}</summary><div className="mt-3 space-y-2">{reviewContext?.reviewHistory?.length ? reviewContext.reviewHistory.map((item) => renderRelatedRequestCard(item, 'Previous medical review')) : <div className="text-sm text-gray-500">No previous medical reviews.</div>}</div></details>
+      </div>
+    </section>;
+  };
+
   if (loading) {
     return <LoadingSpinner message="Loading medical review requests..." />;
   }
@@ -1211,7 +1293,6 @@ const MedicalReviewRequestsPage: React.FC = () => {
                         <div className="px-1 text-xs font-semibold text-blue-800">
                           {getArtifactTypeLabel(artifact.artifactType)}{artifact.title ? ` · ${artifact.title}` : ''}
                         </div>
-                        <BloodPressureArtifactSummary artifact={artifact} />
                         {artifact.textContent && (
                           <div className="whitespace-pre-wrap rounded-md bg-gray-50 p-2 text-xs text-gray-700">{artifact.textContent}</div>
                         )}
@@ -1238,16 +1319,6 @@ const MedicalReviewRequestsPage: React.FC = () => {
                     <div className="rounded-md bg-gray-50 p-3 text-sm">
                       <div className="font-semibold text-gray-900">{formatMedicalReviewDecisionLabel(selected.reviewDecision)}</div>
                       <div className="mt-2 whitespace-pre-wrap text-gray-600">{selected.medicalStaffNotes || selected.overallNotes || selected.reviewNotes || 'No medical staff notes.'}</div>
-                      {user?.role === 'admin' && selected.reviewDecision && (
-                        <button
-                          type="button"
-                          onClick={handleResetReview}
-                          disabled={resettingReview}
-                          className="mt-3 w-full rounded-md border border-red-300 bg-white px-3 py-2 text-sm font-semibold text-red-700 disabled:opacity-50"
-                        >
-                          {resettingReview ? 'Resetting...' : 'Reset mistaken review'}
-                        </button>
-                      )}
                     </div>
                   ) : (
                     <>
@@ -1559,6 +1630,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 </details>
               )}
 
+              {isDetailView && renderMedicalSummary()}
+
               <div className={isDetailView ? 'space-y-2' : 'rounded-md border border-gray-200 bg-gray-50 p-3'}>
                 {!isDetailView && (
                   <div className="mb-3">
@@ -1690,7 +1763,6 @@ const MedicalReviewRequestsPage: React.FC = () => {
                             <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">This request</span>
                           </div>
                           {artifact.textContent && <div className="mt-2 whitespace-pre-wrap text-gray-700">{artifact.textContent}</div>}
-                          <div className="mt-2"><BloodPressureArtifactSummary artifact={artifact} /></div>
                           {artifact.notes && <div className="mt-2 text-xs text-gray-600">Notes: {artifact.notes}</div>}
                           {!!artifact.files?.length && (
                             <div className="mt-2 space-y-3">
@@ -1784,16 +1856,6 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   <div className="rounded-md bg-gray-50 p-3 text-sm">
                     <div className="font-semibold text-gray-900">{formatMedicalReviewDecisionLabel(selected.reviewDecision)}</div>
                     <div className="mt-2 whitespace-pre-wrap text-gray-600">{selected.medicalStaffNotes || selected.overallNotes || selected.reviewNotes || 'No medical staff notes.'}</div>
-                    {user?.role === 'admin' && selected.reviewDecision && (
-                      <button
-                        type="button"
-                        onClick={handleResetReview}
-                        disabled={resettingReview}
-                        className="mt-3 rounded-md border border-red-300 bg-white px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50"
-                      >
-                        {resettingReview ? 'Resetting...' : 'Reset mistaken review'}
-                      </button>
-                    )}
                   </div>
                 ) : (
                   <>
@@ -1844,35 +1906,6 @@ const MedicalReviewRequestsPage: React.FC = () => {
                           }`}
                           placeholder="Enter at least 2 characters"
                         />
-                        {reviewDecision === 'more_info_needed' && (
-                          <div className="mt-3 rounded-md border border-orange-200 bg-orange-50 p-3">
-                            <div className="text-sm font-semibold text-orange-950">Automatic client follow-up</div>
-                            <p className="mt-1 text-xs text-orange-800">The note above becomes the client instruction. The app creates a blocking booking step and coordinator task. The email is prepared but not sent automatically.</p>
-                            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                              <label className="text-xs font-semibold text-gray-700">Deadline
-                                <input
-                                  type="date"
-                                  value={followUpDeadline}
-                                  min={new Date().toISOString().split('T')[0]}
-                                  onChange={(event) => setFollowUpDeadline(event.target.value)}
-                                  className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-normal"
-                                />
-                              </label>
-                              <label className="text-xs font-semibold text-gray-700">Email template
-                                <select
-                                  value={followUpEmailTemplateId}
-                                  onChange={(event) => setFollowUpEmailTemplateId(event.target.value)}
-                                  className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-normal"
-                                >
-                                  <option value="">Use/create the language default</option>
-                                  {followUpTemplates.map((template) => (
-                                    <option key={template._id} value={template._id}>{template.name}</option>
-                                  ))}
-                                </select>
-                              </label>
-                            </div>
-                          </div>
-                        )}
                         <div className="mt-1 flex items-center justify-between gap-3">
                           <span className={`text-xs ${medicalStaffNotes.trim().length >= 2 ? 'text-gray-500' : 'font-medium text-red-700'}`}>
                             Minimum 2 characters
@@ -1891,6 +1924,42 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   </>
                 )}
               </div>
+
+              {user?.role === 'admin' && (
+                <section className="rounded-md border border-indigo-200 bg-indigo-50 p-3">
+                  <label htmlFor="mrr-client-visible-admin-note" className="block text-sm font-semibold text-indigo-950">
+                    Client-visible admin note
+                  </label>
+                  <p className="mt-1 text-xs leading-relaxed text-indigo-800">
+                    This is the message shown below the client’s submitted medical form in IbogaReady. The medical advisor’s notes remain private.
+                  </p>
+                  <textarea
+                    id="mrr-client-visible-admin-note"
+                    value={clientVisibleAdminNote}
+                    onChange={(event) => {
+                      setClientVisibleAdminNote(event.target.value);
+                      setClientVisibleAdminNoteStatus('');
+                    }}
+                    rows={4}
+                    maxLength={5000}
+                    className="mt-3 w-full rounded-md border border-indigo-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200"
+                    placeholder="Write the client-safe explanation here..."
+                  />
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs text-indigo-700">
+                      {clientVisibleAdminNoteStatus || `${clientVisibleAdminNote.length}/5000 characters`}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleSaveClientVisibleAdminNote}
+                      disabled={savingClientVisibleAdminNote}
+                      className="rounded-md bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-800 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {savingClientVisibleAdminNote ? 'Saving...' : 'Save client message'}
+                    </button>
+                  </div>
+                </section>
+              )}
 
               {validationError && (
                 <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
