@@ -296,14 +296,14 @@ export const bookingsApi = {
     cacheService.clearPattern('bookings:');
     cacheService.clearPattern('payments:');
     const response = await api.post<RetreatClient>('/bookings', data);
-    await refreshCanonicalBookingConfirmation(String(response.data._id));
+    void refreshCanonicalBookingConfirmation(String(response.data._id));
     return response;
   },
   update: async (id: string, data: Partial<RetreatClient>) => {
     cacheService.clearPattern('bookings:');
     cacheService.clearPattern('payments:');
     const response = await api.patch<RetreatClient>(`/bookings/${id}`, data);
-    await refreshCanonicalBookingConfirmation(id);
+    void refreshCanonicalBookingConfirmation(id);
     return response;
   },
   cancel: (id: string, data: { cancellationDate: string; cancellationReason: string; cancellationNotes?: string; cancellationDepositTreatment: 'none' | 'retained' | 'refund_pending' | 'partially_refunded' | 'credited'; cancellationRefundAmount?: number }) => {

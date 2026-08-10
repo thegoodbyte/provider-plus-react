@@ -54,6 +54,30 @@ const normalizeBookingConfirmationLanguage = (language?: string): 'pl' | 'cz' | 
   return 'en';
 };
 
+const htmlToEditableText = (html: string) => {
+  if (!html) return '';
+  const document = new DOMParser().parseFromString(html, 'text/html');
+  document.querySelectorAll('br').forEach((element) => element.replaceWith('\n'));
+  document.querySelectorAll('p,div,li,tr,h1,h2,h3,h4,h5,h6').forEach((element) => {
+    element.append(document.createTextNode('\n'));
+  });
+  return String(document.body.textContent || '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+};
+
+const looksLikeHtml = (value?: string) => /<!doctype\s+html|<html[\s>]|<body[\s>]|<(?:p|div|table|h[1-6]|ul|ol|li|br|a)\b/i.test(String(value || ''));
+
+const normalizeMessageFields = (bodyText?: string, bodyHtml?: string) => {
+  const html = bodyHtml || (looksLikeHtml(bodyText) ? String(bodyText) : '');
+  return {
+    bodyText: html ? htmlToEditableText(html) : String(bodyText || ''),
+    bodyHtml: html,
+  };
+};
+
 export interface EmailComposeInitialValues {
   to?: string;
   cc?: string;
@@ -102,35 +126,52 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
   const [settings, setSettings] = useState<MailSettings | null>(null);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [selectedLanguage, setSelectedLanguage] = useState<'pl' | 'cz' | 'en'>(() =>
+    normalizeBookingConfirmationLanguage(
+      initialValues.resolvedLanguage || initialValues.requestedLanguage || initialValues.variables?.client?.language,
+    ),
+  );
   const [preparedAttachments, setPreparedAttachments] = useState(initialValues.attachments || []);
   const [preparedVariables, setPreparedVariables] = useState(initialValues.variables || {});
   const [attachmentPreparationError, setAttachmentPreparationError] = useState('');
+  const [attachmentPreparing, setAttachmentPreparing] = useState(false);
   const [sending, setSending] = useState(false);
+  const initialMessage = normalizeMessageFields(initialValues.bodyText);
   const [formData, setFormData] = useState({
     to: initialValues.to || '',
     cc: initialValues.cc || '',
     bcc: initialValues.bcc || '',
     subject: initialValues.subject || '',
-    bodyText: initialValues.bodyText || '',
-    bodyHtml: '',
+    ...initialMessage,
     fromName: initialValues.fromName || '',
     fromEmail: initialValues.fromEmail || '',
     replyTo: initialValues.replyTo || '',
   });
   const selectedTemplate = templates.find((item) => item._id === selectedTemplateId);
+  const filteredTemplates = templates.filter((template) =>
+    normalizeBookingConfirmationLanguage(template.language) === selectedLanguage,
+  );
+  const isBookingEmailContext =
+    initialValues.relatedEntityType === 'booking' ||
+    initialValues.relatedEntityType === 'booking_flow_item' ||
+    Boolean(initialValues.bookingId || initialValues.variables?.bookingId || initialValues.variables?.booking?._id) ||
+    title.toLowerCase().includes('booking');
 
   useEffect(() => {
     setSelectedTemplateId(initialValues.templateId || '');
+    setSelectedLanguage(normalizeBookingConfirmationLanguage(
+      initialValues.resolvedLanguage || initialValues.requestedLanguage || initialValues.variables?.client?.language,
+    ));
     setPreparedAttachments(initialValues.attachments || []);
     setPreparedVariables(initialValues.variables || {});
     setAttachmentPreparationError('');
+    const message = normalizeMessageFields(initialValues.bodyText);
     setFormData({
       to: initialValues.to || '',
       cc: initialValues.cc || '',
       bcc: initialValues.bcc || '',
       subject: initialValues.subject || '',
-      bodyText: initialValues.bodyText || '',
-      bodyHtml: '',
+      ...message,
       fromName: initialValues.fromName || '',
       fromEmail: initialValues.fromEmail || '',
       replyTo: initialValues.replyTo || '',
@@ -153,12 +194,10 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
         initialValues.variables?.bookingId;
       if (!isBookingConfirmation || preparedAttachments.length > 0 || !bookingId) return;
 
+      setAttachmentPreparing(true);
+      setAttachmentPreparationError('');
       try {
-        const language = normalizeBookingConfirmationLanguage(
-          initialValues.resolvedLanguage ||
-          initialValues.requestedLanguage ||
-          initialValues.variables?.client?.language,
-        );
+        const language = selectedLanguage;
         const bookingResponse = await bookingsApi.getOne(String(bookingId));
         const { blob, fileName } = await createBookingConfirmationPdf({ booking: bookingResponse.data, language });
         const contentBase64 = await blobToBase64(blob);
@@ -186,6 +225,8 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
       } catch (error) {
         console.error('Unable to prepare booking confirmation PDF attachment:', error);
         if (active) setAttachmentPreparationError('Unable to prepare booking confirmation PDF attachment.');
+      } finally {
+        if (active) setAttachmentPreparing(false);
       }
     };
 
@@ -200,6 +241,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
     initialValues.resolvedLanguage,
     initialValues.templateKey,
     initialValues.variables,
+    selectedLanguage,
     selectedTemplate?.templateKey,
     selectedTemplate?.category,
     selectedTemplate?.bookingFlowStepKeys,
@@ -250,8 +292,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
       setFormData((previous) => ({
         ...previous,
         subject: response.data.subject || previous.subject,
-        bodyText: response.data.bodyText || previous.bodyText,
-        bodyHtml: response.data.bodyHtml || '',
+        ...normalizeMessageFields(response.data.bodyText || previous.bodyText, response.data.bodyHtml),
       }));
     }).catch((error) => {
       console.error('Unable to prepare email preview:', error);
@@ -276,13 +317,35 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
     setSelectedTemplateId(templateId);
     const template = templates.find((item) => item._id === templateId);
     if (!template) return;
-    setFormData((prev) => ({
-      ...prev,
-      subject: template.subject ? interpolateTemplate(template.subject, preparedVariables) : prev.subject,
-      bodyText: template.bodyText ? interpolateTemplate(template.bodyText, preparedVariables) : prev.bodyText,
-      bodyHtml: template.bodyHtml ? interpolateTemplate(template.bodyHtml, preparedVariables) : '',
-    }));
+    setFormData((prev) => {
+      const message = normalizeMessageFields(
+        template.bodyText ? interpolateTemplate(template.bodyText, preparedVariables) : prev.bodyText,
+        template.bodyHtml ? interpolateTemplate(template.bodyHtml, preparedVariables) : undefined,
+      );
+      return {
+        ...prev,
+        subject: template.subject ? interpolateTemplate(template.subject, preparedVariables) : prev.subject,
+        ...message,
+      };
+    });
   }, [preparedVariables, templates]);
+
+  useEffect(() => {
+    if (!isBookingEmailContext || templates.length === 0) return;
+    const current = templates.find((template) => template._id === selectedTemplateId);
+    if (current && normalizeBookingConfirmationLanguage(current.language) === selectedLanguage) return;
+    const matchingTemplate = templates.find((template) =>
+      normalizeBookingConfirmationLanguage(template.language) === selectedLanguage &&
+      (
+        template.templateKey === 'welcome_booking' ||
+        template.templateKey === 'booking_confirmation' ||
+        template.category === 'booking_confirmation' ||
+        template.bookingFlowStepKey === 'booking_confirmation_sent' ||
+        template.bookingFlowStepKeys?.includes('booking_confirmation_sent')
+      ),
+    );
+    if (matchingTemplate?._id) handleTemplateChange(matchingTemplate._id);
+  }, [handleTemplateChange, isBookingEmailContext, selectedLanguage, selectedTemplateId, templates]);
 
   useEffect(() => {
     if (!initialValues.templateId || templates.length === 0) return;
@@ -292,7 +355,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
 
   const attachments = preparedAttachments;
   const isBookingConfirmationEmail =
-    (initialValues.relatedEntityType === 'booking' || initialValues.relatedEntityType === 'booking_flow_item') &&
+    isBookingEmailContext &&
     (
       initialValues.templateKey === 'booking_confirmation' ||
       initialValues.bookingFlowStepKey === 'booking_confirmation_sent' ||
@@ -377,7 +440,24 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
           {extraContent}
 
           {templates.length > 0 && (
-            <div>
+            <div className="grid gap-4 md:grid-cols-3">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Language</label>
+                <select
+                  value={selectedLanguage}
+                  onChange={(event) => {
+                    setSelectedLanguage(event.target.value as 'pl' | 'cz' | 'en');
+                    setSelectedTemplateId('');
+                    setPreparedAttachments([]);
+                  }}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                >
+                  <option value="en">English</option>
+                  <option value="cz">Čeština</option>
+                  <option value="pl">Polski</option>
+                </select>
+              </div>
+              <div className="md:col-span-2">
               <label className="mb-1 block text-sm font-medium text-gray-700">Template</label>
               <select
                 value={selectedTemplateId}
@@ -385,12 +465,13 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
                 className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
               >
                 <option value="">No template</option>
-                {templates.map((template) => (
+                {filteredTemplates.map((template) => (
                   <option key={template._id} value={template._id || ''}>
                     {template.display_id ? `#${template.display_id} ` : ''}{template.name}
                   </option>
                 ))}
               </select>
+              </div>
             </div>
           )}
 
@@ -411,10 +492,12 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
           )}
 
           {attachments.length === 0 && isBookingConfirmationEmail && (
-            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900">
-              <div className="font-medium">{attachmentPreparationError || 'No attachment is ready'}</div>
+            <div className={`rounded-md border px-3 py-2 text-sm ${attachmentPreparationError ? 'border-red-200 bg-red-50 text-red-900' : 'border-blue-200 bg-blue-50 text-blue-900'}`}>
+              <div className="font-medium">{attachmentPreparationError || 'Preparing booking confirmation PDF…'}</div>
               <div className="mt-1 text-xs">
-                This booking confirmation cannot be sent until the PDF is prepared. Close this window and open Send again.
+                {attachmentPreparationError
+                  ? 'Close and reopen Send to retry preparing the attachment.'
+                  : 'The Send button will become available as soon as the attachment is ready.'}
               </div>
             </div>
           )}
@@ -492,14 +575,12 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
             <label className="mb-1 block text-sm font-medium text-gray-700">Message</label>
             <textarea
               rows={14}
-              value={formData.bodyHtml || formData.bodyText}
+              value={formData.bodyText}
               onChange={(event) => {
                 const value = event.target.value;
-                if (/<!doctype\s+html|<html[\s>]|<body[\s>]|<(?:p|div|table|h[1-6]|ul|ol|br|a)\b/i.test(value)) {
-                  setFormData((prev) => ({ ...prev, bodyHtml: value }));
-                } else {
-                  setFormData((prev) => ({ ...prev, bodyText: value, bodyHtml: '' }));
-                }
+                // Editing the readable preview intentionally switches this email
+                // to plain text so stale HTML cannot override the user's changes.
+                setFormData((prev) => ({ ...prev, bodyText: value, bodyHtml: '' }));
               }}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             />
@@ -517,11 +598,11 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
           <button
             type="button"
             onClick={handleSend}
-            disabled={sending}
+            disabled={sending || (isBookingConfirmationEmail && (attachmentPreparing || attachments.length === 0))}
             className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
           >
             <Icon icon={FiSend} className="h-4 w-4" />
-            {sending ? 'Sending...' : 'Send Email'}
+            {sending ? 'Sending...' : attachmentPreparing ? 'Preparing PDF…' : 'Send Email'}
           </button>
         </div>
       </div>
