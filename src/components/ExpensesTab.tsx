@@ -714,7 +714,10 @@ const ExpensesTab: React.FC<ExpensesTabProps> = ({ retreatId }) => {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {expenses.map((expense) => (
+              {[...expenses].sort((a, b) => {
+                const createdDifference = new Date(b.createdAt || b.expenseDate).getTime() - new Date(a.createdAt || a.expenseDate).getTime();
+                return createdDifference || new Date(b.expenseDate).getTime() - new Date(a.expenseDate).getTime();
+              }).map((expense) => (
                 <tr key={expense._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                     {getExpenseTypeName(expense)}
