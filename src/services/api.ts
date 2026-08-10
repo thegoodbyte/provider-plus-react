@@ -328,6 +328,8 @@ export const bookingsApi = {
     cacheService.clearPattern('bookings:');
     return api.post(`/bookings/${id}/confirmation-pdf?language=${language}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
+  getConfirmationPdf: (id: string, language: 'en' | 'cz' | 'pl') =>
+    api.get(`/bookings/${id}/confirmation-pdf?language=${language}`, { responseType: 'blob' }),
   checkIn: (id: string) => {
     cacheService.clearPattern('bookings:');
     return api.patch<RetreatClient>(`/bookings/${id}/check-in`, {});

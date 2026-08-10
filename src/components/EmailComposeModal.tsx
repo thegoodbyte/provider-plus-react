@@ -199,7 +199,20 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
       try {
         const language = selectedLanguage;
         const bookingResponse = await bookingsApi.getOne(String(bookingId));
-        const { blob, fileName } = await createBookingConfirmationPdf({ booking: bookingResponse.data, language });
+        const booking: any = bookingResponse.data;
+        const storedVersion = booking?.bookingConfirmationPdfs?.[language];
+        let blob: Blob;
+        let fileName: string;
+        if (storedVersion?.s3Key) {
+          const storedPdf = await bookingsApi.getConfirmationPdf(String(bookingId), language);
+          blob = storedPdf.data;
+          fileName = storedVersion.fileName || `booking-confirmation-${booking?.bookingNumber || bookingId}.pdf`;
+        } else {
+          const generated = await createBookingConfirmationPdf({ booking, language });
+          blob = generated.blob;
+          fileName = generated.fileName;
+          await bookingsApi.storeConfirmationPdf(String(bookingId), language, blob, fileName);
+        }
         const contentBase64 = await blobToBase64(blob);
         if (!active) return;
         const nextAttachments = [{
