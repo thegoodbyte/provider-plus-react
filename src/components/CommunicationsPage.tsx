@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FiAlertCircle, FiCheckCircle, FiInbox, FiMail, FiPlus, FiRefreshCw, FiSave, FiSearch, FiSend, FiTrash2 } from 'react-icons/fi';
 import { Link, useLocation } from 'react-router-dom';
-import { communicationsApi, clientsApi, retreatsApi } from '../services/api';
-import { Client, EmailTemplate, EmailTemplateSeedOption, InboundEmail, MailSettings, Retreat, SentEmail } from '../types';
+import { bookingFlowApi, communicationsApi, clientsApi, retreatsApi } from '../services/api';
+import { BookingFlowTemplate, Client, EmailTemplate, EmailTemplateSeedOption, InboundEmail, MailSettings, Retreat, SentEmail } from '../types';
 import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 
@@ -102,11 +102,35 @@ const CommunicationsPage: React.FC = () => {
   const [savingSettings, setSavingSettings] = useState(false);
   const [processingInbound, setProcessingInbound] = useState(false);
   const [loadWarnings, setLoadWarnings] = useState<string[]>([]);
+  const [bookingStepTemplates, setBookingStepTemplates] = useState<BookingFlowTemplate[]>([]);
+  const [bookingStepSearch, setBookingStepSearch] = useState('');
 
   const selectedTemplate = useMemo(
     () => templates.find((template) => template._id === selectedTemplateId) || null,
     [templates, selectedTemplateId],
   );
+
+  const selectedBookingStepKeys = useMemo(() => Array.from(new Set([
+    ...(templateForm.bookingFlowStepKeys || []),
+    templateForm.bookingFlowStepKey,
+  ].filter(Boolean).map(String))), [templateForm.bookingFlowStepKey, templateForm.bookingFlowStepKeys]);
+
+  const bookingStepOptions = useMemo(() => {
+    const byKey = new Map<string, { key: string; label: string; category?: string }>();
+    bookingStepTemplates.forEach((step) => {
+      if (step.key) byKey.set(step.key, { key: step.key, label: step.title || step.key, category: step.category });
+    });
+    WELCOME_STEP_OPTIONS.forEach(([key, label]) => {
+      if (!byKey.has(key)) byKey.set(key, { key, label });
+    });
+    selectedBookingStepKeys.forEach((key) => {
+      if (!byKey.has(key)) byKey.set(key, { key, label: key });
+    });
+    const search = bookingStepSearch.trim().toLowerCase();
+    return Array.from(byKey.values())
+      .filter((step) => !search || `${step.label} ${step.key} ${step.category || ''}`.toLowerCase().includes(search))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [bookingStepSearch, bookingStepTemplates, selectedBookingStepKeys]);
 
   const selectedTemplateCounterparts = useMemo(() => {
     const key = String(selectedTemplate?.templateKey || '').trim().toLowerCase();
@@ -211,7 +235,7 @@ const CommunicationsPage: React.FC = () => {
     setLoadWarnings([]);
     try {
       const quietRequest = { suppressGlobalError: true };
-      const [settingsRes, templatesRes, sentRes, inboundRes, clientsRes, retreatsRes, seedOptionsRes] = await Promise.allSettled([
+      const [settingsRes, templatesRes, sentRes, inboundRes, clientsRes, retreatsRes, seedOptionsRes, bookingStepsRes] = await Promise.allSettled([
         communicationsApi.getSettings(quietRequest),
         communicationsApi.getTemplates(),
         communicationsApi.getSentEmails({}, quietRequest),
@@ -219,6 +243,7 @@ const CommunicationsPage: React.FC = () => {
         clientsApi.getAll(),
         retreatsApi.getAll(),
         communicationsApi.getTemplateSeedOptions(),
+        bookingFlowApi.getLibraryTemplates(),
       ]);
       const warnings: string[] = [];
       if (settingsRes.status === 'fulfilled') setSettings(settingsRes.value.data);
@@ -250,6 +275,8 @@ const CommunicationsPage: React.FC = () => {
       } else {
         warnings.push('Template seed options could not be loaded.');
       }
+      if (bookingStepsRes.status === 'fulfilled') setBookingStepTemplates(Array.isArray(bookingStepsRes.value.data) ? bookingStepsRes.value.data : []);
+      else warnings.push('Booking-item actions could not be loaded.');
       setLoadWarnings(warnings);
     } catch (error) {
       console.error('Error loading communications data:', error);
@@ -290,8 +317,13 @@ const CommunicationsPage: React.FC = () => {
     }
     const template = templates.find((item) => item._id === selectedTemplateId);
     if (template) {
+      const bookingFlowStepKeys = Array.from(new Set([
+        ...(template.bookingFlowStepKeys || []),
+        template.bookingFlowStepKey,
+      ].filter(Boolean).map(String)));
       setTemplateForm({
         ...template,
+        bookingFlowStepKeys,
         bodyHtml: template.bodyHtml || '',
         active: template.active !== false,
       });
@@ -328,7 +360,8 @@ const CommunicationsPage: React.FC = () => {
         bodyHtml: String(templateForm.bodyHtml || '').trim() || undefined,
         language: String(templateForm.language || 'en').trim().toLowerCase(),
         templateKey: String(templateForm.templateKey || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || undefined,
-        bookingFlowStepKey: String(templateForm.bookingFlowStepKey || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || undefined,
+        bookingFlowStepKey: selectedBookingStepKeys[0] || undefined,
+        bookingFlowStepKeys: selectedBookingStepKeys,
         bookingFlowStatusOnSend: String(templateForm.bookingFlowStatusOnSend || 'sent').trim().toLowerCase(),
       };
 
@@ -1009,6 +1042,9 @@ const CommunicationsPage: React.FC = () => {
                       <div className="mt-1 text-[11px] uppercase text-gray-400">
                         {template.language || 'en'}{template.templateKey ? ` / ${template.templateKey}` : ''}
                       </div>
+                      <div className="mt-1 text-xs font-medium text-blue-700">
+                        Updates {new Set([...(template.bookingFlowStepKeys || []), template.bookingFlowStepKey].filter(Boolean)).size} booking item(s)
+                      </div>
                     </div>
                     <div className="text-right text-xs text-gray-500">
                       <div>#{template.display_id || 'n/a'}</div>
@@ -1062,6 +1098,9 @@ const CommunicationsPage: React.FC = () => {
                 )}
               </div>
             )}
+            <div className={`rounded-md border px-3 py-2 text-sm font-semibold ${selectedBookingStepKeys.length ? 'border-blue-200 bg-blue-50 text-blue-900' : 'border-gray-200 bg-gray-50 text-gray-600'}`}>
+              This template updates {selectedBookingStepKeys.length} booking item{selectedBookingStepKeys.length === 1 ? '' : 's'} after a successful send.
+            </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
@@ -1106,9 +1145,17 @@ const CommunicationsPage: React.FC = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Booking Steps Updated After Successful Send</label>
                 <div className="space-y-2 rounded-md border border-gray-300 bg-white p-3">
-                  {WELCOME_STEP_OPTIONS.map(([key, label]) => <label key={key} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={(templateForm.bookingFlowStepKeys || []).includes(key)} onChange={(event) => setTemplateForm((prev) => ({ ...prev, bookingFlowStepKeys: event.target.checked ? Array.from(new Set([...(prev.bookingFlowStepKeys || []), key])) : (prev.bookingFlowStepKeys || []).filter((item) => item !== key) }))}/><span>{label}</span><code className="ml-auto text-xs text-gray-400">{key}</code></label>)}
+                  <input type="search" value={bookingStepSearch} onChange={(event) => setBookingStepSearch(event.target.value)} placeholder="Search booking items..." className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
+                  <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+                    {bookingStepOptions.map(({ key, label, category }) => <label key={key} className="flex items-center gap-2 rounded px-1 py-1 text-sm hover:bg-gray-50"><input type="checkbox" checked={selectedBookingStepKeys.includes(key)} onChange={(event) => setTemplateForm((prev) => {
+                      const current = Array.from(new Set([...(prev.bookingFlowStepKeys || []), prev.bookingFlowStepKey].filter(Boolean).map(String)));
+                      const next = event.target.checked ? Array.from(new Set([...current, key])) : current.filter((item) => item !== key);
+                      return { ...prev, bookingFlowStepKeys: next, bookingFlowStepKey: next[0] || '' };
+                    })}/><span>{label}</span>{category && <span className="text-xs text-gray-400">{category}</span>}<code className="ml-auto text-xs text-gray-400">{key}</code></label>)}
+                    {bookingStepOptions.length === 0 && <div className="py-3 text-center text-sm text-gray-500">No booking items match.</div>}
+                  </div>
                 </div>
-                <p className="mt-1 text-xs text-gray-500">All selected steps are updated only after Gmail confirms the email was sent.</p>
+                <p className="mt-1 text-xs text-gray-500">{selectedBookingStepKeys.length} selected. All selected items are updated only after Gmail confirms the email was sent.</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status After Send</label>
