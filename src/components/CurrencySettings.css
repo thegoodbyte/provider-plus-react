@@ -36,6 +36,12 @@
 .payment-type-row button, .new-payment-type button { border: 0; border-radius: 6px; padding: 9px 12px; background: #155e75; color: white; cursor: pointer; }
 .new-payment-type { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding-top: 16px; border-top: 1px solid #e5e7eb; }
 .new-payment-type h4 { width: 100%; margin: 0; }
+.payment-plan-settings { display: grid; gap: 16px; }
+.payment-plan-settings > label { display: grid; gap: 7px; color: #334155; font-weight: 600; }
+.payment-plan-settings > label:has(input[type="checkbox"]) { display: flex; align-items: center; gap: 10px; }
+.payment-plan-settings input[type="url"], .payment-plan-settings input[type="number"] { border: 1px solid #cbd5e1; border-radius: 6px; padding: 10px; }
+.payment-plan-number { display: flex; align-items: center; gap: 10px; }
+.payment-plan-number input { width: 120px; }
 
 .close-btn {
   background: rgba(255,255,255,0.2);
