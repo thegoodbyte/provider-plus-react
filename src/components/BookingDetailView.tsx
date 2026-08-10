@@ -45,8 +45,8 @@ const HeaderIcon: React.FC<{ icon: any }> = ({ icon: IconComponent }) => <IconCo
 
 const requirementDefinitions: RequirementDefinition[] = [
   { key: 'contract', label: 'Contract', artifactTypes: ['contract'], bookingDocumentTypes: ['contract'], readinessGroups: ['contract'], library: 'booking_documents', matchTerms: ['contract'] },
-  { key: 'ekg', label: 'Entry EKG', artifactTypes: ['ekg'], documentTypes: ['EKG'], readinessGroups: ['ekg'], library: 'medical_artifacts', matchTerms: ['ekg'] },
-  { key: 'liver', label: 'Entry Liver Panel', artifactTypes: ['liver_panel'], documentTypes: ['Liver'], bookingDocumentTypes: ['liver_panel'], readinessGroups: ['liver'], library: 'medical_artifacts', matchTerms: ['liver'] },
+  { key: 'ekg', label: 'Entry EKG', artifactTypes: ['ekg'], documentTypes: ['EKG'], readinessGroups: ['ekg'], library: 'medical_artifacts', matchTerms: ['ekg', 'ecg', 'electrocardiogram'] },
+  { key: 'liver', label: 'Entry Liver Panel', artifactTypes: ['liver_panel'], documentTypes: ['Liver'], bookingDocumentTypes: ['liver_panel'], readinessGroups: ['liver'], library: 'medical_artifacts', matchTerms: ['liver', 'hepatic panel', 'liver panel'] },
   { key: 'medications', label: 'Medications Form', artifactTypes: ['medications_form', 'medication_list'], documentTypes: ['Medications', 'meds'], bookingDocumentTypes: ['medications_form'], readinessGroups: ['medications'], library: 'both', matchTerms: ['medication', 'medications', 'meds'] },
   { key: 'questionnaire', label: 'Questionnaire', artifactTypes: ['questionnaire'], bookingDocumentTypes: ['questionnaire'], readinessGroups: ['questionnaire'], library: 'both', matchTerms: ['questionnaire', 'health questionnaire'] },
   { key: 'food', label: 'Food Form', artifactTypes: ['food_intake'], bookingDocumentTypes: ['food_intake'], readinessGroups: ['food'], library: 'both', matchTerms: ['food intake', 'food form', 'dietary'] },
@@ -117,15 +117,29 @@ const normalizeBookingDocumentKey = (value?: string) =>
 const artifactMatchesRequirement = (artifact: MedicalArtifact, definition: RequirementDefinition) => {
   if (artifact.artifactType && definition.artifactTypes.includes(artifact.artifactType)) return true;
   if (definition.documentTypes?.includes(artifact.documentType)) return true;
+  const legacyData = artifact.data || {};
   const searchable = [
     artifact.title,
     artifact.description,
     artifact.source,
     artifact.documentType,
     artifact.artifactType,
+    legacyData.artifactType,
+    legacyData.documentType,
+    legacyData.title,
+    legacyData.fileName,
+    legacyData.originalName,
+    ...(artifact.files || []).flatMap((file) => [file.fileName, file.filePath, file.s3Key]),
     ...(artifact.tags || []),
   ].filter(Boolean).join(' ').toLowerCase();
   return Boolean(definition.matchTerms?.some((term) => searchable.includes(term.toLowerCase())));
+};
+
+const artifactHasReceivedContent = (artifact: MedicalArtifact) => {
+  if ((artifact.files || []).some((file) => file.fileName || file.filePath || file.s3Key || file.url)) return true;
+  if (String(artifact.textContent || '').trim()) return true;
+  const data = artifact.data || {};
+  return Boolean(data.fileName || data.filePath || data.s3Key || data.url || data.fileUrl || data.downloadUrl);
 };
 
 const documentMatchesRequirement = (document: BookingDocument, definition: RequirementDefinition) => {
@@ -541,7 +555,7 @@ const BookingRequirementsPanel: React.FC<{
     const latestDocument = relatedDocuments[0];
     const reviews = latestArtifact?._id ? (reviewsByArtifact[latestArtifact._id] || []) : [];
     const latestReview = [...reviews].sort((a, b) => getReviewTime(b) - getReviewTime(a))[0];
-    const uploaded = relatedArtifacts.some((artifact) => (artifact.files || []).length > 0);
+    const uploaded = relatedArtifacts.some(artifactHasReceivedContent);
     const documentUploaded = relatedDocuments.length > 0;
     const flowReceived = relatedItems.some((item) => completedStatuses.has(item.status));
     const reviewed = Boolean(latestReview && reviewedStatuses.has(latestReview.status)) ||
