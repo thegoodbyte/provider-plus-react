@@ -9,6 +9,7 @@ interface CurrencySettingsProps {
 
 type ConverterCurrency = 'USD' | 'EUR' | 'CZK' | 'PLN';
 type PaymentTypeSetting = { key: string; label: string; active: boolean; sortOrder: number; system: boolean; behavior: string };
+type PaymentPlanSettings = { enabled: boolean; automaticallyCreateBalanceRequest: boolean; balanceDueDaysBeforeRetreat: number; showFuturePaymentRequestInPortal: boolean; publicPaymentRequestBaseUrl: string };
 const converterCurrencies: ConverterCurrency[] = ['PLN', 'USD', 'EUR', 'CZK'];
 
 const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
@@ -26,10 +27,12 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
   const [converterSource, setConverterSource] = useState<string>('');
   const [converterError, setConverterError] = useState<string | null>(null);
   const [isConverting, setIsConverting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'currency' | 'payment-types'>('currency');
+  const [activeTab, setActiveTab] = useState<'currency' | 'payment-types' | 'payment-plan'>('currency');
   const [paymentTypes, setPaymentTypes] = useState<PaymentTypeSetting[]>([]);
   const [paymentTypesSaving, setPaymentTypesSaving] = useState(false);
   const [newPaymentType, setNewPaymentType] = useState({ key: '', label: '' });
+  const [paymentPlan, setPaymentPlan] = useState<PaymentPlanSettings>({ enabled: true, automaticallyCreateBalanceRequest: true, balanceDueDaysBeforeRetreat: 30, showFuturePaymentRequestInPortal: true, publicPaymentRequestBaseUrl: 'https://ibogaspirit.com/clients/payment/request' });
+  const [paymentPlanSaving, setPaymentPlanSaving] = useState(false);
 
   useEffect(() => {
     loadExchangeRates();
@@ -49,11 +52,28 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
       setConfigSummary(configResponse?.data || null);
       const typeResponse = await paymentsApi.getTypes().catch(() => null);
       setPaymentTypes(typeResponse?.data || []);
+      const planResponse = typeof paymentsApi.getPlanSettings === 'function'
+        ? await paymentsApi.getPlanSettings().catch(() => null)
+        : null;
+      if (planResponse?.data) setPaymentPlan(planResponse.data);
     } catch (err) {
       setError('Failed to load exchange rates');
       console.error('Error loading exchange rates:', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const savePaymentPlan = async () => {
+    try {
+      setPaymentPlanSaving(true);
+      const response = await paymentsApi.savePlanSettings(paymentPlan);
+      setPaymentPlan(response.data);
+      alert('Payment plan settings saved. Booking updates will synchronize their payment requests automatically.');
+    } catch (err: any) {
+      alert(err?.response?.data?.message || 'Could not save payment plan settings.');
+    } finally {
+      setPaymentPlanSaving(false);
     }
   };
 
@@ -152,9 +172,21 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
         <div className="settings-tabs">
           <button className={activeTab === 'currency' ? 'active' : ''} onClick={() => setActiveTab('currency')}>Currency</button>
           <button className={activeTab === 'payment-types' ? 'active' : ''} onClick={() => setActiveTab('payment-types')}>Payment types</button>
+          <button className={activeTab === 'payment-plan' ? 'active' : ''} onClick={() => setActiveTab('payment-plan')}>Payment plan</button>
         </div>
 
-        {activeTab === 'payment-types' ? (
+        {activeTab === 'payment-plan' ? (
+          <div className="payment-types-settings payment-plan-settings">
+            <h3>Booking payment plan</h3>
+            <p>This rule creates one final-balance request per booking. It is updated when the booking, price, currency, or retreat date changes and cancelled when the booking is cancelled.</p>
+            <label><input type="checkbox" checked={paymentPlan.enabled} onChange={(event) => setPaymentPlan(current => ({ ...current, enabled: event.target.checked }))} /> Enable payment-plan automation</label>
+            <label><input type="checkbox" checked={paymentPlan.automaticallyCreateBalanceRequest} onChange={(event) => setPaymentPlan(current => ({ ...current, automaticallyCreateBalanceRequest: event.target.checked }))} /> Automatically create the final-balance payment request</label>
+            <label><span>Final balance due before retreat</span><div className="payment-plan-number"><input type="number" min="0" max="365" value={paymentPlan.balanceDueDaysBeforeRetreat} onChange={(event) => setPaymentPlan(current => ({ ...current, balanceDueDaysBeforeRetreat: Number(event.target.value) }))} /><span>days</span></div></label>
+            <label><input type="checkbox" checked={paymentPlan.showFuturePaymentRequestInPortal} onChange={(event) => setPaymentPlan(current => ({ ...current, showFuturePaymentRequestInPortal: event.target.checked }))} /> Show the upcoming request in IbogaReady before it becomes due</label>
+            <label><span>Public payment-request URL</span><input type="url" value={paymentPlan.publicPaymentRequestBaseUrl} onChange={(event) => setPaymentPlan(current => ({ ...current, publicPaymentRequestBaseUrl: event.target.value }))} /></label>
+            <button className="convert-btn" disabled={paymentPlanSaving} onClick={savePaymentPlan}>{paymentPlanSaving ? 'Saving…' : 'Save payment plan'}</button>
+          </div>
+        ) : activeTab === 'payment-types' ? (
           <div className="payment-types-settings">
             <h3>Payment types</h3>
             <p>IDs are permanent. Existing types can be renamed, reordered, or deactivated, but never deleted.</p>
