@@ -17,9 +17,19 @@ export default defineConfig({
   },
   use: {
     baseURL: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
+    storageState: {
+      cookies: [],
+      origins: [{
+        origin: process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000',
+        localStorage: [
+          { name: 'token', value: 'e2e-token' },
+          { name: 'user', value: JSON.stringify({ id: 'admin-e2e', email: 'admin@example.com', role: 'admin' }) },
+        ],
+      }],
+    },
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    video: 'retain-on-failure',
+    video: process.env.PLAYWRIGHT_VIDEO === '1' ? 'retain-on-failure' : 'off',
     actionTimeout: 10000,
     navigationTimeout: 30000,
   },

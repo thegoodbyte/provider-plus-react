@@ -6,7 +6,10 @@ import { currencyService } from '../services/currencyService';
 
 jest.mock('../services/api', () => ({
   configSummaryApi: { get: jest.fn() },
-  paymentsApi: { convert: jest.fn() },
+  paymentsApi: {
+    convert: jest.fn(),
+    getTypes: jest.fn().mockResolvedValue({ data: { exchangeRates: [] } }),
+  },
 }));
 
 jest.mock('../services/currencyService', () => ({
@@ -30,11 +33,12 @@ describe('CurrencySettings converter', () => {
       nextUpdate: 'later',
     });
     (configSummaryApi.get as jest.Mock).mockResolvedValue({ data: { integrations: { exchangeRateProviderLabel: 'Revolut' } } });
+    (paymentsApi.getTypes as jest.Mock).mockResolvedValue({ data: { exchangeRates: [] } });
     (paymentsApi.convert as jest.Mock).mockResolvedValue({ data: { amount: 1125.5, from: 'PLN', to: 'USD', provider: 'Revolut' } });
 
     render(<CurrencySettings onClose={jest.fn()} />);
 
-    expect(screen.getByRole('heading', { name: /Revolut Currency Converter/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Look up an exchange rate/i })).toBeInTheDocument();
     expect(screen.getByLabelText('Amount')).toHaveValue(4500);
     expect(screen.getByLabelText('From')).toHaveValue('PLN');
     expect(screen.getByLabelText('To')).toHaveValue('USD');
