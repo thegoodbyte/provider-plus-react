@@ -5,6 +5,7 @@ import { bookingFlowApi, communicationsApi, clientsApi, retreatsApi } from '../s
 import { BookingFlowTemplate, Client, EmailTemplate, EmailTemplateSeedOption, InboundEmail, MailSettings, Retreat, SentEmail } from '../types';
 import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
+import { buildTemplateBookingActionPayload, normalizeTemplateBookingStepKeys } from './emailTemplateBookingActions';
 
 type TabKey = 'settings' | 'templates' | 'compose' | 'sent' | 'inbound';
 const WELCOME_STEP_OPTIONS = [
@@ -110,10 +111,10 @@ const CommunicationsPage: React.FC = () => {
     [templates, selectedTemplateId],
   );
 
-  const selectedBookingStepKeys = useMemo(() => Array.from(new Set([
-    ...(templateForm.bookingFlowStepKeys || []),
-    templateForm.bookingFlowStepKey,
-  ].filter(Boolean).map(String))), [templateForm.bookingFlowStepKey, templateForm.bookingFlowStepKeys]);
+  const selectedBookingStepKeys = useMemo(
+    () => normalizeTemplateBookingStepKeys(templateForm.bookingFlowStepKeys, templateForm.bookingFlowStepKey),
+    [templateForm.bookingFlowStepKey, templateForm.bookingFlowStepKeys],
+  );
 
   const bookingStepOptions = useMemo(() => {
     const byKey = new Map<string, { key: string; label: string; category?: string }>();
@@ -317,10 +318,7 @@ const CommunicationsPage: React.FC = () => {
     }
     const template = templates.find((item) => item._id === selectedTemplateId);
     if (template) {
-      const bookingFlowStepKeys = Array.from(new Set([
-        ...(template.bookingFlowStepKeys || []),
-        template.bookingFlowStepKey,
-      ].filter(Boolean).map(String)));
+      const bookingFlowStepKeys = normalizeTemplateBookingStepKeys(template.bookingFlowStepKeys, template.bookingFlowStepKey);
       setTemplateForm({
         ...template,
         bookingFlowStepKeys,
@@ -360,8 +358,7 @@ const CommunicationsPage: React.FC = () => {
         bodyHtml: String(templateForm.bodyHtml || '').trim() || undefined,
         language: String(templateForm.language || 'en').trim().toLowerCase(),
         templateKey: String(templateForm.templateKey || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || undefined,
-        bookingFlowStepKey: selectedBookingStepKeys[0] || undefined,
-        bookingFlowStepKeys: selectedBookingStepKeys,
+        ...buildTemplateBookingActionPayload(selectedBookingStepKeys),
         bookingFlowStatusOnSend: String(templateForm.bookingFlowStatusOnSend || 'sent').trim().toLowerCase(),
       };
 

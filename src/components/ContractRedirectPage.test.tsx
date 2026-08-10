@@ -10,8 +10,9 @@ jest.mock('../services/api', () => ({
 }));
 
 jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
   useParams: () => ({ bookingId: 'booking-1' }),
-}), { virtual: true });
+}));
 
 describe('ContractRedirectPage', () => {
   beforeEach(() => {
