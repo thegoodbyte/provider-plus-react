@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { currencyService, ExchangeRates } from '../services/currencyService';
 import { configSummaryApi, paymentsApi } from '../services/api';
+import ExpenseTypesSettings from './ExpenseTypesSettings';
 import './CurrencySettings.css';
 
 interface CurrencySettingsProps {
@@ -27,7 +28,7 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
   const [converterSource, setConverterSource] = useState<string>('');
   const [converterError, setConverterError] = useState<string | null>(null);
   const [isConverting, setIsConverting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'currency' | 'payment-types' | 'payment-plan'>('currency');
+  const [activeTab, setActiveTab] = useState<'currency' | 'payment-types' | 'expense-types' | 'payment-plan'>('currency');
   const [paymentTypes, setPaymentTypes] = useState<PaymentTypeSetting[]>([]);
   const [paymentTypesSaving, setPaymentTypesSaving] = useState(false);
   const [newPaymentType, setNewPaymentType] = useState({ key: '', label: '' });
@@ -172,6 +173,7 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
         <div className="settings-tabs">
           <button className={activeTab === 'currency' ? 'active' : ''} onClick={() => setActiveTab('currency')}>Currency</button>
           <button className={activeTab === 'payment-types' ? 'active' : ''} onClick={() => setActiveTab('payment-types')}>Payment types</button>
+          <button className={activeTab === 'expense-types' ? 'active' : ''} onClick={() => setActiveTab('expense-types')}>Expense types</button>
           <button className={activeTab === 'payment-plan' ? 'active' : ''} onClick={() => setActiveTab('payment-plan')}>Payment plan</button>
         </div>
 
@@ -186,6 +188,8 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
             <label><span>Public payment-request URL</span><input type="url" value={paymentPlan.publicPaymentRequestBaseUrl} onChange={(event) => setPaymentPlan(current => ({ ...current, publicPaymentRequestBaseUrl: event.target.value }))} /></label>
             <button className="convert-btn" disabled={paymentPlanSaving} onClick={savePaymentPlan}>{paymentPlanSaving ? 'Saving…' : 'Save payment plan'}</button>
           </div>
+        ) : activeTab === 'expense-types' ? (
+          <ExpenseTypesSettings />
         ) : activeTab === 'payment-types' ? (
           <div className="payment-types-settings">
             <h3>Payment types</h3>
