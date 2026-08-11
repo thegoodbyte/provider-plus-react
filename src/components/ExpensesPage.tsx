@@ -1,9 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Eye, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { Eye, Pencil, Plus, Search, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { expenseTypesApi, retreatExpensesApi, retreatsApi } from '../services/api';
 import { ExpenseType, Retreat, RetreatExpense } from '../types';
 import LoadingSpinner from './LoadingSpinner';
+
+const idOf = (value: any) => typeof value === 'object' ? value?._id || '' : String(value || '');
 
 const retreatLabel = (value: any, retreats: Retreat[]) => {
   if (!value) return 'General';
@@ -31,6 +33,7 @@ const ExpensesPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [query, setQuery] = useState('');
+  const [quickFilter, setQuickFilter] = useState('all');
   const [deleteTarget, setDeleteTarget] = useState<RetreatExpense | null>(null);
   const [deleting, setDeleting] = useState(false);
 
@@ -61,16 +64,23 @@ const ExpensesPage: React.FC = () => {
       const createdDifference = new Date(b.createdAt || b.expenseDate).getTime() - new Date(a.createdAt || a.expenseDate).getTime();
       return createdDifference || new Date(b.expenseDate).getTime() - new Date(a.expenseDate).getTime();
     });
-    if (!needle) return sorted;
-    return sorted.filter((expense) => [
+    return sorted.filter((expense) => {
+      if (quickFilter === 'week' && Date.now() - new Date(expense.expenseDate).getTime() > 7 * 86400000) return false;
+      if (quickFilter.startsWith('type:') && idOf(expense.expenseTypeId) !== quickFilter.slice(5)) return false;
+      if (!needle) return true;
+      return [
       expense.vendor,
       expense.description,
       expense.currency,
       expense.status,
       typeLabel(expense.expenseTypeId, types),
       retreatLabel(expense.retreatId, retreats),
-    ].some((value) => String(value || '').toLowerCase().includes(needle)));
-  }, [expenses, query, retreats, types]);
+      ].some((value) => String(value || '').toLowerCase().includes(needle));
+    });
+  }, [expenses, query, quickFilter, retreats, types]);
+
+  const totalUsd = filtered.reduce((sum, expense) => sum + Number(expense.usd_amount || (expense.currency === 'USD' ? expense.amount : 0)), 0);
+  const quickTypes = types.slice(0, 3);
 
   const open = (path: string) => navigate(`${prefix}${path}`);
   const confirmDelete = async () => {
@@ -91,23 +101,30 @@ const ExpensesPage: React.FC = () => {
   if (loading) return <LoadingSpinner message="Loading expenses..." />;
 
   return (
-    <div className="mx-auto max-w-7xl px-0 py-2 sm:px-2">
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mx-auto max-w-7xl px-0 pb-24 pt-2 sm:px-2 md:pb-4">
+      <div className="mb-5 flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-950 sm:text-3xl">Expenses</h1>
-          <p className="text-sm text-slate-600">{filtered.length} item{filtered.length === 1 ? '' : 's'}</p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">Expenses</h1>
+          <p className="mt-1 text-sm font-medium text-slate-500">{filtered.length} item{filtered.length === 1 ? '' : 's'}{totalUsd > 0 ? ` · $${totalUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })} USD total` : ''}</p>
         </div>
-        <button type="button" onClick={() => open('/expenses/new')} className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 text-base font-bold text-white shadow-sm">
+        <button type="button" aria-label="Expense filters" className="mt-1 rounded-xl p-3 text-cyan-700 hover:bg-cyan-50"><SlidersHorizontal size={23} /></button>
+        <button type="button" onClick={() => open('/expenses/new')} className="hidden min-h-12 items-center justify-center gap-2 rounded-xl bg-cyan-600 px-5 text-base font-bold text-white shadow-sm hover:bg-cyan-700 md:flex">
           <Plus size={21} /> Add expense
         </button>
       </div>
 
       {error && <div className="mb-3 rounded-xl bg-red-50 p-3 text-sm font-medium text-red-700">{error}</div>}
 
-      <label className="mb-3 flex min-h-12 items-center gap-2 rounded-xl border border-slate-300 bg-white px-3">
+      <label className="mb-4 flex min-h-14 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 focus-within:border-cyan-500 focus-within:ring-2 focus-within:ring-cyan-100">
         <Search size={20} className="text-slate-500" />
         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search expenses" className="w-full border-0 bg-transparent text-base outline-none" />
       </label>
+
+      <div className="mb-5 flex gap-2 overflow-x-auto pb-1">
+        {[{ id: 'all', label: 'All' }, { id: 'week', label: 'This week' }, ...quickTypes.map((type) => ({ id: `type:${type._id}`, label: type.name }))].map((filter) => (
+          <button key={filter.id} type="button" onClick={() => setQuickFilter(filter.id)} className={`whitespace-nowrap rounded-lg border px-4 py-2.5 text-sm font-bold transition ${quickFilter === filter.id ? 'border-cyan-600 bg-cyan-600 text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-cyan-300'}`}>{filter.label}</button>
+        ))}
+      </div>
 
       <div className="hidden overflow-hidden rounded-xl border border-slate-200 bg-white md:block">
         <table className="min-w-full divide-y divide-slate-200">
@@ -136,24 +153,21 @@ const ExpensesPage: React.FC = () => {
         </table>
       </div>
 
-      <div className="grid gap-2 md:hidden">
+      <div className="divide-y divide-slate-200 border-y border-slate-200 md:hidden">
         {filtered.map((expense) => (
-          <article key={expense._id} className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+          <article key={expense._id} className="bg-white py-4">
             <button type="button" onClick={() => open(`/expenses/${expense._id}`)} className="w-full text-left">
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0"><div className="truncate text-lg font-bold">{expense.description || 'Expense'}</div><div className="text-sm text-slate-600">{expense.vendor || 'No vendor'} · {typeLabel(expense.expenseTypeId, types)}</div></div>
-                <div className="whitespace-nowrap text-lg font-extrabold">{money(expense)}</div>
+                <div className="min-w-0"><div className="truncate text-lg font-extrabold text-slate-950">{expense.description || 'Expense'}</div><div className="mt-1 truncate text-sm text-slate-500">{expense.vendor || 'No vendor'} · {typeLabel(expense.expenseTypeId, types)}</div></div>
+                <div className="whitespace-nowrap text-lg font-extrabold text-slate-950">{money(expense)}</div>
               </div>
-              <div className="mt-2 flex justify-between text-sm text-slate-500"><span>{date(expense.expenseDate)}</span><span>{retreatLabel(expense.retreatId, retreats)}</span></div>
+              <div className="mt-2 flex justify-between text-xs font-semibold uppercase tracking-wide text-slate-400"><span>{date(expense.expenseDate)}</span><span>{retreatLabel(expense.retreatId, retreats)}</span></div>
             </button>
-            <div className="mt-3 grid grid-cols-3 gap-2 border-t border-slate-100 pt-3">
-              <button onClick={() => open(`/expenses/${expense._id}`)} className="min-h-11 rounded-lg bg-blue-50 font-semibold text-blue-700">View</button>
-              <button onClick={() => open(`/expenses/${expense._id}/edit`)} className="min-h-11 rounded-lg bg-slate-100 font-semibold text-slate-700">Edit</button>
-              <button onClick={() => setDeleteTarget(expense)} className="min-h-11 rounded-lg bg-red-50 font-semibold text-red-700">Delete</button>
-            </div>
           </article>
         ))}
       </div>
+
+      <button type="button" onClick={() => open('/expenses/new')} className="fixed bottom-4 left-4 right-4 z-30 flex min-h-14 items-center justify-center gap-2 rounded-xl bg-cyan-600 text-lg font-extrabold text-white shadow-lg md:hidden"><Plus size={22} /> Add expense</button>
 
       {filtered.length === 0 && <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-slate-500">No expenses found.</div>}
 
