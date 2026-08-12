@@ -1,22 +1,20 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { FiArrowLeft, FiCheck, FiChevronDown, FiDownload, FiEdit3, FiEye, FiMail, FiSend, FiX } from 'react-icons/fi';
-import { message } from 'antd';
-import { bookingsApi, communicationsApi } from '../services/api';
+import { bookingsApi } from '../services/api';
 import BookingPaymentManagement from './BookingPaymentManagement';
 import BookingDocumentsUpload from './BookingDocumentsUpload';
 import ClientBookingWorkflowTab from './ClientBookingWorkflowTab';
-import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
+import EmailComposeModal from './EmailComposeModal';
 import EmailHistoryPanel from './EmailHistoryPanel';
 import BookingActivityTimeline from './BookingActivityTimeline';
 import BookingRequirementsPanel from './BookingRequirementsPanel';
 import BookingMedicalOverviewPanel from './BookingMedicalOverviewPanel';
 import BookingCeremoniesPanel from './BookingCeremoniesPanel';
 import BookingTasksPanel from './BookingTasksPanel';
-import { blobBase64, confirmationAction, confirmationLanguage, confirmationReason, historyReason, sendFailureDetails, sentEmailReceipt, BookingConfirmationLanguage } from './bookingConfirmationWorkflow';
-import { composeBookingConfirmationEmail } from './bookingConfirmationComposer';
-import { createBookingConfirmationPdf } from './BookingConfirmationPDF';
+import { confirmationLanguage, BookingConfirmationLanguage } from './bookingConfirmationWorkflow';
 import { useBookingConfirmationPdf } from './useBookingConfirmationPdf';
+import { useBookingConfirmationEmail } from './useBookingConfirmationEmail';
 import './BookingDetailView.css';
 
 const bookingConfirmationLanguageLabels: Record<BookingConfirmationLanguage, string> = {
@@ -109,11 +107,6 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [pdfLanguage, setPdfLanguage] = useState<BookingConfirmationLanguage>('en');
   const [requirementsRefreshKey, setRequirementsRefreshKey] = useState(0);
   const [requirementsStatus, setRequirementsStatus] = useState<{ missing: number; total: number } | null>(null);
-  const [isSendingConfirmation, setIsSendingConfirmation] = useState(false);
-  const [isPreparingConfirmationEmail, setIsPreparingConfirmationEmail] = useState(false);
-  const [confirmationEmailDraft, setConfirmationEmailDraft] = useState<EmailComposeInitialValues | null>(null);
-  const [showQuickSendConfirm, setShowQuickSendConfirm] = useState(false);
-  const [confirmationHistoryReason, setConfirmationHistoryReason] = useState('');
   const [activeTab, setActiveTab] = useState<'overview' | 'activity' | 'payments' | 'requirements' | 'medical' | 'ceremonies' | 'documents' | 'emails' | 'tasks' | 'workflow' | 'notes'>('overview');
   const [showBookingDates, setShowBookingDates] = useState(false);
   const [showClientDetails, setShowClientDetails] = useState(false);
@@ -135,6 +128,30 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     close: closePdfPreview,
     store: storeCanonicalBookingPdf,
   } = useBookingConfirmationPdf(bookingId, booking, pdfLanguage);
+  const {
+    sending: isSendingConfirmation,
+    preparing: isPreparingConfirmationEmail,
+    draft: confirmationEmailDraft,
+    quickSendOpen: showQuickSendConfirm,
+    reason: confirmationHistoryReason,
+    setReason: setConfirmationHistoryReason,
+    prepareReview: emailBookingConfirmation,
+    requestQuickSend: requestQuickSendBookingConfirmation,
+    sendQuick: sendBookingConfirmationEmail,
+    completeReviewedSend,
+    closeDraft: closeConfirmationEmailDraft,
+    closeQuickSend,
+  } = useBookingConfirmationEmail({
+    bookingId,
+    booking,
+    language: pdfLanguage,
+    storePdf: storeCanonicalBookingPdf,
+    onBookingUpdated: setBooking,
+    onSent: () => {
+      fetchBookingDetails();
+      setRequirementsRefreshKey((current) => current + 1);
+    },
+  });
 
   useEffect(() => {
     fetchBookingDetails();
@@ -167,24 +184,6 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     });
   };
 
-  const buildBookingConfirmationEmail = (language: BookingConfirmationLanguage) => composeBookingConfirmationEmail(booking, language);
-  const getDefaultConfirmationReason = () => {
-    return confirmationReason(booking);
-  };
-
-  const recordBookingConfirmationHistory = async (sentEmail: any, language: BookingConfirmationLanguage, reason?: string) => {
-    const resolvedReason = historyReason(reason, confirmationHistoryReason, booking);
-    const response = await bookingsApi.recordConfirmationHistory(bookingId, {
-      action: confirmationAction(booking),
-      reason: resolvedReason,
-      language,
-      sentEmailId: sentEmail?._id,
-      sentEmailDisplayId: sentEmail?.display_id,
-      sentAt: sentEmail?.sentAt || new Date().toISOString(),
-    });
-    setBooking(response.data);
-  };
-
   const handleBookingRelatedUpdate = () => {
     fetchBookingDetails();
     setRequirementsRefreshKey((current) => current + 1);
@@ -197,121 +196,6 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     navigate(`${routePrefix}/clients/${clientId}/edit`, {
       state: { returnTo: location.pathname },
     });
-  };
-
-  const showMissingClientEmailError = () => {
-    message.error('This client does not have an email address.');
-  };
-
-  const emailBookingConfirmation = async () => {
-    const client = booking?.clientId || booking?.clientDetails;
-    const retreat = booking?.retreatId || booking?.retreatDetails;
-    const recipientEmail = getClientEmail(client);
-    if (!recipientEmail) {
-      showMissingClientEmailError();
-      return;
-    }
-    setIsPreparingConfirmationEmail(true);
-    const reason = confirmationHistoryReason || getDefaultConfirmationReason();
-    setConfirmationHistoryReason(reason);
-    try {
-      const language = pdfLanguage;
-      const { blob, fileName } = await createBookingConfirmationPdf({ booking, language });
-      await storeCanonicalBookingPdf(blob, fileName);
-      const contentBase64 = await blobBase64(blob);
-      const email = await buildBookingConfirmationEmail(language);
-      setConfirmationEmailDraft({
-        to: recipientEmail,
-        subject: email.subject,
-        bodyText: email.bodyText,
-        templateId: email.templateId,
-        bookingFlowStepKey: email.bookingFlowStepKey || 'booking_confirmation_sent',
-        bookingFlowStatusOnSend: email.bookingFlowStatusOnSend || 'sent',
-        variables: email.variables,
-        clientId: client?._id,
-        retreatId: retreat?._id,
-        relatedEntityType: 'booking',
-        relatedEntityId: bookingId,
-        attachments: [{
-          fileName,
-          mimeType: 'application/pdf',
-          contentBase64,
-        }],
-      });
-    } catch (error) {
-      console.error('Error preparing booking confirmation email:', error);
-      alert('Unable to prepare booking confirmation email.');
-    } finally {
-      setIsPreparingConfirmationEmail(false);
-    }
-  };
-
-  const requestQuickSendBookingConfirmation = () => {
-    const clientData = booking?.clientId || booking?.clientDetails;
-    const recipientEmail = getClientEmail(clientData);
-    if (!recipientEmail) {
-      showMissingClientEmailError();
-      return;
-    }
-    setConfirmationHistoryReason(getDefaultConfirmationReason());
-    setShowQuickSendConfirm(true);
-  };
-
-  const sendBookingConfirmationEmail = async () => {
-    const clientData = booking?.clientId || booking?.clientDetails;
-    const retreatData = booking?.retreatId || booking?.retreatDetails;
-    const recipientEmail = getClientEmail(clientData);
-    let pdfSize = 0;
-    let payloadSize = 0;
-    if (!recipientEmail) {
-      showMissingClientEmailError();
-      return;
-    }
-
-    setIsSendingConfirmation(true);
-    setShowQuickSendConfirm(false);
-    try {
-      const language = pdfLanguage;
-      const { blob, fileName } = await createBookingConfirmationPdf({ booking, language });
-      await storeCanonicalBookingPdf(blob, fileName);
-      pdfSize = blob.size;
-      const contentBase64 = await blobBase64(blob);
-      const email = await buildBookingConfirmationEmail(language);
-      const payload = {
-        to: recipientEmail,
-        subject: email.subject,
-        bodyText: email.bodyText,
-        bodyHtml: email.bodyHtml,
-        templateId: email.templateId,
-        bookingId,
-        clientId: clientData?._id,
-        retreatId: retreatData?._id,
-        relatedEntityType: 'booking',
-        relatedEntityId: bookingId,
-        bookingFlowStepKey: email.bookingFlowStepKey || 'booking_confirmation_sent',
-        bookingFlowStatusOnSend: email.bookingFlowStatusOnSend || 'sent',
-        variables: email.variables,
-        attachments: [{
-          fileName,
-          mimeType: 'application/pdf',
-          contentBase64,
-        }],
-      };
-      payloadSize = new Blob([JSON.stringify(payload)]).size;
-      const response = await communicationsApi.sendEmail(payload);
-      if (response.data.status === 'failed') {
-        alert(`Email was logged but Gmail failed to send it: ${response.data.errorMessage || 'Unknown error'}`);
-        return;
-      }
-      await recordBookingConfirmationHistory(response.data, language, confirmationHistoryReason);
-      setRequirementsRefreshKey((current) => current + 1);
-      alert(sentEmailReceipt(response.data));
-    } catch (error: any) {
-      console.error('Error sending booking confirmation email:', error);
-      alert(sendFailureDetails(error, pdfSize, payloadSize));
-    } finally {
-      setIsSendingConfirmation(false);
-    }
   };
 
   if (isLoading) {
@@ -878,13 +762,8 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
               />
             </div>
           }
-          onClose={() => setConfirmationEmailDraft(null)}
-          onSent={async (sentEmail) => {
-            await recordBookingConfirmationHistory(sentEmail, pdfLanguage, confirmationHistoryReason);
-            setConfirmationEmailDraft(null);
-            fetchBookingDetails();
-            setRequirementsRefreshKey((current) => current + 1);
-          }}
+          onClose={closeConfirmationEmailDraft}
+          onSent={completeReviewedSend}
         />
       )}
 
@@ -924,7 +803,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
                 <button
                   type="button"
                   className="booking-confirm-secondary"
-                  onClick={() => setShowQuickSendConfirm(false)}
+                  onClick={closeQuickSend}
                   disabled={isSendingConfirmation}
                 >
                   Cancel
