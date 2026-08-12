@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useLocation } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, Circle, FileText, Filter, Link2, ListPlus, Lock, Mail, OctagonX, RefreshCw, Save, ThumbsDown, ThumbsUp, Unlock, Upload, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Circle, FileText, Filter, Link2, ListPlus, Lock, Mail, RefreshCw, Save, ThumbsDown, ThumbsUp, Unlock, Upload, X } from 'lucide-react';
 import { bookingDocumentsApi, bookingFlowApi, clientsApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { BookingDocument, BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, Client, MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
@@ -17,6 +17,13 @@ import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
 import { hasBookingActionLog, reviewRequestStatusToBookingStepStatus } from './BookingStepsMatrix.helpers';
 import { normalizeBookingStepKey, resolveConfiguredBookingStepActions } from './bookingStepActions';
 import { ArtifactLinkConfig, ReviewStepConfig, artifactStepConfigByKey, getArtifactLinkCandidates, getArtifactStepConfig, getReviewRequestLinkCandidates, getReviewStepConfig, reviewDecisionToClassName, reviewDecisionToLabel, reviewStatusToDecision, reviewStepConfigByKey } from './bookingStepMedicalLinks';
+import { formatStepDate as formatDate, formatStepDateInput as formatDateInput, formatStepDateTime as formatDateTime, formatStepPaymentOption as formatPaymentOption, getSimpleStepStatus, getStepItemDisplayValue as getItemDisplayValue, getStepItemGroup as getItemGroup, getStepStatusCellClass as getStatusCellClass, getStepStatusDateField as getStatusDateField, getStepStickyCellStyle as getStickyActionCellStyle, getStepTemplateGroup as getTemplateGroup } from './bookingStepPresentation';
+
+const getSimpleStatus = (item?: BookingFlowItem) => {
+  const status = getSimpleStepStatus(item);
+  const icon = status.icon === 'failed' ? <ThumbsDown className="h-5 w-5" /> : status.icon === 'attention' ? <AlertTriangle className="h-5 w-5" /> : status.icon === 'fulfilled' ? <ThumbsUp className="h-5 w-5" /> : <X className="h-5 w-5" />;
+  return { ...status, icon };
+};
 
 const getObjectId = (value: any): string => {
   if (!value) return '';
@@ -114,24 +121,6 @@ const RetreatMatrixClientAvatar: React.FC<{ client: Client | null; name: string 
   );
 };
 
-const formatDate = (value?: Date | string | null) => {
-  if (!value) return '';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString();
-};
-
-const formatDateTime = (value?: Date | string | null) => {
-  if (!value) return '';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '' : date.toLocaleString([], {
-    month: '2-digit',
-    day: '2-digit',
-    year: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-};
-
 const getActionLogDate = (log: BookingFlowActionLog) => log.performedAt || log.createdAt;
 
 const describeActionLog = (log: BookingFlowActionLog) => {
@@ -174,27 +163,6 @@ const ActionHistoryHover: React.FC<{ label: string; logs: BookingFlowActionLog[]
   );
 };
 
-const formatDateInput = (value?: Date | string | null) => {
-  if (!value) return '';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
-};
-
-const formatMoney = (amount?: number, currency?: string) => {
-  const numericAmount = Number(amount);
-  if (!Number.isFinite(numericAmount)) return '';
-  return `${numericAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency || ''}`.trim();
-};
-
-const formatPaymentOption = (payment: Payment) => {
-  const displayId = payment.display_id ? `#${payment.display_id}` : payment._id?.slice(-6) || 'Payment';
-  const amount = formatMoney(payment.amount, payment.currency);
-  const date = formatDate(payment.paymentDate);
-  const method = String(payment.paymentMethod || '').replace(/_/g, ' ');
-  const status = payment.status && payment.status !== 'completed' ? ` (${payment.status})` : '';
-  return [displayId, amount, date, method].filter(Boolean).join(' • ') + status;
-};
-
 const getLinkedArtifactIdFromItem = (item?: BookingFlowItem): string => {
   const metadata = item?.metadata || {};
   const direct = metadata.latestArtifactId || metadata.linkedMedicalArtifactId || metadata.receivedArtifactId;
@@ -230,23 +198,6 @@ const sortReviewRequests = (requests: MedicalReviewRequest[]) => {
 const sortMedicalArtifacts = (artifacts: MedicalArtifact[]) => {
   return [...artifacts].sort((a, b) => new Date(b.receivedAt || b.createdAt || 0).getTime() - new Date(a.receivedAt || a.createdAt || 0).getTime());
 };
-
-const solidifyAlphaHex = (value?: string): string | undefined => {
-  if (!value || !/^#[0-9a-fA-F]{8}$/.test(value)) return value;
-  const red = parseInt(value.slice(1, 3), 16);
-  const green = parseInt(value.slice(3, 5), 16);
-  const blue = parseInt(value.slice(5, 7), 16);
-  const alpha = parseInt(value.slice(7, 9), 16) / 255;
-  const blend = (channel: number) => Math.round(channel * alpha + 255 * (1 - alpha));
-  return `rgb(${blend(red)}, ${blend(green)}, ${blend(blue)})`;
-};
-
-const getStickyActionCellStyle = (style: React.CSSProperties | undefined, fallbackBackground: string): React.CSSProperties => ({
-  ...(style || {}),
-  backgroundColor: solidifyAlphaHex(String(style?.backgroundColor || '')) || style?.backgroundColor || fallbackBackground,
-  backgroundClip: 'padding-box',
-  boxShadow: '4px 0 10px rgba(15, 23, 42, 0.08)',
-});
 
 interface MatrixRow {
   key: string;
@@ -284,92 +235,6 @@ const statusOptions: BookingFlowItem['status'][] = [
   'waived',
   'scheduled',
 ];
-
-const fulfilledStatuses = new Set<BookingFlowItem['status']>(['received', 'reviewed', 'approved', 'caution', 'completed']);
-const failedStatuses = new Set<BookingFlowItem['status']>(['rejected', 'needs_resubmission', 'blocked']);
-const attentionStatuses = new Set<BookingFlowItem['status']>(['caution', 'sent_for_review', 'in_review']);
-
-const getStatusCellClass = (status?: BookingFlowItem['status']) => {
-  if (status === 'caution') return 'bg-orange-200 text-orange-950';
-  if (status === 'rejected' || status === 'needs_resubmission' || status === 'blocked') return 'bg-red-200 text-red-950';
-  if (status && fulfilledStatuses.has(status)) return 'bg-green-100 text-green-950';
-  if (status === 'sent' || status === 'sent_for_review' || status === 'in_review' || status === 'scheduled') return 'bg-red-50 text-red-900';
-  return 'bg-red-50 text-red-900';
-};
-
-const getSimpleStatus = (item?: BookingFlowItem) => {
-  if (!item) {
-    return {
-      label: 'Missing',
-      className: 'bg-red-50 text-red-600',
-      icon: <X className="h-5 w-5" />,
-    };
-  }
-  if (failedStatuses.has(item.status)) {
-    return {
-      label: item.status.replace(/_/g, ' '),
-      className: 'bg-red-100 text-red-800',
-      icon: <ThumbsDown className="h-5 w-5" />,
-    };
-  }
-  if (attentionStatuses.has(item.status)) {
-    return {
-      label: item.status.replace(/_/g, ' '),
-      className: 'bg-amber-50 text-amber-700',
-      icon: <AlertTriangle className="h-5 w-5" />,
-    };
-  }
-  if (fulfilledStatuses.has(item.status)) {
-    return {
-      label: item.status.replace(/_/g, ' '),
-      className: 'bg-green-50 text-green-700',
-      icon: <ThumbsUp className="h-5 w-5" />,
-    };
-  }
-  return {
-    label: item.status?.replace(/_/g, ' ') || 'pending',
-    className: 'bg-red-50 text-red-600',
-    icon: <X className="h-5 w-5" />,
-  };
-};
-
-const getStatusDateField = (status?: BookingFlowItem['status']): keyof BookingFlowItem | 'dueDate' => {
-  if (status === 'sent' || status === 'sent_for_review') return 'sentAt';
-  if (status === 'received') return 'receivedAt';
-  if (status === 'reviewed' || status === 'approved' || status === 'caution' || status === 'rejected' || status === 'needs_resubmission') return 'reviewedAt';
-  if (status === 'completed') return 'completedAt';
-  return 'dueDate';
-};
-
-const getItemDisplayValue = (item: BookingFlowItem) => {
-  if (item.status === 'pending' && !item.notes) return '';
-  const dateField = getStatusDateField(item.status);
-  const dateValue = item[dateField as keyof BookingFlowItem] as Date | string | null | undefined;
-  return formatDateTime(dateValue) || (item.status === 'pending' ? '' : item.status.replace(/_/g, ' '));
-};
-
-const titleizeGroup = (value?: string) => {
-  return titleizeBookingStepGroup(value);
-};
-
-const getTemplateGroup = (template?: Partial<BookingFlowTemplate> | null, fallbackCategory?: string) => {
-  const groupKey = String(template?.readinessGroup || fallbackCategory || template?.category || 'other').trim() || 'other';
-  return {
-    groupKey,
-    groupLabel: titleizeGroup(groupKey),
-    groupColor: (template as any)?.readinessGroupColor,
-  };
-};
-
-const getItemGroup = (item?: Partial<BookingFlowItem> | null, template?: Partial<BookingFlowTemplate> | null) => {
-  const metadata = item?.metadata || {};
-  const groupKey = String(metadata.readinessGroup || template?.readinessGroup || item?.category || template?.category || 'other').trim() || 'other';
-  return {
-    groupKey,
-    groupLabel: titleizeGroup(groupKey),
-    groupColor: (template as any)?.readinessGroupColor || metadata.readinessGroupColor,
-  };
-};
 
 const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const location = useLocation();
@@ -562,7 +427,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     const groups = new Map<string, MatrixRowGroup>();
     rows.forEach((row) => {
       const groupKey = row.groupKey || row.category || 'other';
-      const current = groups.get(groupKey) || { key: groupKey, label: row.groupLabel || titleizeGroup(groupKey), rows: [] };
+      const current = groups.get(groupKey) || { key: groupKey, label: row.groupLabel || titleizeBookingStepGroup(groupKey), rows: [] };
       if (!current.color && row.groupColor) current.color = row.groupColor;
       current.rows.push(row);
       groups.set(groupKey, current);
@@ -1633,7 +1498,8 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                     </td>
                     {bookings.map((booking) => {
                       const item = itemMap.get(`${getObjectId(booking)}:${row.key}`);
-                      const done = item?.status ? fulfilledStatuses.has(item.status) : false;
+                      const simpleStatus = getSimpleStatus(item);
+                      const done = getSimpleStepStatus(item).icon === 'fulfilled';
                       const dateField = item ? getStatusDateField(item.status) : 'dueDate';
                       const dateValue = item ? item[dateField as keyof BookingFlowItem] as Date | string | null | undefined : undefined;
                       const confirmedDateInputValue = formatDateInput(dateValue);
@@ -1641,7 +1507,6 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                       const hasPendingDateInput = item?._id && pendingDateInputValue !== undefined && pendingDateInputValue !== confirmedDateInputValue;
                       const itemActionLogs = item?._id ? actionLogMap.get(item._id) || [] : [];
                       const configuredActions = getConfiguredActions(item);
-                      const simpleStatus = getSimpleStatus(item);
                       const isPaymentReceivedStep = row.key === 'payment_received';
                       const bookingPayments = paymentsByClientId.get(getBookingClientId(booking)) || [];
                       const selectedPaymentId = String(item?.metadata?.paymentId || '');
