@@ -102,6 +102,7 @@
       "**/bookingStepCellModel.ts": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
       "**/BookingStepCellEditor.tsx": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
       "**/BookingStepMedicalControls.tsx": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
+      "**/BookingStepActionControls.tsx": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
       "**/cacheService.ts": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 }
     }
   },

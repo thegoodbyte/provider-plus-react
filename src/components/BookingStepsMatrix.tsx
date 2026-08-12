@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Link, useLocation } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, FileText, Filter, Link2, ListPlus, Lock, Mail, RefreshCw, Save, ThumbsDown, ThumbsUp, Unlock, Upload, X } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
+import { AlertTriangle, CheckCircle2, Filter, ListPlus, Lock, Mail, RefreshCw, Save, ThumbsDown, ThumbsUp, Unlock, X } from 'lucide-react';
 import { bookingDocumentsApi, bookingFlowApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { BookingDocument, BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
-import { resolveBookingStepUploadTarget, shouldShowArtifactUploadFallback } from './BookingStepsMatrix.helpers';
+import { resolveBookingStepUploadTarget } from './BookingStepsMatrix.helpers';
 import { getBookingStepColorStyles, getBookingStepToneWithColor } from '../utils/bookingStepColors';
 import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
 import { hasBookingActionLog } from './BookingStepsMatrix.helpers';
@@ -19,7 +19,6 @@ import { BookingStepMatrixRow as MatrixRow, buildBookingStepRows, filterBookingS
 import { indexBookingStepActionLogs, indexBookingStepDocuments, indexBookingStepItems, indexBookingStepPayments, indexBookingStepTemplates } from './bookingStepIndexes';
 import { indexBookingStepArtifactsByContext, indexBookingStepArtifactsById, indexBookingStepReviewsByArtifact, indexBookingStepReviewsByContext } from './bookingStepMedicalIndexes';
 import { buildBookingStepActionOptions, canSendBookingStepReminder as canSendReminder, canSendBookingStepRowEmail as rowCanSendEmail, getLinkedBookingStepArtifactId as getLinkedArtifactIdFromItem, humanizeBookingStepDocumentKey as humanizeDocumentKey, interpolateBookingStepActionUrl as interpolateActionUrl, resolveBookingStepDocumentType, resolveConfiguredBookingStepDocumentType } from './bookingStepControlRules';
-import BookingStepActionHistory from './BookingStepActionHistory';
 import { applyBookingStepDateUpdate, buildBookingStepDateUpdate, buildBookingStepNoteUpdates, buildBookingStepToggleUpdate, removeBookingStepDateDraft, shouldUpdateBookingStepStatus } from './bookingStepMutations';
 import { buildBookingStepPaymentSelection } from './bookingStepPaymentSelection';
 import { buildBookingStepReviewCreation, buildBookingStepReviewLink } from './bookingStepReviewMutations';
@@ -31,6 +30,7 @@ import { BookingStepArtifactLinkModal, BookingStepArtifactLinkModalState, Bookin
 import { buildBookingStepCellModel } from './bookingStepCellModel';
 import BookingStepCellEditor from './BookingStepCellEditor';
 import BookingStepMedicalControls from './BookingStepMedicalControls';
+import BookingStepActionControls from './BookingStepActionControls';
 
 const getSimpleStatus = (item?: BookingFlowItem) => {
   const status = getSimpleStepStatus(item);
@@ -851,156 +851,8 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                               onNoteChange={(value) => { if (!item._id) return; setNoteDrafts((current) => ({ ...current, [item._id!]: value })); setDirtyNoteIds((current) => ({ ...current, [item._id!]: true })); }}
                             >
                             <BookingStepMedicalControls item={item} reviewConfig={reviewStepConfig} configuredActions={configuredActions} isEditing={isEditing} saving={saving} existingRequestId={existingReviewRequestId} existingRequestDisplay={existingReviewRequestDisplay} decision={resolvedReviewDecision} notes={resolvedReviewNotes} reviewedAt={resolvedReviewReviewedAt} onCreate={() => openReviewRequestModal(booking, item, row)} onLink={() => openExistingReviewRequestLinkModal(booking, item, row)} />
-                            {configuredActions.map((action) => {
-                              const actionLogs = itemActionLogs.filter((log) => (log.actionKey || 'default_email') === action.key);
-                              const actionCount = actionLogs.length;
-                              const savingKey = action.type === 'upload' ? `upload:${item._id}:${action.key}` : `action:${item._id}:${action.key}`;
-                              return action.type === 'upload' ? (
-                                <label
-                                  key={action.key}
-                                  className={`inline-flex items-center justify-center gap-1 rounded-md border border-blue-200 bg-white px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50 ${!isEditing || saving === savingKey ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
-                                  title={isEditing ? 'Upload document for this booking step' : 'Unlock editing to upload documents'}
-                                >
-                                  <Upload className="h-3.5 w-3.5" />
-                                  {saving === savingKey ? '...' : actionCount > 0 && action.allowRepeat !== false ? `${action.label} again` : action.label}
-                                  <input
-                                    type="file"
-                                    className="hidden"
-                                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.heic,.heif"
-                                    multiple
-                                    disabled={!isEditing || Boolean(saving)}
-                                    onChange={(event) => {
-                                      uploadItemDocument(booking, item, action, event.target.files);
-                                      event.target.value = '';
-                                    }}
-                                  />
-                                  </label>
-                              ) : action.type === 'link_mrr' ? (
-                                <button
-                                  key={action.key}
-                                  type="button"
-                                  disabled={!isEditing || saving === savingKey}
-                                  onClick={() => openExistingReviewRequestLinkModal(booking, item, row, action)}
-                                  className="inline-flex items-center justify-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-100 disabled:opacity-50"
-                                  title={isEditing ? 'Link an existing medical review request' : 'Unlock editing to link a medical review request'}
-                                >
-                                  <Link2 className="h-3.5 w-3.5" />
-                                  {saving === savingKey ? '...' : actionCount > 0 && action.allowRepeat !== false ? `${action.label} again` : action.label}
-                                </button>
-                              ) : (
-                                <button
-                                  key={action.key}
-                                  type="button"
-                                  disabled={!isEditing || saving === savingKey}
-                                  onClick={() => runItemAction(item, action)}
-                                  className="inline-flex items-center justify-center gap-1 rounded-md border border-blue-200 bg-white px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
-                                  title={isEditing ? action.type : 'Unlock editing to run actions'}
-                                >
-                                  {action.type === 'email' && <Mail className="h-3.5 w-3.5" />}
-                                  {saving === savingKey ? '...' : actionCount > 0 && action.allowRepeat !== false ? `${action.label} again` : action.label}
-                                </button>
-                              );
-                            })}
-                            {canSendReminder(item, bookings) && (
-                              <>
-                                <button
-                                  type="button"
-                                  disabled={saving === `reminder-preview:${item._id}`}
-                                  onClick={() => openReminderPreview(item)}
-                                  className="inline-flex items-center justify-center gap-1 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-900 hover:bg-amber-100 disabled:opacity-50"
-                                  title={`Preview a reminder for ${item.title}`}
-                                >
-                                  <Mail className="h-3.5 w-3.5" />
-                                  {saving === `reminder-preview:${item._id}` ? 'Preparing...' : `Remind: ${item.title}`}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => openReminderAutomation(item)}
-                                  className={`inline-flex items-center justify-center gap-1 rounded-md border px-2 py-1 text-xs font-medium ${item.automationPaused ? 'border-gray-300 bg-gray-100 text-gray-600' : 'border-violet-200 bg-violet-50 text-violet-800 hover:bg-violet-100'}`}
-                                  title="View automated reminder sequence"
-                                >
-                                  <ListPlus className="h-3.5 w-3.5" />
-                                  {item.automationPaused ? 'Automation paused' : 'Automation'}
-                                </button>
-                              </>
-                            )}
-                            {shouldShowArtifactUploadFallback(artifactStepConfig, isEditing, configuredActions.some((action) => action.type === 'upload')) && (
-                              <label
-                                className={`inline-flex items-center justify-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 ${!isEditing ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
-                                title={isEditing ? `Upload a new ${artifactStepConfig?.label || 'artifact'} document` : 'Unlock editing to upload documents'}
-                              >
-                                <Upload className="h-3.5 w-3.5" />
-                                Upload {artifactStepConfig?.artifactType === 'medications_form' ? 'form' : 'new'}
-                                <input
-                                  type="file"
-                                  className="hidden"
-                                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.heic,.heif"
-                                  multiple
-                                  disabled={!isEditing || Boolean(saving)}
-                                  onChange={(event) => {
-                                    uploadItemDocument(booking, item, {
-                                      key: `artifact-upload:${item._id || row.key}`,
-                                      label: `Upload ${artifactStepConfig?.label || 'artifact'}`,
-                                      type: 'upload',
-                                    }, event.target.files);
-                                    event.target.value = '';
-                                  }}
-                                />
-                              </label>
-                            )}
-                            {configuredBookingDocumentType && isEditing && !configuredActions.some((action) => action.type === 'upload') && (
-                              <label className="inline-flex cursor-pointer items-center justify-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-800 hover:bg-blue-100" title={`Upload ${humanizeDocumentKey(configuredBookingDocumentType)} for this booking step`}>
-                                <Upload className="h-3.5 w-3.5" /> Upload {humanizeDocumentKey(configuredBookingDocumentType)}
-                                <input type="file" className="hidden" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.heic,.heif" multiple disabled={Boolean(saving)} onChange={(event) => {
-                                  uploadItemDocument(booking, item, { key: `document-upload:${item?._id || row.key}`, label: `Upload ${humanizeDocumentKey(configuredBookingDocumentType)}`, type: 'upload' }, event.target.files);
-                                  event.target.value = '';
-                                }} />
-                              </label>
-                            )}
-                            {relatedBookingDocument?._id && (
-                              <button
-                                type="button"
-                                onClick={() => window.location.assign('/admin/booking-documents')}
-                                className="inline-flex items-center justify-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-800 hover:bg-emerald-100"
-                                title="Open Document Library"
-                              >
-                                <FileText className="h-3.5 w-3.5" />
-                                Document #{relatedBookingDocument.display_id || 'linked'}
-                              </button>
-                            )}
-                            {relatedMedicalArtifactId && (
-                              <Link
-                                to={`/admin/medical-artifacts/${relatedMedicalArtifactId}`}
-                                className="inline-flex items-center justify-center gap-1 rounded-md border border-purple-200 bg-purple-50 px-2 py-1 text-xs font-medium text-purple-800 hover:bg-purple-100"
-                                title={`Open uploaded ${artifactStepConfig?.label || 'medical artifact'}`}
-                              >
-                                <FileText className="h-3.5 w-3.5" />
-                                Artifact #{relatedMedicalArtifact?.display_id || relatedMedicalArtifactId.slice(-6)}
-                              </Link>
-                            )}
-                            {!relatedMedicalArtifactId && artifactStepConfig && linkableArtifacts.length > 0 && (
-                              <button
-                                type="button"
-                                disabled={!isEditing}
-                                onClick={() => openArtifactLinkModal(booking, item, row, artifactStepConfig)}
-                                className="inline-flex items-center justify-center gap-1 rounded-md border border-amber-200 bg-amber-50 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 disabled:opacity-50"
-                                title={isEditing ? `Link an existing ${artifactStepConfig.label} artifact to this step` : 'Unlock editing to link an existing artifact'}
-                              >
-                                <FileText className="h-3.5 w-3.5" />
-                                Link existing
-                              </button>
-                            )}
+                            <BookingStepActionControls item={item} row={row} actions={configuredActions} logs={itemActionLogs} isEditing={isEditing} saving={saving} canRemind={canSendReminder(item, bookings)} artifactConfig={artifactStepConfig} configuredDocumentType={configuredBookingDocumentType} relatedDocument={relatedBookingDocument} relatedArtifact={relatedMedicalArtifact} relatedArtifactId={relatedMedicalArtifactId} linkableArtifactCount={linkableArtifacts.length} onRun={(action) => runItemAction(item, action)} onUpload={(action, files) => uploadItemDocument(booking, item, action, files)} onLinkMrr={(action) => openExistingReviewRequestLinkModal(booking, item, row, action)} onReminder={() => openReminderPreview(item)} onAutomation={() => openReminderAutomation(item)} onLinkArtifact={() => artifactStepConfig && openArtifactLinkModal(booking, item, row, artifactStepConfig)} onOpenDocuments={() => window.location.assign('/admin/booking-documents')} />
                               </BookingStepCellEditor>
-                              {itemActionLogs.length > 0 && (
-                                <div className="space-y-0.5 text-[11px] text-blue-800">
-                              {configuredActions
-                                .map((action) => ({ action, logs: itemActionLogs.filter((log) => (log.actionKey || 'default_email') === action.key) }))
-                                .filter(({ logs }) => logs.length > 0)
-                                .map(({ action, logs }) => (
-                                  <BookingStepActionHistory key={action.key} label={action.label} logs={logs} />
-                                ))}
-                                </div>
-                              )}
                             </>
                           ) : (
                             <span className="text-gray-300">-</span>
