@@ -12,11 +12,12 @@ import { getBookingStepColorStyles, getBookingStepToneWithColor } from '../utils
 import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
 import { hasBookingActionLog, reviewRequestStatusToBookingStepStatus } from './BookingStepsMatrix.helpers';
 import { normalizeBookingStepKey, resolveConfiguredBookingStepActions } from './bookingStepActions';
-import { ArtifactLinkConfig, ReviewStepConfig, artifactStepConfigByKey, getArtifactLinkCandidates, getArtifactStepConfig, getReviewRequestLinkCandidates, getReviewStepConfig, reviewDecisionToClassName, reviewDecisionToLabel, reviewStatusToDecision, reviewStepConfigByKey } from './bookingStepMedicalLinks';
+import { ArtifactLinkConfig, ReviewStepConfig, artifactStepConfigByKey, getArtifactLinkCandidates, getArtifactStepConfig, getReviewRequestLinkCandidates, getReviewStepConfig, reviewDecisionToClassName, reviewDecisionToLabel, reviewStatusToDecision } from './bookingStepMedicalLinks';
 import { formatStepDate as formatDate, formatStepDateInput as formatDateInput, formatStepDateTime as formatDateTime, formatStepPaymentOption as formatPaymentOption, getSimpleStepStatus, getStepItemDisplayValue as getItemDisplayValue, getStepStatusCellClass as getStatusCellClass, getStepStatusDateField as getStatusDateField, getStepStickyCellStyle as getStickyActionCellStyle } from './bookingStepPresentation';
 import { getBookingStepClient as getBookingClient, getBookingStepClientDisplayId as getClientDisplayId, getBookingStepClientEmail as getClientEmail, getBookingStepClientId as getBookingClientId, getBookingStepClientName as getClientName, getBookingStepClientPhone as getClientPhone, getBookingStepNumber as getBookingNumber, getBookingStepObjectId as getObjectId } from './bookingStepIdentity';
 import { BookingStepMatrixRow as MatrixRow, buildBookingStepRows, filterBookingStepRowGroups, groupBookingStepRows, numberBookingStepRows, searchBookingStepRows } from './bookingStepRows';
 import { indexBookingStepActionLogs, indexBookingStepDocuments, indexBookingStepItems, indexBookingStepPayments, indexBookingStepTemplates } from './bookingStepIndexes';
+import { indexBookingStepArtifactsByContext, indexBookingStepArtifactsById, indexBookingStepReviewsByArtifact, indexBookingStepReviewsByContext, makeBookingStepArtifactContextKey as makeArtifactContextKey, makeBookingStepReviewContextKey as makeReviewContextKey } from './bookingStepMedicalIndexes';
 
 const getSimpleStatus = (item?: BookingFlowItem) => {
   const status = getSimpleStepStatus(item);
@@ -124,33 +125,6 @@ const getLinkedArtifactIdFromItem = (item?: BookingFlowItem): string => {
   const ids = metadata.linkedMedicalArtifactIds;
   if (Array.isArray(ids) && ids.length > 0) return String(ids[ids.length - 1]);
   return '';
-};
-
-const getReviewRequestArtifactIds = (request: MedicalReviewRequest): string[] => {
-  return (request.artifactIds || []).map((artifact) => getObjectId(artifact)).filter(Boolean);
-};
-
-const makeReviewContextKey = (bookingId: string, config: ReviewStepConfig) => [
-  bookingId,
-  config.documentStage,
-  config.documentType,
-  config.artifactType,
-  config.requestType,
-].join(':');
-
-const makeArtifactContextKey = (bookingId: string, config: Pick<ReviewStepConfig, 'documentStage' | 'documentType' | 'artifactType'>) => [
-  bookingId,
-  config.documentStage,
-  config.documentType,
-  config.artifactType,
-].join(':');
-
-const sortReviewRequests = (requests: MedicalReviewRequest[]) => {
-  return [...requests].sort((a, b) => new Date(b.requestedAt || 0).getTime() - new Date(a.requestedAt || 0).getTime());
-};
-
-const sortMedicalArtifacts = (artifacts: MedicalArtifact[]) => {
-  return [...artifacts].sort((a, b) => new Date(b.receivedAt || b.createdAt || 0).getTime() - new Date(a.receivedAt || a.createdAt || 0).getTime());
 };
 
 const statusOptions: BookingFlowItem['status'][] = [
@@ -355,75 +329,10 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const actionLogMap = useMemo(() => indexBookingStepActionLogs(actionLogs), [actionLogs]);
   const bookingDocumentMap = useMemo(() => indexBookingStepDocuments(bookingDocuments), [bookingDocuments]);
 
-  const medicalArtifactById = useMemo(() => {
-    const map = new Map<string, MedicalArtifact>();
-    medicalArtifacts.forEach((artifact) => {
-      if (artifact._id) map.set(artifact._id, artifact);
-    });
-    return map;
-  }, [medicalArtifacts]);
-
-  const medicalArtifactsByBookingContext = useMemo(() => {
-    const map = new Map<string, MedicalArtifact[]>();
-    medicalArtifacts.forEach((artifact) => {
-      const bookingId = getObjectId(artifact.bookingId) || getObjectId(artifact.data?.bookingId || artifact.data?.booking_id);
-      if (!bookingId || !artifact.documentStage || !artifact.documentType || !artifact.artifactType) return;
-      const key = makeArtifactContextKey(bookingId, {
-        documentStage: artifact.documentStage,
-        documentType: artifact.documentType,
-        artifactType: artifact.artifactType,
-      });
-      const current = map.get(key) || [];
-      current.push(artifact);
-      map.set(key, current);
-    });
-    map.forEach((artifacts, key) => {
-      map.set(key, sortMedicalArtifacts(artifacts));
-    });
-    return map;
-  }, [medicalArtifacts]);
-
-  const reviewRequestsByArtifactId = useMemo(() => {
-    const map = new Map<string, MedicalReviewRequest[]>();
-    reviewRequests.forEach((request) => {
-      getReviewRequestArtifactIds(request).forEach((artifactId) => {
-        const current = map.get(artifactId) || [];
-        current.push(request);
-        map.set(artifactId, current);
-      });
-    });
-    map.forEach((requests, artifactId) => {
-      map.set(artifactId, sortReviewRequests(requests));
-    });
-    return map;
-  }, [reviewRequests]);
-
-  const reviewRequestsByBookingContext = useMemo(() => {
-    const map = new Map<string, MedicalReviewRequest[]>();
-    reviewRequests.forEach((request) => {
-      (request.artifactIds || []).forEach((artifact) => {
-        if (!artifact || typeof artifact === 'string') return;
-        const bookingId = getObjectId(artifact.bookingId);
-        if (!bookingId) return;
-        Object.values(reviewStepConfigByKey).forEach((config) => {
-          if (request.requestType !== config.requestType) return;
-          if (request.documentStage && request.documentStage !== config.documentStage) return;
-          if (request.documentType && request.documentType !== config.documentType) return;
-          if (artifact.documentStage && artifact.documentStage !== config.documentStage) return;
-          if (artifact.documentType && artifact.documentType !== config.documentType) return;
-          if (artifact.artifactType && artifact.artifactType !== config.artifactType) return;
-          const key = makeReviewContextKey(bookingId, config);
-          const current = map.get(key) || [];
-          current.push(request);
-          map.set(key, current);
-        });
-      });
-    });
-    map.forEach((requests, key) => {
-      map.set(key, sortReviewRequests(requests));
-    });
-    return map;
-  }, [reviewRequests]);
+  const medicalArtifactById = useMemo(() => indexBookingStepArtifactsById(medicalArtifacts), [medicalArtifacts]);
+  const medicalArtifactsByBookingContext = useMemo(() => indexBookingStepArtifactsByContext(medicalArtifacts), [medicalArtifacts]);
+  const reviewRequestsByArtifactId = useMemo(() => indexBookingStepReviewsByArtifact(reviewRequests), [reviewRequests]);
+  const reviewRequestsByBookingContext = useMemo(() => indexBookingStepReviewsByContext(reviewRequests), [reviewRequests]);
 
   const paymentsByClientId = useMemo(() => indexBookingStepPayments(payments), [payments]);
 
