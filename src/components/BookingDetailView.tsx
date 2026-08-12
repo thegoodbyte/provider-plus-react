@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiCheck, FiDownload, FiEdit3, FiEye, FiMail, FiSend, FiX } from 'react-icons/fi';
 import { bookingsApi } from '../services/api';
 import BookingPaymentManagement from './BookingPaymentManagement';
 import ClientBookingWorkflowTab from './ClientBookingWorkflowTab';
 import BookingDocumentsUpload from './BookingDocumentsUpload';
 import BookingConfirmationEmailDialogs from './BookingConfirmationEmailDialogs';
 import BookingOverviewPanel, { retreatTown } from './BookingOverviewPanel';
+import BookingDetailShell, { BookingDetailTab } from './BookingDetailShell';
 import EmailHistoryPanel from './EmailHistoryPanel';
 import BookingActivityTimeline from './BookingActivityTimeline';
 import BookingRequirementsPanel from './BookingRequirementsPanel';
@@ -22,8 +22,6 @@ interface BookingDetailViewProps {
   bookingId: string;
   onBack: () => void;
 }
-
-const HeaderIcon: React.FC<{ icon: any }> = ({ icon: IconComponent }) => <IconComponent />;
 
 const getClientName = (client: any) => {
   const explicitName = String(client?.fullName || client?.name || '').trim();
@@ -71,7 +69,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [pdfLanguage, setPdfLanguage] = useState<BookingConfirmationLanguage>('en');
   const [requirementsRefreshKey, setRequirementsRefreshKey] = useState(0);
   const [requirementsStatus, setRequirementsStatus] = useState<{ missing: number; total: number } | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'activity' | 'payments' | 'requirements' | 'medical' | 'ceremonies' | 'documents' | 'emails' | 'tasks' | 'workflow' | 'notes'>('overview');
+  const [activeTab, setActiveTab] = useState<BookingDetailTab>('overview');
   const pdfRef = useRef<HTMLDivElement>(null);
   const routePrefix = useMemo(() => {
     const firstSegment = location.pathname.split('/').filter(Boolean)[0];
@@ -172,180 +170,37 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const retreatCode = getRetreatCode(retreat);
   const retreatId = getObjectId(retreat);
   const retreatAddress = getRetreatAddress(retreat);
-  const tabs = [
-    { key: 'overview', label: 'Overview' },
-    { key: 'activity', label: 'Activity' },
-    { key: 'payments', label: 'Payments' },
-    { key: 'requirements', label: 'Requirements' },
-    { key: 'medical', label: 'Medical' },
-    { key: 'ceremonies', label: 'Ceremonies' },
-    { key: 'documents', label: 'Documents' },
-    { key: 'emails', label: 'Emails' },
-    { key: 'tasks', label: 'Tasks' },
-    { key: 'workflow', label: 'Booking Requirements' },
-    { key: 'notes', label: 'Notes' },
-  ] as const;
-
   return (
     <div className="booking-detail-container">
-      <div className="detail-header">
-        <button onClick={onBack} className="back-btn" title="Back to bookings" aria-label="Back to bookings">
-          <HeaderIcon icon={FiArrowLeft} />
-        </button>
-        <div className="booking-title-block">
-          <span className="booking-title-kicker">Booking Details</span>
-          <h1>Booking #{booking.bookingNumber || 'N/A'}</h1>
-        </div>
-        <div className="header-actions">
-          <select
-            value={pdfLanguage}
-            onChange={(e) => setPdfLanguage(e.target.value as BookingConfirmationLanguage)}
-            className="language-selector"
-            disabled={isGeneratingPDF}
-          >
-            <option value="pl">PL</option>
-            <option value="cz">CZ</option>
-            <option value="en">EN</option>
-          </select>
-          <button
-            onClick={() => navigate(`${routePrefix}/bookings/${bookingId}/edit`)}
-            className="pdf-btn"
-            title="Edit booking"
-            aria-label="Edit booking"
-            data-tooltip="Edit booking"
-          >
-            <HeaderIcon icon={FiEdit3} />
-            <span>Edit</span>
-          </button>
-          <button
-            onClick={previewPDF}
-            disabled={isPreviewingPDF}
-            className="pdf-btn"
-            title="Preview PDF"
-            aria-label="Preview PDF"
-            data-tooltip="Preview PDF"
-          >
-            <HeaderIcon icon={FiEye} />
-            <span>{isPreviewingPDF ? 'Previewing' : 'Preview'}</span>
-          </button>
-          <button
-            onClick={requestQuickSendBookingConfirmation}
-            disabled={isSendingConfirmation}
-            className="pdf-btn primary-action"
-            title="Send email with PDF attachment"
-            aria-label="Send email with PDF attachment"
-            data-tooltip="Quick send PDF"
-          >
-            <HeaderIcon icon={FiSend} />
-            <span>{isSendingConfirmation ? 'Sending' : 'Send'}</span>
-          </button>
-          <button
-            onClick={emailBookingConfirmation}
-            disabled={isPreparingConfirmationEmail}
-            className="pdf-btn"
-            title="Review email with PDF attachment"
-            aria-label="Review email with PDF attachment"
-            data-tooltip="Review email"
-          >
-            <HeaderIcon icon={FiMail} />
-            <span>{isPreparingConfirmationEmail ? 'Preparing' : 'Review'}</span>
-          </button>
-          <button
-            onClick={generatePDF}
-            disabled={isGeneratingPDF}
-            className="pdf-btn"
-            title="Download PDF"
-            aria-label="Download PDF"
-            data-tooltip="Download PDF"
-          >
-            <HeaderIcon icon={FiDownload} />
-            <span>{isGeneratingPDF ? 'Generating' : 'Download'}</span>
-          </button>
-        </div>
-      </div>
-
-      {previewUrl && (
-        <div className="booking-pdf-preview-backdrop" role="dialog" aria-modal="true" aria-label="Booking confirmation preview">
-          <div className="booking-pdf-preview-modal">
-            <div className="booking-pdf-preview-header">
-              <h3>Booking Confirmation Preview</h3>
-              <div className="booking-pdf-preview-actions">
-                <a href={previewUrl} download={previewFileName} className="edit-btn">
-                  Download
-                </a>
-                <button type="button" onClick={closePdfPreview} className="booking-pdf-preview-close" aria-label="Close PDF preview">
-                  <HeaderIcon icon={FiX} />
-                </button>
-              </div>
-            </div>
-            <iframe
-              src={previewUrl}
-              title={previewFileName || 'Booking confirmation preview'}
-              className="booking-pdf-preview-frame"
-            />
-          </div>
-        </div>
-      )}
+      <BookingDetailShell
+        bookingNumber={booking.bookingNumber}
+        clientName={clientName}
+        clientDisplayId={clientDisplayId}
+        retreatCode={retreatCode}
+        retreatId={retreatId}
+        bookingTypeCode={bookingTypeCode}
+        language={pdfLanguage}
+        activeTab={activeTab}
+        requirementsStatus={requirementsStatus}
+        generating={isGeneratingPDF}
+        previewing={isPreviewingPDF}
+        sending={isSendingConfirmation}
+        preparing={isPreparingConfirmationEmail}
+        previewUrl={previewUrl}
+        previewFileName={previewFileName}
+        onBack={onBack}
+        onLanguageChange={setPdfLanguage}
+        onEdit={() => navigate(`${routePrefix}/bookings/${bookingId}/edit`)}
+        onPreview={previewPDF}
+        onQuickSend={requestQuickSendBookingConfirmation}
+        onReview={emailBookingConfirmation}
+        onDownload={generatePDF}
+        onClosePreview={closePdfPreview}
+        onOpenRetreat={() => navigate(`${routePrefix}/retreats/${retreatId}`)}
+        onTabChange={setActiveTab}
+      />
 
       <div className="detail-content" ref={pdfRef}>
-
-        <div className="booking-info-strip" aria-label="Booking summary">
-          <div className="booking-info-item booking-info-client">
-            <span>Client</span>
-            <strong>{clientName}</strong>
-          </div>
-          {clientDisplayId && (
-            <div className="booking-info-item">
-              <span>Client ID</span>
-              <strong>#{clientDisplayId}</strong>
-            </div>
-          )}
-          <div className="booking-info-item">
-            <span>Retreat</span>
-            {retreatId ? (
-              <button
-                type="button"
-                className="booking-info-link"
-                onClick={() => navigate(`${routePrefix}/retreats/${retreatId}`)}
-                title={`Open retreat ${retreatCode}`}
-              >
-                {retreatCode}
-              </button>
-            ) : (
-              <strong>{retreatCode}</strong>
-            )}
-          </div>
-          <div className="booking-info-item booking-info-type">
-            <span>Type</span>
-            <strong>{bookingTypeCode}</strong>
-          </div>
-        </div>
-
-        <div className="booking-detail-tabs" role="tablist" aria-label="Booking sections">
-          {tabs.map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              className={`booking-detail-tab ${activeTab === tab.key ? 'active' : ''}`}
-              onClick={() => setActiveTab(tab.key)}
-              role="tab"
-              aria-selected={activeTab === tab.key}
-            >
-              <span>{tab.label}</span>
-              {tab.key === 'requirements' && requirementsStatus && (
-                requirementsStatus.missing > 0 ? (
-                  <span className="booking-requirements-tab-badge is-missing" aria-label={`${requirementsStatus.missing} missing requirements`}>
-                    {requirementsStatus.missing}
-                  </span>
-                ) : (
-                  <span className="booking-requirements-tab-badge is-complete" aria-label="All requirements complete">
-                    <HeaderIcon icon={FiCheck} />
-                  </span>
-                )
-              )}
-            </button>
-          ))}
-        </div>
 
         {activeTab === 'overview' && (
           <BookingOverviewPanel
