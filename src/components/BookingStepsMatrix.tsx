@@ -25,6 +25,7 @@ import { applyBookingStepDateUpdate, buildBookingStepDateUpdate, buildBookingSte
 import { buildBookingStepPaymentSelection } from './bookingStepPaymentSelection';
 import { buildBookingStepReviewCreation, buildBookingStepReviewLink } from './bookingStepReviewMutations';
 import { buildBookingStepArtifactLink, buildBookingStepArtifactUploadUpdate } from './bookingStepArtifactMutations';
+import { buildBookingStepAutomationToggle, buildBookingStepReminderPayload, formatBookingStepRowEmailSummary, getBookingStepDuplicateReminderPrompt, getBookingStepReminderFailure, getBookingStepRowEmailConfirmation } from './bookingStepCommunicationRules';
 
 const getSimpleStatus = (item?: BookingFlowItem) => {
   const status = getSimpleStepStatus(item);
@@ -623,21 +624,17 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
 
   const sendReminder = async (overrideDuplicate = false) => {
     if (!reminderState?.item?._id) return;
-    if (reminderState.duplicateBlocked && !overrideDuplicate) {
-      const lastSent = reminderState.lastReminderAt ? formatDateTime(reminderState.lastReminderAt) : 'recently';
-      if (!window.confirm(`A reminder was sent ${lastSent}. Send another reminder anyway?`)) return;
+    const duplicatePrompt = getBookingStepDuplicateReminderPrompt(reminderState, overrideDuplicate);
+    if (duplicatePrompt) {
+      if (!window.confirm(duplicatePrompt)) return;
       overrideDuplicate = true;
     }
     setSaving(`reminder-send:${reminderState.item._id}`);
     try {
-      const response = await bookingFlowApi.sendItemReminder(reminderState.item._id, {
-        subject: reminderState.subject,
-        bodyText: reminderState.bodyText,
-        followUpDate: reminderState.suggestedFollowUpDate,
-        overrideDuplicate,
-      });
-      if (response.data?.sentEmail?.status === 'failed') {
-        alert(response.data.sentEmail.errorMessage || 'The reminder could not be sent.');
+      const response = await bookingFlowApi.sendItemReminder(reminderState.item._id, buildBookingStepReminderPayload(reminderState, overrideDuplicate));
+      const failure = getBookingStepReminderFailure(response);
+      if (failure) {
+        alert(failure);
         return;
       }
       setReminderState(null);
@@ -665,11 +662,10 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
 
   const toggleReminderAutomation = async () => {
     if (!automationState?.item?._id) return;
-    const paused = !automationState.paused;
-    const reason = paused ? window.prompt('Why are reminders being paused for this client?', automationState.pauseReason || '') || '' : undefined;
+    const toggle = buildBookingStepAutomationToggle(automationState.paused, automationState.pauseReason || '', () => window.prompt('Why are reminders being paused for this client?', automationState.pauseReason || ''));
     setSaving(`automation-toggle:${automationState.item._id}`);
     try {
-      const response = await bookingFlowApi.setItemReminderAutomationPaused(automationState.item._id, { paused, reason });
+      const response = await bookingFlowApi.setItemReminderAutomationPaused(automationState.item._id, toggle);
       setAutomationState((current) => current ? { ...current, ...response.data } : current);
       await loadData(false);
     } finally {
@@ -679,14 +675,12 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
 
   const sendRowEmail = async (row: MatrixRow) => {
     if (!row.templateId) return;
-    const label = row.key === 'address_sent' ? 'address email' : `"${row.title}" email`;
-    if (!window.confirm(`Send ${label} to all participants in this retreat?`)) return;
+    if (!window.confirm(getBookingStepRowEmailConfirmation(row))) return;
 
     setSaving(`row-email:${row.key}`);
     try {
       const response = await bookingFlowApi.sendTemplateEmailToRetreat(retreatId, row.templateId);
-      const { sent = 0, failed = 0, skipped = 0 } = response.data || {};
-      alert(`Sent: ${sent}\nFailed: ${failed}\nSkipped: ${skipped}`);
+      alert(formatBookingStepRowEmailSummary(response.data));
       await loadData(false);
     } catch (error: any) {
       console.error('Error sending retreat step email:', error);
