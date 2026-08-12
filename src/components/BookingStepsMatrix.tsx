@@ -18,6 +18,7 @@ import { getBookingStepClient as getBookingClient, getBookingStepClientDisplayId
 import { BookingStepMatrixRow as MatrixRow, buildBookingStepRows, filterBookingStepRowGroups, groupBookingStepRows, numberBookingStepRows, searchBookingStepRows } from './bookingStepRows';
 import { indexBookingStepActionLogs, indexBookingStepDocuments, indexBookingStepItems, indexBookingStepPayments, indexBookingStepTemplates } from './bookingStepIndexes';
 import { indexBookingStepArtifactsByContext, indexBookingStepArtifactsById, indexBookingStepReviewsByArtifact, indexBookingStepReviewsByContext, makeBookingStepArtifactContextKey as makeArtifactContextKey, makeBookingStepReviewContextKey as makeReviewContextKey } from './bookingStepMedicalIndexes';
+import { bookingDocumentTypeByStep, buildBookingStepActionOptions, canSendBookingStepReminder as canSendReminder, canSendBookingStepRowEmail as rowCanSendEmail, getLinkedBookingStepArtifactId as getLinkedArtifactIdFromItem, humanizeBookingStepDocumentKey as humanizeDocumentKey, interpolateBookingStepActionUrl as interpolateActionUrl, resolveBookingStepDocumentType, resolveConfiguredBookingStepDocumentType } from './bookingStepControlRules';
 
 const getSimpleStatus = (item?: BookingFlowItem) => {
   const status = getSimpleStepStatus(item);
@@ -26,19 +27,6 @@ const getSimpleStatus = (item?: BookingFlowItem) => {
 };
 
 const normalizeDocumentKey = normalizeBookingStepKey;
-
-const humanizeDocumentKey = (value: string) => value
-  .split(/[_-]+/)
-  .filter(Boolean)
-  .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-  .join(' ');
-
-const bookingDocumentTypeByStep: Record<string, string> = {
-  contract_signed: 'contract',
-  ekg_received: 'ekg',
-  liver_received: 'liver_panel',
-  questionnaire_received: 'questionnaire',
-};
 
 const RetreatMatrixClientAvatar: React.FC<{ client: Client | null; name: string }> = ({ client, name }) => {
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(client?.profilePictureUrl || null);
@@ -116,15 +104,6 @@ const ActionHistoryHover: React.FC<{ label: string; logs: BookingFlowActionLog[]
       </span>
     </span>
   );
-};
-
-const getLinkedArtifactIdFromItem = (item?: BookingFlowItem): string => {
-  const metadata = item?.metadata || {};
-  const direct = metadata.latestArtifactId || metadata.linkedMedicalArtifactId || metadata.receivedArtifactId;
-  if (direct) return String(direct);
-  const ids = metadata.linkedMedicalArtifactIds;
-  if (Array.isArray(ids) && ids.length > 0) return String(ids[ids.length - 1]);
-  return '';
 };
 
 const statusOptions: BookingFlowItem['status'][] = [
@@ -696,13 +675,6 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
 
   const getConfiguredActions = useCallback((item?: BookingFlowItem) => resolveConfiguredBookingStepActions(item, templateMap, libraryTemplateMap), [templateMap, libraryTemplateMap]);
 
-  const interpolateActionUrl = (template: string, variables: Record<string, any> = {}) => {
-    return template.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_match, path) => {
-      const value = String(path).split('.').reduce((current: any, key: string) => current?.[key], variables);
-      return encodeURIComponent(value ?? '');
-    });
-  };
-
   const runItemAction = async (item: BookingFlowItem | undefined, action: BookingFlowAction) => {
     if (!item?._id) return;
     if (action.type === 'upload') return;
@@ -742,25 +714,14 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     }
   };
 
-  const resolveBookingDocumentType = (item: BookingFlowItem): string => {
-    const metadata = item.metadata || {};
-    return normalizeDocumentKey(
-      bookingDocumentTypeByStep[item.key]
-      || metadata.expectedBookingDocument
-      || metadata.expectedDocument
-      || metadata.expectedArtifact
-      || item.key,
-    );
-  };
-
   const uploadItemDocument = async (booking: any, item: BookingFlowItem | undefined, action: BookingFlowAction, files: FileList | null) => {
     if (!item?._id || !files?.length) return;
     const bookingId = getObjectId(booking);
     const clientId = getObjectId(booking.clientId || booking.client || item.clientId);
     const currentRetreatId = getObjectId(booking.retreatId || booking.retreat || item.retreatId) || retreatId;
-    const documentType = resolveBookingDocumentType(item);
+    const documentType = resolveBookingStepDocumentType(item);
     const artifactConfig = getArtifactStepConfig(item);
-    const configuredDocumentType = normalizeDocumentKey(bookingDocumentTypeByStep[item.key] || item.metadata?.expectedBookingDocument || item.metadata?.expectedDocument || (!artifactConfig ? item.metadata?.expectedArtifact : '') || '');
+    const configuredDocumentType = resolveConfiguredBookingStepDocumentType(item, Boolean(artifactConfig));
     const documentConfig = configuredDocumentType ? { documentType: configuredDocumentType, title: humanizeDocumentKey(configuredDocumentType) } : undefined;
     const uploadTarget = resolveBookingStepUploadTarget(artifactConfig, documentConfig);
     if (!bookingId || !clientId || !currentRetreatId) {
@@ -870,12 +831,6 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     await loadData(false);
   };
 
-  const canSendReminder = (item?: BookingFlowItem) => Boolean(
-    item?._id
-    && !['received', 'reviewed', 'approved', 'completed', 'waived'].includes(item.status)
-    && getClientEmail(bookings.find((booking) => getObjectId(booking) === getObjectId(item.bookingId)))
-  );
-
   const openReminderPreview = async (item?: BookingFlowItem) => {
     if (!item?._id) return;
     setSaving(`reminder-preview:${item._id}`);
@@ -964,28 +919,8 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     }
   };
 
-  const rowCanSendEmail = (row: MatrixRow) => Boolean(row.templateId && row.emailEnabled && row.emailTemplateId);
-
   const bookingActionOptions = useMemo(() => {
-    const seen = new Set<string>();
-    const options: Array<{ value: string; label: string; rowKey: string; actionKey: string }> = [];
-
-    items.forEach((item) => {
-      const actions = getConfiguredActions(item);
-      actions.forEach((action) => {
-        const value = `${item.key}::${action.key}`;
-        if (seen.has(value)) return;
-        seen.add(value);
-        options.push({
-          value,
-          rowKey: item.key,
-          actionKey: action.key,
-          label: `${item.title} · ${action.label}`,
-        });
-      });
-    });
-
-    return options;
+    return buildBookingStepActionOptions(items, getConfiguredActions);
   }, [items, getConfiguredActions]);
 
   const selectedBookingActionOption = useMemo(
@@ -1264,12 +1199,12 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                       const existingReviewRequest = relatedReviewRequests.find((request) => request._id === metadataReviewRequestId) || relatedReviewRequests[0];
                       const existingReviewRequestId = metadataReviewRequestId || existingReviewRequest?._id || '';
                       const existingReviewRequestDisplay = item?.metadata?.medicalReviewRequestDisplayId || existingReviewRequest?.display_id || '';
-                      const documentTypeForStep = item ? resolveBookingDocumentType(item) : normalizeDocumentKey(row.key);
+                      const documentTypeForStep = item ? resolveBookingStepDocumentType(item) : normalizeDocumentKey(row.key);
                       const relatedBookingDocument = bookingDocumentMap.get(`${getObjectId(booking)}:${documentTypeForStep}`)?.[0];
                       const artifactStepConfig = getArtifactStepConfig(row) || (reviewStepConfig ? artifactStepConfigByKey[reviewStepConfig.receivedStepKey] : undefined);
                       const configuredBookingDocumentType = row.key === 'questionnaire_sent'
                         ? ''
-                        : normalizeDocumentKey(bookingDocumentTypeByStep[row.key] || item?.metadata?.expectedBookingDocument || item?.metadata?.expectedDocument || (!artifactStepConfig ? item?.metadata?.expectedArtifact : '') || '');
+                        : item ? resolveConfiguredBookingStepDocumentType(item, Boolean(artifactStepConfig)) : normalizeDocumentKey(bookingDocumentTypeByStep[row.key] || '');
                       const linkableArtifacts = artifactStepConfig ? getArtifactLinkCandidates(booking, medicalArtifacts, artifactStepConfig) : [];
                       const relatedMedicalArtifact = linkedArtifactId
                         ? medicalArtifactById.get(linkedArtifactId)
@@ -1467,7 +1402,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                                 </button>
                               );
                             })}
-                            {canSendReminder(item) && (
+                            {canSendReminder(item, bookings) && (
                               <>
                                 <button
                                   type="button"
