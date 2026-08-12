@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, Filter, ListPlus, Lock, Mail, RefreshCw, Save, ThumbsDown, ThumbsUp, Unlock, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Filter, Lock, Mail, Save, ThumbsDown, ThumbsUp, Unlock, X } from 'lucide-react';
 import { bookingDocumentsApi, bookingFlowApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { BookingDocument, BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
@@ -31,6 +31,8 @@ import { buildBookingStepCellModel } from './bookingStepCellModel';
 import BookingStepCellEditor from './BookingStepCellEditor';
 import BookingStepMedicalControls from './BookingStepMedicalControls';
 import BookingStepActionControls from './BookingStepActionControls';
+import BookingStepsToolbar from './BookingStepsToolbar';
+import BookingStepsActionFilter from './BookingStepsActionFilter';
 
 const getSimpleStatus = (item?: BookingFlowItem) => {
   const status = getSimpleStepStatus(item);
@@ -656,65 +658,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 rounded-lg border border-gray-200 bg-white p-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900">Retreat Readiness</h2>
-          <p className="text-sm text-gray-500">
-            {viewMode === 'detail'
-              ? isEditing
-                ? 'Editing is unlocked. Changes stay unlocked until you explicitly lock readiness.'
-                : 'Read-only mode prevents accidental changes. Unlock editing to update status, date, notes, or actions.'
-              : 'Simple view shows only complete, pending, and problem status by color.'}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <div className="inline-flex rounded-md border border-gray-300 bg-white p-0.5">
-            <button
-              type="button"
-              onClick={() => setViewMode('detail')}
-              className={`rounded px-3 py-1.5 text-sm font-medium ${viewMode === 'detail' ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
-            >
-              Detail
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('simple')}
-              className={`rounded px-3 py-1.5 text-sm font-medium ${viewMode === 'simple' ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
-            >
-              Simple
-            </button>
-          </div>
-          {viewMode === 'detail' && (isEditing ? (
-            <button type="button" onClick={() => saveAllChanges(true)} disabled={saving === 'save-all'} className="inline-flex items-center gap-2 rounded-md bg-gray-900 px-3 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-50">
-              <Lock className="h-4 w-4" /> {saving === 'save-all' ? 'Saving...' : 'Save & Lock'}
-            </button>
-          ) : (
-            <button type="button" onClick={() => setIsEditing(true)} className="inline-flex items-center gap-2 rounded-md bg-gray-900 px-3 py-2 text-sm font-semibold text-white hover:bg-gray-800">
-              <Unlock className="h-4 w-4" /> Unlock Editing
-            </button>
-          ))}
-          <button onClick={() => loadData()} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
-            <RefreshCw className="h-4 w-4" />
-            Refresh
-          </button>
-          <button
-            type="button"
-            onClick={generateSteps}
-            disabled={saving === 'generate'}
-            title="Create booking steps that are configured for this retreat but do not exist yet"
-            className="inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            <ListPlus className={`h-4 w-4 ${saving === 'generate' ? 'animate-pulse' : ''}`} />
-            {saving === 'generate' ? 'Generating...' : 'Generate Missing Steps'}
-          </button>
-        </div>
-      </div>
-
-      {toolbarMessage && (
-        <div className={`rounded-md border px-4 py-2 text-sm ${toolbarMessage.startsWith('Unable') ? 'border-red-200 bg-red-50 text-red-700' : 'border-blue-200 bg-blue-50 text-blue-800'}`}>
-          {toolbarMessage}
-        </div>
-      )}
+      <BookingStepsToolbar viewMode={viewMode} isEditing={isEditing} saving={saving} message={toolbarMessage} onViewMode={setViewMode} onUnlock={() => setIsEditing(true)} onSaveAndLock={() => saveAllChanges(true)} onRefresh={() => loadData()} onGenerate={generateSteps} />
 
       <div className="max-h-[calc(100vh-220px)] overflow-auto rounded-lg border border-gray-300 bg-white">
         <table className="min-w-full border-separate border-spacing-0 text-sm">
@@ -876,41 +820,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
         </table>
       </div>
 
-      {actionFilterOpen && createPortal(
-        <>
-          <button type="button" className="fixed inset-0 z-[1090] cursor-default bg-transparent" onClick={() => setActionFilterOpen(false)} aria-label="Close action filter" />
-          <div className="fixed z-[1100] w-[340px] rounded-lg border border-gray-300 bg-white normal-case shadow-2xl" style={{ top: actionFilterPosition.top, left: actionFilterPosition.left }} role="dialog" aria-label="Filter booking actions">
-            <div className="border-b border-gray-200 p-3">
-              <div className="text-sm font-semibold text-gray-900">Filter booking actions</div>
-              <input autoFocus value={actionFilterSearch} onChange={(event) => setActionFilterSearch(event.target.value)} placeholder="Search actions" className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100" />
-            </div>
-            <div className="flex items-center justify-between border-b border-gray-100 px-3 py-2 text-xs font-semibold">
-              <label className="flex cursor-pointer items-center gap-2 text-gray-700">
-                <input type="checkbox" checked={actionFilterDraft.length === rows.length && rows.length > 0} onChange={(event) => setActionFilterDraft(event.target.checked ? rows.map((row) => row.key) : [])} className="h-4 w-4 rounded border-gray-300 text-blue-600" />
-                Select all
-              </label>
-              <span className="text-gray-500">{actionFilterDraft.length} of {rows.length}</span>
-            </div>
-            <div className="max-h-80 space-y-0.5 overflow-y-auto p-2">
-              {visibleActionFilterRows.map((row) => {
-                const originalIndex = rows.findIndex((candidate) => candidate.key === row.key);
-                return (
-                  <label key={row.key} className="flex cursor-pointer items-start gap-2 rounded px-2 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50">
-                    <input type="checkbox" checked={actionFilterDraft.includes(row.key)} onChange={() => setActionFilterDraft((current) => current.includes(row.key) ? current.filter((key) => key !== row.key) : [...current, row.key])} className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600" />
-                    <span><span className="mr-1 text-gray-400">{originalIndex + 1}.</span>{row.title}</span>
-                  </label>
-                );
-              })}
-              {visibleActionFilterRows.length === 0 && <div className="px-2 py-6 text-center text-sm text-gray-500">No actions match your search.</div>}
-            </div>
-            <div className="flex justify-end gap-2 border-t border-gray-200 p-3">
-              <button type="button" onClick={() => setActionFilterOpen(false)} className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Cancel</button>
-              <button type="button" onClick={() => { setSelectedActionKeys(actionFilterDraft.length === rows.length ? null : actionFilterDraft); setActionFilterOpen(false); }} className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">Apply filter</button>
-            </div>
-          </div>
-        </>,
-        document.body
-      )}
+      {actionFilterOpen && <BookingStepsActionFilter rows={rows} visibleRows={visibleActionFilterRows} draft={actionFilterDraft} search={actionFilterSearch} position={actionFilterPosition} onDraft={setActionFilterDraft} onSearch={setActionFilterSearch} onClose={() => setActionFilterOpen(false)} onApply={(selection) => { setSelectedActionKeys(selection); setActionFilterOpen(false); }} />}
       {composeState && (
         <EmailComposeModal
           title={`Send ${composeState.item.title}`}
