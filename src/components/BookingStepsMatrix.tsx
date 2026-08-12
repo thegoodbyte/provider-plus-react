@@ -8,17 +8,14 @@ import { BookingDocument, BookingFlowAction, BookingFlowActionLog, BookingFlowIt
 import LoadingSpinner from './LoadingSpinner';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 import { resolveBookingStepUploadTarget, shouldShowArtifactUploadFallback } from './BookingStepsMatrix.helpers';
-import {
-  getBookingStepColorStyles,
-  getBookingStepToneWithColor,
-  titleizeBookingStepGroup,
-} from '../utils/bookingStepColors';
+import { getBookingStepColorStyles, getBookingStepToneWithColor } from '../utils/bookingStepColors';
 import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
 import { hasBookingActionLog, reviewRequestStatusToBookingStepStatus } from './BookingStepsMatrix.helpers';
 import { normalizeBookingStepKey, resolveConfiguredBookingStepActions } from './bookingStepActions';
 import { ArtifactLinkConfig, ReviewStepConfig, artifactStepConfigByKey, getArtifactLinkCandidates, getArtifactStepConfig, getReviewRequestLinkCandidates, getReviewStepConfig, reviewDecisionToClassName, reviewDecisionToLabel, reviewStatusToDecision, reviewStepConfigByKey } from './bookingStepMedicalLinks';
-import { formatStepDate as formatDate, formatStepDateInput as formatDateInput, formatStepDateTime as formatDateTime, formatStepPaymentOption as formatPaymentOption, getSimpleStepStatus, getStepItemDisplayValue as getItemDisplayValue, getStepItemGroup as getItemGroup, getStepStatusCellClass as getStatusCellClass, getStepStatusDateField as getStatusDateField, getStepStickyCellStyle as getStickyActionCellStyle, getStepTemplateGroup as getTemplateGroup } from './bookingStepPresentation';
+import { formatStepDate as formatDate, formatStepDateInput as formatDateInput, formatStepDateTime as formatDateTime, formatStepPaymentOption as formatPaymentOption, getSimpleStepStatus, getStepItemDisplayValue as getItemDisplayValue, getStepStatusCellClass as getStatusCellClass, getStepStatusDateField as getStatusDateField, getStepStickyCellStyle as getStickyActionCellStyle } from './bookingStepPresentation';
 import { getBookingStepClient as getBookingClient, getBookingStepClientDisplayId as getClientDisplayId, getBookingStepClientEmail as getClientEmail, getBookingStepClientId as getBookingClientId, getBookingStepClientName as getClientName, getBookingStepClientPhone as getClientPhone, getBookingStepNumber as getBookingNumber, getBookingStepObjectId as getObjectId, getBookingStepPaymentClientId as getPaymentClientId } from './bookingStepIdentity';
+import { BookingStepMatrixRow as MatrixRow, buildBookingStepRows, filterBookingStepRowGroups, groupBookingStepRows, numberBookingStepRows, searchBookingStepRows } from './bookingStepRows';
 
 const getSimpleStatus = (item?: BookingFlowItem) => {
   const status = getSimpleStepStatus(item);
@@ -154,26 +151,6 @@ const sortReviewRequests = (requests: MedicalReviewRequest[]) => {
 const sortMedicalArtifacts = (artifacts: MedicalArtifact[]) => {
   return [...artifacts].sort((a, b) => new Date(b.receivedAt || b.createdAt || 0).getTime() - new Date(a.receivedAt || a.createdAt || 0).getTime());
 };
-
-interface MatrixRow {
-  key: string;
-  title: string;
-  order: number;
-  category?: BookingFlowTemplate['category'] | BookingFlowItem['category'];
-  groupKey: string;
-  groupLabel: string;
-  groupColor?: string;
-  templateId?: string;
-  emailEnabled?: boolean;
-  emailTemplateId?: BookingFlowTemplate['emailTemplateId'];
-}
-
-interface MatrixRowGroup {
-  key: string;
-  label: string;
-  color?: string;
-  rows: MatrixRow[];
-}
 
 const statusOptions: BookingFlowItem['status'][] = [
   'pending',
@@ -345,59 +322,9 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     }
   };
 
-  const rows = useMemo<MatrixRow[]>(() => {
-    const rowMap = new Map<string, MatrixRow>();
-    templates.forEach((template) => {
-      const group = getTemplateGroup(template);
-      rowMap.set(template.key, {
-        key: template.key,
-        title: template.title,
-        order: template.order || 0,
-        category: template.category,
-        ...group,
-        templateId: template._id,
-        emailEnabled: template.emailEnabled,
-        emailTemplateId: template.emailTemplateId,
-      });
-    });
-    items.forEach((item) => {
-      const template = typeof item.templateId === 'object' ? item.templateId : null;
-      const existing = rowMap.get(item.key);
-      const group = getItemGroup(item, template || existing);
-      rowMap.set(item.key, {
-        ...existing,
-        key: item.key,
-        title: item.title,
-        order: item.order || 0,
-        category: item.category || existing?.category || template?.category,
-        ...group,
-        templateId: existing?.templateId || template?._id || (typeof item.templateId === 'string' ? item.templateId : undefined),
-        emailEnabled: existing?.emailEnabled || item.emailEnabled || template?.emailEnabled,
-        emailTemplateId: existing?.emailTemplateId || item.emailTemplateId || template?.emailTemplateId,
-      });
-    });
-    return Array.from(rowMap.values()).sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
-  }, [items, templates]);
-
-  const groupedRows = useMemo<MatrixRowGroup[]>(() => {
-    const groups = new Map<string, MatrixRowGroup>();
-    rows.forEach((row) => {
-      const groupKey = row.groupKey || row.category || 'other';
-      const current = groups.get(groupKey) || { key: groupKey, label: row.groupLabel || titleizeBookingStepGroup(groupKey), rows: [] };
-      if (!current.color && row.groupColor) current.color = row.groupColor;
-      current.rows.push(row);
-      groups.set(groupKey, current);
-    });
-    return Array.from(groups.values());
-  }, [rows]);
-
-  const filteredGroupedRows = useMemo<MatrixRowGroup[]>(() => {
-    if (selectedActionKeys === null) return groupedRows;
-    const selected = new Set(selectedActionKeys);
-    return groupedRows
-      .map((group) => ({ ...group, rows: group.rows.filter((row) => selected.has(row.key)) }))
-      .filter((group) => group.rows.length > 0);
-  }, [groupedRows, selectedActionKeys]);
+  const rows = useMemo(() => buildBookingStepRows(templates, items), [items, templates]);
+  const groupedRows = useMemo(() => groupBookingStepRows(rows), [rows]);
+  const filteredGroupedRows = useMemo(() => filterBookingStepRowGroups(groupedRows, selectedActionKeys), [groupedRows, selectedActionKeys]);
 
   const openActionFilter = () => {
     if (actionFilterOpen) {
@@ -414,10 +341,10 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     setActionFilterOpen(true);
   };
 
-  const visibleActionFilterRows = rows.filter((row) => row.title.toLowerCase().includes(actionFilterSearch.trim().toLowerCase()));
+  const visibleActionFilterRows = searchBookingStepRows(rows, actionFilterSearch);
 
   const actionNumberByKey = useMemo(
-    () => new Map(rows.map((row, index) => [row.key, index + 1])),
+    () => numberBookingStepRows(rows),
     [rows]
   );
 
