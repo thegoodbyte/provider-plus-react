@@ -1423,8 +1423,8 @@ export const bookingFlowApi = {
   updateReminderSchedule: (id: string, data: { scheduledFor?: string; status?: 'scheduled' | 'paused' | 'cancelled' }) =>
     api.patch(`/booking-flow/reminder-automation/schedules/${id}`, data),
   getMedicationStopPlan: (bookingId: string) => api.get(`/booking-flow/bookings/${bookingId}/medication-stop-plan`),
-  saveMedicationStopPlan: (bookingId: string, entries: Record<string, any>[]) =>
-    api.put(`/booking-flow/bookings/${bookingId}/medication-stop-plan`, { entries }),
+  saveMedicationStopPlan: (bookingId: string, entries: Record<string, any>[], allClear = false, allClearNote = '') =>
+    api.put(`/booking-flow/bookings/${bookingId}/medication-stop-plan`, { entries, allClear, allClearNote }),
   getItemActionLogs: (id: string) => cachedGet<BookingFlowActionLog[]>(
     `booking-flow:item-action-logs:${id}`,
     () => api.get<BookingFlowActionLog[]>(`/booking-flow/items/${id}/action-logs`)
