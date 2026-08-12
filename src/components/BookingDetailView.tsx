@@ -15,6 +15,7 @@ import { TaskForm } from './Tasks/TaskForm';
 import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
 import { mergeArtifacts } from './bookingRequirementRows';
 import BookingRequirementsPanel from './BookingRequirementsPanel';
+import { groupMedicalArtifacts, loadBookingMedicalOverview, requiredEntryRows } from './bookingMedicalOverviewData';
 import { createBookingConfirmationPdf } from './BookingConfirmationPDF';
 import { Task, CreateTaskDto, taskService } from '../services/taskService';
 import { CeremonyParticipant, MedicalArtifact, MedicalReviewRequest } from '../types';
@@ -45,8 +46,6 @@ const medicalStageLabels: Record<MedicalArtifact['documentStage'], string> = {
 };
 
 const medicalStageOrder: MedicalArtifact['documentStage'][] = ['entry', 'pre_ceremony', 'in_ceremony', 'post_ceremony', 'other', 'additional'];
-const requiredEntryDocumentTypes: MedicalArtifact['documentType'][] = ['EKG', 'Liver'];
-
 const escapeHtml = (value: any) =>
   String(value ?? '').replace(/[&<>"']/g, (char) => ({
     '&': '&amp;',
@@ -453,37 +452,11 @@ const BookingMedicalOverviewPanel: React.FC<{
   const [uploadRequest, setUploadRequest] = useState<{ stage: NonNullable<MedicalArtifact['documentStage']>; key: number } | null>(null);
 
   const loadMedicalOverview = async () => {
-    const loadStart = performance.now();
-    const timings: Record<string, number> = {};
     setLoading(true);
     setError('');
     try {
-      const itemsStart = performance.now();
-      const itemsResponse = await bookingFlowApi.getItems({ bookingId });
-      setMedicationPlan((itemsResponse.data || []).filter((item: any) => item.metadata?.medicationStopPlan && item.status !== 'cancelled'));
-      timings.items = performance.now() - itemsStart;
-      const bookingFlowFilters = buildBookingFlowArtifactFilters(itemsResponse.data || []);
-      const artifactsStart = performance.now();
-      const artifactResponses = await Promise.all([
-        medicalArtifactsApi.getForBooking(bookingId),
-        medicalArtifactsApi.getAll({ bookingId, ...bookingFlowFilters }),
-        medicalArtifactsApi.getAll({ bookingId }),
-        clientId && retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId, ...bookingFlowFilters }) : Promise.resolve({ data: [] }),
-        clientId ? medicalArtifactsApi.getAll({ clientId, ...bookingFlowFilters }) : Promise.resolve({ data: [] }),
-        clientId ? medicalArtifactsApi.getAll({ clientId }) : Promise.resolve({ data: [] }),
-      ]);
-      timings.artifacts = performance.now() - artifactsStart;
-      const loadedArtifacts = mergeArtifacts(artifactResponses.map((response) => response.data || []))
-        .filter((artifact) => isArtifactRelevantToBooking(artifact, bookingId, retreatId))
-        .sort(compareArtifactsForDisplay);
-      const reviewLoad = await loadReviewsByArtifactIds(loadedArtifacts.map((artifact) => artifact._id).filter(Boolean) as string[]);
-      timings.reviews = reviewLoad.duration;
-      setArtifacts(loadedArtifacts);
-      setReviewsByArtifact(reviewLoad.reviewsByArtifact);
-      timings.total = performance.now() - loadStart;
-      timings.reviewCount = reviewLoad.count;
-      timings.artifactCount = loadedArtifacts.length;
-      logLoadTimings('booking medical overview', timings);
+      const result = await loadBookingMedicalOverview(bookingId, clientId, retreatId);
+      setMedicationPlan(result.medicationPlan); setArtifacts(result.artifacts); setReviewsByArtifact(result.reviewsByArtifact);
     } catch (loadError: any) {
       setError(loadError?.response?.data?.message || loadError?.message || 'Unable to load booking medical records.');
     } finally {
@@ -495,20 +468,8 @@ const BookingMedicalOverviewPanel: React.FC<{
     loadMedicalOverview();
   }, [bookingId, clientId, retreatId, refreshKey]);
 
-  const artifactsByStage = medicalStageOrder.reduce((acc, stage) => {
-    acc[stage] = artifacts.filter((artifact) => (artifact.documentStage || 'entry') === stage);
-    return acc;
-  }, {} as Record<MedicalArtifact['documentStage'], MedicalArtifact[]>);
-
-  const entryArtifacts = artifactsByStage.entry || [];
-  const requiredRows = requiredEntryDocumentTypes.map((documentType) => {
-    const expectedArtifactType = documentType === 'EKG' ? 'ekg' : 'liver_panel';
-    const match = entryArtifacts.find((artifact) =>
-      artifact.artifactType === expectedArtifactType
-      || String(artifact.documentType || '').toLowerCase() === documentType.toLowerCase()
-    );
-    return { documentType, artifact: match, review: match ? getLatestReviewForArtifact(match, reviewsByArtifact) : undefined };
-  });
+  const artifactsByStage = groupMedicalArtifacts(artifacts);
+  const requiredRows = requiredEntryRows(artifacts, reviewsByArtifact);
 
   return (
     <div className="booking-medical-panel">
