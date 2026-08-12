@@ -72,6 +72,7 @@
       "**/BookingRequirementsPanel.tsx": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
       "**/bookingMedicalOverviewData.ts": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
       "**/BookingMedicalOverviewPanel.tsx": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
+      "**/BookingCeremoniesPanel.tsx": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
       "**/cacheService.ts": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 }
     }
   },

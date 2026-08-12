@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { FiArrowLeft, FiCheck, FiChevronDown, FiDownload, FiEdit3, FiEye, FiMail, FiSend, FiX } from 'react-icons/fi';
 import { message } from 'antd';
-import { bookingsApi, bookingFlowApi, ceremoniesApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { bookingsApi, communicationsApi } from '../services/api';
 import BookingPaymentManagement from './BookingPaymentManagement';
 import BookingDocumentsUpload from './BookingDocumentsUpload';
 import ClientBookingWorkflowTab from './ClientBookingWorkflowTab';
@@ -11,13 +11,11 @@ import EmailHistoryPanel from './EmailHistoryPanel';
 import BookingActivityTimeline from './BookingActivityTimeline';
 import { TaskList } from './Tasks/TaskList';
 import { TaskForm } from './Tasks/TaskForm';
-import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
-import { mergeArtifacts } from './bookingRequirementRows';
 import BookingRequirementsPanel from './BookingRequirementsPanel';
 import BookingMedicalOverviewPanel from './BookingMedicalOverviewPanel';
+import BookingCeremoniesPanel from './BookingCeremoniesPanel';
 import { createBookingConfirmationPdf } from './BookingConfirmationPDF';
 import { Task, CreateTaskDto, taskService } from '../services/taskService';
-import { CeremonyParticipant, MedicalArtifact, MedicalReviewRequest } from '../types';
 import './BookingDetailView.css';
 
 type BookingConfirmationLanguage = 'pl' | 'cz' | 'en';
@@ -34,7 +32,6 @@ interface BookingDetailViewProps {
 
 const HeaderIcon: React.FC<{ icon: any }> = ({ icon: IconComponent }) => <IconComponent />;
 
-const reviewedStatuses = new Set(['reviewed', 'approved', 'completed', 'caution', 'rejected', 'needs_resubmission']);
 const escapeHtml = (value: any) =>
   String(value ?? '').replace(/[&<>"']/g, (char) => ({
     '&': '&amp;',
@@ -173,20 +170,6 @@ const formatSentEmailReceipt = (sentEmail: any) => {
   return lines.join('\n');
 };
 
-const getArtifactTime = (artifact: MedicalArtifact) =>
-  new Date(artifact.receivedAt || artifact.createdAt || 0).getTime();
-
-const hasArtifactFiles = (artifact: MedicalArtifact) => (artifact.files || []).length > 0;
-
-const compareArtifactsForDisplay = (a: MedicalArtifact, b: MedicalArtifact) => {
-  const fileScore = Number(hasArtifactFiles(b)) - Number(hasArtifactFiles(a));
-  if (fileScore !== 0) return fileScore;
-  return getArtifactTime(b) - getArtifactTime(a);
-};
-
-const getReviewTime = (review: MedicalReviewRequest) =>
-  new Date(review.reviewedAt || review.requestedAt || review.createdAt || 0).getTime();
-
 const getObjectId = (value: any) => typeof value === 'object' ? value?._id || value?.id : value;
 
 const getClientEmail = (client: any) => String(client?.email || '').trim();
@@ -282,248 +265,6 @@ const bookingConfirmationEmailCopy: Record<BookingConfirmationLanguage, {
       specialRequests: 'Specjalne prośby',
     },
   },
-};
-
-const formatShortDateTime = (value?: Date | string) => {
-  if (!value) return 'N/A';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return 'N/A';
-  return date.toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-};
-
-const getReviewDecisionText = (review?: MedicalReviewRequest) =>
-  review?.reviewDecision || review?.decision || (review?.status && reviewedStatuses.has(review.status) ? review.status : 'No decision');
-
-const getReviewDecisionClass = (review?: MedicalReviewRequest) => {
-  const decision = String(getReviewDecisionText(review)).toLowerCase();
-  if (decision.includes('ok') || decision.includes('approved') || decision.includes('completed')) return 'medical-decision-ok';
-  if (decision.includes('caution') || decision.includes('need')) return 'medical-decision-caution';
-  if (decision.includes('not') || decision.includes('declined') || decision.includes('reject')) return 'medical-decision-declined';
-  return 'medical-decision-pending';
-};
-
-const getLatestReviewForArtifact = (artifact: MedicalArtifact, reviewsByArtifact: Record<string, MedicalReviewRequest[]>) => {
-  if (!artifact._id) return undefined;
-  return [...(reviewsByArtifact[artifact._id] || [])].sort((a, b) => getReviewTime(b) - getReviewTime(a))[0];
-};
-
-const indexReviewsByArtifact = (reviews: MedicalReviewRequest[]) => {
-  const result: Record<string, MedicalReviewRequest[]> = {};
-  for (const review of reviews || []) {
-    const artifactIds = Array.from(new Set([
-      ...(review.artifactIds || []),
-      review.medicalArtifactId,
-      (review as any).artifactId,
-      ...((review.fileReviews || []).map((fileReview) => fileReview.artifactId)),
-    ]
-      .map((value) => getObjectId(value))
-      .filter(Boolean)));
-    artifactIds.forEach((artifactId) => {
-      result[artifactId] = [...(result[artifactId] || []), review];
-    });
-  }
-  Object.keys(result).forEach((artifactId) => {
-    result[artifactId] = [...result[artifactId]].sort((a, b) => getReviewTime(b) - getReviewTime(a));
-  });
-  return result;
-};
-
-const logLoadTimings = (label: string, timings: Record<string, number>) => {
-  const total = Math.round(timings.total || 0);
-  const breakdown = Object.fromEntries(
-    Object.entries(timings)
-      .filter(([key]) => key !== 'total')
-      .map(([key, value]) => [key, Math.round(value)])
-  );
-  console.info(`[${label}] load timings`, { total, ...breakdown });
-};
-
-const loadReviewsByArtifactIds = async (artifactIds: string[]) => {
-  const start = performance.now();
-  try {
-    const response = await medicalReviewRequestsApi.getByArtifacts(artifactIds);
-    const reviews = response.data || [];
-    return {
-      reviewsByArtifact: indexReviewsByArtifact(reviews),
-      duration: performance.now() - start,
-      count: reviews.length,
-    };
-  } catch {
-    return {
-      reviewsByArtifact: {},
-      duration: performance.now() - start,
-      count: 0,
-    };
-  }
-};
-
-const isArtifactRelevantToBooking = (artifact: MedicalArtifact, bookingId: string, retreatId?: string) => {
-  const artifactBookingId = getObjectId(artifact.bookingId) || getObjectId((artifact as any).data?.bookingId);
-  if (artifactBookingId) return artifactBookingId === bookingId;
-
-  const artifactRetreatId = getObjectId(artifact.retreatId) || getObjectId((artifact as any).data?.retreatId);
-  if (artifactRetreatId) return Boolean(retreatId) && artifactRetreatId === retreatId;
-
-  return true;
-};
-
-
-const BookingCeremoniesPanel: React.FC<{
-  bookingId: string;
-  clientId?: string;
-  retreatId?: string;
-  refreshKey: number;
-}> = ({ bookingId, clientId, retreatId, refreshKey }) => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const routePrefix = useMemo(() => {
-    const firstSegment = location.pathname.split('/').filter(Boolean)[0];
-    return ['admin', 'medical', 'staff', 'user'].includes(firstSegment) ? `/${firstSegment}` : '';
-  }, [location.pathname]);
-  const [participations, setParticipations] = useState<CeremonyParticipant[]>([]);
-  const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
-  const [reviewsByArtifact, setReviewsByArtifact] = useState<Record<string, MedicalReviewRequest[]>>({});
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  const loadCeremonies = async () => {
-    if (!clientId) return;
-    const loadStart = performance.now();
-    const timings: Record<string, number> = {};
-    setLoading(true);
-    setError('');
-    try {
-      const participationStart = performance.now();
-      const [participationResponse, itemsResponse] = await Promise.all([
-        ceremoniesApi.getClientParticipations(clientId),
-        bookingFlowApi.getItems({ bookingId }),
-      ]);
-      timings.participation = performance.now() - participationStart;
-      const bookingFlowFilters = buildBookingFlowArtifactFilters(itemsResponse.data || []);
-      const artifactsStart = performance.now();
-      const artifactResponses = await Promise.all([
-        medicalArtifactsApi.getAll({ bookingId, ...bookingFlowFilters }),
-        medicalArtifactsApi.getAll({ bookingId }),
-        retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId, ...bookingFlowFilters }) : Promise.resolve({ data: [] }),
-        medicalArtifactsApi.getAll({ clientId, ...bookingFlowFilters }),
-      ]);
-      timings.artifacts = performance.now() - artifactsStart;
-      const allParticipations = participationResponse.data || [];
-      const loadedArtifacts = mergeArtifacts(artifactResponses.map((response) => response.data || []))
-        .filter((artifact) => isArtifactRelevantToBooking(artifact, bookingId, retreatId))
-        .sort(compareArtifactsForDisplay);
-      const reviewLoad = await loadReviewsByArtifactIds(loadedArtifacts.map((artifact) => artifact._id).filter(Boolean) as string[]);
-      timings.reviews = reviewLoad.duration;
-      setParticipations(retreatId
-        ? allParticipations.filter((participation: any) => getObjectId(participation.retreatId) === retreatId)
-        : allParticipations);
-      setArtifacts(loadedArtifacts);
-      setReviewsByArtifact(reviewLoad.reviewsByArtifact);
-      timings.total = performance.now() - loadStart;
-      timings.reviewCount = reviewLoad.count;
-      timings.artifactCount = loadedArtifacts.length;
-      logLoadTimings('booking ceremonies', timings);
-    } catch (loadError: any) {
-      setError(loadError?.response?.data?.message || loadError?.message || 'Unable to load ceremony information.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadCeremonies();
-  }, [bookingId, clientId, retreatId, refreshKey]);
-
-  const getStageArtifactsForCeremony = (ceremonyNumber: number | undefined, stage: MedicalArtifact['documentStage']) =>
-    artifacts.filter((artifact) => artifact.documentStage === stage && (!ceremonyNumber || artifact.ceremonyNumber === ceremonyNumber));
-
-  const renderArtifactChips = (ceremonyNumber: number | undefined, stage: MedicalArtifact['documentStage']) => {
-    const matches = getStageArtifactsForCeremony(ceremonyNumber, stage);
-    if (matches.length === 0) return <span className="booking-medical-muted">None</span>;
-    return (
-      <div className="booking-ceremony-artifact-list">
-        {matches.map((artifact) => {
-          const review = getLatestReviewForArtifact(artifact, reviewsByArtifact);
-          return (
-            <button
-              key={artifact._id || `${stage}-${artifact.documentType}-${artifact.receivedAt}`}
-              type="button"
-              className={`booking-ceremony-artifact-chip ${getReviewDecisionClass(review)}`}
-              onClick={() => artifact._id && navigate(`${routePrefix}/medical-artifacts/${artifact._id}`)}
-            >
-              {artifact.documentType} #{artifact.display_id || artifact._id}
-            </button>
-          );
-        })}
-      </div>
-    );
-  };
-
-  return (
-    <div className="detail-section">
-      <div className="section-header">
-        <h3 className="pdf-section-title">Ceremonies</h3>
-        <button className="edit-btn" type="button" onClick={loadCeremonies} disabled={loading}>
-          {loading ? 'Refreshing...' : 'Refresh'}
-        </button>
-      </div>
-      {error && <div className="alert alert-danger">{error}</div>}
-      {participations.length === 0 ? (
-        <p className="text-sm text-gray-500">No ceremony participation records found for this booking retreat.</p>
-      ) : (
-        <div className="booking-ceremony-list">
-          {participations.map((participation: any) => {
-            const ceremony = participation.ceremonyId || {};
-            return (
-              <div key={participation._id || getObjectId(ceremony)} className="booking-ceremony-card">
-                <div className="booking-ceremony-card-header">
-                  <div>
-                    <div className="booking-medical-required-title">Ceremony #{ceremony.ceremonyNumber || participation.ceremonyNumber || 'N/A'}</div>
-                    <div className="booking-medical-muted">
-                      {formatShortDateTime(ceremony.date)} {ceremony.startTime ? ` - ${ceremony.startTime}` : ''}
-                    </div>
-                  </div>
-                  <span className={`booking-medical-decision ${participation.medicalClearance === 'approved' ? 'medical-decision-ok' : participation.medicalClearance === 'not_approved' ? 'medical-decision-declined' : participation.medicalClearance === 'conditional' ? 'medical-decision-caution' : 'medical-decision-pending'}`}>
-                    {participation.medicalClearance || 'pending'}
-                  </span>
-                </div>
-                <div className="booking-ceremony-grid">
-                  <div>
-                    <label>Spoons</label>
-                    <strong>{participation.spoonsTaken || 0}</strong>
-                    <span>{participation.firstSpoonTime || 'No time recorded'}</span>
-                  </div>
-                  <div>
-                    <label>Pre-ceremony labs</label>
-                    {renderArtifactChips(ceremony.ceremonyNumber, 'pre_ceremony')}
-                  </div>
-                  <div>
-                    <label>In-ceremony labs</label>
-                    {renderArtifactChips(ceremony.ceremonyNumber, 'in_ceremony')}
-                  </div>
-                  <div>
-                    <label>Post-ceremony labs</label>
-                    {renderArtifactChips(ceremony.ceremonyNumber, 'post_ceremony')}
-                  </div>
-                </div>
-                {(participation.medicalClearanceNotes || participation.individualNotes || participation.postCeremonyNotes) && (
-                  <p className="booking-medical-notes">
-                    {participation.medicalClearanceNotes || participation.individualNotes || participation.postCeremonyNotes}
-                  </p>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
 };
 
 const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack }) => {
