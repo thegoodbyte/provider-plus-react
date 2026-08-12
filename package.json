@@ -82,6 +82,7 @@
       "**/BookingOverviewPanel.tsx": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
       "**/BookingDetailShell.tsx": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
       "**/bookingStepActions.ts": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
+      "**/bookingStepMedicalLinks.ts": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
       "**/cacheService.ts": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 }
     }
   },
