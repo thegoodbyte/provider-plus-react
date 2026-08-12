@@ -19,6 +19,7 @@ import { BookingStepMatrixRow as MatrixRow, buildBookingStepRows, filterBookingS
 import { indexBookingStepActionLogs, indexBookingStepDocuments, indexBookingStepItems, indexBookingStepPayments, indexBookingStepTemplates } from './bookingStepIndexes';
 import { indexBookingStepArtifactsByContext, indexBookingStepArtifactsById, indexBookingStepReviewsByArtifact, indexBookingStepReviewsByContext, makeBookingStepArtifactContextKey as makeArtifactContextKey, makeBookingStepReviewContextKey as makeReviewContextKey } from './bookingStepMedicalIndexes';
 import { bookingDocumentTypeByStep, buildBookingStepActionOptions, canSendBookingStepReminder as canSendReminder, canSendBookingStepRowEmail as rowCanSendEmail, getLinkedBookingStepArtifactId as getLinkedArtifactIdFromItem, humanizeBookingStepDocumentKey as humanizeDocumentKey, interpolateBookingStepActionUrl as interpolateActionUrl, resolveBookingStepDocumentType, resolveConfiguredBookingStepDocumentType } from './bookingStepControlRules';
+import BookingStepActionHistory from './BookingStepActionHistory';
 
 const getSimpleStatus = (item?: BookingFlowItem) => {
   const status = getSimpleStepStatus(item);
@@ -60,48 +61,6 @@ const RetreatMatrixClientAvatar: React.FC<{ client: Client | null; name: string 
   return (
     <span className="mr-2 inline-flex h-8 w-8 flex-none items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-gray-100 text-xs font-semibold text-gray-600">
       {profilePictureUrl ? <img src={profilePictureUrl} alt="" className="h-full w-full object-cover" /> : <span>{name.charAt(0).toUpperCase()}</span>}
-    </span>
-  );
-};
-
-const getActionLogDate = (log: BookingFlowActionLog) => log.performedAt || log.createdAt;
-
-const describeActionLog = (log: BookingFlowActionLog) => {
-  const parts = [
-    getActionLogDate(log) ? formatDateTime(getActionLogDate(log)) : '',
-    log.metadata?.sentEmailDisplayId ? `Email #${log.metadata.sentEmailDisplayId}` : '',
-    log.performedByEmail || '',
-    log.statusAfter ? `Status: ${String(log.statusAfter).replace(/_/g, ' ')}` : '',
-  ].filter(Boolean);
-  return parts.join(' • ') || 'Recorded action';
-};
-
-const ActionHistoryHover: React.FC<{ label: string; logs: BookingFlowActionLog[] }> = ({ label, logs }) => {
-  if (logs.length === 0) return null;
-  const sortedLogs = [...logs].sort((a, b) => new Date(getActionLogDate(b) || 0).getTime() - new Date(getActionLogDate(a) || 0).getTime());
-  const latest = sortedLogs[0];
-
-  return (
-    <span className="group relative inline-flex max-w-full items-center">
-      <button
-        type="button"
-        className="truncate rounded border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[11px] font-medium text-blue-800 hover:bg-blue-100"
-        title="Hover to see all actions"
-      >
-        {label}: {logs.length}x{latest?.performedAt ? `, last ${formatDateTime(latest.performedAt)}` : ''}
-      </button>
-      <span className="pointer-events-none absolute left-0 top-full z-50 mt-1 hidden w-80 max-w-[80vw] rounded-lg border border-gray-200 bg-white p-3 text-left text-xs text-gray-700 shadow-xl group-hover:block">
-        <span className="mb-2 block font-semibold text-gray-900">{label} history</span>
-        <span className="block max-h-72 space-y-2 overflow-y-auto">
-          {sortedLogs.map((log, index) => (
-            <span key={log._id || `${label}-${index}`} className="block rounded-md bg-gray-50 p-2">
-              <span className="block font-medium text-gray-900">{describeActionLog(log)}</span>
-              {log.notes && <span className="mt-1 block whitespace-pre-wrap text-gray-600">{log.notes}</span>}
-              {log.actionLabel && <span className="mt-1 block text-gray-500">{log.actionLabel}</span>}
-            </span>
-          ))}
-        </span>
-      </span>
     </span>
   );
 };
@@ -1498,7 +1457,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                                 .map((action) => ({ action, logs: itemActionLogs.filter((log) => (log.actionKey || 'default_email') === action.key) }))
                                 .filter(({ logs }) => logs.length > 0)
                                 .map(({ action, logs }) => (
-                                  <ActionHistoryHover key={action.key} label={action.label} logs={logs} />
+                                  <BookingStepActionHistory key={action.key} label={action.label} logs={logs} />
                                 ))}
                                 </div>
                               )}
