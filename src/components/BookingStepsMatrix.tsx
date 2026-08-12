@@ -1,24 +1,23 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, Filter, Lock, Mail, Save, ThumbsDown, ThumbsUp, Unlock, X } from 'lucide-react';
+import { AlertTriangle, Filter, Lock, Save, ThumbsDown, ThumbsUp, Unlock, X } from 'lucide-react';
 import { bookingDocumentsApi, bookingFlowApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { BookingDocument, BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 import { resolveBookingStepUploadTarget } from './BookingStepsMatrix.helpers';
-import { getBookingStepColorStyles, getBookingStepToneWithColor } from '../utils/bookingStepColors';
+import { getBookingStepToneWithColor } from '../utils/bookingStepColors';
 import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
-import { hasBookingActionLog } from './BookingStepsMatrix.helpers';
 import { resolveConfiguredBookingStepActions } from './bookingStepActions';
 import { ArtifactLinkConfig, getArtifactLinkCandidates, getArtifactStepConfig, getReviewRequestLinkCandidates, getReviewStepConfig, reviewDecisionToClassName } from './bookingStepMedicalLinks';
-import { getSimpleStepStatus, getStepStatusCellClass as getStatusCellClass, getStepStickyCellStyle as getStickyActionCellStyle } from './bookingStepPresentation';
+import { getSimpleStepStatus, getStepStatusCellClass as getStatusCellClass } from './bookingStepPresentation';
 import { getBookingStepClientId as getBookingClientId, getBookingStepNumber as getBookingNumber, getBookingStepObjectId as getObjectId } from './bookingStepIdentity';
 import { BookingStepMatrixRow as MatrixRow, buildBookingStepRows, filterBookingStepRowGroups, groupBookingStepRows, numberBookingStepRows, searchBookingStepRows } from './bookingStepRows';
 import { indexBookingStepActionLogs, indexBookingStepDocuments, indexBookingStepItems, indexBookingStepPayments, indexBookingStepTemplates } from './bookingStepIndexes';
 import { indexBookingStepArtifactsByContext, indexBookingStepArtifactsById, indexBookingStepReviewsByArtifact, indexBookingStepReviewsByContext } from './bookingStepMedicalIndexes';
-import { buildBookingStepActionOptions, canSendBookingStepReminder as canSendReminder, canSendBookingStepRowEmail as rowCanSendEmail, getLinkedBookingStepArtifactId as getLinkedArtifactIdFromItem, humanizeBookingStepDocumentKey as humanizeDocumentKey, interpolateBookingStepActionUrl as interpolateActionUrl, resolveBookingStepDocumentType, resolveConfiguredBookingStepDocumentType } from './bookingStepControlRules';
+import { buildBookingStepActionOptions, canSendBookingStepReminder as canSendReminder, getLinkedBookingStepArtifactId as getLinkedArtifactIdFromItem, humanizeBookingStepDocumentKey as humanizeDocumentKey, interpolateBookingStepActionUrl as interpolateActionUrl, resolveBookingStepDocumentType, resolveConfiguredBookingStepDocumentType } from './bookingStepControlRules';
 import { applyBookingStepDateUpdate, buildBookingStepDateUpdate, buildBookingStepNoteUpdates, buildBookingStepToggleUpdate, removeBookingStepDateDraft, shouldUpdateBookingStepStatus } from './bookingStepMutations';
 import { buildBookingStepPaymentSelection } from './bookingStepPaymentSelection';
 import { buildBookingStepReviewCreation, buildBookingStepReviewLink } from './bookingStepReviewMutations';
@@ -33,6 +32,8 @@ import BookingStepMedicalControls from './BookingStepMedicalControls';
 import BookingStepActionControls from './BookingStepActionControls';
 import BookingStepsToolbar from './BookingStepsToolbar';
 import BookingStepsActionFilter from './BookingStepsActionFilter';
+import BookingStepActionCheckRow from './BookingStepActionCheckRow';
+import { BookingStepGroupHeader, BookingStepRowHeader } from './BookingStepRowHeaders';
 
 const getSimpleStatus = (item?: BookingFlowItem) => {
   const status = getSimpleStepStatus(item);
@@ -679,94 +680,17 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
             </tr>
           </thead>
           <tbody>
-            {viewMode === 'detail' && (
-              <tr>
-                <td className="sticky left-0 z-30 border-b border-r border-gray-300 bg-blue-50 px-3 py-2 font-medium text-blue-900 shadow-[4px_0_10px_rgba(15,23,42,0.06)]" style={getStickyActionCellStyle(undefined, '#eff6ff')}>
-                  <div className="space-y-2">
-                    <div className="text-xs font-bold uppercase tracking-wide text-blue-900">Booking action check</div>
-                    <select
-                      value={selectedBookingAction}
-                      onChange={(event) => setSelectedBookingAction(event.target.value)}
-                      className="w-full rounded border border-blue-200 bg-white px-2 py-1 text-xs font-medium text-gray-700"
-                    >
-                      {bookingActionOptions.length === 0 ? (
-                        <option value="">No booking actions available</option>
-                      ) : (
-                        bookingActionOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))
-                      )}
-                    </select>
-                    <div className="text-[11px] text-blue-700">Check bookings for the selected action.</div>
-                  </div>
-                </td>
-                {bookings.map((booking) => {
-                  const selectedItem = selectedBookingActionOption
-                    ? itemMap.get(`${getObjectId(booking)}:${selectedBookingActionOption.rowKey}`)
-                    : undefined;
-                  const selectedItemLogs = selectedItem?._id ? actionLogMap.get(selectedItem._id) || [] : [];
-                  const completed = Boolean(selectedBookingActionOption && selectedItem && hasBookingActionLog(selectedItemLogs, selectedBookingActionOption.actionKey));
-                  return (
-                    <td
-                      key={`selected-action:${getObjectId(booking)}`}
-                      className={`border-b border-r border-gray-300 px-2 py-2 text-center ${completed ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-700'}`}
-                    >
-                      <div className="flex items-center justify-center gap-1 text-xs font-semibold">
-                        {completed ? <CheckCircle2 className="h-4 w-4" /> : <X className="h-4 w-4" />}
-                        <span>{completed ? 'Yes' : 'No'}</span>
-                      </div>
-                    </td>
-                  );
-                })}
-              </tr>
-            )}
+            {viewMode === 'detail' && <BookingStepActionCheckRow bookings={bookings} options={bookingActionOptions} selected={selectedBookingAction} selectedOption={selectedBookingActionOption} itemMap={itemMap} actionLogMap={actionLogMap} onSelect={setSelectedBookingAction} />}
             {filteredGroupedRows.map((group) => (
               <React.Fragment key={group.key}>
                 {(() => {
                   const tone = getBookingStepToneWithColor(group.key, group.color);
-                  const groupStyle = getBookingStepColorStyles(tone, 'group');
-                  const stepStyle = getBookingStepColorStyles(tone, 'step');
-                  const dotStyle = getBookingStepColorStyles(tone, 'dot');
-                  const badgeStyle = getBookingStepColorStyles(tone, 'badge');
                   return (
                 <>
-                <tr>
-                  <td className={`sticky left-0 z-30 border-b border-r border-gray-300 bg-clip-padding px-3 py-2 text-xs font-bold uppercase tracking-wide ${tone.groupCell} ${tone.groupText}`} style={getStickyActionCellStyle(groupStyle, '#f1f5f9')}>
-                    <span className="inline-flex items-center gap-2">
-                      <span className={`h-2.5 w-2.5 rounded-full ${tone.dot}`} style={dotStyle} />
-                      {group.label}
-                    </span>
-                  </td>
-                  {bookings.map((booking) => (
-                    <td key={`${group.key}:${getObjectId(booking)}`} className={`border-b border-r border-gray-300 px-2 py-2 text-xs font-semibold uppercase tracking-wide ${tone.groupCell} ${tone.groupText}`} style={groupStyle}>
-                      <span className="sr-only">{group.label}</span>
-                    </td>
-                  ))}
-                </tr>
+                <BookingStepGroupHeader group={group} bookingIds={bookings.map(getObjectId)} />
                 {group.rows.map((row) => (
                   <tr key={row.key}>
-                    <td className={`sticky left-0 z-30 border-b border-l-4 border-r border-gray-300 bg-clip-padding px-3 py-2 font-medium text-gray-900 ${tone.stepCell} ${tone.stepStripe}`} style={getStickyActionCellStyle(stepStyle, '#f8fafc')}>
-                      <div className="flex items-start gap-2">
-                        <span className={`mt-0.5 inline-flex h-5 min-w-5 items-center justify-center rounded px-1 text-[11px] font-semibold ${tone.badge}`} style={badgeStyle}>
-                          {actionNumberByKey.get(row.key)}
-                        </span>
-                        <span>{row.title}</span>
-                      </div>
-                      {rowCanSendEmail(row) && (
-                        <button
-                          type="button"
-                          disabled={!isEditing || saving === `row-email:${row.key}`}
-                          onClick={() => sendRowEmail(row)}
-                          className="mt-2 inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
-                          title={isEditing ? 'Send this email to all participants' : 'Unlock editing to send row email'}
-                        >
-                          <Mail className="h-3.5 w-3.5" />
-                          {saving === `row-email:${row.key}` ? 'Sending...' : row.key === 'address_sent' ? 'Send address' : 'Send row'}
-                        </button>
-                      )}
-                    </td>
+                    <BookingStepRowHeader row={row} number={actionNumberByKey.get(row.key)} group={group} isEditing={isEditing} saving={saving} onEmail={() => sendRowEmail(row)} />
                     {bookings.map((booking) => {
                       const item = itemMap.get(`${getObjectId(booking)}:${row.key}`);
                       const simpleStatus = getSimpleStatus(item);

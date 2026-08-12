@@ -1,0 +1,11 @@
+import React from 'react';
+import { CheckCircle2, X } from 'lucide-react';
+import { BookingFlowActionLog, BookingFlowItem } from '../types';
+import { BookingStepActionOption } from './bookingStepControlRules';
+import { getBookingStepObjectId } from './bookingStepIdentity';
+import { hasBookingActionLog } from './BookingStepsMatrix.helpers';
+import { getStepStickyCellStyle } from './bookingStepPresentation';
+
+type Props = { bookings: any[]; options: BookingStepActionOption[]; selected: string; selectedOption: BookingStepActionOption | null; itemMap: Map<string, BookingFlowItem>; actionLogMap: Map<string, BookingFlowActionLog[]>; onSelect: (value: string) => void };
+const BookingStepActionCheckRow: React.FC<Props> = ({ bookings, options, selected, selectedOption, itemMap, actionLogMap, onSelect }) => <tr><td className="sticky left-0 z-30 border-b border-r border-gray-300 bg-blue-50 px-3 py-2 font-medium text-blue-900" style={getStepStickyCellStyle(undefined, '#eff6ff')}><div className="space-y-2"><div className="text-xs font-bold uppercase tracking-wide">Booking action check</div><select aria-label="Booking action check" value={selected} onChange={event => onSelect(event.target.value)} className="w-full rounded border border-blue-200 bg-white px-2 py-1 text-xs">{options.length === 0 ? <option value="">No booking actions available</option> : options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select><div className="text-[11px]">Check bookings for the selected action.</div></div></td>{bookings.map(booking => { const item = selectedOption ? itemMap.get(`${getBookingStepObjectId(booking)}:${selectedOption.rowKey}`) : undefined; const logs = item?._id ? actionLogMap.get(item._id) || [] : []; const completed = Boolean(selectedOption && item && hasBookingActionLog(logs, selectedOption.actionKey)); return <td key={getBookingStepObjectId(booking)} className={`border-b border-r border-gray-300 px-2 py-2 text-center ${completed ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-700'}`}><div className="flex items-center justify-center gap-1 text-xs font-semibold">{completed ? <CheckCircle2 className="h-4 w-4" /> : <X className="h-4 w-4" />}<span>{completed ? 'Yes' : 'No'}</span></div></td>; })}</tr>;
+export default BookingStepActionCheckRow;
