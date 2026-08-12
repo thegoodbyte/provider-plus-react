@@ -14,8 +14,9 @@ import { hasBookingActionLog, reviewRequestStatusToBookingStepStatus } from './B
 import { normalizeBookingStepKey, resolveConfiguredBookingStepActions } from './bookingStepActions';
 import { ArtifactLinkConfig, ReviewStepConfig, artifactStepConfigByKey, getArtifactLinkCandidates, getArtifactStepConfig, getReviewRequestLinkCandidates, getReviewStepConfig, reviewDecisionToClassName, reviewDecisionToLabel, reviewStatusToDecision, reviewStepConfigByKey } from './bookingStepMedicalLinks';
 import { formatStepDate as formatDate, formatStepDateInput as formatDateInput, formatStepDateTime as formatDateTime, formatStepPaymentOption as formatPaymentOption, getSimpleStepStatus, getStepItemDisplayValue as getItemDisplayValue, getStepStatusCellClass as getStatusCellClass, getStepStatusDateField as getStatusDateField, getStepStickyCellStyle as getStickyActionCellStyle } from './bookingStepPresentation';
-import { getBookingStepClient as getBookingClient, getBookingStepClientDisplayId as getClientDisplayId, getBookingStepClientEmail as getClientEmail, getBookingStepClientId as getBookingClientId, getBookingStepClientName as getClientName, getBookingStepClientPhone as getClientPhone, getBookingStepNumber as getBookingNumber, getBookingStepObjectId as getObjectId, getBookingStepPaymentClientId as getPaymentClientId } from './bookingStepIdentity';
+import { getBookingStepClient as getBookingClient, getBookingStepClientDisplayId as getClientDisplayId, getBookingStepClientEmail as getClientEmail, getBookingStepClientId as getBookingClientId, getBookingStepClientName as getClientName, getBookingStepClientPhone as getClientPhone, getBookingStepNumber as getBookingNumber, getBookingStepObjectId as getObjectId } from './bookingStepIdentity';
 import { BookingStepMatrixRow as MatrixRow, buildBookingStepRows, filterBookingStepRowGroups, groupBookingStepRows, numberBookingStepRows, searchBookingStepRows } from './bookingStepRows';
+import { indexBookingStepActionLogs, indexBookingStepDocuments, indexBookingStepItems, indexBookingStepPayments, indexBookingStepTemplates } from './bookingStepIndexes';
 
 const getSimpleStatus = (item?: BookingFlowItem) => {
   const status = getSimpleStepStatus(item);
@@ -348,63 +349,11 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     [rows]
   );
 
-  const itemMap = useMemo(() => {
-    const map = new Map<string, BookingFlowItem>();
-    items.forEach((item) => {
-      map.set(`${getObjectId(item.bookingId)}:${item.key}`, item);
-    });
-    return map;
-  }, [items]);
-
-  const templateMap = useMemo(() => {
-    const map = new Map<string, BookingFlowTemplate>();
-    templates.forEach((template) => {
-      if (template._id) map.set(template._id, template);
-      if (template.key) map.set(template.key, template);
-    });
-    return map;
-  }, [templates]);
-
-  const libraryTemplateMap = useMemo(() => {
-    const map = new Map<string, BookingFlowTemplate>();
-    libraryTemplates.forEach((template) => {
-      if (template._id) map.set(template._id, template);
-      if (template.key) map.set(template.key, template);
-    });
-    return map;
-  }, [libraryTemplates]);
-
-  const actionLogMap = useMemo(() => {
-    const map = new Map<string, BookingFlowActionLog[]>();
-    actionLogs.forEach((log) => {
-      const itemId = getObjectId(log.bookingFlowItemId);
-      if (!itemId) return;
-      const current = map.get(itemId) || [];
-      current.push(log);
-      map.set(itemId, current);
-    });
-    map.forEach((logs) => {
-      logs.sort((a, b) => new Date(getActionLogDate(b) || 0).getTime() - new Date(getActionLogDate(a) || 0).getTime());
-    });
-    return map;
-  }, [actionLogs]);
-
-  const bookingDocumentMap = useMemo(() => {
-    const map = new Map<string, BookingDocument[]>();
-    bookingDocuments.forEach((document) => {
-      const bookingId = getObjectId(document.bookingId);
-      const documentType = normalizeDocumentKey(document.documentType);
-      if (!bookingId || !documentType || (document.files || []).length === 0) return;
-      const key = `${bookingId}:${documentType}`;
-      const current = map.get(key) || [];
-      current.push(document);
-      map.set(key, current);
-    });
-    map.forEach((documents) => {
-      documents.sort((a, b) => new Date(b.receivedAt || b.createdAt || 0).getTime() - new Date(a.receivedAt || a.createdAt || 0).getTime());
-    });
-    return map;
-  }, [bookingDocuments]);
+  const itemMap = useMemo(() => indexBookingStepItems(items), [items]);
+  const templateMap = useMemo(() => indexBookingStepTemplates(templates), [templates]);
+  const libraryTemplateMap = useMemo(() => indexBookingStepTemplates(libraryTemplates), [libraryTemplates]);
+  const actionLogMap = useMemo(() => indexBookingStepActionLogs(actionLogs), [actionLogs]);
+  const bookingDocumentMap = useMemo(() => indexBookingStepDocuments(bookingDocuments), [bookingDocuments]);
 
   const medicalArtifactById = useMemo(() => {
     const map = new Map<string, MedicalArtifact>();
@@ -476,20 +425,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     return map;
   }, [reviewRequests]);
 
-  const paymentsByClientId = useMemo(() => {
-    const map = new Map<string, Payment[]>();
-    payments.forEach((payment) => {
-      const clientId = getPaymentClientId(payment);
-      if (!clientId) return;
-      const current = map.get(clientId) || [];
-      current.push(payment);
-      map.set(clientId, current);
-    });
-    map.forEach((clientPayments) => {
-      clientPayments.sort((a, b) => new Date(b.paymentDate || 0).getTime() - new Date(a.paymentDate || 0).getTime());
-    });
-    return map;
-  }, [payments]);
+  const paymentsByClientId = useMemo(() => indexBookingStepPayments(payments), [payments]);
 
   const toggleItem = async (item: BookingFlowItem | undefined, checked: boolean) => {
     if (!item?._id) return;

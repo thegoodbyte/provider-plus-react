@@ -86,6 +86,7 @@
       "**/bookingStepPresentation.ts": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
       "**/bookingStepIdentity.ts": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
       "**/bookingStepRows.ts": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
+      "**/bookingStepIndexes.ts": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
       "**/cacheService.ts": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 }
     }
   },
