@@ -78,6 +78,7 @@
       "**/bookingConfirmationComposer.ts": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
       "**/useBookingConfirmationPdf.ts": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
       "**/useBookingConfirmationEmail.ts": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
+      "**/BookingConfirmationEmailDialogs.tsx": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
       "**/cacheService.ts": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 }
     }
   },

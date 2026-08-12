@@ -5,7 +5,7 @@ import { bookingsApi } from '../services/api';
 import BookingPaymentManagement from './BookingPaymentManagement';
 import BookingDocumentsUpload from './BookingDocumentsUpload';
 import ClientBookingWorkflowTab from './ClientBookingWorkflowTab';
-import EmailComposeModal from './EmailComposeModal';
+import BookingConfirmationEmailDialogs from './BookingConfirmationEmailDialogs';
 import EmailHistoryPanel from './EmailHistoryPanel';
 import BookingActivityTimeline from './BookingActivityTimeline';
 import BookingRequirementsPanel from './BookingRequirementsPanel';
@@ -96,8 +96,6 @@ const getRetreatAddress = (retreat: any) =>
   ).trim();
 
 const getObjectId = (value: any) => typeof value === 'object' ? value?._id || value?.id : value;
-
-const getClientEmail = (client: any) => String(client?.email || '').trim();
 
 const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack }) => {
   const navigate = useNavigate();
@@ -747,80 +745,19 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         )}
       </div>
 
-      {confirmationEmailDraft && (
-        <EmailComposeModal
-          title="Booking Confirmation Email"
-          initialValues={confirmationEmailDraft}
-          extraContent={
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Confirmation history reason</label>
-              <input
-                value={confirmationHistoryReason}
-                onChange={(event) => setConfirmationHistoryReason(event.target.value)}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                placeholder="Original booking confirmation, date change, new payment..."
-              />
-            </div>
-          }
-          onClose={closeConfirmationEmailDraft}
-          onSent={completeReviewedSend}
-        />
-      )}
-
-      {showQuickSendConfirm && (() => {
-        const confirmClient = booking?.clientId || booking?.clientDetails;
-        const confirmName = getClientName(confirmClient) || 'this client';
-        const confirmEmail = getClientEmail(confirmClient);
-        return (
-          <div className="booking-confirm-dialog-overlay" role="presentation">
-            <div className="booking-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="quick-send-confirm-title">
-              <h2 id="quick-send-confirm-title">Send booking confirmation?</h2>
-              <p>Do you want to send the booking confirmation to this client?</p>
-              <div className="booking-confirm-dialog-details">
-                <div>
-                  <span>Name</span>
-                  <strong>{confirmName}</strong>
-                </div>
-                <div>
-                  <span>Email</span>
-                  <strong>{confirmEmail}</strong>
-                </div>
-                <div>
-                  <span>Language</span>
-                  <strong>{bookingConfirmationLanguageLabels[pdfLanguage]}</strong>
-                </div>
-                <div className="booking-confirm-dialog-reason">
-                  <label htmlFor="booking-confirm-history-reason">Reason</label>
-                  <input
-                    id="booking-confirm-history-reason"
-                    value={confirmationHistoryReason}
-                    onChange={(event) => setConfirmationHistoryReason(event.target.value)}
-                    placeholder="Original booking confirmation, date change, new payment..."
-                  />
-                </div>
-              </div>
-              <div className="booking-confirm-dialog-actions">
-                <button
-                  type="button"
-                  className="booking-confirm-secondary"
-                  onClick={closeQuickSend}
-                  disabled={isSendingConfirmation}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="booking-confirm-primary"
-                  onClick={sendBookingConfirmationEmail}
-                  disabled={isSendingConfirmation}
-                >
-                  {isSendingConfirmation ? 'Sending...' : 'Send'}
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      <BookingConfirmationEmailDialogs
+        booking={booking}
+        language={pdfLanguage}
+        draft={confirmationEmailDraft}
+        quickSendOpen={showQuickSendConfirm}
+        sending={isSendingConfirmation}
+        reason={confirmationHistoryReason}
+        onReasonChange={setConfirmationHistoryReason}
+        onCloseDraft={closeConfirmationEmailDraft}
+        onReviewedSent={completeReviewedSend}
+        onCloseQuickSend={closeQuickSend}
+        onQuickSend={sendBookingConfirmationEmail}
+      />
 
     </div>
   );
