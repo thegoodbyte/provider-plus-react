@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { FiBookOpen, FiCalendar, FiChevronDown, FiCreditCard, FiGrid, FiShoppingBag, FiUsers, FiX } from 'react-icons/fi';
 import AppleSidebar from './AppleSidebar';
@@ -13,8 +13,6 @@ import ClientScreening from '../pages/ClientScreening';
 import RetreatDetailView, { RetreatDetailTab } from './RetreatDetailView';
 // import ClientsGrid from './ClientsGrid'; // Now using UnifiedClientManager
 import BookingsGrid from './BookingsGrid';
-import BookingEditorPage from './BookingEditorPage';
-import BookingDetailView from './BookingDetailView';
 import CeremoniesPage from './CeremoniesPage';
 import MedicalGrid from './MedicalGrid';
 import MedicalTrackingNew from './MedicalTrackingNew';
@@ -88,6 +86,9 @@ import RetreatClientsPrintPage from './RetreatClientsPrintPage';
 import { bookingsApi, retreatsApi } from '../services/api';
 import { Retreat } from '../types';
 
+const BookingEditorPage = lazy(() => import('./BookingEditorPage'));
+const BookingDetailView = lazy(() => import('./BookingDetailView'));
+
 type AppMode = 'normal' | 'retreat' | 'shopping';
 type StoredAppMode = {
   mode: AppMode;
@@ -110,8 +111,12 @@ const readStoredAppMode = (): StoredAppMode => {
 const BookingDetailRoute: React.FC = () => {
   const { bookingId } = useParams();
   const navigate = useNavigate();
-  return <BookingDetailView bookingId={bookingId || ''} onBack={() => navigate(-1)} />;
+  return <Suspense fallback={<div className="p-6 text-slate-600">Loading booking…</div>}><BookingDetailView bookingId={bookingId || ''} onBack={() => navigate(-1)} /></Suspense>;
 };
+
+const BookingEditorRoute: React.FC<React.ComponentProps<typeof BookingEditorPage>> = (props) => (
+  <Suspense fallback={<div className="p-6 text-slate-600">Loading booking editor…</div>}><BookingEditorPage {...props} /></Suspense>
+);
 
 const RETREAT_DETAIL_TABS: RetreatDetailTab[] = ['clients', 'holisticView', 'tracking', 'drugScreening', 'expenses', 'payments', 'ceremonies', 'analytics', 'tasks'];
 
@@ -815,9 +820,9 @@ const AppleLayout: React.FC = () => {
                       <Route path="ceremonies" element={<CeremoniesPage />} />
                       <Route path="houses" element={<HousesGrid />} />
                       <Route path="bookings" element={<BookingsGrid />} />
-                      <Route path="bookings/new" element={<BookingEditorPage mode="create" />} />
+                      <Route path="bookings/new" element={<BookingEditorRoute mode="create" />} />
                       <Route path="bookings/:bookingId" element={<BookingDetailRoute />} />
-                      <Route path="bookings/:bookingId/edit" element={<BookingEditorPage mode="edit" />} />
+                      <Route path="bookings/:bookingId/edit" element={<BookingEditorRoute mode="edit" />} />
                       <Route path="medical-tracking" element={<MedicalTrackingNew />} />
                       <Route path="medical-artifacts" element={<MedicalArtifactsPage />} />
                       <Route path="medical-artifacts/new" element={<MedicalArtifactCreatePage />} />
