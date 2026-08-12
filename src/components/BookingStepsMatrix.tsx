@@ -1,18 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation } from 'react-router-dom';
-import { AlertTriangle, Filter, Lock, Save, ThumbsDown, ThumbsUp, Unlock, X } from 'lucide-react';
+import { Filter, Lock, Save, Unlock } from 'lucide-react';
 import { bookingDocumentsApi, bookingFlowApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { BookingDocument, BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 import { resolveBookingStepUploadTarget } from './BookingStepsMatrix.helpers';
-import { getBookingStepToneWithColor } from '../utils/bookingStepColors';
 import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
 import { resolveConfiguredBookingStepActions } from './bookingStepActions';
-import { ArtifactLinkConfig, getArtifactLinkCandidates, getArtifactStepConfig, getReviewRequestLinkCandidates, getReviewStepConfig, reviewDecisionToClassName } from './bookingStepMedicalLinks';
-import { getSimpleStepStatus, getStepStatusCellClass as getStatusCellClass } from './bookingStepPresentation';
+import { ArtifactLinkConfig, getArtifactLinkCandidates, getArtifactStepConfig, getReviewRequestLinkCandidates, getReviewStepConfig } from './bookingStepMedicalLinks';
+import { getSimpleStepStatus } from './bookingStepPresentation';
 import { getBookingStepClientId as getBookingClientId, getBookingStepNumber as getBookingNumber, getBookingStepObjectId as getObjectId } from './bookingStepIdentity';
 import { BookingStepMatrixRow as MatrixRow, buildBookingStepRows, filterBookingStepRowGroups, groupBookingStepRows, numberBookingStepRows, searchBookingStepRows } from './bookingStepRows';
 import { indexBookingStepActionLogs, indexBookingStepDocuments, indexBookingStepItems, indexBookingStepPayments, indexBookingStepTemplates } from './bookingStepIndexes';
@@ -27,19 +26,11 @@ import BookingStepClientHeader, { getBookingStepRoutePrefix } from './BookingSte
 import { BookingStepAutomationModal, BookingStepAutomationModalState, BookingStepReminderModal, BookingStepReminderModalState } from './BookingStepCommunicationModals';
 import { BookingStepArtifactLinkModal, BookingStepArtifactLinkModalState, BookingStepReviewLinkModal, BookingStepReviewLinkModalState, BookingStepReviewRequestModal, BookingStepReviewRequestModalState } from './BookingStepMedicalModals';
 import { buildBookingStepCellModel } from './bookingStepCellModel';
-import BookingStepCellEditor from './BookingStepCellEditor';
-import BookingStepMedicalControls from './BookingStepMedicalControls';
-import BookingStepActionControls from './BookingStepActionControls';
+import BookingStepMatrixCell from './BookingStepMatrixCell';
 import BookingStepsToolbar from './BookingStepsToolbar';
 import BookingStepsActionFilter from './BookingStepsActionFilter';
 import BookingStepActionCheckRow from './BookingStepActionCheckRow';
 import { BookingStepGroupHeader, BookingStepRowHeader } from './BookingStepRowHeaders';
-
-const getSimpleStatus = (item?: BookingFlowItem) => {
-  const status = getSimpleStepStatus(item);
-  const icon = status.icon === 'failed' ? <ThumbsDown className="h-5 w-5" /> : status.icon === 'attention' ? <AlertTriangle className="h-5 w-5" /> : status.icon === 'fulfilled' ? <ThumbsUp className="h-5 w-5" /> : <X className="h-5 w-5" />;
-  return { ...status, icon };
-};
 
 const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const location = useLocation();
@@ -683,9 +674,6 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
             {viewMode === 'detail' && <BookingStepActionCheckRow bookings={bookings} options={bookingActionOptions} selected={selectedBookingAction} selectedOption={selectedBookingActionOption} itemMap={itemMap} actionLogMap={actionLogMap} onSelect={setSelectedBookingAction} />}
             {filteredGroupedRows.map((group) => (
               <React.Fragment key={group.key}>
-                {(() => {
-                  const tone = getBookingStepToneWithColor(group.key, group.color);
-                  return (
                 <>
                 <BookingStepGroupHeader group={group} bookingIds={bookings.map(getObjectId)} />
                 {group.rows.map((row) => (
@@ -693,46 +681,21 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                     <BookingStepRowHeader row={row} number={actionNumberByKey.get(row.key)} group={group} isEditing={isEditing} saving={saving} onEmail={() => sendRowEmail(row)} />
                     {bookings.map((booking) => {
                       const item = itemMap.get(`${getObjectId(booking)}:${row.key}`);
-                      const simpleStatus = getSimpleStatus(item);
-                      const done = getSimpleStepStatus(item).icon === 'fulfilled';
                       const itemActionLogs = item?._id ? actionLogMap.get(item._id) || [] : [];
                       const configuredActions = getConfiguredActions(item);
-                      const { confirmedDateInputValue, pendingDateInputValue, hasPendingDateInput, isPaymentReceivedStep, bookingPayments, selectedPaymentId, reviewStepConfig, resolvedReviewDecision, resolvedReviewNotes, resolvedReviewReviewedAt, existingReviewRequestId, existingReviewRequestDisplay, relatedBookingDocument, artifactStepConfig, configuredBookingDocumentType, linkableArtifacts, relatedMedicalArtifact, relatedMedicalArtifactId } = buildBookingStepCellModel({ booking, item, row, itemMap, datePickerDrafts, paymentsByClientId, reviewRequests, reviewRequestsByArtifactId, reviewRequestsByBookingContext, bookingDocumentMap, medicalArtifacts, medicalArtifactById, medicalArtifactsByBookingContext });
+                      const cellModel = buildBookingStepCellModel({ booking, item, row, itemMap, datePickerDrafts, paymentsByClientId, reviewRequests, reviewRequestsByArtifactId, reviewRequestsByBookingContext, bookingDocumentMap, medicalArtifacts, medicalArtifactById, medicalArtifactsByBookingContext });
                       return (
-                        <td key={`${getObjectId(booking)}:${row.key}`} className={`${viewMode === 'simple' ? 'min-w-[150px] px-2 py-2 text-center' : 'min-w-[230px] px-2 py-1 align-top'} border-b border-r border-gray-300 ${item ? (reviewStepConfig && resolvedReviewDecision ? reviewDecisionToClassName(resolvedReviewDecision) : getStatusCellClass(item.status)) : 'bg-red-50 text-red-900'}`}>
-                          {viewMode === 'simple' ? (
-                            <div
-                              className={`mx-auto flex h-9 w-9 items-center justify-center rounded-full ${simpleStatus.className}`}
-                              title={`${row.title}: ${simpleStatus.label}`}
-                            >
-                              {simpleStatus.icon}
-                            </div>
-                          ) : item ? (
-                            <>
-                            <BookingStepCellEditor
-                              item={item} done={done} isEditing={isEditing} saving={saving}
-                              confirmedDateInputValue={confirmedDateInputValue} pendingDateInputValue={pendingDateInputValue} hasPendingDateInput={hasPendingDateInput}
-                              isPaymentReceivedStep={isPaymentReceivedStep} bookingPayments={bookingPayments} selectedPaymentId={selectedPaymentId} note={noteDrafts[item._id || ''] || ''}
-                              onToggle={() => toggleItem(item, !done)} onStatusChange={(status) => updateItemStatus(item, status)}
-                              onDateDraftChange={(value) => item._id && setDatePickerDrafts((current) => ({ ...current, [item._id!]: value }))}
-                              onDateCancel={() => cancelItemDateDraft(item)} onDateSave={(value) => updateItemDate(item, value)} onPaymentChange={(paymentId) => selectPaymentForItem(item, paymentId)}
-                              onNoteChange={(value) => { if (!item._id) return; setNoteDrafts((current) => ({ ...current, [item._id!]: value })); setDirtyNoteIds((current) => ({ ...current, [item._id!]: true })); }}
-                            >
-                            <BookingStepMedicalControls item={item} reviewConfig={reviewStepConfig} configuredActions={configuredActions} isEditing={isEditing} saving={saving} existingRequestId={existingReviewRequestId} existingRequestDisplay={existingReviewRequestDisplay} decision={resolvedReviewDecision} notes={resolvedReviewNotes} reviewedAt={resolvedReviewReviewedAt} onCreate={() => openReviewRequestModal(booking, item, row)} onLink={() => openExistingReviewRequestLinkModal(booking, item, row)} />
-                            <BookingStepActionControls item={item} row={row} actions={configuredActions} logs={itemActionLogs} isEditing={isEditing} saving={saving} canRemind={canSendReminder(item, bookings)} artifactConfig={artifactStepConfig} configuredDocumentType={configuredBookingDocumentType} relatedDocument={relatedBookingDocument} relatedArtifact={relatedMedicalArtifact} relatedArtifactId={relatedMedicalArtifactId} linkableArtifactCount={linkableArtifacts.length} onRun={(action) => runItemAction(item, action)} onUpload={(action, files) => uploadItemDocument(booking, item, action, files)} onLinkMrr={(action) => openExistingReviewRequestLinkModal(booking, item, row, action)} onReminder={() => openReminderPreview(item)} onAutomation={() => openReminderAutomation(item)} onLinkArtifact={() => artifactStepConfig && openArtifactLinkModal(booking, item, row, artifactStepConfig)} onOpenDocuments={() => window.location.assign('/admin/booking-documents')} />
-                              </BookingStepCellEditor>
-                            </>
-                          ) : (
-                            <span className="text-gray-300">-</span>
-                          )}
-                        </td>
+                        <BookingStepMatrixCell key={`${getObjectId(booking)}:${row.key}`} item={item} row={row} viewMode={viewMode} model={cellModel} actions={configuredActions} logs={itemActionLogs} isEditing={isEditing} saving={saving} note={item?._id ? noteDrafts[item._id] || '' : ''} canRemind={Boolean(item && canSendReminder(item, bookings))}
+                          onToggle={() => item && toggleItem(item, getSimpleStepStatus(item).icon !== 'fulfilled')} onStatusChange={(status) => item && updateItemStatus(item, status)}
+                          onDateDraftChange={(value) => item?._id && setDatePickerDrafts((current) => ({ ...current, [item._id!]: value }))} onDateCancel={() => item && cancelItemDateDraft(item)} onDateSave={(value) => item && updateItemDate(item, value)} onPaymentChange={(paymentId) => item && selectPaymentForItem(item, paymentId)}
+                          onNoteChange={(value) => { if (!item?._id) return; setNoteDrafts((current) => ({ ...current, [item._id!]: value })); setDirtyNoteIds((current) => ({ ...current, [item._id!]: true })); }}
+                          onCreateMrr={() => item && openReviewRequestModal(booking, item, row)} onLinkMrr={(action) => item && openExistingReviewRequestLinkModal(booking, item, row, action)} onRunAction={(action) => item && runItemAction(item, action)} onUpload={(action, files) => item && uploadItemDocument(booking, item, action, files)}
+                          onReminder={() => item && openReminderPreview(item)} onAutomation={() => item && openReminderAutomation(item)} onLinkArtifact={() => item && cellModel.artifactStepConfig && openArtifactLinkModal(booking, item, row, cellModel.artifactStepConfig)} onOpenDocuments={() => window.location.assign('/admin/booking-documents')} />
                       );
                     })}
                   </tr>
                 ))}
                 </>
-                  );
-                })()}
               </React.Fragment>
             ))}
             {rows.length === 0 && (

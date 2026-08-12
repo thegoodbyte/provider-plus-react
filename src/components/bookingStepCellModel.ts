@@ -50,3 +50,5 @@ export const buildBookingStepCellModel = ({ booking, item, row, itemMap, datePic
   const relatedMedicalArtifact = linkedArtifactId ? medicalArtifactById.get(linkedArtifactId) : artifactStepConfig ? medicalArtifactsByBookingContext.get(makeBookingStepArtifactContextKey(bookingId, artifactStepConfig))?.[0] : undefined;
   return { dateField, confirmedDateInputValue, pendingDateInputValue, hasPendingDateInput, isPaymentReceivedStep, bookingPayments, selectedPaymentId, reviewStepConfig, receivedItem, linkedArtifactId, relatedReviewRequests, resolvedReviewDecision, resolvedReviewNotes, resolvedReviewReviewedAt, existingReviewRequestId, existingReviewRequestDisplay, documentTypeForStep, relatedBookingDocument, artifactStepConfig, configuredBookingDocumentType, linkableArtifacts, relatedMedicalArtifact, relatedMedicalArtifactId: relatedMedicalArtifact?._id || linkedArtifactId };
 };
+
+export type BookingStepCellModel = ReturnType<typeof buildBookingStepCellModel>;
