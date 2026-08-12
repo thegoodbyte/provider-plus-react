@@ -14,6 +14,7 @@ import BookingMedicalOverviewPanel from './BookingMedicalOverviewPanel';
 import BookingCeremoniesPanel from './BookingCeremoniesPanel';
 import BookingTasksPanel from './BookingTasksPanel';
 import { blobBase64, confirmationAction, confirmationLanguage, confirmationReason, historyReason, sendFailureDetails, sentEmailReceipt, BookingConfirmationLanguage } from './bookingConfirmationWorkflow';
+import { composeBookingConfirmationEmail } from './bookingConfirmationComposer';
 import { createBookingConfirmationPdf } from './BookingConfirmationPDF';
 import './BookingDetailView.css';
 
@@ -29,16 +30,6 @@ interface BookingDetailViewProps {
 }
 
 const HeaderIcon: React.FC<{ icon: any }> = ({ icon: IconComponent }) => <IconComponent />;
-
-const escapeHtml = (value: any) =>
-  String(value ?? '').replace(/[&<>"']/g, (char) => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    '"': '&quot;',
-    "'": '&#39;',
-  }[char] || char));
-
 
 const formatHistoryDateTime = (date?: string | Date) => {
   if (!date) return 'N/A';
@@ -105,133 +96,9 @@ const getRetreatAddress = (retreat: any) =>
     ''
   ).trim();
 
-const getRetreatMapLink = (retreat: any) =>
-  String(
-    retreat?.googleMapLink ||
-    retreat?.google_map_link ||
-    retreat?.house?.googleMapLink ||
-    retreat?.house?.google_map_link ||
-    retreat?.houseId?.googleMapLink ||
-    retreat?.houseId?.google_map_link ||
-    ''
-  ).trim();
-
-const getRetreatStartTime = (retreat: any) =>
-  String(
-    retreat?.startTime ||
-    retreat?.start_time ||
-    retreat?.dates?.startTime ||
-    retreat?.dates?.start_time ||
-    ''
-  ).trim();
-
-const getRetreatEndTime = (retreat: any) =>
-  String(
-    retreat?.endTime ||
-    retreat?.end_time ||
-    retreat?.dates?.endTime ||
-    retreat?.dates?.end_time ||
-    ''
-  ).trim();
-
-const interpolateTemplate = (template: string, variables: Record<string, any>) =>
-  String(template || '').replace(/\{\{\s*([\w.]+)\s*\}\}/g, (_match, path) => {
-    const value = String(path).split('.').reduce((current, key) => current?.[key], variables);
-    return value === undefined || value === null ? '' : String(value);
-  });
-
-const textToHtml = (text: string) =>
-  `<pre style="white-space: pre-wrap; font-family: Arial, Helvetica, sans-serif; line-height: 1.55; color: #111827;">${escapeHtml(text)}</pre>`;
-
-
 const getObjectId = (value: any) => typeof value === 'object' ? value?._id || value?.id : value;
 
 const getClientEmail = (client: any) => String(client?.email || '').trim();
-
-const bookingConfirmationEmailCopy: Record<BookingConfirmationLanguage, {
-  subject: (bookingNumber?: string) => string;
-  greeting: (firstName: string) => string;
-  intro: (location: string, dates: string) => string;
-  attached: string;
-  moreInfo: string;
-  questions: (email: string) => string;
-  closing: string;
-  none: string;
-  rows: Record<string, string>;
-}> = {
-  en: {
-    subject: (bookingNumber) => `Booking confirmation ${bookingNumber || ''}`.trim(),
-    greeting: (firstName) => `Hello ${firstName},`,
-    intro: (location, dates) => `We are excited to welcome you to our retreat in ${location} on ${dates}.`,
-    attached: 'Below is your booking information. A PDF copy of your booking confirmation is attached to this email.',
-    moreInfo: 'We will email more information as we get closer to the retreat.',
-    questions: (email) => `If you have any questions, please do not hesitate to reach out to ${email}.`,
-    closing: 'Warmly,',
-    none: 'None',
-    rows: {
-      bookingNumber: 'Booking number',
-      bookingType: 'Booking type',
-      status: 'Status',
-      client: 'Client',
-      retreat: 'Retreat',
-      locationTown: 'Location town',
-      dates: 'Dates',
-      checkIn: 'Check-in',
-      checkOut: 'Check-out',
-      address: 'Address',
-      googleMapLink: 'Google map',
-      specialRequests: 'Special requests',
-    },
-  },
-  cz: {
-    subject: (bookingNumber) => `Potvrzení rezervace ${bookingNumber || ''}`.trim(),
-    greeting: (firstName) => `Dobrý den ${firstName},`,
-    intro: (location, dates) => `Těšíme se, že vás přivítáme na našem pobytu v ${location} v termínu ${dates}.`,
-    attached: 'Níže najdete informace k vaší rezervaci. PDF potvrzení rezervace je přiloženo k tomuto e-mailu.',
-    moreInfo: 'Další informace vám pošleme e-mailem, až se bude termín pobytu blížit.',
-    questions: (email) => `Pokud máte jakékoli otázky, napište nám prosím na ${email}.`,
-    closing: 'S pozdravem,',
-    none: 'Žádné',
-    rows: {
-      bookingNumber: 'Číslo rezervace',
-      bookingType: 'Typ rezervace',
-      status: 'Stav',
-      client: 'Klient',
-      retreat: 'Pobyt',
-      locationTown: 'Místo',
-      dates: 'Termín',
-      checkIn: 'Příjezd',
-      checkOut: 'Odjezd',
-      address: 'Adresa',
-      googleMapLink: 'Google mapa',
-      specialRequests: 'Speciální požadavky',
-    },
-  },
-  pl: {
-    subject: (bookingNumber) => `Potwierdzenie rezerwacji ${bookingNumber || ''}`.trim(),
-    greeting: (firstName) => `Dzień dobry ${firstName},`,
-    intro: (location, dates) => `Cieszymy się, że będziemy mogli powitać Cię na naszym pobycie w ${location} w terminie ${dates}.`,
-    attached: 'Poniżej znajdziesz informacje dotyczące rezerwacji. Potwierdzenie rezerwacji w PDF jest załączone do tej wiadomości.',
-    moreInfo: 'Prześlemy więcej informacji e-mailem bliżej terminu pobytu.',
-    questions: (email) => `Jeśli masz pytania, napisz do nas na ${email}.`,
-    closing: 'Serdecznie,',
-    none: 'Brak',
-    rows: {
-      bookingNumber: 'Numer rezerwacji',
-      bookingType: 'Typ rezerwacji',
-      status: 'Status',
-      client: 'Klient',
-      retreat: 'Pobyt',
-      locationTown: 'Miejscowość',
-      dates: 'Termin',
-      checkIn: 'Przyjazd',
-      checkOut: 'Wyjazd',
-      address: 'Adres',
-      googleMapLink: 'Mapa Google',
-      specialRequests: 'Specjalne prośby',
-    },
-  },
-};
 
 const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack }) => {
   const navigate = useNavigate();
@@ -299,164 +166,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     });
   };
 
-  const buildBookingConfirmationEmail = async (language: BookingConfirmationLanguage) => {
-    const clientData = booking?.clientId || booking?.clientDetails;
-    const retreatData = booking?.retreatId || booking?.retreatDetails;
-    const copy = bookingConfirmationEmailCopy[language];
-    const firstName = clientData?.firstName || clientData?.fname || 'there';
-    const locationText = getRetreatLocationTown(retreatData) || 'our retreat center';
-    const addressText = getRetreatAddress(retreatData) || 'N/A';
-    const mapLinkText = getRetreatMapLink(retreatData) || 'N/A';
-    const dateLocale = language === 'cz' ? 'cs-CZ' : language === 'pl' ? 'pl-PL' : 'en-US';
-    const formatLocalizedDate = (date?: string | Date) => {
-      if (!date) return 'N/A';
-      const dateObj = new Date(date);
-      if (Number.isNaN(dateObj.getTime())) return 'N/A';
-      return dateObj.toLocaleDateString(dateLocale, {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        timeZone: 'UTC',
-      });
-    };
-    const formatLocalizedDateTime = (date?: string | Date, time?: string) => {
-      const dateText = formatLocalizedDate(date);
-      if (dateText === 'N/A') return dateText;
-      const trimmedTime = String(time || '').trim();
-      return trimmedTime ? `${dateText} ${trimmedTime}` : dateText;
-    };
-    const getLocalizedRetreatDateRange = (retreat: any) => {
-      const startDate = retreat?.startDate || retreat?.dates?.startDate;
-      const endDate = retreat?.endDate || retreat?.dates?.endDate;
-      if (startDate && endDate) return `${formatLocalizedDate(startDate)} - ${formatLocalizedDate(endDate)}`;
-      return formatLocalizedDate(startDate || endDate);
-    };
-    const dateText = getLocalizedRetreatDateRange(retreatData);
-    const contactEmail = 'info@ibogaspirit.cz';
-    const bookingNumber = String(booking?.bookingNumber || booking?.booking_number || booking?.display_id || booking?.displayId || 'N/A');
-    const bookingType = `${booking?.bookingType === 'booster' ? 'B' : 'F'} / ${getRetreatCode(retreatData)}`;
-    const retreatStartTime = getRetreatStartTime(retreatData);
-    const retreatEndTime = getRetreatEndTime(retreatData);
-    const checkInText = formatLocalizedDateTime(retreatData?.startDate || retreatData?.dates?.startDate, retreatStartTime);
-    const checkOutText = formatLocalizedDateTime(retreatData?.endDate || retreatData?.dates?.endDate, retreatEndTime);
-    const specialRequestsText = booking?.specialRequests || copy.none;
-    const rows = [
-      [copy.rows.bookingNumber, bookingNumber],
-      [copy.rows.bookingType, bookingType],
-      [copy.rows.status, booking?.status || 'pending'],
-      [copy.rows.client, getClientName(clientData) || 'N/A'],
-      [copy.rows.retreat, retreatData?.name || 'N/A'],
-      [copy.rows.locationTown, getRetreatLocationTown(retreatData) || 'N/A'],
-      [copy.rows.dates, dateText],
-      [copy.rows.checkIn, checkInText],
-      [copy.rows.checkOut, checkOutText],
-      [copy.rows.address, addressText],
-      [copy.rows.googleMapLink, mapLinkText],
-      [copy.rows.specialRequests, specialRequestsText],
-    ];
-    const variables = {
-      client: {
-        firstName,
-        fullName: getClientName(clientData) || 'N/A',
-      },
-      booking: {
-        number: bookingNumber,
-        type: bookingType,
-        status: booking?.status || 'pending',
-        specialRequests: specialRequestsText,
-      },
-      retreat: {
-        name: retreatData?.name || 'N/A',
-        locationTown: getRetreatLocationTown(retreatData) || 'N/A',
-        dateRange: dateText,
-        checkIn: checkInText,
-        checkOut: checkOutText,
-        startTime: retreatStartTime,
-        endTime: retreatEndTime,
-        address: addressText,
-        googleMapLink: mapLinkText,
-      },
-      bookingNumber,
-      bookingType,
-      bookingStatus: booking?.status || 'pending',
-      clientFirstName: firstName,
-      clientFullName: getClientName(clientData) || 'N/A',
-      clientName: getClientName(clientData) || 'N/A',
-      retreatName: retreatData?.name || 'N/A',
-      retreatCode: getRetreatCode(retreatData),
-      retreatLocationTown: getRetreatLocationTown(retreatData) || 'N/A',
-      locationTown: getRetreatLocationTown(retreatData) || 'N/A',
-      retreatDateRange: dateText,
-      retreatCheckIn: checkInText,
-      retreatCheckOut: checkOutText,
-      retreatAddress: addressText,
-      retreatGoogleMapLink: mapLinkText,
-      specialRequests: specialRequestsText,
-    };
-
-    try {
-      const templateResponse = await communicationsApi.getTemplateByCategoryAndLanguage('booking_confirmation', language);
-      const template = templateResponse.data;
-      if (template?.bodyText && template?.subject) {
-        const bodyText = interpolateTemplate(template.bodyText, variables);
-        return {
-          templateId: template._id,
-          bookingFlowStepKey: template.bookingFlowStepKey || 'booking_confirmation_sent',
-          bookingFlowStatusOnSend: template.bookingFlowStatusOnSend || 'sent',
-          subject: interpolateTemplate(template.subject, variables),
-          bodyText,
-          bodyHtml: template.bodyHtml ? interpolateTemplate(template.bodyHtml, variables) : textToHtml(bodyText),
-          variables,
-        };
-      }
-    } catch (error) {
-      console.warn('Booking confirmation template missing; using fallback copy.', error);
-    }
-
-    const bodyText = [
-      copy.greeting(firstName),
-      '',
-      copy.intro(locationText, dateText),
-      '',
-      copy.attached,
-      '',
-      ...rows.map(([label, value]) => `${label}: ${value}`),
-      '',
-      copy.moreInfo,
-      copy.questions(contactEmail),
-      '',
-      copy.closing,
-      'IbogaSpirit.cz',
-    ].join('\n');
-    const rowHtml = rows.map(([label, value]) => `
-      <tr>
-        <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-weight:600;width:34%;">${escapeHtml(label)}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;color:#111827;">${escapeHtml(value)}</td>
-      </tr>
-    `).join('');
-    const bodyHtml = `
-      <div style="font-family:Arial,Helvetica,sans-serif;color:#111827;line-height:1.55;max-width:720px;margin:0 auto;">
-        <p>${escapeHtml(copy.greeting(firstName))}</p>
-        <p>${escapeHtml(copy.intro(locationText, dateText))}</p>
-        <p>${escapeHtml(copy.attached)}</p>
-        <table style="border-collapse:collapse;width:100%;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden;margin:22px 0;">
-          <tbody>${rowHtml}</tbody>
-        </table>
-        <p>${escapeHtml(copy.moreInfo)}</p>
-        <p>${escapeHtml(copy.questions(contactEmail))}</p>
-        <p>${escapeHtml(copy.closing)}<br/>IbogaSpirit.cz</p>
-      </div>
-    `;
-    return {
-      bookingFlowStepKey: 'booking_confirmation_sent',
-      bookingFlowStatusOnSend: 'sent',
-      subject: copy.subject(bookingNumber),
-      bodyText,
-      bodyHtml,
-      variables,
-    };
-  };
-
+  const buildBookingConfirmationEmail = (language: BookingConfirmationLanguage) => composeBookingConfirmationEmail(booking, language);
   const getDefaultConfirmationReason = () => {
     return confirmationReason(booking);
   };
