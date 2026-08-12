@@ -11,14 +11,14 @@ import { resolveBookingStepUploadTarget, shouldShowArtifactUploadFallback } from
 import { getBookingStepColorStyles, getBookingStepToneWithColor } from '../utils/bookingStepColors';
 import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
 import { hasBookingActionLog } from './BookingStepsMatrix.helpers';
-import { normalizeBookingStepKey, resolveConfiguredBookingStepActions } from './bookingStepActions';
-import { ArtifactLinkConfig, artifactStepConfigByKey, getArtifactLinkCandidates, getArtifactStepConfig, getReviewRequestLinkCandidates, getReviewStepConfig, reviewDecisionToClassName, reviewDecisionToLabel, reviewStatusToDecision } from './bookingStepMedicalLinks';
-import { formatStepDate as formatDate, formatStepDateInput as formatDateInput, formatStepDateTime as formatDateTime, formatStepPaymentOption as formatPaymentOption, getSimpleStepStatus, getStepItemDisplayValue as getItemDisplayValue, getStepStatusCellClass as getStatusCellClass, getStepStatusDateField as getStatusDateField, getStepStickyCellStyle as getStickyActionCellStyle } from './bookingStepPresentation';
+import { resolveConfiguredBookingStepActions } from './bookingStepActions';
+import { ArtifactLinkConfig, getArtifactLinkCandidates, getArtifactStepConfig, getReviewRequestLinkCandidates, getReviewStepConfig, reviewDecisionToClassName, reviewDecisionToLabel } from './bookingStepMedicalLinks';
+import { formatStepDate as formatDate, formatStepDateTime as formatDateTime, formatStepPaymentOption as formatPaymentOption, getSimpleStepStatus, getStepItemDisplayValue as getItemDisplayValue, getStepStatusCellClass as getStatusCellClass, getStepStickyCellStyle as getStickyActionCellStyle } from './bookingStepPresentation';
 import { getBookingStepClientId as getBookingClientId, getBookingStepNumber as getBookingNumber, getBookingStepObjectId as getObjectId } from './bookingStepIdentity';
 import { BookingStepMatrixRow as MatrixRow, buildBookingStepRows, filterBookingStepRowGroups, groupBookingStepRows, numberBookingStepRows, searchBookingStepRows } from './bookingStepRows';
 import { indexBookingStepActionLogs, indexBookingStepDocuments, indexBookingStepItems, indexBookingStepPayments, indexBookingStepTemplates } from './bookingStepIndexes';
-import { indexBookingStepArtifactsByContext, indexBookingStepArtifactsById, indexBookingStepReviewsByArtifact, indexBookingStepReviewsByContext, makeBookingStepArtifactContextKey as makeArtifactContextKey, makeBookingStepReviewContextKey as makeReviewContextKey } from './bookingStepMedicalIndexes';
-import { bookingDocumentTypeByStep, buildBookingStepActionOptions, canSendBookingStepReminder as canSendReminder, canSendBookingStepRowEmail as rowCanSendEmail, getLinkedBookingStepArtifactId as getLinkedArtifactIdFromItem, humanizeBookingStepDocumentKey as humanizeDocumentKey, interpolateBookingStepActionUrl as interpolateActionUrl, resolveBookingStepDocumentType, resolveConfiguredBookingStepDocumentType } from './bookingStepControlRules';
+import { indexBookingStepArtifactsByContext, indexBookingStepArtifactsById, indexBookingStepReviewsByArtifact, indexBookingStepReviewsByContext } from './bookingStepMedicalIndexes';
+import { buildBookingStepActionOptions, canSendBookingStepReminder as canSendReminder, canSendBookingStepRowEmail as rowCanSendEmail, getLinkedBookingStepArtifactId as getLinkedArtifactIdFromItem, humanizeBookingStepDocumentKey as humanizeDocumentKey, interpolateBookingStepActionUrl as interpolateActionUrl, resolveBookingStepDocumentType, resolveConfiguredBookingStepDocumentType } from './bookingStepControlRules';
 import BookingStepActionHistory from './BookingStepActionHistory';
 import { applyBookingStepDateUpdate, buildBookingStepDateUpdate, buildBookingStepNoteUpdates, buildBookingStepToggleUpdate, removeBookingStepDateDraft, shouldUpdateBookingStepStatus } from './bookingStepMutations';
 import { buildBookingStepPaymentSelection } from './bookingStepPaymentSelection';
@@ -28,14 +28,13 @@ import { buildBookingStepAutomationToggle, buildBookingStepReminderPayload, form
 import BookingStepClientHeader, { getBookingStepRoutePrefix } from './BookingStepClientHeader';
 import { BookingStepAutomationModal, BookingStepAutomationModalState, BookingStepReminderModal, BookingStepReminderModalState } from './BookingStepCommunicationModals';
 import { BookingStepArtifactLinkModal, BookingStepArtifactLinkModalState, BookingStepReviewLinkModal, BookingStepReviewLinkModalState, BookingStepReviewRequestModal, BookingStepReviewRequestModalState } from './BookingStepMedicalModals';
+import { buildBookingStepCellModel } from './bookingStepCellModel';
 
 const getSimpleStatus = (item?: BookingFlowItem) => {
   const status = getSimpleStepStatus(item);
   const icon = status.icon === 'failed' ? <ThumbsDown className="h-5 w-5" /> : status.icon === 'attention' ? <AlertTriangle className="h-5 w-5" /> : status.icon === 'fulfilled' ? <ThumbsUp className="h-5 w-5" /> : <X className="h-5 w-5" />;
   return { ...status, icon };
 };
-
-const normalizeDocumentKey = normalizeBookingStepKey;
 
 const statusOptions: BookingFlowItem['status'][] = [
   'pending',
@@ -843,55 +842,9 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                       const item = itemMap.get(`${getObjectId(booking)}:${row.key}`);
                       const simpleStatus = getSimpleStatus(item);
                       const done = getSimpleStepStatus(item).icon === 'fulfilled';
-                      const dateField = item ? getStatusDateField(item.status) : 'dueDate';
-                      const dateValue = item ? item[dateField as keyof BookingFlowItem] as Date | string | null | undefined : undefined;
-                      const confirmedDateInputValue = formatDateInput(dateValue);
-                      const pendingDateInputValue = item?._id ? datePickerDrafts[item._id] : undefined;
-                      const hasPendingDateInput = item?._id && pendingDateInputValue !== undefined && pendingDateInputValue !== confirmedDateInputValue;
                       const itemActionLogs = item?._id ? actionLogMap.get(item._id) || [] : [];
                       const configuredActions = getConfiguredActions(item);
-                      const isPaymentReceivedStep = row.key === 'payment_received';
-                      const bookingPayments = paymentsByClientId.get(getBookingClientId(booking)) || [];
-                      const selectedPaymentId = String(item?.metadata?.paymentId || '');
-                      const reviewStepConfig = getReviewStepConfig(row);
-                      const receivedItem = reviewStepConfig ? itemMap.get(`${getObjectId(booking)}:${reviewStepConfig.receivedStepKey}`) : undefined;
-                      const linkedArtifactId = getLinkedArtifactIdFromItem(item) || getLinkedArtifactIdFromItem(receivedItem);
-                      const metadataReviewRequestId = item?.metadata?.medicalReviewRequestId ? String(item.metadata.medicalReviewRequestId) : '';
-                      const requestsLinkedToThisStep = item?._id
-                        ? reviewRequests.filter((request) => getObjectId(request.bookingFlowItemId) === item._id)
-                        : [];
-                      const relatedReviewRequests = reviewStepConfig
-                        ? [
-                            ...requestsLinkedToThisStep,
-                            ...(linkedArtifactId ? (reviewRequestsByArtifactId.get(linkedArtifactId) || []).filter((request) => request.requestType === reviewStepConfig.requestType) : []),
-                            ...(reviewRequestsByBookingContext.get(makeReviewContextKey(getObjectId(booking), reviewStepConfig)) || []),
-                          ].filter((request, index, requests) => request._id && requests.findIndex((candidate) => candidate._id === request._id) === index)
-                        : requestsLinkedToThisStep;
-                      const finalReviewRequest = relatedReviewRequests.find((request) => Boolean(request.reviewDecision || reviewStatusToDecision(request.status as MedicalReviewRequest['status'])));
-                      const resolvedReviewDecision = item?.reviewDecision
-                        || finalReviewRequest?.reviewDecision
-                        || reviewStatusToDecision(finalReviewRequest?.status as MedicalReviewRequest['status']);
-                      const resolvedReviewNotes = item?.reviewNotes
-                        || finalReviewRequest?.reviewNotes
-                        || (finalReviewRequest as any)?.overallNotes
-                        || '';
-                      const resolvedReviewReviewedAt = item?.reviewedAt || finalReviewRequest?.reviewedAt;
-                      const existingReviewRequest = relatedReviewRequests.find((request) => request._id === metadataReviewRequestId) || relatedReviewRequests[0];
-                      const existingReviewRequestId = metadataReviewRequestId || existingReviewRequest?._id || '';
-                      const existingReviewRequestDisplay = item?.metadata?.medicalReviewRequestDisplayId || existingReviewRequest?.display_id || '';
-                      const documentTypeForStep = item ? resolveBookingStepDocumentType(item) : normalizeDocumentKey(row.key);
-                      const relatedBookingDocument = bookingDocumentMap.get(`${getObjectId(booking)}:${documentTypeForStep}`)?.[0];
-                      const artifactStepConfig = getArtifactStepConfig(row) || (reviewStepConfig ? artifactStepConfigByKey[reviewStepConfig.receivedStepKey] : undefined);
-                      const configuredBookingDocumentType = row.key === 'questionnaire_sent'
-                        ? ''
-                        : item ? resolveConfiguredBookingStepDocumentType(item, Boolean(artifactStepConfig)) : normalizeDocumentKey(bookingDocumentTypeByStep[row.key] || '');
-                      const linkableArtifacts = artifactStepConfig ? getArtifactLinkCandidates(booking, medicalArtifacts, artifactStepConfig) : [];
-                      const relatedMedicalArtifact = linkedArtifactId
-                        ? medicalArtifactById.get(linkedArtifactId)
-                          : artifactStepConfig
-                            ? medicalArtifactsByBookingContext.get(makeArtifactContextKey(getObjectId(booking), artifactStepConfig))?.[0]
-                            : undefined;
-                      const relatedMedicalArtifactId = relatedMedicalArtifact?._id || linkedArtifactId;
+                      const { confirmedDateInputValue, pendingDateInputValue, hasPendingDateInput, isPaymentReceivedStep, bookingPayments, selectedPaymentId, reviewStepConfig, resolvedReviewDecision, resolvedReviewNotes, resolvedReviewReviewedAt, existingReviewRequestId, existingReviewRequestDisplay, relatedBookingDocument, artifactStepConfig, configuredBookingDocumentType, linkableArtifacts, relatedMedicalArtifact, relatedMedicalArtifactId } = buildBookingStepCellModel({ booking, item, row, itemMap, datePickerDrafts, paymentsByClientId, reviewRequests, reviewRequestsByArtifactId, reviewRequestsByBookingContext, bookingDocumentMap, medicalArtifacts, medicalArtifactById, medicalArtifactsByBookingContext });
                       return (
                         <td key={`${getObjectId(booking)}:${row.key}`} className={`${viewMode === 'simple' ? 'min-w-[150px] px-2 py-2 text-center' : 'min-w-[230px] px-2 py-1 align-top'} border-b border-r border-gray-300 ${item ? (reviewStepConfig && resolvedReviewDecision ? reviewDecisionToClassName(resolvedReviewDecision) : getStatusCellClass(item.status)) : 'bg-red-50 text-red-900'}`}>
                           {viewMode === 'simple' ? (

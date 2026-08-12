@@ -99,6 +99,7 @@
       "**/BookingStepClientHeader.tsx": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
       "**/BookingStepCommunicationModals.tsx": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
       "**/BookingStepMedicalModals.tsx": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
+      "**/bookingStepCellModel.ts": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
       "**/cacheService.ts": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 }
     }
   },
