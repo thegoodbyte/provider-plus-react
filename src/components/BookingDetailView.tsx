@@ -812,6 +812,7 @@ const BookingMedicalOverviewPanel: React.FC<{
   const [reviewsByArtifact, setReviewsByArtifact] = useState<Record<string, MedicalReviewRequest[]>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [medicationPlan, setMedicationPlan] = useState<any[]>([]);
   const [uploadRequest, setUploadRequest] = useState<{ stage: NonNullable<MedicalArtifact['documentStage']>; key: number } | null>(null);
 
   const loadMedicalOverview = async () => {
@@ -822,6 +823,7 @@ const BookingMedicalOverviewPanel: React.FC<{
     try {
       const itemsStart = performance.now();
       const itemsResponse = await bookingFlowApi.getItems({ bookingId });
+      setMedicationPlan((itemsResponse.data || []).filter((item: any) => item.metadata?.medicationStopPlan && item.status !== 'cancelled'));
       timings.items = performance.now() - itemsStart;
       const bookingFlowFilters = buildBookingFlowArtifactFilters(itemsResponse.data || []);
       const artifactsStart = performance.now();
@@ -873,6 +875,25 @@ const BookingMedicalOverviewPanel: React.FC<{
 
   return (
     <div className="booking-medical-panel">
+      <div className="detail-section">
+        <div className="section-header">
+          <h3 className="pdf-section-title">Important medical dates</h3>
+          <button className="edit-btn" type="button" onClick={() => navigate(`${routePrefix}/bookings/${bookingId}/medication-stop-plan`)}>Edit medication plan</button>
+        </div>
+        {medicationPlan.some((item: any) => item.metadata?.medicationStopPlanAllClear) ? (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900"><strong>✓ All good — nothing to prepare</strong><p className="mt-1 text-sm">{medicationPlan.find((item: any) => item.metadata?.medicationStopPlanAllClear)?.description}</p></div>
+        ) : medicationPlan.length ? (
+          <div className="space-y-2">{medicationPlan.map((item: any) => {
+            const due = item.dueDate ? new Date(item.dueDate) : null;
+            const overdue = due && due.getTime() < Date.now() && !['completed', 'approved'].includes(item.status);
+            return <div key={item._id} className={`grid gap-2 rounded-xl border p-4 md:grid-cols-[150px_1fr_auto] ${overdue ? 'border-rose-200 bg-rose-50' : 'border-amber-200 bg-amber-50'}`}>
+              <strong className={overdue ? 'text-rose-700' : 'text-amber-800'}>{due ? due.toLocaleDateString() : 'Date not set'}</strong>
+              <div><strong>{item.title}</strong><p className="mt-1 text-sm text-slate-600">{item.description}</p>{item.metadata?.taperPlan && <small className="mt-1 block text-slate-500">{item.metadata.taperPlan}</small>}</div>
+              <span className="text-sm font-semibold capitalize text-slate-600">{String(item.status || 'pending').replace(/_/g, ' ')}</span>
+            </div>;
+          })}</div>
+        ) : <div className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-600">No medication preparation decision has been recorded yet.</div>}
+      </div>
       <div className="detail-section">
         <div className="section-header">
           <h3 className="pdf-section-title">Required Entry Medical Items</h3>
