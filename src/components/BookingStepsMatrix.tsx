@@ -15,6 +15,7 @@ import {
 } from '../utils/bookingStepColors';
 import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
 import { hasBookingActionLog, reviewRequestStatusToBookingStepStatus } from './BookingStepsMatrix.helpers';
+import { normalizeBookingStepKey, resolveConfiguredBookingStepActions } from './bookingStepActions';
 
 const getObjectId = (value: any): string => {
   if (!value) return '';
@@ -46,7 +47,7 @@ const getBookingClientId = (booking: any): string => {
 
 const getPaymentClientId = (payment: Payment): string => getObjectId(payment.clientId);
 
-const normalizeDocumentKey = (value?: string) => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+const normalizeDocumentKey = normalizeBookingStepKey;
 
 const humanizeDocumentKey = (value: string) => value
   .split(/[_-]+/)
@@ -1270,51 +1271,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     });
   };
 
-  const getConfiguredActions = (item?: BookingFlowItem): BookingFlowAction[] => {
-    if (!item) return [];
-    const template = typeof item.templateId === 'object'
-      ? item.templateId
-      : templateMap.get(getObjectId(item.templateId)) || templateMap.get(item.key) || null;
-    const libraryTemplate = libraryTemplateMap.get(item.key) || null;
-    const configured = Array.isArray(item.actions) && item.actions.length > 0
-      ? item.actions
-      : Array.isArray(item.metadata?.actions) && (item.metadata?.actions?.length || 0) > 0
-        ? (item.metadata?.actions as BookingFlowAction[])
-        : Array.isArray(template?.actions) && (template?.actions?.length || 0) > 0
-          ? template?.actions || []
-          : Array.isArray(libraryTemplate?.actions)
-            ? libraryTemplate?.actions || []
-            : [];
-    const actions = configured.filter((action) => action.active !== false);
-    const fallbackEmailTemplateId = item.emailTemplateId || template?.emailTemplateId || libraryTemplate?.emailTemplateId;
-    const hasLegacyEmail = Boolean((item.emailEnabled || template?.emailEnabled || libraryTemplate?.emailEnabled) && fallbackEmailTemplateId);
-    if (hasLegacyEmail && !actions.some((action) => action.type === 'email' && action.emailTemplateId)) {
-      actions.unshift({
-        key: 'default_email',
-        label: 'Send email',
-        type: 'email',
-        emailTemplateId: fallbackEmailTemplateId,
-        statusAfterSuccess: 'sent',
-        allowRepeat: true,
-        openComposer: true,
-        order: -1,
-      });
-    }
-    const isContractSentStep = normalizeDocumentKey(item.key) === 'contract_sent'
-      || /\bcontract\b.*\bsent\b/i.test(item.title || '');
-    if (isContractSentStep && !actions.some((action) => action.type === 'email')) {
-      actions.unshift({
-        key: 'send_contract',
-        label: 'Send contract',
-        type: 'email',
-        statusAfterSuccess: 'sent',
-        allowRepeat: true,
-        openComposer: true,
-        order: -2,
-      });
-    }
-    return actions.sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
-  };
+  const getConfiguredActions = useCallback((item?: BookingFlowItem) => resolveConfiguredBookingStepActions(item, templateMap, libraryTemplateMap), [templateMap, libraryTemplateMap]);
 
   const interpolateActionUrl = (template: string, variables: Record<string, any> = {}) => {
     return template.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_match, path) => {
