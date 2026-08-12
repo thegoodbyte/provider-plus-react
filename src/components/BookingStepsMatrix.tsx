@@ -21,6 +21,7 @@ import { indexBookingStepArtifactsByContext, indexBookingStepArtifactsById, inde
 import { bookingDocumentTypeByStep, buildBookingStepActionOptions, canSendBookingStepReminder as canSendReminder, canSendBookingStepRowEmail as rowCanSendEmail, getLinkedBookingStepArtifactId as getLinkedArtifactIdFromItem, humanizeBookingStepDocumentKey as humanizeDocumentKey, interpolateBookingStepActionUrl as interpolateActionUrl, resolveBookingStepDocumentType, resolveConfiguredBookingStepDocumentType } from './bookingStepControlRules';
 import BookingStepActionHistory from './BookingStepActionHistory';
 import BookingStepClientAvatar from './BookingStepClientAvatar';
+import { applyBookingStepDateUpdate, buildBookingStepDateUpdate, buildBookingStepNoteUpdates, buildBookingStepToggleUpdate, removeBookingStepDateDraft, shouldUpdateBookingStepStatus } from './bookingStepMutations';
 
 const getSimpleStatus = (item?: BookingFlowItem) => {
   const status = getSimpleStepStatus(item);
@@ -244,9 +245,8 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     setSaving(item._id);
     try {
       await bookingFlowApi.updateItem(item._id, {
-        status: checked ? 'completed' : 'pending',
-        completedAt: checked ? new Date().toISOString() : null,
-      } as Partial<BookingFlowItem>);
+        ...buildBookingStepToggleUpdate(checked),
+      });
       await loadData(false);
     } finally {
       setSaving('');
@@ -254,7 +254,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   };
 
   const updateItemStatus = async (item: BookingFlowItem | undefined, status: BookingFlowItem['status']) => {
-    if (!item?._id || item.status === status) return;
+    if (!shouldUpdateBookingStepStatus(item, status)) return;
     setSaving(item._id);
     try {
       await bookingFlowApi.updateItem(item._id, { status } as Partial<BookingFlowItem>);
@@ -265,14 +265,10 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   };
 
   const saveAllChanges = async (lockAfterSave = false) => {
-    const dirtyIds = Object.keys(dirtyNoteIds);
+    const noteUpdates = buildBookingStepNoteUpdates(items, dirtyNoteIds, noteDrafts);
     setSaving('save-all');
     try {
-      await Promise.all(dirtyIds.map((itemId) => {
-        const item = items.find((currentItem) => currentItem._id === itemId);
-        if (!item || (item.notes || '') === (noteDrafts[itemId] || '')) return Promise.resolve();
-        return bookingFlowApi.updateItem(itemId, { notes: noteDrafts[itemId] || '' } as Partial<BookingFlowItem>);
-      }));
+      await Promise.all(noteUpdates.map(({ itemId, notes }) => bookingFlowApi.updateItem(itemId, { notes })));
       setDirtyNoteIds({});
       await loadData(false);
       if (lockAfterSave) setIsEditing(false);
@@ -283,20 +279,12 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
 
   const updateItemDate = async (item: BookingFlowItem | undefined, value: string) => {
     if (!item?._id) return;
-    const field = getStatusDateField(item.status);
+    const { field, payload } = buildBookingStepDateUpdate(item, value);
     setSaving(`date:${item._id}`);
     try {
-      setItems((current) => current.map((currentItem) => (
-        currentItem._id === item._id
-          ? { ...currentItem, [field]: value || null }
-          : currentItem
-      )));
-      await bookingFlowApi.updateItem(item._id, { [field]: value || null } as Partial<BookingFlowItem>);
-      setDatePickerDrafts((current) => {
-        const nextDrafts = { ...current };
-        delete nextDrafts[item._id!];
-        return nextDrafts;
-      });
+      setItems((current) => applyBookingStepDateUpdate(current, item._id!, field, value));
+      await bookingFlowApi.updateItem(item._id, payload);
+      setDatePickerDrafts((current) => removeBookingStepDateDraft(current, item._id!));
       await loadData(false);
     } finally {
       setSaving('');
@@ -590,11 +578,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
 
   const cancelItemDateDraft = (item: BookingFlowItem | undefined) => {
     if (!item?._id) return;
-    setDatePickerDrafts((current) => {
-      const nextDrafts = { ...current };
-      delete nextDrafts[item._id!];
-      return nextDrafts;
-    });
+    setDatePickerDrafts((current) => removeBookingStepDateDraft(current, item._id!));
   };
 
   const getConfiguredActions = useCallback((item?: BookingFlowItem) => resolveConfiguredBookingStepActions(item, templateMap, libraryTemplateMap), [templateMap, libraryTemplateMap]);
