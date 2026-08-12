@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useLocation } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, Circle, FileText, Filter, Link2, ListPlus, Lock, Mail, RefreshCw, Save, ThumbsDown, ThumbsUp, Unlock, Upload, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, FileText, Filter, Link2, ListPlus, Lock, Mail, RefreshCw, Save, ThumbsDown, ThumbsUp, Unlock, Upload, X } from 'lucide-react';
 import { bookingDocumentsApi, bookingFlowApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { BookingDocument, BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
@@ -13,7 +13,7 @@ import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
 import { hasBookingActionLog } from './BookingStepsMatrix.helpers';
 import { resolveConfiguredBookingStepActions } from './bookingStepActions';
 import { ArtifactLinkConfig, getArtifactLinkCandidates, getArtifactStepConfig, getReviewRequestLinkCandidates, getReviewStepConfig, reviewDecisionToClassName, reviewDecisionToLabel } from './bookingStepMedicalLinks';
-import { formatStepDate as formatDate, formatStepDateTime as formatDateTime, formatStepPaymentOption as formatPaymentOption, getSimpleStepStatus, getStepItemDisplayValue as getItemDisplayValue, getStepStatusCellClass as getStatusCellClass, getStepStickyCellStyle as getStickyActionCellStyle } from './bookingStepPresentation';
+import { formatStepDateTime as formatDateTime, getSimpleStepStatus, getStepStatusCellClass as getStatusCellClass, getStepStickyCellStyle as getStickyActionCellStyle } from './bookingStepPresentation';
 import { getBookingStepClientId as getBookingClientId, getBookingStepNumber as getBookingNumber, getBookingStepObjectId as getObjectId } from './bookingStepIdentity';
 import { BookingStepMatrixRow as MatrixRow, buildBookingStepRows, filterBookingStepRowGroups, groupBookingStepRows, numberBookingStepRows, searchBookingStepRows } from './bookingStepRows';
 import { indexBookingStepActionLogs, indexBookingStepDocuments, indexBookingStepItems, indexBookingStepPayments, indexBookingStepTemplates } from './bookingStepIndexes';
@@ -29,29 +29,13 @@ import BookingStepClientHeader, { getBookingStepRoutePrefix } from './BookingSte
 import { BookingStepAutomationModal, BookingStepAutomationModalState, BookingStepReminderModal, BookingStepReminderModalState } from './BookingStepCommunicationModals';
 import { BookingStepArtifactLinkModal, BookingStepArtifactLinkModalState, BookingStepReviewLinkModal, BookingStepReviewLinkModalState, BookingStepReviewRequestModal, BookingStepReviewRequestModalState } from './BookingStepMedicalModals';
 import { buildBookingStepCellModel } from './bookingStepCellModel';
+import BookingStepCellEditor from './BookingStepCellEditor';
 
 const getSimpleStatus = (item?: BookingFlowItem) => {
   const status = getSimpleStepStatus(item);
   const icon = status.icon === 'failed' ? <ThumbsDown className="h-5 w-5" /> : status.icon === 'attention' ? <AlertTriangle className="h-5 w-5" /> : status.icon === 'fulfilled' ? <ThumbsUp className="h-5 w-5" /> : <X className="h-5 w-5" />;
   return { ...status, icon };
 };
-
-const statusOptions: BookingFlowItem['status'][] = [
-  'pending',
-  'sent',
-  'received',
-  'sent_for_review',
-  'in_review',
-  'reviewed',
-  'approved',
-  'caution',
-  'rejected',
-  'needs_resubmission',
-  'completed',
-  'blocked',
-  'waived',
-  'scheduled',
-];
 
 const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const location = useLocation();
@@ -855,88 +839,16 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                               {simpleStatus.icon}
                             </div>
                           ) : item ? (
-                            <div className="space-y-1">
-                              <div className="grid grid-cols-[18px_minmax(88px,1fr)_92px] items-center gap-1">
-                            <button
-                              type="button"
-                              disabled={!isEditing || saving === item._id}
-                              onClick={() => toggleItem(item, !done)}
-                              className="inline-flex justify-center disabled:opacity-50"
-                              title={isEditing ? (done ? 'Mark pending' : 'Mark complete') : 'Unlock editing to change status'}
+                            <>
+                            <BookingStepCellEditor
+                              item={item} done={done} isEditing={isEditing} saving={saving}
+                              confirmedDateInputValue={confirmedDateInputValue} pendingDateInputValue={pendingDateInputValue} hasPendingDateInput={hasPendingDateInput}
+                              isPaymentReceivedStep={isPaymentReceivedStep} bookingPayments={bookingPayments} selectedPaymentId={selectedPaymentId} note={noteDrafts[item._id || ''] || ''}
+                              onToggle={() => toggleItem(item, !done)} onStatusChange={(status) => updateItemStatus(item, status)}
+                              onDateDraftChange={(value) => item._id && setDatePickerDrafts((current) => ({ ...current, [item._id!]: value }))}
+                              onDateCancel={() => cancelItemDateDraft(item)} onDateSave={(value) => updateItemDate(item, value)} onPaymentChange={(paymentId) => selectPaymentForItem(item, paymentId)}
+                              onNoteChange={(value) => { if (!item._id) return; setNoteDrafts((current) => ({ ...current, [item._id!]: value })); setDirtyNoteIds((current) => ({ ...current, [item._id!]: true })); }}
                             >
-                              {done ? <CheckCircle2 className="h-4 w-4 flex-none" /> : <Circle className="h-4 w-4 flex-none" />}
-                            </button>
-                            <select
-                              value={item.status || 'pending'}
-                              disabled={!isEditing || saving === item._id}
-                              onChange={(event) => updateItemStatus(item, event.target.value as BookingFlowItem['status'])}
-                              className="w-full rounded border border-black/10 bg-white/80 px-1.5 py-1 text-xs font-medium text-gray-800 disabled:cursor-not-allowed disabled:bg-white/40"
-                              title={getItemDisplayValue(item) || item.status || 'pending'}
-                            >
-                              {statusOptions.map((status) => (
-                                <option key={status} value={status}>{status.replace(/_/g, ' ')}</option>
-                              ))}
-                            </select>
-                            <div className="grid gap-1">
-                              <input
-                                type="date"
-                                value={pendingDateInputValue ?? confirmedDateInputValue}
-                                disabled={!isEditing || saving === `date:${item._id}`}
-                                onChange={(event) => {
-                                  if (!item._id) return;
-                                  setDatePickerDrafts((current) => ({ ...current, [item._id!]: event.target.value }));
-                                }}
-                                className="w-full rounded border border-black/10 bg-white/80 px-1.5 py-1 text-xs text-gray-800 disabled:cursor-not-allowed disabled:bg-white/40"
-                              />
-                              {hasPendingDateInput && (
-                                <div className="flex justify-end gap-1">
-                                  <button
-                                    type="button"
-                                    onClick={() => cancelItemDateDraft(item)}
-                                    className="rounded border border-gray-300 bg-white px-1.5 py-0.5 text-[11px] font-medium text-gray-700 hover:bg-gray-50"
-                                  >
-                                    Cancel
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => updateItemDate(item, pendingDateInputValue || '')}
-                                    className="rounded bg-blue-600 px-1.5 py-0.5 text-[11px] font-medium text-white hover:bg-blue-700"
-                                  >
-                                    OK
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                              </div>
-                              {isPaymentReceivedStep && (
-                                <select
-                                  value={selectedPaymentId}
-                                  disabled={!isEditing || saving === `payment:${item._id}` || bookingPayments.length === 0}
-                                  onChange={(event) => selectPaymentForItem(item, event.target.value)}
-                                  className="w-full rounded border border-emerald-200 bg-white/90 px-1.5 py-1 text-xs font-medium text-emerald-900 disabled:cursor-not-allowed disabled:bg-white/40 disabled:text-gray-500"
-                                  title={bookingPayments.length > 0 ? 'Choose client payment to mark this step received' : 'No payments found for this client in this retreat'}
-                                >
-                                  <option value="">{bookingPayments.length > 0 ? 'Choose payment...' : 'No payments found'}</option>
-                                  {bookingPayments.map((payment) => (
-                                    <option key={payment._id || `${payment.display_id}:${payment.paymentDate}`} value={payment._id || ''}>
-                                      {formatPaymentOption(payment)}
-                                    </option>
-                                  ))}
-                                </select>
-                              )}
-                              <div className="grid grid-cols-[1fr_auto] gap-1">
-                            <textarea
-                              value={noteDrafts[item._id || ''] || ''}
-                              disabled={!isEditing}
-                              onChange={(event) => {
-                                if (!item._id) return;
-                                setNoteDrafts((current) => ({ ...current, [item._id!]: event.target.value }));
-                                setDirtyNoteIds((current) => ({ ...current, [item._id!]: true }));
-                              }}
-                              rows={1}
-                              placeholder={item.emailSentAt ? `Email ${formatDate(item.emailSentAt)}` : 'Notes'}
-                              className="min-h-[28px] w-full resize-y rounded border border-black/10 bg-white/80 px-1.5 py-1 text-xs text-gray-800 placeholder:text-gray-400 disabled:cursor-not-allowed disabled:bg-white/40"
-                            />
                             {reviewStepConfig && (
                               existingReviewRequestId ? (
                                 <Link
@@ -983,7 +895,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                                     {resolvedReviewNotes}
                                   </div>
                                 )}
-                              </div>
+                                  </div>
                             )}
                             {configuredActions.map((action) => {
                               const actionLogs = itemActionLogs.filter((log) => (log.actionKey || 'default_email') === action.key);
@@ -1124,7 +1036,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                                 Link existing
                               </button>
                             )}
-                              </div>
+                              </BookingStepCellEditor>
                               {itemActionLogs.length > 0 && (
                                 <div className="space-y-0.5 text-[11px] text-blue-800">
                               {configuredActions
@@ -1135,7 +1047,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                                 ))}
                                 </div>
                               )}
-                            </div>
+                            </>
                           ) : (
                             <span className="text-gray-300">-</span>
                           )}
