@@ -4,7 +4,6 @@ import { FiArrowLeft, FiCheck, FiChevronDown, FiDownload, FiEdit3, FiEye, FiMail
 import { message } from 'antd';
 import { bookingsApi, bookingFlowApi, ceremoniesApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import BookingPaymentManagement from './BookingPaymentManagement';
-import BookingMedicalUpload from './BookingMedicalUpload';
 import BookingDocumentsUpload from './BookingDocumentsUpload';
 import ClientBookingWorkflowTab from './ClientBookingWorkflowTab';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
@@ -15,7 +14,7 @@ import { TaskForm } from './Tasks/TaskForm';
 import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
 import { mergeArtifacts } from './bookingRequirementRows';
 import BookingRequirementsPanel from './BookingRequirementsPanel';
-import { groupMedicalArtifacts, loadBookingMedicalOverview, requiredEntryRows } from './bookingMedicalOverviewData';
+import BookingMedicalOverviewPanel from './BookingMedicalOverviewPanel';
 import { createBookingConfirmationPdf } from './BookingConfirmationPDF';
 import { Task, CreateTaskDto, taskService } from '../services/taskService';
 import { CeremonyParticipant, MedicalArtifact, MedicalReviewRequest } from '../types';
@@ -36,16 +35,6 @@ interface BookingDetailViewProps {
 const HeaderIcon: React.FC<{ icon: any }> = ({ icon: IconComponent }) => <IconComponent />;
 
 const reviewedStatuses = new Set(['reviewed', 'approved', 'completed', 'caution', 'rejected', 'needs_resubmission']);
-const medicalStageLabels: Record<MedicalArtifact['documentStage'], string> = {
-  entry: 'Entry',
-  pre_ceremony: 'Pre-ceremony',
-  in_ceremony: 'In-ceremony',
-  post_ceremony: 'Post-ceremony',
-  other: 'Other',
-  additional: 'Additional',
-};
-
-const medicalStageOrder: MedicalArtifact['documentStage'][] = ['entry', 'pre_ceremony', 'in_ceremony', 'post_ceremony', 'other', 'additional'];
 const escapeHtml = (value: any) =>
   String(value ?? '').replace(/[&<>"']/g, (char) => ({
     '&': '&amp;',
@@ -319,12 +308,6 @@ const getReviewDecisionClass = (review?: MedicalReviewRequest) => {
   return 'medical-decision-pending';
 };
 
-const getArtifactDisplayTitle = (artifact: MedicalArtifact) => {
-  const title = artifact.title || artifact.documentType || artifact.artifactType || 'Medical record';
-  const ceremony = artifact.ceremonyNumber ? `Ceremony #${artifact.ceremonyNumber}` : '';
-  return [title, ceremony].filter(Boolean).join(' - ');
-};
-
 const getLatestReviewForArtifact = (artifact: MedicalArtifact, reviewsByArtifact: Record<string, MedicalReviewRequest[]>) => {
   if (!artifact._id) return undefined;
   return [...(reviewsByArtifact[artifact._id] || [])].sort((a, b) => getReviewTime(b) - getReviewTime(a))[0];
@@ -390,227 +373,6 @@ const isArtifactRelevantToBooking = (artifact: MedicalArtifact, bookingId: strin
   return true;
 };
 
-
-const MedicalReviewLine: React.FC<{
-  review?: MedicalReviewRequest;
-  artifactId?: string;
-  routePrefix: string;
-  navigate: ReturnType<typeof useNavigate>;
-}> = ({ review, artifactId, routePrefix, navigate }) => (
-  <div className="booking-medical-review-line">
-    <span className={`booking-medical-decision ${getReviewDecisionClass(review)}`}>
-      {getReviewDecisionText(review)}
-    </span>
-    {review?._id ? (
-      <button
-        type="button"
-        className="booking-medical-link"
-        onClick={() => navigate(`${routePrefix}/medical-review-requests/${review._id}`)}
-      >
-        Review #{review.display_id || review._id}
-      </button>
-    ) : (
-      <span className="booking-medical-missing-review">
-        <span className="booking-medical-muted">No medical review linked yet</span>
-        {artifactId && (
-          <button
-            type="button"
-            className="booking-medical-create-review"
-            onClick={() => navigate(`${routePrefix}/medical-review-requests/new?artifactId=${artifactId}`)}
-          >
-            Create MRR
-          </button>
-        )}
-      </span>
-    )}
-    {review?.reviewedAt && <span className="booking-medical-muted">{formatShortDateTime(review.reviewedAt)}</span>}
-    {(review?.reviewNotes || review?.overallNotes || review?.medicalStaffNotes) && (
-      <span className="booking-medical-notes">{review.reviewNotes || review.overallNotes || review.medicalStaffNotes}</span>
-    )}
-  </div>
-);
-
-const BookingMedicalOverviewPanel: React.FC<{
-  bookingId: string;
-  clientId?: string;
-  retreatId?: string;
-  refreshKey: number;
-  onUploadComplete: () => void;
-  bookingNumber?: number | string;
-}> = ({ bookingId, clientId, retreatId, refreshKey, onUploadComplete, bookingNumber }) => {
-  const navigate = useNavigate();
-  const location = useLocation();
-  const routePrefix = useMemo(() => {
-    const firstSegment = location.pathname.split('/').filter(Boolean)[0];
-    return ['admin', 'medical', 'staff', 'user'].includes(firstSegment) ? `/${firstSegment}` : '';
-  }, [location.pathname]);
-  const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
-  const [reviewsByArtifact, setReviewsByArtifact] = useState<Record<string, MedicalReviewRequest[]>>({});
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [medicationPlan, setMedicationPlan] = useState<any[]>([]);
-  const [uploadRequest, setUploadRequest] = useState<{ stage: NonNullable<MedicalArtifact['documentStage']>; key: number } | null>(null);
-
-  const loadMedicalOverview = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const result = await loadBookingMedicalOverview(bookingId, clientId, retreatId);
-      setMedicationPlan(result.medicationPlan); setArtifacts(result.artifacts); setReviewsByArtifact(result.reviewsByArtifact);
-    } catch (loadError: any) {
-      setError(loadError?.response?.data?.message || loadError?.message || 'Unable to load booking medical records.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadMedicalOverview();
-  }, [bookingId, clientId, retreatId, refreshKey]);
-
-  const artifactsByStage = groupMedicalArtifacts(artifacts);
-  const requiredRows = requiredEntryRows(artifacts, reviewsByArtifact);
-
-  return (
-    <div className="booking-medical-panel">
-      <div className="detail-section">
-        <div className="section-header">
-          <h3 className="pdf-section-title">Important medical dates</h3>
-          <button className="edit-btn" type="button" onClick={() => navigate(`${routePrefix}/bookings/${bookingId}/medication-stop-plan`)}>Edit medication plan</button>
-        </div>
-        {medicationPlan.some((item: any) => item.metadata?.medicationStopPlanAllClear) ? (
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900"><strong>✓ All good — nothing to prepare</strong><p className="mt-1 text-sm">{medicationPlan.find((item: any) => item.metadata?.medicationStopPlanAllClear)?.description}</p></div>
-        ) : medicationPlan.length ? (
-          <div className="space-y-2">{medicationPlan.map((item: any) => {
-            const due = item.dueDate ? new Date(item.dueDate) : null;
-            const overdue = due && due.getTime() < Date.now() && !['completed', 'approved'].includes(item.status);
-            return <div key={item._id} className={`grid gap-2 rounded-xl border p-4 md:grid-cols-[150px_1fr_auto] ${overdue ? 'border-rose-200 bg-rose-50' : 'border-amber-200 bg-amber-50'}`}>
-              <strong className={overdue ? 'text-rose-700' : 'text-amber-800'}>{due ? due.toLocaleDateString() : 'Date not set'}</strong>
-              <div><strong>{item.title}</strong><p className="mt-1 text-sm text-slate-600">{item.description}</p>{item.metadata?.taperPlan && <small className="mt-1 block text-slate-500">{item.metadata.taperPlan}</small>}</div>
-              <span className="text-sm font-semibold capitalize text-slate-600">{String(item.status || 'pending').replace(/_/g, ' ')}</span>
-            </div>;
-          })}</div>
-        ) : <div className="rounded-xl border border-dashed border-slate-300 p-4 text-sm text-slate-600">No medication preparation decision has been recorded yet.</div>}
-      </div>
-      <div className="detail-section">
-        <div className="section-header">
-          <h3 className="pdf-section-title">Required Entry Medical Items</h3>
-          <div className="flex gap-2">
-            <button className="edit-btn" type="button" onClick={() => navigate(`${routePrefix}/bookings/${bookingId}/medication-stop-plan`)}>Medication stop plan</button>
-            <button className="edit-btn" type="button" onClick={loadMedicalOverview} disabled={loading}>{loading ? 'Refreshing...' : 'Refresh'}</button>
-          </div>
-        </div>
-        {error && <div className="alert alert-danger">{error}</div>}
-        <div className="booking-medical-required-grid">
-          {requiredRows.map(({ documentType, artifact, review }) => (
-            <div key={documentType} className={`booking-medical-required-card ${artifact ? 'is-present' : 'is-missing'}`}>
-              <div>
-                <div className="booking-medical-required-title">Entry {documentType}</div>
-                <div className="booking-medical-muted">
-                  Lookup: entry document + booking #{bookingNumber || bookingId}
-                </div>
-              </div>
-              {artifact ? (
-                <>
-                  <button
-                    type="button"
-                    className="booking-medical-link"
-                    onClick={() => navigate(`${routePrefix}/medical-artifacts/${artifact._id}`)}
-                  >
-                    Artifact #{artifact.display_id || artifact._id}
-                  </button>
-                  <MedicalReviewLine review={review} artifactId={artifact._id} routePrefix={routePrefix} navigate={navigate} />
-                </>
-              ) : (
-                <span className="booking-medical-decision medical-decision-declined">Missing</span>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="detail-section">
-        <h3 className="pdf-section-title">Medical Records by Stage</h3>
-        <div className="booking-medical-stage-list">
-          {medicalStageOrder.map((stage) => {
-            const stageArtifacts = artifactsByStage[stage] || [];
-            return (
-              <details key={stage} className="booking-medical-stage" open={stage === 'entry'}>
-                <summary>
-                  <span>{medicalStageLabels[stage]}</span>
-                  <span className="flex items-center gap-3">
-                    <span>{stageArtifacts.length}</span>
-                    {clientId && retreatId && (
-                      <button
-                        type="button"
-                        className="btn btn-sm btn-primary"
-                        onClick={(event) => {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          setUploadRequest({ stage: stage || 'other', key: Date.now() });
-                        }}
-                      >
-                        Upload
-                      </button>
-                    )}
-                  </span>
-                </summary>
-                {stageArtifacts.length === 0 ? (
-                  <div className="booking-medical-empty">No {medicalStageLabels[stage].toLowerCase()} records found.</div>
-                ) : (
-                  <div className="booking-medical-record-list">
-                    {stageArtifacts.map((artifact) => {
-                      const review = getLatestReviewForArtifact(artifact, reviewsByArtifact);
-                      return (
-                        <div key={artifact._id || `${artifact.documentType}-${artifact.receivedAt}`} className="booking-medical-record">
-                          <div className="booking-medical-record-main">
-                            <button
-                              type="button"
-                              className="booking-medical-link booking-medical-title-link"
-                              onClick={() => artifact._id && navigate(`${routePrefix}/medical-artifacts/${artifact._id}`)}
-                              disabled={!artifact._id}
-                            >
-                              #{artifact.display_id || artifact._id || 'New'} {getArtifactDisplayTitle(artifact)}
-                            </button>
-                            <div className="booking-medical-meta">
-                              <span>{artifact.documentType}</span>
-                              <span>{artifact.artifactType || 'artifact'}</span>
-                              <span>{formatShortDateTime(artifact.receivedAt || artifact.createdAt)}</span>
-                              <span>{(artifact.files || []).length} file(s)</span>
-                            </div>
-                          </div>
-                          <MedicalReviewLine review={review} artifactId={artifact._id} routePrefix={routePrefix} navigate={navigate} />
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </details>
-            );
-          })}
-        </div>
-      </div>
-
-      {clientId && retreatId ? (
-        <BookingMedicalUpload
-          bookingId={bookingId}
-          bookingNumber={bookingNumber}
-          clientId={clientId}
-          retreatId={retreatId}
-          uploadRequest={uploadRequest}
-          onUploadComplete={() => {
-            onUploadComplete();
-            loadMedicalOverview();
-          }}
-        />
-      ) : (
-        <div className="detail-section">
-          <p className="text-sm text-gray-500">Medical upload needs a linked client and retreat on this booking.</p>
-        </div>
-      )}
-    </div>
-  );
-};
 
 const BookingCeremoniesPanel: React.FC<{
   bookingId: string;
