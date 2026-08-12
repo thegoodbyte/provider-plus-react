@@ -12,8 +12,8 @@ import { getBookingStepColorStyles, getBookingStepToneWithColor } from '../utils
 import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
 import { hasBookingActionLog } from './BookingStepsMatrix.helpers';
 import { resolveConfiguredBookingStepActions } from './bookingStepActions';
-import { ArtifactLinkConfig, getArtifactLinkCandidates, getArtifactStepConfig, getReviewRequestLinkCandidates, getReviewStepConfig, reviewDecisionToClassName, reviewDecisionToLabel } from './bookingStepMedicalLinks';
-import { formatStepDateTime as formatDateTime, getSimpleStepStatus, getStepStatusCellClass as getStatusCellClass, getStepStickyCellStyle as getStickyActionCellStyle } from './bookingStepPresentation';
+import { ArtifactLinkConfig, getArtifactLinkCandidates, getArtifactStepConfig, getReviewRequestLinkCandidates, getReviewStepConfig, reviewDecisionToClassName } from './bookingStepMedicalLinks';
+import { getSimpleStepStatus, getStepStatusCellClass as getStatusCellClass, getStepStickyCellStyle as getStickyActionCellStyle } from './bookingStepPresentation';
 import { getBookingStepClientId as getBookingClientId, getBookingStepNumber as getBookingNumber, getBookingStepObjectId as getObjectId } from './bookingStepIdentity';
 import { BookingStepMatrixRow as MatrixRow, buildBookingStepRows, filterBookingStepRowGroups, groupBookingStepRows, numberBookingStepRows, searchBookingStepRows } from './bookingStepRows';
 import { indexBookingStepActionLogs, indexBookingStepDocuments, indexBookingStepItems, indexBookingStepPayments, indexBookingStepTemplates } from './bookingStepIndexes';
@@ -30,6 +30,7 @@ import { BookingStepAutomationModal, BookingStepAutomationModalState, BookingSte
 import { BookingStepArtifactLinkModal, BookingStepArtifactLinkModalState, BookingStepReviewLinkModal, BookingStepReviewLinkModalState, BookingStepReviewRequestModal, BookingStepReviewRequestModalState } from './BookingStepMedicalModals';
 import { buildBookingStepCellModel } from './bookingStepCellModel';
 import BookingStepCellEditor from './BookingStepCellEditor';
+import BookingStepMedicalControls from './BookingStepMedicalControls';
 
 const getSimpleStatus = (item?: BookingFlowItem) => {
   const status = getSimpleStepStatus(item);
@@ -849,54 +850,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                               onDateCancel={() => cancelItemDateDraft(item)} onDateSave={(value) => updateItemDate(item, value)} onPaymentChange={(paymentId) => selectPaymentForItem(item, paymentId)}
                               onNoteChange={(value) => { if (!item._id) return; setNoteDrafts((current) => ({ ...current, [item._id!]: value })); setDirtyNoteIds((current) => ({ ...current, [item._id!]: true })); }}
                             >
-                            {reviewStepConfig && (
-                              existingReviewRequestId ? (
-                                <Link
-                                  to={`/admin/medical-review-requests/${existingReviewRequestId}`}
-                                  className="inline-flex items-center justify-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
-                                  title={`Open medical review request #${existingReviewRequestDisplay || existingReviewRequestId}`}
-                                >
-                                  MRR #{existingReviewRequestDisplay || 'linked'}
-                                </Link>
-                              ) : (
-                                <button
-                                  type="button"
-                                  disabled={!isEditing || saving === `mrr:${item._id}`}
-                                  onClick={() => openReviewRequestModal(booking, item, row)}
-                                  className="inline-flex items-center justify-center gap-1 rounded-md border border-indigo-200 bg-white px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-50 disabled:opacity-50"
-                                  title={isEditing ? `Create ${reviewStepConfig.label}` : 'Unlock editing to create medical review request'}
-                                >
-                                  {saving === `mrr:${item._id}` ? '...' : 'Create MRR'}
-                                </button>
-                              )
-                            )}
-                            {reviewStepConfig && isEditing && !configuredActions.some((action) => action.type === 'link_mrr') && (
-                              <button
-                                type="button"
-                                disabled={saving === `link-mrr:${item._id}`}
-                                onClick={() => openExistingReviewRequestLinkModal(booking, item, row)}
-                                className="inline-flex items-center justify-center gap-1 rounded-md border border-indigo-200 bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 hover:bg-indigo-100 disabled:opacity-50"
-                                title="Link an existing medical review request to this step"
-                              >
-                                <Link2 className="h-3.5 w-3.5" />
-                                Link existing MRR
-                              </button>
-                            )}
-                            {reviewStepConfig && resolvedReviewDecision && (
-                              <div className={`rounded-md border px-2 py-1 text-[11px] font-semibold ${reviewDecisionToClassName(resolvedReviewDecision)}`}>
-                                <div className="flex items-center justify-between gap-2">
-                                  <span>{reviewDecisionToLabel(resolvedReviewDecision) || 'Reviewed'}</span>
-                                  {resolvedReviewReviewedAt && (
-                                    <span className="font-normal opacity-80">{formatDateTime(resolvedReviewReviewedAt)}</span>
-                                  )}
-                                </div>
-                                {resolvedReviewNotes && (
-                                  <div className="mt-1 font-normal leading-snug">
-                                    {resolvedReviewNotes}
-                                  </div>
-                                )}
-                                  </div>
-                            )}
+                            <BookingStepMedicalControls item={item} reviewConfig={reviewStepConfig} configuredActions={configuredActions} isEditing={isEditing} saving={saving} existingRequestId={existingReviewRequestId} existingRequestDisplay={existingReviewRequestDisplay} decision={resolvedReviewDecision} notes={resolvedReviewNotes} reviewedAt={resolvedReviewReviewedAt} onCreate={() => openReviewRequestModal(booking, item, row)} onLink={() => openExistingReviewRequestLinkModal(booking, item, row)} />
                             {configuredActions.map((action) => {
                               const actionLogs = itemActionLogs.filter((log) => (log.actionKey || 'default_email') === action.key);
                               const actionCount = actionLogs.length;
