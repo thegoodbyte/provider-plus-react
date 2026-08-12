@@ -22,6 +22,7 @@ import { bookingDocumentTypeByStep, buildBookingStepActionOptions, canSendBookin
 import BookingStepActionHistory from './BookingStepActionHistory';
 import BookingStepClientAvatar from './BookingStepClientAvatar';
 import { applyBookingStepDateUpdate, buildBookingStepDateUpdate, buildBookingStepNoteUpdates, buildBookingStepToggleUpdate, removeBookingStepDateDraft, shouldUpdateBookingStepStatus } from './bookingStepMutations';
+import { buildBookingStepPaymentSelection } from './bookingStepPaymentSelection';
 
 const getSimpleStatus = (item?: BookingFlowItem) => {
   const status = getSimpleStepStatus(item);
@@ -292,37 +293,13 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   };
 
   const selectPaymentForItem = async (item: BookingFlowItem | undefined, paymentId: string) => {
-    if (!item?._id || !paymentId) return;
-    const payment = payments.find((candidate) => candidate._id === paymentId);
-    if (!payment) return;
-    const paymentDate = payment.paymentDate ? new Date(payment.paymentDate) : new Date();
-    const receivedAt = Number.isNaN(paymentDate.getTime()) ? new Date().toISOString() : paymentDate.toISOString();
-    const metadata = {
-      ...(item.metadata || {}),
-      paymentId: payment._id,
-      paymentDisplayId: payment.display_id,
-      paymentAmount: payment.amount,
-      paymentCurrency: payment.currency,
-      paymentDate: receivedAt,
-      paymentMethod: payment.paymentMethod,
-      paymentStatus: payment.status,
-    };
+    const selection = buildBookingStepPaymentSelection(item, paymentId, payments);
+    if (!selection || !item?._id) return;
 
     setSaving(`payment:${item._id}`);
     try {
-      await bookingFlowApi.updateItem(item._id, {
-        status: 'received',
-        receivedAt,
-        metadata,
-      } as Partial<BookingFlowItem>);
-      await bookingFlowApi.recordItemAction(item._id, {
-        actionType: 'manual_mark',
-        actionKey: 'payment_selected',
-        actionLabel: 'Payment selected',
-        statusAfter: 'received',
-        notes: `Payment ${payment.display_id ? `#${payment.display_id}` : payment._id} selected for Payment received.`,
-        metadata,
-      }).catch(() => null);
+      await bookingFlowApi.updateItem(item._id, selection.update);
+      await bookingFlowApi.recordItemAction(item._id, selection.action).catch(() => null);
       await loadData(false);
     } finally {
       setSaving('');
