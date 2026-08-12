@@ -10,7 +10,7 @@ import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModa
 import { resolveBookingStepUploadTarget, shouldShowArtifactUploadFallback } from './BookingStepsMatrix.helpers';
 import { getBookingStepColorStyles, getBookingStepToneWithColor } from '../utils/bookingStepColors';
 import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
-import { hasBookingActionLog, reviewRequestStatusToBookingStepStatus } from './BookingStepsMatrix.helpers';
+import { hasBookingActionLog } from './BookingStepsMatrix.helpers';
 import { normalizeBookingStepKey, resolveConfiguredBookingStepActions } from './bookingStepActions';
 import { ArtifactLinkConfig, ReviewStepConfig, artifactStepConfigByKey, getArtifactLinkCandidates, getArtifactStepConfig, getReviewRequestLinkCandidates, getReviewStepConfig, reviewDecisionToClassName, reviewDecisionToLabel, reviewStatusToDecision } from './bookingStepMedicalLinks';
 import { formatStepDate as formatDate, formatStepDateInput as formatDateInput, formatStepDateTime as formatDateTime, formatStepPaymentOption as formatPaymentOption, getSimpleStepStatus, getStepItemDisplayValue as getItemDisplayValue, getStepStatusCellClass as getStatusCellClass, getStepStatusDateField as getStatusDateField, getStepStickyCellStyle as getStickyActionCellStyle } from './bookingStepPresentation';
@@ -23,6 +23,7 @@ import BookingStepActionHistory from './BookingStepActionHistory';
 import BookingStepClientAvatar from './BookingStepClientAvatar';
 import { applyBookingStepDateUpdate, buildBookingStepDateUpdate, buildBookingStepNoteUpdates, buildBookingStepToggleUpdate, removeBookingStepDateDraft, shouldUpdateBookingStepStatus } from './bookingStepMutations';
 import { buildBookingStepPaymentSelection } from './bookingStepPaymentSelection';
+import { buildBookingStepReviewCreation, buildBookingStepReviewLink } from './bookingStepReviewMutations';
 
 const getSimpleStatus = (item?: BookingFlowItem) => {
   const status = getSimpleStepStatus(item);
@@ -343,34 +344,9 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
         medicalStaffNotes: `${reviewRequestModal.label} created from booking step "${item.title}" for booking #${getBookingNumber(booking)}.`,
       });
       const reviewRequest = response.data;
-      await bookingFlowApi.updateItem(itemId, {
-        status: 'sent_for_review',
-        sentAt: new Date().toISOString(),
-        metadata: {
-          ...(item.metadata || {}),
-          medicalReviewRequestId: reviewRequest._id,
-          medicalReviewRequestDisplayId: reviewRequest.display_id,
-          medicalReviewRequestType: reviewRequest.requestType,
-          medicalReviewArtifactId: reviewRequestModal.artifactId,
-          medicalReviewAssignedToUserId: reviewRequestModal.advisorId,
-          medicalReviewAssignedToEmail: advisor?.email,
-        },
-      } as Partial<BookingFlowItem>);
-      await bookingFlowApi.recordItemAction(itemId, {
-        actionType: 'manual_mark',
-        actionKey: 'medical_review_request_created',
-        actionLabel: 'Medical review request created',
-        statusAfter: 'sent_for_review',
-        notes: `Created medical review request #${reviewRequest.display_id || reviewRequest._id} for ${advisor?.email || 'selected medical advisor'}.`,
-        metadata: {
-          medicalReviewRequestId: reviewRequest._id,
-          medicalReviewRequestDisplayId: reviewRequest.display_id,
-          medicalReviewRequestType: reviewRequest.requestType,
-          artifactId: reviewRequestModal.artifactId,
-          assignedToUserId: reviewRequestModal.advisorId,
-          assignedToEmail: advisor?.email,
-        },
-      }).catch(() => null);
+      const mutation = buildBookingStepReviewCreation(item, reviewRequest, reviewRequestModal.artifactId, reviewRequestModal.advisorId, advisor);
+      await bookingFlowApi.updateItem(itemId, mutation.update);
+      await bookingFlowApi.recordItemAction(itemId, mutation.action).catch(() => null);
       setReviewRequestModal(null);
       await loadData(false);
     } catch (error: any) {
@@ -418,41 +394,9 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
         clientId: getBookingClientId(booking) || undefined,
       });
 
-      const nextStatus = reviewRequestStatusToBookingStepStatus(updatedRequest.data.status) as BookingFlowItem['status'];
-      const nextMetadata = {
-        ...(item.metadata || {}),
-        medicalReviewRequestId: updatedRequest.data._id,
-        medicalReviewRequestDisplayId: updatedRequest.data.display_id,
-        medicalReviewRequestType: updatedRequest.data.requestType,
-        medicalReviewBookingFlowItemId: itemId,
-        medicalReviewAssignedToUserId: updatedRequest.data.assignedToUserId || item.metadata?.medicalReviewAssignedToUserId,
-        medicalReviewAssignedToEmail: updatedRequest.data.assignedToEmail || item.metadata?.medicalReviewAssignedToEmail,
-      };
-
-      await bookingFlowApi.updateItem(itemId, {
-        status: nextStatus,
-        sentAt: nextStatus === 'sent_for_review' || nextStatus === 'in_review' ? new Date().toISOString() : item.sentAt,
-        reviewedAt: nextStatus === 'completed' || nextStatus === 'needs_resubmission' || nextStatus === 'in_review'
-          ? new Date().toISOString()
-          : item.reviewedAt,
-        completedAt: nextStatus === 'completed' ? new Date().toISOString() : item.completedAt,
-        approvedAt: nextStatus === 'approved' ? new Date().toISOString() : item.approvedAt,
-        metadata: nextMetadata,
-      } as Partial<BookingFlowItem>);
-
-      await bookingFlowApi.recordItemAction(itemId, {
-        actionType: 'manual_mark',
-        actionKey: reviewRequestLinkModal.action?.key || 'link_existing_mrr',
-        actionLabel: reviewRequestLinkModal.action?.label || 'Link existing MRR',
-        statusAfter: nextStatus,
-        notes: `Linked existing medical review request #${updatedRequest.data.display_id || updatedRequest.data._id} to booking #${getBookingNumber(booking)}.`,
-        metadata: {
-          medicalReviewRequestId: updatedRequest.data._id,
-          medicalReviewRequestDisplayId: updatedRequest.data.display_id,
-          medicalReviewRequestType: updatedRequest.data.requestType,
-          medicalReviewBookingFlowItemId: itemId,
-        },
-      }).catch(() => null);
+      const mutation = buildBookingStepReviewLink(item, updatedRequest.data, getBookingNumber(booking), reviewRequestLinkModal.action);
+      await bookingFlowApi.updateItem(itemId, mutation.update);
+      await bookingFlowApi.recordItemAction(itemId, mutation.action).catch(() => null);
 
       setReviewRequestLinkModal(null);
       await loadData(false);
