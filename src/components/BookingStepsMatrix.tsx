@@ -24,6 +24,7 @@ import BookingStepClientAvatar from './BookingStepClientAvatar';
 import { applyBookingStepDateUpdate, buildBookingStepDateUpdate, buildBookingStepNoteUpdates, buildBookingStepToggleUpdate, removeBookingStepDateDraft, shouldUpdateBookingStepStatus } from './bookingStepMutations';
 import { buildBookingStepPaymentSelection } from './bookingStepPaymentSelection';
 import { buildBookingStepReviewCreation, buildBookingStepReviewLink } from './bookingStepReviewMutations';
+import { buildBookingStepArtifactLink, buildBookingStepArtifactUploadUpdate } from './bookingStepArtifactMutations';
 
 const getSimpleStatus = (item?: BookingFlowItem) => {
   const status = getSimpleStepStatus(item);
@@ -445,47 +446,9 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
         retreatId: retreatId || undefined,
       } as Partial<MedicalArtifact>);
       const linkedArtifact = linkedArtifactResponse.data;
-      const linkedArtifactId = linkedArtifact._id || selectedArtifact._id;
-
-      await bookingFlowApi.updateItem(itemId, {
-        status: 'received',
-        receivedAt: selectedArtifact.receivedAt || new Date().toISOString(),
-        notes: item.notes?.trim()
-          ? `${item.notes.trim()}\nLinked existing ${artifactLinkModal.config.label} artifact #${linkedArtifact.display_id || selectedArtifact.display_id || linkedArtifactId}.`
-          : `Linked existing ${artifactLinkModal.config.label} artifact #${linkedArtifact.display_id || selectedArtifact.display_id || linkedArtifactId}.`,
-        metadata: {
-          ...(item.metadata || {}),
-          linkedMedicalArtifactId: linkedArtifactId,
-          linkedMedicalArtifactIds: Array.from(new Set([
-            ...((((item as any).metadata || {}).linkedMedicalArtifactIds || []) as string[]),
-            linkedArtifactId,
-          ])),
-          latestArtifactId: linkedArtifactId,
-          linkedMedicalArtifactDisplayId: linkedArtifact.display_id || selectedArtifact.display_id,
-          linkedMedicalArtifactType: linkedArtifact.artifactType || selectedArtifact.artifactType,
-          linkedMedicalArtifactStage: linkedArtifact.documentStage || selectedArtifact.documentStage,
-          linkedMedicalArtifactDocumentType: linkedArtifact.documentType || selectedArtifact.documentType,
-          linkedMedicalArtifactAt: new Date().toISOString(),
-        },
-      } as Partial<BookingFlowItem>);
-
-      await bookingFlowApi.recordItemAction(itemId, {
-        actionType: 'manual_mark',
-        actionKey: 'existing_artifact_linked',
-        actionLabel: 'Existing artifact linked',
-        statusAfter: 'received',
-        notes: `Linked existing artifact #${linkedArtifact.display_id || selectedArtifact.display_id || linkedArtifactId} to ${item.title} for booking #${getBookingNumber(booking)}.`,
-        metadata: {
-          artifactId: linkedArtifactId,
-          artifactDisplayId: linkedArtifact.display_id || selectedArtifact.display_id,
-          artifactType: linkedArtifact.artifactType || selectedArtifact.artifactType,
-          documentStage: linkedArtifact.documentStage || selectedArtifact.documentStage,
-          documentType: linkedArtifact.documentType || selectedArtifact.documentType,
-          bookingId,
-          clientId,
-          retreatId,
-        },
-      }).catch(() => null);
+      const mutation = buildBookingStepArtifactLink(item, selectedArtifact, linkedArtifact, { bookingId, clientId, retreatId, bookingNumber: getBookingNumber(booking), label: artifactLinkModal.config.label });
+      await bookingFlowApi.updateItem(itemId, mutation.update);
+      await bookingFlowApi.recordItemAction(itemId, mutation.action).catch(() => null);
 
       setArtifactLinkModal(null);
       await loadData(false);
@@ -601,22 +564,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
           }
         }
 
-        await bookingFlowApi.updateItem(item._id, {
-          status: 'received',
-          receivedAt: new Date().toISOString(),
-          metadata: {
-            ...(item.metadata || {}),
-            latestArtifactId: created.data._id,
-            latestArtifactDisplayId: created.data.display_id,
-            latestFileName: fileArray[0]?.name,
-            linkedMedicalArtifactId: created.data._id,
-            linkedMedicalArtifactDisplayId: created.data.display_id,
-            linkedMedicalArtifactType: artifactConfig.artifactType,
-            linkedMedicalArtifactStage: artifactConfig.documentStage,
-            linkedMedicalArtifactDocumentType: artifactConfig.documentType,
-            linkedMedicalArtifactAt: new Date().toISOString(),
-          },
-        } as Partial<BookingFlowItem>);
+        await bookingFlowApi.updateItem(item._id, buildBookingStepArtifactUploadUpdate(item, created.data, fileArray[0]?.name, artifactConfig as any));
       } else {
         const created = await bookingDocumentsApi.create({
           bookingId,
