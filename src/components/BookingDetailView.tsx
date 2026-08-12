@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiCheck, FiChevronDown, FiDownload, FiEdit3, FiEye, FiMail, FiSend, FiX } from 'react-icons/fi';
+import { FiArrowLeft, FiCheck, FiDownload, FiEdit3, FiEye, FiMail, FiSend, FiX } from 'react-icons/fi';
 import { bookingsApi } from '../services/api';
 import BookingPaymentManagement from './BookingPaymentManagement';
-import BookingDocumentsUpload from './BookingDocumentsUpload';
 import ClientBookingWorkflowTab from './ClientBookingWorkflowTab';
+import BookingDocumentsUpload from './BookingDocumentsUpload';
 import BookingConfirmationEmailDialogs from './BookingConfirmationEmailDialogs';
+import BookingOverviewPanel, { retreatTown } from './BookingOverviewPanel';
 import EmailHistoryPanel from './EmailHistoryPanel';
 import BookingActivityTimeline from './BookingActivityTimeline';
 import BookingRequirementsPanel from './BookingRequirementsPanel';
@@ -17,31 +18,12 @@ import { useBookingConfirmationPdf } from './useBookingConfirmationPdf';
 import { useBookingConfirmationEmail } from './useBookingConfirmationEmail';
 import './BookingDetailView.css';
 
-const bookingConfirmationLanguageLabels: Record<BookingConfirmationLanguage, string> = {
-  pl: 'Polish',
-  cz: 'Czech',
-  en: 'English',
-};
-
 interface BookingDetailViewProps {
   bookingId: string;
   onBack: () => void;
 }
 
 const HeaderIcon: React.FC<{ icon: any }> = ({ icon: IconComponent }) => <IconComponent />;
-
-const formatHistoryDateTime = (date?: string | Date) => {
-  if (!date) return 'N/A';
-  const dateObj = new Date(date);
-  if (Number.isNaN(dateObj.getTime())) return 'N/A';
-  return dateObj.toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-};
 
 const getClientName = (client: any) => {
   const explicitName = String(client?.fullName || client?.name || '').trim();
@@ -70,28 +52,12 @@ const getRetreatCode = (retreat: any) => {
   return `${initials}-${two(date.getUTCMonth() + 1)}-${two(date.getUTCDate())}-${two(date.getUTCFullYear() % 100)}`;
 };
 
-const getRetreatLocationTown = (retreat: any) =>
-  String(
-    retreat?.location_town ||
-    retreat?.locationTown ||
-    retreat?.generalTown ||
-    retreat?.general_town ||
-    retreat?.house?.generalTown ||
-    retreat?.house?.general_town ||
-    retreat?.house?.city ||
-    retreat?.houseId?.generalTown ||
-    retreat?.houseId?.general_town ||
-    retreat?.houseId?.city ||
-    retreat?.location ||
-    ''
-  ).trim();
-
 const getRetreatAddress = (retreat: any) =>
   String(
     retreat?.address ||
     retreat?.house?.address ||
     retreat?.houseId?.address ||
-    getRetreatLocationTown(retreat) ||
+    retreatTown(retreat) ||
     ''
   ).trim();
 
@@ -106,11 +72,6 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [requirementsRefreshKey, setRequirementsRefreshKey] = useState(0);
   const [requirementsStatus, setRequirementsStatus] = useState<{ missing: number; total: number } | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'activity' | 'payments' | 'requirements' | 'medical' | 'ceremonies' | 'documents' | 'emails' | 'tasks' | 'workflow' | 'notes'>('overview');
-  const [showBookingDates, setShowBookingDates] = useState(false);
-  const [showClientDetails, setShowClientDetails] = useState(false);
-  const [showRetreatInfo, setShowRetreatInfo] = useState(false);
-  const [showPayments, setShowPayments] = useState(true);
-  const [showBookingSteps, setShowBookingSteps] = useState(false);
   const pdfRef = useRef<HTMLDivElement>(null);
   const routePrefix = useMemo(() => {
     const firstSegment = location.pathname.split('/').filter(Boolean)[0];
@@ -169,19 +130,6 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     }
   };
 
-  const formatDate = (date: string | Date) => {
-    if (!date) return 'N/A';
-
-    // Create date and use UTC methods to avoid timezone conversion
-    const dateObj = new Date(date);
-    return dateObj.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      timeZone: 'UTC' // Force UTC to prevent timezone shift
-    });
-  };
-
   const handleBookingRelatedUpdate = () => {
     fetchBookingDetails();
     setRequirementsRefreshKey((current) => current + 1);
@@ -224,9 +172,6 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const retreatCode = getRetreatCode(retreat);
   const retreatId = getObjectId(retreat);
   const retreatAddress = getRetreatAddress(retreat);
-  const confirmationHistory = [...(booking.bookingConfirmationHistory || [])].sort((a: any, b: any) => (a.iteration || 0) - (b.iteration || 0));
-  const firstConfirmation = confirmationHistory[0];
-  const latestConfirmation = confirmationHistory[confirmationHistory.length - 1];
   const tabs = [
     { key: 'overview', label: 'Overview' },
     { key: 'activity', label: 'Activity' },
@@ -403,238 +348,18 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         </div>
 
         {activeTab === 'overview' && (
-          <>
-            <div className="booking-overview-summary">
-              <div className="booking-overview-retreat">
-                <span className="booking-type-dot">{bookingTypeCode}</span>
-                <span className="retreat-code-pill">{retreatCode}</span>
-              </div>
-              <div className="booking-overview-address">
-                {retreatAddress || 'No retreat address recorded'}
-              </div>
-            </div>
-
-            <div className="detail-section pdf-section">
-              <div className="section-header">
-                <h3 className="pdf-section-title">Booking Confirmation History</h3>
-                <span className="booking-confirm-history-count">{confirmationHistory.length} iteration{confirmationHistory.length === 1 ? '' : 's'}</span>
-              </div>
-              {confirmationHistory.length === 0 ? (
-                <p className="text-sm text-gray-500">No booking confirmation has been sent yet.</p>
-              ) : (
-                <details className="booking-confirm-history-accordion">
-                  <summary className="booking-confirm-history-trigger">
-                    <div className="booking-confirm-history-compact">
-                      <div>
-                        <span>Original</span>
-                        <strong>{formatHistoryDateTime(firstConfirmation?.sentAt || firstConfirmation?.createdAt)}</strong>
-                      </div>
-                      <div>
-                        <span>Last update</span>
-                        <strong>{formatHistoryDateTime(latestConfirmation?.sentAt || latestConfirmation?.createdAt)}</strong>
-                      </div>
-                      <div>
-                        <span>Latest reason</span>
-                        <strong>{latestConfirmation?.reason || 'N/A'}</strong>
-                      </div>
-                    </div>
-                    <span className="booking-confirm-history-toggle">Show iterations</span>
-                  </summary>
-                  <div className="booking-confirm-history">
-                    <div className="booking-confirm-history-list">
-                      {confirmationHistory.map((entry: any) => (
-                        <div key={entry._id || `${entry.iteration}-${entry.sentAt}`} className="booking-confirm-history-entry">
-                          <div className="booking-confirm-history-entry-main">
-                            <strong>Iteration {entry.iteration}</strong>
-                            <span>{formatHistoryDateTime(entry.sentAt || entry.createdAt)}</span>
-                          </div>
-                          <div className="booking-confirm-history-entry-meta">
-                            <span>{entry.reason || 'No reason recorded'}</span>
-                            {entry.language && <span>{bookingConfirmationLanguageLabels[entry.language as BookingConfirmationLanguage] || entry.language}</span>}
-                            {entry.sentEmailDisplayId && <span>Email #{entry.sentEmailDisplayId}</span>}
-                            {entry.snapshot?.retreatCode && <span>{entry.snapshot.retreatCode}</span>}
-                            {entry.snapshot?.paymentRequestDisplayId && <span>Payment request #{entry.snapshot.paymentRequestDisplayId}</span>}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </details>
-              )}
-            </div>
-
-            <div className="detail-section pdf-section">
-              <div className="section-header client-section-header">
-                <h3 className="pdf-section-title">Client Information</h3>
-                <div className="client-mobile-heading">
-                  <div>
-                    <span className="mobile-section-label">Client</span>
-                    <h2>{clientName}</h2>
-                  </div>
-                  <button
-                    className="edit-btn edit-client-btn"
-                    onClick={navigateToClientEdit}
-                    title="Edit client information"
-                    aria-label="Edit client information"
-                  >
-                    <HeaderIcon icon={FiEdit3} />
-                    <span>Edit Client</span>
-                  </button>
-                </div>
-                <button
-                  className="edit-btn edit-client-btn desktop-client-edit"
-                  onClick={navigateToClientEdit}
-                  title="Edit client information"
-                >
-                  <HeaderIcon icon={FiEdit3} />
-                  <span>Edit Client</span>
-                </button>
-              </div>
-              <button
-                type="button"
-                className="mobile-client-details-toggle"
-                onClick={() => setShowClientDetails((current) => !current)}
-                aria-expanded={showClientDetails}
-              >
-                <span>Client details</span>
-                <HeaderIcon icon={FiChevronDown} />
-              </button>
-              <div className={`info-grid client-info-grid ${showClientDetails ? 'mobile-expanded' : 'mobile-collapsed'}`}>
-                <div className="info-item">
-                  <label>Name:</label>
-                  <span>{clientName}</span>
-                </div>
-                <div className="info-item mobile-hidden-client-field">
-                  <label>Email:</label>
-                  <span>{client?.email || 'N/A'}</span>
-                </div>
-                <div className="info-item">
-                  <label>Phone:</label>
-                  <span>{client?.phone || 'N/A'}</span>
-                </div>
-                <div className="info-item mobile-hidden-client-field">
-                  <label>City:</label>
-                  <span>{client?.city || 'N/A'}</span>
-                </div>
-                <div className="info-item">
-                  <label>Country:</label>
-                  <span>{client?.country || 'N/A'}</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="booking-detail-accordion booking-payment-accordion">
-              <button
-                type="button"
-                className="booking-detail-accordion-trigger"
-                onClick={() => setShowPayments((current) => !current)}
-                aria-expanded={showPayments}
-              >
-                <span>Payment Information</span>
-                <span>{showPayments ? 'Hide' : 'Show'}</span>
-              </button>
-              {showPayments && (
-                <div className="booking-detail-accordion-body">
-                  <BookingPaymentManagement
-                    bookingId={bookingId}
-                    bookingNumber={booking.bookingNumber}
-                    bookingHash={booking.bookingHash}
-                    clientId={typeof client === 'object' ? client._id : client}
-                    retreatId={typeof retreat === 'object' ? retreat._id : retreat}
-                    totalAmount={booking.totalAmount || 0}
-                    currency={booking.currency || 'EUR'}
-                    onPaymentUpdate={fetchBookingDetails}
-                  />
-                </div>
-              )}
-            </div>
-
-            <div className="booking-detail-accordion booking-steps-accordion">
-              <button
-                type="button"
-                className="booking-detail-accordion-trigger"
-                onClick={() => setShowBookingSteps((current) => !current)}
-                aria-expanded={showBookingSteps}
-              >
-                <span>Booking Requirements</span>
-                <span>{showBookingSteps ? 'Hide' : 'Show'}</span>
-              </button>
-              {showBookingSteps && (
-                <div className="booking-detail-accordion-body">
-                  <ClientBookingWorkflowTab bookings={[booking]} hideBookingSelector />
-                </div>
-              )}
-            </div>
-
-            <div className="booking-detail-accordion retreat-info-accordion">
-              <button
-                type="button"
-                className="booking-detail-accordion-trigger"
-                onClick={() => setShowRetreatInfo((current) => !current)}
-                aria-expanded={showRetreatInfo}
-              >
-                <span>Retreat Information</span>
-                <span>{showRetreatInfo ? 'Hide' : 'Show'}</span>
-              </button>
-              {showRetreatInfo && (
-                <div className="booking-detail-accordion-body">
-                  <div className="info-grid">
-                    <div className="info-item">
-                      <label>Retreat Name:</label>
-                      <span>{retreat?.name || 'N/A'}</span>
-                    </div>
-                    <div className="info-item">
-                      <label>Location town:</label>
-                      <span>{getRetreatLocationTown(retreat) || 'N/A'}</span>
-                    </div>
-                    <div className="info-item">
-                      <label>Type:</label>
-                      <span>{retreat?.type ? retreat.type.charAt(0).toUpperCase() + retreat.type.slice(1) : 'N/A'}</span>
-                    </div>
-                    <div className="info-item">
-                      <label>Start Date:</label>
-                      <span>{formatDate(retreat?.startDate || retreat?.dates?.startDate)}</span>
-                    </div>
-                    <div className="info-item">
-                      <label>End Date:</label>
-                      <span>{formatDate(retreat?.endDate || retreat?.dates?.endDate)}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="booking-detail-accordion">
-              <button
-                type="button"
-                className="booking-detail-accordion-trigger"
-                onClick={() => setShowBookingDates((current) => !current)}
-                aria-expanded={showBookingDates}
-              >
-                <span>Booking Dates</span>
-                <span>{showBookingDates ? 'Hide' : 'Show'}</span>
-              </button>
-              {showBookingDates && (
-                <div className="booking-detail-accordion-body">
-                  <div className="info-grid">
-                    <div className="info-item">
-                      <label>Registration Date:</label>
-                      <span>{formatDate(booking.registrationDate)}</span>
-                    </div>
-                    <div className="info-item">
-                      <label>Check-in Date:</label>
-                      <span>{formatDate(booking.checkInDate)}</span>
-                    </div>
-                    <div className="info-item">
-                      <label>Check-out Date:</label>
-                      <span>{formatDate(booking.checkOutDate)}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-          </>
+          <BookingOverviewPanel
+            bookingId={bookingId}
+            booking={booking}
+            client={client}
+            retreat={retreat}
+            clientName={clientName}
+            bookingTypeCode={bookingTypeCode}
+            retreatCode={retreatCode}
+            retreatAddress={retreatAddress}
+            onEditClient={navigateToClientEdit}
+            onBookingRefresh={fetchBookingDetails}
+          />
         )}
 
         {activeTab === 'payments' && (
