@@ -13,6 +13,7 @@ import BookingActivityTimeline from './BookingActivityTimeline';
 import { TaskList } from './Tasks/TaskList';
 import { TaskForm } from './Tasks/TaskForm';
 import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
+import { fetchBookingRequirementSources } from './bookingRequirementsLoader';
 import { createBookingConfirmationPdf } from './BookingConfirmationPDF';
 import { Task, CreateTaskDto, taskService } from '../services/taskService';
 import { BookingDocument, BookingFlowItem, CeremonyParticipant, MedicalArtifact, MedicalReviewRequest } from '../types';
@@ -487,35 +488,24 @@ const BookingRequirementsPanel: React.FC<{
     setLoading(true);
     setError('');
     try {
-      const itemsStart = performance.now();
-      const itemsResponse = await bookingFlowApi.getItems({ bookingId });
-      timings.items = performance.now() - itemsStart;
-      const bookingFlowFilters = buildBookingFlowArtifactFilters(itemsResponse.data || []);
-      const artifactsStart = performance.now();
-      const [artifactsResponse, documentsResponse, libraryDocumentsResponse] = await Promise.all([
-        Promise.all([
-          medicalArtifactsApi.getForBooking(bookingId),
-          medicalArtifactsApi.getAll({ bookingId, ...bookingFlowFilters }),
-          medicalArtifactsApi.getAll({ bookingId }),
-          clientId && retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId, ...bookingFlowFilters }) : Promise.resolve({ data: [] }),
-          clientId ? medicalArtifactsApi.getAll({ clientId, ...bookingFlowFilters }) : Promise.resolve({ data: [] }),
-          clientId ? medicalArtifactsApi.getAll({ clientId }) : Promise.resolve({ data: [] }),
-        ]),
-        bookingDocumentsApi.getAll({ bookingId }),
-        clientId ? bookingDocumentsApi.getAll({ clientId }) : Promise.resolve({ data: [] as BookingDocument[] }),
-      ]);
-      timings.artifacts = performance.now() - artifactsStart;
-      const allClientArtifacts: MedicalArtifact[] = mergeArtifacts(artifactsResponse.map((response) => response.data || []));
+      const sourcesStart = performance.now();
+      // Requirements used to issue six overlapping artifact queries plus two
+      // document queries. A client-scoped library response already contains
+      // the booking-linked records needed both for status and the link dialog.
+      const sources = await fetchBookingRequirementSources(bookingId, clientId);
+      timings.sources = performance.now() - sourcesStart;
+      const allClientArtifacts: MedicalArtifact[] = mergeArtifacts([sources.artifacts]);
       const loadedArtifacts = allClientArtifacts
         .filter((artifact) => isArtifactRelevantToBooking(artifact, bookingId, retreatId));
       const artifactIds = loadedArtifacts.map((artifact) => artifact._id).filter(Boolean) as string[];
       const reviewLoad = await loadReviewsByArtifactIds(artifactIds);
       timings.reviews = reviewLoad.duration;
-      setItems(itemsResponse.data || []);
+      setItems(sources.items);
       setArtifacts(loadedArtifacts);
       setLibraryArtifacts(allClientArtifacts);
-      setDocuments(documentsResponse.data || []);
-      setLibraryDocuments(libraryDocumentsResponse.data || []);
+      const allClientDocuments = sources.documents;
+      setDocuments(allClientDocuments.filter((document: BookingDocument) => getObjectId(document.bookingId) === bookingId));
+      setLibraryDocuments(allClientDocuments);
       setReviewsByArtifact(reviewLoad.reviewsByArtifact);
       timings.total = performance.now() - loadStart;
       timings.reviewCount = reviewLoad.count;
