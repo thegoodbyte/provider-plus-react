@@ -14,27 +14,17 @@ import { TaskList } from './Tasks/TaskList';
 import { TaskForm } from './Tasks/TaskForm';
 import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
 import { fetchBookingRequirementSources } from './bookingRequirementsLoader';
+import { artifactMatches as artifactMatchesRequirement, buildBookingRequirementRows, documentMatches as documentMatchesRequirement, mergeArtifacts, RequirementDefinition } from './bookingRequirementRows';
 import { createBookingConfirmationPdf } from './BookingConfirmationPDF';
 import { Task, CreateTaskDto, taskService } from '../services/taskService';
 import { BookingDocument, BookingFlowItem, CeremonyParticipant, MedicalArtifact, MedicalReviewRequest } from '../types';
 import './BookingDetailView.css';
 
-type RequirementArtifactType = NonNullable<MedicalArtifact['artifactType']>;
 type BookingConfirmationLanguage = 'pl' | 'cz' | 'en';
 const bookingConfirmationLanguageLabels: Record<BookingConfirmationLanguage, string> = {
   pl: 'Polish',
   cz: 'Czech',
   en: 'English',
-};
-type RequirementDefinition = {
-  key: string;
-  label: string;
-  artifactTypes: RequirementArtifactType[];
-  documentTypes?: MedicalArtifact['documentType'][];
-  bookingDocumentTypes?: string[];
-  readinessGroups: string[];
-  library: 'medical_artifacts' | 'booking_documents' | 'both';
-  matchTerms?: string[];
 };
 
 interface BookingDetailViewProps {
@@ -44,16 +34,6 @@ interface BookingDetailViewProps {
 
 const HeaderIcon: React.FC<{ icon: any }> = ({ icon: IconComponent }) => <IconComponent />;
 
-const requirementDefinitions: RequirementDefinition[] = [
-  { key: 'contract', label: 'Contract', artifactTypes: ['contract'], bookingDocumentTypes: ['contract'], readinessGroups: ['contract'], library: 'booking_documents', matchTerms: ['contract'] },
-  { key: 'ekg', label: 'Entry EKG', artifactTypes: ['ekg'], documentTypes: ['EKG'], readinessGroups: ['ekg'], library: 'medical_artifacts', matchTerms: ['ekg', 'ecg', 'electrocardiogram'] },
-  { key: 'liver', label: 'Entry Liver Panel', artifactTypes: ['liver_panel'], documentTypes: ['Liver'], bookingDocumentTypes: ['liver_panel'], readinessGroups: ['liver'], library: 'medical_artifacts', matchTerms: ['liver', 'hepatic panel', 'liver panel'] },
-  { key: 'medications', label: 'Medications Form', artifactTypes: ['medications_form', 'medication_list'], documentTypes: ['Medications', 'meds'], bookingDocumentTypes: ['medications_form'], readinessGroups: ['medications'], library: 'both', matchTerms: ['medication', 'medications', 'meds'] },
-  { key: 'questionnaire', label: 'Questionnaire', artifactTypes: ['questionnaire'], bookingDocumentTypes: ['questionnaire'], readinessGroups: ['questionnaire'], library: 'both', matchTerms: ['questionnaire', 'health questionnaire'] },
-  { key: 'food', label: 'Food Form', artifactTypes: ['food_intake'], bookingDocumentTypes: ['food_intake'], readinessGroups: ['food'], library: 'both', matchTerms: ['food intake', 'food form', 'dietary'] },
-];
-
-const completedStatuses = new Set(['received', 'reviewed', 'approved', 'completed', 'caution']);
 const reviewedStatuses = new Set(['reviewed', 'approved', 'completed', 'caution', 'rejected', 'needs_resubmission']);
 const medicalStageLabels: Record<MedicalArtifact['documentStage'], string> = {
   entry: 'Entry',
@@ -112,43 +92,6 @@ const getClientName = (client: any) => {
 const getClientDisplayId = (client: any, booking?: any) =>
   client?.display_id || client?.displayId || client?.clientNumber || booking?.clientDisplayId || booking?.clientDetails?.display_id || '';
 
-const normalizeBookingDocumentKey = (value?: string) =>
-  String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
-
-const artifactMatchesRequirement = (artifact: MedicalArtifact, definition: RequirementDefinition) => {
-  if (artifact.artifactType && definition.artifactTypes.includes(artifact.artifactType)) return true;
-  if (definition.documentTypes?.includes(artifact.documentType)) return true;
-  const legacyData = artifact.data || {};
-  const searchable = [
-    artifact.title,
-    artifact.description,
-    artifact.source,
-    artifact.documentType,
-    artifact.artifactType,
-    legacyData.artifactType,
-    legacyData.documentType,
-    legacyData.title,
-    legacyData.fileName,
-    legacyData.originalName,
-    ...(artifact.files || []).flatMap((file) => [file.fileName, file.filePath, file.s3Key]),
-    ...(artifact.tags || []),
-  ].filter(Boolean).join(' ').toLowerCase();
-  return Boolean(definition.matchTerms?.some((term) => searchable.includes(term.toLowerCase())));
-};
-
-const artifactHasReceivedContent = (artifact: MedicalArtifact) => {
-  if ((artifact.files || []).some((file) => file.fileName || file.filePath || file.s3Key || file.url)) return true;
-  if (String(artifact.textContent || '').trim()) return true;
-  const data = artifact.data || {};
-  return Boolean(data.fileName || data.filePath || data.s3Key || data.url || data.fileUrl || data.downloadUrl);
-};
-
-const documentMatchesRequirement = (document: BookingDocument, definition: RequirementDefinition) => {
-  const documentType = normalizeBookingDocumentKey(document.documentType);
-  if (definition.bookingDocumentTypes?.includes(documentType)) return true;
-  const searchable = [document.title, document.description, document.documentType].filter(Boolean).join(' ').toLowerCase();
-  return Boolean(definition.matchTerms?.some((term) => searchable.includes(term.toLowerCase())));
-};
 
 const getRetreatCode = (retreat: any) => {
   const explicitCode = String(retreat?.code || retreat?.retreatCode || '').trim();
@@ -438,16 +381,6 @@ const loadReviewsByArtifactIds = async (artifactIds: string[]) => {
   }
 };
 
-const mergeArtifacts = (artifactGroups: MedicalArtifact[][]) => {
-  const seen = new Set<string>();
-  return artifactGroups.flat().filter((artifact) => {
-    const key = artifact._id || `${artifact.artifactType}:${artifact.title}:${artifact.createdAt}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-};
-
 const isArtifactRelevantToBooking = (artifact: MedicalArtifact, bookingId: string, retreatId?: string) => {
   const artifactBookingId = getObjectId(artifact.bookingId) || getObjectId((artifact as any).data?.bookingId);
   if (artifactBookingId) return artifactBookingId === bookingId;
@@ -519,47 +452,7 @@ const BookingRequirementsPanel: React.FC<{
     loadRequirements();
   }, [bookingId, clientId, retreatId, refreshKey]);
 
-  const rows = requirementDefinitions.map((definition) => {
-    const relatedItems = items.filter((item) => {
-      const template = typeof item.templateId === 'object' ? item.templateId : undefined;
-      const readinessGroup = item.metadata?.readinessGroup || template?.readinessGroup;
-      const expectedArtifact = item.metadata?.expectedArtifact || template?.expectedArtifact;
-      return definition.readinessGroups.includes(readinessGroup) || definition.artifactTypes.includes(expectedArtifact);
-    });
-    const explicitlyLinkedArtifactIds = new Set(relatedItems.flatMap((item) => [
-      item.metadata?.linkedMedicalArtifactId,
-      ...(Array.isArray(item.metadata?.linkedMedicalArtifactIds) ? item.metadata?.linkedMedicalArtifactIds || [] : []),
-    ]).filter(Boolean).map(String));
-    const explicitlyLinkedDocumentIds = new Set(relatedItems.map((item) => item.metadata?.linkedBookingDocumentId).filter(Boolean).map(String));
-    const relatedArtifacts = mergeArtifacts([artifacts, libraryArtifacts.filter((artifact) => artifact._id && explicitlyLinkedArtifactIds.has(artifact._id))])
-      .filter((artifact) => artifactMatchesRequirement(artifact, definition))
-      .sort(compareArtifactsForDisplay);
-    const relatedDocuments = [...documents, ...libraryDocuments.filter((document) => document._id && explicitlyLinkedDocumentIds.has(document._id))]
-      .filter((document, index, list) => document._id && list.findIndex((candidate) => candidate._id === document._id) === index)
-      .filter((document) => documentMatchesRequirement(document, definition) && (document.files || []).length > 0)
-      .sort((a, b) => new Date(b.receivedAt || b.createdAt || 0).getTime() - new Date(a.receivedAt || a.createdAt || 0).getTime());
-    const latestArtifact = relatedArtifacts[0];
-    const latestDocument = relatedDocuments[0];
-    const reviews = latestArtifact?._id ? (reviewsByArtifact[latestArtifact._id] || []) : [];
-    const latestReview = [...reviews].sort((a, b) => getReviewTime(b) - getReviewTime(a))[0];
-    const uploaded = relatedArtifacts.some(artifactHasReceivedContent);
-    const documentUploaded = relatedDocuments.length > 0;
-    const flowReceived = relatedItems.some((item) => completedStatuses.has(item.status));
-    const reviewed = Boolean(latestReview && reviewedStatuses.has(latestReview.status)) ||
-      relatedItems.some((item) => item.status === 'reviewed' || item.status === 'approved' || item.status === 'caution');
-    const required = relatedItems.length === 0 || relatedItems.some((item) => item.isBlocking);
-
-    return {
-      ...definition,
-      required,
-      uploaded: uploaded || documentUploaded || flowReceived,
-      reviewed,
-      latestArtifact,
-      latestDocument,
-      latestReview,
-      relatedItems,
-    };
-  });
+  const rows = buildBookingRequirementRows(items, artifacts, libraryArtifacts, documents, libraryDocuments, reviewsByArtifact);
   const missingCount = rows.filter((row) => row.required && !row.uploaded).length;
   const requiredCount = rows.filter((row) => row.required).length;
 
