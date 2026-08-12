@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import BookingMedicalUpload from './BookingMedicalUpload';
 import { bookingFlowApi, bloodPressureReadingsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { usersApi } from '../services/usersApi';
@@ -15,8 +16,6 @@ jest.mock('../services/usersApi', () => ({
   usersApi: { getAll: jest.fn().mockResolvedValue({ data: [] }) },
 }));
 
-jest.mock('react-router-dom', () => ({ useNavigate: () => jest.fn() }), { virtual: true });
-
 describe('BookingMedicalUpload loading state', () => {
   it('does not show missing EKG or liver files while artifact requests are pending', async () => {
     let resolveArtifacts!: (value: any) => void;
@@ -28,7 +27,7 @@ describe('BookingMedicalUpload loading state', () => {
     (medicalArtifactsApi.getAll as jest.Mock).mockReturnValue(pendingArtifacts);
     (medicalReviewRequestsApi.getByArtifact as jest.Mock).mockResolvedValue({ data: [] });
 
-    render(<BookingMedicalUpload bookingId="booking-1" bookingNumber="PP-100" clientId="client-1" retreatId="retreat-1" />);
+    render(<MemoryRouter><BookingMedicalUpload bookingId="booking-1" bookingNumber="PP-100" clientId="client-1" retreatId="retreat-1" /></MemoryRouter>);
 
     expect(screen.getByText('Loading EKG files…')).toBeInTheDocument();
     expect(screen.getByText('Loading Liver Panel files…')).toBeInTheDocument();

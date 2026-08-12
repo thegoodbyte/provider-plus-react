@@ -26,6 +26,7 @@ import { buildBookingStepReviewCreation, buildBookingStepReviewLink } from './bo
 import { buildBookingStepArtifactLink, buildBookingStepArtifactUploadUpdate } from './bookingStepArtifactMutations';
 import { buildBookingStepAutomationToggle, buildBookingStepReminderPayload, formatBookingStepRowEmailSummary, getBookingStepDuplicateReminderPrompt, getBookingStepReminderFailure, getBookingStepRowEmailConfirmation } from './bookingStepCommunicationRules';
 import BookingStepClientHeader, { getBookingStepRoutePrefix } from './BookingStepClientHeader';
+import { BookingStepAutomationModal, BookingStepAutomationModalState, BookingStepReminderModal, BookingStepReminderModalState } from './BookingStepCommunicationModals';
 
 const getSimpleStatus = (item?: BookingFlowItem) => {
   const status = getSimpleStepStatus(item);
@@ -109,27 +110,8 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     action?: BookingFlowAction;
     initialValues: EmailComposeInitialValues;
   } | null>(null);
-  const [reminderState, setReminderState] = useState<{
-    item: BookingFlowItem;
-    to: string;
-    subject: string;
-    bodyText: string;
-    dueDate?: string;
-    uploadUrl: string;
-    reminderCount: number;
-    lastReminderAt?: string;
-    duplicateBlocked: boolean;
-    duplicateWarning: boolean;
-    suggestedFollowUpDate: string;
-    history: BookingFlowActionLog[];
-  } | null>(null);
-  const [automationState, setAutomationState] = useState<{
-    item: BookingFlowItem;
-    paused: boolean;
-    pauseReason?: string;
-    resumeAt?: string;
-    schedules: Array<{ _id: string; ruleKey: string; actionType: 'send_email' | 'create_staff_task'; scheduledFor: string; status: string; executedAt?: string; lastError?: string }>;
-  } | null>(null);
+  const [reminderState, setReminderState] = useState<BookingStepReminderModalState | null>(null);
+  const [automationState, setAutomationState] = useState<BookingStepAutomationModalState | null>(null);
   const routePrefix = useMemo(() => getBookingStepRoutePrefix(location.pathname), [location.pathname]);
 
   const loadData = useCallback(async (showLoading = true) => {
@@ -1287,94 +1269,8 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
           onSent={handleComposedEmailSent}
         />
       )}
-      {reminderState && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="flex max-h-[92vh] w-full max-w-3xl flex-col rounded-xl bg-white shadow-2xl">
-            <div className="flex items-start justify-between border-b border-gray-200 px-5 py-4">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Reminder: {reminderState.item.title}</h2>
-                <p className="mt-1 text-sm text-gray-500">Preview and edit before sending to {reminderState.to}.</p>
-              </div>
-              <button type="button" onClick={() => setReminderState(null)} className="rounded-md p-2 text-gray-500 hover:bg-gray-100" aria-label="Close reminder preview">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
-              {(reminderState.duplicateWarning || reminderState.reminderCount > 0) && (
-                <div className={`rounded-lg border p-3 text-sm ${reminderState.duplicateBlocked ? 'border-red-300 bg-red-50 text-red-900' : 'border-amber-300 bg-amber-50 text-amber-900'}`}>
-                  <strong>{reminderState.reminderCount} previous reminder{reminderState.reminderCount === 1 ? '' : 's'}.</strong>
-                  {reminderState.lastReminderAt && ` Last sent ${formatDateTime(reminderState.lastReminderAt)}.`}
-                  {reminderState.duplicateBlocked && ' Another reminder requires confirmation because the last one was sent less than 24 hours ago.'}
-                </div>
-              )}
-              <div className="grid gap-3 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm sm:grid-cols-3">
-                <div><span className="block text-xs uppercase text-gray-500">Deadline</span><strong>{reminderState.dueDate || 'Not set'}</strong></div>
-                <div><span className="block text-xs uppercase text-gray-500">Follow up</span><input type="date" value={reminderState.suggestedFollowUpDate} onChange={(event) => setReminderState((current) => current ? { ...current, suggestedFollowUpDate: event.target.value } : current)} className="mt-1 rounded border border-gray-300 px-2 py-1" /></div>
-                <div><span className="block text-xs uppercase text-gray-500">Upload link</span><a href={reminderState.uploadUrl} target="_blank" rel="noreferrer" className="font-medium text-blue-700 underline">Open client step</a></div>
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Subject</label>
-                <input value={reminderState.subject} onChange={(event) => setReminderState((current) => current ? { ...current, subject: event.target.value } : current)} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700">Message</label>
-                <textarea value={reminderState.bodyText} onChange={(event) => setReminderState((current) => current ? { ...current, bodyText: event.target.value } : current)} rows={13} className="w-full rounded-md border border-gray-300 px-3 py-2 font-mono text-sm" />
-              </div>
-              {reminderState.history.length > 0 && (
-                <details className="rounded-lg border border-gray-200 p-3 text-sm">
-                  <summary className="cursor-pointer font-medium">Previous reminders</summary>
-                  <ul className="mt-2 space-y-2 text-gray-600">
-                    {reminderState.history.map((log, index) => <li key={log._id || index}>{formatDateTime(log.performedAt)}{log.performedByEmail ? ` · ${log.performedByEmail}` : ''}</li>)}
-                  </ul>
-                </details>
-              )}
-            </div>
-            <div className="flex justify-end gap-2 border-t border-gray-200 px-5 py-4">
-              <button type="button" onClick={() => setReminderState(null)} className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700">Cancel</button>
-              <button type="button" disabled={!reminderState.subject.trim() || !reminderState.bodyText.trim() || saving === `reminder-send:${reminderState.item._id}`} onClick={() => sendReminder()} className="rounded-md bg-amber-700 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-800 disabled:opacity-50">
-                {saving === `reminder-send:${reminderState.item._id}` ? 'Sending...' : 'Send reminder'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {automationState && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-2xl rounded-xl bg-white shadow-2xl">
-            <div className="flex items-start justify-between border-b border-gray-200 px-5 py-4">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Automated reminders: {automationState.item.title}</h2>
-                <p className="mt-1 text-sm text-gray-500">Generated from the step deadline. Completed steps cancel future actions automatically.</p>
-              </div>
-              <button type="button" onClick={() => setAutomationState(null)} className="rounded-md p-2 text-gray-500 hover:bg-gray-100"><X className="h-5 w-5" /></button>
-            </div>
-            <div className="space-y-4 p-5">
-              {automationState.paused && (
-                <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-                  <strong>Automation paused.</strong>{automationState.pauseReason ? ` ${automationState.pauseReason}` : ''}
-                </div>
-              )}
-              <div className="overflow-hidden rounded-lg border border-gray-200">
-                <table className="w-full text-left text-sm">
-                  <thead className="bg-gray-50 text-xs uppercase text-gray-500"><tr><th className="px-3 py-2">When</th><th className="px-3 py-2">Action</th><th className="px-3 py-2">Status</th></tr></thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {automationState.schedules.map((schedule) => (
-                      <tr key={schedule._id}><td className="px-3 py-2">{formatDateTime(schedule.scheduledFor)}</td><td className="px-3 py-2">{schedule.ruleKey.replace(/_/g, ' ')}</td><td className="px-3 py-2 font-medium">{schedule.status.replace(/_/g, ' ')}</td></tr>
-                    ))}
-                    {automationState.schedules.length === 0 && <tr><td colSpan={3} className="px-3 py-6 text-center text-gray-500">No automation is scheduled for this step.</td></tr>}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <div className="flex justify-between border-t border-gray-200 px-5 py-4">
-              <button type="button" onClick={toggleReminderAutomation} disabled={saving === `automation-toggle:${automationState.item._id}`} className={`rounded-md px-4 py-2 text-sm font-semibold ${automationState.paused ? 'bg-green-700 text-white' : 'border border-gray-300 text-gray-700'}`}>
-                {automationState.paused ? 'Resume automation' : 'Pause for this client'}
-              </button>
-              <button type="button" onClick={() => setAutomationState(null)} className="rounded-md bg-gray-900 px-4 py-2 text-sm font-semibold text-white">Close</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {reminderState && <BookingStepReminderModal state={reminderState} saving={saving} onChange={setReminderState} onClose={() => setReminderState(null)} onSend={() => sendReminder()} />}
+      {automationState && <BookingStepAutomationModal state={automationState} saving={saving} onClose={() => setAutomationState(null)} onToggle={toggleReminderAutomation} />}
       {reviewRequestLinkModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
           <div className="w-full max-w-3xl rounded-lg bg-white p-5 shadow-xl">
