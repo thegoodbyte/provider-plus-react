@@ -13,10 +13,10 @@ import BookingRequirementsPanel from './BookingRequirementsPanel';
 import BookingMedicalOverviewPanel from './BookingMedicalOverviewPanel';
 import BookingCeremoniesPanel from './BookingCeremoniesPanel';
 import BookingTasksPanel from './BookingTasksPanel';
+import { blobBase64, confirmationAction, confirmationLanguage, confirmationReason, historyReason, sendFailureDetails, sentEmailReceipt, BookingConfirmationLanguage } from './bookingConfirmationWorkflow';
 import { createBookingConfirmationPdf } from './BookingConfirmationPDF';
 import './BookingDetailView.css';
 
-type BookingConfirmationLanguage = 'pl' | 'cz' | 'en';
 const bookingConfirmationLanguageLabels: Record<BookingConfirmationLanguage, string> = {
   pl: 'Polish',
   cz: 'Czech',
@@ -39,19 +39,6 @@ const escapeHtml = (value: any) =>
     "'": '&#39;',
   }[char] || char));
 
-const blobToBase64 = (blob: Blob) => new Promise<string>((resolve, reject) => {
-  const reader = new FileReader();
-  reader.onloadend = () => resolve(String(reader.result || '').split(',')[1] || '');
-  reader.onerror = reject;
-  reader.readAsDataURL(blob);
-});
-
-const formatFileSize = (bytes: number) => {
-  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
-  const units = ['B', 'KB', 'MB', 'GB'];
-  const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-  return `${(bytes / Math.pow(1024, index)).toFixed(index === 0 ? 0 : 1)} ${units[index]}`;
-};
 
 const formatHistoryDateTime = (date?: string | Date) => {
   if (!date) return 'N/A';
@@ -156,29 +143,10 @@ const interpolateTemplate = (template: string, variables: Record<string, any>) =
 const textToHtml = (text: string) =>
   `<pre style="white-space: pre-wrap; font-family: Arial, Helvetica, sans-serif; line-height: 1.55; color: #111827;">${escapeHtml(text)}</pre>`;
 
-const formatSentEmailReceipt = (sentEmail: any) => {
-  const lines = [
-    `Email ${sentEmail?.status || 'queued'}.`,
-    sentEmail?.display_id ? `Log #${sentEmail.display_id}` : '',
-    sentEmail?.gmailMessageId ? `Gmail message ID: ${sentEmail.gmailMessageId}` : '',
-    (sentEmail?.cc || []).length ? `CC: ${(sentEmail.cc || []).join(', ')}` : 'CC: none',
-    (sentEmail?.attachments || []).length ? `Attachments: ${sentEmail.attachments.length}` : '',
-    sentEmail?.errorMessage ? `Error: ${sentEmail.errorMessage}` : '',
-  ].filter(Boolean);
-  return lines.join('\n');
-};
 
 const getObjectId = (value: any) => typeof value === 'object' ? value?._id || value?.id : value;
 
 const getClientEmail = (client: any) => String(client?.email || '').trim();
-
-const getBookingConfirmationLanguage = (client: any): BookingConfirmationLanguage => {
-  const language = String(client?.language || client?.preferredLanguage || '').trim().toUpperCase();
-  if (['CZ', 'CS', 'CZECH', 'CESKY', 'ČESKY'].includes(language)) return 'cz';
-  if (['PL', 'POLISH', 'POLSKI', 'POLSKA'].includes(language)) return 'pl';
-  if (['EN', 'ENG', 'ENGLISH'].includes(language)) return 'en';
-  return 'en';
-};
 
 const bookingConfirmationEmailCopy: Record<BookingConfirmationLanguage, {
   subject: (bookingNumber?: string) => string;
@@ -310,7 +278,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
       // Fetch booking details
       const bookingResponse = await bookingsApi.getOne(bookingId);
       setBooking(bookingResponse.data);
-      setPdfLanguage(getBookingConfirmationLanguage(bookingResponse.data?.clientId || bookingResponse.data?.clientDetails));
+      setPdfLanguage(confirmationLanguage(bookingResponse.data?.clientId || bookingResponse.data?.clientDetails));
     } catch (error) {
       console.error('Error fetching booking details:', error);
     } finally {
@@ -490,14 +458,13 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   };
 
   const getDefaultConfirmationReason = () => {
-    const history = booking?.bookingConfirmationHistory || [];
-    return history.length === 0 ? 'Original booking confirmation' : 'Updated booking confirmation';
+    return confirmationReason(booking);
   };
 
   const recordBookingConfirmationHistory = async (sentEmail: any, language: BookingConfirmationLanguage, reason?: string) => {
-    const resolvedReason = String(reason || confirmationHistoryReason || getDefaultConfirmationReason()).trim() || getDefaultConfirmationReason();
+    const resolvedReason = historyReason(reason, confirmationHistoryReason, booking);
     const response = await bookingsApi.recordConfirmationHistory(bookingId, {
-      action: (booking?.bookingConfirmationHistory || []).length === 0 ? 'created' : 'updated',
+      action: confirmationAction(booking),
       reason: resolvedReason,
       language,
       sentEmailId: sentEmail?._id,
@@ -582,7 +549,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
       const language = pdfLanguage;
       const { blob, fileName } = await createBookingConfirmationPdf({ booking, language });
       await storeCanonicalBookingPdf(blob, fileName, language);
-      const contentBase64 = await blobToBase64(blob);
+      const contentBase64 = await blobBase64(blob);
       const email = await buildBookingConfirmationEmail(language);
       setConfirmationEmailDraft({
         to: recipientEmail,
@@ -639,7 +606,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
       const { blob, fileName } = await createBookingConfirmationPdf({ booking, language });
       await storeCanonicalBookingPdf(blob, fileName, language);
       pdfSize = blob.size;
-      const contentBase64 = await blobToBase64(blob);
+      const contentBase64 = await blobBase64(blob);
       const email = await buildBookingConfirmationEmail(language);
       const payload = {
         to: recipientEmail,
@@ -669,20 +636,10 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
       }
       await recordBookingConfirmationHistory(response.data, language, confirmationHistoryReason);
       setRequirementsRefreshKey((current) => current + 1);
-      alert(formatSentEmailReceipt(response.data));
+      alert(sentEmailReceipt(response.data));
     } catch (error: any) {
       console.error('Error sending booking confirmation email:', error);
-      const status = error?.response?.status;
-      const data = error?.response?.data || {};
-      const details = [
-        data?.message || error?.message || 'Unable to send booking confirmation email.',
-        status ? `Status: ${status}` : '',
-        pdfSize ? `PDF attachment size: ${formatFileSize(pdfSize)}` : '',
-        payloadSize ? `Request payload size: ${formatFileSize(payloadSize)}` : '',
-        data?.limitBytes ? `API limit: ${formatFileSize(Number(data.limitBytes))}` : '',
-        data?.receivedBytes ? `Received by API: ${formatFileSize(Number(data.receivedBytes))}` : '',
-      ].filter(Boolean).join('\n');
-      alert(details);
+      alert(sendFailureDetails(error, pdfSize, payloadSize));
     } finally {
       setIsSendingConfirmation(false);
     }
