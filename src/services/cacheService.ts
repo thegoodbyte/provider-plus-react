@@ -6,6 +6,7 @@ interface CacheEntry<T> {
 
 class CacheService {
   private cache: Map<string, CacheEntry<any>> = new Map();
+  private pending: Map<string, Promise<any>> = new Map();
   private defaultTTL = 30000; // 30 seconds default TTL
 
   set<T>(key: string, data: T, ttl: number = this.defaultTTL): void {
@@ -33,10 +34,12 @@ class CacheService {
 
   clear(): void {
     this.cache.clear();
+    this.pending.clear();
   }
 
   delete(key: string): void {
     this.cache.delete(key);
+    this.pending.delete(key);
   }
 
   // Clear all entries matching a pattern
@@ -47,6 +50,21 @@ class CacheService {
         this.cache.delete(key);
       }
     });
+    Array.from(this.pending.keys()).forEach(key => {
+      if (key.includes(pattern)) this.pending.delete(key);
+    });
+  }
+
+  getPending<T>(key: string): Promise<T> | undefined {
+    return this.pending.get(key);
+  }
+
+  setPending<T>(key: string, request: Promise<T>): Promise<T> {
+    this.pending.set(key, request);
+    request.finally(() => {
+      if (this.pending.get(key) === request) this.pending.delete(key);
+    }).catch(() => undefined);
+    return request;
   }
 }
 

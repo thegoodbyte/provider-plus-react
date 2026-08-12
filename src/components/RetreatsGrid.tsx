@@ -27,6 +27,8 @@ const RetreatsGrid: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [formData, setFormData] = useState<Partial<Retreat>>({});
+  const [editSaveError, setEditSaveError] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
   const [pastRetreatsOpen, setPastRetreatsOpen] = useState(false);
   const [cancelledRetreatsOpen, setCancelledRetreatsOpen] = useState(false);
 
@@ -714,6 +716,7 @@ const RetreatsGrid: React.FC = () => {
                             location_town: getRetreatTown(retreat),
                             location: getRetreatTown(retreat),
                           });
+                          setEditSaveError('');
                           setIsEditModalOpen(true);
                         }}
                         className="icon-action-btn icon-action-btn-edit"
@@ -961,6 +964,11 @@ const RetreatsGrid: React.FC = () => {
             </div>
 
             <div className="flex flex-col-reverse gap-3 pt-6 md:flex-row md:justify-end">
+              {editSaveError && (
+                <div className="w-full rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 md:mr-auto">
+                  {editSaveError}
+                </div>
+              )}
               <button
                 onClick={() => {
                   setIsAddModalOpen(false);
@@ -1210,29 +1218,54 @@ const RetreatsGrid: React.FC = () => {
               <AppleButton
                 variant="secondary"
                 onClick={async () => {
+                  setEditSaveError('');
                   try {
                     if (editingRetreat?._id) {
-                      const updateData = {
-                        ...formData,
-                        code: formData.code?.trim() || formData.retreatCode?.trim() || undefined,
-                        retreatCode: formData.code?.trim() || formData.retreatCode?.trim() || undefined,
-                        location_town: getRetreatTown(formData),
-                        location: getRetreatTown(formData),
+                      const town = getRetreatTown(formData);
+                      if (!formData.name?.trim() || !town || !formData.startDate || !formData.endDate || !formData.capacity) {
+                        setEditSaveError('Name, location, dates, and capacity are required.');
+                        return;
+                      }
+                      setEditSaving(true);
+                      const code = formData.code?.trim() || formData.retreatCode?.trim() || undefined;
+                      const updateData: Partial<Retreat> = {
+                        name: formData.name.trim(),
+                        code,
+                        retreatCode: code,
+                        location_town: town,
+                        location: town,
                         houseId: getObjectId(formData.houseId) || undefined,
+                        ceremonyCount: formData.ceremonyCount,
+                        capacity: Number(formData.capacity),
+                        currentOccupancy: Number(formData.currentOccupancy || 0),
+                        type: formData.type || 'regular',
+                        description: formData.description || '',
+                        startDate: formData.startDate,
+                        startTime: formData.startTime || undefined,
+                        endDate: formData.endDate,
+                        endTime: formData.endTime || undefined,
+                        status: formData.status || 'upcoming',
+                        backgroundColor: formData.backgroundColor,
+                        textColor: formData.textColor,
                       };
                       await retreatsApi.update(editingRetreat._id, updateData);
-                      fetchRetreats();
+                      await fetchRetreats();
                       setIsEditModalOpen(false);
                       setEditingRetreat(null);
                       setFormData({});
                     }
-                  } catch (error) {
+                  } catch (error: any) {
                     console.error('Error updating retreat:', error);
+                    const message = error?.response?.data?.message || error?.message || 'Unable to save retreat.';
+                    setEditSaveError(Array.isArray(message) ? message.join(' ') : String(message));
+                  } finally {
+                    setEditSaving(false);
                   }
                 }}
+                disabled={editSaving}
                 className="w-full rounded-md border border-gray-300 bg-white px-4 py-2 text-gray-700 hover:bg-gray-50 md:w-auto"
               >
-                Save Changes
+                {editSaving ? 'Saving…' : 'Save Changes'}
               </AppleButton>
             </div>
           </div>

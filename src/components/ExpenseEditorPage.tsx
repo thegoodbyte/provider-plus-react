@@ -1,6 +1,6 @@
 import React, { FormEvent, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Camera, Save, X } from 'lucide-react';
+import { ArrowLeft, Camera, X } from 'lucide-react';
 import { expenseTypesApi, retreatExpensesApi, retreatsApi } from '../services/api';
 import { ExpenseType, Retreat, RetreatExpense } from '../types';
 import LoadingSpinner from './LoadingSpinner';
@@ -129,22 +129,37 @@ const ExpenseEditorPage: React.FC = () => {
   const submit = (event: FormEvent) => { event.preventDefault(); void save(false); };
   if (loading) return <LoadingSpinner message="Loading expense..." />;
 
-  const field = 'min-h-14 w-full rounded-xl border border-slate-300 bg-white px-3 text-lg outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100';
+  const field = 'min-h-14 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-base outline-none transition focus:border-cyan-500 focus:bg-white focus:ring-2 focus:ring-cyan-100';
+  const setQuickDate = (daysAgo: number) => {
+    const value = new Date();
+    value.setDate(value.getDate() - daysAgo);
+    setForm({ ...form, expenseDate: value.toISOString().slice(0, 10) });
+  };
   return (
-    <div className="mx-auto max-w-2xl px-0 py-1">
-      <div className="mb-3 flex items-center gap-3">
-        <button type="button" onClick={() => navigate(`${prefix}/expenses`)} className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100" aria-label="Back to expenses"><ArrowLeft /></button>
-        <div><h1 className="text-2xl font-extrabold text-slate-950">{editing ? 'Edit expense' : 'Add expense'}</h1><p className="text-sm text-slate-500">Actual expense</p></div>
+    <div className="mx-auto max-w-3xl px-0 pb-28 pt-1">
+      <div className="mb-7 flex items-center gap-3">
+        <button type="button" onClick={() => navigate(`${prefix}/expenses`)} className="flex h-11 w-11 items-center justify-center rounded-full text-slate-700 hover:bg-slate-100" aria-label="Back to expenses"><ArrowLeft /></button>
+        <div><h1 className="text-3xl font-extrabold tracking-tight text-slate-950">{editing ? 'Edit expense' : 'Add expense'}</h1><p className="mt-0.5 text-sm font-medium text-slate-500">Actual expense</p></div>
       </div>
       {error && <div className="mb-3 rounded-xl bg-red-50 p-3 font-semibold text-red-700">{error}</div>}
-      <form onSubmit={submit} className="space-y-3">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="block"><span className="mb-1 block text-base font-bold">Date</span><input type="date" value={form.expenseDate} onChange={(e) => setForm({ ...form, expenseDate: e.target.value })} className={field} required /></label>
-          <div><span className="mb-1 block text-base font-bold">Price</span><div className="grid grid-cols-[1fr_105px] gap-2"><input ref={amountRef} type="number" inputMode="decimal" min="0" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className={field} placeholder="0.00" required /><select value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value as RetreatExpense['currency'] })} className={field}><option>CZK</option><option>PLN</option><option>EUR</option><option>USD</option></select></div></div>
-        </div>
-        <label className="block"><span className="mb-1 block text-base font-bold">Item</span><input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className={field} placeholder="What did you buy?" /></label>
-        <label className="block"><span className="mb-1 block text-base font-bold">Vendor</span><input value={form.vendor} onChange={(e) => setForm({ ...form, vendor: e.target.value })} className={field} placeholder="Store or supplier" /></label>
-        <label className="block"><span className="mb-1 block text-base font-bold">Category</span><select value={form.expenseTypeId} onChange={(e) => setForm({ ...form, expenseTypeId: e.target.value })} className={field} required><option value="">Choose category</option>{types.map((type) => <option key={type._id} value={type._id}>{type.name}</option>)}</select></label>
+      <form onSubmit={submit} className="space-y-6">
+        <section>
+          <span className="mb-2 block text-xs font-extrabold uppercase tracking-[0.16em] text-slate-500">Amount</span>
+          <div className="flex items-end border-b-2 border-slate-900 pb-2">
+            <span className="mb-2 mr-3 text-2xl font-bold text-slate-500">{form.currency === 'CZK' ? 'Kč' : form.currency === 'EUR' ? '€' : form.currency === 'PLN' ? 'zł' : '$'}</span>
+            <input ref={amountRef} type="number" inputMode="decimal" min="0" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} className="min-w-0 flex-1 border-0 bg-transparent text-5xl font-extrabold tracking-tight text-slate-950 outline-none placeholder:text-slate-300" placeholder="0.00" required />
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {(['CZK', 'EUR', 'PLN', 'USD'] as RetreatExpense['currency'][]).map((currency) => <button key={currency} type="button" onClick={() => setForm({ ...form, currency })} className={`rounded-lg border px-4 py-2.5 text-sm font-extrabold ${form.currency === currency ? 'border-cyan-600 bg-cyan-600 text-white' : 'border-slate-200 bg-white text-slate-700'}`}>{currency}</button>)}
+          </div>
+        </section>
+
+        <label className="block"><span className="mb-2 block text-xs font-extrabold uppercase tracking-[0.16em] text-slate-500">Item</span><input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className={field} placeholder="What did you buy?" /></label>
+        <label className="block"><span className="mb-2 block text-xs font-extrabold uppercase tracking-[0.16em] text-slate-500">Vendor</span><input value={form.vendor} onChange={(e) => setForm({ ...form, vendor: e.target.value })} className={field} placeholder="Store or supplier" /></label>
+        <div><span className="mb-2 block text-xs font-extrabold uppercase tracking-[0.16em] text-slate-500">Category</span><div className="flex flex-wrap gap-2">{types.map((type) => <button type="button" key={type._id} onClick={() => setForm({ ...form, expenseTypeId: type._id || '' })} className={`rounded-lg border px-4 py-2.5 text-sm font-bold ${form.expenseTypeId === type._id ? 'border-cyan-600 bg-cyan-600 text-white' : 'border-slate-200 bg-white text-slate-700'}`}>{type.name}</button>)}</div></div>
+
+        <div><span className="mb-2 block text-xs font-extrabold uppercase tracking-[0.16em] text-slate-500">Date</span><div className="grid grid-cols-3 gap-2"><button type="button" onClick={() => setQuickDate(0)} className={`min-h-12 rounded-lg border font-bold ${form.expenseDate === today() ? 'border-cyan-600 bg-cyan-600 text-white' : 'border-slate-200 bg-white'}`}>Today</button><button type="button" onClick={() => setQuickDate(1)} className="min-h-12 rounded-lg border border-slate-200 bg-white font-bold">Yesterday</button><label className="relative flex min-h-12 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white font-bold"><span>Pick a date</span><input aria-label="Expense date" type="date" value={form.expenseDate} onChange={(e) => setForm({ ...form, expenseDate: e.target.value })} className="absolute inset-0 cursor-pointer opacity-0" required /></label></div></div>
+
         <label className="block"><span className="mb-1 block text-base font-bold">Retreat</span><select value={form.retreatId} onChange={(e) => setForm({ ...form, retreatId: e.target.value })} className={field}><option value="">General company expense</option>{retreats.map((retreat) => <option key={retreat._id} value={retreat._id}>{retreat.code || retreat.retreatCode || retreat.name}</option>)}</select></label>
         <div className="rounded-xl border border-slate-300 bg-white p-3">
           <div className="mb-2 flex items-center justify-between gap-3">
@@ -157,10 +172,12 @@ const ExpenseEditorPage: React.FC = () => {
           </label>
         </div>
         {editing && <label className="block"><span className="mb-1 block text-base font-bold">Status</span><select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as RetreatExpense['status'] })} className={field}><option value="pending">Pending</option><option value="approved">Approved</option><option value="paid">Paid</option><option value="rejected">Rejected</option></select></label>}
-        <div className={`sticky bottom-0 grid gap-2 border-t border-slate-200 bg-white py-3 ${editing ? 'grid-cols-2' : 'grid-cols-3'}`}>
-          <button type="button" onClick={() => navigate(`${prefix}/expenses`)} disabled={saving} className="min-h-14 rounded-xl border border-slate-300 text-base font-bold">Cancel</button>
-          {!editing && <button type="button" onClick={() => void save(true)} disabled={saving} className="min-h-14 rounded-xl bg-slate-800 px-2 text-base font-bold text-white">Add &amp; next</button>}
-          <button type="submit" disabled={saving} className="flex min-h-14 items-center justify-center gap-2 rounded-xl bg-blue-600 px-2 text-base font-bold text-white"><Save size={19} />{saving ? 'Saving…' : editing ? 'Save' : 'Add'}</button>
+        <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white/95 px-4 py-3 backdrop-blur md:sticky md:px-0">
+          <div className={`mx-auto grid max-w-3xl gap-2 ${editing ? 'grid-cols-1' : 'grid-cols-2'}`}>
+            <button type="submit" disabled={saving} className="min-h-14 rounded-xl bg-cyan-600 px-3 text-base font-extrabold text-white">{saving ? 'Saving…' : editing ? 'Save' : 'Add'}</button>
+            {!editing && <button type="button" onClick={() => void save(true)} disabled={saving} className="min-h-14 rounded-xl border border-slate-300 bg-white px-3 text-base font-extrabold text-slate-800">Add &amp; next</button>}
+          </div>
+          <button type="button" onClick={() => navigate(`${prefix}/expenses`)} disabled={saving} className="mx-auto mt-2 block text-sm font-semibold text-slate-500">Cancel</button>
         </div>
       </form>
     </div>

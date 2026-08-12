@@ -50,10 +50,16 @@ const cachedGet = async <T>(key: string, fetcher: () => Promise<any>, ttl: numbe
   if (cached) {
     return { data: cached };
   }
+  const pending = cacheService.getPending<any>(key);
+  if (pending) return pending;
+  return cacheService.setPending(key, fetcher().then((response) => {
+    cacheService.set(key, response.data, ttl);
+    return response;
+  }));
+};
 
-  const response = await fetcher();
-  cacheService.set(key, response.data, ttl);
-  return response;
+const invalidateBookingRequirements = () => {
+  cacheService.clearPattern('booking-flow:booking-requirements:');
 };
 
 export const retreatsApi = {
@@ -296,14 +302,14 @@ export const bookingsApi = {
     cacheService.clearPattern('bookings:');
     cacheService.clearPattern('payments:');
     const response = await api.post<RetreatClient>('/bookings', data);
-    await refreshCanonicalBookingConfirmation(String(response.data._id));
+    void refreshCanonicalBookingConfirmation(String(response.data._id));
     return response;
   },
   update: async (id: string, data: Partial<RetreatClient>) => {
     cacheService.clearPattern('bookings:');
     cacheService.clearPattern('payments:');
     const response = await api.patch<RetreatClient>(`/bookings/${id}`, data);
-    await refreshCanonicalBookingConfirmation(id);
+    void refreshCanonicalBookingConfirmation(id);
     return response;
   },
   cancel: (id: string, data: { cancellationDate: string; cancellationReason: string; cancellationNotes?: string; cancellationDepositTreatment: 'none' | 'retained' | 'refund_pending' | 'partially_refunded' | 'credited'; cancellationRefundAmount?: number }) => {
@@ -328,6 +334,8 @@ export const bookingsApi = {
     cacheService.clearPattern('bookings:');
     return api.post(`/bookings/${id}/confirmation-pdf?language=${language}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
+  getConfirmationPdf: (id: string, language: 'en' | 'cz' | 'pl') =>
+    api.get(`/bookings/${id}/confirmation-pdf?language=${language}`, { responseType: 'blob' }),
   checkIn: (id: string) => {
     cacheService.clearPattern('bookings:');
     return api.patch<RetreatClient>(`/bookings/${id}/check-in`, {});
@@ -863,12 +871,14 @@ export const medicalArtifactsApi = {
   }>(`/medical-artifacts/upload-target/preview?artifactType=${encodeURIComponent(artifactType)}&fileName=${encodeURIComponent(fileName || 'medical-record.pdf')}`),
   create: (data: MedicalArtifactCreateInput) => {
     cacheService.clearPattern('medical-artifacts:');
+    invalidateBookingRequirements();
     return api.post<MedicalArtifact>('/medical-artifacts', data);
   },
   uploadFiles: (id: string, files: File[], options: { reviewRequestNumber?: number | string } = {}) => {
     const formData = new FormData();
     files.forEach((file) => formData.append('files', file));
     cacheService.clearPattern('medical-artifacts:');
+    invalidateBookingRequirements();
     const params = new URLSearchParams();
     if (options.reviewRequestNumber) params.set('reviewRequestNumber', String(options.reviewRequestNumber));
     const suffix = params.toString() ? `?${params.toString()}` : '';
@@ -908,6 +918,7 @@ export const medicalArtifactsApi = {
   },
   deleteFile: (id: string, storedPath: string) => {
     cacheService.clearPattern('medical-artifacts:');
+    invalidateBookingRequirements();
     return api.delete<MedicalArtifact>(`/medical-artifacts/${id}/files?storedPath=${encodeURIComponent(storedPath)}`);
   },
   getFileBlob: (id: string, storedPath: string) => {
@@ -919,10 +930,12 @@ export const medicalArtifactsApi = {
   },
   update: (id: string, data: Partial<MedicalArtifact>) => {
     cacheService.clearPattern('medical-artifacts:');
+    invalidateBookingRequirements();
     return api.patch<MedicalArtifact>(`/medical-artifacts/${id}`, data);
   },
   delete: (id: string) => {
     cacheService.clearPattern('medical-artifacts:');
+    invalidateBookingRequirements();
     return api.delete(`/medical-artifacts/${id}`);
   },
 };
@@ -1115,22 +1128,27 @@ export const medicalReviewRequestsApi = {
   getNextDisplayId: () => api.get<number>('/medical-review-requests/next-display-id'),
   create: (data: Omit<MedicalReviewRequest, '_id'>) => {
     cacheService.clearPattern('medical-review-requests:');
+    invalidateBookingRequirements();
     return api.post<MedicalReviewRequest>('/medical-review-requests', data);
   },
   createFromTracking: (medicalTrackingId: string, requestType?: 'ekg' | 'liver' | 'both', data: Partial<MedicalReviewRequest> = {}) => {
     cacheService.clearPattern('medical-review-requests:');
+    invalidateBookingRequirements();
     return api.post<MedicalReviewRequest>(`/medical-review-requests/from-tracking/${medicalTrackingId}`, { ...data, requestType });
   },
   createFromArtifact: (artifactId: string, requestType?: MedicalReviewRequest['requestType'], data: Partial<MedicalReviewRequest> = {}) => {
     cacheService.clearPattern('medical-review-requests:');
+    invalidateBookingRequirements();
     return api.post<MedicalReviewRequest>(`/medical-review-requests/from-artifact/${artifactId}`, { ...data, requestType });
   },
   update: (id: string, data: Partial<MedicalReviewRequest>) => {
     cacheService.clearPattern('medical-review-requests:');
+    invalidateBookingRequirements();
     return api.patch<MedicalReviewRequest>(`/medical-review-requests/${id}`, data);
   },
   updateClientVisibleAdminNote: (id: string, note: string) => {
     cacheService.clearPattern('medical-review-requests:');
+    invalidateBookingRequirements();
     return api.patch<MedicalReviewRequest>(`/medical-review-requests/${id}/client-visible-admin-note`, { note });
   },
   getPublic: (token: string) => api.get<{ request: MedicalReviewRequest; artifacts: MedicalArtifact[] }>(
@@ -1326,6 +1344,19 @@ export const bookingFlowApi = {
     templates: BookingFlowTemplate[];
     libraryTemplates: BookingFlowTemplate[];
     actionLogs: BookingFlowActionLog[];
+    artifacts: MedicalArtifact[];
+    documents: BookingDocument[];
+    reviews: MedicalReviewRequest[];
+    requirements: Array<{
+      itemId: string;
+      key: string;
+      readinessGroup?: string;
+      reviewRequired: boolean;
+      state: 'missing' | 'received' | 'pending_review' | 'approved' | 'caution' | 'needs_resubmission' | 'declined';
+      artifactIds: string[];
+      documentIds: string[];
+      latestReviewId?: string;
+    }>;
   }>(
     `booking-flow:booking-requirements:${bookingId}`,
     () => api.get(`/booking-flow/bookings/${bookingId}/requirements`)
