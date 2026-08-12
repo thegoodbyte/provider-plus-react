@@ -1,25 +1,23 @@
-import { bookingDocumentsApi, bookingFlowApi, medicalArtifactsApi } from '../services/api';
-import { BookingDocument, BookingFlowItem, MedicalArtifact } from '../types';
+import { bookingFlowApi } from '../services/api';
+import { BookingDocument, BookingFlowItem, MedicalArtifact, MedicalReviewRequest } from '../types';
 
 export interface BookingRequirementSources {
   items: BookingFlowItem[];
   artifacts: MedicalArtifact[];
   documents: BookingDocument[];
+  reviews: MedicalReviewRequest[];
 }
 
 export const fetchBookingRequirementSources = async (
   bookingId: string,
-  clientId?: string,
+  _clientId?: string,
 ): Promise<BookingRequirementSources> => {
-  const [itemsResponse, artifactsResponse, documentsResponse] = await Promise.all([
-    bookingFlowApi.getItems({ bookingId }),
-    clientId ? medicalArtifactsApi.getAll({ clientId }) : medicalArtifactsApi.getForBooking(bookingId),
-    clientId ? bookingDocumentsApi.getAll({ clientId }) : bookingDocumentsApi.getAll({ bookingId }),
-  ]);
+  const response = await bookingFlowApi.getBookingRequirements(bookingId);
 
   return {
-    items: itemsResponse.data || [],
-    artifacts: artifactsResponse.data || [],
-    documents: documentsResponse.data || [],
+    items: response.data.items || [],
+    artifacts: response.data.artifacts || [],
+    documents: response.data.documents || [],
+    reviews: response.data.reviews || [],
   };
 };

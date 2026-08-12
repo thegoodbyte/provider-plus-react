@@ -1328,6 +1328,19 @@ export const bookingFlowApi = {
     templates: BookingFlowTemplate[];
     libraryTemplates: BookingFlowTemplate[];
     actionLogs: BookingFlowActionLog[];
+    artifacts: MedicalArtifact[];
+    documents: BookingDocument[];
+    reviews: MedicalReviewRequest[];
+    requirements: Array<{
+      itemId: string;
+      key: string;
+      readinessGroup?: string;
+      reviewRequired: boolean;
+      state: 'missing' | 'received' | 'pending_review' | 'approved' | 'caution' | 'needs_resubmission' | 'declined';
+      artifactIds: string[];
+      documentIds: string[];
+      latestReviewId?: string;
+    }>;
   }>(
     `booking-flow:booking-requirements:${bookingId}`,
     () => api.get(`/booking-flow/bookings/${bookingId}/requirements`)

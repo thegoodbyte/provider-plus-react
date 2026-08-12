@@ -497,18 +497,15 @@ const BookingRequirementsPanel: React.FC<{
       const allClientArtifacts: MedicalArtifact[] = mergeArtifacts([sources.artifacts]);
       const loadedArtifacts = allClientArtifacts
         .filter((artifact) => isArtifactRelevantToBooking(artifact, bookingId, retreatId));
-      const artifactIds = loadedArtifacts.map((artifact) => artifact._id).filter(Boolean) as string[];
-      const reviewLoad = await loadReviewsByArtifactIds(artifactIds);
-      timings.reviews = reviewLoad.duration;
       setItems(sources.items);
       setArtifacts(loadedArtifacts);
       setLibraryArtifacts(allClientArtifacts);
       const allClientDocuments = sources.documents;
       setDocuments(allClientDocuments.filter((document: BookingDocument) => getObjectId(document.bookingId) === bookingId));
       setLibraryDocuments(allClientDocuments);
-      setReviewsByArtifact(reviewLoad.reviewsByArtifact);
+      setReviewsByArtifact(indexReviewsByArtifact(sources.reviews));
       timings.total = performance.now() - loadStart;
-      timings.reviewCount = reviewLoad.count;
+      timings.reviewCount = sources.reviews.length;
       timings.artifactCount = loadedArtifacts.length;
       logLoadTimings('booking requirements', timings);
     } catch (loadError: any) {
