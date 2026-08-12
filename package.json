@@ -63,7 +63,12 @@
   "jest": {
     "transformIgnorePatterns": [
       "node_modules/(?!axios)"
-    ]
+    ],
+    "coverageThreshold": {
+      "global": { "statements": 5.9, "branches": 3.9, "functions": 4, "lines": 6 },
+      "**/bookingRequirementsLoader.ts": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
+      "**/cacheService.ts": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 }
+    }
   },
   "browserslist": {
     "production": [

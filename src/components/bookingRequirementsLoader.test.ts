@@ -26,4 +26,10 @@ describe('fetchBookingRequirementSources', () => {
       items: [], artifacts: [], documents: [], reviews: [],
     });
   });
+
+  it('propagates endpoint failures so the Requirements panel can show retry UI', async () => {
+    (bookingFlowApi.getBookingRequirements as jest.Mock).mockRejectedValue(new Error('requirements unavailable'));
+    await expect(fetchBookingRequirementSources('booking-3')).rejects.toThrow('requirements unavailable');
+    expect(bookingFlowApi.getBookingRequirements).toHaveBeenCalledTimes(1);
+  });
 });

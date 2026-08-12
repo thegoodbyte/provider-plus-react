@@ -21,4 +21,47 @@ describe('cacheService pending requests', () => {
     expect(cacheService.getPending('booking-flow:booking-requirements:1')).toBeUndefined();
     expect(cacheService.get('unrelated:1')).toEqual({ value: 2 });
   });
+
+  it('expires stale entries and preserves fresh entries', () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1000);
+    cacheService.set('short', 'value', 10);
+    expect(cacheService.get('short')).toBe('value');
+    jest.spyOn(Date, 'now').mockReturnValue(1011);
+    expect(cacheService.get('short')).toBeNull();
+    jest.restoreAllMocks();
+  });
+
+  it('removes a rejected pending request so a retry can start', async () => {
+    const request = Promise.reject(new Error('network'));
+    cacheService.setPending('requirements', request);
+    await expect(request).rejects.toThrow('network');
+    await Promise.resolve();
+    expect(cacheService.getPending('requirements')).toBeUndefined();
+  });
+
+  it('does not let an older request clear a newer pending request', async () => {
+    let finishOld: () => void = () => undefined;
+    const oldRequest = new Promise<void>((resolve) => { finishOld = resolve; });
+    const newerRequest = new Promise<void>(() => undefined);
+    cacheService.setPending('requirements', oldRequest);
+    cacheService.setPending('requirements', newerRequest);
+    finishOld();
+    await oldRequest;
+    await Promise.resolve();
+    expect(cacheService.getPending('requirements')).toBe(newerRequest);
+  });
+
+  it('deletes one cached and pending key and clears all state', () => {
+    const never = new Promise<void>(() => undefined);
+    cacheService.set('one', 1);
+    cacheService.setPending('one', never);
+    cacheService.delete('one');
+    expect(cacheService.get('one')).toBeNull();
+    expect(cacheService.getPending('one')).toBeUndefined();
+    cacheService.set('two', 2);
+    cacheService.setPending('two', never);
+    cacheService.clear();
+    expect(cacheService.get('two')).toBeNull();
+    expect(cacheService.getPending('two')).toBeUndefined();
+  });
 });
