@@ -2,9 +2,9 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom';
 import { Link, useLocation } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Circle, FileText, Filter, Link2, ListPlus, Lock, Mail, RefreshCw, Save, ThumbsDown, ThumbsUp, Unlock, Upload, X } from 'lucide-react';
-import { bookingDocumentsApi, bookingFlowApi, clientsApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
+import { bookingDocumentsApi, bookingFlowApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
-import { BookingDocument, BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, Client, MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
+import { BookingDocument, BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 import { resolveBookingStepUploadTarget, shouldShowArtifactUploadFallback } from './BookingStepsMatrix.helpers';
@@ -20,6 +20,7 @@ import { indexBookingStepActionLogs, indexBookingStepDocuments, indexBookingStep
 import { indexBookingStepArtifactsByContext, indexBookingStepArtifactsById, indexBookingStepReviewsByArtifact, indexBookingStepReviewsByContext, makeBookingStepArtifactContextKey as makeArtifactContextKey, makeBookingStepReviewContextKey as makeReviewContextKey } from './bookingStepMedicalIndexes';
 import { bookingDocumentTypeByStep, buildBookingStepActionOptions, canSendBookingStepReminder as canSendReminder, canSendBookingStepRowEmail as rowCanSendEmail, getLinkedBookingStepArtifactId as getLinkedArtifactIdFromItem, humanizeBookingStepDocumentKey as humanizeDocumentKey, interpolateBookingStepActionUrl as interpolateActionUrl, resolveBookingStepDocumentType, resolveConfiguredBookingStepDocumentType } from './bookingStepControlRules';
 import BookingStepActionHistory from './BookingStepActionHistory';
+import BookingStepClientAvatar from './BookingStepClientAvatar';
 
 const getSimpleStatus = (item?: BookingFlowItem) => {
   const status = getSimpleStepStatus(item);
@@ -28,42 +29,6 @@ const getSimpleStatus = (item?: BookingFlowItem) => {
 };
 
 const normalizeDocumentKey = normalizeBookingStepKey;
-
-const RetreatMatrixClientAvatar: React.FC<{ client: Client | null; name: string }> = ({ client, name }) => {
-  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(client?.profilePictureUrl || null);
-  const hasProfilePicture = Boolean(client?.profilePictureUrl || client?.profilePictureS3Key || client?.profilePictureFileUploadId);
-
-  useEffect(() => {
-    if (!client?._id || client.profilePictureUrl || !hasProfilePicture) {
-      setProfilePictureUrl(client?.profilePictureUrl || null);
-      return;
-    }
-
-    let objectUrl: string | null = null;
-    let active = true;
-
-    clientsApi.getProfilePictureBlob(client._id)
-      .then((response) => {
-        if (!active) return;
-        objectUrl = URL.createObjectURL(response.data);
-        setProfilePictureUrl(objectUrl);
-      })
-      .catch(() => {
-        if (active) setProfilePictureUrl(null);
-      });
-
-    return () => {
-      active = false;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [client?._id, client?.profilePictureFileUploadId, client?.profilePictureS3Key, client?.profilePictureUrl, hasProfilePicture]);
-
-  return (
-    <span className="mr-2 inline-flex h-8 w-8 flex-none items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-gray-100 text-xs font-semibold text-gray-600">
-      {profilePictureUrl ? <img src={profilePictureUrl} alt="" className="h-full w-full object-cover" /> : <span>{name.charAt(0).toUpperCase()}</span>}
-    </span>
-  );
-};
 
 const statusOptions: BookingFlowItem['status'][] = [
   'pending',
@@ -980,7 +945,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
               {bookings.map((booking) => (
                 <th key={getObjectId(booking)} className={`sticky top-0 z-20 border-b border-r border-gray-300 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase text-gray-600 ${viewMode === 'simple' ? 'min-w-[150px]' : 'min-w-[260px]'}`}>
                   <div className="flex items-start gap-2">
-                    {viewMode === 'detail' && <RetreatMatrixClientAvatar client={getBookingClient(booking)} name={getClientName(booking)} />}
+                    {viewMode === 'detail' && <BookingStepClientAvatar client={getBookingClient(booking)} name={getClientName(booking)} />}
                     <div className="min-w-0 space-y-1 normal-case">
                       {getBookingClientId(booking) ? (
                         <Link
