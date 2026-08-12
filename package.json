@@ -96,6 +96,7 @@
       "**/bookingStepReviewMutations.ts": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
       "**/bookingStepArtifactMutations.ts": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
       "**/bookingStepCommunicationRules.ts": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
+      "**/BookingStepClientHeader.tsx": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
       "**/cacheService.ts": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 }
     }
   },

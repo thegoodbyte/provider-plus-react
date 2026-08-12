@@ -14,18 +14,18 @@ import { hasBookingActionLog } from './BookingStepsMatrix.helpers';
 import { normalizeBookingStepKey, resolveConfiguredBookingStepActions } from './bookingStepActions';
 import { ArtifactLinkConfig, ReviewStepConfig, artifactStepConfigByKey, getArtifactLinkCandidates, getArtifactStepConfig, getReviewRequestLinkCandidates, getReviewStepConfig, reviewDecisionToClassName, reviewDecisionToLabel, reviewStatusToDecision } from './bookingStepMedicalLinks';
 import { formatStepDate as formatDate, formatStepDateInput as formatDateInput, formatStepDateTime as formatDateTime, formatStepPaymentOption as formatPaymentOption, getSimpleStepStatus, getStepItemDisplayValue as getItemDisplayValue, getStepStatusCellClass as getStatusCellClass, getStepStatusDateField as getStatusDateField, getStepStickyCellStyle as getStickyActionCellStyle } from './bookingStepPresentation';
-import { getBookingStepClient as getBookingClient, getBookingStepClientDisplayId as getClientDisplayId, getBookingStepClientEmail as getClientEmail, getBookingStepClientId as getBookingClientId, getBookingStepClientName as getClientName, getBookingStepClientPhone as getClientPhone, getBookingStepNumber as getBookingNumber, getBookingStepObjectId as getObjectId } from './bookingStepIdentity';
+import { getBookingStepClientId as getBookingClientId, getBookingStepClientName as getClientName, getBookingStepNumber as getBookingNumber, getBookingStepObjectId as getObjectId } from './bookingStepIdentity';
 import { BookingStepMatrixRow as MatrixRow, buildBookingStepRows, filterBookingStepRowGroups, groupBookingStepRows, numberBookingStepRows, searchBookingStepRows } from './bookingStepRows';
 import { indexBookingStepActionLogs, indexBookingStepDocuments, indexBookingStepItems, indexBookingStepPayments, indexBookingStepTemplates } from './bookingStepIndexes';
 import { indexBookingStepArtifactsByContext, indexBookingStepArtifactsById, indexBookingStepReviewsByArtifact, indexBookingStepReviewsByContext, makeBookingStepArtifactContextKey as makeArtifactContextKey, makeBookingStepReviewContextKey as makeReviewContextKey } from './bookingStepMedicalIndexes';
 import { bookingDocumentTypeByStep, buildBookingStepActionOptions, canSendBookingStepReminder as canSendReminder, canSendBookingStepRowEmail as rowCanSendEmail, getLinkedBookingStepArtifactId as getLinkedArtifactIdFromItem, humanizeBookingStepDocumentKey as humanizeDocumentKey, interpolateBookingStepActionUrl as interpolateActionUrl, resolveBookingStepDocumentType, resolveConfiguredBookingStepDocumentType } from './bookingStepControlRules';
 import BookingStepActionHistory from './BookingStepActionHistory';
-import BookingStepClientAvatar from './BookingStepClientAvatar';
 import { applyBookingStepDateUpdate, buildBookingStepDateUpdate, buildBookingStepNoteUpdates, buildBookingStepToggleUpdate, removeBookingStepDateDraft, shouldUpdateBookingStepStatus } from './bookingStepMutations';
 import { buildBookingStepPaymentSelection } from './bookingStepPaymentSelection';
 import { buildBookingStepReviewCreation, buildBookingStepReviewLink } from './bookingStepReviewMutations';
 import { buildBookingStepArtifactLink, buildBookingStepArtifactUploadUpdate } from './bookingStepArtifactMutations';
 import { buildBookingStepAutomationToggle, buildBookingStepReminderPayload, formatBookingStepRowEmailSummary, getBookingStepDuplicateReminderPrompt, getBookingStepReminderFailure, getBookingStepRowEmailConfirmation } from './bookingStepCommunicationRules';
+import BookingStepClientHeader, { getBookingStepRoutePrefix } from './BookingStepClientHeader';
 
 const getSimpleStatus = (item?: BookingFlowItem) => {
   const status = getSimpleStepStatus(item);
@@ -130,10 +130,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     resumeAt?: string;
     schedules: Array<{ _id: string; ruleKey: string; actionType: 'send_email' | 'create_staff_task'; scheduledFor: string; status: string; executedAt?: string; lastError?: string }>;
   } | null>(null);
-  const routePrefix = useMemo(() => {
-    const firstSegment = location.pathname.split('/').filter(Boolean)[0];
-    return ['admin', 'medical', 'staff', 'user', 'helper'].includes(firstSegment) ? firstSegment : 'admin';
-  }, [location.pathname]);
+  const routePrefix = useMemo(() => getBookingStepRoutePrefix(location.pathname), [location.pathname]);
 
   const loadData = useCallback(async (showLoading = true) => {
     if (showLoading) setLoading(true);
@@ -789,56 +786,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                   </button>
                 </div>
               </th>
-              {bookings.map((booking) => (
-                <th key={getObjectId(booking)} className={`sticky top-0 z-20 border-b border-r border-gray-300 bg-gray-100 px-3 py-2 text-left text-xs font-semibold uppercase text-gray-600 ${viewMode === 'simple' ? 'min-w-[150px]' : 'min-w-[260px]'}`}>
-                  <div className="flex items-start gap-2">
-                    {viewMode === 'detail' && <BookingStepClientAvatar client={getBookingClient(booking)} name={getClientName(booking)} />}
-                    <div className="min-w-0 space-y-1 normal-case">
-                      {getBookingClientId(booking) ? (
-                        <Link
-                          to={`/${routePrefix}/clients/${getBookingClientId(booking)}`}
-                          className={`${viewMode === 'simple' ? 'max-w-[130px] text-xs' : 'max-w-[210px] text-sm'} block truncate font-bold uppercase text-gray-900 hover:text-blue-700 hover:underline`}
-                          title="View client profile"
-                        >
-                          {getClientName(booking)}
-                        </Link>
-                      ) : (
-                        <div className={`${viewMode === 'simple' ? 'max-w-[130px] text-xs' : 'max-w-[210px] text-sm'} truncate font-bold uppercase text-gray-900`}>
-                          {getClientName(booking)}
-                        </div>
-                      )}
-                      <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] font-semibold text-blue-700">
-                        {getObjectId(booking) ? (
-                          <Link to={`/admin/bookings/${getObjectId(booking)}`} className="hover:text-blue-900 hover:underline">
-                            Booking #{getBookingNumber(booking)}
-                          </Link>
-                        ) : (
-                          <span>Booking #{getBookingNumber(booking)}</span>
-                        )}
-                        {viewMode === 'detail' && getClientDisplayId(booking) && (
-                          getBookingClientId(booking) ? (
-                            <Link to={`/${routePrefix}/clients/${getBookingClientId(booking)}`} className="hover:text-blue-900 hover:underline">
-                              Client #{getClientDisplayId(booking)}
-                            </Link>
-                          ) : (
-                            <span>Client #{getClientDisplayId(booking)}</span>
-                          )
-                        )}
-                      </div>
-                      {viewMode === 'detail' && getClientEmail(booking) && (
-                        <div className="max-w-[220px] truncate text-[11px] font-medium text-gray-600" title={getClientEmail(booking)}>
-                          {getClientEmail(booking)}
-                        </div>
-                      )}
-                      {viewMode === 'detail' && getClientPhone(booking) && (
-                        <div className="max-w-[220px] truncate text-[11px] font-medium text-gray-600" title={getClientPhone(booking)}>
-                          {getClientPhone(booking)}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </th>
-              ))}
+              {bookings.map((booking) => <BookingStepClientHeader key={getObjectId(booking)} booking={booking} viewMode={viewMode} routePrefix={routePrefix} />)}
             </tr>
           </thead>
           <tbody>
