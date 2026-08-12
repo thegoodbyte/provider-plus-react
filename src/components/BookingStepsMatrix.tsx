@@ -12,9 +12,9 @@ import { getBookingStepColorStyles, getBookingStepToneWithColor } from '../utils
 import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
 import { hasBookingActionLog } from './BookingStepsMatrix.helpers';
 import { normalizeBookingStepKey, resolveConfiguredBookingStepActions } from './bookingStepActions';
-import { ArtifactLinkConfig, ReviewStepConfig, artifactStepConfigByKey, getArtifactLinkCandidates, getArtifactStepConfig, getReviewRequestLinkCandidates, getReviewStepConfig, reviewDecisionToClassName, reviewDecisionToLabel, reviewStatusToDecision } from './bookingStepMedicalLinks';
+import { ArtifactLinkConfig, artifactStepConfigByKey, getArtifactLinkCandidates, getArtifactStepConfig, getReviewRequestLinkCandidates, getReviewStepConfig, reviewDecisionToClassName, reviewDecisionToLabel, reviewStatusToDecision } from './bookingStepMedicalLinks';
 import { formatStepDate as formatDate, formatStepDateInput as formatDateInput, formatStepDateTime as formatDateTime, formatStepPaymentOption as formatPaymentOption, getSimpleStepStatus, getStepItemDisplayValue as getItemDisplayValue, getStepStatusCellClass as getStatusCellClass, getStepStatusDateField as getStatusDateField, getStepStickyCellStyle as getStickyActionCellStyle } from './bookingStepPresentation';
-import { getBookingStepClientId as getBookingClientId, getBookingStepClientName as getClientName, getBookingStepNumber as getBookingNumber, getBookingStepObjectId as getObjectId } from './bookingStepIdentity';
+import { getBookingStepClientId as getBookingClientId, getBookingStepNumber as getBookingNumber, getBookingStepObjectId as getObjectId } from './bookingStepIdentity';
 import { BookingStepMatrixRow as MatrixRow, buildBookingStepRows, filterBookingStepRowGroups, groupBookingStepRows, numberBookingStepRows, searchBookingStepRows } from './bookingStepRows';
 import { indexBookingStepActionLogs, indexBookingStepDocuments, indexBookingStepItems, indexBookingStepPayments, indexBookingStepTemplates } from './bookingStepIndexes';
 import { indexBookingStepArtifactsByContext, indexBookingStepArtifactsById, indexBookingStepReviewsByArtifact, indexBookingStepReviewsByContext, makeBookingStepArtifactContextKey as makeArtifactContextKey, makeBookingStepReviewContextKey as makeReviewContextKey } from './bookingStepMedicalIndexes';
@@ -27,6 +27,7 @@ import { buildBookingStepArtifactLink, buildBookingStepArtifactUploadUpdate } fr
 import { buildBookingStepAutomationToggle, buildBookingStepReminderPayload, formatBookingStepRowEmailSummary, getBookingStepDuplicateReminderPrompt, getBookingStepReminderFailure, getBookingStepRowEmailConfirmation } from './bookingStepCommunicationRules';
 import BookingStepClientHeader, { getBookingStepRoutePrefix } from './BookingStepClientHeader';
 import { BookingStepAutomationModal, BookingStepAutomationModalState, BookingStepReminderModal, BookingStepReminderModalState } from './BookingStepCommunicationModals';
+import { BookingStepArtifactLinkModal, BookingStepArtifactLinkModalState, BookingStepReviewLinkModal, BookingStepReviewLinkModalState, BookingStepReviewRequestModal, BookingStepReviewRequestModalState } from './BookingStepMedicalModals';
 
 const getSimpleStatus = (item?: BookingFlowItem) => {
   const status = getSimpleStepStatus(item);
@@ -80,31 +81,9 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const [noteDrafts, setNoteDrafts] = useState<Record<string, string>>({});
   const [dirtyNoteIds, setDirtyNoteIds] = useState<Record<string, true>>({});
   const [datePickerDrafts, setDatePickerDrafts] = useState<Record<string, string>>({});
-  const [reviewRequestModal, setReviewRequestModal] = useState<{
-    item: BookingFlowItem;
-    booking: any;
-    artifactId: string;
-    requestType: NonNullable<MedicalReviewRequest['requestType']>;
-    label: string;
-    advisorId: string;
-  } | null>(null);
-  const [artifactLinkModal, setArtifactLinkModal] = useState<{
-    item: BookingFlowItem;
-    booking: any;
-    row: MatrixRow;
-    config: ArtifactLinkConfig;
-    candidates: MedicalArtifact[];
-    selectedArtifactId: string;
-  } | null>(null);
-  const [reviewRequestLinkModal, setReviewRequestLinkModal] = useState<{
-    item: BookingFlowItem;
-    booking: any;
-    row: MatrixRow;
-    config?: ReviewStepConfig;
-    action?: BookingFlowAction;
-    candidates: MedicalReviewRequest[];
-    selectedRequestId: string;
-  } | null>(null);
+  const [reviewRequestModal, setReviewRequestModal] = useState<BookingStepReviewRequestModalState | null>(null);
+  const [artifactLinkModal, setArtifactLinkModal] = useState<BookingStepArtifactLinkModalState | null>(null);
+  const [reviewRequestLinkModal, setReviewRequestLinkModal] = useState<BookingStepReviewLinkModalState | null>(null);
   const [composeState, setComposeState] = useState<{
     item: BookingFlowItem;
     action?: BookingFlowAction;
@@ -1271,143 +1250,8 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       )}
       {reminderState && <BookingStepReminderModal state={reminderState} saving={saving} onChange={setReminderState} onClose={() => setReminderState(null)} onSend={() => sendReminder()} />}
       {automationState && <BookingStepAutomationModal state={automationState} saving={saving} onClose={() => setAutomationState(null)} onToggle={toggleReminderAutomation} />}
-      {reviewRequestLinkModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-3xl rounded-lg bg-white p-5 shadow-xl">
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Link existing medical review request</h3>
-                <p className="mt-1 text-sm text-gray-600">
-                  {reviewRequestLinkModal.row.title} for {getClientName(reviewRequestLinkModal.booking)} · Booking #{getBookingNumber(reviewRequestLinkModal.booking)}
-                </p>
-                <p className="mt-1 text-xs text-gray-500">
-                  Select an existing request, then link it to this booking step.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setReviewRequestLinkModal(null)}
-                className="rounded-md p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
-                title="Close"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="max-h-[60vh] overflow-auto rounded-md border border-gray-200">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-3 py-2 text-left font-medium text-gray-600">Select</th>
-                    <th className="px-3 py-2 text-left font-medium text-gray-600">Request</th>
-                    <th className="px-3 py-2 text-left font-medium text-gray-600">Details</th>
-                    <th className="px-3 py-2 text-left font-medium text-gray-600">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 bg-white">
-                  {reviewRequestLinkModal.candidates.map((request) => (
-                    <tr key={request._id} className={reviewRequestLinkModal.selectedRequestId === request._id ? 'bg-indigo-50' : ''}>
-                      <td className="px-3 py-2 align-top">
-                        <input
-                          type="radio"
-                          name="review-request-link-selection"
-                          checked={reviewRequestLinkModal.selectedRequestId === request._id}
-                          onChange={() => setReviewRequestLinkModal((current) => (current ? { ...current, selectedRequestId: request._id || '' } : current))}
-                        />
-                      </td>
-                      <td className="px-3 py-2 align-top font-medium text-gray-900">
-                        MRR #{request.display_id || request._id?.slice(-6)} {request.requestType ? `· ${request.requestType}` : ''}
-                      </td>
-                      <td className="px-3 py-2 align-top text-gray-600">
-                        <div>{request.status?.replace(/_/g, ' ') || 'pending'}{request.reviewDecision ? ` · ${request.reviewDecision}` : ''}</div>
-                        <div>{request.assignedToEmail || request.assignedTo || 'Unassigned'}</div>
-                        <div>{formatDateTime(request.requestedAt || request.createdAt)}</div>
-                      </td>
-                      <td className="px-3 py-2 align-top">
-                        <button
-                          type="button"
-                          disabled={saving === `link-mrr:${reviewRequestLinkModal.item._id}` || reviewRequestLinkModal.selectedRequestId !== request._id}
-                          onClick={linkExistingReviewRequestToStep}
-                          className="inline-flex items-center gap-2 rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-                        >
-                          {saving === `link-mrr:${reviewRequestLinkModal.item._id}` ? 'Linking...' : 'Link to step'}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-      {artifactLinkModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-2xl rounded-lg bg-white p-5 shadow-xl">
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Link existing artifact</h3>
-                <p className="mt-1 text-sm text-gray-600">
-                  Select an existing {artifactLinkModal.config.label.toLowerCase()} artifact for {artifactLinkModal.row.title} on booking #{getBookingNumber(artifactLinkModal.booking)}.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setArtifactLinkModal(null)}
-                className="rounded-md p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
-                title="Close"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="max-h-[60vh] overflow-auto rounded-md border border-gray-200">
-              <table className="min-w-full divide-y divide-gray-200 text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-3 py-2 text-left font-medium text-gray-600">Select</th>
-                    <th className="px-3 py-2 text-left font-medium text-gray-600">Artifact</th>
-                    <th className="px-3 py-2 text-left font-medium text-gray-600">Details</th>
-                    <th className="px-3 py-2 text-left font-medium text-gray-600">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100 bg-white">
-                  {artifactLinkModal.candidates.map((artifact) => (
-                    <tr key={artifact._id} className={artifactLinkModal.selectedArtifactId === artifact._id ? 'bg-amber-50' : ''}>
-                      <td className="px-3 py-2 align-top">
-                        <input
-                          type="radio"
-                          name="artifact-link-selection"
-                          checked={artifactLinkModal.selectedArtifactId === artifact._id}
-                          onChange={() => setArtifactLinkModal((current) => (current ? { ...current, selectedArtifactId: artifact._id || '' } : current))}
-                        />
-                      </td>
-                      <td className="px-3 py-2 align-top font-medium text-gray-900">
-                        #{artifact.display_id || artifact._id?.slice(-6)} {artifact.title || artifact.documentType || artifact.artifactType}
-                      </td>
-                      <td className="px-3 py-2 align-top text-gray-600">
-                        <div>{artifact.documentStage || 'entry'} · {artifact.documentType || artifact.artifactType}</div>
-                        <div>{formatDateTime(artifact.receivedAt || artifact.createdAt)}</div>
-                        <div>{(artifact.files || []).length} file(s)</div>
-                      </td>
-                      <td className="px-3 py-2 align-top">
-                        <button
-                          type="button"
-                          disabled={saving === `link:${artifactLinkModal.item._id}` || artifactLinkModal.selectedArtifactId !== artifact._id}
-                          onClick={linkExistingArtifactToStep}
-                          className="inline-flex items-center gap-2 rounded-md bg-amber-600 px-3 py-2 text-sm font-medium text-white hover:bg-amber-700 disabled:opacity-50"
-                        >
-                          {saving === `link:${artifactLinkModal.item._id}` ? 'Linking...' : 'Link to step'}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
+      {reviewRequestLinkModal && <BookingStepReviewLinkModal state={reviewRequestLinkModal} saving={saving} onChange={setReviewRequestLinkModal} onClose={() => setReviewRequestLinkModal(null)} onLink={linkExistingReviewRequestToStep} />}
+      {artifactLinkModal && <BookingStepArtifactLinkModal state={artifactLinkModal} saving={saving} onChange={setArtifactLinkModal} onClose={() => setArtifactLinkModal(null)} onLink={linkExistingArtifactToStep} />}
         {createPortal(<div className="fixed bottom-6 right-6 z-[1000] flex items-center gap-2 rounded-xl border border-gray-300 bg-white p-2 shadow-2xl">
           {isEditing ? (
             <>
@@ -1424,74 +1268,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
             </button>
           )}
         </div>, document.body)}
-      {reviewRequestModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-lg rounded-lg bg-white p-5 shadow-xl">
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">Create Medical Review Request</h3>
-                <p className="mt-1 text-sm text-gray-600">
-                  {reviewRequestModal.label} for {getClientName(reviewRequestModal.booking)} · Booking #{getBookingNumber(reviewRequestModal.booking)}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setReviewRequestModal(null)}
-                className="rounded-md p-1 text-gray-500 hover:bg-gray-100 hover:text-gray-800"
-                title="Close"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
-                <div><span className="font-medium text-gray-900">Artifact:</span> {reviewRequestModal.artifactId}</div>
-                <div><span className="font-medium text-gray-900">Request type:</span> {reviewRequestModal.requestType.replace(/_/g, ' ')}</div>
-              </div>
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">
-                  Medical Advisor <span className="text-red-600">*</span>
-                </label>
-                <select
-                  value={reviewRequestModal.advisorId}
-                  onChange={(event) => setReviewRequestModal((current) => current ? { ...current, advisorId: event.target.value } : current)}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-                >
-                  <option value="">Select medical advisor</option>
-                  {medicalAdvisors.map((advisor) => (
-                    <option key={advisor._id} value={advisor._id}>
-                      {[advisor.firstName, advisor.lastName].filter(Boolean).join(' ') || advisor.email} ({advisor.email})
-                    </option>
-                  ))}
-                </select>
-                {medicalAdvisors.length === 0 && (
-                  <p className="mt-1 text-xs text-red-600">No active medical advisors are available.</p>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-5 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setReviewRequestModal(null)}
-                disabled={saving === `mrr:${reviewRequestModal.item._id}`}
-                className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={createMedicalReviewRequestFromStep}
-                disabled={!reviewRequestModal.advisorId || saving === `mrr:${reviewRequestModal.item._id}`}
-                className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-              >
-                {saving === `mrr:${reviewRequestModal.item._id}` ? 'Creating...' : 'Create MRR'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {reviewRequestModal && <BookingStepReviewRequestModal state={reviewRequestModal} advisors={medicalAdvisors} saving={saving} onChange={setReviewRequestModal} onClose={() => setReviewRequestModal(null)} onCreate={createMedicalReviewRequestFromStep} />}
     </div>
   );
 };
