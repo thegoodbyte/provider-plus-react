@@ -52,7 +52,7 @@ const MedicationStopPlanPage: React.FC = () => {
       </header>
       {loading ? <div className="p-10 text-center">Loading plan…</div> : <div className="space-y-4">
         <section className={`rounded-2xl border p-5 shadow-sm ${allClear ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-white'}`}>
-          <label className="flex items-start gap-3"><input type="checkbox" className="mt-1" checked={allClear} onChange={event => setAllClear(event.target.checked)}/><span><strong className="block text-slate-900">All good — nothing to prepare</strong><small className="text-slate-600">Use after medical review confirms that the client has no medication or substance preparation instructions.</small></span></label>
+          <div className="flex items-start gap-3"><input id="medication-plan-all-clear" type="checkbox" className="mt-1" checked={allClear} onChange={event => setAllClear(event.target.checked)}/><span><label htmlFor="medication-plan-all-clear" className="block font-semibold text-slate-900">All good — nothing to prepare</label><small className="text-slate-600">Use after medical review confirms that the client has no medication or substance preparation instructions.</small></span></div>
           {allClear && <label className="mt-4 block text-sm text-slate-600">Optional client message<textarea value={allClearNote} onChange={event => setAllClearNote(event.target.value)} rows={2} className="mt-1 w-full rounded-xl border border-emerald-200 bg-white px-3 py-2.5" placeholder="No medication changes are required before your retreat."/></label>}
         </section>
         {!allClear && entries.map((entry, index) => <section key={index} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
