@@ -18,42 +18,13 @@ import { hasBookingActionLog, reviewRequestStatusToBookingStepStatus } from './B
 import { normalizeBookingStepKey, resolveConfiguredBookingStepActions } from './bookingStepActions';
 import { ArtifactLinkConfig, ReviewStepConfig, artifactStepConfigByKey, getArtifactLinkCandidates, getArtifactStepConfig, getReviewRequestLinkCandidates, getReviewStepConfig, reviewDecisionToClassName, reviewDecisionToLabel, reviewStatusToDecision, reviewStepConfigByKey } from './bookingStepMedicalLinks';
 import { formatStepDate as formatDate, formatStepDateInput as formatDateInput, formatStepDateTime as formatDateTime, formatStepPaymentOption as formatPaymentOption, getSimpleStepStatus, getStepItemDisplayValue as getItemDisplayValue, getStepItemGroup as getItemGroup, getStepStatusCellClass as getStatusCellClass, getStepStatusDateField as getStatusDateField, getStepStickyCellStyle as getStickyActionCellStyle, getStepTemplateGroup as getTemplateGroup } from './bookingStepPresentation';
+import { getBookingStepClient as getBookingClient, getBookingStepClientDisplayId as getClientDisplayId, getBookingStepClientEmail as getClientEmail, getBookingStepClientId as getBookingClientId, getBookingStepClientName as getClientName, getBookingStepClientPhone as getClientPhone, getBookingStepNumber as getBookingNumber, getBookingStepObjectId as getObjectId, getBookingStepPaymentClientId as getPaymentClientId } from './bookingStepIdentity';
 
 const getSimpleStatus = (item?: BookingFlowItem) => {
   const status = getSimpleStepStatus(item);
   const icon = status.icon === 'failed' ? <ThumbsDown className="h-5 w-5" /> : status.icon === 'attention' ? <AlertTriangle className="h-5 w-5" /> : status.icon === 'fulfilled' ? <ThumbsUp className="h-5 w-5" /> : <X className="h-5 w-5" />;
   return { ...status, icon };
 };
-
-const getObjectId = (value: any): string => {
-  if (!value) return '';
-  if (typeof value === 'string') return value;
-  return value._id || value.id || '';
-};
-
-const getClientName = (booking: any): string => {
-  const client = booking.clientId || booking.client || {};
-  if (typeof client === 'object') {
-    const name = [client.firstName || client.fname, client.lastName || client.lname].filter(Boolean).join(' ');
-    return name || client.email || `Client ${getObjectId(booking).slice(-6)}`;
-  }
-  return `Client ${String(client || getObjectId(booking)).slice(-6)}`;
-};
-
-const getBookingClient = (booking: any): Client | null => {
-  const client = booking.clientId || booking.client || null;
-  return client && typeof client === 'object' ? client : null;
-};
-
-const getBookingNumber = (booking: any): string => {
-  return booking.bookingNumber || booking.displayNumber || getObjectId(booking).slice(-6);
-};
-
-const getBookingClientId = (booking: any): string => {
-  return getObjectId(booking.clientId || booking.client);
-};
-
-const getPaymentClientId = (payment: Payment): string => getObjectId(payment.clientId);
 
 const normalizeDocumentKey = normalizeBookingStepKey;
 
@@ -68,21 +39,6 @@ const bookingDocumentTypeByStep: Record<string, string> = {
   ekg_received: 'ekg',
   liver_received: 'liver_panel',
   questionnaire_received: 'questionnaire',
-};
-
-const getClientDisplayId = (booking: any): string => {
-  const client = getBookingClient(booking);
-  return String(client?.display_id || booking.clientDisplayId || booking.clientDisplayNumber || '');
-};
-
-const getClientEmail = (booking: any): string => {
-  return getBookingClient(booking)?.email || booking.clientEmail || '';
-};
-
-const getClientPhone = (booking: any): string => {
-  const client = getBookingClient(booking) as any;
-  const phoneParts = [client?.phoneCountryCode, client?.phone || booking.clientPhone].filter(Boolean);
-  return phoneParts.join(' ');
 };
 
 const RetreatMatrixClientAvatar: React.FC<{ client: Client | null; name: string }> = ({ client, name }) => {
