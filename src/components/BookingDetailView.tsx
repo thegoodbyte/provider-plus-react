@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { FiArrowLeft, FiCheck, FiChevronDown, FiDownload, FiEdit3, FiEye, FiMail, FiSend, FiX } from 'react-icons/fi';
 import { message } from 'antd';
-import { bookingsApi, bookingDocumentsApi, bookingFlowApi, ceremoniesApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
+import { bookingsApi, bookingFlowApi, ceremoniesApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import BookingPaymentManagement from './BookingPaymentManagement';
 import BookingMedicalUpload from './BookingMedicalUpload';
 import BookingDocumentsUpload from './BookingDocumentsUpload';
@@ -13,11 +13,11 @@ import BookingActivityTimeline from './BookingActivityTimeline';
 import { TaskList } from './Tasks/TaskList';
 import { TaskForm } from './Tasks/TaskForm';
 import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
-import { fetchBookingRequirementSources } from './bookingRequirementsLoader';
-import { artifactMatches as artifactMatchesRequirement, buildBookingRequirementRows, documentMatches as documentMatchesRequirement, mergeArtifacts, RequirementDefinition } from './bookingRequirementRows';
+import { artifactMatches as artifactMatchesRequirement, documentMatches as documentMatchesRequirement, mergeArtifacts, RequirementDefinition } from './bookingRequirementRows';
+import { useBookingRequirements } from './useBookingRequirements';
 import { createBookingConfirmationPdf } from './BookingConfirmationPDF';
 import { Task, CreateTaskDto, taskService } from '../services/taskService';
-import { BookingDocument, BookingFlowItem, CeremonyParticipant, MedicalArtifact, MedicalReviewRequest } from '../types';
+import { CeremonyParticipant, MedicalArtifact, MedicalReviewRequest } from '../types';
 import './BookingDetailView.css';
 
 type BookingConfirmationLanguage = 'pl' | 'cz' | 'en';
@@ -404,94 +404,11 @@ const BookingRequirementsPanel: React.FC<{
     const firstSegment = location.pathname.split('/').filter(Boolean)[0];
     return ['admin', 'medical', 'staff', 'user'].includes(firstSegment) ? `/${firstSegment}` : '';
   }, [location.pathname]);
-  const [items, setItems] = useState<BookingFlowItem[]>([]);
-  const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
-  const [libraryArtifacts, setLibraryArtifacts] = useState<MedicalArtifact[]>([]);
-  const [documents, setDocuments] = useState<BookingDocument[]>([]);
-  const [libraryDocuments, setLibraryDocuments] = useState<BookingDocument[]>([]);
-  const [reviewsByArtifact, setReviewsByArtifact] = useState<Record<string, MedicalReviewRequest[]>>({});
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [linkingRequirement, setLinkingRequirement] = useState<RequirementDefinition | null>(null);
-  const [linkingRecordId, setLinkingRecordId] = useState('');
-
-  const loadRequirements = async () => {
-    const loadStart = performance.now();
-    const timings: Record<string, number> = {};
-    setLoading(true);
-    setError('');
-    try {
-      const sourcesStart = performance.now();
-      // Requirements used to issue six overlapping artifact queries plus two
-      // document queries. A client-scoped library response already contains
-      // the booking-linked records needed both for status and the link dialog.
-      const sources = await fetchBookingRequirementSources(bookingId, clientId);
-      timings.sources = performance.now() - sourcesStart;
-      const allClientArtifacts: MedicalArtifact[] = mergeArtifacts([sources.artifacts]);
-      const loadedArtifacts = allClientArtifacts
-        .filter((artifact) => isArtifactRelevantToBooking(artifact, bookingId, retreatId));
-      setItems(sources.items);
-      setArtifacts(loadedArtifacts);
-      setLibraryArtifacts(allClientArtifacts);
-      const allClientDocuments = sources.documents;
-      setDocuments(allClientDocuments.filter((document: BookingDocument) => getObjectId(document.bookingId) === bookingId));
-      setLibraryDocuments(allClientDocuments);
-      setReviewsByArtifact(indexReviewsByArtifact(sources.reviews));
-      timings.total = performance.now() - loadStart;
-      timings.reviewCount = sources.reviews.length;
-      timings.artifactCount = loadedArtifacts.length;
-      logLoadTimings('booking requirements', timings);
-    } catch (loadError: any) {
-      setError(loadError?.response?.data?.message || loadError?.message || 'Unable to load booking requirements.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadRequirements();
-  }, [bookingId, clientId, retreatId, refreshKey]);
-
-  const rows = buildBookingRequirementRows(items, artifacts, libraryArtifacts, documents, libraryDocuments, reviewsByArtifact);
-  const missingCount = rows.filter((row) => row.required && !row.uploaded).length;
-  const requiredCount = rows.filter((row) => row.required).length;
-
-  useEffect(() => {
-    if (!loading && !error) {
-      onStatusChange?.({ missing: missingCount, total: requiredCount });
-    }
-  }, [error, loading, missingCount, onStatusChange, requiredCount]);
+  const { rows, libraryArtifacts, libraryDocuments, loading, error, linkingRecordId, reload: loadRequirements, link } = useBookingRequirements({ bookingId, clientId, retreatId, refreshKey, onStatusChange });
 
   const linkExistingRecord = async (definition: RequirementDefinition, kind: 'artifact' | 'document', recordId: string) => {
-    const row = rows.find((candidate) => candidate.key === definition.key);
-    const flowItem = row?.relatedItems.find((item) => item._id) || row?.relatedItems[0];
-    try {
-      setLinkingRecordId(`${kind}:${recordId}`);
-      if (flowItem?._id) {
-        await bookingFlowApi.updateItem(flowItem._id, {
-          status: 'received',
-          completedAt: new Date().toISOString(),
-          metadata: {
-            ...(flowItem.metadata || {}),
-            ...(kind === 'artifact'
-              ? { linkedMedicalArtifactId: recordId, linkedMedicalArtifactIds: [recordId] }
-              : { linkedBookingDocumentId: recordId }),
-            linkedRequirementLibrary: kind === 'artifact' ? 'medical_artifacts' : 'booking_documents',
-            linkedRequirementKey: definition.key,
-          },
-        });
-      } else if (kind === 'artifact') {
-        await medicalArtifactsApi.update(recordId, { bookingId, retreatId, clientId } as Partial<MedicalArtifact>);
-      } else {
-        await bookingDocumentsApi.update(recordId, { bookingId });
-      }
-      setLinkingRequirement(null);
-      await loadRequirements();
-    } catch (linkError: any) {
-      setError(linkError?.response?.data?.message || linkError?.message || 'Unable to link the selected record.');
-    } finally {
-      setLinkingRecordId('');
-    }
+    if (await link(definition, kind, recordId)) setLinkingRequirement(null);
   };
 
   const candidateArtifacts = linkingRequirement
