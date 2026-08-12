@@ -16,6 +16,7 @@ import BookingTasksPanel from './BookingTasksPanel';
 import { blobBase64, confirmationAction, confirmationLanguage, confirmationReason, historyReason, sendFailureDetails, sentEmailReceipt, BookingConfirmationLanguage } from './bookingConfirmationWorkflow';
 import { composeBookingConfirmationEmail } from './bookingConfirmationComposer';
 import { createBookingConfirmationPdf } from './BookingConfirmationPDF';
+import { useBookingConfirmationPdf } from './useBookingConfirmationPdf';
 import './BookingDetailView.css';
 
 const bookingConfirmationLanguageLabels: Record<BookingConfirmationLanguage, string> = {
@@ -105,13 +106,9 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const location = useLocation();
   const [booking, setBooking] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [pdfLanguage, setPdfLanguage] = useState<BookingConfirmationLanguage>('en');
   const [requirementsRefreshKey, setRequirementsRefreshKey] = useState(0);
   const [requirementsStatus, setRequirementsStatus] = useState<{ missing: number; total: number } | null>(null);
-  const [previewUrl, setPreviewUrl] = useState('');
-  const [previewFileName, setPreviewFileName] = useState('');
-  const [isPreviewingPDF, setIsPreviewingPDF] = useState(false);
   const [isSendingConfirmation, setIsSendingConfirmation] = useState(false);
   const [isPreparingConfirmationEmail, setIsPreparingConfirmationEmail] = useState(false);
   const [confirmationEmailDraft, setConfirmationEmailDraft] = useState<EmailComposeInitialValues | null>(null);
@@ -128,16 +125,20 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     const firstSegment = location.pathname.split('/').filter(Boolean)[0];
     return ['admin', 'medical', 'staff', 'user'].includes(firstSegment) ? `/${firstSegment}` : '';
   }, [location.pathname]);
+  const {
+    generating: isGeneratingPDF,
+    previewing: isPreviewingPDF,
+    previewUrl,
+    previewFileName,
+    download: generatePDF,
+    preview: previewPDF,
+    close: closePdfPreview,
+    store: storeCanonicalBookingPdf,
+  } = useBookingConfirmationPdf(bookingId, booking, pdfLanguage);
 
   useEffect(() => {
     fetchBookingDetails();
   }, [bookingId]);
-
-  useEffect(() => {
-    return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-    };
-  }, [previewUrl]);
 
   const fetchBookingDetails = async () => {
     try {
@@ -198,48 +199,6 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     });
   };
 
-  const storeCanonicalBookingPdf = async (blob: Blob, fileName: string, language: BookingConfirmationLanguage) => {
-    await bookingsApi.storeConfirmationPdf(bookingId, language, blob, fileName);
-  };
-
-  const generatePDF = async () => {
-    if (!booking) return;
-
-    try {
-      setIsGeneratingPDF(true);
-      const { pdf, blob, fileName } = await createBookingConfirmationPdf({ booking, language: pdfLanguage });
-      await storeCanonicalBookingPdf(blob, fileName, pdfLanguage);
-      pdf.save(fileName);
-    } catch (error) {
-      console.error('Error generating PDF:', error);
-      message.error('Could not generate the booking PDF. Please try again.');
-    } finally {
-      setIsGeneratingPDF(false);
-    }
-  };
-
-  const previewPDF = async () => {
-    if (!booking) return;
-    setIsPreviewingPDF(true);
-    try {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      const { blob, fileName } = await createBookingConfirmationPdf({ booking, language: pdfLanguage });
-      await storeCanonicalBookingPdf(blob, fileName, pdfLanguage);
-      setPreviewUrl(URL.createObjectURL(blob));
-      setPreviewFileName(fileName);
-    } catch (error) {
-      console.error('Error previewing PDF:', error);
-      message.error('Could not open the booking PDF preview. Please try downloading it instead.');
-    } finally {
-      setIsPreviewingPDF(false);
-    }
-  };
-
-  const closePdfPreview = () => {
-    setPreviewUrl('');
-    setPreviewFileName('');
-  };
-
   const showMissingClientEmailError = () => {
     message.error('This client does not have an email address.');
   };
@@ -258,7 +217,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     try {
       const language = pdfLanguage;
       const { blob, fileName } = await createBookingConfirmationPdf({ booking, language });
-      await storeCanonicalBookingPdf(blob, fileName, language);
+      await storeCanonicalBookingPdf(blob, fileName);
       const contentBase64 = await blobBase64(blob);
       const email = await buildBookingConfirmationEmail(language);
       setConfirmationEmailDraft({
@@ -314,7 +273,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     try {
       const language = pdfLanguage;
       const { blob, fileName } = await createBookingConfirmationPdf({ booking, language });
-      await storeCanonicalBookingPdf(blob, fileName, language);
+      await storeCanonicalBookingPdf(blob, fileName);
       pdfSize = blob.size;
       const contentBase64 = await blobBase64(blob);
       const email = await buildBookingConfirmationEmail(language);
