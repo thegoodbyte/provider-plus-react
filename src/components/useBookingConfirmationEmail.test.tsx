@@ -7,7 +7,7 @@ import { useBookingConfirmationEmail } from './useBookingConfirmationEmail';
 import * as workflow from './bookingConfirmationWorkflow';
 
 jest.mock('antd', () => ({ message: { error: jest.fn() } }));
-jest.mock('../services/api', () => ({ bookingsApi: { recordConfirmationHistory: jest.fn() }, communicationsApi: { sendEmail: jest.fn() } }));
+jest.mock('../services/api', () => ({ bookingsApi: { recordConfirmationHistory: jest.fn(), prepareConfirmation: jest.fn() }, communicationsApi: { sendEmail: jest.fn() } }));
 jest.mock('./bookingConfirmationComposer', () => ({ composeBookingConfirmationEmail: jest.fn() }));
 jest.mock('./BookingConfirmationPDF', () => ({ createBookingConfirmationPdf: jest.fn() }));
 jest.mock('./bookingConfirmationWorkflow', () => ({
@@ -40,6 +40,7 @@ describe('useBookingConfirmationEmail', () => {
     (createBookingConfirmationPdf as jest.Mock).mockResolvedValue({ blob: pdfBlob, fileName: 'confirmation.pdf' });
     (composeBookingConfirmationEmail as jest.Mock).mockResolvedValue(email);
     (bookingsApi.recordConfirmationHistory as jest.Mock).mockResolvedValue({ data: { refreshed: true } });
+    (bookingsApi.prepareConfirmation as jest.Mock).mockResolvedValue({ data: booking });
     (communicationsApi.sendEmail as jest.Mock).mockResolvedValue({ data: { _id: 'e', display_id: 4, status: 'sent' } });
     jest.spyOn(window, 'alert').mockImplementation(() => undefined);
   });
@@ -57,6 +58,7 @@ describe('useBookingConfirmationEmail', () => {
   it('prepares and closes a review draft with its PDF attachment', async () => {
     const { result } = view();
     await act(async () => result.current.prepareReview());
+    expect(bookingsApi.prepareConfirmation).toHaveBeenCalledWith('b');
     expect(storePdf).toHaveBeenCalledWith(pdfBlob, 'confirmation.pdf');
     expect(result.current.draft).toMatchObject({ to: 'client@test.com', subject: 'Subject', clientId: 'c', retreatId: 'r' });
     expect(result.current.draft?.attachments?.[0]).toMatchObject({ fileName: 'confirmation.pdf', contentBase64: 'base64' });
