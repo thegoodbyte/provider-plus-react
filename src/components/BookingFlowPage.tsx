@@ -57,6 +57,7 @@ const BookingFlowPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [clientFilter, setClientFilter] = useState('');
   const [actionFilter, setActionFilter] = useState('');
+  const [hideAccomplished, setHideAccomplished] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [booking, setBooking] = useState<any>(null);
@@ -267,91 +268,108 @@ const BookingFlowPage: React.FC = () => {
   const clientOptions = Array.from(new Map(allItems.map((item) => [getObjectId(item.clientId), getClientName({ clientId: item.clientId })])).entries())
     .filter(([id]) => id)
     .sort((left, right) => left[1].localeCompare(right[1]));
-  const actionOptions = Array.from(new Map(allItems.map((item) => [item.key, item.title])).entries())
+  const actionOptions = Array.from(new Map(allItems.map((item) => [item.category || 'other', titleizeBookingStepGroup(item.category || 'other')])).entries())
     .sort((left, right) => left[1].localeCompare(right[1]));
+  const accomplishedStatuses = new Set<BookingFlowItem['status']>(['received', 'reviewed', 'approved', 'caution', 'completed', 'waived', 'sent']);
+  const isAccomplished = (item: BookingFlowItem) => accomplishedStatuses.has(item.status);
+  const dueTime = (item: BookingFlowItem) => item.dueDate ? new Date(item.dueDate).getTime() : Number.NaN;
+  const today = new Date();
+  const todayTime = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+  const sevenDaysTime = todayTime + 7 * 24 * 60 * 60 * 1000;
+  const isPastDue = (item: BookingFlowItem) => !isAccomplished(item) && Number.isFinite(dueTime(item)) && dueTime(item) < todayTime;
+  const isDueSoon = (item: BookingFlowItem) => !isAccomplished(item) && Number.isFinite(dueTime(item)) && dueTime(item) >= todayTime && dueTime(item) <= sevenDaysTime;
   const filteredItems = allItems.filter((item) => {
     const query = searchTerm.trim().toLowerCase();
     const linkedBooking: any = typeof item.bookingId === 'object' ? item.bookingId : bookingById.get(getObjectId(item.bookingId));
     const due = toDateInputValue(item.dueDate);
     if (clientFilter && getObjectId(item.clientId) !== clientFilter) return false;
-    if (actionFilter && item.key !== actionFilter) return false;
+    if (actionFilter && (item.category || 'other') !== actionFilter) return false;
+    if (hideAccomplished && isAccomplished(item)) return false;
     if (dateFrom && (!due || due < dateFrom)) return false;
     if (dateTo && (!due || due > dateTo)) return false;
     if (!query) return true;
     return [getClientName({ clientId: item.clientId }), getRetreatName({ retreatId: item.retreatId }), linkedBooking?.bookingNumber, item.title, item.category, item.status, item.notes]
       .filter(Boolean).join(' ').toLowerCase().includes(query);
   });
+  const groupedItems = Array.from(filteredItems.reduce((groups, item) => {
+    const id = getObjectId(item.bookingId);
+    if (!groups.has(id)) groups.set(id, []);
+    groups.get(id)!.push(item);
+    return groups;
+  }, new Map<string, BookingFlowItem[]>()).entries());
+  const pastDueTotal = allItems.filter(isPastDue).length;
+  const dueSoonTotal = allItems.filter(isDueSoon).length;
+  const accomplishedTotal = allItems.filter(isAccomplished).length;
+  const upcomingTotal = allItems.length - pastDueTotal - dueSoonTotal - accomplishedTotal;
 
   if (!bookingId) {
     return (
-      <div className="p-6">
-        <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="mx-auto max-w-[1500px] bg-white shadow-sm">
+        <header className="flex flex-col gap-4 border-b border-gray-300 px-7 py-6 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Booking Requirements</h1>
-            <p className="text-sm text-gray-600">All client requirements in one grid. Filter the operational view, then open a booking when changes are needed.</p>
+            <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">Operations · {new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-950">Booking requirements</h1>
+            <p className="mt-1 text-sm text-gray-600">{allItems.length - accomplishedTotal} steps still open across {new Set(allItems.map((item) => getObjectId(item.bookingId))).size} bookings. {pastDueTotal} are past their due date.</p>
           </div>
-          <button onClick={loadClientFlowIndex} className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
-            <Icon icon={RefreshCw} className="h-4 w-4" />
-            Refresh
+          <button onClick={loadClientFlowIndex} className="inline-flex items-center justify-center gap-2 border border-gray-900 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50">
+            <Icon icon={RefreshCw} className="h-4 w-4" /> Refresh
           </button>
+        </header>
+
+        <div className="grid grid-cols-2 border-b border-gray-300 lg:grid-cols-4">
+          {[
+            ['Past due', pastDueTotal, 'needs action now', 'bg-red-700'],
+            ['Due in 7 days', dueSoonTotal, 'approaching', 'bg-amber-600'],
+            ['Upcoming', upcomingTotal, 'later than a week', 'bg-gray-500'],
+            ['Accomplished', accomplishedTotal, 'no action needed', 'bg-green-700'],
+          ].map(([label, count, description, dot]) => (
+            <div key={String(label)} className="border-b border-r border-gray-300 px-6 py-4 last:border-r-0 lg:border-b-0">
+              <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-600"><span className={`h-2 w-2 rounded-full ${dot}`} />{label}</div>
+              <div className="mt-1 text-3xl font-bold text-gray-950">{count}</div>
+              <div className="text-xs text-gray-500">{description}</div>
+            </div>
+          ))}
         </div>
 
-        <div className="mb-5 grid gap-3 rounded-lg border border-gray-200 bg-white p-4 md:grid-cols-2 xl:grid-cols-[minmax(240px,1.5fr)_minmax(180px,1fr)_minmax(220px,1fr)_150px_150px_auto]">
-          <input
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-            placeholder="Search client, retreat, booking, status or note"
-          />
-          <select value={clientFilter} onChange={(event) => setClientFilter(event.target.value)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-            <option value="">All clients</option>
-            {clientOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-          </select>
-          <select value={actionFilter} onChange={(event) => setActionFilter(event.target.value)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
-            <option value="">All booking actions</option>
-            {actionOptions.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </select>
-          <label className="text-xs font-semibold uppercase text-gray-500">Due from<input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900" /></label>
-          <label className="text-xs font-semibold uppercase text-gray-500">Due through<input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900" /></label>
-          <button type="button" onClick={() => { setSearchTerm(''); setClientFilter(''); setActionFilter(''); setDateFrom(''); setDateTo(''); }} className="self-end rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Clear</button>
-        </div>
-
-        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
-          <div className="grid min-w-[1180px] grid-cols-[105px_minmax(180px,1fr)_minmax(170px,1fr)_minmax(220px,1.2fr)_130px_130px_130px] gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3 text-xs font-semibold uppercase text-gray-500">
-            <div>Booking</div>
-            <div>Client</div>
-            <div>Retreat</div>
-            <div>Booking action</div>
-            <div>Due date</div>
-            <div>Status</div>
-            <div>Open</div>
+        <div className="grid gap-2 border-b border-gray-300 bg-gray-50 px-7 py-4 md:grid-cols-[minmax(260px,1fr)_180px_180px_auto]">
+          <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} className="border border-gray-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-gray-700" placeholder="⌕  Search client, retreat, booking or step" />
+          <select value={clientFilter} onChange={(event) => setClientFilter(event.target.value)} className="border border-gray-300 bg-white px-3 py-2.5 text-sm"><option value="">All clients</option>{clientOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select>
+          <select value={actionFilter} onChange={(event) => setActionFilter(event.target.value)} className="border border-gray-300 bg-white px-3 py-2.5 text-sm"><option value="">All categories</option>{actionOptions.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>
+          <button type="button" onClick={() => setHideAccomplished((current) => !current)} className={`border px-4 py-2.5 text-sm font-medium ${hideAccomplished ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-300 bg-white text-gray-700'}`}>{hideAccomplished ? 'Show accomplished' : 'Hide accomplished'}</button>
+          <div className="flex items-center gap-2 md:col-span-4">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Due range</span>
+            <input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} className="border border-gray-300 bg-white px-2 py-1.5 text-xs" />
+            <span className="text-xs text-gray-400">to</span>
+            <input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} className="border border-gray-300 bg-white px-2 py-1.5 text-xs" />
+            <button type="button" onClick={() => { setSearchTerm(''); setClientFilter(''); setActionFilter(''); setDateFrom(''); setDateTo(''); setHideAccomplished(false); }} className="text-xs font-medium text-blue-700 hover:underline">Clear filters</button>
           </div>
-          {filteredItems.length === 0 ? (
-            <div className="p-8 text-center text-sm text-gray-500">No booking requirements match these filters.</div>
-          ) : (
-            filteredItems.map((item) => {
-              const currentBooking: any = typeof item.bookingId === 'object' ? item.bookingId : bookingById.get(getObjectId(item.bookingId));
-              const id = getObjectId(item.bookingId);
-              return (
-                <div key={item._id || `${id}-${item.key}`} className="grid min-w-[1180px] grid-cols-[105px_minmax(180px,1fr)_minmax(170px,1fr)_minmax(220px,1.2fr)_130px_130px_130px] gap-3 border-b border-gray-100 px-4 py-3 text-sm last:border-b-0">
-                  <div className="font-medium text-gray-900">{currentBooking?.bookingNumber ? `#${currentBooking.bookingNumber}` : id.slice(-8)}</div>
-                  <div className="text-gray-700">{getClientName({ clientId: item.clientId })}</div>
-                  <div className="text-gray-700">{getRetreatName({ retreatId: item.retreatId })}</div>
-                  <div><div className="font-medium text-gray-900">{item.title}</div><div className="text-xs capitalize text-gray-500">{item.category}</div></div>
-                  <div className="text-gray-700">{formatDate(item.dueDate)}</div>
-                  <div className="capitalize text-gray-600">{String(item.status || 'pending').replace(/_/g, ' ')}</div>
-                  <div>
-                    <button
-                      onClick={() => navigate(id)}
-                      className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
-                    >
-                      View
-                    </button>
-                  </div>
-                </div>
-              );
-            })
-          )}
+        </div>
+
+        <div className="px-7 pb-8">
+          {groupedItems.length === 0 ? <div className="p-10 text-center text-sm text-gray-500">No booking requirements match these filters.</div> : groupedItems.map(([id, bookingItems]) => {
+            const currentBooking: any = bookingById.get(id) || (typeof bookingItems[0]?.bookingId === 'object' ? bookingItems[0].bookingId : null);
+            const allBookingItems = allItems.filter((item) => getObjectId(item.bookingId) === id);
+            const bookingDone = allBookingItems.filter(isAccomplished).length;
+            const bookingPastDue = allBookingItems.filter(isPastDue).length;
+            return <section key={id} className="border-b border-gray-300 py-5">
+              <div className="mb-3 flex flex-wrap items-center gap-3">
+                <h2 className="text-lg font-bold text-gray-950">{getClientName({ clientId: bookingItems[0]?.clientId })}</h2>
+                <span className="text-xs text-gray-500">#{currentBooking?.bookingNumber || id.slice(-6)} · {getRetreatName({ retreatId: bookingItems[0]?.retreatId })}</span>
+                <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider ${bookingPastDue ? 'border-red-300 bg-red-50 text-red-700' : 'border-green-300 bg-green-50 text-green-700'}`}>{bookingPastDue ? `${bookingPastDue} past due` : 'On track'}</span>
+                <div className="ml-auto flex items-center gap-2"><div className="flex gap-1">{allBookingItems.map((item) => <span key={item._id || item.key} className={`h-1.5 w-4 ${isAccomplished(item) ? 'bg-green-700' : isPastDue(item) ? 'bg-red-700' : isDueSoon(item) ? 'bg-amber-600' : 'bg-gray-300'}`} />)}</div><span className="text-xs text-gray-600">{bookingDone}/{allBookingItems.length} done</span></div>
+              </div>
+              <div className="space-y-0.5">{[...bookingItems].sort((a, b) => dueTime(a) - dueTime(b)).map((item) => {
+                const done = isAccomplished(item); const overdue = isPastDue(item); const soon = isDueSoon(item);
+                const days = Number.isFinite(dueTime(item)) ? Math.ceil((dueTime(item) - todayTime) / 86400000) : null;
+                return <div key={item._id || item.key} className={`grid items-center gap-3 border-l-2 px-3 py-2.5 sm:grid-cols-[minmax(230px,1fr)_110px_115px_70px] ${overdue ? 'border-red-600' : soon ? 'border-amber-600' : done ? 'border-green-700' : 'border-gray-400'}`}>
+                  <div className="flex items-start gap-3"><span className={`mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded-full border text-xs font-bold ${done ? 'border-green-700 bg-green-700 text-white' : overdue ? 'border-red-300 bg-red-50 text-red-600' : soon ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-gray-300 text-gray-400'}`}>{done ? '✓' : overdue ? '!' : ''}</span><div><div className="text-sm font-semibold text-gray-900">{item.title}</div><div className="text-[11px] capitalize text-gray-500">{titleizeBookingStepGroup(item.category || 'other')}</div></div></div>
+                  <div className="text-right"><div className={`text-sm font-semibold ${overdue ? 'text-red-700' : 'text-gray-900'}`}>{formatDate(item.dueDate)}</div><div className="text-[10px] text-gray-500">{done ? String(item.status).replace(/_/g, ' ') : days === null ? 'No deadline' : days < 0 ? `${Math.abs(days)} days overdue` : days === 0 ? 'Due today' : `in ${days} days`}</div></div>
+                  <div><span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider ${done ? 'border-green-300 bg-green-50 text-green-700' : overdue ? 'border-red-300 bg-red-50 text-red-700' : soon ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-gray-300 bg-gray-50 text-gray-600'}`}>{String(item.status || 'pending').replace(/_/g, ' ')}</span></div>
+                  <button onClick={() => navigate(id)} className="text-left text-xs font-medium text-blue-700 hover:underline sm:text-right">Open →</button>
+                </div>;
+              })}</div>
+            </section>;
+          })}
         </div>
       </div>
     );
