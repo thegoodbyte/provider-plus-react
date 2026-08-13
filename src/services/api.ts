@@ -328,6 +328,7 @@ export const bookingsApi = {
     cacheService.clearPattern('bookings:');
     return api.post<RetreatClient>(`/bookings/${id}/confirmation-history`, data);
   },
+  prepareConfirmation: (id: string) => api.post<RetreatClient>(`/bookings/${id}/prepare-confirmation`),
   storeConfirmationPdf: (id: string, language: 'en' | 'cz' | 'pl', blob: Blob, fileName: string) => {
     const formData = new FormData();
     formData.append('file', blob, fileName);

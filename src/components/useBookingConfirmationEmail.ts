@@ -48,8 +48,14 @@ export const useBookingConfirmationEmail = ({ bookingId, booking, language, stor
     onBookingUpdated(response.data);
   }, [bookingId, booking, language, onBookingUpdated, reason]);
 
-  const prepareAttachment = useCallback(async () => {
-    const result = await createBookingConfirmationPdf({ booking, language });
+  const prepareBooking = useCallback(async () => {
+    const response = await bookingsApi.prepareConfirmation(bookingId);
+    onBookingUpdated(response.data);
+    return response.data;
+  }, [bookingId, onBookingUpdated]);
+
+  const prepareAttachment = useCallback(async (confirmationBooking = booking) => {
+    const result = await createBookingConfirmationPdf({ booking: confirmationBooking, language });
     await storePdf(result.blob, result.fileName);
     return { ...result, contentBase64: await blobBase64(result.blob) };
   }, [booking, language, storePdf]);
@@ -61,8 +67,9 @@ export const useBookingConfirmationEmail = ({ bookingId, booking, language, stor
     const nextReason = reason || confirmationReason(booking);
     setReason(nextReason);
     try {
-      const { fileName, contentBase64 } = await prepareAttachment();
-      const email = await composeBookingConfirmationEmail(booking, language);
+      const confirmationBooking = await prepareBooking();
+      const { fileName, contentBase64 } = await prepareAttachment(confirmationBooking);
+      const email = await composeBookingConfirmationEmail(confirmationBooking, language);
       setDraft({
         to: recipient, subject: email.subject, bodyText: email.bodyText, templateId: email.templateId,
         bookingFlowStepKey: email.bookingFlowStepKey || 'booking_confirmation_sent',
@@ -73,7 +80,7 @@ export const useBookingConfirmationEmail = ({ bookingId, booking, language, stor
       });
     } catch { alert('Unable to prepare booking confirmation email.'); }
     finally { setPreparing(false); }
-  }, [booking, bookingId, language, missingEmail, prepareAttachment, reason, resolvedClient, resolvedRetreat]);
+  }, [booking, bookingId, language, missingEmail, prepareAttachment, prepareBooking, reason, resolvedClient, resolvedRetreat]);
 
   const requestQuickSend = useCallback(() => {
     if (!clientEmail(resolvedClient)) { missingEmail(); return; }
@@ -87,9 +94,10 @@ export const useBookingConfirmationEmail = ({ bookingId, booking, language, stor
     let pdfSize = 0; let payloadSize = 0;
     setSending(true); setQuickSendOpen(false);
     try {
-      const { blob, fileName, contentBase64 } = await prepareAttachment();
+      const confirmationBooking = await prepareBooking();
+      const { blob, fileName, contentBase64 } = await prepareAttachment(confirmationBooking);
       pdfSize = blob.size;
-      const email = await composeBookingConfirmationEmail(booking, language);
+      const email = await composeBookingConfirmationEmail(confirmationBooking, language);
       const payload = {
         to: recipient, subject: email.subject, bodyText: email.bodyText, bodyHtml: email.bodyHtml,
         templateId: email.templateId, bookingId, clientId: resolvedClient?._id, retreatId: resolvedRetreat?._id,
@@ -106,7 +114,7 @@ export const useBookingConfirmationEmail = ({ bookingId, booking, language, stor
       alert(sentEmailReceipt(response.data));
     } catch (error: any) { alert(sendFailureDetails(error, pdfSize, payloadSize)); }
     finally { setSending(false); }
-  }, [booking, bookingId, language, missingEmail, onSent, prepareAttachment, reason, recordHistory, resolvedClient, resolvedRetreat]);
+  }, [bookingId, language, missingEmail, onSent, prepareAttachment, prepareBooking, reason, recordHistory, resolvedClient, resolvedRetreat]);
 
   const completeReviewedSend = useCallback(async (sentEmail: any) => {
     await recordHistory(sentEmail, reason);

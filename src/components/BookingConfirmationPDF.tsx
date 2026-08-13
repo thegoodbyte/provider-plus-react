@@ -73,6 +73,17 @@ const parseDate = (value: any): Date | null => {
   return isValidDate(date) ? date : null;
 };
 
+const parseRetreatDate = (value: any): Date | null => {
+  const parsed = parseDate(value);
+  if (!parsed || typeof value !== 'string' || !value.includes('T')) return parsed;
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Prague', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(parsed);
+  const part = (type: string) => Number(parts.find((item) => item.type === type)?.value);
+  const calendarDate = new Date(part('year'), part('month') - 1, part('day'));
+  return isValidDate(calendarDate) ? calendarDate : parsed;
+};
+
 const addDays = (date: Date, days: number) => {
   const next = new Date(date);
   next.setDate(next.getDate() + days);
@@ -595,8 +606,8 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   const requiredDepositUsd = requiredDeposit && bookingTotalUsd
     ? roundUpCurrency((requiredDeposit / bookingTotal) * bookingTotalUsd)
     : null;
-  const retreatStartDate = parseDate(retreat?.startDate || retreat?.dates?.startDate);
-  const retreatEndDate = parseDate(retreat?.endDate || retreat?.dates?.endDate);
+  const retreatStartDate = parseRetreatDate(retreat?.startDate || retreat?.dates?.startDate);
+  const retreatEndDate = parseRetreatDate(retreat?.endDate || retreat?.dates?.endDate);
   const balanceDueDate = retreatStartDate ? addDays(retreatStartDate, -30) : null;
   const locationTown = house?.generalTown || house?.general_town || house?.city || retreat?.location_town || retreat?.locationTown || retreat?.location || house?.name || 'N/A';
   const locationAddress = house?.address || retreat?.address || 'N/A';
