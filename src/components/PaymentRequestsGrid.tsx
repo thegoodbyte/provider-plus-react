@@ -12,14 +12,15 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
 };
 
 const resolveClient = (clientValue: any) => {
-  if (!clientValue) return { id: '', name: 'Unknown Client', displayId: '', email: '', firstName: '' };
-  if (typeof clientValue === 'string') return { id: clientValue, name: clientValue, displayId: '', email: '', firstName: '' };
+  if (!clientValue) return { id: '', name: 'Unknown Client', displayId: '', email: '', firstName: '', language: 'en' };
+  if (typeof clientValue === 'string') return { id: clientValue, name: clientValue, displayId: '', email: '', firstName: '', language: 'en' };
   return {
     id: clientValue._id || clientValue.id || '',
     name: `${clientValue.firstName || ''} ${clientValue.lastName || ''}`.trim() || 'Unknown Client',
     displayId: clientValue.display_id ? `#${clientValue.display_id}` : '',
     email: clientValue.email || '',
     firstName: clientValue.firstName || '',
+    language: clientValue.preferredLanguage || clientValue.preferred_language || clientValue.language || 'en',
   };
 };
 
@@ -30,7 +31,7 @@ const resolveRetreat = (retreatValue: any) => {
 };
 
 const getPublicPaymentUrl = (request: any) => (
-  request?.publicHash ? `https://ibogaspirit.com/clients/payment/request/${request.publicHash}` : ''
+  request?.publicHash ? `https://www.ibogaready.com/payment/${request.publicHash}` : ''
 );
 
 const getPublicPaymentApiUrl = (request: any) => (
@@ -125,7 +126,11 @@ const PaymentRequestsGrid: React.FC = () => {
       retreatId: typeof request.retreatId === 'string' ? request.retreatId : request.retreatId?._id,
       relatedEntityType: 'payment_request',
       relatedEntityId: request._id,
+      templateKey: 'payment_request_due',
+      requestedLanguage: client.language,
       variables: {
+        client: { ...client, fullName: client.name },
+        retreat: { code: retreat },
         paymentRequest: request,
         paymentUrl,
         paymentApiUrl: getPublicPaymentApiUrl(request),
