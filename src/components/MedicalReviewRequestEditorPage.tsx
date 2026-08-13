@@ -7,6 +7,7 @@ import { usersApi, User } from '../services/usersApi';
 import { useAuth } from '../context/AuthContext';
 import { Client, MedicalArtifact, MedicalItem, MedicalReviewGroup, MedicalReviewRequest, Retreat } from '../types';
 import { groupMatchesRetreat } from './MedicalReviewRequestEditorPage.helpers';
+import './MedicalReviewRequestEditorPage.css';
 
 type FormState = {
   medicalTrackingId: string;
@@ -402,30 +403,34 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
   const isAdmin = user?.role === 'admin' || user?.originalRole === 'admin';
 
   return (
-    <div className="min-h-[calc(100vh-96px)] bg-white px-3 py-4 sm:px-6">
-      <div className="mb-6 flex flex-col items-start justify-between gap-3 sm:flex-row sm:gap-4">
+    <div className="mrr-editor-page">
+      <div className="mrr-editor-shell">
+      <header className="mrr-editor-header">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">{isEdit ? 'Edit Medical Review Request' : 'Add Medical Review Request'}</h1>
-          <p className="text-sm text-gray-600">Create a review round from a stored medical record or existing tracking item.</p>
+          <div className="mrr-editor-eyebrow"><span>Admin</span>{isEdit ? 'Review request' : 'New review round'}</div>
+          <h1>{isEdit ? 'Edit Medical Review Request' : 'Add Medical Review Request'}</h1>
+          <p>Assign a stored medical record to a reviewer. The request stays pending until they respond.</p>
         </div>
-        <div className="text-left text-sm text-gray-500 sm:text-right">
-          <div>Request # {requestNumber ? requestNumber : '—'}</div>
-          {selectedClient && <div>{selectedClient.firstName} {selectedClient.lastName}</div>}
-          {selectedRetreat && <div>{selectedRetreat.name}</div>}
+        <div className="mrr-request-context">
+          <strong>Request #{requestNumber || '—'}</strong>
+          {selectedClient && <span>{selectedClient.firstName} {selectedClient.lastName}</span>}
+          {selectedRetreat && <small>{selectedRetreat.retreatCode || selectedRetreat.code || selectedRetreat.name}</small>}
         </div>
-      </div>
+      </header>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
+      <form onSubmit={handleSubmit} className="mrr-editor-form">
+        <div className="mrr-editor-columns">
+          <section className="mrr-editor-pane mrr-artifact-pane">
+            <div className="mrr-section-heading"><strong>The artifact</strong>{selectedArtifact && <button type="button" onClick={() => setIsArtifactModalOpen(true)}>Change record</button>}</div>
             <label className="mb-2 block text-sm font-medium text-gray-700">Medical Record</label>
             {selectedArtifact ? (
-              <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm">
-                <div className="font-semibold text-blue-950">#{selectedArtifact.display_id || '—'} {selectedArtifact.title}</div>
-                <div className="mt-1 capitalize text-blue-800">{formatArtifactType(selectedArtifact.artifactType)}</div>
-                <div className="mt-1 text-xs font-medium text-blue-700">
+              <div className="mrr-artifact-card">
+                <span className="mrr-artifact-monogram">{selectedArtifact.artifactType === 'liver_panel' ? 'LP' : selectedArtifact.artifactType === 'ekg' ? 'EK' : 'MR'}</span>
+                <div><strong>#{selectedArtifact.display_id || '—'} {selectedArtifact.title}</strong>
+                <div className="capitalize">{formatArtifactType(selectedArtifact.artifactType)} · {selectedArtifact.files?.length || 0} file(s)</div>
+                <small>
                   {formatDocumentMeta(selectedArtifact.documentStage, selectedArtifact.documentType, selectedArtifact.ceremonyNumber)}
-                </div>
+                </small></div>
               </div>
             ) : (
               <SearchableMedicalTrackingSelect
@@ -530,65 +535,42 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
                 )}
               </div>
             </div>
-          </div>
+          </section>
 
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
-            <label className="mb-2 block text-sm font-medium text-gray-700">Request Type</label>
-            <select
-              value={form.requestType}
-              onChange={(e) => setForm({ ...form, requestType: e.target.value as FormState['requestType'] })}
-              className="w-full rounded-md border border-gray-300 px-3 py-2"
-            >
-              <option value="ekg">EKG</option>
-              <option value="liver">Liver</option>
-              <option value="both">Both</option>
-              <option value="ekg_review">EKG</option>
-              <option value="ceremony_ekg_review">Ceremony EKG Review</option>
-              <option value="blood_pressure_review">Blood Pressure Review</option>
-              <option value="liver_panel_review">Liver Panel Review</option>
-              <option value="medications_review">Medications Review</option>
-              <option value="questionnaire_review">Questionnaire Review</option>
-              <option value="food_review">Food Intake Review</option>
-              <option value="medical_question">Medical Question</option>
-              <option value="general_clearance">General Clearance</option>
-            </select>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div>
+          <section className="mrr-editor-pane mrr-assignment-pane">
+            <div className="mrr-section-heading"><strong>Assignment</strong></div>
+            <label className="mrr-field-label">Request type</label>
+            <div className="mrr-type-options">
+              {([
+                ['ekg_review', 'EKG'], ['liver_panel_review', 'Bloodwork'], ['questionnaire_review', 'Psych evaluation'],
+                ['medications_review', 'Medication review'], ['general_clearance', 'General'],
+              ] as const).map(([value, label]) => <button key={value} type="button" className={form.requestType === value ? 'selected' : ''} onClick={() => setForm({ ...form, requestType: value })}>{label}</button>)}
+            </div>
+            <div className="mrr-assignment-fields">
+              {isEdit && <div>
                 <label className="mb-2 block text-sm font-medium text-gray-700">Status</label>
                 <select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as FormState['status'] })} className="w-full rounded-md border border-gray-300 px-3 py-2">
                   {(['pending', 'in_review', 'approved', 'rejected', 'caution', 'needs_resubmission', 'completed'] as const).map((status) => (
                     <option key={status} value={status}>{status}</option>
                   ))}
                 </select>
-              </div>
-              <div>
-                <label className="mb-2 block text-sm font-medium text-gray-700">Medical Advisor <span className="text-red-600">*</span></label>
-                <select
-                  value={form.assignedToUserId}
-                  required
-                  onChange={(e) => {
-                    const assigned = medicalUsers.find((item) => item._id === e.target.value);
-                    setForm({
-                      ...form,
-                      assignedToUserId: e.target.value,
-                      assignedTo: assigned ? [assigned.firstName, assigned.lastName].filter(Boolean).join(' ') || assigned.email : '',
-                    });
-                  }}
-                  className="w-full rounded-md border border-gray-300 px-3 py-2"
-                >
-                  <option value="">Select medical advisor</option>
-                  {medicalUsers.map((medicalUser) => (
-                    <option key={medicalUser._id} value={medicalUser._id}>
-                      {[medicalUser.firstName, medicalUser.lastName].filter(Boolean).join(' ') || medicalUser.email} ({medicalUser.email})
-                    </option>
-                  ))}
-                </select>
+              </div>}
+              <div className="mrr-reviewer-field">
+                <label className="mrr-field-label">Medical reviewer <span>*</span><small>Required</small></label>
+                <div className="mrr-reviewer-list">
+                  {medicalUsers.map((medicalUser) => {
+                    const name = [medicalUser.firstName, medicalUser.lastName].filter(Boolean).join(' ') || medicalUser.email;
+                    const initials = [medicalUser.firstName, medicalUser.lastName].filter(Boolean).map(value => value?.[0]).join('').slice(0, 2) || 'MR';
+                    return <button key={medicalUser._id} type="button" className={form.assignedToUserId === medicalUser._id ? 'selected' : ''} onClick={() => setForm({ ...form, assignedToUserId: medicalUser._id || '', assignedTo: name })}><span>{initials}</span><strong>{name}<small>{medicalUser.email}</small></strong></button>;
+                  })}
+                </div>
                 {medicalUsers.length === 0 && (
                   <p className="mt-1 text-xs text-red-600">No active medical advisors are available.</p>
                 )}
               </div>
             </div>
-            <label className="mt-4 flex items-start gap-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-3 text-sm text-gray-700">
+            <div className="mrr-status-summary"><span><i />Pending</span><p>Set automatically on creation. The reviewer moves it forward once they open the packet.</p></div>
+            <label className="mrr-notify-option">
               <input
                 type="checkbox"
                 checked={Boolean(form.sentForReviewAt)}
@@ -599,13 +581,13 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
                 className="mt-1 h-4 w-4"
               />
               <span>
-                <span className="block font-medium text-gray-900">Medical review request sent for review</span>
+                <span className="block font-medium text-gray-900">Notify the reviewer now</span>
                 <span className="block text-xs text-gray-500">
-                  {form.sentForReviewAt ? `Marked on ${new Date(form.sentForReviewAt).toLocaleString()}` : 'Check this when the request has been sent to the medical reviewer.'}
+                  {form.sentForReviewAt ? `Notification scheduled ${new Date(form.sentForReviewAt).toLocaleString()}` : 'Sends the packet by email as soon as the request is created.'}
                 </span>
               </span>
             </label>
-          </div>
+          </section>
         </div>
 
         {isEdit && isAdmin && (
@@ -630,8 +612,8 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           </div>
         )}
 
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
+        <section className="mrr-notes-section">
+          <div>
             <label className="mb-2 block text-sm font-medium text-gray-700">Requested By</label>
             <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800">
               {[user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || form.requestedBy}
@@ -652,7 +634,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
             <textarea value={form.overallNotes} onChange={(e) => setForm({ ...form, overallNotes: e.target.value })} rows={4} className="w-full rounded-md border border-gray-300 px-3 py-2" />
           </div>
 
-          <div className="rounded-lg border border-gray-200 bg-white p-4">
+          <div>
             <label className="mb-2 block text-sm font-medium text-gray-700">Medical Staff Notes</label>
             <textarea
               value={form.medicalStaffNotes}
@@ -662,16 +644,19 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
               placeholder="Instructions, context, or questions for the medical advisor"
             />
           </div>
-        </div>
+        </section>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+        <footer className="mrr-editor-actions">
+          <p>{form.assignedToUserId ? 'Ready to create this review request.' : 'Select a medical reviewer to continue.'}</p>
+          <div>
           <button type="button" onClick={() => navigate('/admin/medical-review-requests')} className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
             Cancel
           </button>
           <button type="submit" disabled={saving} className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
             {saving ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Request'}
           </button>
-        </div>
+          </div>
+        </footer>
       </form>
 
       {isArtifactModalOpen && (
@@ -741,6 +726,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };
