@@ -23,7 +23,10 @@ type RequirementMatch = {
   label: string;
   fallbackComplete: boolean;
   fallbackDeadline: Date | null;
+  fulfilledStatuses: Set<BookingFlowItem['status']>;
 };
+
+const approvedMedicalStatuses = new Set<BookingFlowItem['status']>(['approved', 'waived']);
 
 const findMatchingItem = (items: BookingFlowItem[], matcher: Pick<RequirementMatch, 'keys' | 'titleIncludes'>) => {
   const normalizedKeys = matcher.keys.map((key) => key.trim().toLowerCase());
@@ -63,6 +66,7 @@ export const buildBookingConfirmationRequirementRows = (
       label: 'EKG',
       fallbackComplete: !!fallbackCompletion?.ekg,
       fallbackDeadline: fallbackDates?.ekg ?? null,
+      fulfilledStatuses: approvedMedicalStatuses,
     },
     {
       keys: ['liver_received', 'entry_liver_panel'],
@@ -70,6 +74,7 @@ export const buildBookingConfirmationRequirementRows = (
       label: 'Panel wątroby',
       fallbackComplete: !!fallbackCompletion?.liver,
       fallbackDeadline: fallbackDates?.liver ?? null,
+      fulfilledStatuses: approvedMedicalStatuses,
     },
     {
       keys: ['contract_signed'],
@@ -77,6 +82,7 @@ export const buildBookingConfirmationRequirementRows = (
       label: 'Umowa uczestnika',
       fallbackComplete: !!fallbackCompletion?.contract,
       fallbackDeadline: fallbackDates?.contract ?? null,
+      fulfilledStatuses: fulfilledBookingFlowStatuses,
     },
   ];
 
@@ -85,7 +91,7 @@ export const buildBookingConfirmationRequirementRows = (
     const deadline = item?.dueDate ? new Date(item.dueDate) : matcher.fallbackDeadline;
     return {
       label: matcher.label,
-      complete: item ? fulfilledBookingFlowStatuses.has(item.status) : matcher.fallbackComplete,
+      complete: item ? matcher.fulfilledStatuses.has(item.status) : matcher.fallbackComplete,
       deadline: deadline && !Number.isNaN(deadline.getTime()) ? deadline : null,
       itemKey: item?.key,
       itemStatus: item?.status,
