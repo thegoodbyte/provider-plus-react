@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Payment, PaymentRequest } from '../types';
-import { configSummaryApi, paymentsApi } from '../services/api';
+import { configSummaryApi, paymentRequestsApi, paymentsApi } from '../services/api';
 import CurrencyDisplay from './CurrencyDisplay';
 import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
 import { formatCalendarDate, toDateInputValue, todayDateInputValue } from '../utils/dateFormat';
@@ -87,15 +87,20 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   ];
   const [paymentTypes, setPaymentTypes] = useState(defaultPaymentTypes);
   const [paymentPlan, setPaymentPlan] = useState<any>(null);
+  const [bookingPaymentRequests, setBookingPaymentRequests] = useState<PaymentRequest[]>([]);
   const [paymentPlanDueDate, setPaymentPlanDueDate] = useState('');
   const [paymentPlanSaving, setPaymentPlanSaving] = useState(false);
 
   const syncPaymentPlan = useCallback(async () => {
     try {
       setPaymentPlanSaving(true);
-      const response = await paymentsApi.getBookingPlan(bookingId);
-      setPaymentPlan(response.data);
-      setPaymentPlanDueDate(toDateInputValue(response.data?.dueDate));
+      const [planResponse, requestsResponse] = await Promise.all([
+        paymentsApi.getBookingPlan(bookingId),
+        paymentRequestsApi.getByBooking(bookingId),
+      ]);
+      setPaymentPlan(planResponse.data);
+      setBookingPaymentRequests(requestsResponse.data || []);
+      setPaymentPlanDueDate(toDateInputValue(planResponse.data?.dueDate));
     } catch (error) { console.error('Unable to load booking payment plan:', error); }
     finally { setPaymentPlanSaving(false); }
   }, [bookingId]);
@@ -109,6 +114,27 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       onPaymentUpdate?.();
     } catch (error: any) { alert(error?.response?.data?.message || 'Unable to save the payment plan.'); }
     finally { setPaymentPlanSaving(false); }
+  };
+
+  const sendPaymentRequest = async (request: PaymentRequest) => {
+    if (!request._id) return;
+    const verb = request.sentToClient || request.status === 'sent' ? 'Resend' : 'Send';
+    if (!window.confirm(`${verb} payment request #${request.invoiceNumber || request.display_id || ''} to the client now?`)) return;
+    try {
+      setPaymentPlanSaving(true);
+      await paymentRequestsApi.sendReminder(request._id);
+      await syncPaymentPlan();
+    } catch (error: any) {
+      alert(error?.response?.data?.message || `Unable to ${verb.toLowerCase()} the payment request.`);
+    } finally { setPaymentPlanSaving(false); }
+  };
+
+  const copyPaymentRequestLink = async (request: PaymentRequest) => {
+    if (!request.publicHash) return;
+    try {
+      await navigator.clipboard.writeText(`https://www.ibogaready.com/payment/${request.publicHash}`);
+      setAutoLinkMessage('Payment request link copied.');
+    } catch { alert('Unable to copy the payment request link.'); }
   };
 
   useEffect(() => { void syncPaymentPlan(); }, [syncPaymentPlan]);
@@ -694,10 +720,35 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
         )}
       </div>
 
-      <section className="booking-payment-plan-card">
-        <div><h4>Final payment plan</h4><p>{paymentPlan ? `${paymentPlan.requestedAmount} ${paymentPlan.currency} · ${String(paymentPlan.status || 'pending').replace(/_/g, ' ')}` : 'No final-balance request is active for this booking.'}</p></div>
-        <label>Final payment due<input type="date" value={paymentPlanDueDate} onChange={event => setPaymentPlanDueDate(event.target.value)} /></label>
-        <div><button type="button" disabled={paymentPlanSaving} onClick={() => savePaymentPlan(true)}>{paymentPlanSaving ? 'Saving…' : paymentPlan ? 'Update plan' : 'Create plan'}</button>{paymentPlan && !['paid', 'cancelled'].includes(paymentPlan.status) && <button type="button" disabled={paymentPlanSaving} onClick={() => savePaymentPlan(false)}>Disable</button>}</div>
+      <section className="booking-payment-requests">
+        <div className="payment-requests-heading">
+          <div><h4>Payment requests</h4><p>Requests issued for this booking, including the final balance.</p></div>
+          {!paymentPlan && <div className="payment-request-create">
+            <label>Final payment due<input type="date" value={paymentPlanDueDate} onChange={event => setPaymentPlanDueDate(event.target.value)} /></label>
+            <button type="button" disabled={paymentPlanSaving || !paymentPlanDueDate} onClick={() => savePaymentPlan(true)}>{paymentPlanSaving ? 'Creating…' : 'Create balance request'}</button>
+          </div>}
+        </div>
+        {bookingPaymentRequests.length === 0 ? <p className="payment-requests-empty">No payment request has been created for this booking.</p> : bookingPaymentRequests.map(request => {
+          const linkedPaymentId = typeof request.paymentId === 'object' ? request.paymentId?._id : request.paymentId;
+          const requestNumber = request.invoiceNumber || request.display_id || request._id?.slice(-8);
+          const canAct = !['paid', 'cancelled'].includes(request.status);
+          return <article className="booking-payment-request-row" key={request._id}>
+            <div className="payment-request-identity"><strong>Request #{requestNumber}</strong><span className={`payment-request-status ${request.status}`}>{String(request.status || 'pending').replace(/_/g, ' ')}</span><small>{String(request.requestType || 'payment').replace(/_/g, ' ')}</small></div>
+            <div><span>Amount</span><strong><CurrencyDisplay amount={request.requestedAmount || request.amountPaid || 0} currency={request.currency} /></strong></div>
+            <label>Due date<input type="date" value={request._id === paymentPlan?._id ? paymentPlanDueDate : toDateInputValue(request.dueDate)} disabled={request._id !== paymentPlan?._id || !canAct} onChange={event => setPaymentPlanDueDate(event.target.value)} /></label>
+            <div><span>Sent</span><strong>{request.clientNotified || request.sentAt ? formatCalendarDate(request.clientNotified || request.sentAt) : 'Not sent'}</strong></div>
+            <div><span>Linked payment</span><strong>{linkedPaymentId ? `#${typeof request.paymentId === 'object' ? request.paymentId?.display_id || linkedPaymentId : linkedPaymentId}` : 'None'}</strong></div>
+            <div className="payment-request-actions">
+              <button type="button" onClick={() => navigate(`${routePrefix}/payment-requests/${request._id}`)}>View</button>
+              {canAct && <button type="button" onClick={() => navigate(`${routePrefix}/payment-requests/${request._id}/edit`)}>Edit</button>}
+              {canAct && <button type="button" disabled={paymentPlanSaving} onClick={() => sendPaymentRequest(request)}>{request.sentToClient || request.status === 'sent' ? 'Resend' : 'Send'}</button>}
+              {request.publicHash && <button type="button" onClick={() => copyPaymentRequestLink(request)}>Copy IR link</button>}
+              {!linkedPaymentId && canAct && <button type="button" onClick={() => navigate(`${routePrefix}/payments/new?paymentRequestId=${request._id}`, { state: { returnTo: location.pathname } })}>Add payment</button>}
+              {request._id === paymentPlan?._id && canAct && <button type="button" disabled={paymentPlanSaving} onClick={() => savePaymentPlan(true)}>Update due date</button>}
+              {request._id === paymentPlan?._id && canAct && <button type="button" className="cancel-request" disabled={paymentPlanSaving} onClick={() => window.confirm('Cancel this payment request?') && savePaymentPlan(false)}>Cancel request</button>}
+            </div>
+          </article>;
+        })}
       </section>
 
       <div className="payments-list">
