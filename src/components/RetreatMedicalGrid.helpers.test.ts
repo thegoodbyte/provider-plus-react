@@ -1,6 +1,17 @@
 import { buildRetreatMedicalGridData } from './RetreatMedicalGrid.helpers';
 
 describe('RetreatMedicalGrid helpers', () => {
+  it('excludes cancelled bookings from the medical grid', () => {
+    const data = buildRetreatMedicalGridData([
+      { _id: 'active-booking', bookingNumber: 1, status: 'confirmed', clientId: { _id: 'active-client', firstName: 'Active' } },
+      { _id: 'cancelled-booking', bookingNumber: 2, status: 'cancelled', clientId: { _id: 'cancelled-client', firstName: 'Cancelled' } },
+    ] as any, [], [], { retreatCode: 'TEST' });
+
+    expect(data.clients.map((client) => client.bookingId)).toEqual(['active-booking']);
+    expect(data.totals.clients).toBe(1);
+    expect(data.rows.every((row) => row.cells.length === 1)).toBe(true);
+  });
+
   it('sorts clients by booking number and resolves the latest linked review per stage', () => {
     const bookings = [
       {

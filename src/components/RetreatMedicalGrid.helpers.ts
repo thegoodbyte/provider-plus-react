@@ -255,7 +255,8 @@ export const buildRetreatMedicalGridData = (
   reviews: MedicalReviewRequest[],
   retreat?: { name?: string; code?: string; retreatCode?: string } | null,
 ): RetreatMedicalGridData => {
-  const clients = [...bookings]
+  const activeBookings = bookings.filter((booking) => String(booking.status || '').trim().toLowerCase() !== 'cancelled');
+  const clients = [...activeBookings]
     .sort((a, b) => {
       const aNumber = Number(a.bookingNumber || Number.MAX_SAFE_INTEGER);
       const bNumber = Number(b.bookingNumber || Number.MAX_SAFE_INTEGER);
@@ -279,7 +280,7 @@ export const buildRetreatMedicalGridData = (
     iconLabel: stage.iconLabel,
     accentClass: stage.accentClass,
     cells: clients.map((client) => {
-      const booking = bookings.find((entry) => getObjectId(entry) === client.bookingId) || bookings.find((entry) => getObjectId(entry.clientId) === client.clientId);
+      const booking = activeBookings.find((entry) => getObjectId(entry) === client.bookingId) || activeBookings.find((entry) => getObjectId(entry.clientId) === client.clientId);
       const artifact = booking ? pickMatchingArtifact(artifacts, stage, booking) : null;
       const review = booking ? pickMatchingReview(reviews, stage, booking, artifact) : null;
       const bookingClientId = booking ? getObjectId(booking.clientId) : '';
