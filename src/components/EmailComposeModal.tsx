@@ -346,6 +346,17 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
   }, [preparedVariables, templates]);
 
   useEffect(() => {
+    if (!initialValues.templateKey || templates.length === 0) return;
+    const current = templates.find((template) => template._id === selectedTemplateId);
+    if (current?.templateKey === initialValues.templateKey && normalizeBookingConfirmationLanguage(current.language) === selectedLanguage) return;
+    const matchingTemplate = templates.find((template) =>
+      template.templateKey === initialValues.templateKey &&
+      normalizeBookingConfirmationLanguage(template.language) === selectedLanguage
+    );
+    if (matchingTemplate?._id) handleTemplateChange(matchingTemplate._id);
+  }, [handleTemplateChange, initialValues.templateKey, selectedLanguage, selectedTemplateId, templates]);
+
+  useEffect(() => {
     if (!isBookingEmailContext || templates.length === 0) return;
     const current = templates.find((template) => template._id === selectedTemplateId);
     if (current && normalizeBookingConfirmationLanguage(current.language) === selectedLanguage) return;
