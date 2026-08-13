@@ -4,6 +4,7 @@ export type RequirementDefinition = {
   key: string; label: string; artifactTypes: NonNullable<MedicalArtifact['artifactType']>[];
   documentTypes?: MedicalArtifact['documentType'][]; bookingDocumentTypes?: string[];
   readinessGroups: string[]; library: 'medical_artifacts' | 'booking_documents' | 'both'; matchTerms?: string[];
+  linkable?: boolean;
 };
 
 export const requirementDefinitions: RequirementDefinition[] = [
@@ -42,18 +43,41 @@ export const documentMatches = (document: BookingDocument, definition: Requireme
 );
 const reviewTime = (review: MedicalReviewRequest) => time(review.reviewedAt || review.requestedAt || review.createdAt);
 
+const definitionForItem = (item: BookingFlowItem): RequirementDefinition => {
+  const template = typeof item.templateId === 'object' ? item.templateId : undefined;
+  const readinessGroup = item.metadata?.readinessGroup || template?.readinessGroup || '';
+  const expectedArtifact = item.metadata?.expectedArtifact || template?.expectedArtifact || '';
+  const expectedDocumentType = item.metadata?.expectedDocumentType || template?.expectedDocumentType || '';
+  const canonical = requirementDefinitions.find((definition) =>
+    definition.readinessGroups.includes(readinessGroup)
+    || definition.artifactTypes.includes(expectedArtifact as any)
+    || definition.bookingDocumentTypes?.includes(normalize(expectedDocumentType)),
+  );
+  return {
+    key: item._id || item.key,
+    label: item.title || template?.title || item.key,
+    artifactTypes: canonical?.artifactTypes || (expectedArtifact ? [expectedArtifact as NonNullable<MedicalArtifact['artifactType']>] : []),
+    documentTypes: canonical?.documentTypes || (expectedDocumentType ? [expectedDocumentType as NonNullable<MedicalArtifact['documentType']>] : []),
+    bookingDocumentTypes: canonical?.bookingDocumentTypes || (expectedDocumentType ? [normalize(expectedDocumentType)] : []),
+    readinessGroups: readinessGroup ? [readinessGroup] : [],
+    library: canonical?.library || (expectedArtifact && expectedDocumentType ? 'both' : expectedArtifact ? 'medical_artifacts' : 'booking_documents'),
+    matchTerms: canonical?.matchTerms || [item.title, template?.title, expectedArtifact, expectedDocumentType].filter(Boolean) as string[],
+    linkable: Boolean(canonical || expectedArtifact || expectedDocumentType),
+  };
+};
+
 export const buildBookingRequirementRows = (items: BookingFlowItem[], artifacts: MedicalArtifact[], libraryArtifacts: MedicalArtifact[], documents: BookingDocument[], libraryDocuments: BookingDocument[], reviewsByArtifact: Record<string, MedicalReviewRequest[]>) =>
-  requirementDefinitions.map(definition => {
-    const relatedItems = items.filter(item => {
-      const template = typeof item.templateId === 'object' ? item.templateId : undefined;
-      return definition.readinessGroups.includes(item.metadata?.readinessGroup || template?.readinessGroup)
-        || definition.artifactTypes.includes(item.metadata?.expectedArtifact || template?.expectedArtifact);
-    });
+  (items.length ? items
+    .slice()
+    .sort((left, right) => Number(left.order || 0) - Number(right.order || 0))
+    .map((item) => ({ definition: definitionForItem(item), relatedItems: [item] }))
+    : requirementDefinitions.map((definition) => ({ definition, relatedItems: [] as BookingFlowItem[] })))
+  .map(({ definition, relatedItems }) => {
     const linkedArtifacts = new Set(relatedItems.flatMap(item => [item.metadata?.linkedMedicalArtifactId, ...(item.metadata?.linkedMedicalArtifactIds || [])]).filter(Boolean).map(String));
     const linkedDocuments = new Set(relatedItems.map(item => item.metadata?.linkedBookingDocumentId).filter(Boolean).map(String));
     const relatedArtifacts = mergeArtifacts([artifacts, libraryArtifacts.filter(artifact => artifact._id && linkedArtifacts.has(artifact._id))]).filter(artifact => artifactMatches(artifact, definition)).sort((a, b) => Number((b.files || []).length > 0) - Number((a.files || []).length > 0) || time(b.receivedAt || b.createdAt) - time(a.receivedAt || a.createdAt));
     const relatedDocuments = [...documents, ...libraryDocuments.filter(document => document._id && linkedDocuments.has(document._id))].filter((document, index, list) => document._id && list.findIndex(candidate => candidate._id === document._id) === index).filter(document => documentMatches(document, definition) && (document.files || []).length > 0).sort((a, b) => time(b.receivedAt || b.createdAt) - time(a.receivedAt || a.createdAt));
     const latestArtifact = relatedArtifacts[0]; const latestDocument = relatedDocuments[0];
     const latestReview = latestArtifact?._id ? [...(reviewsByArtifact[latestArtifact._id] || [])].sort((a, b) => reviewTime(b) - reviewTime(a))[0] : undefined;
-    return { ...definition, required: relatedItems.length === 0 || relatedItems.some(item => item.isBlocking), uploaded: relatedArtifacts.some(artifactHasContent) || relatedDocuments.length > 0 || relatedItems.some(item => completed.has(item.status)), reviewed: Boolean(latestReview && reviewed.has(latestReview.status)) || relatedItems.some(item => ['reviewed', 'approved', 'caution'].includes(item.status)), latestArtifact, latestDocument, latestReview, relatedItems };
+    return { ...definition, required: relatedItems.length === 0 || relatedItems.some(item => item.isBlocking), uploaded: relatedArtifacts.some(artifactHasContent) || relatedDocuments.length > 0 || relatedItems.some(item => completed.has(item.status) || ['sent', 'waived'].includes(item.status)), reviewed: Boolean(latestReview && reviewed.has(latestReview.status)) || relatedItems.some(item => ['reviewed', 'approved', 'caution'].includes(item.status)), latestArtifact, latestDocument, latestReview, relatedItems };
   });

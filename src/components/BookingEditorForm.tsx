@@ -21,6 +21,7 @@ type BookingFormData = {
   ceremonyNumber: string;
   checkInDate: string;
   checkOutDate: string;
+  contractGateOverride: 'inherit' | 'required' | 'disabled';
 };
 
 const bookingStatusValues = ['pending', 'confirmed', 'checked-in', 'checked-out', 'cancelled'] as const;
@@ -63,6 +64,7 @@ const emptyForm = (): BookingFormData => ({
   ceremonyNumber: '',
   checkInDate: '',
   checkOutDate: '',
+  contractGateOverride: 'inherit',
 });
 
 const toDateTimeInput = (value?: string | Date | null) => {
@@ -141,6 +143,9 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
           ceremonyNumber: currentBooking.ceremonyNumber?.toString() || '',
           checkInDate: toDateTimeInput(currentBooking.checkInDate),
           checkOutDate: toDateTimeInput(currentBooking.checkOutDate),
+          contractGateOverride: currentBooking.contractGateOverride === true
+            ? 'required'
+            : currentBooking.contractGateOverride === false ? 'disabled' : 'inherit',
         });
       } else {
         setFormData({
@@ -255,6 +260,9 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
         roomAssignment: (booking as any)?.roomAssignment || '',
         specialRequests: (booking as any)?.specialRequests || '',
         notes: (booking as any)?.notes || '',
+        contractGateOverride: formData.contractGateOverride === 'inherit'
+          ? null
+          : formData.contractGateOverride === 'required',
       };
 
       if (payload.bookingNumber != null) {
@@ -392,6 +400,25 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
           </div>
           <p className="mt-2 text-xs text-blue-700">
             Booster guests remain part of this retreat, but appear only in their selected ceremony.
+          </p>
+        </div>
+
+        <div className="rounded-lg border border-indigo-100 bg-indigo-50 p-4">
+          <label className="mb-1 block text-sm font-semibold text-gray-800">IbogaReady contract access</label>
+          <select
+            value={formData.contractGateOverride}
+            onChange={(event) => setFormData((previous) => ({
+              ...previous,
+              contractGateOverride: event.target.value as BookingFormData['contractGateOverride'],
+            }))}
+            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 md:max-w-md"
+          >
+            <option value="inherit">Use global setting</option>
+            <option value="required">Require signed contract</option>
+            <option value="disabled">Allow access without signed contract</option>
+          </select>
+          <p className="mt-2 text-xs text-indigo-800">
+            This booking-level choice overrides the global setting in Communications → Settings.
           </p>
         </div>
 

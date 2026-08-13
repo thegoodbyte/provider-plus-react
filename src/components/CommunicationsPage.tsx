@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FiAlertCircle, FiCheckCircle, FiInbox, FiMail, FiPlus, FiRefreshCw, FiSave, FiSearch, FiSend, FiTrash2 } from 'react-icons/fi';
 import { Link, useLocation } from 'react-router-dom';
-import { bookingFlowApi, communicationsApi, clientsApi, retreatsApi } from '../services/api';
+import { bookingFlowApi, communicationsApi, clientsApi, contractGateApi, retreatsApi } from '../services/api';
 import { BookingFlowTemplate, Client, EmailTemplate, EmailTemplateSeedOption, InboundEmail, MailSettings, Retreat, SentEmail } from '../types';
 import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
@@ -80,6 +80,7 @@ const CommunicationsPage: React.FC = () => {
   const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<MailSettings | null>(null);
+  const [contractGate, setContractGate] = useState({ enabled: true, preContractModules: ['account', 'my_retreat', 'contract'] });
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [sentEmails, setSentEmails] = useState<SentEmail[]>([]);
   const [inboundEmails, setInboundEmails] = useState<InboundEmail[]>([]);
@@ -236,7 +237,7 @@ const CommunicationsPage: React.FC = () => {
     setLoadWarnings([]);
     try {
       const quietRequest = { suppressGlobalError: true };
-      const [settingsRes, templatesRes, sentRes, inboundRes, clientsRes, retreatsRes, seedOptionsRes, bookingStepsRes] = await Promise.allSettled([
+      const [settingsRes, templatesRes, sentRes, inboundRes, clientsRes, retreatsRes, seedOptionsRes, bookingStepsRes, contractGateRes] = await Promise.allSettled([
         communicationsApi.getSettings(quietRequest),
         communicationsApi.getTemplates(),
         communicationsApi.getSentEmails({}, quietRequest),
@@ -245,10 +246,13 @@ const CommunicationsPage: React.FC = () => {
         retreatsApi.getAll(),
         communicationsApi.getTemplateSeedOptions(),
         bookingFlowApi.getLibraryTemplates(),
+        contractGateApi.getSettings(),
       ]);
       const warnings: string[] = [];
       if (settingsRes.status === 'fulfilled') setSettings(settingsRes.value.data);
       else warnings.push('Gmail settings could not be loaded.');
+      if (contractGateRes.status === 'fulfilled') setContractGate(contractGateRes.value.data);
+      else warnings.push('Portal contract-gate settings could not be loaded.');
       if (templatesRes.status === 'fulfilled') setTemplates(Array.isArray(templatesRes.value.data) ? templatesRes.value.data : []);
       else warnings.push('Email templates could not be loaded.');
       if (sentRes.status === 'fulfilled') setSentEmails(Array.isArray(sentRes.value.data) ? sentRes.value.data : []);
@@ -527,6 +531,7 @@ const CommunicationsPage: React.FC = () => {
         medicalReviewNeedsInfoTemplates: settings?.medicalReviewNeedsInfoTemplates,
         medicalReviewDeclinedTemplates: settings?.medicalReviewDeclinedTemplates,
       });
+      await contractGateApi.saveSettings(contractGate);
       setSettings(response.data);
       alert('Settings saved');
     } catch (error) {
@@ -767,6 +772,11 @@ const CommunicationsPage: React.FC = () => {
                   ? 'Warning: the background worker may email clients automatically.'
                   : 'Kill switch active — no automatic booking reminder emails will be sent.'}
               </p>
+            </div>
+
+            <div className="rounded-md border border-indigo-200 bg-indigo-50 p-4">
+              <div className="flex items-start justify-between gap-4"><div><h3 className="font-semibold text-gray-900">IbogaReady contract gate</h3><p className="mt-1 text-sm text-gray-700">Require booked clients to sign the Client Agreement before accessing preparation forms and resources. Account, My Retreat, and Client Agreement remain available.</p></div><label className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={contractGate.enabled} onChange={event=>setContractGate(current=>({...current,enabled:event.target.checked}))}/>{contractGate.enabled?'ON':'OFF'}</label></div>
+              <p className="mt-3 text-xs text-indigo-800">This is enforced in both IbogaReady navigation and protected API endpoints. Pre-booking screening is not gated.</p>
             </div>
 
             <div className="flex flex-wrap gap-2">

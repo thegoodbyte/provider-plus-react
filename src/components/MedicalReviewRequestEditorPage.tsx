@@ -137,6 +137,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
   const [medicalUsers, setMedicalUsers] = useState<User[]>([]);
+  const [requestTypes, setRequestTypes] = useState<Array<{ key: NonNullable<MedicalReviewRequest['requestType']>; label: string }>>([]);
   const [reviewGroups, setReviewGroups] = useState<MedicalReviewGroup[]>([]);
   const [selectedArtifact, setSelectedArtifact] = useState<MedicalArtifact | null>(null);
   const [clientArtifacts, setClientArtifacts] = useState<MedicalArtifact[]>([]);
@@ -174,7 +175,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [trackingResponse, clientsResponse, retreatsResponse, groupsResponse, nextDisplayResponse, usersResponse, artifactResponse] = await Promise.all([
+      const [trackingResponse, clientsResponse, retreatsResponse, groupsResponse, nextDisplayResponse, usersResponse, artifactResponse, requestTypesResponse] = await Promise.all([
         medicalTrackingApi.getAll(),
         clientsApi.getAll(),
         retreatsApi.getAll(),
@@ -182,6 +183,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
         medicalReviewRequestsApi.getNextDisplayId(),
         usersApi.getAll().catch(() => ({ data: [] as User[] })),
         artifactId ? medicalArtifactsApi.getOne(artifactId).catch(() => null) : Promise.resolve(null),
+        medicalReviewRequestsApi.getRequestTypes(),
       ]);
 
       const clientById = new Map<string | undefined, Client>((clientsResponse.data || []).map((client: Client) => [client._id, client]));
@@ -204,6 +206,12 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
       setReviewGroups((groupsResponse as any).data || []);
       setMedicalUsers((usersResponse.data || []).filter((item) => item.role === 'medical_advisor' && item.isActive !== false));
       setRequestNumber(nextDisplayResponse.data || null);
+      setRequestTypes(requestTypesResponse.data || []);
+      if (!isEdit && !artifactResponse?.data && requestTypesResponse.data?.length) {
+        setForm((previous) => requestTypesResponse.data.some((type) => type.key === previous.requestType)
+          ? previous
+          : { ...previous, requestType: requestTypesResponse.data[0].key });
+      }
       if (artifactResponse?.data) {
         const artifact = artifactResponse.data;
         setSelectedArtifact(artifact);
@@ -541,10 +549,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
             <div className="mrr-section-heading"><strong>Assignment</strong></div>
             <label className="mrr-field-label">Request type</label>
             <div className="mrr-type-options">
-              {([
-                ['ekg_review', 'EKG'], ['liver_panel_review', 'Bloodwork'], ['questionnaire_review', 'Psych evaluation'],
-                ['medications_review', 'Medication review'], ['general_clearance', 'General'],
-              ] as const).map(([value, label]) => <button key={value} type="button" className={form.requestType === value ? 'selected' : ''} onClick={() => setForm({ ...form, requestType: value })}>{label}</button>)}
+              {requestTypes.map(({ key, label }) => <button key={key} type="button" className={form.requestType === key ? 'selected' : ''} onClick={() => setForm({ ...form, requestType: key })}>{label}</button>)}
             </div>
             <div className="mrr-assignment-fields">
               {isEdit && <div>

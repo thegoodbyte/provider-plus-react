@@ -655,6 +655,11 @@ export const communicationsApi = {
   },
 };
 
+export const contractGateApi = {
+  getSettings: () => api.get<{ enabled: boolean; preContractModules: string[] }>('/client-contracts/gate-settings'),
+  saveSettings: (data: { enabled: boolean; preContractModules: string[] }) => api.patch('/client-contracts/gate-settings', data),
+};
+
 export const screeningClientsApi = {
   getAll: () => cachedGet<ScreeningClient[]>('screening:all', () => api.get<ScreeningClient[]>('/screening-clients')),
   getOne: (id: string) => cachedGet<ScreeningClient>(`screening:${id}`, () => api.get<ScreeningClient>(`/screening-clients/${id}`)),
@@ -1092,6 +1097,7 @@ export const backupsApi = {
 };
 
 export const medicalReviewRequestsApi = {
+  getRequestTypes: () => api.get<Array<{ key: NonNullable<MedicalReviewRequest['requestType']>; label: string }>>('/medical-review-requests/request-types'),
   getAll: (filters: {
     clientId?: string;
     retreatId?: string;

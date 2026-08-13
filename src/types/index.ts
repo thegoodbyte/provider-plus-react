@@ -240,6 +240,7 @@ export interface RetreatClient {
   bookingType?: 'full_retreat' | 'booster'; // Type of booking
   ceremonyId?: string | Ceremony;
   ceremonyNumber?: number;
+  contractGateOverride?: boolean | null;
   registrationDate: Date | string;
   checkInDate: Date | string;
   checkOutDate: Date | string;
