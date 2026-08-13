@@ -471,6 +471,7 @@ export const paymentRequestsApi = {
   getNextDisplayIdFresh: () => api.get<number>('/payment-requests/next-display-id'),
   getByRetreat: (retreatId: string) => cachedGet<PaymentRequest[]>(`payment-requests:retreat:${retreatId}`, () => api.get<PaymentRequest[]>(`/payment-requests?retreatId=${retreatId}`)),
   getByClient: (clientId: string) => cachedGet<PaymentRequest[]>(`payment-requests:client:${clientId}`, () => api.get<PaymentRequest[]>(`/payment-requests?clientId=${clientId}`)),
+  getByBooking: (bookingId: string) => api.get<PaymentRequest[]>(`/payment-requests?bookingId=${encodeURIComponent(bookingId)}`),
   create: (data: Omit<PaymentRequest, '_id'>) => {
     cacheService.clearPattern('payment-requests:');
     return api.post<PaymentRequest>('/payment-requests', data);

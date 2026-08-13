@@ -1488,6 +1488,9 @@ export interface BookingDocument {
 export interface PaymentRequest {
   _id?: string;
   display_id?: number;
+  bookingId?: string;
+  scheduleKey?: string;
+  source?: 'manual' | 'booking_payment_plan';
   clientId: string;
   retreatId: string;
   bookingType?: 'full_retreat' | 'booster';
