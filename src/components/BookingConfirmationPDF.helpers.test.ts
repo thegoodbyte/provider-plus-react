@@ -36,7 +36,17 @@ describe('BookingConfirmationPDF helpers', () => {
       '2026-07-31T00:00:00.000Z',
       '2026-07-13T00:00:00.000Z',
     ]);
-    expect(rows.map((row) => row.complete)).toEqual([true, false, true]);
+    expect(rows.map((row) => row.complete)).toEqual([false, false, true]);
+  });
+
+  it('requires explicit approval for EKG and liver panel requirements', () => {
+    const rows = buildBookingConfirmationRequirementRows([
+      { key: 'ekg_received', status: 'reviewed' } as any,
+      { key: 'liver_received', status: 'approved' } as any,
+      { key: 'contract_signed', status: 'received' } as any,
+    ]);
+
+    expect(rows.map((row) => row.complete)).toEqual([false, true, true]);
   });
 
   it('treats fulfilled booking flow statuses as completed', () => {
