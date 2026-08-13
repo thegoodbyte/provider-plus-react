@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FiCheckCircle, FiEdit2, FiExternalLink, FiMail, FiRefreshCw, FiSave, FiUpload } from 'react-icons/fi';
+import { FiCheckCircle, FiEdit2, FiExternalLink, FiMail, FiPlus, FiRefreshCw, FiSave, FiUpload } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import { bookingDocumentsApi, bookingFlowApi, medicalArtifactsApi } from '../services/api';
 import { BookingDocument, BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, MedicalArtifact } from '../types';
@@ -72,6 +72,11 @@ const getRetreatName = (booking: any): string => {
 };
 
 const getRetreatId = (booking: any): string => getObjectId(booking?.retreat || booking?.retreatId);
+const getClientName = (booking: any): string => {
+  const client = booking?.client || booking?.clientId || booking?.clientDetails;
+  if (!client || typeof client === 'string') return 'Client';
+  return [client.firstName || client.fname, client.lastName || client.lname].filter(Boolean).join(' ') || client.fullName || client.email || 'Client';
+};
 
 const formatDateTimeInput = (date?: Date | string | null): string => {
   if (!date) return '';
@@ -168,7 +173,7 @@ type StepDraft = {
   notes: string;
 };
 
-type StepFilter = 'all' | 'past_due' | 'due_soon' | 'open' | 'completed';
+type StepFilter = 'all' | 'open' | 'completed';
 
 const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ bookings, hideBookingSelector = false }) => {
   const navigate = useNavigate();
@@ -181,6 +186,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
   const [drafts, setDrafts] = useState<Record<string, StepDraft>>({});
   const [dateTimePickerDrafts, setDateTimePickerDrafts] = useState<Record<string, string>>({});
   const [stepFilter, setStepFilter] = useState<StepFilter>('all');
+  const [expandedStepId, setExpandedStepId] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -240,10 +246,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
     return dueTime !== null && dueTime >= todayStart && dueTime <= soonLimit && !isComplete(item);
   };
   const pastDueCount = items.filter(isPastDue).length;
-  const dueSoonCount = items.filter(isDueSoon).length;
   const filteredItems = items.filter((item) => {
-    if (stepFilter === 'past_due') return isPastDue(item);
-    if (stepFilter === 'due_soon') return isDueSoon(item);
     if (stepFilter === 'open') return !isComplete(item);
     if (stepFilter === 'completed') return isComplete(item);
     return true;
@@ -293,6 +296,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
       setActionLogsByItem(logsByItem);
 
       setItems(nextItems);
+      setExpandedStepId((current) => current || (nextItems[0] ? getItemId(nextItems[0]) : ''));
       hydrateDrafts(nextItems);
       setIsEditing(false);
     } catch (err: any) {
@@ -413,6 +417,28 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
     hydrateDrafts(items);
     setDateTimePickerDrafts({});
     setIsEditing(false);
+  };
+
+  const addStep = async () => {
+    const title = window.prompt('Name this booking step');
+    if (!title?.trim() || !selectedBookingId) return;
+    try {
+      setSavingId('new');
+      await bookingFlowApi.createItem({
+        bookingId: selectedBookingId,
+        title: title.trim(),
+        category: 'other',
+        order: (items.at(-1)?.order || 0) + 10,
+        offsetDays: 0,
+        status: 'pending',
+      });
+      await loadItems(selectedBookingId);
+      setIsEditing(true);
+    } catch (addError: any) {
+      setError(addError?.response?.data?.message || addError?.message || 'Unable to add this booking step.');
+    } finally {
+      setSavingId(null);
+    }
   };
 
   const uploadStepArtifact = async (item: BookingFlowItem, files: FileList | null) => {
@@ -623,13 +649,26 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
 
   return (
     <div className="space-y-5 pb-24">
-      <div className="sticky top-0 z-30 -mx-1 rounded-b-xl border-b border-gray-200 bg-white/95 px-1 pb-3 pt-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/85">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-900">Booking Requirements</h2>
-            <p className="mt-1 text-sm text-gray-500">Track each booking action with a checkbox, timestamp, and notes.</p>
+      <div className="sticky top-0 z-30 -mx-1 border-b border-gray-900 bg-white/95 px-4 pb-4 pt-4 backdrop-blur supports-[backdrop-filter]:bg-white/90 md:px-8 md:pt-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-gray-500">Booking #{selectedBooking?.bookingNumber || selectedBookingId.slice(-6)} · {getRetreatName(selectedBooking)}</div>
+            <h2 className="text-2xl font-extrabold tracking-tight text-gray-950 md:text-3xl">Booking steps</h2>
+            <p className="mt-1 truncate text-sm text-gray-600">{getClientName(selectedBooking)} · marked by admin as each step completes.</p>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="flex shrink-0 gap-5 text-right">
+            <div><div className="text-2xl font-black leading-none text-gray-950">{completedCount}/{items.length}</div><div className="mt-1 text-[10px] uppercase tracking-[0.14em] text-gray-500">Complete</div></div>
+            {pastDueCount > 0 && <div><div className="text-2xl font-black leading-none text-red-700">{pastDueCount}</div><div className="mt-1 text-[10px] uppercase tracking-[0.14em] text-gray-500">Past due</div></div>}
+          </div>
+        </div>
+        <div className="mt-5 flex h-1 gap-1" aria-label={`${progressPercent}% complete`}>
+          {items.map((item) => <span key={getItemId(item)} className={`min-w-0 flex-1 ${isComplete(item) ? 'bg-green-700' : isPastDue(item) ? 'bg-red-700' : 'bg-gray-300'}`} />)}
+        </div>
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex gap-2">
+            {([['all', 'All'], ['open', 'Outstanding'], ['completed', 'Done']] as Array<[StepFilter, string]>).map(([key, label]) => <button key={key} type="button" onClick={() => setStepFilter(key)} className={`border px-4 py-2 text-sm font-bold ${stepFilter === key ? 'border-cyan-700 bg-cyan-700 text-white' : 'border-gray-300 bg-white text-gray-900 hover:bg-gray-50'}`}>{label}</button>)}
+          </div>
+          <div className="flex items-center gap-2">
             {!hideBookingSelector && (
             <select
               value={selectedBookingId}
@@ -650,79 +689,31 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
               <Icon icon={FiRefreshCw} className="mr-2 h-4 w-4" />
               Refresh
             </AppleButton>
-            {isEditing ? (
-              <>
-                <AppleButton onClick={cancelEditing} variant="ghost" className="px-3 py-2" disabled={savingId === 'all'}>
-                  Cancel
-                </AppleButton>
-                <AppleButton onClick={saveDrafts} variant="primary" className="px-3 py-2" disabled={savingId === 'all'}>
-                  <Icon icon={FiSave} className="mr-2 h-4 w-4" />
-                  {savingId === 'all' ? 'Saving...' : 'Save'}
-                </AppleButton>
-              </>
-            ) : (
-              <AppleButton onClick={() => setIsEditing(true)} variant="secondary" className="px-3 py-2">
-                <Icon icon={FiEdit2} className="mr-2 h-4 w-4" />
-                Edit
-              </AppleButton>
-            )}
+            <span className="text-xs text-gray-500">{filteredItems.length} of {items.length} steps shown</span>
           </div>
-        </div>
-
-        <div className="mt-3 rounded-lg border border-gray-200 bg-white p-4">
-          <div className="mb-2 flex items-center justify-between text-sm">
-            <span className="font-medium text-gray-700">{completedCount} of {items.length} complete</span>
-            <span className="text-gray-500">{progressPercent}%</span>
-          </div>
-          <div className="h-2 rounded-full bg-gray-100">
-            <div className="h-2 rounded-full bg-blue-600 transition-all" style={{ width: `${progressPercent}%` }} />
-          </div>
-          {selectedBooking && (
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-500">
-              <span>{getRetreatName(selectedBooking)} {selectedBooking?.status ? `- ${selectedBooking.status}` : ''}</span>
-              {pastDueCount > 0 && <span className="rounded-full bg-red-100 px-2 py-1 font-semibold text-red-700">{pastDueCount} past due</span>}
-              {dueSoonCount > 0 && <span className="rounded-full bg-amber-100 px-2 py-1 font-semibold text-amber-700">{dueSoonCount} due soon</span>}
-            </div>
-          )}
-        </div>
-
-        <div className="mt-3 flex flex-wrap gap-2">
-          {([
-            ['all', `All (${items.length})`],
-            ['past_due', `Past due (${pastDueCount})`],
-            ['due_soon', `Due soon (${dueSoonCount})`],
-            ['open', `Open (${items.length - completedCount})`],
-            ['completed', `Completed (${completedCount})`],
-          ] as Array<[StepFilter, string]>).map(([key, label]) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setStepFilter(key)}
-              className={`rounded-full border px-3 py-1.5 text-sm font-semibold ${
-                stepFilter === key
-                  ? 'border-blue-600 bg-blue-600 text-white'
-                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
         </div>
       </div>
 
-      <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-xl border border-gray-200 bg-white/95 p-2 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-white/85">
+      <div className="fixed inset-x-0 bottom-0 z-50 flex min-h-[72px] items-center justify-end gap-3 border-t border-gray-300 bg-white/95 px-4 py-3 shadow-[0_-8px_24px_rgba(0,0,0,0.08)] backdrop-blur md:left-auto md:right-6 md:w-[min(1160px,calc(100%-3rem))]">
+        <span className="mr-auto hidden text-sm text-gray-600 sm:block">
+          {completedCount} of {items.length} steps complete · {items.length - completedCount} outstanding
+        </span>
         {isEditing ? (
           <>
+            <AppleButton onClick={addStep} variant="ghost" className="px-3 py-2" disabled={Boolean(savingId)}>
+              <Icon icon={FiPlus} className="mr-2 h-4 w-4" />
+              Add step
+            </AppleButton>
             <AppleButton onClick={cancelEditing} variant="ghost" className="px-3 py-2" disabled={savingId === 'all'}>
               Cancel
             </AppleButton>
-            <AppleButton onClick={saveDrafts} variant="primary" className="px-3 py-2" disabled={savingId === 'all'}>
+            <AppleButton onClick={saveDrafts} variant="primary" className="min-w-[138px] px-4 py-2" disabled={savingId === 'all'}>
               <Icon icon={FiSave} className="mr-2 h-4 w-4" />
-              {savingId === 'all' ? 'Saving...' : 'Save'}
+              {savingId === 'all' ? 'Saving...' : 'Save changes'}
             </AppleButton>
           </>
         ) : (
-          <AppleButton onClick={() => setIsEditing(true)} variant="secondary" className="px-3 py-2">
+          <AppleButton onClick={() => setIsEditing(true)} variant="secondary" className="rounded-full px-5 py-2">
             <Icon icon={FiEdit2} className="mr-2 h-4 w-4" />
             Edit
           </AppleButton>
@@ -777,24 +768,34 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                 const deadlineLogs = itemActionLogs.filter((log) => log.actionType === 'deadline_changed');
                 const dateTimePickerDraft = dateTimePickerDrafts[id];
                 const hasPendingDateTime = dateTimePickerDraft !== undefined && dateTimePickerDraft !== draft.dateTime;
+                const isExpanded = expandedStepId === id;
 
                 return (
-                  <div key={id} className={`grid gap-2 border-l-4 p-3 ${tone.stepStripe} ${isChecked ? 'bg-green-50/60' : overdue ? 'bg-red-50/70' : dueSoon ? 'bg-amber-50/70' : tone.stepCell}`} style={!isChecked && !overdue && !dueSoon ? stepStyle : undefined}>
-                    <div className="grid gap-2 lg:grid-cols-[minmax(240px,1fr)_minmax(210px,260px)] lg:items-center">
-                      <label className="flex min-w-0 items-center gap-2">
+                  <div
+                    key={id}
+                    className={`grid cursor-pointer gap-3 border-l-4 p-4 md:cursor-default md:px-8 ${tone.stepStripe} ${isChecked ? 'bg-green-50/80' : overdue ? 'bg-red-50/80' : dueSoon ? 'bg-amber-50/80' : tone.stepCell}`}
+                    style={!isChecked && !overdue && !dueSoon ? stepStyle : undefined}
+                    onClick={(event) => {
+                      if (window.innerWidth >= 768 || isEditing || (event.target as HTMLElement).closest('button,input,a,textarea,select')) return;
+                      setExpandedStepId(isExpanded ? '' : id);
+                    }}
+                  >
+                    <div className="grid gap-4 lg:grid-cols-[minmax(300px,1fr)_minmax(330px,430px)] lg:items-center">
+                      <label className="flex min-w-0 items-start gap-3">
                         <input
                           type="checkbox"
                           checked={isChecked}
                           disabled={!isEditing || savingId === 'all'}
                           onChange={(event) => setActionChecked(item, event.target.checked)}
-                          className="h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                          className="mt-0.5 h-6 w-6 rounded-none border-gray-400 text-green-700 focus:ring-green-600"
                         />
                         <span className="min-w-0">
-                          <span className="flex min-w-0 items-center gap-2">
-                            <span className={`h-2.5 w-2.5 flex-none rounded-full ${tone.dot}`} style={dotStyle} />
+                          <span className="flex min-w-0 flex-wrap items-center gap-2">
+                            <span className={`hidden h-2.5 w-2.5 flex-none rounded-full md:inline-block ${tone.dot}`} style={dotStyle} />
                             <span className={`block truncate text-sm font-semibold ${isChecked ? 'text-green-900' : 'text-gray-950'}`}>
                               {item.title}
                             </span>
+                            <span className={`border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] ${isChecked ? 'border-green-700 text-green-800' : overdue ? 'border-red-600 text-red-700' : 'border-gray-400 text-gray-600'}`}>{isChecked ? 'Done' : 'Outstanding'}</span>
                           </span>
                           <span className="block truncate text-xs text-gray-500">
                             {titleizeBookingStepGroup(groupKey)} • {item.dueDate ? `Due ${formatDisplayDate(item.dueDate)}` : item.category}
@@ -809,28 +810,28 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                           )}
                         </span>
                       </label>
-                      <div className="grid gap-2">
-                        <label className="grid gap-1">
+                      <div className={`${isExpanded ? 'grid' : 'hidden'} grid-cols-2 gap-4 md:grid`}>
+                        <label className="grid min-w-0 gap-1">
                           <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Due date</span>
-                          <input
+                          {isEditing ? <input
                             type="datetime-local"
                             value={draft.dueDate}
                             disabled={!isEditing || savingId === 'all'}
                             onChange={(event) => setDraft(item, { dueDate: event.target.value })}
                             className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             title="Booking step due date"
-                          />
+                          /> : <span className="truncate text-sm text-gray-900">{formatDisplayDate(item.dueDate)}</span>}
                         </label>
-                        <label className="grid gap-1">
-                          <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Action date</span>
-                          <input
+                        <label className="grid min-w-0 gap-1">
+                          <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Actioned</span>
+                          {isEditing ? <input
                             type="datetime-local"
                             value={dateTimePickerDraft ?? draft.dateTime}
                             disabled={!isEditing || !isChecked || savingId === 'all'}
                             onChange={(event) => setDateTimePickerDraft(item, event.target.value)}
                             className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                             title={isChecked ? 'Action date and time' : 'Check this action before setting the completion date'}
-                          />
+                          /> : <span className="truncate text-sm text-gray-900">{draft.dateTime ? formatDisplayDate(draft.dateTime) : '—'}</span>}
                         </label>
                         {hasPendingDateTime && (
                           <div className="flex justify-end gap-1">
@@ -853,15 +854,15 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                       </div>
                     </div>
 
-                    <div className="grid gap-2 lg:grid-cols-[1fr_auto] lg:items-center">
-                      <textarea
+                    <div className={`${isExpanded ? 'grid' : 'hidden'} gap-2 md:grid lg:grid-cols-[1fr_auto] lg:items-center`}>
+                      {isEditing ? <textarea
                         value={draft.notes}
                         disabled={!isEditing || savingId === 'all'}
                         onChange={(event) => setDraft(item, { notes: event.target.value })}
                         rows={1}
                         className="min-h-[36px] w-full resize-y rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm disabled:bg-gray-50 disabled:text-gray-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                         placeholder="Internal note"
-                      />
+                      /> : <div className="min-h-[24px] whitespace-pre-wrap px-2.5 text-sm text-gray-700">{draft.notes || 'Internal note'}</div>}
                       <div className="flex items-center gap-2 lg:justify-end">
                         {visibleActions.map((action) => {
                           const savingKey = `${item._id}:${action.key}`;
@@ -870,10 +871,10 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                             <span key={action.key} className="inline-flex items-center gap-1">
                               <button
                                 type="button"
-                                disabled={!isEditing || actionSavingKey === savingKey || savingId === 'all'}
+                                disabled={actionSavingKey === savingKey || savingId === 'all'}
                                 onClick={() => runItemAction(item, action)}
                                 className="inline-flex items-center rounded-md border border-blue-200 bg-white px-2.5 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-50 disabled:cursor-not-allowed disabled:text-gray-400 disabled:hover:bg-white"
-                                title={isEditing ? action.type : 'Unlock editing to run actions'}
+                                title={action.type}
                               >
                                 {action.type === 'email' && <Icon icon={FiMail} className="mr-2 h-4 w-4" />}
                                 {actionSavingKey === savingKey ? 'Loading...' : action.label}
@@ -903,7 +904,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                           </button>
                         )}
                         {(uploadConfig || uploadAction) && (
-                          <label className={`inline-flex items-center rounded-md border border-blue-200 bg-white px-2.5 py-1.5 text-sm font-medium ${isEditing ? 'cursor-pointer text-blue-700 hover:bg-blue-50' : 'cursor-not-allowed text-gray-400'}`}>
+                          <label className="inline-flex cursor-pointer items-center rounded-md border border-blue-200 bg-white px-2.5 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-50">
                             <Icon icon={FiUpload} className="mr-2 h-4 w-4" />
                             {uploadingId === item._id ? 'Uploading...' : uploadAction?.label || 'Upload'}
                             <input
@@ -911,7 +912,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                               className="hidden"
                               accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.heic,.heif"
                               multiple
-                              disabled={!isEditing || Boolean(uploadingId)}
+                              disabled={Boolean(uploadingId)}
                               onChange={(event) => {
                                 uploadStepArtifact(item, event.target.files);
                                 event.target.value = '';
