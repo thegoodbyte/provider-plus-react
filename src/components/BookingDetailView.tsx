@@ -205,6 +205,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         clientId={clientId}
         retreatCode={retreatCode}
         retreatId={retreatId}
+        retreatAddress={retreatAddress}
         bookingTypeCode={bookingTypeCode}
         language={pdfLanguage}
         activeTab={activeTab}

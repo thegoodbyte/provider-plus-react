@@ -45,6 +45,7 @@ const reviewTime = (review: MedicalReviewRequest) => time(review.reviewedAt || r
 
 const definitionForItem = (item: BookingFlowItem): RequirementDefinition => {
   const template = typeof item.templateId === 'object' ? item.templateId : undefined;
+  const requirementType = normalize(item.metadata?.requirementType || template?.requirementType);
   const readinessGroup = item.metadata?.readinessGroup || template?.readinessGroup || '';
   const expectedArtifact = item.metadata?.expectedArtifact || template?.expectedArtifact || '';
   const expectedDocumentType = item.metadata?.expectedDocumentType || template?.expectedDocumentType || '';
@@ -54,8 +55,8 @@ const definitionForItem = (item: BookingFlowItem): RequirementDefinition => {
     || definition.bookingDocumentTypes?.includes(normalize(expectedDocumentType)),
   );
   return {
-    key: item._id || item.key,
-    label: item.title || template?.title || item.key,
+    key: canonical?.key || requirementType || item._id || item.key,
+    label: canonical?.label || item.title || template?.title || item.key,
     artifactTypes: canonical?.artifactTypes || (expectedArtifact ? [expectedArtifact as NonNullable<MedicalArtifact['artifactType']>] : []),
     documentTypes: canonical?.documentTypes || (expectedDocumentType ? [expectedDocumentType as NonNullable<MedicalArtifact['documentType']>] : []),
     bookingDocumentTypes: canonical?.bookingDocumentTypes || (expectedDocumentType ? [normalize(expectedDocumentType)] : []),
@@ -66,11 +67,23 @@ const definitionForItem = (item: BookingFlowItem): RequirementDefinition => {
   };
 };
 
+export const isVisibleBookingRequirement = (item: BookingFlowItem) => {
+  const template = typeof item.templateId === 'object' ? item.templateId : undefined;
+  return item.metadata?.isRequirement === true || template?.isRequirement === true;
+};
+
 export const buildBookingRequirementRows = (items: BookingFlowItem[], artifacts: MedicalArtifact[], libraryArtifacts: MedicalArtifact[], documents: BookingDocument[], libraryDocuments: BookingDocument[], reviewsByArtifact: Record<string, MedicalReviewRequest[]>) =>
   (items.length ? items
+    .filter(isVisibleBookingRequirement)
     .slice()
     .sort((left, right) => Number(left.order || 0) - Number(right.order || 0))
-    .map((item) => ({ definition: definitionForItem(item), relatedItems: [item] }))
+    .reduce<Array<{ definition: RequirementDefinition; relatedItems: BookingFlowItem[] }>>((groups, item) => {
+      const definition = definitionForItem(item);
+      const existing = groups.find((group) => group.definition.key === definition.key);
+      if (existing) existing.relatedItems.push(item);
+      else groups.push({ definition, relatedItems: [item] });
+      return groups;
+    }, [])
     : requirementDefinitions.map((definition) => ({ definition, relatedItems: [] as BookingFlowItem[] })))
   .map(({ definition, relatedItems }) => {
     const linkedArtifacts = new Set(relatedItems.flatMap(item => [item.metadata?.linkedMedicalArtifactId, ...(item.metadata?.linkedMedicalArtifactIds || [])]).filter(Boolean).map(String));

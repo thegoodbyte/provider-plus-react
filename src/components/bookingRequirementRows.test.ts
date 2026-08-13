@@ -26,15 +26,15 @@ describe('booking requirement rows', () => {
   it('deduplicates legacy artifacts without ids', () => expect(mergeArtifacts([[{ artifactType: 'ekg', title: 'same', createdAt: 'date' } as any], [{ artifactType: 'ekg', title: 'same', createdAt: 'date' } as any]])).toHaveLength(1));
   it('builds missing, uploaded, and reviewed rows from linked sources', () => {
     const rows = buildBookingRequirementRows(
-      [{ _id: 'item', title: 'Entry EKG', status: 'received', isBlocking: true, metadata: { readinessGroup: 'ekg', expectedArtifact: 'ekg', linkedMedicalArtifactId: 'artifact' } } as any],
+      [{ _id: 'item', title: 'Entry EKG', status: 'received', isBlocking: true, metadata: { isRequirement: true, readinessGroup: 'ekg', expectedArtifact: 'ekg', linkedMedicalArtifactId: 'artifact' } } as any],
       [], [{ _id: 'artifact', artifactType: 'ekg', files: [{ fileName: 'ekg.pdf' }] } as any], [], [],
       { artifact: [{ _id: 'review', status: 'approved', reviewedAt: '2026-02-01' } as any] },
     );
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ key: 'item', label: 'Entry EKG', required: true, uploaded: true, reviewed: true, latestReview: { _id: 'review' } });
+    expect(rows[0]).toMatchObject({ key: 'ekg', label: 'Entry EKG', required: true, uploaded: true, reviewed: true, latestReview: { _id: 'review' } });
   });
   it('uses the newest valid document and review', () => {
-    const rows = buildBookingRequirementRows([{ _id: 'contract-item', title: 'Contract signed', status: 'pending', isBlocking: true, metadata: { readinessGroup: 'contract' } } as any], [], [], [
+    const rows = buildBookingRequirementRows([{ _id: 'contract-item', title: 'Contract signed', status: 'pending', isBlocking: true, metadata: { isRequirement: true, readinessGroup: 'contract' } } as any], [], [], [
       { _id: 'old', documentType: 'contract', receivedAt: '2026-01-01', files: [{}] },
       { _id: 'new', documentType: 'contract', receivedAt: '2026-02-01', files: [{}] },
     ] as any, [], {});
@@ -43,12 +43,12 @@ describe('booking requirement rows', () => {
   it('uses populated templates, linked library documents, flow completion, and item review states', () => {
     const rows = buildBookingRequirementRows([{
       _id: 'item', title: 'Medications', status: 'approved', isBlocking: false, templateId: { readinessGroup: 'medications', expectedArtifact: 'medications_form' },
-      metadata: { linkedBookingDocumentId: 'linked-doc' },
+      metadata: { isRequirement: true, linkedBookingDocumentId: 'linked-doc' },
     } as any], [], [], [], [{ _id: 'linked-doc', documentType: 'medications_form', files: [{ fileName: 'meds.pdf' }] } as any], {});
     expect(rows[0]).toMatchObject({ required: false, uploaded: true, reviewed: true, latestDocument: { _id: 'linked-doc' } });
   });
   it('orders artifacts with files first and selects the newest review fallback timestamps', () => {
-    const rows = buildBookingRequirementRows([{ _id: 'ekg-item', title: 'EKG', status: 'pending', isBlocking: true, metadata: { readinessGroup: 'ekg' } } as any], [
+    const rows = buildBookingRequirementRows([{ _id: 'ekg-item', title: 'EKG', status: 'pending', isBlocking: true, metadata: { isRequirement: true, readinessGroup: 'ekg' } } as any], [
       { _id: 'new-no-file', artifactType: 'ekg', receivedAt: '2026-03-01' },
       { _id: 'old-file', artifactType: 'ekg', receivedAt: '2026-01-01', files: [{ fileName: 'ekg.pdf' }] },
     ] as any, [], [], [], { 'old-file': [
@@ -57,13 +57,14 @@ describe('booking requirement rows', () => {
     ] });
     expect(rows[0]).toMatchObject({ latestArtifact: { _id: 'old-file' }, latestReview: { _id: 'requested' } });
   });
-  it('keeps every configured booking-flow step as its own requirement row', () => {
+  it('shows only configured requirement steps and collapses shared requirement types', () => {
     const items = Array.from({ length: 22 }, (_, index) => ({
       _id: `item-${index + 1}`, key: `step-${index + 1}`, title: `Step ${index + 1}`,
       order: index + 1, status: 'pending', isBlocking: index < 6,
+      metadata: index < 2 ? { isRequirement: true, readinessGroup: 'ekg', requirementType: 'entry_ekg' } : {},
     })) as any;
     const rows = buildBookingRequirementRows(items, [], [], [], [], {});
-    expect(rows).toHaveLength(22);
-    expect(rows.map((row) => row.label)).toEqual(items.map((item: any) => item.title));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ key: 'ekg', label: 'Entry EKG', relatedItems: [items[0], items[1]] });
   });
 });
