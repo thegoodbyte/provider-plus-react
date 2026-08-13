@@ -447,6 +447,9 @@ const BookingsGrid: React.FC = () => {
                 <SortableHeader field="bookingDate">Booking Date</SortableHeader>
                 <SortableHeader field="status">Status</SortableHeader>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Final Payment
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -505,6 +508,36 @@ const BookingsGrid: React.FC = () => {
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(booking.status || 'pending')}`}>
                       {booking.status || 'pending'}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {typeof booking.paymentRequestId === 'object' && booking.paymentRequestId ? (() => {
+                      const request: any = booking.paymentRequestId;
+                      const requestId = request._id;
+                      const status = String(request.status || 'pending');
+                      const statusClass = status === 'paid'
+                        ? 'bg-green-100 text-green-800'
+                        : status === 'overdue'
+                          ? 'bg-red-100 text-red-800'
+                          : status === 'cancelled'
+                            ? 'bg-gray-100 text-gray-600'
+                            : 'bg-amber-100 text-amber-800';
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => navigate(`${routePrefix}/payment-requests/${requestId}`)}
+                          className="!border-0 !bg-transparent !p-0 text-left !shadow-none hover:!bg-transparent"
+                          title={`Open payment request #${request.display_id || request.invoiceNumber || ''}`}
+                        >
+                          <div className="text-sm font-semibold text-blue-700 hover:underline">
+                            {Number(request.requestedAmount || 0).toLocaleString()} {request.currency || booking.currency}
+                          </div>
+                          <div className="mt-1 flex items-center gap-2">
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusClass}`}>{status}</span>
+                            {request.dueDate && <span className="text-xs text-gray-500">Due {formatDate(request.dueDate)}</span>}
+                          </div>
+                        </button>
+                      );
+                    })() : <span className="text-xs text-gray-400">No plan</span>}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     <div className="flex items-center justify-end gap-2">
