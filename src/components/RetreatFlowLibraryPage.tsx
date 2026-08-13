@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircle2, Copy, Download, GripVertical, Plus, RefreshCw, Save, Trash2, Upload, X } from 'lucide-react';
+import { GripVertical, Save, Trash2, X } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 import { bookingFlowApi, communicationsApi, retreatsApi } from '../services/api';
@@ -48,6 +48,8 @@ type TemplateForm = {
   actions: BookingFlowAction[];
   reminderRules: BookingReminderRule[];
 };
+
+type EditorTab = 'basics' | 'deadline' | 'artifact' | 'reminders' | 'flags';
 
 const emptyForm = (): TemplateForm => ({
   workflowStage: 'potential',
@@ -112,6 +114,8 @@ const RetreatFlowLibraryPage: React.FC = () => {
   const [importPreview, setImportPreview] = useState<any>(null);
   const [importMode, setImportMode] = useState<'merge_by_key' | 'restore_exact_ids'>('merge_by_key');
   const [importing, setImporting] = useState(false);
+  const [editorTab, setEditorTab] = useState<EditorTab>('basics');
+  const [stepSearch, setStepSearch] = useState('');
   const importInputRef = useRef<HTMLInputElement | null>(null);
 
   const normalizeTemplateActionsForForm = (template: BookingFlowTemplate): BookingFlowAction[] => {
@@ -455,6 +459,12 @@ const RetreatFlowLibraryPage: React.FC = () => {
   };
 
   const sortedTemplates = useMemo(() => templates.slice().sort((a, b) => (a.order || 0) - (b.order || 0)), [templates]);
+  const visibleTemplates = useMemo(() => {
+    const query = stepSearch.trim().toLowerCase();
+    return query
+      ? sortedTemplates.filter((template) => `${template.title} ${template.key} ${template.category}`.toLowerCase().includes(query))
+      : sortedTemplates;
+  }, [sortedTemplates, stepSearch]);
 
   const updateAction = (index: number, patch: Partial<BookingFlowAction>) => {
     setForm((current) => ({
@@ -491,13 +501,69 @@ const RetreatFlowLibraryPage: React.FC = () => {
     }));
   };
 
+  const editorTabs: Array<{ id: EditorTab; label: string }> = [
+    { id: 'basics', label: 'Basics' },
+    { id: 'deadline', label: 'Deadline & task' },
+    { id: 'artifact', label: 'Artifact matching' },
+    { id: 'reminders', label: 'Reminders & actions' },
+    { id: 'flags', label: 'Flags & colour' },
+  ];
+
+  const ruleSummary = `${form.title || 'This step'} is due ${form.offsetDays} days ${form.deadlineBasis === 'before_retreat_start' ? 'before the retreat starts' : form.deadlineBasis.replaceAll('_', ' ')}${form.isBlocking ? '. The booking cannot be marked ready until it is done.' : '.'}`;
+
+  const fieldClass = 'w-full border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:border-sky-600 focus:outline-none focus:ring-1 focus:ring-sky-600';
+  const labelClass = 'mb-1.5 block text-[10px] font-medium uppercase tracking-[0.14em] text-gray-500';
+
   const renderTemplateEditor = () => (
-    <div className="rounded-md border border-gray-200 bg-white p-4 shadow-sm">
-      <div className="border-b border-gray-200 pb-3">
-        <h3 className="text-sm font-semibold text-gray-900">{selectedTemplateId ? 'Edit Selected Step' : 'Add New Step'}</h3>
-        <p className="text-xs text-gray-500">These fields define what gets generated onto each booking requirement row.</p>
+    <div className="flex min-h-[650px] flex-col bg-[#fbfaf9]">
+      <div className="px-6 pt-5">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <div className="text-[10px] uppercase tracking-[0.14em] text-gray-500">{selectedTemplateId ? `Editing step #${form.order} · ${form.key}` : 'New booking step'}</div>
+            <h2 className="mt-1 text-2xl font-semibold tracking-tight text-gray-900">{form.title || 'Untitled step'}</h2>
+          </div>
+          <div className="flex gap-2">
+            {form.active && <span className="rounded-full border border-green-300 bg-green-50 px-2.5 py-1 text-[10px] uppercase tracking-wider text-green-800">Active</span>}
+            {form.isBlocking && <span className="rounded-full border border-red-300 bg-red-50 px-2.5 py-1 text-[10px] uppercase tracking-wider text-red-700">Blocking</span>}
+          </div>
+        </div>
+        <div className="mt-5 border-l-2 border-sky-600 bg-sky-50 px-4 py-3">
+          <div className="text-[10px] uppercase tracking-[0.15em] text-sky-800">The rule in words</div>
+          <p className="mt-2 text-sm text-gray-900">{ruleSummary}</p>
+        </div>
+        <div className="mt-4 flex gap-6 overflow-x-auto border-b border-gray-300">
+          {editorTabs.map((tab) => <button key={tab.id} type="button" onClick={() => setEditorTab(tab.id)} className={`whitespace-nowrap border-b-2 px-0 py-2 text-sm ${editorTab === tab.id ? 'border-gray-900 font-medium text-gray-900' : 'border-transparent text-gray-600 hover:text-gray-900'}`}>{tab.label}</button>)}
+        </div>
       </div>
 
+      <div className="flex-1 px-6 py-5">
+        {editorTab === 'basics' && <div className="grid max-w-4xl gap-5 sm:grid-cols-2">
+          <label><span className={labelClass}>Display title</span><input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className={fieldClass} /></label>
+          <label><span className={labelClass}>Step key (never changes)</span><input value={form.key} onChange={(e) => setForm({ ...form, key: e.target.value })} className={`${fieldClass} bg-gray-50`} /></label>
+          <label><span className={labelClass}>Workflow stage</span><select value={form.workflowStage} onChange={(e) => setForm({ ...form, workflowStage: e.target.value as TemplateForm['workflowStage'] })} className={fieldClass}>{['potential','screening','payment','conditional_booking','contract','questionnaire','medical','prep','approved','cancelled'].map(v => <option key={v} value={v}>{titleizeBookingStepGroup(v)}</option>)}</select></label>
+          <label><span className={labelClass}>Category</span><select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value as TemplateForm['category'] })} className={fieldClass}>{['screening','booking','contract','questionnaire','medical','payment','dietary','message','access','approval','reminder','other'].map(v => <option key={v} value={v}>{titleizeBookingStepGroup(v)}</option>)}</select></label>
+          <label className="sm:col-span-2"><span className={labelClass}>What this step means</span><textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} className={fieldClass} /></label>
+          <label><span className={labelClass}>Order in the list</span><input type="number" value={form.order} onChange={(e) => setForm({ ...form, order: Number(e.target.value) })} className={fieldClass} /></label>
+          <label><span className={labelClass}>Readiness group</span><input value={form.readinessGroup} onChange={(e) => setForm({ ...form, readinessGroup: e.target.value })} className={fieldClass} /></label>
+        </div>}
+
+        {editorTab === 'deadline' && <div className="max-w-4xl space-y-7">
+          <div className="flex flex-wrap items-end gap-3 text-base"><span className="pb-2">Due</span><label className="w-20"><span className={labelClass}>Days</span><input type="number" value={form.offsetDays} onChange={(e) => setForm({ ...form, offsetDays: Number(e.target.value) })} className={fieldClass} /></label><label className="min-w-56"><span className={labelClass}>Relative to</span><select value={form.deadlineBasis} onChange={(e) => setForm({ ...form, deadlineBasis: e.target.value as TemplateForm['deadlineBasis'] })} className={fieldClass}><option value="before_retreat_start">before retreat start</option><option value="after_signup">after signup</option><option value="after_booking">after booking</option><option value="after_initial_payment">after initial payment</option><option value="manual">manual due date</option></select></label><span className="pb-2">and never later than</span><label className="w-24"><span className={labelClass}>Days</span><input type="number" value={form.latestDaysBeforeRetreat} onChange={(e) => setForm({ ...form, latestDaysBeforeRetreat: e.target.value })} className={fieldClass} /></label><span className="pb-2">days before the retreat starts.</span></div>
+          <div className="grid gap-5 sm:grid-cols-2"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.createsTask} onChange={(e) => setForm({ ...form, createsTask: e.target.checked })} /> Yes — add to the admin task list</label><label><span className={labelClass}>Task priority</span><select value={form.taskPriority} onChange={(e) => setForm({ ...form, taskPriority: e.target.value as TemplateForm['taskPriority'] })} className={fieldClass}>{['low','medium','high','urgent'].map(v => <option key={v}>{v}</option>)}</select></label><label className="sm:col-span-2"><span className={labelClass}>Task title</span><input value={form.taskTitle} onChange={(e) => setForm({ ...form, taskTitle: e.target.value })} className={fieldClass} /></label></div>
+        </div>}
+
+        {editorTab === 'artifact' && <div className="max-w-4xl space-y-5"><p className="max-w-2xl text-sm text-gray-700">Matching lets an upload close this step by itself. Leave it empty and an admin marks the step by hand.</p><div className="grid gap-5 sm:grid-cols-2"><label><span className={labelClass}>Expected artifact tag</span><input value={form.expectedArtifact} onChange={(e) => setForm({ ...form, expectedArtifact: e.target.value })} className={fieldClass} placeholder="ekg" /></label><label><span className={labelClass}>Upload stage</span><select value={form.expectedDocumentStage} onChange={(e) => setForm({ ...form, expectedDocumentStage: e.target.value })} className={fieldClass}><option value="">Any entry-stage upload</option>{['entry','pre_ceremony','in_ceremony','post_ceremony','other','additional'].map(v => <option key={v} value={v}>{titleizeBookingStepGroup(v)}</option>)}</select></label><label><span className={labelClass}>Document type</span><select value={form.expectedDocumentType} onChange={(e) => setForm({ ...form, expectedDocumentType: e.target.value })} className={fieldClass}><option value="">Any</option>{['EKG','Liver','BP','meds','Medications','additional','other'].map(v => <option key={v}>{v}</option>)}</select></label><label><span className={labelClass}>Purpose</span><select value={form.expectedArtifactPurpose} onChange={(e) => setForm({ ...form, expectedArtifactPurpose: e.target.value })} className={fieldClass}><option value="">Any</option>{['booking_requirement','pre_ceremony','paid_review','repeat_test','correction','general'].map(v => <option key={v} value={v}>{titleizeBookingStepGroup(v)}</option>)}</select></label></div><div className="flex flex-wrap items-center gap-8 border-t border-gray-200 pt-4"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.autoCompleteOnArtifact} onChange={(e) => setForm({ ...form, autoCompleteOnArtifact: e.target.checked })} /> Mark this step automatically when a matching artifact arrives</label><label className="flex items-center gap-3"><span className="text-xs uppercase tracking-wider text-gray-500">Set status to</span><select value={form.autoCompleteStatus} onChange={(e) => setForm({ ...form, autoCompleteStatus: e.target.value })} className={fieldClass}>{['received','completed','approved'].map(v => <option key={v}>{v}</option>)}</select></label></div></div>}
+
+        {editorTab === 'reminders' && <div className="max-w-4xl space-y-7"><section><div className="mb-3 flex justify-between"><span className={labelClass}>Reminder sequence</span><button type="button" onClick={addReminderRule} className="text-sm text-sky-700 underline">Add rule</button></div><div className="divide-y divide-gray-300 border-y border-gray-300">{form.reminderRules.length === 0 && <div className="py-3 text-sm text-gray-500">No custom reminders. The standard sequence will be used.</div>}{form.reminderRules.map((rule,index) => <div key={`${rule.key}-${index}`} className="grid grid-cols-[90px_1fr_150px_auto] items-center gap-3 py-3"><input type="number" value={rule.offsetDays} onChange={(e) => updateReminderRule(index,{offsetDays:Number(e.target.value)})} className={fieldClass} /><input value={rule.key} onChange={(e) => updateReminderRule(index,{key:e.target.value})} className={fieldClass} /><select value={rule.actionType} onChange={(e) => updateReminderRule(index,{actionType:e.target.value as BookingReminderRule['actionType']})} className={fieldClass}><option value="send_email">Send email</option><option value="create_staff_task">Create staff task</option></select><button type="button" onClick={() => removeReminderRule(index)} className="text-xs text-red-600">Remove</button></div>)}</div></section><section><div className="mb-3 flex justify-between"><span className={labelClass}>Buttons shown on the booking</span><button type="button" onClick={addAction} className="text-sm text-sky-700 underline">Add action</button></div>{form.actions.length === 0 ? <p className="text-sm text-gray-600">None yet. Add an action to give staff a button on this step.</p> : <div className="space-y-2">{form.actions.map((action,index) => <div key={`${action.key}-${index}`} className="grid grid-cols-[1fr_1fr_150px_auto] gap-3 border-b border-gray-200 py-2"><input value={action.label} onChange={(e) => updateAction(index,{label:e.target.value})} className={fieldClass}/><input value={action.key} onChange={(e) => updateAction(index,{key:e.target.value})} className={fieldClass}/><select value={action.type} onChange={(e) => updateAction(index,{type:e.target.value as BookingFlowAction['type']})} className={fieldClass}>{['email','upload','link_mrr','whatsapp','link','manual'].map(v=><option key={v} value={v}>{titleizeBookingStepGroup(v)}</option>)}</select><button type="button" onClick={() => removeAction(index)} className="text-xs text-red-600">Remove</button></div>)}</div>}</section></div>}
+
+        {editorTab === 'flags' && <div className="grid max-w-4xl gap-8 sm:grid-cols-2"><div className="divide-y divide-gray-300">{[{label:'Active',hint:'Included when new bookings are created',value:form.active,key:'active'},{label:'Blocking requirement',hint:'Booking cannot be marked ready until this is done',value:form.isBlocking,key:'isBlocking'},{label:'Creates task',hint:'Adds a task to the admin list',value:form.createsTask,key:'createsTask'},{label:'Review required',hint:'A second admin must confirm',value:form.reviewRequired,key:'reviewRequired'},{label:'Booking requirement',hint:'Shows on the client-facing checklist',value:form.isRequirement,key:'isRequirement'}].map(item => <label key={item.key} className="flex gap-3 py-3"><input type="checkbox" checked={item.value} onChange={(e) => setForm({ ...form, [item.key]: e.target.checked })}/><span><span className="block text-sm font-medium text-gray-900">{item.label}</span><span className="block text-xs text-gray-500">{item.hint}</span></span></label>)}</div><div><BookingStepColorField groupKey={form.readinessGroup || form.category} value={form.readinessGroupColor} onChange={(value) => setForm({ ...form, readinessGroupColor: value })}/><button type="button" onClick={applyColorToGroup} disabled={saving} className="mt-4 border border-gray-300 bg-white px-3 py-2 text-xs">Apply this colour to the whole section</button><label className="mt-6 block"><span className={labelClass}>Requirement type</span><input value={form.requirementType} onChange={(e) => setForm({ ...form, requirementType: e.target.value })} className={fieldClass}/></label><label className="mt-4 block"><span className={labelClass}>Client tag on complete</span><input value={form.clientTagOnComplete} onChange={(e) => setForm({ ...form, clientTagOnComplete: e.target.value })} className={fieldClass}/></label></div></div>}
+      </div>
+
+      <div className="sticky bottom-0 flex items-center justify-between border-t border-gray-300 bg-[#f7f5f4] px-6 py-4">
+        <span className="text-xs text-gray-500">Changes apply to bookings created from now on.</span>
+        <div className="flex items-center gap-3">{selectedTemplateId && <button onClick={handleDelete} className="text-sm text-red-700 underline">Delete step</button>}<button type="button" onClick={() => selectedTemplateId ? selectTemplate(templates.find(t => t._id === selectedTemplateId)!) : handleNewStep()} className="border border-gray-300 bg-white px-4 py-2 text-sm">Discard</button><button onClick={handleSave} disabled={saving} className="bg-[#211d1e] px-5 py-2 text-sm font-semibold text-white disabled:opacity-50">{saving ? 'Saving…' : selectedTemplateId ? 'Save step' : 'Add step'}</button></div>
+      </div>
+      <div className="hidden">
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <label className="block">
           <span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Step key</span>
@@ -815,6 +881,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
           </button>
         )}
       </div>
+      </div>
     </div>
   );
 
@@ -823,28 +890,27 @@ const RetreatFlowLibraryPage: React.FC = () => {
   }
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div className="min-h-screen bg-[#e8e6e5] p-4 lg:p-6">
+      <div className="mx-auto max-w-[1500px] border border-gray-300 bg-[#fbfaf9] shadow-lg">
+      <div className="flex flex-wrap items-start justify-between gap-4 border-b border-gray-900 px-7 py-5">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Booking Step Setup</h1>
-          <p className="text-sm text-gray-600">Configure the master booking steps, deadlines, artifact matching, and order used when bookings are created.</p>
+          <div className="text-[10px] uppercase tracking-[0.16em] text-gray-500">Master configuration</div>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-gray-900">Booking step setup</h1>
+          <p className="mt-1 max-w-xl text-xs text-gray-700">One library of {templates.length} steps. Every booking created copies these definitions, then keeps its own dates, statuses and notes.</p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button onClick={exportBackup} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-            <Download className="h-4 w-4" /> Export Backup
-          </button>
-          <button onClick={() => importInputRef.current?.click()} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-            <Upload className="h-4 w-4" /> Import / Restore
-          </button>
+        <div className="flex max-w-2xl flex-col items-end gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <div className="w-64"><SearchableRetreatSelect retreats={retreats} selectedRetreatId={selectedRetreatId} onRetreatSelect={setSelectedRetreatId} placeholder="Apply library to retreat…" /></div>
+            <button disabled={!selectedRetreatId || applying} onClick={handleApplyAll} className="bg-[#211d1e] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40">Apply full setup</button>
+            <button disabled={!selectedRetreatId || !selectedTemplateId || applying} onClick={handleApplySelected} className="border border-gray-300 bg-white px-4 py-2 text-xs disabled:opacity-40">Apply this step</button>
+          </div>
+          <div className="flex flex-wrap gap-4 text-[11px] text-sky-800">
+          <button onClick={exportBackup} className="underline">Export backup</button>
+          <button onClick={() => importInputRef.current?.click()} className="underline">Import / restore</button>
           <input ref={importInputRef} type="file" accept="application/json,.json" onChange={chooseImportFile} className="hidden" />
-          <button onClick={handleSeed} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-            <Icon icon={Plus} className="h-4 w-4" />
-            Seed Defaults
-          </button>
-          <button onClick={() => navigate(`${routePrefix}/retreat-flow`)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
-            <Icon icon={RefreshCw} className="h-4 w-4" />
-            Open Retreat Readiness Setup
-          </button>
+          <button onClick={handleSeed} className="underline">Seed defaults</button>
+          <button onClick={() => navigate(`${routePrefix}/retreat-flow`)} className="underline">Retreat readiness setup</button>
+          </div>
         </div>
       </div>
 
@@ -878,29 +944,19 @@ const RetreatFlowLibraryPage: React.FC = () => {
         </div>
       )}
 
-      <div className="mb-4 max-w-lg">
-        <SearchableRetreatSelect
-          retreats={retreats}
-          selectedRetreatId={selectedRetreatId}
-          onRetreatSelect={setSelectedRetreatId}
-          placeholder="Select retreat to apply library to"
-        />
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Step Definitions</h2>
-            <span className="text-xs text-gray-500">{sortedTemplates.length} steps</span>
+      <div className="grid min-h-[760px] lg:grid-cols-[320px_minmax(0,1fr)]">
+        <aside className="border-r border-gray-300 bg-[#f7f5f4]">
+          <div className="flex gap-2 border-b border-gray-200 p-4">
+            <input value={stepSearch} onChange={(event) => setStepSearch(event.target.value)} placeholder="Find a step" className="min-w-0 flex-1 border border-gray-300 bg-white px-3 py-2 text-sm" />
+            <button onClick={handleNewStep} className="border border-gray-300 bg-white px-3 text-sm text-sky-800">+ New</button>
           </div>
-          <div className="space-y-2">
-            {sortedTemplates.map((template) => {
+          <div className="py-2">
+            {visibleTemplates.map((template) => {
               const isSelected = selectedTemplateId === template._id;
               const groupKey = template.readinessGroup || template.category || 'other';
               const effectiveGroupColor = template.readinessGroupColor || groupColorByKey[normalizeGroupKey(groupKey)];
               const tone = getBookingStepToneWithColor(groupKey, effectiveGroupColor);
               const stepStyle = getBookingStepColorStyles(tone, 'step');
-              const dotStyle = getBookingStepColorStyles(tone, 'dot');
 
               return (
                 <React.Fragment key={template._id}>
@@ -910,10 +966,10 @@ const RetreatFlowLibraryPage: React.FC = () => {
                     onDragOver={(event) => event.preventDefault()}
                     onDrop={() => handleTemplateDrop(template._id)}
                     onClick={() => selectTemplate(template)}
-                    className={`block w-full rounded-md border border-l-4 px-3 py-2 text-left ${tone.stepStripe} ${
+                    className={`block w-full border-0 border-l-2 px-4 py-3 text-left ${tone.stepStripe} ${
                       isSelected
-                        ? `${tone.border} ${tone.stepCell} ring-1 ${tone.ring}`
-                        : 'border-gray-200 bg-white hover:bg-gray-50'
+                        ? 'border-sky-600 bg-sky-50'
+                        : 'border-transparent bg-transparent hover:bg-white'
                     } ${draggedTemplateId === template._id ? 'opacity-60' : ''}`}
                     style={stepStyle}
                   >
@@ -921,78 +977,24 @@ const RetreatFlowLibraryPage: React.FC = () => {
                       <div className="flex min-w-0 items-center gap-2">
                         <Icon icon={GripVertical} className="h-4 w-4 shrink-0 text-gray-400" />
                         <div className="min-w-0">
-                          <div className="flex min-w-0 items-center gap-2">
-                            <span className={`h-2.5 w-2.5 flex-none rounded-full ${tone.dot}`} style={dotStyle} />
-                            <div className="truncate text-sm font-semibold text-gray-900">{template.title}</div>
-                          </div>
-                          <div className="truncate text-xs text-gray-500">{template.key} • {titleizeBookingStepGroup(groupKey)} • {formatDeadlineLabel(template)}</div>
+                          <div className="truncate text-sm font-semibold text-gray-900">{template.title}</div>
+                          <div className="mt-1 truncate text-[11px] text-gray-500">{titleizeBookingStepGroup(groupKey)} · Due {formatDeadlineLabel(template)}</div>
                         </div>
                       </div>
-                      <div className="text-right text-xs text-gray-500">
-                        <div>#{template.order || 0}</div>
-                        <div>{template.workflowStage || 'potential'}</div>
-                        <div>{template.active === false ? 'Hidden' : 'Active'}</div>
-                        <div>{template.isBlocking ? 'Blocking' : 'Non-blocking'}</div>
-                        {template.emailEnabled && <div>Email enabled</div>}
+                      <div className="flex items-center gap-1 text-[10px] text-gray-500">
+                        {template.isBlocking && <span className="border border-red-300 bg-red-50 px-1 text-red-700">B</span>}
+                        <span>#{template.order || 0}</span>
                       </div>
                     </div>
                   </button>
-                  {isSelected && (
-                    <div className="mb-4 mt-2">
-                      {renderTemplateEditor()}
-                    </div>
-                  )}
                 </React.Fragment>
               );
             })}
-            {sortedTemplates.length === 0 && <div className="rounded-md border border-dashed border-gray-300 p-4 text-sm text-gray-500">No booking step definitions yet. Seed defaults to create the standard booking flow.</div>}
+            {visibleTemplates.length === 0 && <div className="p-4 text-sm text-gray-500">No matching booking steps.</div>}
           </div>
-
-          {!selectedTemplateId && (
-            <div className="mt-4">
-              {renderTemplateEditor()}
-            </div>
-          )}
-        </div>
-
-        <div className="rounded-lg border border-gray-200 bg-white p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Apply to Retreat</h2>
-          </div>
-          <p className="text-sm text-gray-600">
-            Apply the selected step or the full setup to a retreat. This copies the global booking step definitions into the retreat-specific readiness setup.
-          </p>
-
-          <div className="mt-4 space-y-3">
-            <button
-              disabled={!selectedRetreatId || applying}
-              onClick={handleApplySelected}
-              className="inline-flex w-full items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            >
-              <span className="inline-flex items-center gap-2">
-                <Icon icon={Copy} className="h-4 w-4" />
-                Apply selected step
-              </span>
-              <span className="text-xs text-gray-500">{selectedRetreatId ? 'to retreat' : 'select retreat'}</span>
-            </button>
-
-            <button
-              disabled={!selectedRetreatId || applying}
-              onClick={handleApplyAll}
-              className="inline-flex w-full items-center justify-between rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-            >
-              <span className="inline-flex items-center gap-2">
-                <Icon icon={CheckCircle2} className="h-4 w-4" />
-                Apply full setup
-              </span>
-              <span className="text-xs text-white/80">{selectedRetreatId ? 'sync retreat' : 'select retreat'}</span>
-            </button>
-          </div>
-
-          <div className="mt-6 rounded-md border border-dashed border-gray-300 p-4 text-sm text-gray-600">
-            Use this page as the master booking step configuration. Generated booking requirement rows keep their own due dates, statuses, notes, and update history.
-          </div>
-        </div>
+        </aside>
+        <main className="min-w-0">{renderTemplateEditor()}</main>
+      </div>
       </div>
     </div>
   );
