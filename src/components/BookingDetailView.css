@@ -27,6 +27,36 @@
   flex-wrap: wrap;
 }
 
+.booking-sibling-navigation {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.booking-sibling-button {
+  min-width: 82px;
+  height: 52px;
+  padding: 7px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  background: #fff;
+  color: #1f2937;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.07);
+}
+
+.booking-sibling-button span { display: flex; flex-direction: column; line-height: 1.1; }
+.booking-sibling-button small { color: #6b7280; font-size: 9px; font-weight: 650; text-transform: uppercase; letter-spacing: .06em; }
+.booking-sibling-button svg { width: 16px; height: 16px; }
+.booking-sibling-button:hover:not(:disabled) { border-color: #6b7280; background: #f9fafb; transform: translateY(-1px); }
+.booking-sibling-button:disabled { cursor: not-allowed; opacity: .38; box-shadow: none; }
+
 .language-selector {
   min-height: 64px;
   padding: 0 42px 0 18px;
@@ -1106,6 +1136,11 @@
   .pdf-btn span {
     font-size: 10px;
   }
+}
+
+@media (max-width: 640px) {
+  .booking-sibling-navigation { order: 3; width: 100%; }
+  .booking-sibling-button { flex: 1; }
 }
 
 @media (max-width: 980px) {

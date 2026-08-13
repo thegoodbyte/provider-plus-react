@@ -1,5 +1,5 @@
 import React from 'react';
-import { FiArrowLeft, FiCheck, FiDownload, FiEdit3, FiEye, FiMail, FiSend, FiX } from 'react-icons/fi';
+import { FiArrowLeft, FiArrowRight, FiCheck, FiDownload, FiEdit3, FiEye, FiMail, FiSend, FiX } from 'react-icons/fi';
 import { BookingConfirmationLanguage } from './bookingConfirmationWorkflow';
 
 export type BookingDetailTab = 'overview' | 'activity' | 'payments' | 'requirements' | 'medical' | 'ceremonies' | 'documents' | 'emails' | 'tasks' | 'workflow' | 'notes';
@@ -12,13 +12,19 @@ type Props = {
   bookingNumber?: string | number; clientName: string; clientDisplayId?: string | number; clientId?: string; retreatCode: string; retreatId?: string; bookingTypeCode: string;
   language: BookingConfirmationLanguage; activeTab: BookingDetailTab; requirementsStatus: { missing: number; total: number } | null;
   generating: boolean; previewing: boolean; sending: boolean; preparing: boolean; previewUrl: string; previewFileName: string;
+  previousBooking?: { bookingNumber?: string | number; clientName?: string } | null; nextBooking?: { bookingNumber?: string | number; clientName?: string } | null;
   onBack: () => void; onLanguageChange: (value: BookingConfirmationLanguage) => void; onEdit: () => void; onPreview: () => void; onQuickSend: () => void; onReview: () => void; onDownload: () => void; onClosePreview: () => void; onOpenClient: () => void; onOpenRetreat: () => void; onTabChange: (tab: BookingDetailTab) => void;
+  onPreviousBooking?: () => void; onNextBooking?: () => void;
 };
 
 const BookingDetailShell: React.FC<Props> = (props) => <>
   <div className="detail-header">
     <button onClick={props.onBack} className="back-btn" title="Back to bookings" aria-label="Back to bookings"><Icon component={FiArrowLeft} /></button>
     <div className="booking-title-block"><span className="booking-title-kicker">Booking Details</span><h1>Booking #{props.bookingNumber || 'N/A'}</h1></div>
+    <nav className="booking-sibling-navigation" aria-label={`Bookings in ${props.retreatCode}`}>
+      <button type="button" disabled={!props.previousBooking} onClick={props.onPreviousBooking} className="booking-sibling-button" aria-label={props.previousBooking ? `Previous booking, #${props.previousBooking.bookingNumber}, ${props.previousBooking.clientName || ''}` : 'No previous booking'} title={props.previousBooking ? `Previous: #${props.previousBooking.bookingNumber} · ${props.previousBooking.clientName || ''}` : 'First booking in this retreat'}><Icon component={FiArrowLeft} /><span><small>Previous</small>{props.previousBooking ? `#${props.previousBooking.bookingNumber || 'N/A'}` : '—'}</span></button>
+      <button type="button" disabled={!props.nextBooking} onClick={props.onNextBooking} className="booking-sibling-button is-next" aria-label={props.nextBooking ? `Next booking, #${props.nextBooking.bookingNumber}, ${props.nextBooking.clientName || ''}` : 'No next booking'} title={props.nextBooking ? `Next: #${props.nextBooking.bookingNumber} · ${props.nextBooking.clientName || ''}` : 'Last booking in this retreat'}><span><small>Next</small>{props.nextBooking ? `#${props.nextBooking.bookingNumber || 'N/A'}` : '—'}</span><Icon component={FiArrowRight} /></button>
+    </nav>
     <div className="header-actions">
       <select aria-label="Confirmation language" value={props.language} onChange={e => props.onLanguageChange(e.target.value as BookingConfirmationLanguage)} className="language-selector" disabled={props.generating}><option value="pl">PL</option><option value="cz">CZ</option><option value="en">EN</option></select>
       <button onClick={props.onEdit} className="pdf-btn" title="Edit booking" aria-label="Edit booking"><Icon component={FiEdit3} /><span>Edit</span></button>
