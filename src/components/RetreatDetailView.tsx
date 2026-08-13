@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { retreatsApi, bookingsApi, retreatExpensesApi, paymentsApi, clientsApi, housesApi, communicationsApi, contactBookApi, bookingFlowApi } from '../services/api';
 import { Retreat, ExpenseSummary, House, Payment, EmailTemplate, ContactBookEntry, RetreatStaffAssignment, BookingFlowTemplate } from '../types';
@@ -42,6 +42,7 @@ import TaskAltRoundedIcon from '@mui/icons-material/TaskAltRounded';
 import BiotechRoundedIcon from '@mui/icons-material/BiotechRounded';
 import './ClientsGrid.css';
 import { getEffectivePaidAmount, getPaymentAmountInBookingCurrency } from './retreatPaymentUtils';
+import { filterRetreatEmailTemplates, normalizeTemplateLanguage, RetreatEmailTemplateLanguage } from './retreatEmailTemplateFilters';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -299,6 +300,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   });
   const [showRetreatEmailModal, setShowRetreatEmailModal] = useState(false);
   const [retreatEmailTemplates, setRetreatEmailTemplates] = useState<EmailTemplate[]>([]);
+  const [retreatEmailTemplateLanguage, setRetreatEmailTemplateLanguage] = useState<RetreatEmailTemplateLanguage>('all');
   const [retreatEmailStepTemplates, setRetreatEmailStepTemplates] = useState<BookingFlowTemplate[]>([]);
   const [retreatEmailLoading, setRetreatEmailLoading] = useState(false);
   const [excludedRetreatEmailClientIds, setExcludedRetreatEmailClientIds] = useState<string[]>([]);
@@ -326,6 +328,10 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   });
   const [quickBookingForm] = Form.useForm();
   const [retreatEmailForm] = Form.useForm();
+  const filteredRetreatEmailTemplates = useMemo(
+    () => filterRetreatEmailTemplates(retreatEmailTemplates, retreatEmailTemplateLanguage),
+    [retreatEmailTemplateLanguage, retreatEmailTemplates],
+  );
   const [quickBookingLoading, setQuickBookingLoading] = useState(false);
   const [selectedExistingClient, setSelectedExistingClient] = useState<Client | null>(null);
   const heroImageInputRef = useRef<HTMLInputElement | null>(null);
@@ -802,6 +808,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       bookingFlowStatusOnSend: 'completed',
     });
     setExcludedRetreatEmailClientIds([]);
+    setRetreatEmailTemplateLanguage('all');
     setShowRetreatEmailModal(true);
 
     if (retreatEmailTemplates.length === 0 || retreatEmailStepTemplates.length === 0) {
@@ -831,6 +838,21 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       bookingFlowStepKey: template.bookingFlowStepKey || '',
       bookingFlowStatusOnSend: template.bookingFlowStatusOnSend || (template.bookingFlowStepKey ? 'completed' : undefined),
     });
+  };
+
+  const handleRetreatEmailLanguageChange = (language: RetreatEmailTemplateLanguage) => {
+    setRetreatEmailTemplateLanguage(language);
+    const selectedTemplateId = retreatEmailForm.getFieldValue('templateId');
+    const selectedTemplate = retreatEmailTemplates.find((template) => template._id === selectedTemplateId);
+    if (selectedTemplate && language !== 'all' && normalizeTemplateLanguage(selectedTemplate.language) !== language) {
+      retreatEmailForm.setFieldsValue({
+        templateId: undefined,
+        subject: '',
+        bodyText: '',
+        bookingFlowStepKey: '',
+        bookingFlowStatusOnSend: 'completed',
+      });
+    }
   };
 
   const handleRetreatEmailSend = async (values: { templateId?: string; subject: string; bodyText: string; bookingFlowStepKey?: string; bookingFlowStatusOnSend?: string }) => {
@@ -2036,17 +2058,34 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           layout="vertical"
           onFinish={handleRetreatEmailSend}
         >
+          <Form.Item label="Template language">
+            <Select
+              value={retreatEmailTemplateLanguage}
+              onChange={handleRetreatEmailLanguageChange}
+              aria-label="Template language"
+            >
+              <Option value="all">All languages</Option>
+              <Option value="en">English</Option>
+              <Option value="cz">Czech</Option>
+              <Option value="pl">Polish</Option>
+            </Select>
+          </Form.Item>
+
           <Form.Item name="templateId" label="Template">
             <Select
               allowClear
+              showSearch
+              optionFilterProp="label"
               placeholder="Optional template"
               onChange={(value) => handleRetreatEmailTemplateChange(value)}
+              notFoundContent="No templates match this language or search"
             >
-              {retreatEmailTemplates.map((template) => (
-                <Option key={template._id} value={template._id}>
-                  {template.display_id ? `#${template.display_id} ` : ''}{template.name}
-                </Option>
-              ))}
+              {filteredRetreatEmailTemplates.map((template) => {
+                const label = `${template.display_id ? `#${template.display_id} ` : ''}${template.name} · ${normalizeTemplateLanguage(template.language).toUpperCase()}`;
+                return <Option key={template._id} value={template._id} label={label}>
+                  {label}
+                </Option>;
+              })}
             </Select>
           </Form.Item>
 

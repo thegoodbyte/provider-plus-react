@@ -85,6 +85,7 @@ import SubmissionNotificationsPage from './SubmissionNotificationsPage';
 import RetreatClientsPrintPage from './RetreatClientsPrintPage';
 import { bookingsApi, retreatsApi } from '../services/api';
 import { Retreat } from '../types';
+import GlobalSearch from './GlobalSearch';
 
 const BookingEditorPage = lazy(() => import('./BookingEditorPage'));
 const BookingDetailView = lazy(() => import('./BookingDetailView'));
@@ -682,6 +683,8 @@ const AppleLayout: React.FC = () => {
                 </h1>
                 {renderQuickMenu()}
               </div>
+
+              <GlobalSearch routePrefix={routePrefix} onNavigate={navigate} />
 
                 {/* Actions */}
               <div className="flex items-center gap-2">

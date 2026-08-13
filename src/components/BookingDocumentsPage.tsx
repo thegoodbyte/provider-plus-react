@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowUpDown, Eye, FileText, RefreshCw, Search, SlidersHorizontal, Trash2, X } from 'lucide-react';
+import { ArrowUpDown, Download, Eye, FileText, RefreshCw, Search, SlidersHorizontal, Trash2, X } from 'lucide-react';
 import { bookingDocumentsApi } from '../services/api';
 import { BookingDocument, Client, Retreat, RetreatClient } from '../types';
 
@@ -59,9 +59,12 @@ const isPdfFile = (file: BookingDocumentFile) => {
   return file?.mimeType === 'application/pdf' || name.endsWith('.pdf');
 };
 
-const isImageFile = (file: BookingDocumentFile) => {
-  return Boolean(file?.mimeType?.startsWith('image/'));
-};
+const isImageFile = (file: BookingDocumentFile) => Boolean(
+  file?.mimeType?.startsWith('image/')
+  || /\.(png|jpe?g|gif|webp|bmp)$/i.test(file?.fileName || file?.s3Key || file?.filePath || ''),
+);
+
+export const isBookingDocumentFilePreviewable = (file: BookingDocumentFile) => isPdfFile(file) || isImageFile(file);
 
 const SortHeader: React.FC<{
   label: string;
@@ -131,6 +134,39 @@ const BookingDocumentsPage: React.FC = () => {
   const [deletingDocument, setDeletingDocument] = useState<BookingDocument | null>(null);
   const [deleteReason, setDeleteReason] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [viewer, setViewer] = useState<{ document: BookingDocument; file: BookingDocumentFile } | null>(null);
+  const [viewerUrl, setViewerUrl] = useState('');
+  const [viewerLoading, setViewerLoading] = useState(false);
+  const [viewerError, setViewerError] = useState('');
+
+  const closeViewer = () => {
+    if (viewerUrl) URL.revokeObjectURL(viewerUrl);
+    setViewer(null);
+    setViewerUrl('');
+    setViewerError('');
+  };
+
+  const openViewer = async (document: BookingDocument, file: BookingDocumentFile) => {
+    const storedPath = file.s3Key || file.filePath;
+    if (!document._id || !storedPath) return;
+    if (viewerUrl) URL.revokeObjectURL(viewerUrl);
+    setViewer({ document, file });
+    setViewerUrl('');
+    setViewerError('');
+    setViewerLoading(true);
+    try {
+      const response = await bookingDocumentsApi.getFile(document._id, storedPath);
+      setViewerUrl(URL.createObjectURL(response.data));
+    } catch (previewError: any) {
+      setViewerError(previewError?.response?.data?.message || previewError?.message || 'Unable to load this file preview.');
+    } finally {
+      setViewerLoading(false);
+    }
+  };
+
+  useEffect(() => () => {
+    if (viewerUrl) URL.revokeObjectURL(viewerUrl);
+  }, [viewerUrl]);
 
   const loadDocuments = async () => {
     setLoading(true);
@@ -319,10 +355,10 @@ const BookingDocumentsPage: React.FC = () => {
                           <button
                             key={`${document._id}-${file.s3Key || file.filePath || file.fileName || index}`}
                             type="button"
-                            onClick={() => file.url && window.open(file.url, '_blank', 'noopener,noreferrer')}
-                            disabled={!file.url}
+                            onClick={() => openViewer(document, file)}
+                            disabled={!document._id || !(file.s3Key || file.filePath)}
                             className="inline-flex max-w-xs items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-left text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-                            title={file.originalFileName ? `Original upload: ${file.originalFileName}` : file.url ? 'Open uploaded file' : 'File URL unavailable'}
+                            title={file.originalFileName ? `Preview original upload: ${file.originalFileName}` : 'Preview file'}
                           >
                             <Eye className="h-3.5 w-3.5 flex-none" />
                             <span className="truncate">{file.fileName || 'Uploaded file'}</span>
@@ -379,6 +415,26 @@ const BookingDocumentsPage: React.FC = () => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {viewer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/70 p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="document-preview-title">
+          <section className="flex h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+            <header className="flex items-center justify-between gap-4 border-b border-gray-200 px-4 py-3 sm:px-5">
+              <div className="min-w-0"><h2 id="document-preview-title" className="truncate text-lg font-semibold text-gray-900">{viewer.document.title || titleize(viewer.document.documentType)}</h2><p className="truncate text-xs text-gray-500">{viewer.file.fileName || viewer.file.originalFileName || 'Uploaded file'}</p></div>
+              <div className="flex shrink-0 items-center gap-2">
+                {viewerUrl && <a href={viewerUrl} download={viewer.file.fileName || viewer.file.originalFileName || 'document'} className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"><Download className="h-4 w-4" /> Download</a>}
+                <button type="button" onClick={closeViewer} className="rounded-md border border-gray-300 p-2 text-gray-600 hover:bg-gray-50" aria-label="Close document preview"><X className="h-5 w-5" /></button>
+              </div>
+            </header>
+            <div className="flex min-h-0 flex-1 items-center justify-center bg-gray-100 p-3">
+              {viewerLoading && <p className="text-sm text-gray-600">Loading secure preview…</p>}
+              {!viewerLoading && viewerError && <div className="max-w-xl rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">{viewerError}</div>}
+              {!viewerLoading && !viewerError && viewerUrl && isPdfFile(viewer.file) && <iframe src={viewerUrl} title={viewer.file.fileName || 'PDF preview'} className="h-full w-full rounded-md border-0 bg-white" />}
+              {!viewerLoading && !viewerError && viewerUrl && isImageFile(viewer.file) && <img src={viewerUrl} alt={viewer.file.fileName || 'Image preview'} className="max-h-full max-w-full object-contain" />}
+              {!viewerLoading && !viewerError && viewerUrl && !isBookingDocumentFilePreviewable(viewer.file) && <div className="rounded-md bg-white p-6 text-center text-gray-700"><FileText className="mx-auto mb-3 h-10 w-10 text-gray-400" /><p>Preview is unavailable for this file type.</p><p className="mt-1 text-sm text-gray-500">Use Download to open the file in its native application.</p></div>}
+            </div>
+          </section>
         </div>
       )}
     </div>

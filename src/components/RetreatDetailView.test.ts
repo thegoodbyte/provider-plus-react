@@ -1,4 +1,5 @@
 import { getEffectivePaidAmount, getPaymentAmountInBookingCurrency } from './retreatPaymentUtils';
+import { filterRetreatEmailTemplates, normalizeTemplateLanguage } from './retreatEmailTemplateFilters';
 import { Payment } from '../types';
 
 const payment = (overrides: Partial<Payment>): Payment => ({
@@ -44,5 +45,26 @@ describe('getEffectivePaidAmount', () => {
 
   it('converts a partial USD payment proportionally into the booking currency', () => {
     expect(getEffectivePaidAmount(9500, 2470, 0, 1235)).toBeCloseTo(4750);
+  });
+});
+
+describe('retreat email template language filtering', () => {
+  const templates = [
+    { _id: 'en', name: 'English', subject: '', bodyText: '', language: 'en' },
+    { _id: 'cz', name: 'Czech', subject: '', bodyText: '', language: 'cs' },
+    { _id: 'pl', name: 'Polish', subject: '', bodyText: '', language: 'pl' },
+    { _id: 'default', name: 'Default English', subject: '', bodyText: '' },
+  ];
+
+  it('normalizes supported template language aliases', () => {
+    expect(normalizeTemplateLanguage('CS')).toBe('cz');
+    expect(normalizeTemplateLanguage('cz')).toBe('cz');
+    expect(normalizeTemplateLanguage(undefined)).toBe('en');
+  });
+
+  it('returns only templates for the selected language and preserves all-language mode', () => {
+    expect(filterRetreatEmailTemplates(templates, 'cz').map((template) => template._id)).toEqual(['cz']);
+    expect(filterRetreatEmailTemplates(templates, 'en').map((template) => template._id)).toEqual(['en', 'default']);
+    expect(filterRetreatEmailTemplates(templates, 'all')).toHaveLength(4);
   });
 });
