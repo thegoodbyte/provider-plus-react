@@ -457,3 +457,68 @@
 .payment-request-actions .cancel-request { color:#b91c1c; border-color:#fecaca; }
 @media (max-width: 900px) { .booking-payment-request-row { grid-template-columns:repeat(2,minmax(0,1fr)); }.payment-request-identity { grid-column:1/-1; } }
 @media (max-width: 620px) { .payment-requests-heading,.payment-request-create { align-items:stretch; flex-direction:column; }.booking-payment-request-row { grid-template-columns:1fr; }.payment-request-identity,.payment-request-actions { grid-column:auto; } }
+
+/* Condensed booking payments workspace */
+.booking-payment-management { padding: 0; margin: 0; border-radius: 0; box-shadow: none; }
+.payment-summary-header { min-height: 70px; margin: 0; padding: 0 22px; border-bottom: 1px solid #111827; }
+.payment-summary-header h3 { font-size: 24px; color: #111827; }
+.booking-balance-summary { position: relative; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 0; margin: 22px; padding: 18px 20px 16px; border: 1px solid #d1d5db; border-left: 2px solid #dc2626; background: #fff; }
+.booking-balance-summary.is-paid { border-left-color: #15803d; }
+.booking-balance-metric { display: grid; gap: 7px; min-width: 0; padding: 0 24px; border-left: 1px solid #d1d5db; }
+.booking-balance-metric:first-child { padding-left: 0; border-left: 0; }
+.booking-balance-metric span { color: #6b7280; font-size: 10px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+.booking-balance-metric strong { color: #111827; font-size: 22px; line-height: 1.1; }
+.booking-balance-metric small { color: #6b7280; font-size: 12px; }
+.booking-balance-metric.outstanding span,.booking-balance-summary.has-balance .booking-balance-metric.outstanding strong,.booking-balance-summary.has-balance .booking-balance-metric.outstanding small { color: #b91c1c; }
+.booking-payment-progress { grid-column: 1/-1; display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 14px; margin-top: 20px; padding-top: 14px; border-top: 1px solid #e5e7eb; color: #374151; font-size: 12px; }
+.booking-payment-progress > div { height: 6px; overflow: hidden; background: #e5e7eb; }
+.booking-payment-progress i { display: block; height: 100%; background: #166534; }
+.booking-refund-summary { grid-column: 1/-1; margin-top: 10px; color: #92400e; font-size: 12px; }
+.booking-payment-requests { margin: 0 22px 24px; overflow: visible; border: 0; border-radius: 0; }
+.payment-requests-heading { padding: 0 0 12px; border: 0; background: transparent; }
+.payment-requests-heading p { font-size: 12px; }
+.new-payment-request-link { margin-left: auto; padding: 0 !important; border: 0 !important; background: transparent !important; color: #075985 !important; text-decoration: underline; }
+.booking-payment-request-row { grid-template-columns: minmax(210px,1.25fr) minmax(130px,.65fr) minmax(150px,.7fr) minmax(120px,.65fr); padding: 16px 18px; border: 1px solid #d1d5db !important; border-left: 2px solid #a16207 !important; }
+.booking-payment-request-row + .booking-payment-request-row { margin-top: 10px; }
+.booking-payment-request-row input { width: 100%; min-width: 0; }
+.payment-request-actions { grid-column: 1/-1; justify-content: flex-end; margin-top: -4px; }
+.payment-request-actions .primary-request-action { margin-right: 2px; background: #211f20; border-color: #211f20; color: #fff; }
+.payments-list { margin: 0 22px 24px; }
+.payment-history-header { padding-top: 2px; margin-bottom: 10px; }
+.payments-table { border: 0; border-radius: 0; }
+.payments-table th { padding: 10px 8px; border-top: 1px solid #d1d5db; border-bottom-color: #9ca3af; background: transparent; font-size: 10px; letter-spacing: .1em; }
+.payments-table td { padding: 14px 8px; }
+
+@media (max-width: 760px) {
+  .payment-summary-header { min-height: 58px; padding: 0 14px; }
+  .payment-summary-header h3 { font-size: 21px; }
+  .booking-payment-state { padding: 5px 9px; font-size: 10px; }
+  .booking-balance-summary { display: grid; grid-template-columns: 1fr 1fr; margin: 12px; padding: 14px; }
+  .booking-balance-metric { padding: 12px 0 0; border: 0; }
+  .booking-balance-metric.outstanding { grid-column: 1/-1; grid-row: 1; padding: 0 0 16px; border-bottom: 1px solid #d1d5db; }
+  .booking-balance-metric.outstanding strong { font-size: 25px; }
+  .booking-balance-metric.total { padding-right: 10px; }
+  .booking-balance-metric.received { padding-left: 10px; text-align: right; }
+  .booking-balance-metric strong { font-size: 16px; }
+  .booking-payment-progress { grid-template-columns: 1fr auto; margin-top: 13px; padding-top: 12px; }
+  .booking-payment-requests,.payments-list { margin: 0 12px 20px; }
+  .payment-requests-heading { align-items: center; flex-direction: row; }
+  .payment-requests-heading p { display: none; }
+  .booking-payment-request-row { display: grid; grid-template-columns: 1fr; gap: 10px; padding: 14px; }
+  .booking-payment-request-row > div:not(.payment-request-actions):not(.payment-request-identity),.booking-payment-request-row label { display: flex; align-items: center; justify-content: space-between; }
+  .payment-request-actions { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr) auto; margin: 2px 0 0; }
+  .payment-request-actions button { min-height: 38px; }
+  .payment-request-actions button:nth-child(n+4) { display: none; }
+  .payment-history-header .add-payment-btn { width: auto; min-width: 0; height: auto; padding: 0; background: transparent; color: #075985; font-size: 12px; text-decoration: underline; }
+  .payment-history-header .add-payment-btn:first-child { display: none; }
+  .payments-table-container { overflow: visible; }
+  .payments-table,.payments-table tbody,.payments-table tr,.payments-table td { display: block; width: 100%; }
+  .payments-table thead { display: none; }
+  .payments-table tr { position: relative; padding: 10px 88px 10px 0; border-bottom: 1px solid #d1d5db; }
+  .payments-table td { padding: 2px 0; border: 0; white-space: normal; font-size: 11px; }
+  .payments-table td:nth-child(1),.payments-table td:nth-child(2),.payments-table td:nth-child(3),.payments-table td:nth-child(5),.payments-table td:nth-child(6) { display: inline; margin-right: 4px; }
+  .payments-table td:nth-child(4),.payments-table td:nth-child(8) { display: none; }
+  .payments-table td:nth-child(7) { position: absolute; top: 12px; right: 0; }
+  .payments-table td:nth-child(9) { margin-top: 7px; }
+  .payment-actions { gap: 7px; }
+}
