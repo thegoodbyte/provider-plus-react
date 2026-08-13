@@ -610,7 +610,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
 
         {isEdit && isAdmin && (
           <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4">
-            {getRecordId(selectedArtifacts.find((artifact) => artifact.bookingId)?.bookingId as any) && <button type="button" onClick={() => navigate(`/admin/bookings/${getRecordId(selectedArtifacts.find((artifact) => artifact.bookingId)?.bookingId as any)}/medication-stop-plan`)} className="mb-4 rounded-md bg-indigo-700 px-4 py-2 text-sm font-semibold text-white">Open medication preparation plan</button>}
+            {getRecordId(selectedArtifacts.find((artifact) => artifact.bookingId)?.bookingId as any) && <button type="button" onClick={() => { const artifact = selectedArtifacts.find((candidate) => candidate.bookingId); const params = new URLSearchParams({ medicalReviewRequestId: id || '', artifactId: getRecordId(artifact as any) || '' }); navigate(`/admin/bookings/${getRecordId(artifact?.bookingId as any)}/medication-stop-plan?${params}`); }} className="mb-4 rounded-md bg-indigo-700 px-4 py-2 text-sm font-semibold text-white">Open medication preparation plan</button>}
             <label htmlFor="client-visible-admin-note" className="mb-2 block text-sm font-semibold text-indigo-950">
               Client-visible admin note
             </label>

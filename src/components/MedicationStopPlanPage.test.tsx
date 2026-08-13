@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import MedicationStopPlanPage from './MedicationStopPlanPage';
 import { bookingFlowApi } from '../services/api';
 
-jest.mock('../services/api', () => ({ bookingFlowApi: { getMedicationStopPlan: jest.fn(), saveMedicationStopPlan: jest.fn() } }));
+jest.mock('../services/api', () => ({ bookingFlowApi: { getMedicationStopPlan: jest.fn(), saveMedicationStopPlan: jest.fn(), approveMedicationStopPlan: jest.fn(), publishMedicationStopPlan: jest.fn() } }));
 jest.mock('react-router-dom', () => ({ useNavigate: () => jest.fn(), useParams: () => ({ bookingId: 'booking-1240' }) }), { virtual: true });
 
 describe('MedicationStopPlanPage', () => {
@@ -18,8 +18,8 @@ describe('MedicationStopPlanPage', () => {
     expect(allClear).toBeChecked();
     expect(screen.getByDisplayValue('No changes required.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Add calendar item/i })).toBeDisabled();
-    fireEvent.click(screen.getByRole('button', { name: /Save & schedule reminders/i }));
-    await waitFor(() => expect(bookingFlowApi.saveMedicationStopPlan).toHaveBeenCalledWith('booking-1240', [], true, 'No changes required.'));
+    fireEvent.click(screen.getByRole('button', { name: /Save draft/i }));
+    await waitFor(() => expect(bookingFlowApi.saveMedicationStopPlan).toHaveBeenCalledWith('booking-1240', [], true, 'No changes required.', expect.objectContaining({ remindersPaused: false })));
   });
 
   it('saves dated medical instructions when all-clear is not selected', async () => {
@@ -29,7 +29,9 @@ describe('MedicationStopPlanPage', () => {
     fireEvent.change(await screen.findByLabelText(/^Medication or substance$/i), { target: { value: 'Creatine' } });
     fireEvent.change(screen.getByLabelText(/Stop date/i), { target: { value: '2026-08-08' } });
     fireEvent.change(screen.getByLabelText(/Instruction shown to client/i), { target: { value: 'Stop 14 days before.' } });
-    fireEvent.click(screen.getByRole('button', { name: /Save & schedule reminders/i }));
-    await waitFor(() => expect(bookingFlowApi.saveMedicationStopPlan).toHaveBeenCalledWith('booking-1240', [expect.objectContaining({ name: 'Creatine', dueDate: '2026-08-08', instruction: 'Stop 14 days before.' })], false, ''));
+    fireEvent.click(screen.getByRole('button', { name: /Save draft/i }));
+    await waitFor(() => expect(bookingFlowApi.saveMedicationStopPlan).toHaveBeenCalledWith('booking-1240', [expect.objectContaining({ name: 'Creatine', dueDate: '2026-08-08', instruction: 'Stop 14 days before.' })], false, '', expect.any(Object)));
   });
+
+  it('requires approval before publication', async () => { (bookingFlowApi.getMedicationStopPlan as jest.Mock).mockResolvedValue({ data: [{ _id:'one', status:'pending', title:'Creatine', description:'Stop', metadata:{ planLifecycle:'draft' } }] }); (bookingFlowApi.approveMedicationStopPlan as jest.Mock).mockResolvedValue({ data:[{ metadata:{ planLifecycle:'approved' } }] }); (bookingFlowApi.publishMedicationStopPlan as jest.Mock).mockResolvedValue({ data:[{ metadata:{ planLifecycle:'published' } }] }); render(<MedicationStopPlanPage/>); const approve=await screen.findByRole('button',{name:/Medical approve/i}); expect(screen.getByRole('button',{name:/Publish to IR/i})).toBeDisabled(); fireEvent.click(approve); await waitFor(()=>expect(screen.getByRole('button',{name:/Publish to IR/i})).toBeEnabled()); fireEvent.click(screen.getByRole('button',{name:/Publish to IR/i})); await waitFor(()=>expect(bookingFlowApi.publishMedicationStopPlan).toHaveBeenCalledWith('booking-1240')); });
 });
