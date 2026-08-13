@@ -58,6 +58,7 @@ const BookingFlowPage: React.FC = () => {
   const [clientFilter, setClientFilter] = useState('');
   const [actionFilter, setActionFilter] = useState('');
   const [hideAccomplished, setHideAccomplished] = useState(false);
+  const [groupBy, setGroupBy] = useState<'client' | 'day'>('client');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [booking, setBooking] = useState<any>(null);
@@ -297,6 +298,16 @@ const BookingFlowPage: React.FC = () => {
     groups.get(id)!.push(item);
     return groups;
   }, new Map<string, BookingFlowItem[]>()).entries());
+  const itemsByDay = Array.from(filteredItems.reduce((groups, item) => {
+    const key = toDateInputValue(item.dueDate) || 'no-date';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(item);
+    return groups;
+  }, new Map<string, BookingFlowItem[]>()).entries()).sort(([left], [right]) => {
+    if (left === 'no-date') return 1;
+    if (right === 'no-date') return -1;
+    return left.localeCompare(right);
+  });
   const pastDueTotal = allItems.filter(isPastDue).length;
   const dueSoonTotal = allItems.filter(isDueSoon).length;
   const accomplishedTotal = allItems.filter(isAccomplished).length;
@@ -337,6 +348,11 @@ const BookingFlowPage: React.FC = () => {
           <select value={actionFilter} onChange={(event) => setActionFilter(event.target.value)} className="border border-gray-300 bg-white px-3 py-2.5 text-sm"><option value="">All categories</option>{actionOptions.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select>
           <button type="button" onClick={() => setHideAccomplished((current) => !current)} className={`border px-4 py-2.5 text-sm font-medium ${hideAccomplished ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-300 bg-white text-gray-700'}`}>{hideAccomplished ? 'Show accomplished' : 'Hide accomplished'}</button>
           <div className="flex items-center gap-2 md:col-span-4">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Group by</span>
+            <div className="inline-flex border border-gray-300 bg-white p-0.5">
+              {(['client', 'day'] as const).map((option) => <button key={option} type="button" onClick={() => setGroupBy(option)} className={`px-3 py-1.5 text-xs font-semibold ${groupBy === option ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>{option === 'client' ? 'Client' : 'Due date'}</button>)}
+            </div>
+            <span className="mx-1 h-5 border-l border-gray-300" />
             <span className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">Due range</span>
             <input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} className="border border-gray-300 bg-white px-2 py-1.5 text-xs" />
             <span className="text-xs text-gray-400">to</span>
@@ -346,7 +362,30 @@ const BookingFlowPage: React.FC = () => {
         </div>
 
         <div className="px-7 pb-8">
-          {groupedItems.length === 0 ? <div className="p-10 text-center text-sm text-gray-500">No booking requirements match these filters.</div> : groupedItems.map(([id, bookingItems]) => {
+          {groupBy === 'day' ? (itemsByDay.length === 0 ? <div className="p-10 text-center text-sm text-gray-500">No booking requirements match these filters.</div> : itemsByDay.map(([dateKey, dayItems]) => {
+            const groupDate = dateKey === 'no-date' ? null : new Date(`${dateKey}T12:00:00`);
+            const isToday = dateKey !== 'no-date' && dateKey === new Date().toISOString().slice(0, 10);
+            const overdueCount = dayItems.filter(isPastDue).length;
+            const heading = !groupDate ? 'No due date' : isToday ? 'Today' : groupDate.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+            return <section key={dateKey} className="border-b border-gray-300 py-5">
+              <div className="mb-3 flex items-center gap-3">
+                <h2 className="text-lg font-bold text-gray-950">{heading}</h2>
+                <span className="text-xs text-gray-500">{dayItems.length} step{dayItems.length === 1 ? '' : 's'}</span>
+                {overdueCount > 0 && <span className="rounded-full border border-red-300 bg-red-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-red-700">{overdueCount} past due</span>}
+              </div>
+              <div className="space-y-0.5">{[...dayItems].sort((left, right) => getClientName({ clientId: left.clientId }).localeCompare(getClientName({ clientId: right.clientId }))).map((item) => {
+                const id = getObjectId(item.bookingId);
+                const currentBooking: any = typeof item.bookingId === 'object' ? item.bookingId : bookingById.get(id);
+                const done = isAccomplished(item); const overdue = isPastDue(item); const soon = isDueSoon(item);
+                return <div key={item._id || `${id}-${item.key}`} className={`grid items-center gap-3 border-l-2 px-3 py-2.5 md:grid-cols-[minmax(210px,1fr)_minmax(220px,1.2fr)_120px_70px] ${overdue ? 'border-red-600' : soon ? 'border-amber-600' : done ? 'border-green-700' : 'border-gray-400'}`}>
+                  <div><div className="text-sm font-bold text-gray-900">{getClientName({ clientId: item.clientId })}</div><div className="text-[11px] text-gray-500">#{currentBooking?.bookingNumber || id.slice(-6)} · {getRetreatName({ retreatId: item.retreatId })}</div></div>
+                  <div className="flex items-start gap-3"><span className={`mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded-full border text-xs font-bold ${done ? 'border-green-700 bg-green-700 text-white' : overdue ? 'border-red-300 bg-red-50 text-red-600' : soon ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-gray-300 text-gray-400'}`}>{done ? '✓' : overdue ? '!' : ''}</span><div><div className="text-sm font-semibold text-gray-900">{item.title}</div><div className="text-[11px] text-gray-500">{titleizeBookingStepGroup(item.category || 'other')}</div></div></div>
+                  <span className={`w-fit rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider ${done ? 'border-green-300 bg-green-50 text-green-700' : overdue ? 'border-red-300 bg-red-50 text-red-700' : soon ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-gray-300 bg-gray-50 text-gray-600'}`}>{String(item.status || 'pending').replace(/_/g, ' ')}</span>
+                  <button onClick={() => navigate(id)} className="text-left text-xs font-medium text-blue-700 hover:underline md:text-right">Open →</button>
+                </div>;
+              })}</div>
+            </section>;
+          })) : groupedItems.length === 0 ? <div className="p-10 text-center text-sm text-gray-500">No booking requirements match these filters.</div> : groupedItems.map(([id, bookingItems]) => {
             const currentBooking: any = bookingById.get(id) || (typeof bookingItems[0]?.bookingId === 'object' ? bookingItems[0].bookingId : null);
             const allBookingItems = allItems.filter((item) => getObjectId(item.bookingId) === id);
             const bookingDone = allBookingItems.filter(isAccomplished).length;

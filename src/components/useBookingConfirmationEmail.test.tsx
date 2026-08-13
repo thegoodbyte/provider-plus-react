@@ -7,7 +7,7 @@ import { useBookingConfirmationEmail } from './useBookingConfirmationEmail';
 import * as workflow from './bookingConfirmationWorkflow';
 
 jest.mock('antd', () => ({ message: { error: jest.fn() } }));
-jest.mock('../services/api', () => ({ bookingsApi: { recordConfirmationHistory: jest.fn(), prepareConfirmation: jest.fn() }, communicationsApi: { sendEmail: jest.fn() } }));
+jest.mock('../services/api', () => ({ bookingsApi: { recordConfirmationHistory: jest.fn(), prepareConfirmation: jest.fn(), getConfirmationPdf: jest.fn() }, communicationsApi: { sendEmail: jest.fn() } }));
 jest.mock('./bookingConfirmationComposer', () => ({ composeBookingConfirmationEmail: jest.fn() }));
 jest.mock('./BookingConfirmationPDF', () => ({ createBookingConfirmationPdf: jest.fn() }));
 jest.mock('./bookingConfirmationWorkflow', () => ({
@@ -41,6 +41,7 @@ describe('useBookingConfirmationEmail', () => {
     (composeBookingConfirmationEmail as jest.Mock).mockResolvedValue(email);
     (bookingsApi.recordConfirmationHistory as jest.Mock).mockResolvedValue({ data: { refreshed: true } });
     (bookingsApi.prepareConfirmation as jest.Mock).mockResolvedValue({ data: booking });
+    (bookingsApi.getConfirmationPdf as jest.Mock).mockRejectedValue({ response: { status: 404 } });
     (communicationsApi.sendEmail as jest.Mock).mockResolvedValue({ data: { _id: 'e', display_id: 4, status: 'sent' } });
     jest.spyOn(window, 'alert').mockImplementation(() => undefined);
   });
@@ -65,6 +66,18 @@ describe('useBookingConfirmationEmail', () => {
     expect(result.current.reason).toBe('Original booking confirmation');
     act(() => result.current.closeDraft());
     expect(result.current.draft).toBeNull();
+  });
+
+  it('reuses the stored PDF without generating or uploading it again', async () => {
+    const storedBlob = new Blob(['stored']);
+    (bookingsApi.getConfirmationPdf as jest.Mock).mockResolvedValue({ data: storedBlob });
+    const storedBooking = { ...booking, bookingNumber: 44, bookingConfirmationPdfs: { en: { fileName: 'stored.pdf' } } };
+    (bookingsApi.prepareConfirmation as jest.Mock).mockResolvedValue({ data: storedBooking });
+    const { result } = view({ booking: storedBooking });
+    await act(async () => result.current.prepareReview());
+    expect(createBookingConfirmationPdf).not.toHaveBeenCalled();
+    expect(storePdf).not.toHaveBeenCalled();
+    expect(result.current.draft?.attachments?.[0]).toMatchObject({ fileName: 'stored.pdf', contentBase64: 'base64' });
   });
 
   it('reports review preparation errors and resets loading', async () => {
