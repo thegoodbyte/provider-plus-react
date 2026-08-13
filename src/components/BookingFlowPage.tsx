@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowDown, ArrowLeft, ArrowUp, Plus, RefreshCw, Save, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, Lock, Plus, RefreshCw, Save, Trash2, Unlock } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
 import { bookingsApi, bookingFlowApi, retreatsApi } from '../services/api';
 import { BookingFlowItem, Retreat } from '../types';
@@ -53,7 +53,12 @@ const BookingFlowPage: React.FC = () => {
   const navigate = useNavigate();
   const { bookingId } = useParams();
   const [bookings, setBookings] = useState<any[]>([]);
+  const [allItems, setAllItems] = useState<BookingFlowItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [clientFilter, setClientFilter] = useState('');
+  const [actionFilter, setActionFilter] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [booking, setBooking] = useState<any>(null);
   const [retreat, setRetreat] = useState<Retreat | null>(null);
   const [items, setItems] = useState<BookingFlowItem[]>([]);
@@ -62,6 +67,7 @@ const BookingFlowPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState('');
   const [error, setError] = useState('');
+  const [editMode, setEditMode] = useState(false);
 
   const sortedItems = useMemo(
     () => [...items].sort((a, b) => (a.order || 0) - (b.order || 0) || String(a.title).localeCompare(String(b.title))),
@@ -80,8 +86,9 @@ const BookingFlowPage: React.FC = () => {
     try {
       setError('');
       setLoading(true);
-      const response = await bookingsApi.getAll();
-      setBookings(response.data || []);
+      const [bookingResponse, itemResponse] = await Promise.all([bookingsApi.getAll(), bookingFlowApi.getItems({})]);
+      setBookings(bookingResponse.data || []);
+      setAllItems(itemResponse.data || []);
     } catch (err) {
       console.error('Error loading booking requirements:', err);
       setError('Unable to load bookings.');
@@ -256,15 +263,23 @@ const BookingFlowPage: React.FC = () => {
     return `Retreat ${getObjectId(currentRetreat).slice(-6) || 'unknown'}`;
   };
 
-  const filteredBookings = bookings.filter((currentBooking) => {
+  const bookingById = new Map(bookings.map((entry) => [getObjectId(entry), entry]));
+  const clientOptions = Array.from(new Map(allItems.map((item) => [getObjectId(item.clientId), getClientName({ clientId: item.clientId })])).entries())
+    .filter(([id]) => id)
+    .sort((left, right) => left[1].localeCompare(right[1]));
+  const actionOptions = Array.from(new Map(allItems.map((item) => [item.key, item.title])).entries())
+    .sort((left, right) => left[1].localeCompare(right[1]));
+  const filteredItems = allItems.filter((item) => {
     const query = searchTerm.trim().toLowerCase();
+    const linkedBooking: any = typeof item.bookingId === 'object' ? item.bookingId : bookingById.get(getObjectId(item.bookingId));
+    const due = toDateInputValue(item.dueDate);
+    if (clientFilter && getObjectId(item.clientId) !== clientFilter) return false;
+    if (actionFilter && item.key !== actionFilter) return false;
+    if (dateFrom && (!due || due < dateFrom)) return false;
+    if (dateTo && (!due || due > dateTo)) return false;
     if (!query) return true;
-    return [
-      getClientName(currentBooking),
-      getRetreatName(currentBooking),
-      currentBooking.bookingNumber,
-      currentBooking.status,
-    ].filter(Boolean).join(' ').toLowerCase().includes(query);
+    return [getClientName({ clientId: item.clientId }), getRetreatName({ retreatId: item.retreatId }), linkedBooking?.bookingNumber, item.title, item.category, item.status, item.notes]
+      .filter(Boolean).join(' ').toLowerCase().includes(query);
   });
 
   if (!bookingId) {
@@ -273,7 +288,7 @@ const BookingFlowPage: React.FC = () => {
         <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">Booking Requirements</h1>
-            <p className="text-sm text-gray-600">Select a booking to edit client-specific deadlines, statuses, notes, and requirement rows.</p>
+            <p className="text-sm text-gray-600">All client requirements in one grid. Filter the operational view, then open a booking when changes are needed.</p>
           </div>
           <button onClick={loadClientFlowIndex} className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
             <Icon icon={RefreshCw} className="h-4 w-4" />
@@ -281,40 +296,56 @@ const BookingFlowPage: React.FC = () => {
           </button>
         </div>
 
-        <div className="mb-5 rounded-lg border border-gray-200 bg-white p-4">
+        <div className="mb-5 grid gap-3 rounded-lg border border-gray-200 bg-white p-4 md:grid-cols-2 xl:grid-cols-[minmax(240px,1.5fr)_minmax(180px,1fr)_minmax(220px,1fr)_150px_150px_auto]">
           <input
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-            placeholder="Search by client, retreat, booking number, or status"
+            placeholder="Search client, retreat, booking, status or note"
           />
+          <select value={clientFilter} onChange={(event) => setClientFilter(event.target.value)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+            <option value="">All clients</option>
+            {clientOptions.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+          </select>
+          <select value={actionFilter} onChange={(event) => setActionFilter(event.target.value)} className="rounded-md border border-gray-300 px-3 py-2 text-sm">
+            <option value="">All booking actions</option>
+            {actionOptions.map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+          </select>
+          <label className="text-xs font-semibold uppercase text-gray-500">Due from<input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900" /></label>
+          <label className="text-xs font-semibold uppercase text-gray-500">Due through<input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-normal text-gray-900" /></label>
+          <button type="button" onClick={() => { setSearchTerm(''); setClientFilter(''); setActionFilter(''); setDateFrom(''); setDateTo(''); }} className="self-end rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Clear</button>
         </div>
 
-        <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-          <div className="grid grid-cols-[120px_minmax(180px,1fr)_minmax(180px,1fr)_140px_130px] gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3 text-xs font-semibold uppercase text-gray-500">
+        <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+          <div className="grid min-w-[1180px] grid-cols-[105px_minmax(180px,1fr)_minmax(170px,1fr)_minmax(220px,1.2fr)_130px_130px_130px] gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3 text-xs font-semibold uppercase text-gray-500">
             <div>Booking</div>
             <div>Client</div>
             <div>Retreat</div>
+            <div>Booking action</div>
+            <div>Due date</div>
             <div>Status</div>
-            <div>Action</div>
+            <div>Open</div>
           </div>
-          {filteredBookings.length === 0 ? (
-            <div className="p-8 text-center text-sm text-gray-500">No bookings found.</div>
+          {filteredItems.length === 0 ? (
+            <div className="p-8 text-center text-sm text-gray-500">No booking requirements match these filters.</div>
           ) : (
-            filteredBookings.map((currentBooking) => {
-              const id = getObjectId(currentBooking);
+            filteredItems.map((item) => {
+              const currentBooking: any = typeof item.bookingId === 'object' ? item.bookingId : bookingById.get(getObjectId(item.bookingId));
+              const id = getObjectId(item.bookingId);
               return (
-                <div key={id} className="grid grid-cols-[120px_minmax(180px,1fr)_minmax(180px,1fr)_140px_130px] gap-3 border-b border-gray-100 px-4 py-3 text-sm last:border-b-0">
-                  <div className="font-medium text-gray-900">{currentBooking.bookingNumber ? `#${currentBooking.bookingNumber}` : id.slice(-8)}</div>
-                  <div className="text-gray-700">{getClientName(currentBooking)}</div>
-                  <div className="text-gray-700">{getRetreatName(currentBooking)}</div>
-                  <div className="capitalize text-gray-600">{currentBooking.status || 'pending'}</div>
+                <div key={item._id || `${id}-${item.key}`} className="grid min-w-[1180px] grid-cols-[105px_minmax(180px,1fr)_minmax(170px,1fr)_minmax(220px,1.2fr)_130px_130px_130px] gap-3 border-b border-gray-100 px-4 py-3 text-sm last:border-b-0">
+                  <div className="font-medium text-gray-900">{currentBooking?.bookingNumber ? `#${currentBooking.bookingNumber}` : id.slice(-8)}</div>
+                  <div className="text-gray-700">{getClientName({ clientId: item.clientId })}</div>
+                  <div className="text-gray-700">{getRetreatName({ retreatId: item.retreatId })}</div>
+                  <div><div className="font-medium text-gray-900">{item.title}</div><div className="text-xs capitalize text-gray-500">{item.category}</div></div>
+                  <div className="text-gray-700">{formatDate(item.dueDate)}</div>
+                  <div className="capitalize text-gray-600">{String(item.status || 'pending').replace(/_/g, ' ')}</div>
                   <div>
                     <button
                       onClick={() => navigate(id)}
                       className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700"
                     >
-                      Edit Requirements
+                      View
                     </button>
                   </div>
                 </div>
@@ -352,8 +383,10 @@ const BookingFlowPage: React.FC = () => {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button onClick={normalizeOrder} disabled={savingId === 'normalize'} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">
-            Re-number
+          {editMode && <button onClick={normalizeOrder} disabled={savingId === 'normalize'} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50">Re-number</button>}
+          <button onClick={() => { setEditMode((current) => !current); hydrateDrafts(items); }} className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium ${editMode ? 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50' : 'bg-amber-500 text-white hover:bg-amber-600'}`}>
+            <Icon icon={editMode ? Lock : Unlock} className="h-4 w-4" />
+            {editMode ? 'Lock editing' : 'Edit / Unlock'}
           </button>
           <button onClick={loadData} className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
             <Icon icon={RefreshCw} className="h-4 w-4" />
@@ -362,7 +395,7 @@ const BookingFlowPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="mb-5 rounded-lg border border-gray-200 bg-white p-4">
+      {editMode && <div className="mb-5 rounded-lg border border-gray-200 bg-white p-4">
         <div className="mb-3 text-sm font-semibold text-gray-900">Add Requirement</div>
         <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_90px_130px_150px_minmax(220px,1fr)_auto]">
           <label className="block">
@@ -421,18 +454,18 @@ const BookingFlowPage: React.FC = () => {
             Add
           </button>
         </div>
-      </div>
+      </div>}
 
       <div className="overflow-x-auto rounded-lg border border-gray-200 bg-white">
         <div className="grid min-w-[1220px] grid-cols-[72px_minmax(220px,1fr)_90px_120px_150px_minmax(220px,1fr)_140px_150px] gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3 text-xs font-semibold uppercase text-gray-500">
-          <div>Move</div>
+          <div>{editMode ? 'Move' : ''}</div>
           <div>Name</div>
           <div>Order</div>
           <div>Offset days</div>
           <div>Deadline</div>
           <div>Note</div>
           <div>Last update</div>
-          <div>Actions</div>
+          <div>{editMode ? 'Actions' : 'Status'}</div>
         </div>
 
         {sortedItems.length === 0 ? (
@@ -448,6 +481,7 @@ const BookingFlowPage: React.FC = () => {
             return (
               <div key={id} className={`grid min-w-[1220px] grid-cols-[72px_minmax(220px,1fr)_90px_120px_150px_minmax(220px,1fr)_140px_150px] gap-3 border-b border-l-4 border-gray-100 px-4 py-3 last:border-b-0 ${tone.stepStripe} ${tone.stepCell}`} style={stepStyle}>
                 <div className="flex items-center gap-1">
+                  {editMode && <>
                   <button
                     onClick={() => moveItem(index, -1)}
                     disabled={index === 0 || savingId === item._id}
@@ -464,65 +498,67 @@ const BookingFlowPage: React.FC = () => {
                   >
                     <Icon icon={ArrowDown} className="h-4 w-4" />
                   </button>
+                  </>}
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className={`h-2.5 w-2.5 flex-none rounded-full ${tone.dot}`} style={dotStyle} />
                     <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">{titleizeBookingStepGroup(groupKey)}</span>
                   </div>
-                  <input
+                  {editMode ? <input
                     value={draft.title}
                     onChange={(event) => setDraft(id, { title: event.target.value })}
                     className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
-                  />
+                  /> : <div className="py-2 text-sm font-medium text-gray-900">{item.title}</div>}
                 </div>
-                <input
+                {editMode ? <input
                   type="number"
                   value={draft.order}
                   onChange={(event) => setDraft(id, { order: event.target.value })}
-                  className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-                />
-                <input
+                  className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                /> : <div className="py-2 text-sm text-gray-700">{item.order || 0}</div>}
+                {editMode ? <input
                   type="number"
                   value={draft.offsetDays}
                   onChange={(event) => setDraft(id, { offsetDays: event.target.value })}
-                  className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-                />
+                  className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                /> : <div className="py-2 text-sm text-gray-700">{item.offsetDays || 0}</div>}
                 <div className="space-y-1">
-                  <input
+                  {editMode ? <input
                     type="date"
                     value={draft.dueDate}
                     onChange={(event) => setDraft(id, { dueDate: event.target.value })}
-                    className={`w-full rounded-md border px-3 py-2 text-sm ${item.dueDateManuallyOverridden ? 'border-amber-400 bg-amber-50' : 'border-gray-300'}`}
-                  />
+                    className={`w-full rounded-md border px-3 py-2 text-sm ${item.dueDateManuallyOverridden ? 'border-amber-400 bg-amber-50' : 'border-gray-300 bg-white'}`}
+                  /> : <div className="py-2 text-sm text-gray-700">{formatDate(item.dueDate)}</div>}
                   <div className="flex items-center gap-2 text-xs text-gray-600">
                     {item.dueDateManuallyOverridden ? (
                       <>
                         <span className="rounded-full bg-amber-100 px-2 py-1 font-semibold text-amber-800">Manual</span>
-                        <button
+                        {editMode && <button
                           type="button"
                           onClick={() => resetDueDate(item)}
                           disabled={savingId === item._id}
                           className="rounded-md border border-amber-300 bg-white px-2 py-1 font-semibold text-amber-700 hover:bg-amber-50 disabled:opacity-50"
                         >
                           Reset
-                        </button>
+                        </button>}
                       </>
                     ) : (
                       <span>Auto</span>
                     )}
                   </div>
                 </div>
-                <textarea
+                {editMode ? <textarea
                   value={draft.notes}
                   onChange={(event) => setDraft(id, { notes: event.target.value })}
                   rows={2}
-                  className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-                />
+                  className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                /> : <div className="py-2 text-sm text-gray-700">{item.notes || '—'}</div>}
                 <div className="flex items-center text-sm text-gray-600">
                   {formatDate(item.updatedAt)}
                 </div>
                 <div className="flex items-center gap-2">
+                  {editMode ? <>
                   <button
                     onClick={() => saveItem(item)}
                     disabled={savingId === item._id}
@@ -539,6 +575,7 @@ const BookingFlowPage: React.FC = () => {
                   >
                     <Icon icon={Trash2} className="h-4 w-4" />
                   </button>
+                  </> : <span className="rounded-full bg-white/80 px-2.5 py-1 text-xs font-semibold capitalize text-gray-700">{String(item.status || 'pending').replace(/_/g, ' ')}</span>}
                 </div>
               </div>
             );

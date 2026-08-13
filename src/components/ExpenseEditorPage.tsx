@@ -29,6 +29,9 @@ const ExpenseEditorPage: React.FC = () => {
     currency: 'CZK' as RetreatExpense['currency'],
     description: '',
     vendor: '',
+    paymentMethod: '' as '' | NonNullable<RetreatExpense['paymentMethod']>,
+    paymentAccount: '',
+    notes: '',
     expenseTypeId: '',
     retreatId: '',
     status: 'pending' as RetreatExpense['status'],
@@ -55,6 +58,9 @@ const ExpenseEditorPage: React.FC = () => {
             currency: expense.currency,
             description: expense.description || '',
             vendor: expense.vendor || '',
+            paymentMethod: expense.paymentMethod || '',
+            paymentAccount: expense.paymentAccount || '',
+            notes: expense.notes || '',
             expenseTypeId: idOf(expense.expenseTypeId),
             retreatId: idOf(expense.retreatId),
             status: expense.status,
@@ -91,6 +97,9 @@ const ExpenseEditorPage: React.FC = () => {
       currency: form.currency,
       description: form.description.trim(),
       vendor: form.vendor.trim(),
+      paymentMethod: form.paymentMethod || undefined,
+      paymentAccount: form.paymentAccount.trim(),
+      notes: form.notes.trim(),
       expenseTypeId: form.expenseTypeId,
       retreatId: form.retreatId || undefined,
       status: form.status,
@@ -111,7 +120,7 @@ const ExpenseEditorPage: React.FC = () => {
         navigate(`${prefix}/expenses/${id}`);
       } else {
         if (next) {
-          setForm((current) => ({ ...current, amount: '', description: '', vendor: '' }));
+          setForm((current) => ({ ...current, amount: '', description: '', vendor: '', paymentMethod: '', paymentAccount: '', notes: '' }));
           setReceipt(null);
           setExistingReceiptName('');
           amountRef.current?.focus();
@@ -156,6 +165,11 @@ const ExpenseEditorPage: React.FC = () => {
 
         <label className="block"><span className="mb-2 block text-xs font-extrabold uppercase tracking-[0.16em] text-slate-500">Item</span><input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className={field} placeholder="What did you buy?" /></label>
         <label className="block"><span className="mb-2 block text-xs font-extrabold uppercase tracking-[0.16em] text-slate-500">Vendor</span><input value={form.vendor} onChange={(e) => setForm({ ...form, vendor: e.target.value })} className={field} placeholder="Store or supplier" /></label>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block"><span className="mb-2 block text-xs font-extrabold uppercase tracking-[0.16em] text-slate-500">Payment method</span><select value={form.paymentMethod} onChange={(e) => setForm({ ...form, paymentMethod: e.target.value as typeof form.paymentMethod })} className={field}><option value="">Not specified</option><option value="card">Card</option><option value="cash">Cash</option><option value="bank_transfer">Bank transfer</option><option value="other">Other</option></select></label>
+          <label className="block"><span className="mb-2 block text-xs font-extrabold uppercase tracking-[0.16em] text-slate-500">Account</span><input list="expense-editor-account-options" value={form.paymentAccount} onChange={(e) => setForm({ ...form, paymentAccount: e.target.value })} className={field} placeholder="Revolut, CSOB, cash drawer…" /><datalist id="expense-editor-account-options"><option value="Revolut" /><option value="CSOB" /><option value="Cash drawer" /></datalist></label>
+        </div>
+        <label className="block"><span className="mb-2 block text-xs font-extrabold uppercase tracking-[0.16em] text-slate-500">Notes</span><textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className={`${field} min-h-28 py-3`} placeholder="Additional payment or expense details" /></label>
         <div><span className="mb-2 block text-xs font-extrabold uppercase tracking-[0.16em] text-slate-500">Category</span><div className="flex flex-wrap gap-2">{types.map((type) => <button type="button" key={type._id} onClick={() => setForm({ ...form, expenseTypeId: type._id || '' })} className={`rounded-lg border px-4 py-2.5 text-sm font-bold ${form.expenseTypeId === type._id ? 'border-cyan-600 bg-cyan-600 text-white' : 'border-slate-200 bg-white text-slate-700'}`}>{type.name}</button>)}</div></div>
 
         <div><span className="mb-2 block text-xs font-extrabold uppercase tracking-[0.16em] text-slate-500">Date</span><div className="grid grid-cols-3 gap-2"><button type="button" onClick={() => setQuickDate(0)} className={`min-h-12 rounded-lg border font-bold ${form.expenseDate === today() ? 'border-cyan-600 bg-cyan-600 text-white' : 'border-slate-200 bg-white'}`}>Today</button><button type="button" onClick={() => setQuickDate(1)} className="min-h-12 rounded-lg border border-slate-200 bg-white font-bold">Yesterday</button><label className="relative flex min-h-12 cursor-pointer items-center justify-center rounded-lg border border-slate-200 bg-white font-bold"><span>Pick a date</span><input aria-label="Expense date" type="date" value={form.expenseDate} onChange={(e) => setForm({ ...form, expenseDate: e.target.value })} className="absolute inset-0 cursor-pointer opacity-0" required /></label></div></div>

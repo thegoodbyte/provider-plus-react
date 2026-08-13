@@ -502,6 +502,9 @@ export interface RetreatExpense {
   currency: 'EUR' | 'USD' | 'CZK' | 'PLN';
   description?: string;
   vendor?: string;
+  paymentMethod?: 'card' | 'cash' | 'bank_transfer' | 'other';
+  paymentAccount?: string;
+  notes?: string;
   receiptS3Key?: string;
   receiptFileName?: string;
   receiptMimeType?: string;

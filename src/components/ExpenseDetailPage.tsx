@@ -22,7 +22,7 @@ const ExpenseDetailPage: React.FC = () => {
   const type = typeof expense.expenseTypeId === 'object' ? expense.expenseTypeId.name : expense.expenseTypeId;
   const retreat = typeof expense.retreatId === 'object' ? expense.retreatId.code || expense.retreatId.retreatCode || expense.retreatId.name : expense.retreatId || 'General company expense';
   const amount = new Intl.NumberFormat(undefined, { style: 'currency', currency: expense.currency }).format(expense.amount);
-  const rows = [['Date', new Date(expense.expenseDate).toLocaleDateString()], ['Item', expense.description || '—'], ['Vendor', expense.vendor || '—'], ['Category', type], ['Retreat', retreat], ['Status', expense.status], ['Created', expense.createdAt ? new Date(expense.createdAt).toLocaleString() : '—']];
+  const rows = [['Date', new Date(expense.expenseDate).toLocaleDateString()], ['Item', expense.description || '—'], ['Vendor', expense.vendor || '—'], ['Category', type], ['Retreat', retreat], ['Payment', expense.paymentMethod?.replace(/_/g, ' ') || '—'], ['Account', expense.paymentAccount || '—'], ['Notes', expense.notes || '—'], ['Status', expense.status], ['Created', expense.createdAt ? new Date(expense.createdAt).toLocaleString() : '—']];
   return (
     <div className="mx-auto max-w-2xl px-0 py-1">
       <div className="mb-4 flex items-center justify-between gap-3">

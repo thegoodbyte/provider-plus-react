@@ -166,6 +166,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const retreat = booking.retreatId || booking.retreatDetails;
   const clientName = getClientName(client) || 'N/A';
   const clientDisplayId = getClientDisplayId(client, booking);
+  const clientId = getObjectId(client);
   const bookingTypeCode = booking.bookingType === 'booster' ? 'B' : 'F';
   const retreatCode = getRetreatCode(retreat);
   const retreatId = getObjectId(retreat);
@@ -176,6 +177,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         bookingNumber={booking.bookingNumber}
         clientName={clientName}
         clientDisplayId={clientDisplayId}
+        clientId={clientId}
         retreatCode={retreatCode}
         retreatId={retreatId}
         bookingTypeCode={bookingTypeCode}
@@ -196,6 +198,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         onReview={emailBookingConfirmation}
         onDownload={generatePDF}
         onClosePreview={closePdfPreview}
+        onOpenClient={() => navigate(`${routePrefix}/clients/${clientId}`)}
         onOpenRetreat={() => navigate(`${routePrefix}/retreats/${retreatId}`)}
         onTabChange={setActiveTab}
       />
