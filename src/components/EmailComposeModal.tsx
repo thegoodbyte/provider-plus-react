@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { FiSend, FiX } from 'react-icons/fi';
-import { bookingDocumentsApi, bookingsApi, communicationsApi } from '../services/api';
+import { bookingsApi, communicationsApi } from '../services/api';
 import { EmailTemplate, MailSettings } from '../types';
 import { createBookingConfirmationPdf } from './BookingConfirmationPDF';
 
@@ -203,11 +203,14 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
         const storedVersion = booking?.bookingConfirmationPdfs?.[language];
         let blob: Blob;
         let fileName: string;
-        if (storedVersion?.s3Key) {
+        try {
+          // Ask the canonical endpoint first. The locally cached booking may not
+          // yet contain metadata written by the background PDF generation job.
           const storedPdf = await bookingsApi.getConfirmationPdf(String(bookingId), language);
           blob = storedPdf.data;
           fileName = storedVersion.fileName || `booking-confirmation-${booking?.bookingNumber || bookingId}.pdf`;
-        } else {
+        } catch (storedPdfError: any) {
+          if (storedPdfError?.response?.status !== 404) throw storedPdfError;
           const generated = await createBookingConfirmationPdf({ booking, language });
           blob = generated.blob;
           fileName = generated.fileName;
@@ -220,20 +223,6 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
           mimeType: 'application/pdf',
           contentBase64,
         }];
-        const contractDocuments = await bookingDocumentsApi.getAll({ bookingId: String(bookingId), documentType: 'contract' }).catch(() => ({ data: [] }));
-        const contractDocument = contractDocuments.data?.[0];
-        const contractFile = contractDocument?.files?.[0];
-        const storedPath = contractFile?.s3Key || contractFile?.filePath;
-        if (contractDocument?._id && storedPath) {
-          const contractResponse = await bookingDocumentsApi.getFile(contractDocument._id, storedPath).catch(() => null);
-          if (contractResponse?.data instanceof Blob) {
-            nextAttachments.push({
-              fileName: contractFile.fileName || 'retreat-contract.pdf',
-              mimeType: contractFile.mimeType || contractResponse.data.type || 'application/pdf',
-              contentBase64: await blobToBase64(contractResponse.data),
-            });
-          }
-        }
         if (active) setPreparedAttachments(nextAttachments);
       } catch (error) {
         console.error('Unable to prepare booking confirmation PDF attachment:', error);

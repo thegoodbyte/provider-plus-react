@@ -55,10 +55,19 @@ export const useBookingConfirmationEmail = ({ bookingId, booking, language, stor
   }, [bookingId, onBookingUpdated]);
 
   const prepareAttachment = useCallback(async (confirmationBooking = booking) => {
-    const result = await createBookingConfirmationPdf({ booking: confirmationBooking, language });
-    await storePdf(result.blob, result.fileName);
-    return { ...result, contentBase64: await blobBase64(result.blob) };
-  }, [booking, language, storePdf]);
+    const storedVersion = confirmationBooking?.bookingConfirmationPdfs?.[language];
+    try {
+      const response = await bookingsApi.getConfirmationPdf(bookingId, language);
+      const blob = response.data as Blob;
+      const fileName = storedVersion?.fileName || `booking-confirmation-${confirmationBooking?.bookingNumber || bookingId}.pdf`;
+      return { blob, fileName, contentBase64: await blobBase64(blob) };
+    } catch (storedPdfError: any) {
+      if (storedPdfError?.response?.status !== 404) throw storedPdfError;
+      const result = await createBookingConfirmationPdf({ booking: confirmationBooking, language });
+      await storePdf(result.blob, result.fileName);
+      return { ...result, contentBase64: await blobBase64(result.blob) };
+    }
+  }, [booking, bookingId, language, storePdf]);
 
   const prepareReview = useCallback(async () => {
     const recipient = clientEmail(resolvedClient);
