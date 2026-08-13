@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { FiSend, FiX } from 'react-icons/fi';
 import { bookingsApi, communicationsApi } from '../services/api';
 import { EmailTemplate, MailSettings } from '../types';
@@ -135,6 +135,8 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
   const [preparedVariables, setPreparedVariables] = useState(initialValues.variables || {});
   const [attachmentPreparationError, setAttachmentPreparationError] = useState('');
   const [attachmentPreparing, setAttachmentPreparing] = useState(false);
+  const [attachmentRetry, setAttachmentRetry] = useState(0);
+  const attachmentAttemptRef = useRef('');
   const [sending, setSending] = useState(false);
   const initialMessage = normalizeMessageFields(initialValues.bodyText);
   const [formData, setFormData] = useState({
@@ -165,6 +167,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
     setPreparedAttachments(initialValues.attachments || []);
     setPreparedVariables(initialValues.variables || {});
     setAttachmentPreparationError('');
+    attachmentAttemptRef.current = '';
     const message = normalizeMessageFields(initialValues.bodyText);
     setFormData({
       to: initialValues.to || '',
@@ -193,6 +196,9 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
         initialValues.variables?.booking?.id ||
         initialValues.variables?.bookingId;
       if (!isBookingConfirmation || preparedAttachments.length > 0 || !bookingId) return;
+      const attemptKey = `${bookingId}:${selectedLanguage}:${selectedTemplateId || initialValues.templateKey || initialValues.bookingFlowStepKey}`;
+      if (attachmentAttemptRef.current === attemptKey) return;
+      attachmentAttemptRef.current = attemptKey;
 
       setAttachmentPreparing(true);
       setAttachmentPreparationError('');
@@ -203,14 +209,19 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
         const storedVersion = booking?.bookingConfirmationPdfs?.[language];
         let blob: Blob;
         let fileName: string;
-        try {
-          // Ask the canonical endpoint first. The locally cached booking may not
-          // yet contain metadata written by the background PDF generation job.
-          const storedPdf = await bookingsApi.getConfirmationPdf(String(bookingId), language);
-          blob = storedPdf.data;
-          fileName = storedVersion.fileName || `booking-confirmation-${booking?.bookingNumber || bookingId}.pdf`;
-        } catch (storedPdfError: any) {
-          if (storedPdfError?.response?.status !== 404) throw storedPdfError;
+        if (storedVersion?.s3Key) {
+          try {
+            const storedPdf = await bookingsApi.getConfirmationPdf(String(bookingId), language);
+            blob = storedPdf.data;
+            fileName = storedVersion?.fileName || `booking-confirmation-${booking?.bookingNumber || bookingId}.pdf`;
+          } catch (storedPdfError: any) {
+            if (storedPdfError?.response?.status !== 404) throw storedPdfError;
+            const generated = await createBookingConfirmationPdf({ booking, language });
+            blob = generated.blob;
+            fileName = generated.fileName;
+            await bookingsApi.storeConfirmationPdf(String(bookingId), language, blob, fileName);
+          }
+        } else {
           const generated = await createBookingConfirmationPdf({ booking, language });
           blob = generated.blob;
           fileName = generated.fileName;
@@ -248,6 +259,8 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
     selectedTemplate?.category,
     selectedTemplate?.bookingFlowStepKeys,
     preparedAttachments.length,
+    attachmentRetry,
+    selectedTemplateId,
   ]);
 
   useEffect(() => {
@@ -498,9 +511,10 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
               <div className="font-medium">{attachmentPreparationError || 'Preparing booking confirmation PDF…'}</div>
               <div className="mt-1 text-xs">
                 {attachmentPreparationError
-                  ? 'Close and reopen Send to retry preparing the attachment.'
+                  ? 'Retry now. The email remains open and your edits are preserved.'
                   : 'The Send button will become available as soon as the attachment is ready.'}
               </div>
+              {attachmentPreparationError && <button type="button" onClick={() => { attachmentAttemptRef.current = ''; setAttachmentPreparationError(''); setAttachmentRetry((value) => value + 1); }} className="mt-2 rounded border border-red-300 bg-white px-3 py-1 text-xs font-semibold text-red-800">Retry PDF</button>}
             </div>
           )}
 

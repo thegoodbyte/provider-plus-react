@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { FiChevronDown, FiChevronUp, FiInbox, FiMail, FiPlus, FiRefreshCw } from 'react-icons/fi';
+import { FiChevronDown, FiChevronUp, FiInbox, FiMail, FiPaperclip, FiPlus, FiRefreshCw, FiX } from 'react-icons/fi';
 import { communicationsApi } from '../services/api';
 import { InboundEmail, SentEmail } from '../types';
 import { taskService } from '../services/taskService';
@@ -10,6 +10,7 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
 
 type EmailDirectionFilter = 'all' | 'sent' | 'received';
 type EmailLanguageFilter = 'all' | string;
+type SelectedEmail = { kind: 'sent'; email: SentEmail } | { kind: 'received'; email: InboundEmail };
 
 interface EmailHistoryPanelProps {
   clientId?: string;
@@ -56,6 +57,14 @@ const EmailHistoryPanel: React.FC<EmailHistoryPanelProps> = ({ clientId, booking
   const [language, setLanguage] = useState<EmailLanguageFilter>('all');
   const [composerOpen, setComposerOpen] = useState(false);
   const [sendMessage, setSendMessage] = useState('');
+  const [selectedEmail, setSelectedEmail] = useState<SelectedEmail | null>(null);
+
+  useEffect(() => {
+    if (!selectedEmail) return undefined;
+    const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && setSelectedEmail(null);
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [selectedEmail]);
 
   const loadEmails = useCallback(async () => {
     try {
@@ -124,6 +133,33 @@ const EmailHistoryPanel: React.FC<EmailHistoryPanelProps> = ({ clientId, booking
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-4 sm:p-5">
+      {selectedEmail && (() => {
+        const email = selectedEmail.email;
+        const sent = selectedEmail.kind === 'sent';
+        const html = email.bodyHtml;
+        const attachments = sent ? (email as SentEmail).attachments || [] : [];
+        return (
+          <div className="fixed inset-0 z-[1200] flex items-center justify-center bg-slate-950/60 p-3 sm:p-6" role="dialog" aria-modal="true" aria-label={`Email: ${email.subject || 'No subject'}`} onMouseDown={(event) => event.target === event.currentTarget && setSelectedEmail(null)}>
+            <div className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+              <header className="flex items-start justify-between gap-4 border-b border-gray-200 px-5 py-4 sm:px-7">
+                <div className="min-w-0"><div className="mb-1 text-xs font-semibold uppercase tracking-widest text-gray-500">{sent ? 'Sent email' : 'Received email'}</div><h2 className="truncate text-xl font-semibold text-gray-950">{email.subject || '(no subject)'}</h2></div>
+                <button type="button" onClick={() => setSelectedEmail(null)} className="rounded-full border border-gray-300 p-2 text-gray-600 hover:bg-gray-100" aria-label="Close email preview"><Icon icon={FiX} className="h-5 w-5" /></button>
+              </header>
+              <div className="grid gap-x-5 gap-y-2 border-b border-gray-200 bg-gray-50 px-5 py-4 text-sm sm:grid-cols-[80px_1fr] sm:px-7">
+                <span className="font-medium text-gray-500">From</span><span className="break-all text-gray-900">{sent ? [email.fromName, email.fromEmail].filter(Boolean).join(' · ') || 'Retreat Engine' : [(email as InboundEmail).fromName, (email as InboundEmail).fromEmail].filter(Boolean).join(' · ') || '-'}</span>
+                <span className="font-medium text-gray-500">To</span><span className="break-all text-gray-900">{(email.to || []).join(', ') || '-'}</span>
+                {!!email.cc?.length && <><span className="font-medium text-gray-500">CC</span><span className="break-all text-gray-900">{email.cc.join(', ')}</span></>}
+                <span className="font-medium text-gray-500">Date</span><span className="text-gray-900">{formatDate(sent ? (email as SentEmail).sentAt || email.createdAt : (email as InboundEmail).receivedAt || email.createdAt)}</span>
+                <span className="font-medium text-gray-500">Status</span><span className="capitalize text-gray-900">{email.status?.replace(/_/g, ' ') || '-'}</span>
+              </div>
+              <div className="min-h-0 flex-1 overflow-auto bg-white">
+                {html ? <iframe title="Email message body" srcDoc={html} sandbox="" className="min-h-[520px] w-full border-0 bg-white" /> : <pre className="whitespace-pre-wrap break-words px-5 py-6 font-sans text-sm leading-6 text-gray-900 sm:px-7">{email.bodyText || (email as InboundEmail).snippet || 'No message body was stored.'}</pre>}
+              </div>
+              {!!attachments.length && <footer className="border-t border-gray-200 px-5 py-4 sm:px-7"><div className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Attachments</div><div className="flex flex-wrap gap-2">{attachments.map((attachment, index) => <span key={`${attachment.fileName}-${index}`} className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800"><Icon icon={FiPaperclip} className="h-4 w-4" />{attachment.fileName}{attachment.size ? <small className="text-gray-500">{Math.ceil(attachment.size / 1024)} KB</small> : null}</span>)}</div></footer>}
+            </div>
+          </div>
+        );
+      })()}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
@@ -232,7 +268,7 @@ const EmailHistoryPanel: React.FC<EmailHistoryPanelProps> = ({ clientId, booking
                 if (row.kind === 'sent') {
                   const email = row.email;
                   return (
-                    <tr key={row.id}>
+                    <tr key={row.id} className="cursor-pointer hover:bg-blue-50/50 focus-within:bg-blue-50/50" onClick={() => setSelectedEmail({ kind: 'sent', email })}>
                       <td className="px-4 py-3">
                         <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700">
                           <Icon icon={FiMail} className="h-3.5 w-3.5" />
@@ -255,8 +291,8 @@ const EmailHistoryPanel: React.FC<EmailHistoryPanelProps> = ({ clientId, booking
                           {email.status || 'queued'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-xs text-gray-500">
-                        {(email.cc || []).length ? `CC: ${email.cc?.join(', ')}` : 'No extra action'}
+                      <td className="px-4 py-3 text-xs">
+                        <button type="button" className="font-medium text-blue-700 hover:underline" onClick={() => setSelectedEmail({ kind: 'sent', email })}>View email</button>
                       </td>
                     </tr>
                   );
@@ -264,7 +300,7 @@ const EmailHistoryPanel: React.FC<EmailHistoryPanelProps> = ({ clientId, booking
                 const email = row.email;
                 const task = typeof email.createdTaskId === 'object' ? email.createdTaskId : null;
                 return (
-                  <tr key={row.id}>
+                  <tr key={row.id} className="cursor-pointer hover:bg-amber-50/50 focus-within:bg-amber-50/50" onClick={() => setSelectedEmail({ kind: 'received', email })}>
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-700">
                         <Icon icon={FiInbox} className="h-3.5 w-3.5" />
@@ -295,7 +331,7 @@ const EmailHistoryPanel: React.FC<EmailHistoryPanelProps> = ({ clientId, booking
                         ) : (
                           <button
                             type="button"
-                            onClick={() => void handleCreateTask(email)}
+                            onClick={(event) => { event.stopPropagation(); void handleCreateTask(email); }}
                             className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100"
                           >
                             <Icon icon={FiPlus} className="h-3.5 w-3.5" />

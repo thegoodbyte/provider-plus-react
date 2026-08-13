@@ -70,6 +70,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [requirementsRefreshKey, setRequirementsRefreshKey] = useState(0);
   const [requirementsStatus, setRequirementsStatus] = useState<{ missing: number; total: number } | null>(null);
   const [activeTab, setActiveTab] = useState<BookingDetailTab>('overview');
+  const [retreatBookings, setRetreatBookings] = useState<any[]>([]);
   const pdfRef = useRef<HTMLDivElement>(null);
   const routePrefix = useMemo(() => {
     const firstSegment = location.pathname.split('/').filter(Boolean)[0];
@@ -121,6 +122,23 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
       const bookingResponse = await bookingsApi.getOne(bookingId);
       setBooking(bookingResponse.data);
       setPdfLanguage(confirmationLanguage(bookingResponse.data?.clientId || bookingResponse.data?.clientDetails));
+      const currentRetreatId = getObjectId(bookingResponse.data?.retreatId || bookingResponse.data?.retreatDetails);
+      if (currentRetreatId) {
+        try {
+          const retreatBookingsResponse = await bookingsApi.getByRetreatWithDetails(currentRetreatId);
+          setRetreatBookings((retreatBookingsResponse.data || []).slice().sort((left: any, right: any) => {
+            const leftNumber = Number(left.bookingNumber);
+            const rightNumber = Number(right.bookingNumber);
+            if (Number.isFinite(leftNumber) && Number.isFinite(rightNumber)) return leftNumber - rightNumber;
+            return String(left.bookingNumber || left._id).localeCompare(String(right.bookingNumber || right._id), undefined, { numeric: true });
+          }));
+        } catch (navigationError) {
+          console.error('Error loading retreat booking navigation:', navigationError);
+          setRetreatBookings([]);
+        }
+      } else {
+        setRetreatBookings([]);
+      }
     } catch (error) {
       console.error('Error fetching booking details:', error);
     } finally {
@@ -171,6 +189,13 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const retreatCode = getRetreatCode(retreat);
   const retreatId = getObjectId(retreat);
   const retreatAddress = getRetreatAddress(retreat);
+  const currentBookingIndex = retreatBookings.findIndex((item) => String(item._id) === String(bookingId));
+  const previousBooking = currentBookingIndex > 0 ? retreatBookings[currentBookingIndex - 1] : null;
+  const nextBooking = currentBookingIndex >= 0 && currentBookingIndex < retreatBookings.length - 1 ? retreatBookings[currentBookingIndex + 1] : null;
+  const bookingNavigationLabel = (item: any) => ({
+    bookingNumber: item?.bookingNumber,
+    clientName: getClientName(item?.clientId || item?.clientDetails),
+  });
   return (
     <div className="booking-detail-container">
       <BookingDetailShell
@@ -190,6 +215,8 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         preparing={isPreparingConfirmationEmail}
         previewUrl={previewUrl}
         previewFileName={previewFileName}
+        previousBooking={previousBooking ? bookingNavigationLabel(previousBooking) : null}
+        nextBooking={nextBooking ? bookingNavigationLabel(nextBooking) : null}
         onBack={onBack}
         onLanguageChange={setPdfLanguage}
         onEdit={() => navigate(`${routePrefix}/bookings/${bookingId}/edit`)}
@@ -200,6 +227,8 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         onClosePreview={closePdfPreview}
         onOpenClient={() => navigate(`${routePrefix}/clients/${clientId}`)}
         onOpenRetreat={() => navigate(`${routePrefix}/retreats/${retreatId}`)}
+        onPreviousBooking={() => previousBooking?._id && navigate(`${routePrefix}/bookings/${previousBooking._id}`)}
+        onNextBooking={() => nextBooking?._id && navigate(`${routePrefix}/bookings/${nextBooking._id}`)}
         onTabChange={setActiveTab}
       />
 
