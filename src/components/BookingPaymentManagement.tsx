@@ -93,7 +93,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   const syncPaymentPlan = useCallback(async () => {
     try {
       setPaymentPlanSaving(true);
-      const response = await paymentsApi.syncBookingPlan(bookingId);
+      const response = await paymentsApi.getBookingPlan(bookingId);
       setPaymentPlan(response.data);
       setPaymentPlanDueDate(toDateInputValue(response.data?.dueDate));
     } catch (error) { console.error('Unable to load booking payment plan:', error); }
