@@ -86,6 +86,32 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
     { value: 'currency_adjustment', label: '💱 Foreign currency balance adjustment', refundable: false },
   ];
   const [paymentTypes, setPaymentTypes] = useState(defaultPaymentTypes);
+  const [paymentPlan, setPaymentPlan] = useState<any>(null);
+  const [paymentPlanDueDate, setPaymentPlanDueDate] = useState('');
+  const [paymentPlanSaving, setPaymentPlanSaving] = useState(false);
+
+  const syncPaymentPlan = useCallback(async () => {
+    try {
+      setPaymentPlanSaving(true);
+      const response = await paymentsApi.syncBookingPlan(bookingId);
+      setPaymentPlan(response.data);
+      setPaymentPlanDueDate(toDateInputValue(response.data?.dueDate));
+    } catch (error) { console.error('Unable to load booking payment plan:', error); }
+    finally { setPaymentPlanSaving(false); }
+  }, [bookingId]);
+
+  const savePaymentPlan = async (enabled = true) => {
+    try {
+      setPaymentPlanSaving(true);
+      const response = await paymentsApi.updateBookingPlan(bookingId, { enabled, dueDate: paymentPlanDueDate || undefined });
+      setPaymentPlan(response.data);
+      setPaymentPlanDueDate(toDateInputValue(response.data?.dueDate));
+      onPaymentUpdate?.();
+    } catch (error: any) { alert(error?.response?.data?.message || 'Unable to save the payment plan.'); }
+    finally { setPaymentPlanSaving(false); }
+  };
+
+  useEffect(() => { void syncPaymentPlan(); }, [syncPaymentPlan]);
 
   useEffect(() => {
     let active = true;
@@ -667,6 +693,12 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
           </div>
         )}
       </div>
+
+      <section className="booking-payment-plan-card">
+        <div><h4>Final payment plan</h4><p>{paymentPlan ? `${paymentPlan.requestedAmount} ${paymentPlan.currency} · ${String(paymentPlan.status || 'pending').replace(/_/g, ' ')}` : 'No final-balance request is active for this booking.'}</p></div>
+        <label>Final payment due<input type="date" value={paymentPlanDueDate} onChange={event => setPaymentPlanDueDate(event.target.value)} /></label>
+        <div><button type="button" disabled={paymentPlanSaving} onClick={() => savePaymentPlan(true)}>{paymentPlanSaving ? 'Saving…' : paymentPlan ? 'Update plan' : 'Create plan'}</button>{paymentPlan && !['paid', 'cancelled'].includes(paymentPlan.status) && <button type="button" disabled={paymentPlanSaving} onClick={() => savePaymentPlan(false)}>Disable</button>}</div>
+      </section>
 
       <div className="payments-list">
         <div className="payment-history-header">

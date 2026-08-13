@@ -10,7 +10,7 @@ interface CurrencySettingsProps {
 
 type ConverterCurrency = 'USD' | 'EUR' | 'CZK' | 'PLN';
 type PaymentTypeSetting = { key: string; label: string; active: boolean; sortOrder: number; system: boolean; behavior: string };
-type PaymentPlanSettings = { enabled: boolean; automaticallyCreateBalanceRequest: boolean; balanceDueDaysBeforeRetreat: number; showFuturePaymentRequestInPortal: boolean; publicPaymentRequestBaseUrl: string };
+type PaymentPlanSettings = { enabled: boolean; automaticallyCreateBalanceRequest: boolean; balanceDueDaysBeforeRetreat: number; reminderAutomationEnabled: boolean; reminderOffsetsDays: number[]; showFuturePaymentRequestInPortal: boolean; publicPaymentRequestBaseUrl: string };
 const converterCurrencies: ConverterCurrency[] = ['PLN', 'USD', 'EUR', 'CZK'];
 
 const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
@@ -32,7 +32,7 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
   const [paymentTypes, setPaymentTypes] = useState<PaymentTypeSetting[]>([]);
   const [paymentTypesSaving, setPaymentTypesSaving] = useState(false);
   const [newPaymentType, setNewPaymentType] = useState({ key: '', label: '' });
-  const [paymentPlan, setPaymentPlan] = useState<PaymentPlanSettings>({ enabled: true, automaticallyCreateBalanceRequest: true, balanceDueDaysBeforeRetreat: 30, showFuturePaymentRequestInPortal: true, publicPaymentRequestBaseUrl: 'https://ibogaspirit.com/clients/payment/request' });
+  const [paymentPlan, setPaymentPlan] = useState<PaymentPlanSettings>({ enabled: true, automaticallyCreateBalanceRequest: true, balanceDueDaysBeforeRetreat: 30, reminderAutomationEnabled: true, reminderOffsetsDays: [5, 3, 0, -1], showFuturePaymentRequestInPortal: true, publicPaymentRequestBaseUrl: 'https://ibogaspirit.com/clients/payment/request' });
   const [paymentPlanSaving, setPaymentPlanSaving] = useState(false);
 
   useEffect(() => {
@@ -56,7 +56,7 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
       const planResponse = typeof paymentsApi.getPlanSettings === 'function'
         ? await paymentsApi.getPlanSettings().catch(() => null)
         : null;
-      if (planResponse?.data) setPaymentPlan(planResponse.data);
+      if (planResponse?.data) setPaymentPlan(current => ({ ...current, ...planResponse.data, reminderOffsetsDays: planResponse.data.reminderOffsetsDays || current.reminderOffsetsDays }));
     } catch (err) {
       setError('Failed to load exchange rates');
       console.error('Error loading exchange rates:', err);
@@ -184,6 +184,8 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
             <label><input type="checkbox" checked={paymentPlan.enabled} onChange={(event) => setPaymentPlan(current => ({ ...current, enabled: event.target.checked }))} /> Enable payment-plan automation</label>
             <label><input type="checkbox" checked={paymentPlan.automaticallyCreateBalanceRequest} onChange={(event) => setPaymentPlan(current => ({ ...current, automaticallyCreateBalanceRequest: event.target.checked }))} /> Automatically create the final-balance payment request</label>
             <label><span>Final balance due before retreat</span><div className="payment-plan-number"><input type="number" min="0" max="365" value={paymentPlan.balanceDueDaysBeforeRetreat} onChange={(event) => setPaymentPlan(current => ({ ...current, balanceDueDaysBeforeRetreat: Number(event.target.value) }))} /><span>days</span></div></label>
+            <label><input type="checkbox" checked={paymentPlan.reminderAutomationEnabled} onChange={(event) => setPaymentPlan(current => ({ ...current, reminderAutomationEnabled: event.target.checked }))} /> Automatically email unpaid final-balance reminders</label>
+            <label><span>Reminder schedule (days before due; use -1 for one day after)</span><input value={paymentPlan.reminderOffsetsDays.join(', ')} onChange={(event) => setPaymentPlan(current => ({ ...current, reminderOffsetsDays: event.target.value.split(',').map(value => Number(value.trim())).filter(Number.isFinite) }))} /></label>
             <label><input type="checkbox" checked={paymentPlan.showFuturePaymentRequestInPortal} onChange={(event) => setPaymentPlan(current => ({ ...current, showFuturePaymentRequestInPortal: event.target.checked }))} /> Show the upcoming request in IbogaReady before it becomes due</label>
             <label><span>Public payment-request URL</span><input type="url" value={paymentPlan.publicPaymentRequestBaseUrl} onChange={(event) => setPaymentPlan(current => ({ ...current, publicPaymentRequestBaseUrl: event.target.value }))} /></label>
             <button className="convert-btn" disabled={paymentPlanSaving} onClick={savePaymentPlan}>{paymentPlanSaving ? 'Saving…' : 'Save payment plan'}</button>

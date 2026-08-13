@@ -410,6 +410,7 @@ export const paymentsApi = {
   getPlanSettings: () => api.get('/payments/plan-settings'),
   savePlanSettings: (data: any) => api.patch('/payments/plan-settings', data),
   syncBookingPlan: (bookingId: string) => api.post(`/payments/plan-settings/sync-booking/${bookingId}`),
+  updateBookingPlan: (bookingId: string, data: { enabled?: boolean; dueDate?: string }) => api.patch(`/payments/plan-settings/booking/${bookingId}`, data),
   getTypes: () => api.get<Array<{ key: string; label: string; active: boolean; sortOrder: number; system: boolean; behavior: string }>>('/payments/types/configuration'),
   createType: (data: { key: string; label: string; active?: boolean; sortOrder?: number }) => api.post('/payments/types/configuration', data),
   updateType: (key: string, data: { label?: string; active?: boolean; sortOrder?: number }) => api.patch(`/payments/types/configuration/${encodeURIComponent(key)}`, data),
