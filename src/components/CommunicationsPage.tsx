@@ -784,6 +784,7 @@ const CommunicationsPage: React.FC = () => {
                   {settings?.automatedBookingRemindersEnabled === true ? 'ON' : 'OFF'}
                 </label>
               </div>
+              {settings?.automationEnvironmentKillSwitch && <p className="mt-3 rounded border border-red-300 bg-red-100 p-2 text-sm font-bold text-red-800">EMERGENCY KILL SWITCH ACTIVE — scheduled emails and escalations cannot run.</p>}
               <p className={`mt-3 text-sm font-semibold ${settings?.automatedBookingRemindersEnabled === true ? 'text-amber-800' : 'text-green-800'}`}>
                 {settings?.automatedBookingRemindersEnabled === true
                   ? 'Warning: the background worker may email clients automatically.'

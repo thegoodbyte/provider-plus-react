@@ -18,6 +18,15 @@ export const requirementDefinitions: RequirementDefinition[] = [
 
 const completed = new Set(['received', 'reviewed', 'approved', 'completed', 'caution']);
 const reviewed = new Set(['reviewed', 'approved', 'completed', 'caution', 'rejected', 'needs_resubmission']);
+const canonicalRequirementKeys = new Set([
+  'contract_signed',
+  'entry_ekg_received',
+  'entry_liver_panel_received',
+  'medications_form_initial_received',
+  'questionnaire_received',
+  'food_form_received',
+  'blood_pressure_received',
+]);
 export const objectId = (value: any) => typeof value === 'object' ? value?._id || value?.id : value;
 const normalize = (value?: string) => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 const time = (value?: Date | string) => new Date(value || 0).getTime();
@@ -49,13 +58,19 @@ const definitionForItem = (item: BookingFlowItem): RequirementDefinition => {
   const readinessGroup = item.metadata?.readinessGroup || template?.readinessGroup || '';
   const expectedArtifact = item.metadata?.expectedArtifact || template?.expectedArtifact || '';
   const expectedDocumentType = item.metadata?.expectedDocumentType || template?.expectedDocumentType || '';
-  const canonical = requirementDefinitions.find((definition) =>
+  const canonicalKeyByStepKey: Record<string, string> = {
+    contract_signed: 'contract', entry_ekg_received: 'ekg', entry_liver_panel_received: 'liver',
+    medications_form_initial_received: 'medications', questionnaire_received: 'questionnaire',
+    food_form_received: 'food',
+  };
+  const canonicalKey = canonicalKeyByStepKey[normalize(item.key)];
+  const canonical = requirementDefinitions.find((definition) => definition.key === canonicalKey) || requirementDefinitions.find((definition) =>
     definition.readinessGroups.includes(readinessGroup)
     || definition.artifactTypes.includes(expectedArtifact as any)
     || definition.bookingDocumentTypes?.includes(normalize(expectedDocumentType)),
   );
   return {
-    key: canonical?.key || requirementType || item._id || item.key,
+    key: canonical?.key || requirementType || item.key || item._id || '',
     label: canonical?.label || item.title || template?.title || item.key,
     artifactTypes: canonical?.artifactTypes || (expectedArtifact ? [expectedArtifact as NonNullable<MedicalArtifact['artifactType']>] : []),
     documentTypes: canonical?.documentTypes || (expectedDocumentType ? [expectedDocumentType as NonNullable<MedicalArtifact['documentType']>] : []),
@@ -69,7 +84,10 @@ const definitionForItem = (item: BookingFlowItem): RequirementDefinition => {
 
 export const isVisibleBookingRequirement = (item: BookingFlowItem) => {
   const template = typeof item.templateId === 'object' ? item.templateId : undefined;
-  return item.metadata?.isRequirement === true || template?.isRequirement === true;
+  return item.metadata?.isRequirement === true
+    || template?.isRequirement === true
+    || Boolean(item.metadata?.requirementType || template?.requirementType)
+    || canonicalRequirementKeys.has(normalize(item.key));
 };
 
 export const buildBookingRequirementRows = (items: BookingFlowItem[], artifacts: MedicalArtifact[], libraryArtifacts: MedicalArtifact[], documents: BookingDocument[], libraryDocuments: BookingDocument[], reviewsByArtifact: Record<string, MedicalReviewRequest[]>) =>

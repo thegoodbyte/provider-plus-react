@@ -1292,6 +1292,7 @@ export interface BookingFlowTemplate {
   display_id?: number;
   retreatId?: string | Retreat | null;
   templateScope?: 'retreat' | 'global';
+  applicableRetreatTypes?: string[];
   workflowStage?: 'potential' | 'screening' | 'payment' | 'conditional_booking' | 'contract' | 'questionnaire' | 'medical' | 'prep' | 'approved' | 'cancelled';
   key: string;
   title: string;
@@ -1335,6 +1336,9 @@ export interface BookingReminderRule {
   taskTitle?: string;
   taskPriority?: 'low' | 'medium' | 'high' | 'urgent';
   active?: boolean;
+  repeatEveryDays?: number;
+  maxRepeats?: number;
+  stopDaysBeforeRetreat?: number;
 }
 
 export interface BookingFlowAction {
@@ -1539,6 +1543,7 @@ export interface MailSettings {
   autoCcEnabled?: boolean;
   autoCcEmail?: string;
   automatedBookingRemindersEnabled?: boolean;
+  automationEnvironmentKillSwitch?: boolean;
   clientMedicalReviewEmailsEnabled?: boolean;
   clientMedicalApprovedEmailsEnabled?: boolean;
   clientMedicalNeedsInfoEmailsEnabled?: boolean;
