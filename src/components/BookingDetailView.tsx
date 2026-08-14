@@ -79,6 +79,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const {
     generating: isGeneratingPDF,
     previewing: isPreviewingPDF,
+    previewPhase: pdfPreviewPhase,
     previewUrl,
     previewFileName,
     download: generatePDF,
@@ -212,6 +213,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         requirementsStatus={requirementsStatus}
         generating={isGeneratingPDF}
         previewing={isPreviewingPDF}
+        previewPhase={pdfPreviewPhase}
         sending={isSendingConfirmation}
         preparing={isPreparingConfirmationEmail}
         previewUrl={previewUrl}

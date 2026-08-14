@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FiAlertCircle, FiCheckCircle, FiInbox, FiMail, FiPlus, FiRefreshCw, FiSave, FiSearch, FiSend, FiTrash2 } from 'react-icons/fi';
+import { FiAlertCircle, FiCheckCircle, FiDownload, FiInbox, FiMail, FiPlus, FiRefreshCw, FiSave, FiSearch, FiSend, FiTrash2 } from 'react-icons/fi';
 import { Link, useLocation } from 'react-router-dom';
 import { bookingFlowApi, communicationsApi, clientsApi, contractGateApi, retreatsApi } from '../services/api';
 import { BookingFlowTemplate, Client, EmailTemplate, EmailTemplateSeedOption, InboundEmail, MailSettings, Retreat, SentEmail } from '../types';
@@ -398,6 +398,23 @@ const CommunicationsPage: React.FC = () => {
     } catch (error) {
       console.error('Error deleting template:', error);
       alert('Error deleting template');
+    }
+  };
+
+  const handleExportTemplateSeed = async () => {
+    if (!selectedTemplateId) return;
+    try {
+      const response = await communicationsApi.exportTemplateSeed(selectedTemplateId);
+      const seed = response.data;
+      const fileName = `${seed.templateKey || 'email-template'}-${seed.language || 'en'}.seed.json`;
+      const url = URL.createObjectURL(new Blob([`${JSON.stringify(seed, null, 2)}\n`], { type: 'application/json' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      alert(error?.response?.data?.message || 'Unable to export this template. Add a template key and save it first.');
     }
   };
 
@@ -1242,15 +1259,26 @@ const CommunicationsPage: React.FC = () => {
               <div className="text-xs text-gray-500">
                 Use placeholders like <code className="rounded bg-gray-100 px-1">{'{{ client.firstName }}'}</code> or <code className="rounded bg-gray-100 px-1">{'{{ retreat.name }}'}</code>.
               </div>
-              <button
-                type="button"
-                onClick={handleSaveTemplate}
-                disabled={savingTemplate}
-                className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-              >
-                <Icon icon={FiSave} />
-                Save Template
-              </button>
+              <div className="flex items-center gap-2">
+                {selectedTemplateId && <button
+                  type="button"
+                  onClick={handleExportTemplateSeed}
+                  className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  title="Download a Git-safe seed record. Use templates:pull locally to merge the live template into the seed library."
+                >
+                  <Icon icon={FiDownload} />
+                  Export seed
+                </button>}
+                <button
+                  type="button"
+                  onClick={handleSaveTemplate}
+                  disabled={savingTemplate}
+                  className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                >
+                  <Icon icon={FiSave} />
+                  Save Template
+                </button>
+              </div>
             </div>
           </section>
         </div>

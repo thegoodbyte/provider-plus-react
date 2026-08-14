@@ -287,6 +287,7 @@ const refreshCanonicalBookingConfirmation = async (bookingId: string) => {
 export const bookingsApi = {
   getAll: () => cachedGet<RetreatClient[]>('bookings:all', () => api.get<RetreatClient[]>('/bookings')),
   getOne: (id: string) => cachedGet<RetreatClient>(`bookings:${id}`, () => api.get<RetreatClient>(`/bookings/${id}`)),
+  getOneFresh: (id: string) => api.get<RetreatClient>(`/bookings/${id}`, { params: { _fresh: Date.now() } }),
   getActivity: (id: string) => api.get<import('../types').BookingActivityEvent[]>(`/bookings/${id}/activity`),
   getByHash: (hash: string) => cachedGet<RetreatClient>(`bookings:hash:${hash}`, () => api.get<RetreatClient>(`/bookings/by-hash/${hash}`)),
   getByRetreat: (retreatId: string) => cachedGet<RetreatClient[]>(`bookings:retreat:${retreatId}`, () => api.get<RetreatClient[]>(`/bookings/retreat/${retreatId}`)),
@@ -513,6 +514,7 @@ export const communicationsApi = {
   testConnection: () => api.post<{ settings: MailSettings; profile: Record<string, any> }>('/communications/gmail/test', {}),
   getTemplates: () => cachedGet<EmailTemplate[]>('communications:templates', () => api.get<EmailTemplate[]>('/communications/templates')),
   getTemplate: (id: string) => cachedGet<EmailTemplate>(`communications:templates:${id}`, () => api.get<EmailTemplate>(`/communications/templates/${id}`)),
+  exportTemplateSeed: (id: string) => api.get<Partial<EmailTemplate>>(`/communications/templates/${id}/seed-export`),
   getTemplateByCategoryAndLanguage: (category: string, language: string) => cachedGet<EmailTemplate>(
     `communications:templates:${category}:${language}`,
     () => api.get<EmailTemplate>(`/communications/templates/category/${category}/${language}`)
@@ -1349,7 +1351,7 @@ export const bookingFlowApi = {
     const key = `booking-flow:items:${query.toString()}`;
     return cachedGet<BookingFlowItem[]>(key, () => api.get<BookingFlowItem[]>(`/booking-flow/items?${query.toString()}`));
   },
-  getBookingRequirements: (bookingId: string) => cachedGet<{
+  getBookingRequirements: (bookingId: string, options: { compact?: boolean } = {}) => cachedGet<{
     items: BookingFlowItem[];
     templates: BookingFlowTemplate[];
     libraryTemplates: BookingFlowTemplate[];
@@ -1368,8 +1370,8 @@ export const bookingFlowApi = {
       latestReviewId?: string;
     }>;
   }>(
-    `booking-flow:booking-requirements:${bookingId}`,
-    () => api.get(`/booking-flow/bookings/${bookingId}/requirements`)
+    `booking-flow:booking-requirements:${bookingId}:${options.compact ? 'compact' : 'full'}`,
+    () => api.get(`/booking-flow/bookings/${bookingId}/requirements${options.compact ? '?compact=true' : ''}`)
   ),
   getMatrix: (retreatId: string) => cachedGet<any>(`booking-flow:matrix:${retreatId}`, () => api.get<any>(`/booking-flow/matrix/${retreatId}`)),
   getItem: (id: string) => cachedGet<BookingFlowItem>(`booking-flow:item:${id}`, () => api.get<BookingFlowItem>(`/booking-flow/items/${id}`)),

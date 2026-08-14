@@ -1260,41 +1260,41 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         destroyOnClose
       >
           <div className="retreat-stats">
-            <div className="stat-card">
+            <div className="stat-card metric-clients">
               <div className="stat-number">{activeClientCount}</div>
               <div className="stat-label">Active Clients</div>
             </div>
-            <div className="stat-card">
+            <div className="stat-card metric-occupancy">
               <div className="stat-number">{occupancyRate}%</div>
               <div className="stat-label">Occupancy Rate</div>
             </div>
-            <div className="stat-card">
+            <div className="stat-card metric-revenue">
               <div className="stat-number">{formatUSD(totalRevenueUSD)}</div>
               <div className="stat-label">Revenue Collected</div>
             </div>
-            <div className="stat-card">
+            <div className="stat-card metric-expected-revenue">
               <div className="stat-number">{formatUSD(totalExpectedUSD)}</div>
               <div className="stat-label">Expected Revenue</div>
             </div>
-            <div className="stat-card">
+            <div className="stat-card metric-confirmed">
               <div className="stat-number">{clients.filter(c => c.status === 'confirmed').length}</div>
               <div className="stat-label">Confirmed</div>
             </div>
-            <div className="stat-card">
+            <div className="stat-card metric-planned-expenses">
               <div className="stat-number">{formatUSD(plannedExpensesUSD)}</div>
               <div className="stat-label">Planned Expenses</div>
             </div>
-            <div className="stat-card">
+            <div className="stat-card metric-actual-expenses">
               <div className="stat-number">{formatUSD(actualExpensesUSD)}</div>
               <div className="stat-label">Actual Expenses</div>
             </div>
-            <div className="stat-card">
+            <div className={`stat-card ${profitUSD >= 0 ? 'metric-profit' : 'metric-loss'}`}>
               <div className={`stat-number ${profitUSD >= 0 ? 'profit-positive' : 'profit-negative'}`}>
                 {formatUSD(profitUSD)}
               </div>
               <div className="stat-label">Profit</div>
             </div>
-            <div className="stat-card">
+            <div className={`stat-card ${expectedProfitUSD >= 0 ? 'metric-expected-profit' : 'metric-loss'}`}>
               <div className={`stat-number ${expectedProfitUSD >= 0 ? 'profit-positive' : 'profit-negative'}`}>
                 {formatUSD(expectedProfitUSD)}
               </div>

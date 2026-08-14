@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { FiSend, FiX } from 'react-icons/fi';
+import { FiLoader, FiSend, FiX } from 'react-icons/fi';
 import { bookingsApi, communicationsApi } from '../services/api';
 import { EmailTemplate, MailSettings } from '../types';
 import { createBookingConfirmationPdf } from './BookingConfirmationPDF';
@@ -446,6 +446,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      {sending && <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/45" role="status" aria-live="polite" aria-label="Sending email"><div className="flex min-w-[220px] flex-col items-center gap-4 rounded-xl bg-white px-8 py-7 text-gray-900 shadow-2xl"><Icon icon={FiLoader} className="h-10 w-10 animate-spin text-blue-600" /><strong className="text-base">Sending email</strong><span className="text-center text-sm text-gray-500">Please keep this window open.</span></div></div>}
       <div className="flex max-h-[92vh] w-full max-w-3xl flex-col rounded-lg bg-white shadow-xl">
         <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4">
           <div>

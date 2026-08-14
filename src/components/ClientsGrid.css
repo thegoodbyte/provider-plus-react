@@ -998,10 +998,47 @@
 
 .retreat-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr));
   gap: 16px;
   margin-bottom: 32px;
+  align-items: stretch;
 }
+
+.retreat-stats .stat-card {
+  display: flex;
+  min-width: 0;
+  min-height: 118px;
+  height: auto;
+  aspect-ratio: auto;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(18px, 2.5vw, 26px);
+  overflow: hidden;
+  box-shadow: none;
+}
+
+.retreat-stats .stat-number {
+  max-width: 100%;
+  font-size: clamp(22px, 3vw, 30px);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+.retreat-stats .stat-label {
+  line-height: 1.35;
+  white-space: normal;
+}
+
+.retreat-stats .metric-clients { background: #eef6ff; border-color: #cfe3fb; }
+.retreat-stats .metric-occupancy { background: #ecfbfb; border-color: #c5ecec; }
+.retreat-stats .metric-revenue { background: #edf9f1; border-color: #c9ead4; }
+.retreat-stats .metric-expected-revenue { background: #eef2ff; border-color: #d3dafb; }
+.retreat-stats .metric-confirmed { background: #f6f0ff; border-color: #e2d2f6; }
+.retreat-stats .metric-planned-expenses { background: #fff9e8; border-color: #f1e2ad; }
+.retreat-stats .metric-actual-expenses { background: #fff2eb; border-color: #f2d4c4; }
+.retreat-stats .metric-profit { background: #ecf9ed; border-color: #c6e8c9; }
+.retreat-stats .metric-expected-profit { background: #edf5ff; border-color: #cbdff7; }
+.retreat-stats .metric-loss { background: #fff0f1; border-color: #f2c8cc; }
 
 .stat-card {
   background: white;
@@ -1159,7 +1196,7 @@
   }
 
   .retreat-stats {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
   }
 
   .section-header {
