@@ -40,6 +40,18 @@ describe('booking requirement rows', () => {
     ] as any, [], {});
     expect(rows[0].latestDocument?._id).toBe('new');
   });
+  it('shows a legacy signed-contract step without copied requirement metadata', () => {
+    const rows = buildBookingRequirementRows(
+      [{ _id: 'contract-item', key: 'contract_signed', title: 'Contract signed', status: 'received', isBlocking: true, metadata: {} } as any],
+      [], [],
+      [{ _id: 'signed-contract', bookingId: 'booking', documentType: 'contract', title: 'Signed Client Agreement', files: [{ fileName: 'signed.pdf' }] } as any],
+      [], {},
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].key).toBe('contract');
+    expect(rows[0].uploaded).toBe(true);
+    expect(rows[0].latestDocument?._id).toBe('signed-contract');
+  });
   it('uses populated templates, linked library documents, flow completion, and item review states', () => {
     const rows = buildBookingRequirementRows([{
       _id: 'item', title: 'Medications', status: 'approved', isBlocking: false, templateId: { readinessGroup: 'medications', expectedArtifact: 'medications_form' },
