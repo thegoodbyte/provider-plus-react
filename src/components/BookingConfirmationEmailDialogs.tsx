@@ -1,6 +1,8 @@
 import React from 'react';
+import { FiLoader } from 'react-icons/fi';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 import { BookingConfirmationLanguage } from './bookingConfirmationWorkflow';
+const LoaderIcon: any = FiLoader;
 
 const languageLabels: Record<BookingConfirmationLanguage, string> = { pl: 'Polish', cz: 'Czech', en: 'English' };
 const clientName = (client: any) => String(client?.fullName || client?.name || [client?.firstName || client?.fname, client?.lastName || client?.lname].filter(Boolean).join(' ')).trim() || 'this client';
@@ -39,6 +41,7 @@ const BookingConfirmationEmailDialogs: React.FC<Props> = ({ booking, language, d
     {draft && <EmailComposeModal title="Booking Confirmation Email" initialValues={draft} extraContent={<ReasonField value={reason} onChange={onReasonChange} />} onClose={onCloseDraft} onSent={onReviewedSent} />}
     {quickSendOpen && (
       <div className="booking-confirm-dialog-overlay" role="presentation">
+        {sending && <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/45" role="status" aria-live="polite" aria-label="Sending email"><div className="flex min-w-[220px] flex-col items-center gap-4 rounded-xl bg-white px-8 py-7 text-gray-900 shadow-2xl"><LoaderIcon className="h-10 w-10 animate-spin text-blue-600" /><strong>Sending email</strong><span className="text-sm text-gray-500">Please keep this window open.</span></div></div>}
         <div className="booking-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="quick-send-confirm-title">
           <h2 id="quick-send-confirm-title">Send booking confirmation?</h2>
           <p>Do you want to send the booking confirmation to this client?</p>

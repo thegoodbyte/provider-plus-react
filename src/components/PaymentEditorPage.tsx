@@ -263,7 +263,9 @@ const PaymentEditorPage: React.FC = () => {
     const currency = paymentRequest?.currency || formData.currency;
     const clientId = resolveId(paymentRequest?.clientId);
     const retreatId = resolveId(paymentRequest?.retreatId);
-    const booking = findBookingForPaymentRequest(paymentRequestId, bookingList);
+    const requestBookingId = resolveId(paymentRequest.bookingId);
+    const booking = bookingList.find((item) => item._id === requestBookingId)
+      || findBookingForPaymentRequest(paymentRequestId, bookingList);
     const requestPaymentType = paymentTypeFromRequest(paymentRequest.requestType);
 
     setFormData((prev) => ({
@@ -271,7 +273,7 @@ const PaymentEditorPage: React.FC = () => {
       paymentRequestId,
       clientId,
       retreatId,
-      bookingId: booking?._id || prev.bookingId,
+      bookingId: requestBookingId || booking?._id || prev.bookingId,
       amount: amount !== '' && amount !== undefined ? String(amount) : prev.amount,
       currency,
       paymentMethod: paymentMethodFromRequest(paymentRequest.paymentType),
@@ -511,7 +513,7 @@ const PaymentEditorPage: React.FC = () => {
                 </p>
               )}
               {!selectedBooking && formData.paymentRequestId && (
-                <p className="mt-1 text-xs text-amber-700">This payment will be linked automatically only when a booking is created from this payment request.</p>
+                <p className="mt-1 text-xs text-amber-700">This invoice is not linked to a booking. Select the exact booking before saving the payment.</p>
               )}
             </div>
 

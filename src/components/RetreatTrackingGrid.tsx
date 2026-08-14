@@ -131,10 +131,6 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
               <Link to={`/${routePrefix}/medical-review-requests/${reviewId}`} className="medical-cell-link">
                 {cell.reviewLabel}
               </Link>
-            ) : cell.artifactLabel ? (
-              <Link to={`/${routePrefix}/medical-artifacts/${artifactId}`} className="medical-cell-link">
-                {cell.artifactLabel}
-              </Link>
             ) : (
               <span className="medical-cell-empty">No MRR yet</span>
             )}
@@ -151,12 +147,21 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
         </div>
 
         <div className="medical-cell-links">
+          {!reviewId && artifactId ? (
+            <Link
+              to={`/${routePrefix}/medical-review-requests/new?artifactId=${encodeURIComponent(artifactId)}`}
+              className="medical-cell-create-mrr"
+              aria-label={`Create MRR for ${client.clientName} ${stageKey}`}
+            >
+              Create MRR
+            </Link>
+          ) : null}
           {artifactId ? (
             <Link to={`/${routePrefix}/medical-artifacts/${artifactId}`} className="medical-cell-mini-link">
               Artifact #{cell.artifact?.display_id || artifactId.slice(-6)}
             </Link>
           ) : (
-            <span className="medical-cell-mini-muted">No artifact</span>
+            <span className="medical-cell-mini-muted">Upload an artifact before creating an MRR</span>
           )}
           {clientId ? (
             <Link to={`/${routePrefix}/bookings/${bookingId}`} className="medical-cell-mini-link">

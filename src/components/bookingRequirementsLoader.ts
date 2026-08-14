@@ -12,7 +12,7 @@ export const fetchBookingRequirementSources = async (
   bookingId: string,
   _clientId?: string,
 ): Promise<BookingRequirementSources> => {
-  const response = await bookingFlowApi.getBookingRequirements(bookingId);
+  const response = await bookingFlowApi.getBookingRequirements(bookingId, { compact: true });
 
   return {
     items: response.data.items || [],
