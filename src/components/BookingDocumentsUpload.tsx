@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Eye, FileText, RefreshCw, Send, Upload } from 'lucide-react';
+import { ClipboardList, FileHeart, FileText, HeartPulse, Pill, RefreshCw, Scale, Stethoscope, Upload, Utensils } from 'lucide-react';
 import { bookingDocumentsApi, bookingFlowApi, medicalArtifactsApi } from '../services/api';
-import { BookingDocument, BookingDocumentType, BookingFlowActionLog, BookingFlowItem, MedicalArtifact } from '../types';
+import { BookingDocument, BookingDocumentType, BookingFlowItem, MedicalArtifact } from '../types';
 import './BookingMedicalUpload.css';
 
 interface BookingDocumentsUploadProps {
   bookingId: string;
   bookingNumber?: string;
+  clientName?: string;
   clientId: string;
   retreatId?: string;
   onUploadComplete?: () => void;
@@ -64,11 +65,6 @@ const getApiErrorMessage = (error: any) => {
   return message || 'Upload error. Please try again.';
 };
 
-const formatDate = (value?: Date | string) => {
-  if (!value) return '-';
-  return new Date(value).toLocaleString();
-};
-
 const formatBytes = (size?: number) => {
   if (!size) return '-';
   if (size < 1024) return `${size} B`;
@@ -79,6 +75,7 @@ const formatBytes = (size?: number) => {
 const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
   bookingId,
   bookingNumber,
+  clientName,
   clientId,
   retreatId,
   onUploadComplete,
@@ -87,11 +84,8 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
   const [entryMedicalArtifacts, setEntryMedicalArtifacts] = useState<MedicalArtifact[]>([]);
   const [documentTypes, setDocumentTypes] = useState<BookingDocumentType[]>([]);
   const [flowItems, setFlowItems] = useState<BookingFlowItem[]>([]);
-  const [actionLogsByItem, setActionLogsByItem] = useState<Record<string, BookingFlowActionLog[]>>({});
   const [loading, setLoading] = useState(false);
   const [uploadingType, setUploadingType] = useState<string | null>(null);
-  const [sendingItemId, setSendingItemId] = useState<string | null>(null);
-  const [linkingDocumentId, setLinkingDocumentId] = useState<string | null>(null);
   const [markOnUpload, setMarkOnUpload] = useState<Record<string, boolean>>({});
   const [viewer, setViewer] = useState<DocumentFileViewer | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -161,19 +155,6 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
           || artifact.documentType === 'EKG' || artifact.documentType === 'Liver')
       ));
 
-      const logEntries = await Promise.all(
-        items
-          .filter((item) => item._id && (getItemExpectedDocument(item) || item.metadata?.expectedArtifact))
-          .map(async (item) => {
-            try {
-              const logsResponse = await bookingFlowApi.getItemActionLogs(item._id!);
-              return [item._id!, logsResponse.data || []] as const;
-            } catch {
-              return [item._id!, []] as const;
-            }
-          })
-      );
-      setActionLogsByItem(Object.fromEntries(logEntries));
       setMarkOnUpload((current) => {
         const next = { ...current };
         items.forEach((item) => {
@@ -203,6 +184,45 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
       return acc;
     }, {});
   }, [documents, sections]);
+
+  const orderedSections = useMemo(() => {
+    const order: Record<string, number> = {
+      contract: 10,
+      questionnaire: 20,
+      questionnaire_form: 20,
+      medications_form: 30,
+      food_intake: 40,
+      food_form: 40,
+      health_assessment: 50,
+    };
+    return [...sections].sort((a, b) => (order[a.type] ?? 100) - (order[b.type] ?? 100));
+  }, [sections]);
+
+  const handleMedicalUpload = async (artifactType: 'ekg' | 'liver_panel', files: FileList | null) => {
+    if (!files?.length) return;
+    setUploadingType(artifactType);
+    setError(null);
+    try {
+      const created = await medicalArtifactsApi.create({
+        clientId,
+        bookingId,
+        retreatId,
+        artifactType,
+        documentStage: 'entry',
+        documentType: artifactType === 'ekg' ? 'EKG' : 'Liver',
+        title: artifactType === 'ekg' ? 'Entry EKG' : 'Entry liver panel',
+        source: 'admin_upload',
+        status: 'stored',
+      });
+      if (created.data._id) await medicalArtifactsApi.uploadFiles(created.data._id, Array.from(files));
+      await loadDocuments();
+      onUploadComplete?.();
+    } catch (uploadError: any) {
+      setError(getApiErrorMessage(uploadError));
+    } finally {
+      setUploadingType(null);
+    }
+  };
 
   const handleUpload = async (section: DocumentSection, files: FileList | null) => {
     if (!files?.length) return;
@@ -259,244 +279,124 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
     }
   };
 
-  const handleSendRequest = async (item?: BookingFlowItem) => {
-    if (!item?._id) return;
-    setSendingItemId(item._id);
-    setError(null);
-    try {
-      await bookingFlowApi.sendItemEmail(item._id);
-      await loadDocuments();
-    } catch (sendError: any) {
-      setError(sendError?.response?.data?.message || sendError?.message || 'Unable to send document request email.');
-    } finally {
-      setSendingItemId(null);
-    }
+  const iconFor = (type: string) => {
+    const props = { size: 22, strokeWidth: 1.6 };
+    if (type === 'contract') return <Scale {...props} />;
+    if (type.includes('questionnaire')) return <ClipboardList {...props} />;
+    if (type.includes('medication')) return <Pill {...props} />;
+    if (type.includes('food')) return <Utensils {...props} />;
+    if (type.includes('health')) return <Stethoscope {...props} />;
+    return <FileText {...props} />;
   };
 
-  const handleLinkExistingDocument = async (document: BookingDocument, section: DocumentSection) => {
-    if (!document._id || !section.receivedItem?._id) return;
-    setLinkingDocumentId(document._id);
-    setError(null);
-    try {
-      await bookingDocumentsApi.update(document._id, {
-        bookingFlowItemId: section.receivedItem._id,
-        metadata: {
-          ...(document.metadata || {}),
-          manualLinkSource: 'booking-documents-section',
-          manualLinkedAt: new Date().toISOString(),
-          markBookingStepOnUpload: true,
-        },
-      } as any);
-      await bookingFlowApi.recordItemAction(section.receivedItem._id, {
-        actionType: 'artifact_received',
-        actionKey: `${section.type}_manual_linked`,
-        statusAfter: 'received',
-        notes: `${section.title} manually linked from an existing booking document.`,
-        metadata: {
-          documentType: section.type,
-          bookingDocumentId: document._id,
-          fileNames: (document.files || []).map((file) => file.fileName).filter(Boolean),
-          source: 'manual_link',
-        },
-      });
-      await loadDocuments();
-      onUploadComplete?.();
-    } catch (linkError: any) {
-      setError(linkError?.response?.data?.message || linkError?.message || 'Unable to link existing document.');
-    } finally {
-      setLinkingDocumentId(null);
-    }
-  };
+  const bookingReceivedCount = orderedSections.filter((section) =>
+    (documentsByType[section.type] || []).some((document) => (document.files || []).length > 0)
+  ).length;
+  const medicalRows = [
+    { type: 'ekg' as const, title: 'Entry EKG', description: "Uploaded through this booking's retreat requirements.", icon: <HeartPulse size={22} strokeWidth={1.6} /> },
+    { type: 'liver_panel' as const, title: 'Entry liver panel', description: "Uploaded through this booking's retreat requirements.", icon: <FileHeart size={22} strokeWidth={1.6} /> },
+  ];
+  const medicalReceivedCount = medicalRows.filter((row) => entryMedicalArtifacts.some((artifact) =>
+    artifact.artifactType === row.type || (row.type === 'liver_panel' && artifact.documentType === 'Liver')
+  )).length;
+  const totalCount = orderedSections.length + medicalRows.length;
+  const receivedCount = bookingReceivedCount + medicalReceivedCount;
 
   return (
-    <div className="booking-medical-upload">
-      <div className="booking-documents-header">
+    <div className="booking-documents-redesign">
+      <header className="booking-documents-redesign-header">
         <div>
-          <h3>Entry Medical Documents</h3>
-          <p>Entry EKG and liver-panel files uploaded through this booking's retreat requirements.</p>
+          <div className="booking-documents-eyebrow">Booking #{bookingNumber || '—'}{clientName ? ` · ${clientName}` : ''}</div>
+          <h2>Documents</h2>
+          <p>{receivedCount} of {totalCount} on file. Medical files also arrive through the retreat requirements.</p>
         </div>
-      </div>
-      {entryMedicalArtifacts.length === 0 ? (
-        <div className="booking-medical-empty">No entry EKG or liver panel has been uploaded for this booking.</div>
-      ) : (
-        <div className="booking-medical-record-list">
-          {entryMedicalArtifacts.map((artifact) => (
-            <div className="booking-medical-record" key={artifact._id || `${artifact.artifactType}-${artifact.createdAt}`}>
-              <div className="booking-medical-record-main">
-                <strong>{artifact.artifactType === 'liver_panel' || artifact.documentType === 'Liver' ? 'Entry Liver Panel' : 'Entry EKG'}</strong>
-                <div className="booking-medical-meta">
-                  <span>{artifact.title || artifact.documentType}</span>
-                  <span>{formatDate(artifact.receivedAt || artifact.createdAt)}</span>
-                  <span>{(artifact.files || []).length} file(s)</span>
-                </div>
-                <div className="booking-medical-meta">
-                  {(artifact.files || []).map((file, index) => <span key={`${file.fileName}-${index}`}>{file.fileName || 'Document'}</span>)}
-                </div>
-              </div>
-            </div>
-          ))}
+        <div className="booking-documents-header-actions">
+          <span className="booking-documents-outstanding">{totalCount - receivedCount} outstanding</span>
+          <button type="button" className="booking-documents-refresh" onClick={loadDocuments} disabled={loading}>
+            <RefreshCw size={15} className={loading ? 'booking-medical-loading-spinner' : ''} />
+            <span>Refresh</span>
+          </button>
         </div>
-      )}
+      </header>
 
-      <div className="booking-documents-header">
-        <div>
-          <h3>Booking Documents</h3>
-          <p>Upload forms tied directly to this booking. Each upload is stored as a booking document with the booking ID.</p>
+      {error && <div className="alert alert-danger booking-documents-error">{error}</div>}
+
+      <section className="booking-documents-section">
+        <div className="booking-documents-section-title">
+          <h3>Booking documents</h3>
+          <span>{bookingReceivedCount} of {orderedSections.length} on file</span>
         </div>
-        <button className="btn btn-sm btn-secondary" onClick={loadDocuments} disabled={loading}>
-          <RefreshCw size={16} /> {loading ? 'Loading...' : 'Refresh'}
-        </button>
-      </div>
-
-      {error && <div className="alert alert-danger">{error}</div>}
-
-      <div className="booking-documents-grid">
-        {sections.map((section) => {
-          const sectionDocuments = documentsByType[section.type] || [];
-          const inputId = `booking-document-${section.type}`;
-          const isUploading = uploadingType === section.type;
-          const sentLogs = section.sentItem?._id ? (actionLogsByItem[section.sentItem._id] || []) : [];
-          const receivedLogs = section.receivedItem?._id ? (actionLogsByItem[section.receivedItem._id] || []) : [];
-          const historyLogs = [...sentLogs, ...receivedLogs]
-            .sort((a, b) => new Date(b.performedAt || b.createdAt || 0).getTime() - new Date(a.performedAt || a.createdAt || 0).getTime())
-            .slice(0, 5);
-          const hasReceivedDocument = sectionDocuments.some((document) => (document.files || []).length > 0);
-
-          return (
-            <div key={section.type} className={`booking-document-card ${hasReceivedDocument ? 'booking-document-card-received' : ''}`}>
-              <div className="booking-document-card-header">
-                <FileText size={20} />
-                <div>
-                  <h4>{section.title}</h4>
+        <div className="booking-documents-rows">
+          {orderedSections.map((section, index) => {
+            const sectionDocuments = documentsByType[section.type] || [];
+            const latestDocument = sectionDocuments[0];
+            const latestFile = latestDocument?.files?.[0];
+            const storedPath = latestFile?.s3Key || latestFile?.filePath;
+            const received = Boolean(latestFile);
+            const required = Boolean(section.receivedItem?.isBlocking);
+            const inputId = `booking-document-${section.type}`;
+            const openViewer = () => {
+              if (latestDocument?._id && latestFile && storedPath) {
+                setViewer({ document: latestDocument, file: latestFile, viewUrl: latestFile.url || bookingDocumentsApi.getFileViewUrl(latestDocument._id, storedPath) });
+              }
+            };
+            return (
+              <article className={`booking-documents-row ${received ? 'is-received' : 'is-missing'}`} key={section.type}>
+                <div className="booking-documents-number">{String(index + 1).padStart(2, '0')}</div>
+                <div className="booking-documents-icon">{iconFor(section.type)}</div>
+                <div className="booking-documents-copy">
+                  <div className="booking-documents-name-line"><strong>{section.title}</strong>{required && !received && <span className="booking-documents-required">Required</span>}</div>
                   <p>{section.description}</p>
                 </div>
-              </div>
-
-              {(section.sentItem || section.receivedItem) && (
-                <div className="booking-document-empty">
-                  {section.sentItem && <div>Email step: {section.sentItem.title} ({section.sentItem.status})</div>}
-                  {section.receivedItem && <div>Upload step: {section.receivedItem.title} ({section.receivedItem.status})</div>}
+                <div className="booking-documents-file">
+                  {received ? <>
+                    <button type="button" onClick={openViewer} className="booking-documents-file-name">{latestFile?.fileName || latestDocument.title}</button>
+                    <span>Received {new Date(latestDocument.receivedAt || latestDocument.createdAt || 0).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} · {formatBytes(latestFile?.size)}</span>
+                  </> : <span>Nothing on file yet</span>}
                 </div>
-              )}
-
-              {section.sentItem && (
-                <button
-                  className="btn btn-sm btn-secondary"
-                  type="button"
-                  disabled={sendingItemId === section.sentItem._id}
-                  onClick={() => handleSendRequest(section.sentItem)}
-                >
-                  <Send size={16} /> {sendingItemId === section.sentItem._id ? 'Sending...' : `Send ${section.title} Request`}
-                </button>
-              )}
-
-              <div className="booking-document-files">
-                {sectionDocuments.length === 0 ? (
-                  <div className="booking-document-empty">No file uploaded yet.</div>
-                ) : (
-                  sectionDocuments.map((document) => (
-                    <div key={document._id} className="booking-document-file-row">
-                      <div>
-                        <strong>{document.title}</strong>
-                        <div className="upload-date">Received: {formatDate(document.receivedAt || document.createdAt)}</div>
-                      </div>
-                      <div className="booking-document-file-list">
-                        {section.receivedItem && (
-                          <button
-                            type="button"
-                            className="btn btn-xs btn-outline-primary mb-2"
-                            disabled={linkingDocumentId === document._id || Boolean(document.bookingFlowItemId)}
-                            onClick={() => handleLinkExistingDocument(document, section)}
-                          >
-                            {document.bookingFlowItemId ? 'Linked to step' : linkingDocumentId === document._id ? 'Linking...' : 'Link to step'}
-                          </button>
-                        )}
-                        {(document.files || []).map((file, index) => (
-                          <div key={`${file.s3Key || file.filePath || file.fileName}-${index}`} className="booking-document-file-item">
-                            <button
-                              type="button"
-                              className="booking-document-thumb"
-                              onClick={() => {
-                                const storedPath = file.s3Key || file.filePath;
-                                if (document._id && storedPath) {
-                                  setViewer({ document, file, viewUrl: file.url || bookingDocumentsApi.getFileViewUrl(document._id, storedPath) });
-                                }
-                              }}
-                              disabled={!document._id || !(file.s3Key || file.filePath)}
-                              title="Preview file"
-                            >
-                              {file.thumbnailUrl ? (
-                                <img src={file.thumbnailUrl} alt="" />
-                              ) : (
-                                <FileText size={22} />
-                              )}
-                            </button>
-                            <button
-                              type="button"
-                              className="booking-document-file-link"
-                              onClick={() => {
-                                const storedPath = file.s3Key || file.filePath;
-                                if (document._id && storedPath) {
-                                  setViewer({ document, file, viewUrl: file.url || bookingDocumentsApi.getFileViewUrl(document._id, storedPath) });
-                                }
-                              }}
-                              disabled={!document._id || !(file.s3Key || file.filePath)}
-                              title="Preview file"
-                            >
-                              <Eye size={14} /> {file.fileName || 'Uploaded file'} ({formatBytes(file.size)})
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              <div className="upload-section">
-                {section.receivedItem && (
-                  <label className="booking-document-empty" style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={markOnUpload[section.type] !== false}
-                      onChange={(event) => setMarkOnUpload((current) => ({ ...current, [section.type]: event.target.checked }))}
-                    />
-                    Mark "{section.receivedItem.title}" received after upload
-                  </label>
-                )}
-                <input
-                  type="file"
-                  id={inputId}
-                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.heic,.heif"
-                  multiple
-                  onChange={(event) => {
-                    handleUpload(section, event.target.files);
-                    event.target.value = '';
-                  }}
-                  disabled={Boolean(uploadingType)}
-                />
-                <label htmlFor={inputId} className="btn btn-sm btn-primary">
-                  <Upload size={16} /> {isUploading ? 'Uploading...' : `Upload ${section.title}`}
-                </label>
-              </div>
-
-              {historyLogs.length > 0 && (
-                <div className="booking-document-files">
-                  <strong>Step action history</strong>
-                  {historyLogs.map((log) => (
-                    <div key={log._id} className="booking-document-empty">
-                      {formatDate(log.performedAt || log.createdAt)} - {log.actionLabel || log.actionKey || log.actionType}
-                      {log.statusAfter ? ` (${log.statusAfter})` : ''}
-                      {log.metadata?.sentEmailDisplayId ? ` - email #${log.metadata.sentEmailDisplayId}` : ''}
-                      {log.notes ? ` - ${log.notes}` : ''}
-                    </div>
-                  ))}
+                <div className="booking-documents-actions">
+                  {received && <>
+                    <button type="button" onClick={openViewer}>View</button>
+                    <a href={latestFile?.url || (latestDocument?._id && storedPath ? bookingDocumentsApi.getFileViewUrl(latestDocument._id, storedPath) : undefined)} target="_blank" rel="noreferrer">Download</a>
+                  </>}
+                  <input id={inputId} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.heic,.heif" onChange={(event) => { handleUpload(section, event.target.files); event.target.value = ''; }} disabled={Boolean(uploadingType)} />
+                  <label htmlFor={inputId} className={received ? 'booking-documents-add' : 'booking-documents-upload'}><Upload size={14} />{uploadingType === section.type ? 'Uploading…' : received ? 'Add another' : 'Upload'}</label>
                 </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="booking-documents-section booking-documents-medical-section">
+        <div className="booking-documents-section-title">
+          <h3>Entry medical documents</h3>
+          <span>{medicalReceivedCount} of {medicalRows.length} on file</span>
+        </div>
+        <div className="booking-documents-rows">
+          {medicalRows.map((row, index) => {
+            const artifact = entryMedicalArtifacts.find((candidate) => candidate.artifactType === row.type || (row.type === 'liver_panel' && candidate.documentType === 'Liver'));
+            const file = artifact?.files?.[0];
+            const received = Boolean(file);
+            const inputId = `booking-medical-document-${row.type}`;
+            return (
+              <article className={`booking-documents-row ${received ? 'is-received' : 'is-missing'}`} key={row.type}>
+                <div className="booking-documents-number">{String(orderedSections.length + index + 1).padStart(2, '0')}</div>
+                <div className="booking-documents-icon">{row.icon}</div>
+                <div className="booking-documents-copy">
+                  <div className="booking-documents-name-line"><strong>{row.title}</strong>{!received && <span className="booking-documents-required">Required</span>}</div>
+                  <p>{row.description}</p>
+                </div>
+                <div className="booking-documents-file">{received ? <><strong>{file?.fileName || row.title}</strong><span>Received {new Date(artifact?.receivedAt || artifact?.createdAt || 0).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })} · {formatBytes(file?.size)}</span></> : <span>Nothing on file yet</span>}</div>
+                <div className="booking-documents-actions">
+                  <input id={inputId} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.heic,.heif" onChange={(event) => { handleMedicalUpload(row.type, event.target.files); event.target.value = ''; }} disabled={Boolean(uploadingType)} />
+                  <label htmlFor={inputId} className={received ? 'booking-documents-add' : 'booking-documents-upload'}><Upload size={14} />{uploadingType === row.type ? 'Uploading…' : received ? 'Add another' : 'Upload'}</label>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
       {viewer && (
         <div className="booking-document-viewer-backdrop" role="dialog" aria-modal="true" aria-label="Booking document viewer">
           <div className="booking-document-viewer">

@@ -302,6 +302,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
           <BookingDocumentsUpload
             bookingId={bookingId}
             bookingNumber={booking.bookingNumber}
+            clientName={clientName}
             clientId={typeof client === 'object' ? client._id : client}
             retreatId={typeof retreat === 'object' ? retreat._id : retreat}
             onUploadComplete={handleBookingRelatedUpdate}
