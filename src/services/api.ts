@@ -1159,6 +1159,11 @@ export const medicalReviewRequestsApi = {
     invalidateBookingRequirements();
     return api.patch<MedicalReviewRequest>(`/medical-review-requests/${id}`, data);
   },
+  resetReview: (id: string, reason: string) => {
+    cacheService.clearPattern('medical-review-requests:');
+    invalidateBookingRequirements();
+    return api.patch<MedicalReviewRequest>(`/medical-review-requests/${id}/reset-review`, { reason });
+  },
   updateClientVisibleAdminNote: (id: string, note: string) => {
     cacheService.clearPattern('medical-review-requests:');
     invalidateBookingRequirements();

@@ -444,6 +444,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [reviewDecision, setReviewDecision] = useState<(typeof decisionOptions)[number] | ''>('');
   const [medicalStaffNotes, setMedicalStaffNotes] = useState('');
   const [savingReview, setSavingReview] = useState(false);
+  const [resettingReview, setResettingReview] = useState(false);
   const [clientVisibleAdminNote, setClientVisibleAdminNote] = useState('');
   const [savingClientVisibleAdminNote, setSavingClientVisibleAdminNote] = useState(false);
   const [clientVisibleAdminNoteStatus, setClientVisibleAdminNoteStatus] = useState('');
@@ -652,6 +653,26 @@ const MedicalReviewRequestsPage: React.FC = () => {
       alert(error?.response?.data?.message || error?.message || 'Unable to generate medical review access link.');
     } finally {
       setAccessLinkBusy(false);
+    }
+  };
+
+  const handleResetReview = async () => {
+    if (!selected?._id || user?.role !== 'admin') return;
+    const reason = window.prompt('Why are you resetting this review result? This will be recorded in the audit log.');
+    if (reason === null) return;
+    if (reason.trim().length < 3) {
+      alert('Enter a reason of at least 3 characters.');
+      return;
+    }
+    if (!window.confirm('Reset this medical review to Pending and remove its current result? The previous result remains in review history and the audit log.')) return;
+    try {
+      setResettingReview(true);
+      await medicalReviewRequestsApi.resetReview(selected._id, reason.trim());
+      await loadRequests();
+    } catch (error: any) {
+      alert(error?.response?.data?.message || error?.message || 'Unable to reset the medical review.');
+    } finally {
+      setResettingReview(false);
     }
   };
 
@@ -1181,6 +1202,12 @@ const MedicalReviewRequestsPage: React.FC = () => {
           >
             New Request
           </button>
+        )}
+        {isDetailView && selected && user?.role === 'admin' && (
+          <div className="flex flex-wrap justify-end gap-2">
+            <button type="button" onClick={() => navigate(`/admin/medical-review-requests/${selected._id}/edit`)} className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Edit request</button>
+            <button type="button" disabled={resettingReview || (!selected.reviewDecision && selected.status === 'pending')} onClick={handleResetReview} className="rounded-md border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50">{resettingReview ? 'Resetting...' : 'Reset review'}</button>
+          </div>
         )}
       </div>
 
