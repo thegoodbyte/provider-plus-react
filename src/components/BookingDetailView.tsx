@@ -256,6 +256,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
           <BookingPaymentManagement
             bookingId={bookingId}
             bookingNumber={booking.bookingNumber}
+            clientName={clientName}
             bookingHash={booking.bookingHash}
             clientId={typeof client === 'object' ? client._id : client}
             retreatId={typeof retreat === 'object' ? retreat._id : retreat}

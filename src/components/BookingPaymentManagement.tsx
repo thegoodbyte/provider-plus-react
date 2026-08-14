@@ -12,6 +12,7 @@ const DEFAULT_EXCHANGE_RATE_PROVIDER_LABEL = 'Revolut';
 interface BookingPaymentManagementProps {
   bookingId: string;
   bookingNumber?: string | number;
+  clientName?: string;
   bookingHash?: string; // New prop for booking hash
   clientId: string;
   retreatId: string;
@@ -25,6 +26,7 @@ const resolvePaymentId = (value: any) => (typeof value === 'object' && value?._i
 const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   bookingId,
   bookingNumber,
+  clientName,
   bookingHash,
   clientId,
   retreatId,
@@ -687,7 +689,10 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   return (
     <div className="booking-payment-management">
       <div className="payment-summary-header">
-        <h3>Payments</h3>
+        <div className="payment-summary-title">
+          <span>Booking #{bookingNumber || bookingHash || bookingId.slice(-6)}{clientName ? ` · ${clientName}` : ''}</span>
+          <h3>Payments</h3>
+        </div>
         <div className="payment-header-actions"><span className={`booking-payment-state ${isPaidInFull ? 'paid-in-full' : totalPaidBookingCurrency > 0 ? 'partially-paid' : 'unpaid'}`}>
           {isPaidInFull ? '✓ Paid in full' : totalPaidBookingCurrency > 0 ? 'Partially paid' : 'Unpaid'}
         </span><button type="button" className="record-payment-button" onClick={() => { setShowLinkExisting(false); setShowAddPayment(true); }}>Record a payment</button></div>
