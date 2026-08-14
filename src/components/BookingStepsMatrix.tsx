@@ -47,6 +47,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState('');
   const [viewMode, setViewMode] = useState<'detail' | 'simple'>('detail');
+  const [isFullScreen, setIsFullScreen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [toolbarMessage, setToolbarMessage] = useState('');
   const [selectedBookingAction, setSelectedBookingAction] = useState('');
@@ -102,6 +103,18 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    if (!isFullScreen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const closeOnEscape = (event: KeyboardEvent) => event.key === 'Escape' && setIsFullScreen(false);
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [isFullScreen]);
 
   useEffect(() => {
     if (isEditing) {
@@ -649,10 +662,10 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   }
 
   return (
-    <div className="space-y-4">
-      <BookingStepsToolbar viewMode={viewMode} isEditing={isEditing} saving={saving} message={toolbarMessage} onViewMode={setViewMode} onUnlock={() => setIsEditing(true)} onSaveAndLock={() => saveAllChanges(true)} onRefresh={() => loadData()} onGenerate={generateSteps} />
+    <div className={isFullScreen ? 'fixed inset-0 z-[1000] flex flex-col gap-4 overflow-hidden bg-gray-100 p-4 sm:p-6' : 'space-y-4'}>
+      <BookingStepsToolbar viewMode={viewMode} isEditing={isEditing} isFullScreen={isFullScreen} saving={saving} message={toolbarMessage} onViewMode={setViewMode} onUnlock={() => setIsEditing(true)} onSaveAndLock={() => saveAllChanges(true)} onFullScreen={() => setIsFullScreen((current) => !current)} onRefresh={() => loadData()} onGenerate={generateSteps} />
 
-      <div className="max-h-[calc(100vh-220px)] overflow-auto rounded-lg border border-gray-300 bg-white">
+      <div className={`${isFullScreen ? 'min-h-0 flex-1' : 'max-h-[calc(100vh-220px)]'} overflow-auto rounded-lg border border-gray-300 bg-white`}>
         <table className="min-w-full border-separate border-spacing-0 text-sm">
           <thead>
             <tr>
