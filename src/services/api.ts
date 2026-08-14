@@ -1359,7 +1359,9 @@ export const bookingFlowApi = {
     const key = `booking-flow:items:${query.toString()}`;
     return cachedGet<BookingFlowItem[]>(key, () => api.get<BookingFlowItem[]>(`/booking-flow/items?${query.toString()}`));
   },
-  getBookingRequirements: (bookingId: string, options: { compact?: boolean } = {}) => cachedGet<{
+  getBookingRequirements: (bookingId: string, options: { compact?: boolean; refresh?: boolean } = {}) => {
+    if (options.refresh) invalidateBookingRequirements();
+    return cachedGet<{
     items: BookingFlowItem[];
     templates: BookingFlowTemplate[];
     libraryTemplates: BookingFlowTemplate[];
@@ -1380,7 +1382,8 @@ export const bookingFlowApi = {
   }>(
     `booking-flow:booking-requirements:${bookingId}:${options.compact ? 'compact' : 'full'}`,
     () => api.get(`/booking-flow/bookings/${bookingId}/requirements${options.compact ? '?compact=true' : ''}`)
-  ),
+    );
+  },
   getMatrix: (retreatId: string) => cachedGet<any>(`booking-flow:matrix:${retreatId}`, () => api.get<any>(`/booking-flow/matrix/${retreatId}`)),
   getItem: (id: string) => cachedGet<BookingFlowItem>(`booking-flow:item:${id}`, () => api.get<BookingFlowItem>(`/booking-flow/items/${id}`)),
   createItem: (data: Partial<BookingFlowItem> & { bookingId: string; title: string }) => {
