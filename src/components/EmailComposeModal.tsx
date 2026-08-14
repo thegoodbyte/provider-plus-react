@@ -291,11 +291,12 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
   useEffect(() => {
     let active = true;
     const bookingId = initialValues.bookingId || initialValues.variables?.bookingId || initialValues.variables?.booking?._id || initialValues.variables?.booking?.id;
-    if (!selectedTemplateId || !bookingId) return () => { active = false; };
+    const clientId = initialValues.clientId || initialValues.variables?.client?._id || initialValues.variables?.client?.id;
+    if (!selectedTemplateId || (!bookingId && !clientId)) return () => { active = false; };
     communicationsApi.previewEmail({
       templateId: selectedTemplateId,
-      bookingId: String(bookingId),
-      clientId: initialValues.clientId,
+      ...(bookingId ? { bookingId: String(bookingId) } : {}),
+      clientId: clientId ? String(clientId) : undefined,
       retreatId: initialValues.retreatId,
       relatedEntityType: initialValues.relatedEntityType || 'booking',
       relatedEntityId: initialValues.relatedEntityId,
