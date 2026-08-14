@@ -198,8 +198,11 @@ const ClientEditPage: React.FC = () => {
       errors.push('Email must be a valid email address or left blank');
     }
     const displayIdValue = formData.display_id as unknown;
-    if (displayIdValue !== undefined && displayIdValue !== null && Number.isNaN(Number(displayIdValue))) {
-      errors.push('Client ID must be a number');
+    if (displayIdValue !== undefined && displayIdValue !== null && displayIdValue !== '') {
+      const displayId = Number(displayIdValue);
+      if (!Number.isInteger(displayId) || displayId < 1) {
+        errors.push('Client ID must be a whole number of 1 or higher');
+      }
     }
     if (formData.loginPin && !/^\d{6}$/.test(formData.loginPin)) {
       errors.push('Client portal PIN must be 6 digits');
@@ -363,7 +366,8 @@ const ClientEditPage: React.FC = () => {
                 value={formData.display_id ?? ''}
                 onChange={handleInputChange}
                 placeholder="Client ID"
-                min="1001"
+                min="1"
+                step="1"
                 className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>

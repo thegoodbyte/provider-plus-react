@@ -279,6 +279,14 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
     [reviewGroups, form.medicalReviewGroupId],
   );
 
+  const createRequestReady = Boolean(form.medicalReviewGroupId && form.assignedToUserId);
+  const submitDisabled = saving || (!isEdit && !createRequestReady);
+  const submitHint = !form.medicalReviewGroupId
+    ? 'Select a medical review packet to continue.'
+    : !form.assignedToUserId
+      ? 'Select a medical reviewer to continue.'
+      : 'Ready to create this review request.';
+
   const matchingGroups = useMemo(() => {
     if (!form.retreatId) return reviewGroups;
     return reviewGroups.filter((group) => groupMatchesRetreat(group, form.retreatId, selectedRetreat));
@@ -652,12 +660,17 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
         </section>
 
         <footer className="mrr-editor-actions">
-          <p>{form.assignedToUserId ? 'Ready to create this review request.' : 'Select a medical reviewer to continue.'}</p>
+          <p>{isEdit ? 'Review the changes before saving.' : submitHint}</p>
           <div>
           <button type="button" onClick={() => navigate('/admin/medical-review-requests')} className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
             Cancel
           </button>
-          <button type="submit" disabled={saving} className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+          <button
+            type="submit"
+            disabled={submitDisabled}
+            title={!isEdit && !createRequestReady ? submitHint : undefined}
+            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-600 disabled:opacity-70"
+          >
             {saving ? 'Saving...' : isEdit ? 'Save Changes' : 'Create Request'}
           </button>
           </div>

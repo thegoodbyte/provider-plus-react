@@ -1266,10 +1266,12 @@ export interface MedicalReviewGroup {
   retreatId?: string | Retreat;
   retreatName?: string;
   ceremonyNumber?: number;
+  endDate?: string | Date;
   sortOrder?: number;
   reviewRequestIds?: string[];
   requests?: MedicalReviewRequest[];
   requestCount?: number;
+  pendingCount?: number;
   reviewerUserId?: MedicalReviewGroupUserRef;
   reviewerName?: string;
   reviewerEmail?: string;
@@ -1544,6 +1546,8 @@ export interface MailSettings {
   medicalReviewInternalNotificationsEnabled?: boolean;
   medicalReviewEmailTestMode?: boolean;
   medicalReviewEmailTestRecipient?: string;
+  medicalReviewClientCcEnabled?: boolean;
+  medicalReviewClientCcEmail?: string;
   medicalReviewApprovedTemplates?: Record<string, { subject: string; body: string }>;
   medicalReviewNeedsInfoTemplates?: Record<string, { subject: string; body: string }>;
   medicalReviewDeclinedTemplates?: Record<string, { subject: string; body: string }>;
