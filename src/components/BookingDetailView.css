@@ -551,6 +551,7 @@
 .booking-overview-main .booking-detail-accordion-body { padding: 0 0 18px; border: 0; }
 .booking-overview-main .booking-payment-accordion .booking-detail-accordion-body { padding: 0 0 18px; }
 .booking-overview-main .booking-payment-management { padding: 0; border: 0; box-shadow: none; }
+.booking-overview-payments { margin: 0 0 18px; border-bottom: 1px solid #d9dde3; }
 
 .booking-requirements-tab-badge {
   align-items: center;
