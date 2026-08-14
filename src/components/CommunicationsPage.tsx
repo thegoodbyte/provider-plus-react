@@ -849,13 +849,21 @@ const CommunicationsPage: React.FC = () => {
               })}
             </div>
             {settings?.medicalReviewEmailTestMode && <label className="block"><span className="text-sm font-medium">Test recipient override</span><input type="email" className="mt-1 w-full rounded-md border px-3 py-2" value={settings.medicalReviewEmailTestRecipient || ''} onChange={(event) => setSettings((prev) => ({ ...(prev || {}), medicalReviewEmailTestRecipient: event.target.value }))}/></label>}
+            <div className="grid gap-3 rounded-md border border-blue-100 bg-blue-50 p-3 sm:grid-cols-[auto_1fr] sm:items-end">
+              <label className="inline-flex items-center gap-2 pb-2 text-sm font-medium text-blue-950">
+                <input type="checkbox" checked={settings?.medicalReviewClientCcEnabled !== false} onChange={(event) => setSettings((prev) => ({ ...(prev || {}), medicalReviewClientCcEnabled: event.target.checked }))}/>
+                CC medical-review client emails
+              </label>
+              <label className="block"><span className="text-xs font-semibold uppercase text-blue-900">CC recipient</span><input type="email" className="mt-1 w-full rounded-md border border-blue-200 px-3 py-2 text-sm" value={settings?.medicalReviewClientCcEmail || 'info@ibogaspirit.cz'} onChange={(event) => setSettings((prev) => ({ ...(prev || {}), medicalReviewClientCcEmail: event.target.value }))} disabled={settings?.medicalReviewClientCcEnabled === false}/></label>
+            </div>
             <h3 className="font-semibold text-gray-900">Approved email templates</h3>
+            <p className="text-xs text-gray-500">Available placeholders: <code>{'{{document.type}}'}</code>, <code>{'{{document.stage}}'}</code>, <code>{'{{client.firstName}}'}</code>, <code>{'{{review.number}}'}</code>, and <code>{'{{links.clientPortal}}'}</code>.</p>
             <div className="grid gap-4 lg:grid-cols-3">
               {[['en','English'],['cs','Czech'],['pl','Polish']].map(([language, label]) => {
                 const defaults: any = {
-                  en: { subject: 'Your medical document was approved', body: 'Your medical document has been reviewed and approved.\n\nYou can see its status in the IbogaReady app: https://ibogaready.com\n\nSign in using your existing credentials.' },
-                  cs: { subject: 'Váš zdravotní dokument byl schválen', body: 'Váš zdravotní dokument byl zkontrolován a schválen.\n\nJeho stav si můžete zobrazit v aplikaci IbogaReady: https://ibogaready.com\n\nPřihlaste se pomocí svých stávajících přihlašovacích údajů.' },
-                  pl: { subject: 'Twój dokument medyczny został zatwierdzony', body: 'Twój dokument medyczny został sprawdzony i zatwierdzony.\n\nJego status możesz zobaczyć w aplikacji IbogaReady: https://ibogaready.com\n\nZaloguj się przy użyciu swoich dotychczasowych danych logowania.' },
+                  en: { subject: 'Your medical document was approved', body: 'Your medical document - {{document.type}} has been reviewed and approved.\n\nYou can see its status in the IbogaReady app: {{links.clientPortal}}\n\nSign in using your existing credentials.' },
+                  cs: { subject: 'Váš zdravotní dokument byl schválen', body: 'Váš zdravotní dokument - {{document.type}} byl zkontrolován a schválen.\n\nJeho stav si můžete zobrazit v aplikaci IbogaReady: {{links.clientPortal}}\n\nPřihlaste se pomocí svých stávajících přihlašovacích údajů.' },
+                  pl: { subject: 'Twój dokument medyczny został zatwierdzony', body: 'Twój dokument medyczny - {{document.type}} został sprawdzony i zatwierdzony.\n\nJego status możesz zobaczyć w aplikacji IbogaReady: {{links.clientPortal}}\n\nZaloguj się przy użyciu swoich dotychczasowych danych logowania.' },
                 };
                 const template = settings?.medicalReviewApprovedTemplates?.[language] || defaults[language];
                 const update = (field: 'subject'|'body', value: string) => setSettings((prev) => ({ ...(prev || {}), medicalReviewApprovedTemplates: { ...(prev?.medicalReviewApprovedTemplates || {}), [language]: { ...template, [field]: value } } }));

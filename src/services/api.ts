@@ -1210,6 +1210,7 @@ export const medicalReviewRequestsApi = {
     groupType?: 'retreat' | 'ceremony' | 'custom';
     retreatId?: string;
     ceremonyNumber?: number;
+    endDate?: string | null;
     sortOrder?: number;
     reviewRequestIds?: string[];
     removeReviewRequestIds?: string[];
@@ -1232,6 +1233,7 @@ export const medicalReviewRequestsApi = {
     groupType?: 'retreat' | 'ceremony' | 'custom';
     retreatId?: string;
     ceremonyNumber?: number;
+    endDate?: string;
     reviewRequestIds: string[];
     reviewerUserId: string;
     expiresInDays?: number;

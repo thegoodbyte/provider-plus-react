@@ -23,6 +23,30 @@ const getRetreatCode = (retreat?: Retreat) => {
   return retreat.retreatCode || retreat.code || retreat.name || 'Unknown Retreat';
 };
 
+const toDateInputValue = (value?: string | Date) => {
+  if (!value) return '';
+  if (typeof value === 'string') {
+    const dateOnly = value.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (dateOnly) return dateOnly[1];
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10);
+};
+
+const getRetreatEndDate = (retreat?: Retreat) => toDateInputValue(retreat?.endDate || retreat?.dates?.endDate);
+
+const parseLocalPacketDate = (value?: string | Date) => {
+  const dateOnly = toDateInputValue(value);
+  if (!dateOnly) return undefined;
+  const [year, month, day] = dateOnly.split('-').map(Number);
+  return new Date(year, month - 1, day);
+};
+
+const formatPacketEndDate = (value?: string | Date) => {
+  const date = parseLocalPacketDate(value);
+  return date ? `Ends ${date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}` : 'No end date';
+};
+
 const getAssignee = (request: MedicalReviewRequest) => {
   const assignedUser = typeof request.assignedToUserId === 'object' && request.assignedToUserId
     ? request.assignedToUserId
@@ -96,6 +120,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const [groupType, setGroupType] = useState<'retreat' | 'ceremony' | 'custom'>('retreat');
   const [groupCeremonyNumber, setGroupCeremonyNumber] = useState('');
   const [groupRetreatId, setGroupRetreatId] = useState('');
+  const [groupEndDate, setGroupEndDate] = useState('');
   const [selectedGroupRequestIds, setSelectedGroupRequestIds] = useState<string[]>([]);
   const [groupSearchTerm, setGroupSearchTerm] = useState('');
   const [createdGroupUrl, setCreatedGroupUrl] = useState('');
@@ -103,6 +128,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [editingGroupId, setEditingGroupId] = useState('');
   const [editingGroupTitle, setEditingGroupTitle] = useState('');
+  const [editingGroupEndDate, setEditingGroupEndDate] = useState('');
   const [editingGroupSaving, setEditingGroupSaving] = useState(false);
   const [packetAddGroupId, setPacketAddGroupId] = useState('');
   const [packetAddModalOpen, setPacketAddModalOpen] = useState(false);
@@ -224,6 +250,16 @@ const MedicalReviewRequestsGrid: React.FC = () => {
       })
       .filter((group) => Boolean(group._id));
   }, [groups, requestById]);
+
+  const isPastPacket = useCallback((group: MedicalReviewGroup) => {
+    const end = parseLocalPacketDate(group.endDate);
+    if (!end) return false;
+    end.setHours(23, 59, 59, 999);
+    return end.getTime() < Date.now();
+  }, []);
+  const activeGroups = useMemo(() => visibleGroups.filter((group) => !isPastPacket(group)), [isPastPacket, visibleGroups]);
+  const pastGroups = useMemo(() => visibleGroups.filter(isPastPacket), [isPastPacket, visibleGroups]);
+  const lifecycleGroups = useMemo(() => [...activeGroups, ...pastGroups], [activeGroups, pastGroups]);
 
   const applyOrderedGroupIds = useCallback((orderedGroupIds: string[]) => {
     const groupById = new Map(groups.map((group) => [group._id || '', group]));
@@ -421,6 +457,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     setGroupType('retreat');
     setGroupCeremonyNumber('');
     setGroupRetreatId('');
+    setGroupEndDate('');
     setGroupSearchTerm('');
     setCreatedGroupUrl('');
     setGroupError('');
@@ -430,6 +467,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const openEditGroupModal = (group: MedicalReviewGroup) => {
     setEditingGroupId(group._id || '');
     setEditingGroupTitle(group.title || '');
+    setEditingGroupEndDate(toDateInputValue(group.endDate));
     setGroupError('');
   };
 
@@ -455,11 +493,15 @@ const MedicalReviewRequestsGrid: React.FC = () => {
       setGroupError('Packet title is required.');
       return;
     }
+    if (!editingGroupEndDate) {
+      setGroupError('Packet end date is required.');
+      return;
+    }
     try {
       setEditingGroupSaving(true);
-      await medicalReviewRequestsApi.updateGroup(editingGroupId, { title });
+      await medicalReviewRequestsApi.updateGroup(editingGroupId, { title, endDate: editingGroupEndDate || null });
       setGroups((current) => current.map((group) => (
-        group._id === editingGroupId ? { ...group, title } : group
+        group._id === editingGroupId ? { ...group, title, endDate: editingGroupEndDate || undefined } : group
       )));
       setEditingGroupId('');
     } catch (requestError: any) {
@@ -520,6 +562,14 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     }
   }, [groupType, inferredRetreatId, groupRetreatId]);
 
+  useEffect(() => {
+    if (groupType === 'custom' || groupEndDate) return;
+    const retreatId = groupRetreatId || inferredRetreatId;
+    const retreat = retreatOptions.find((option) => option._id === retreatId);
+    const retreatEndDate = getRetreatEndDate(retreat);
+    if (retreatEndDate) setGroupEndDate(retreatEndDate);
+  }, [groupEndDate, groupRetreatId, groupType, inferredRetreatId, retreatOptions]);
+
   const toggleGroupRequest = (id: string) => {
     setSelectedGroupRequestIds((current) => (
       current.includes(id)
@@ -535,6 +585,10 @@ const MedicalReviewRequestsGrid: React.FC = () => {
       setGroupError('Select a medical advisor.');
       return;
     }
+    if (!groupEndDate) {
+      setGroupError('Packet end date is required.');
+      return;
+    }
     try {
       setCreatingGroup(true);
       const response = await medicalReviewRequestsApi.createGroup({
@@ -542,6 +596,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
         groupType,
         retreatId: groupType !== 'custom' ? groupRetreatId || inferredRetreatId : undefined,
         ceremonyNumber: groupType === 'ceremony' && groupCeremonyNumber ? Number(groupCeremonyNumber) : undefined,
+        endDate: groupEndDate || undefined,
         reviewRequestIds: selectedGroupRequestIds,
         reviewerUserId: groupReviewerUserId,
       });
@@ -751,7 +806,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
           )}
 
           <div className="space-y-3">
-            {visibleGroups.map((group, groupIndex) => {
+            {lifecycleGroups.map((group, groupIndex) => {
               const groupId = group._id || group.title;
               const expanded = expandedGroupIds.includes(groupId || '');
               const groupUrl = group.url || '';
@@ -762,9 +817,22 @@ const MedicalReviewRequestsGrid: React.FC = () => {
               const packetRequests = normalizedPacketSearch
                 ? (group.requests || []).filter((request) => getReviewRequestFilterText(request).includes(normalizedPacketSearch))
                 : (group.requests || []);
+              const originalGroupIndex = visibleGroups.findIndex((candidate) => candidate._id === group._id);
               return (
+                <React.Fragment key={`packet-section-${groupId}`}>
+                {groupIndex === 0 && activeGroups.length > 0 && (
+                  <div className="flex items-center justify-between px-1 pb-1 pt-2">
+                    <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-gray-600">Active packets</h3>
+                    <span className="text-xs text-gray-500">{activeGroups.length}</span>
+                  </div>
+                )}
+                {groupIndex === activeGroups.length && pastGroups.length > 0 && (
+                  <div className="mt-6 flex items-center justify-between border-t border-gray-200 px-1 pb-1 pt-5">
+                    <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-gray-500">Past packets</h3>
+                    <span className="text-xs text-gray-500">{pastGroups.length}</span>
+                  </div>
+                )}
                 <div
-                  key={`group-${groupId}`}
                   onDragOver={(event) => {
                     if (!canManageRequests || !groupOrderUnlocked || !draggedGroupId) return;
                     event.preventDefault();
@@ -809,7 +877,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                           if (!direction) return;
                           event.preventDefault();
                           event.stopPropagation();
-                          const target = visibleGroups[groupIndex + direction]?._id;
+                          const target = visibleGroups[originalGroupIndex + direction]?._id;
                           if (target) void reorderGroups(groupId, target);
                         }}
                         className="inline-flex h-9 w-7 shrink-0 cursor-grab items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 active:cursor-grabbing"
@@ -825,11 +893,20 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                     <div className="min-w-0">
                       <div className={`truncate text-sm font-semibold ${group.requests?.length ? 'text-gray-900' : 'text-gray-400'}`}>{group.title}</div>
                       <div className="text-xs text-gray-500">
-                        {group.retreatName || 'No retreat'}{group.ceremonyNumber ? ` • Ceremony #${group.ceremonyNumber}` : ''} • {group.requests?.length || 0} requests
+                        {group.retreatName || 'No retreat'}{group.ceremonyNumber ? ` • Ceremony #${group.ceremonyNumber}` : ''} • {formatPacketEndDate(group.endDate)} • {group.requests?.length || 0} requests
                       </div>
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
+                    {(group.pendingCount || 0) > 0 && (
+                      <span
+                        className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-amber-100 px-2 text-xs font-bold text-amber-800"
+                        title={`${group.pendingCount} pending medical review request${group.pendingCount === 1 ? '' : 's'}`}
+                        aria-label={`${group.pendingCount} pending medical review requests`}
+                      >
+                        {group.pendingCount}
+                      </span>
+                    )}
                     {groupReorderSaving && draggedGroupId === groupId && (
                       <span className="text-xs font-medium text-blue-700">Saving...</span>
                     )}
@@ -882,8 +959,8 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                               openEditGroupModal(group);
                             }}
                             className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                            title="Rename packet"
-                            aria-label="Rename packet"
+                            title="Edit packet"
+                            aria-label="Edit packet"
                           >
                             <Icon icon={FiEdit2} className="h-3.5 w-3.5" />
                           </button>
@@ -987,6 +1064,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                     </div>
                   )}
                 </div>
+                </React.Fragment>
               );
             })}
 
@@ -1271,7 +1349,12 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                     <span className="text-sm font-medium text-gray-700">Retreat</span>
                     <select
                       value={groupRetreatId}
-                      onChange={(event) => setGroupRetreatId(event.target.value)}
+                      onChange={(event) => {
+                        const retreatId = event.target.value;
+                        setGroupRetreatId(retreatId);
+                        const retreat = retreatOptions.find((option) => option._id === retreatId);
+                        setGroupEndDate(getRetreatEndDate(retreat));
+                      }}
                       className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
                     >
                       <option value="">Auto from selected MRRs</option>
@@ -1298,6 +1381,17 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                     />
                   </label>
                 )}
+                <label className="block">
+                  <span className="text-sm font-medium text-gray-700">Packet end date *</span>
+                  <input
+                    type="date"
+                    required
+                    value={groupEndDate}
+                    onChange={(event) => setGroupEndDate(event.target.value)}
+                    className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  />
+                  <span className="mt-1 block text-xs text-gray-500">Defaults to the retreat end date. After this date, the packet moves to Past.</span>
+                </label>
               </div>
 
               <div className="mt-5">
@@ -1364,8 +1458,8 @@ const MedicalReviewRequestsGrid: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-6">
           <div className="w-full max-w-md rounded-lg bg-white shadow-xl">
             <div className="border-b border-gray-200 px-5 py-4">
-              <h2 className="text-lg font-semibold text-gray-900">Rename packet</h2>
-              <p className="mt-1 text-sm text-gray-600">Change the packet title without affecting the MRRs inside it.</p>
+              <h2 className="text-lg font-semibold text-gray-900">Edit packet</h2>
+              <p className="mt-1 text-sm text-gray-600">Change the packet title or lifecycle end date.</p>
             </div>
             <div className="space-y-4 px-5 py-4">
               {groupError && (
@@ -1378,6 +1472,16 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                   onChange={(event) => setEditingGroupTitle(event.target.value)}
                   className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                 />
+              </label>
+              <label className="block">
+                <span className="text-sm font-medium text-gray-700">Packet end date</span>
+                <input
+                  type="date"
+                  value={editingGroupEndDate}
+                  onChange={(event) => setEditingGroupEndDate(event.target.value)}
+                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                />
+                <span className="mt-1 block text-xs text-gray-500">Packets automatically appear under Past after this date.</span>
               </label>
             </div>
             <div className="flex justify-end gap-2 border-t border-gray-200 px-5 py-4">
@@ -1394,7 +1498,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                 disabled={editingGroupSaving}
                 className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
               >
-                {editingGroupSaving ? 'Saving...' : 'Save title'}
+                {editingGroupSaving ? 'Saving...' : 'Save changes'}
               </button>
             </div>
           </div>
