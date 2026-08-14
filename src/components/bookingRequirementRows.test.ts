@@ -52,6 +52,13 @@ describe('booking requirement rows', () => {
     expect(rows[0].uploaded).toBe(true);
     expect(rows[0].latestDocument?._id).toBe('signed-contract');
   });
+  it.each(['contract_received', 'client_agreement_received'])('shows IR contracts for legacy %s steps', (key) => {
+    const rows = buildBookingRequirementRows(
+      [{ _id: 'contract-item', key, title: 'Contract received', status: 'pending', isBlocking: true, metadata: {} } as any],
+      [], [], [{ _id: 'signed-contract', documentType: 'contract', files: [{ fileName: 'signed.pdf' }] } as any], [], {},
+    );
+    expect(rows[0]).toMatchObject({ key: 'contract', uploaded: true, latestDocument: { _id: 'signed-contract' } });
+  });
   it('uses populated templates, linked library documents, flow completion, and item review states', () => {
     const rows = buildBookingRequirementRows([{
       _id: 'item', title: 'Medications', status: 'approved', isBlocking: false, templateId: { readinessGroup: 'medications', expectedArtifact: 'medications_form' },

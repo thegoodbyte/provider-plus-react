@@ -20,6 +20,8 @@ const completed = new Set(['received', 'reviewed', 'approved', 'completed', 'cau
 const reviewed = new Set(['reviewed', 'approved', 'completed', 'caution', 'rejected', 'needs_resubmission']);
 const canonicalRequirementKeys = new Set([
   'contract_signed',
+  'contract_received',
+  'client_agreement_received',
   'entry_ekg_received',
   'entry_liver_panel_received',
   'medications_form_initial_received',
@@ -59,7 +61,8 @@ const definitionForItem = (item: BookingFlowItem): RequirementDefinition => {
   const expectedArtifact = item.metadata?.expectedArtifact || template?.expectedArtifact || '';
   const expectedDocumentType = item.metadata?.expectedDocumentType || template?.expectedDocumentType || '';
   const canonicalKeyByStepKey: Record<string, string> = {
-    contract_signed: 'contract', entry_ekg_received: 'ekg', entry_liver_panel_received: 'liver',
+    contract_signed: 'contract', contract_received: 'contract', client_agreement_received: 'contract',
+    entry_ekg_received: 'ekg', entry_liver_panel_received: 'liver',
     medications_form_initial_received: 'medications', questionnaire_received: 'questionnaire',
     food_form_received: 'food',
   };

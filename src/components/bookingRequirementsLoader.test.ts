@@ -17,7 +17,7 @@ describe('fetchBookingRequirementSources', () => {
       documents: [{ _id: 'document-1' }], reviews: [{ _id: 'review-1' }],
     });
     expect(bookingFlowApi.getBookingRequirements).toHaveBeenCalledTimes(1);
-    expect(bookingFlowApi.getBookingRequirements).toHaveBeenCalledWith('booking-1', { compact: true });
+    expect(bookingFlowApi.getBookingRequirements).toHaveBeenCalledWith('booking-1', { compact: true, refresh: true });
   });
 
   it('normalizes missing optional bundle arrays', async () => {
