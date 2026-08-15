@@ -3,7 +3,7 @@ import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical,
 import { authService } from './authService';
 import { cacheService } from './cacheService';
 import { API_BASE_URL } from '../config/api.config';
-import type { Referral } from '../types';
+import type { Referral, ReferralReportRow } from '../types';
 
 
 const api = axios.create({
@@ -372,6 +372,8 @@ export const retreatClientsApi = bookingsApi;
 
 export const referralsApi = {
   getAll: () => api.get<Referral[]>('/referrals'),
+  getReport: () => api.get<ReferralReportRow[]>('/referrals/report'),
+  createPayout: (data: { referralId: string; retreatId: string; bookingIds: string[]; expenseDate?: string; paymentMethod?: string; paymentAccount?: string; reference?: string; notes?: string }) => api.post<RetreatExpense>('/referrals/payouts', data),
   create: (data: Omit<Referral, '_id'>) => api.post<Referral>('/referrals', data),
   update: (id: string, data: Partial<Referral>) => api.patch<Referral>(`/referrals/${id}`, data),
   delete: (id: string) => api.delete(`/referrals/${id}`),
