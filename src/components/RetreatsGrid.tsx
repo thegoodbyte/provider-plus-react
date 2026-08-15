@@ -5,7 +5,7 @@ import { retreatsApi, housesApi, bookingsApi, bookingFlowApi } from '../services
 import { Retreat, House, RetreatClient, BookingFlowItem, BookingFlowTemplate } from '../types';
 import AppleButton from './AppleButton';
 import { FiPlus, FiEdit2, FiTrash2, FiEye, FiList } from 'react-icons/fi';
-import { buildBookingStepOptions, getSelectedStepCellTone, isBookingStepComplete } from './RetreatsGrid.helpers';
+import { buildBookingStepOptions, formatRetreatCalendarDate, getSelectedStepCellTone, isBookingStepComplete, retreatMonthGroup } from './RetreatsGrid.helpers';
 import './RetreatsListRedesign.css';
 
 // Simple wrapper to fix TypeScript icon issues
@@ -111,8 +111,7 @@ const RetreatsGrid: React.FC = () => {
   };
 
   const formatDate = (date: string | Date | undefined) => {
-    if (!date) return 'N/A';
-    return new Date(date).toLocaleDateString();
+    return formatRetreatCalendarDate(date);
   };
 
   const getRetreatCodeValue = (retreat: Partial<Retreat>) =>
@@ -177,11 +176,10 @@ const RetreatsGrid: React.FC = () => {
   });
 
   const groupedRetreats = useMemo(() => displayedRetreats.reduce<Array<{ key: string; label: string; retreats: Retreat[] }>>((groups, retreat) => {
-    const date = new Date(retreat.startDate || 0);
-    const key = Number.isNaN(date.getTime()) ? 'unscheduled' : `${date.getFullYear()}-${date.getMonth()}`;
-    let group = groups.find((candidate) => candidate.key === key);
+    const month = retreatMonthGroup(retreat.startDate);
+    let group = groups.find((candidate) => candidate.key === month.key);
     if (!group) {
-      group = { key, label: Number.isNaN(date.getTime()) ? 'Unscheduled' : date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }), retreats: [] };
+      group = { ...month, retreats: [] };
       groups.push(group);
     }
     group.retreats.push(retreat);
@@ -632,7 +630,7 @@ const RetreatsGrid: React.FC = () => {
             const edit = () => navigate(`/${routePrefix}/retreats/${retreat._id}/edit`);
             return <article className="retreat-register-card" style={{ '--retreat-accent': accent } as React.CSSProperties} key={retreat._id}>
               <button className="retreat-register-code" type="button" onClick={() => handleViewRetreat(retreat._id!)}>{getRetreatCodeValue(retreat) || retreat.name}</button>
-              <div className="retreat-register-details"><strong>{new Date(retreat.startDate || 0).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(retreat.endDate || 0).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</strong><span>{getRetreatTown(retreat) || 'No location'} · {retreat.type || 'Regular'}</span></div>
+              <div className="retreat-register-details"><strong>{formatRetreatCalendarDate(retreat.startDate, { month: 'short', day: 'numeric' })} – {formatRetreatCalendarDate(retreat.endDate, { month: 'short', day: 'numeric', year: 'numeric' })}</strong><span>{getRetreatTown(retreat) || 'No location'} · {retreat.type || 'Regular'}</span></div>
               <span className={`retreat-register-status is-${visualStatus}`}>{visualStatus}</span>
               <div className="retreat-register-capacity"><strong>{occupied}<small>/{capacity || '—'}</small></strong><span>{places === 0 ? 'no places left' : `${places} place${places === 1 ? '' : 's'} open`}</span></div>
               <div className="retreat-register-progress"><div><i style={{ width: `${percent}%` }} /></div><span>{daysAway === null ? 'Date not set' : `${daysAway} days away`}</span></div>

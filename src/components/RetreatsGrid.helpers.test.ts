@@ -1,4 +1,4 @@
-import { buildBookingStepOptions, isBookingStepComplete } from './RetreatsGrid.helpers';
+import { buildBookingStepOptions, formatRetreatCalendarDate, isBookingStepComplete, retreatMonthGroup } from './RetreatsGrid.helpers';
 import { BookingFlowTemplate } from '../types';
 
 describe('RetreatsGrid helpers', () => {
@@ -40,5 +40,11 @@ describe('RetreatsGrid helpers', () => {
     expect(isBookingStepComplete({ status: 'received' })).toBe(true);
     expect(isBookingStepComplete({ status: 'completed' })).toBe(true);
     expect(isBookingStepComplete({ status: 'pending' })).toBe(false);
+  });
+
+  it('keeps UTC retreat dates on their stored calendar day', () => {
+    expect(formatRetreatCalendarDate('2026-08-22T00:00:00.000Z', { month: 'short', day: 'numeric' })).toBe('Aug 22');
+    expect(formatRetreatCalendarDate('2026-08-29T00:00:00.000Z')).toBe('Aug 29, 2026');
+    expect(retreatMonthGroup('2026-09-01T00:00:00.000Z')).toEqual({ key: '2026-8', label: 'September 2026' });
   });
 });
