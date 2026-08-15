@@ -1130,37 +1130,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             <InsightsRoundedIcon className="w-4 h-4" />
             <span className="retreat-action-label">Metrics</span>
           </button>
-          <button onClick={async () => {
-            // Fetch houses when edit modal is opened
-            if (houses.length === 0) {
-              try {
-                const housesResponse = await housesApi.getAll();
-                setHouses(housesResponse.data);
-              } catch (error) {
-                console.error('Error fetching houses:', error);
-              }
-            }
-            if (staffDirectory.length === 0) {
-              await loadStaffDirectory();
-            }
-
-            setRetreatFormData({
-              ...retreat,
-              startDate: retreat?.startDate || '',
-              startTime: retreat?.startTime || '',
-              endDate: retreat?.endDate || '',
-              endTime: retreat?.endTime || '',
-              capacity: retreat?.capacity || 0,
-              retreatStaff: (retreat?.retreatStaff || []).map((assignment) => ({
-                ...assignment,
-                contactId: typeof assignment.contactId === 'object' ? assignment.contactId._id : assignment.contactId,
-                startDate: formatDateForInput(assignment.startDate),
-                endDate: formatDateForInput(assignment.endDate),
-                salaryCurrency: assignment.salaryCurrency || 'CZK',
-              })),
-            });
-            setShowRetreatEditModal(true);
-          }} className="edit-retreat-btn retreat-icon-action" title="Edit retreat" aria-label="Edit retreat">
+          <button onClick={() => navigate(`/${routePrefix}/retreats/${retreatId}/edit`)} className="edit-retreat-btn retreat-icon-action" title="Edit retreat" aria-label="Edit retreat">
             <Icon icon={FiEdit2} className="w-4 h-4" />
             <span className="retreat-action-label">Edit Retreat</span>
           </button>

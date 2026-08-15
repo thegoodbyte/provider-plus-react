@@ -629,7 +629,7 @@ const RetreatsGrid: React.FC = () => {
             const daysAway = retreat.startDate ? Math.max(0, Math.ceil((new Date(retreat.startDate).getTime() - Date.now()) / 86400000)) : null;
             const visualStatus = capacity && occupied >= capacity ? 'full' : occupied > 0 ? 'filling' : 'upcoming';
             const accent = retreat.backgroundColor || ['#3b82f6', '#aab98d', '#ef8749', '#65d70a', '#6366f1'][displayedRetreats.indexOf(retreat) % 5];
-            const edit = () => { setEditingRetreat(retreat); setFormData({ ...retreat, code: getRetreatCodeValue(retreat), retreatCode: getRetreatCodeValue(retreat), location_town: getRetreatTown(retreat), location: getRetreatTown(retreat) }); setEditSaveError(''); setIsEditModalOpen(true); };
+            const edit = () => navigate(`/${routePrefix}/retreats/${retreat._id}/edit`);
             return <article className="retreat-register-card" style={{ '--retreat-accent': accent } as React.CSSProperties} key={retreat._id}>
               <button className="retreat-register-code" type="button" onClick={() => handleViewRetreat(retreat._id!)}>{getRetreatCodeValue(retreat) || retreat.name}</button>
               <div className="retreat-register-details"><strong>{new Date(retreat.startDate || 0).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(retreat.endDate || 0).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</strong><span>{getRetreatTown(retreat) || 'No location'} · {retreat.type || 'Regular'}</span></div>
