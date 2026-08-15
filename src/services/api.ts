@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, MedicalReviewGroup, MedicalReviewGroupAccessLink, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, MailSettings, EmailTemplate, EmailTemplateSeedOption, SentEmail, RetreatArtifactSubmissionsResponse, BloodPressureReading } from '../types';
+import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, MedicalReviewGroup, MedicalReviewGroupAccessLink, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, MailSettings, EmailTemplate, EmailTemplateSeedOption, EmailAsset, SentEmail, RetreatArtifactSubmissionsResponse, BloodPressureReading } from '../types';
 import { authService } from './authService';
 import { cacheService } from './cacheService';
 import { API_BASE_URL } from '../config/api.config';
@@ -508,6 +508,9 @@ export const bloodPressureReadingsApi = {
 };
 
 export const communicationsApi = {
+  getAssets: () => api.get<EmailAsset[]>('/communications/assets'),
+  uploadAsset: (file: File, data: { name: string; key: string; language: string }) => { const form = new FormData(); form.append('file', file); form.append('name', data.name); form.append('key', data.key); form.append('language', data.language); return api.post<EmailAsset>('/communications/assets', form, { headers: { 'Content-Type': 'multipart/form-data' } }); },
+  deleteAsset: (id: string) => api.delete(`/communications/assets/${id}`),
   getSettings: (config: any = {}) => api.get<MailSettings>('/communications/settings', config),
   saveSettings: (data: Partial<MailSettings>) => api.patch<MailSettings>('/communications/settings', data),
   getAuthUrl: () => api.get<{ authUrl: string; state: string; redirectUri: string }>('/communications/gmail/auth-url'),
