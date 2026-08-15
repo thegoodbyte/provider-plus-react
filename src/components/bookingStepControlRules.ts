@@ -5,6 +5,8 @@ import { BookingStepMatrixRow } from './bookingStepRows';
 
 export const bookingDocumentTypeByStep: Record<string, string> = {
   contract_signed: 'contract',
+  contract_received: 'contract',
+  client_agreement_received: 'contract',
   ekg_received: 'ekg',
   liver_received: 'liver_panel',
   questionnaire_received: 'questionnaire',
