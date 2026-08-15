@@ -38,7 +38,10 @@ const UserManagement: React.FC = () => {
     confirmPassword: '',
     role: 'user',
     firstName: '',
-    lastName: ''
+    lastName: '',
+    preferredReviewLanguage: 'en',
+    understoodReviewLanguages: ['en'],
+    medicalTranslationPreference: 'unsupported',
   });
 
   useEffect(() => {
@@ -85,7 +88,10 @@ const UserManagement: React.FC = () => {
         password: formData.password,
         role: formData.role as any,
         firstName: formData.firstName,
-        lastName: formData.lastName
+        lastName: formData.lastName,
+        preferredReviewLanguage: formData.preferredReviewLanguage,
+        understoodReviewLanguages: formData.understoodReviewLanguages,
+        medicalTranslationPreference: formData.medicalTranslationPreference,
       };
 
       await usersApi.create(userData);
@@ -107,7 +113,10 @@ const UserManagement: React.FC = () => {
         role: formData.role as any,
         firstName: formData.firstName,
         lastName: formData.lastName,
-        isActive: formData.isActive
+        isActive: formData.isActive,
+        preferredReviewLanguage: formData.preferredReviewLanguage,
+        understoodReviewLanguages: formData.understoodReviewLanguages,
+        medicalTranslationPreference: formData.medicalTranslationPreference,
       };
 
       await usersApi.update(editingUser._id, updateData);
@@ -146,7 +155,10 @@ const UserManagement: React.FC = () => {
       role: user.role,
       firstName: user.firstName || '',
       lastName: user.lastName || '',
-      isActive: user.isActive
+      isActive: user.isActive,
+      preferredReviewLanguage: user.preferredReviewLanguage || 'en',
+      understoodReviewLanguages: user.understoodReviewLanguages?.length ? user.understoodReviewLanguages : ['en'],
+      medicalTranslationPreference: user.medicalTranslationPreference || 'unsupported',
     });
   };
 
@@ -242,9 +254,29 @@ const UserManagement: React.FC = () => {
       role: 'user',
       firstName: '',
       lastName: '',
-      isActive: true
+      isActive: true,
+      preferredReviewLanguage: 'en',
+      understoodReviewLanguages: ['en'],
+      medicalTranslationPreference: 'unsupported',
     });
   };
+
+  const reviewLanguageFields = formData.role === 'medical_advisor' && (
+    <div className="space-y-3 rounded-lg border border-indigo-200 bg-indigo-50 p-3">
+      <div><div className="text-sm font-semibold text-indigo-950">Medical review languages</div><div className="text-xs text-indigo-700">Controls the language used for generated reviewer equivalents.</div></div>
+      <label className="block text-sm font-medium text-gray-700">Primary review language
+        <select value={formData.preferredReviewLanguage || 'en'} onChange={(e) => { const language = e.target.value as 'en' | 'pl' | 'cs'; setFormData((current) => ({ ...current, preferredReviewLanguage: language, understoodReviewLanguages: Array.from(new Set([language, ...(current.understoodReviewLanguages || [])])) })); }} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2">
+          <option value="en">English</option><option value="pl">Polish</option><option value="cs">Czech</option>
+        </select>
+      </label>
+      <div><div className="text-sm font-medium text-gray-700">Languages understood</div><div className="mt-2 flex gap-4">{([['en', 'English'], ['pl', 'Polish'], ['cs', 'Czech']] as const).map(([key, label]) => <label key={key} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={(formData.understoodReviewLanguages || []).includes(key)} disabled={formData.preferredReviewLanguage === key} onChange={(e) => setFormData((current) => ({ ...current, understoodReviewLanguages: e.target.checked ? Array.from(new Set([...(current.understoodReviewLanguages || []), key])) : (current.understoodReviewLanguages || []).filter((item) => item !== key) }))} />{label}</label>)}</div></div>
+      <label className="block text-sm font-medium text-gray-700">Translation behavior
+        <select value={formData.medicalTranslationPreference || 'unsupported'} onChange={(e) => setFormData((current) => ({ ...current, medicalTranslationPreference: e.target.value as any }))} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2">
+          <option value="unsupported">Translate unsupported languages</option><option value="always_english">Always prepare English</option><option value="never">Do not translate automatically</option>
+        </select>
+      </label>
+    </div>
+  );
 
   const getRoleBadge = (role: string) => {
     const roleConfig = ROLES.find(r => r.key === role) || ROLES[0];
@@ -499,6 +531,7 @@ const UserManagement: React.FC = () => {
                   ))}
                 </select>
               </div>
+              {reviewLanguageFields}
               <AppleInput
                 label="Password *"
                 type="password"
@@ -637,6 +670,7 @@ const UserManagement: React.FC = () => {
                   ))}
                 </select>
               </div>
+              {reviewLanguageFields}
               <div className="flex items-center">
                 <input
                   type="checkbox"

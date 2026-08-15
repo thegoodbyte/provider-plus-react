@@ -10,6 +10,9 @@ export interface User {
   lastLogin?: Date;
   createdAt?: Date;
   updatedAt?: Date;
+  preferredReviewLanguage?: 'en' | 'pl' | 'cs';
+  understoodReviewLanguages?: Array<'en' | 'pl' | 'cs'>;
+  medicalTranslationPreference?: 'unsupported' | 'always_english' | 'never';
 }
 
 export interface CreateUserData {
@@ -18,6 +21,9 @@ export interface CreateUserData {
   role: 'admin' | 'user' | 'facilitator' | 'helper' | 'medical_staff' | 'medical_advisor';
   firstName?: string;
   lastName?: string;
+  preferredReviewLanguage?: 'en' | 'pl' | 'cs';
+  understoodReviewLanguages?: Array<'en' | 'pl' | 'cs'>;
+  medicalTranslationPreference?: 'unsupported' | 'always_english' | 'never';
 }
 
 export interface UpdateUserData {
@@ -25,6 +31,9 @@ export interface UpdateUserData {
   role?: 'admin' | 'user' | 'facilitator' | 'helper' | 'medical_staff' | 'medical_advisor';
   firstName?: string;
   lastName?: string;
+  preferredReviewLanguage?: 'en' | 'pl' | 'cs';
+  understoodReviewLanguages?: Array<'en' | 'pl' | 'cs'>;
+  medicalTranslationPreference?: 'unsupported' | 'always_english' | 'never';
   isActive?: boolean;
 }
 
