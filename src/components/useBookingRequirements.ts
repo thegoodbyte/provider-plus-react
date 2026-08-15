@@ -27,7 +27,7 @@ export const useBookingRequirements = ({ bookingId, clientId, retreatId, refresh
   const [items, setItems] = useState<BookingFlowItem[]>([]); const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
   const [libraryArtifacts, setLibraryArtifacts] = useState<MedicalArtifact[]>([]); const [documents, setDocuments] = useState<BookingDocument[]>([]);
   const [libraryDocuments, setLibraryDocuments] = useState<BookingDocument[]>([]); const [reviews, setReviews] = useState<Record<string, MedicalReviewRequest[]>>({});
-  const [loading, setLoading] = useState(false); const [error, setError] = useState(''); const [linkingRecordId, setLinkingRecordId] = useState('');
+  const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [linkingRecordId, setLinkingRecordId] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
