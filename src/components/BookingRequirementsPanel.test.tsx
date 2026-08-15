@@ -34,7 +34,7 @@ describe('BookingRequirementsPanel', () => {
     fireEvent.click(screen.getByText('Find and link existing record')); fireEvent.click(screen.getByText('Link document')); await waitFor(() => expect(link).toHaveBeenCalled()); expect(screen.getByRole('dialog')).toBeInTheDocument(); fireEvent.click(screen.getByLabelText('Close record lookup')); expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
   it('renders empty lookup states and loading controls', () => {
-    hook.mockReturnValue(state({ loading: true, linkingRecordId: 'artifact:x', rows: [row({ library: 'both' })] })); view(); expect(screen.getByText('Refreshing...')).toBeDisabled(); fireEvent.click(screen.getByText('Find and link existing record')); expect(screen.getByText(/No matching medical/)).toBeInTheDocument(); expect(screen.getByText(/No matching booking/)).toBeInTheDocument();
+    hook.mockReturnValue(state({ loading: true, linkingRecordId: 'artifact:x', rows: [row({ library: 'both', relatedItems: [{ id: 'existing' }] })] })); view(); expect(screen.getByText('Refreshing...')).toBeDisabled(); fireEvent.click(screen.getByText('Find and link existing record')); expect(screen.getByText(/No matching medical/)).toBeInTheDocument(); expect(screen.getByText(/No matching booking/)).toBeInTheDocument();
   });
 });
 
