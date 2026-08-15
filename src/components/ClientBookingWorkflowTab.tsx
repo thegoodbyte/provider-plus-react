@@ -35,6 +35,8 @@ const bookingDocumentUploadsByStep: Record<string, {
   title: string;
 }> = {
   contract_signed: { documentType: 'contract', title: 'Signed Contract' },
+  contract_received: { documentType: 'contract', title: 'Signed Contract' },
+  client_agreement_received: { documentType: 'contract', title: 'Signed Contract' },
   medications_form_initial_received: { documentType: 'medications_form', title: 'Medications Form' },
   medications_form_30_day_received: { documentType: 'medications_form', title: '30-Day Medications Form' },
   questionnaire_received: { documentType: 'questionnaire', title: 'Questionnaire' },

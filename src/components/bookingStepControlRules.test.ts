@@ -34,6 +34,10 @@ describe('bookingStepControlRules', () => {
     expect(resolveConfiguredBookingStepDocumentType({ key: 'contract_signed' }, true)).toBe('contract');
   });
 
+  it.each(['contract_signed', 'contract_received', 'client_agreement_received'])('canonicalizes %s uploads as contract documents', (key) => {
+    expect(resolveConfiguredBookingStepDocumentType({ key, metadata: {} } as any, false)).toBe('contract');
+  });
+
   it('checks reminder and retreat-row email eligibility', () => {
     const booking = { _id: 'b', client: { email: 'a@b.com' } };
     expect(canSendBookingStepReminder({ _id: 'i', bookingId: 'b', status: 'pending' } as any, [booking])).toBe(true);
