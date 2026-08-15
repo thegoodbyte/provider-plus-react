@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { retreatsApi, bookingsApi, retreatExpensesApi, paymentsApi, clientsApi, housesApi, communicationsApi, contactBookApi, bookingFlowApi } from '../services/api';
-import { Retreat, ExpenseSummary, House, Payment, EmailTemplate, ContactBookEntry, RetreatStaffAssignment, BookingFlowTemplate } from '../types';
+import { Retreat, ExpenseSummary, House, Payment, EmailAsset, EmailTemplate, ContactBookEntry, RetreatStaffAssignment, BookingFlowTemplate } from '../types';
 import ExpensesTab from './ExpensesTab';
 import PaymentsTab from './PaymentsTab';
 import ClientDetailView from './ClientDetailView';
@@ -300,6 +300,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   });
   const [showRetreatEmailModal, setShowRetreatEmailModal] = useState(false);
   const [retreatEmailTemplates, setRetreatEmailTemplates] = useState<EmailTemplate[]>([]);
+  const [retreatEmailAssets, setRetreatEmailAssets] = useState<EmailAsset[]>([]);
   const [retreatEmailTemplateLanguage, setRetreatEmailTemplateLanguage] = useState<RetreatEmailTemplateLanguage>('all');
   const [retreatEmailStepTemplates, setRetreatEmailStepTemplates] = useState<BookingFlowTemplate[]>([]);
   const [retreatEmailLoading, setRetreatEmailLoading] = useState(false);
@@ -328,6 +329,10 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   });
   const [quickBookingForm] = Form.useForm();
   const [retreatEmailForm] = Form.useForm();
+  const retreatEmailBodyHtml = Form.useWatch('bodyHtml', retreatEmailForm);
+  const retreatEmailTemplateId = Form.useWatch('templateId', retreatEmailForm);
+  const selectedRetreatEmailTemplate = retreatEmailTemplates.find((template) => template._id === retreatEmailTemplateId);
+  const selectedRetreatEmailAssets = retreatEmailAssets.filter((asset) => selectedRetreatEmailTemplate?.attachmentAssetIds?.includes(asset._id || ''));
   const filteredRetreatEmailTemplates = useMemo(
     () => filterRetreatEmailTemplates(retreatEmailTemplates, retreatEmailTemplateLanguage),
     [retreatEmailTemplateLanguage, retreatEmailTemplates],
@@ -804,6 +809,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       templateId: '',
       subject: `Information for ${retreatLabel}`,
       bodyText: '',
+      bodyHtml: '',
       bookingFlowStepKey: '',
       bookingFlowStatusOnSend: 'completed',
     });
@@ -813,12 +819,14 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
 
     if (retreatEmailTemplates.length === 0 || retreatEmailStepTemplates.length === 0) {
       try {
-        const [templateResponse, stepResponse] = await Promise.all([
+        const [templateResponse, stepResponse, assetResponse] = await Promise.all([
           retreatEmailTemplates.length === 0 ? communicationsApi.getTemplates() : Promise.resolve({ data: retreatEmailTemplates }),
           retreatEmailStepTemplates.length === 0 && retreatId ? bookingFlowApi.getTemplates(retreatId) : Promise.resolve({ data: retreatEmailStepTemplates }),
+          communicationsApi.getAssets(),
         ]);
         setRetreatEmailTemplates((templateResponse.data || []).filter((template: EmailTemplate) => template.active !== false));
         setRetreatEmailStepTemplates((stepResponse.data || []).filter((step: BookingFlowTemplate) => step.active !== false));
+        setRetreatEmailAssets(assetResponse.data || []);
       } catch (error) {
         console.error('Error loading email templates:', error);
         message.warning('Email templates could not be loaded. You can still write the email manually.');
@@ -835,6 +843,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     retreatEmailForm.setFieldsValue({
       subject: template.subject || '',
       bodyText: template.bodyText || '',
+      bodyHtml: template.bodyHtml || '',
       bookingFlowStepKey: template.bookingFlowStepKey || '',
       bookingFlowStatusOnSend: template.bookingFlowStatusOnSend || (template.bookingFlowStepKey ? 'completed' : undefined),
     });
@@ -849,19 +858,21 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         templateId: undefined,
         subject: '',
         bodyText: '',
+        bodyHtml: '',
         bookingFlowStepKey: '',
         bookingFlowStatusOnSend: 'completed',
       });
     }
   };
 
-  const handleRetreatEmailSend = async (values: { templateId?: string; subject: string; bodyText: string; bookingFlowStepKey?: string; bookingFlowStatusOnSend?: string }) => {
+  const handleRetreatEmailSend = async (values: { templateId?: string; subject: string; bodyText: string; bodyHtml?: string; bookingFlowStepKey?: string; bookingFlowStatusOnSend?: string }) => {
     try {
       setRetreatEmailLoading(true);
       const response = await communicationsApi.sendRetreatEmail(retreatId, {
         templateId: values.templateId || undefined,
         subject: values.subject,
         bodyText: values.bodyText,
+        bodyHtml: values.bodyHtml,
         excludedClientIds: excludedRetreatEmailClientIds,
         variables: {
           retreatName: retreat?.name,
@@ -2058,6 +2069,20 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
               })}
             </Select>
           </Form.Item>
+
+          <Form.Item name="bodyHtml" hidden><Input /></Form.Item>
+          {selectedRetreatEmailTemplate && (
+            <div className="mb-5 space-y-3">
+              <div className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3 text-sm">
+                <div className="font-semibold text-gray-900">Template content</div>
+                <div className="mt-1 text-gray-600">{retreatEmailBodyHtml ? 'HTML email selected. The rendered version below will be sent.' : 'Plain-text email selected.'}</div>
+                <div className="mt-2 font-medium text-gray-800">Attachments: {selectedRetreatEmailAssets.length}</div>
+                {selectedRetreatEmailAssets.map((asset) => <div key={asset._id} className="mt-1 text-xs text-gray-600">📎 {asset.fileName} · {String(asset.language).toUpperCase()}</div>)}
+                {selectedRetreatEmailTemplate.attachmentAssetIds?.length && !selectedRetreatEmailAssets.length ? <div className="mt-1 text-xs text-amber-700">The template references a PDF that is not currently available.</div> : null}
+              </div>
+              {retreatEmailBodyHtml && <div><div className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Live HTML preview</div><iframe title="Retreat email HTML preview" sandbox="" srcDoc={String(retreatEmailBodyHtml)} className="h-[520px] w-full rounded-md border border-gray-300 bg-white" /></div>}
+            </div>
+          )}
 
           <Form.Item
             name="bookingFlowStepKey"
