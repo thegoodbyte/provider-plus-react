@@ -1631,8 +1631,20 @@ export interface EmailTemplate {
   active?: boolean;
   notes?: string;
   tags?: string;
+  attachmentAssetIds?: string[];
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface EmailAsset {
+  _id?: string;
+  name: string;
+  key: string;
+  language: 'en' | 'cz' | 'pl' | string;
+  fileName: string;
+  mimeType?: string;
+  size?: number;
+  active?: boolean;
 }
 
 export interface BloodPressureReading {

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { FiAlertCircle, FiCheckCircle, FiDownload, FiInbox, FiMail, FiPlus, FiRefreshCw, FiSave, FiSearch, FiSend, FiTrash2 } from 'react-icons/fi';
 import { Link, useLocation } from 'react-router-dom';
 import { bookingFlowApi, communicationsApi, clientsApi, contractGateApi, retreatsApi } from '../services/api';
-import { BookingFlowTemplate, Client, EmailTemplate, EmailTemplateSeedOption, InboundEmail, MailSettings, Retreat, SentEmail } from '../types';
+import { BookingFlowTemplate, Client, EmailAsset, EmailTemplate, EmailTemplateSeedOption, InboundEmail, MailSettings, Retreat, SentEmail } from '../types';
 import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 import { buildTemplateBookingActionPayload, normalizeTemplateBookingStepKeys } from './emailTemplateBookingActions';
@@ -45,6 +45,7 @@ const defaultTemplateForm: Partial<EmailTemplate> = {
   active: true,
   notes: '',
   tags: '',
+  attachmentAssetIds: [],
 };
 
 const defaultComposeForm = {
@@ -82,6 +83,9 @@ const CommunicationsPage: React.FC = () => {
   const [settings, setSettings] = useState<MailSettings | null>(null);
   const [contractGate, setContractGate] = useState({ enabled: true, preContractModules: ['account', 'my_retreat', 'contract'] });
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [emailAssets, setEmailAssets] = useState<EmailAsset[]>([]);
+  const [assetDraft, setAssetDraft] = useState({ name: 'Preparation Guide', key: 'preparation_guide', language: 'en', file: null as File | null });
+  const [uploadingAsset, setUploadingAsset] = useState(false);
   const [sentEmails, setSentEmails] = useState<SentEmail[]>([]);
   const [inboundEmails, setInboundEmails] = useState<InboundEmail[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -237,7 +241,7 @@ const CommunicationsPage: React.FC = () => {
     setLoadWarnings([]);
     try {
       const quietRequest = { suppressGlobalError: true };
-      const [settingsRes, templatesRes, sentRes, inboundRes, clientsRes, retreatsRes, seedOptionsRes, bookingStepsRes, contractGateRes] = await Promise.allSettled([
+      const [settingsRes, templatesRes, sentRes, inboundRes, clientsRes, retreatsRes, seedOptionsRes, bookingStepsRes, contractGateRes, assetsRes] = await Promise.allSettled([
         communicationsApi.getSettings(quietRequest),
         communicationsApi.getTemplates(),
         communicationsApi.getSentEmails({}, quietRequest),
@@ -247,6 +251,7 @@ const CommunicationsPage: React.FC = () => {
         communicationsApi.getTemplateSeedOptions(),
         bookingFlowApi.getLibraryTemplates(),
         contractGateApi.getSettings(),
+        communicationsApi.getAssets(),
       ]);
       const warnings: string[] = [];
       if (settingsRes.status === 'fulfilled') setSettings(settingsRes.value.data);
@@ -255,6 +260,8 @@ const CommunicationsPage: React.FC = () => {
       else warnings.push('Portal contract-gate settings could not be loaded.');
       if (templatesRes.status === 'fulfilled') setTemplates(Array.isArray(templatesRes.value.data) ? templatesRes.value.data : []);
       else warnings.push('Email templates could not be loaded.');
+      if (assetsRes.status === 'fulfilled') setEmailAssets(Array.isArray(assetsRes.value.data) ? assetsRes.value.data : []);
+      else warnings.push('Email PDF assets could not be loaded.');
       if (sentRes.status === 'fulfilled') setSentEmails(Array.isArray(sentRes.value.data) ? sentRes.value.data : []);
       else warnings.push('Sent mail log could not be loaded.');
       if (inboundRes.status === 'fulfilled') {
@@ -557,6 +564,25 @@ const CommunicationsPage: React.FC = () => {
     } finally {
       setSavingSettings(false);
     }
+  };
+
+  const handleAssetUpload = async () => {
+    if (!assetDraft.file) { alert('Choose a PDF file.'); return; }
+    setUploadingAsset(true);
+    try {
+      await communicationsApi.uploadAsset(assetDraft.file, assetDraft);
+      const response = await communicationsApi.getAssets();
+      setEmailAssets(response.data || []);
+      setAssetDraft((current) => ({ ...current, file: null }));
+    } catch (error: any) { alert(error?.response?.data?.message || 'PDF upload failed.'); }
+    finally { setUploadingAsset(false); }
+  };
+
+  const handleAssetDelete = async (asset: EmailAsset) => {
+    if (!asset._id || !window.confirm(`Delete ${asset.fileName}?`)) return;
+    await communicationsApi.deleteAsset(asset._id);
+    setEmailAssets((current) => current.filter((item) => item._id !== asset._id));
+    setTemplateForm((current) => ({ ...current, attachmentAssetIds: (current.attachmentAssetIds || []).filter((id) => id !== asset._id) }));
   };
 
   const handleDeleteSentEmail = async (id?: string) => {
@@ -1205,6 +1231,20 @@ const CommunicationsPage: React.FC = () => {
                 </select>
               </div>
             </div>
+            <section className="rounded-md border border-gray-200 bg-gray-50 p-4 space-y-3">
+              <div><h3 className="font-semibold text-gray-900">PDF attachments</h3><p className="text-xs text-gray-500">Upload reusable PDFs to Retreat Engine and select which ones this template sends automatically.</p></div>
+              <div className="grid gap-2 md:grid-cols-[1fr_1fr_100px_1.4fr_auto]">
+                <input aria-label="Asset name" value={assetDraft.name} onChange={(e) => setAssetDraft((current) => ({ ...current, name: e.target.value }))} className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Preparation Guide" />
+                <input aria-label="Asset key" value={assetDraft.key} onChange={(e) => setAssetDraft((current) => ({ ...current, key: e.target.value }))} className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="preparation_guide" />
+                <select aria-label="Asset language" value={assetDraft.language} onChange={(e) => setAssetDraft((current) => ({ ...current, language: e.target.value }))} className="rounded-md border border-gray-300 px-2 py-2 text-sm"><option value="en">EN</option><option value="cz">CZ</option><option value="pl">PL</option></select>
+                <input aria-label="PDF file" type="file" accept="application/pdf,.pdf" onChange={(e) => setAssetDraft((current) => ({ ...current, file: e.target.files?.[0] || null }))} className="rounded-md border border-gray-300 bg-white px-2 py-2 text-sm" />
+                <button type="button" disabled={uploadingAsset || !assetDraft.file} onClick={handleAssetUpload} className="rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{uploadingAsset ? 'Uploading…' : 'Upload'}</button>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {emailAssets.map((asset) => <label key={asset._id} className="flex items-center gap-2 rounded-md border border-gray-200 bg-white p-3 text-sm"><input type="checkbox" checked={Boolean(asset._id && (templateForm.attachmentAssetIds || []).includes(asset._id))} onChange={(e) => setTemplateForm((current) => ({ ...current, attachmentAssetIds: e.target.checked ? [...(current.attachmentAssetIds || []), asset._id! ] : (current.attachmentAssetIds || []).filter((id) => id !== asset._id) }))} /><span className="min-w-0 flex-1"><strong className="block truncate">{asset.name} · {asset.language.toUpperCase()}</strong><small className="block truncate text-gray-500">{asset.fileName}</small></span><button type="button" onClick={(event) => { event.preventDefault(); void handleAssetDelete(asset); }} className="text-red-600" aria-label={`Delete ${asset.fileName}`}><Icon icon={FiTrash2} /></button></label>)}
+                {!emailAssets.length && <p className="text-sm text-gray-500">No reusable PDFs uploaded yet.</p>}
+              </div>
+            </section>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Subject</label>
               <input
