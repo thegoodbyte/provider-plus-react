@@ -574,7 +574,9 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
                   {medicalUsers.map((medicalUser) => {
                     const name = [medicalUser.firstName, medicalUser.lastName].filter(Boolean).join(' ') || medicalUser.email;
                     const initials = [medicalUser.firstName, medicalUser.lastName].filter(Boolean).map(value => value?.[0]).join('').slice(0, 2) || 'MR';
-                    return <button key={medicalUser._id} type="button" className={form.assignedToUserId === medicalUser._id ? 'selected' : ''} onClick={() => setForm({ ...form, assignedToUserId: medicalUser._id || '', assignedTo: name })}><span>{initials}</span><strong>{name}<small>{medicalUser.email}</small></strong></button>;
+                    const language = (medicalUser.preferredReviewLanguage || 'en').toUpperCase();
+                    const understood = (medicalUser.understoodReviewLanguages || ['en']).map((item) => item.toUpperCase()).join(', ');
+                    return <button key={medicalUser._id} type="button" className={form.assignedToUserId === medicalUser._id ? 'selected' : ''} onClick={() => setForm({ ...form, assignedToUserId: medicalUser._id || '', assignedTo: name })}><span>{initials}</span><strong>{name}<small>{medicalUser.email} · Reviews in {language} · Understands {understood}</small></strong></button>;
                   })}
                 </div>
                 {medicalUsers.length === 0 && (
