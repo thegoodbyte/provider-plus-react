@@ -1,6 +1,5 @@
 import { bookingFlowApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { MedicalArtifact, MedicalReviewRequest } from '../types';
-import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
 import { mergeArtifacts, objectId } from './bookingRequirementRows';
 
 export const medicalStageLabels: Record<MedicalArtifact['documentStage'], string> = { entry: 'Entry', pre_ceremony: 'Pre-ceremony', in_ceremony: 'In-ceremony', post_ceremony: 'Post-ceremony', other: 'Other', additional: 'Additional' };
@@ -27,13 +26,8 @@ export const requiredEntryRows = (artifacts: MedicalArtifact[], reviews: Record<
 
 export const loadBookingMedicalOverview = async (bookingId: string, clientId?: string, retreatId?: string) => {
   const itemsResponse = await bookingFlowApi.getItems({ bookingId }); const items = itemsResponse.data || [];
-  const filters = buildBookingFlowArtifactFilters(items);
-  const responses = await Promise.all([
-    medicalArtifactsApi.getForBooking(bookingId), medicalArtifactsApi.getAll({ bookingId, ...filters }), medicalArtifactsApi.getAll({ bookingId }),
-    clientId && retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId, ...filters }) : Promise.resolve({ data: [] }),
-    clientId ? medicalArtifactsApi.getAll({ clientId, ...filters }) : Promise.resolve({ data: [] }), clientId ? medicalArtifactsApi.getAll({ clientId }) : Promise.resolve({ data: [] }),
-  ]);
-  const artifacts = mergeArtifacts(responses.map(response => response.data || [])).filter(item => relevantMedicalArtifact(item, bookingId, retreatId)).sort(compareMedicalArtifacts);
+  const response = await medicalArtifactsApi.getForBooking(bookingId);
+  const artifacts = mergeArtifacts([response.data || []]).filter(item => relevantMedicalArtifact(item, bookingId, retreatId)).sort(compareMedicalArtifacts);
   const ids = artifacts.map(item => item._id).filter(Boolean) as string[];
   const reviewResponse = ids.length ? await medicalReviewRequestsApi.getByArtifacts(ids) : { data: [] };
   return { artifacts, reviewsByArtifact: indexMedicalReviews(reviewResponse.data || []), medicationPlan: items.filter((item: any) => item.metadata?.medicationStopPlan && item.status !== 'cancelled') as any[] };

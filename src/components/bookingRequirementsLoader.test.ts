@@ -1,16 +1,17 @@
-import { bookingFlowApi } from '../services/api';
+import { bookingFlowApi, medicalArtifactsApi } from '../services/api';
 import { fetchBookingRequirementSources } from './bookingRequirementsLoader';
 
-jest.mock('../services/api', () => ({ bookingFlowApi: { getBookingRequirements: jest.fn() } }));
+jest.mock('../services/api', () => ({ bookingFlowApi: { getBookingRequirements: jest.fn() }, medicalArtifactsApi: { getForBooking: jest.fn() } }));
 
 describe('fetchBookingRequirementSources', () => {
-  beforeEach(() => jest.clearAllMocks());
+  beforeEach(() => { jest.clearAllMocks(); (medicalArtifactsApi.getForBooking as jest.Mock).mockResolvedValue({ data: [] }); });
 
   it('loads the complete requirements view with one request', async () => {
     (bookingFlowApi.getBookingRequirements as jest.Mock).mockResolvedValue({ data: {
       items: [{ _id: 'item-1' }], artifacts: [{ _id: 'artifact-1' }],
       documents: [{ _id: 'document-1' }], reviews: [{ _id: 'review-1' }],
     } });
+    (medicalArtifactsApi.getForBooking as jest.Mock).mockResolvedValue({ data: [{ _id: 'artifact-1' }] });
 
     await expect(fetchBookingRequirementSources('booking-1', 'client-1')).resolves.toEqual({
       items: [{ _id: 'item-1' }], artifacts: [{ _id: 'artifact-1' }],
@@ -18,6 +19,7 @@ describe('fetchBookingRequirementSources', () => {
     });
     expect(bookingFlowApi.getBookingRequirements).toHaveBeenCalledTimes(1);
     expect(bookingFlowApi.getBookingRequirements).toHaveBeenCalledWith('booking-1', { compact: true, refresh: true });
+    expect(medicalArtifactsApi.getForBooking).toHaveBeenCalledWith('booking-1');
   });
 
   it('normalizes missing optional bundle arrays', async () => {

@@ -34,6 +34,7 @@ describe('RetreatEditorPage', () => {
     expect(screen.getByText('Place and capacity')).toBeInTheDocument();
     expect(screen.getByText('Colour code')).toBeInTheDocument();
     expect(screen.getByText('4 / 6 places')).toBeInTheDocument();
+    expect(screen.getByTestId('retreat-editor-workspace')).toHaveClass('bg-[#eceff3]');
     fireEvent.change(screen.getByLabelText('Location town *'), { target: { value: 'Prague' } });
     fireEvent.click(screen.getAllByRole('button', { name: 'Save changes' })[0]);
     await waitFor(() => expect(retreatsApi.update).toHaveBeenCalledWith('retreat-1', expect.objectContaining({ location_town: 'Prague', location: 'Prague', capacity: 6, ceremonyCount: 2 })));

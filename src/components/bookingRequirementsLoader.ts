@@ -1,4 +1,4 @@
-import { bookingFlowApi } from '../services/api';
+import { bookingFlowApi, medicalArtifactsApi } from '../services/api';
 import { BookingDocument, BookingFlowItem, MedicalArtifact, MedicalReviewRequest } from '../types';
 
 export interface BookingRequirementSources {
@@ -14,11 +14,14 @@ export const fetchBookingRequirementSources = async (
 ): Promise<BookingRequirementSources> => {
   // IR can add documents while the admin application is already open. Always
   // bypass the local bundle cache when the Requirements panel loads/refreshes.
-  const response = await bookingFlowApi.getBookingRequirements(bookingId, { compact: true, refresh: true });
+  const [response, artifactResponse] = await Promise.all([
+    bookingFlowApi.getBookingRequirements(bookingId, { compact: true, refresh: true }),
+    medicalArtifactsApi.getForBooking(bookingId),
+  ]);
 
   return {
     items: response.data.items || [],
-    artifacts: response.data.artifacts || [],
+    artifacts: artifactResponse.data || [],
     documents: response.data.documents || [],
     reviews: response.data.reviews || [],
   };
