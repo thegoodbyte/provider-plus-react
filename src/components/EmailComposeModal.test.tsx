@@ -8,6 +8,7 @@ jest.mock('../services/api', () => ({
   communicationsApi: {
     getSettings: jest.fn(),
     getTemplates: jest.fn(),
+    getAssets: jest.fn(),
     previewEmail: jest.fn(),
   },
 }));
@@ -15,6 +16,7 @@ jest.mock('../services/api', () => ({
 describe('EmailComposeModal client hydration', () => {
   beforeEach(() => {
     (communicationsApi.getSettings as jest.Mock).mockResolvedValue({ data: {} });
+    (communicationsApi.getAssets as jest.Mock).mockResolvedValue({ data: [] });
     (communicationsApi.getTemplates as jest.Mock).mockResolvedValue({ data: [{
       _id: 'bp-pl', name: 'Blood pressure', language: 'pl', active: true,
       subject: 'Pomiary', bodyText: 'Cześć {{client.firstName}}\n{{links.bloodPressure}}',

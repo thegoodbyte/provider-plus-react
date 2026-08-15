@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { FiLoader, FiSend, FiX } from 'react-icons/fi';
 import { bookingsApi, communicationsApi } from '../services/api';
-import { EmailTemplate, MailSettings } from '../types';
+import { EmailAsset, EmailTemplate, MailSettings } from '../types';
 import { createBookingConfirmationPdf } from './BookingConfirmationPDF';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -125,6 +125,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
 }) => {
   const [settings, setSettings] = useState<MailSettings | null>(null);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [emailAssets, setEmailAssets] = useState<EmailAsset[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [selectedLanguage, setSelectedLanguage] = useState<'pl' | 'cz' | 'en'>(() =>
     normalizeBookingConfirmationLanguage(
@@ -150,6 +151,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
     replyTo: initialValues.replyTo || '',
   });
   const selectedTemplate = templates.find((item) => item._id === selectedTemplateId);
+  const selectedStoredAssets = emailAssets.filter((asset) => selectedTemplate?.attachmentAssetIds?.includes(asset._id || ''));
   const filteredTemplates = templates.filter((template) =>
     normalizeBookingConfirmationLanguage(template.language) === selectedLanguage,
   );
@@ -268,11 +270,13 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
     Promise.all([
       communicationsApi.getSettings(),
       communicationsApi.getTemplates(),
+      communicationsApi.getAssets(),
     ])
-      .then(([settingsResponse, templatesResponse]) => {
+      .then(([settingsResponse, templatesResponse, assetsResponse]) => {
         if (!active) return;
         setSettings(settingsResponse.data);
         setTemplates((templatesResponse.data || []).filter((template: EmailTemplate) => template.active !== false));
+        setEmailAssets(assetsResponse.data || []);
         setFormData((prev) => ({
           ...prev,
           fromName: prev.fromName || settingsResponse.data?.senderName || '',
@@ -519,6 +523,14 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
             </div>
           )}
 
+          {selectedTemplate && (
+            <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800">
+              <div className="font-medium">Template PDF attachments: {selectedStoredAssets.length}</div>
+              {selectedStoredAssets.map((asset) => <div key={asset._id} className="mt-1 text-xs text-gray-600">📎 {asset.fileName} · {String(asset.language).toUpperCase()}</div>)}
+              {selectedTemplate.attachmentAssetIds?.length && !selectedStoredAssets.length ? <div className="mt-1 text-xs text-amber-700">This template references a PDF that is not currently available.</div> : null}
+            </div>
+          )}
+
           {attachments.length === 0 && isBookingConfirmationEmail && (
             <div className={`rounded-md border px-3 py-2 text-sm ${attachmentPreparationError ? 'border-red-200 bg-red-50 text-red-900' : 'border-blue-200 bg-blue-50 text-blue-900'}`}>
               <div className="font-medium">{attachmentPreparationError || 'Preparing booking confirmation PDF…'}</div>
@@ -602,6 +614,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Message</label>
+            {formData.bodyHtml && <div className="mb-4"><div className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">Live HTML preview</div><iframe title="Booking email HTML preview" sandbox="" srcDoc={formData.bodyHtml} className="h-[520px] w-full rounded-md border border-gray-300 bg-white" /></div>}
             <textarea
               rows={14}
               value={formData.bodyText}
@@ -613,6 +626,7 @@ const EmailComposeModal: React.FC<EmailComposeModalProps> = ({
               }}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             />
+            {formData.bodyHtml && <p className="mt-1 text-xs text-gray-500">The HTML preview above will be sent. Editing the plain-text message switches this individual email to plain text.</p>}
           </div>
         </div>
 

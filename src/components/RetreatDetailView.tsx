@@ -834,7 +834,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     }
   };
 
-  const handleRetreatEmailTemplateChange = (templateId: string) => {
+  const handleRetreatEmailTemplateChange = async (templateId: string) => {
     const template = retreatEmailTemplates.find((item) => item._id === templateId);
     if (!template) {
       retreatEmailForm.setFieldsValue({ bookingFlowStepKey: '', bookingFlowStatusOnSend: 'completed' });
@@ -847,6 +847,27 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       bookingFlowStepKey: template.bookingFlowStepKey || '',
       bookingFlowStatusOnSend: template.bookingFlowStatusOnSend || (template.bookingFlowStepKey ? 'completed' : undefined),
     });
+
+    try {
+      const response = await communicationsApi.previewEmail({
+        templateId,
+        retreatId,
+        variables: {
+          retreatName: retreat?.name,
+          retreatCode: retreat?.code || retreat?.retreatCode || retreat?.name,
+          retreatStartDate: retreat?.startDate,
+          retreatEndDate: retreat?.endDate,
+        },
+      });
+      retreatEmailForm.setFieldsValue({
+        subject: response.data.subject || template.subject || '',
+        bodyText: response.data.bodyText || template.bodyText || '',
+        bodyHtml: response.data.bodyHtml || template.bodyHtml || '',
+      });
+    } catch (error) {
+      console.error('Error rendering retreat email template:', error);
+      message.warning('The live template preview could not be rendered. The saved template content is shown instead.');
+    }
   };
 
   const handleRetreatEmailLanguageChange = (language: RetreatEmailTemplateLanguage) => {
