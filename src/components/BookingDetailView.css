@@ -553,6 +553,70 @@
 .booking-overview-main .booking-payment-management { padding: 0; border: 0; box-shadow: none; }
 .booking-overview-payments { margin: 0 0 18px; border-bottom: 1px solid #d9dde3; }
 
+.booking-dashboard { display: grid; grid-template-columns: minmax(0, 1fr) 300px; min-height: 650px; border: 1px solid #d4d4d4; background: #f4f3f2; color: #191919; }
+.booking-dashboard-main { min-width: 0; padding: 22px; border-right: 1px solid #cfcfcf; }
+.booking-dashboard button, .booking-dashboard a { font: inherit; }
+.overview-section > header, .overview-card header, .booking-dashboard-rail header { display: flex; align-items: center; justify-content: space-between; }
+.overview-section h2, .overview-card h3, .overview-retreat h3, .overview-activity h3, .booking-dashboard-rail h3 { margin: 0; font-size: 14px; }
+.overview-section > header { margin-bottom: 12px; }
+.overview-section > header span { color: #555; font-size: 11px; }
+.attention-list { display: grid; gap: 8px; }
+.attention-item { display: grid; grid-template-columns: 38px 28px minmax(0,1fr) auto auto; align-items: center; gap: 9px; min-height: 70px; padding: 8px 12px; border: 1px solid #d5d5d5; border-left: 3px solid #c5262d; background: #fff; }
+.attention-item > b { color: #b91c1c; font-size: 22px; }
+.attention-item > i { display: grid; width: 26px; height: 26px; place-items: center; border: 1px solid #f3a5a5; color: #c5262d; font-style: normal; }
+.attention-item > div { display: flex; min-width: 0; flex-direction: column; gap: 4px; }
+.attention-item > div strong { font-size: 12px; }
+.attention-item > div span { color: #444; font-size: 10px; }
+.attention-item > em, .booking-dashboard-rail em { padding: 4px 9px; border: 1px solid #f3adad; border-radius: 999px; background: #fff0f0; color: #c5262d; font-size: 9px; font-style: normal; text-transform: uppercase; }
+.attention-item > button, .rail-primary { min-height: 32px; padding: 0 18px; border: 0; background: #211f1f; color: #fff; cursor: pointer; font-weight: 700; }
+.overview-empty { padding: 28px; border: 1px solid #d5d5d5; background: #fff; text-align: center; }
+.overview-card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 20px; }
+.overview-card { min-height: 190px; padding: 18px; border: 1px solid #d5d5d5; border-left: 3px solid #c5262d; background: #fff; }
+.overview-card header button { border: 0; background: none; color: #075985; font-size: 11px; text-decoration: underline; cursor: pointer; }
+.overview-card > small { display: block; margin-top: 18px; color: #666; font-size: 9px; text-transform: uppercase; }
+.money-card > strong { display: block; margin: 2px 0 12px; font-size: 27px; }
+.payment-progress { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; }
+.payment-progress > span { padding: 5px 9px; border: 1px solid #ef9f9f; background: #fff2f2; color: #b91c1c; font-size: 9px; text-transform: uppercase; }
+.payment-progress > div { height: 8px; background: #ddd; }
+.payment-progress > div i { display: block; height: 100%; background: #19723c; }
+.payment-progress > b { font-size: 11px; }
+.money-card footer { display: flex; justify-content: space-between; margin-top: 14px; padding-top: 10px; border-top: 1px solid #ddd; }
+.money-card footer span { display: flex; flex-direction: column; color: #666; font-size: 9px; text-transform: uppercase; }
+.money-card footer span:last-child { align-items: flex-end; color: #b91c1c; }
+.money-card footer b { margin-top: 4px; color: #181818; font-size: 14px; text-transform: none; }
+.requirements-card { border-left-color: #a66700; }
+.requirements-card > strong { display: block; margin: 17px 0 8px; font-size: 24px; }
+.requirements-card > strong small { color: #555; font-size: 12px; }
+.requirement-segments { display: flex; gap: 3px; margin-bottom: 9px; }
+.requirement-segments i { flex: 1; height: 6px; background: #d3d3d3; }
+.requirement-segments i.done { background: #216b3b; }.requirement-segments i.missing { background: #b82932; }
+.requirement-next { display: grid; grid-template-columns: 14px 1fr auto; gap: 7px; padding: 7px 0; border-top: 1px solid #ddd; font-size: 10px; }.requirement-next span { color: #d77b00; }.requirement-next small { color: #a25e00; }
+.overview-retreat, .overview-activity { margin-top: 20px; }
+.overview-retreat > div { display: grid; grid-template-columns: auto 1fr auto; gap: 8px 14px; align-items: center; margin-top: 11px; padding: 14px; border: 1px solid #d5d5d5; border-left: 3px solid #ee7b3b; background: #fff; }
+.overview-retreat > div b { grid-row: span 2; padding: 10px; background: #ee7b3b; font-size: 10px; }.overview-retreat > div span { font-size: 10px; }.overview-retreat > div em { grid-row: span 2; font-size: 11px; font-style: normal; }
+.overview-activity > div { display: grid; grid-template-columns: 105px 1fr; padding: 9px 0; border-bottom: 1px solid #ccc; font-size: 10px; }.overview-activity time { color: #666; }
+.booking-dashboard-rail { padding: 20px; background: #f7f7f7; }
+.booking-dashboard-rail section { display: flex; flex-direction: column; gap: 6px; padding-bottom: 18px; }.booking-dashboard-rail section + section { padding-top: 18px; border-top: 1px solid #ccc; }
+.booking-dashboard-rail header button { border: 0; background: none; color: #075985; text-decoration: underline; cursor: pointer; }
+.booking-dashboard-rail strong { margin-top: 8px; font-size: 13px; }.booking-dashboard-rail small { margin-top: 5px; color: #666; font-size: 9px; text-transform: uppercase; }.booking-dashboard-rail span, .booking-dashboard-rail a, .booking-dashboard-rail p { margin: 0; color: #222; font-size: 11px; }.booking-dashboard-rail a { color: #075985; }
+.rail-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 10px; }.rail-actions a, .rail-actions button { padding: 9px; border: 1px solid #ccc; background: #fff; color: #222; text-align: center; text-decoration: none; cursor: pointer; }
+.booking-dashboard-rail .rail-primary { margin-top: 8px; color: #fff; }
+
+@media (max-width: 700px) {
+  .booking-dashboard { display: flex; min-height: 0; flex-direction: column; border: 0; background: #f4f3f2; }
+  .booking-dashboard-main { padding: 12px; border: 0; }
+  .attention-item { grid-template-columns: 34px 28px 1fr auto; padding: 10px; }
+  .attention-item > em { justify-self: end; }
+  .attention-item > button { grid-column: 1 / -1; width: 100%; }
+  .overview-card-grid { display: flex; flex-direction: column; }
+  .overview-card { min-height: 0; }
+  .overview-retreat > div { grid-template-columns: auto 1fr; }
+  .overview-retreat > div em { display: none; }
+  .booking-dashboard-rail { padding: 0 12px 18px; background: #f4f3f2; }
+  .booking-dashboard-rail section { margin-top: 14px; padding: 14px; border: 1px solid #d5d5d5; background: #fff; }
+  .booking-dashboard-rail section + section { padding-top: 14px; border-top: 1px solid #d5d5d5; }
+}
+
 .booking-requirements-tab-badge {
   align-items: center;
   border-radius: 999px;
