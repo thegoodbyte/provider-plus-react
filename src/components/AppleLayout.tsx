@@ -785,7 +785,7 @@ const AppleLayout: React.FC = () => {
         {/* Page Content */}
         <main className="h-[calc(100vh-32px)] overflow-y-auto px-4 py-4 sm:px-6 lg:h-[calc(100vh-64px-32px)] lg:px-8 lg:py-6">
           <div className="max-w-7xl mx-auto">
-            <div className="bg-white rounded-apple-lg shadow-apple-sm">
+            <div className="rounded-apple-lg bg-[#e7eaee] shadow-apple-sm">
               <Routes>
                 {/* Unauthorized route */}
                 <Route path="/unauthorized" element={<Unauthorized />} />

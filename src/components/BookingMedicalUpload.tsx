@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 import { bloodPressureReadingsApi, bookingFlowApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { BloodPressureReading, BookingFlowItem, MedicalArtifact, MedicalReviewRequest } from '../types';
-import { buildBookingFlowArtifactFilters } from './bookingFlowLookup';
 import './BookingMedicalUpload.css';
 
 interface BookingMedicalUploadProps {
@@ -15,6 +14,7 @@ interface BookingMedicalUploadProps {
   onUploadComplete?: () => void;
   uploadRequest?: {
     stage: NonNullable<MedicalArtifact['documentStage']>;
+    documentType?: UploadDocumentType;
     key: number;
   } | null;
 }
@@ -252,19 +252,8 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
       setBloodPressureReadings(readingsResponse.data || []);
       const loadedFlowItems: BookingFlowItem[] = itemsResponse.data || [];
       setFlowItems(loadedFlowItems);
-      const bookingFlowFilters = buildBookingFlowArtifactFilters(loadedFlowItems);
-      const responses = await Promise.all([
-        medicalArtifactsApi.getAll({ bookingId, ...bookingFlowFilters }),
-        medicalArtifactsApi.getAll({ bookingId }),
-        clientId && retreatId ? medicalArtifactsApi.getAll({ clientId, retreatId, ...bookingFlowFilters }) : Promise.resolve({ data: [] }),
-      ]);
-      const directBookingArtifacts: MedicalArtifact[] = responses[0].data || [];
-      const bookingArtifacts: MedicalArtifact[] = responses[1].data || [];
-      const clientRetreatArtifacts: MedicalArtifact[] = responses[2].data || [];
-      const bookingNumberFallbackArtifacts = [...bookingArtifacts, ...clientRetreatArtifacts].filter((artifact) =>
-        artifactBelongsToBooking(artifact, bookingId, bookingNumber)
-      );
-      const medicalArtifacts: MedicalArtifact[] = mergeArtifacts([directBookingArtifacts, bookingNumberFallbackArtifacts])
+      const bookingArtifactsResponse = await medicalArtifactsApi.getForBooking(bookingId);
+      const medicalArtifacts: MedicalArtifact[] = mergeArtifacts([bookingArtifactsResponse.data || []])
         .filter((artifact) => artifactBelongsToBooking(artifact, bookingId, bookingNumber));
       setArtifacts(medicalArtifacts);
 
@@ -411,7 +400,7 @@ const BookingMedicalUpload: React.FC<BookingMedicalUploadProps> = ({
 
   useEffect(() => {
     if (!uploadRequest) return;
-    openUploadModal(uploadRequest.stage === 'entry' ? 'EKG' : 'additional', uploadRequest.stage);
+    openUploadModal(uploadRequest.documentType || (uploadRequest.stage === 'entry' ? 'EKG' : 'additional'), uploadRequest.stage);
   }, [uploadRequest]);
 
   const handleUpload = async () => {

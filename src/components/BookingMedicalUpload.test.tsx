@@ -8,7 +8,7 @@ import { usersApi } from '../services/usersApi';
 jest.mock('../services/api', () => ({
   bookingFlowApi: { getItems: jest.fn() },
   bloodPressureReadingsApi: { getByClient: jest.fn(), update: jest.fn(), delete: jest.fn() },
-  medicalArtifactsApi: { getAll: jest.fn(), create: jest.fn(), uploadFiles: jest.fn(), delete: jest.fn() },
+  medicalArtifactsApi: { getForBooking: jest.fn(), getAll: jest.fn(), create: jest.fn(), uploadFiles: jest.fn(), delete: jest.fn() },
   medicalReviewRequestsApi: { getByArtifact: jest.fn(), create: jest.fn() },
 }));
 
@@ -25,6 +25,7 @@ describe('BookingMedicalUpload loading state', () => {
     (bloodPressureReadingsApi.getByClient as jest.Mock).mockResolvedValue({ data: [] });
     (usersApi.getAll as jest.Mock).mockResolvedValue({ data: [] });
     (medicalArtifactsApi.getAll as jest.Mock).mockReturnValue(pendingArtifacts);
+    (medicalArtifactsApi.getForBooking as jest.Mock).mockReturnValue(pendingArtifacts);
     (medicalReviewRequestsApi.getByArtifact as jest.Mock).mockResolvedValue({ data: [] });
 
     render(<MemoryRouter><BookingMedicalUpload bookingId="booking-1" bookingNumber="PP-100" clientId="client-1" retreatId="retreat-1" /></MemoryRouter>);

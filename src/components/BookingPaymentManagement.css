@@ -444,7 +444,9 @@
 .booking-payment-requests button:hover { border-color:#334155; }
 .booking-payment-requests button:disabled { opacity:.55; cursor:not-allowed; }
 .payment-request-create button,.payment-request-actions button:first-child { background:#334155; border-color:#334155; color:white; }
-.payment-requests-empty { padding:18px; }
+.payment-requests-empty { display:grid; gap:5px; padding:18px; border:1px dashed #d1d5db; color:#111827; }
+.payment-requests-empty span { color:#4b5563; font-size:12px; }
+.mobile-balance-request { display:none; }
 .booking-payment-request-row { display:grid; grid-template-columns:minmax(150px,1.2fr) minmax(110px,.7fr) minmax(145px,.8fr) minmax(100px,.7fr) minmax(100px,.7fr); gap:14px; align-items:center; padding:16px 18px; border-top:1px solid #e2e8f0; }
 .booking-payment-request-row:first-of-type { border-top:0; }
 .booking-payment-request-row > div:not(.payment-request-actions):not(.payment-request-identity) { display:grid; gap:4px; }
@@ -466,18 +468,23 @@
 .payment-summary-header h3 { font-size: 22px; line-height:1; color: #111827; }
 .payment-header-actions { display:flex; align-items:center; gap:10px; }
 .record-payment-button { min-height:36px; padding:0 15px; border:1px solid #211f20; background:#211f20; color:#fff; font-weight:700; cursor:pointer; }
+.refresh-payments-button { min-height:36px; padding:0 14px; border:1px solid #d1d5db; background:#fff; color:#211f20; cursor:pointer; }
+.refresh-payments-button:disabled { opacity:.55; cursor:wait; }
 .booking-balance-summary { position: relative; display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 0; margin: 18px 22px 22px; padding: 14px 18px 12px; border: 1px solid #d1d5db; border-left: 2px solid #dc2626; background: #fff; }
 .booking-balance-summary.is-paid { border-left-color: #15803d; }
 .booking-balance-metric { display: grid; gap: 6px; min-width: 0; padding: 0 22px; border-left: 1px solid #d1d5db; }
 .booking-balance-metric:first-child { padding-left: 0; border-left: 0; }
 .booking-balance-metric span { color: #6b7280; font-size: 10px; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
-.booking-balance-metric strong { color: #111827; font-size: 18px; line-height: 1.1; }
+.booking-balance-metric strong { color: #111827; font-size: 22px; line-height: 1.1; }
+.booking-balance-metric.total strong { font-size: 34px; }
 .booking-balance-metric small { color: #6b7280; font-size: 12px; }
 .booking-balance-summary.has-balance .booking-balance-metric.outstanding span,.booking-balance-summary.has-balance .booking-balance-metric.outstanding strong,.booking-balance-summary.has-balance .booking-balance-metric.outstanding small { color: #b91c1c; }
 .booking-balance-summary.is-paid .booking-balance-metric.outstanding span,.booking-balance-summary.is-paid .booking-balance-metric.outstanding strong,.booking-balance-summary.is-paid .booking-balance-metric.outstanding small { color: #166534; }
-.booking-payment-progress { grid-column: 1/-1; display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 14px; margin-top: 14px; padding-top: 10px; border-top: 1px solid #e5e7eb; color: #374151; font-size: 12px; }
+.booking-payment-progress { grid-column: 1/-1; display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 14px; margin-top: 14px; padding-top: 10px; border-top: 1px solid #e5e7eb; color: #374151; font-size: 12px; }
 .booking-payment-progress > div { height: 6px; overflow: hidden; background: #e5e7eb; }
 .booking-payment-progress i { display: block; height: 100%; background: #166534; }
+.booking-payment-progress strong { white-space:nowrap; }
+.mobile-record-payment { display:none; }
 .booking-refund-summary { grid-column: 1/-1; margin-top: 10px; color: #92400e; font-size: 12px; }
 .booking-payment-requests { margin: 0 22px 22px; overflow: visible; border: 0; border-radius: 0; }
 .payment-requests-heading { padding: 0 0 12px; border: 0; background: transparent; }
@@ -496,6 +503,7 @@
 .payment-request-more > div button { border:0; text-align:left; white-space:nowrap; }
 .payments-list { margin: 0 22px 20px; }
 .payment-history-header { padding-top: 2px; margin-bottom: 10px; }
+.payment-history-total { margin-left:auto; color:#4b5563; font-size:11px; }
 .payment-history-header > div { display:none !important; }
 .mobile-history-add { display:none; padding:0; border:0; background:transparent; color:#075985; font-size:12px; text-decoration:underline; cursor:pointer; }
 .payments-table { border: 0; border-radius: 0; }
@@ -511,7 +519,8 @@
 .payments-table th:nth-child(7) { width:90px; }
 .payments-table th:nth-child(9) { width:142px; }
 .payment-actions { gap:6px; justify-content:flex-end; }
-.refund-btn,.edit-payment-btn,.delete-payment-btn { padding:5px 7px; font-size:11px; }
+.refund-btn,.edit-payment-btn,.delete-payment-btn,.view-payment-btn { min-height:32px; padding:5px 9px; font-size:11px; border-radius:0; }
+.view-payment-btn { border:1px solid #211f20; background:#211f20; color:#fff; font-weight:700; cursor:pointer; }
 
 @media (max-width: 760px) {
   .booking-payment-management { width:100%; }
@@ -520,32 +529,39 @@
   .payment-summary-title > span { font-size:8px; }
   .payment-summary-header h3 { font-size: 21px; }
   .record-payment-button { display:none; }
-  .booking-payment-state { padding: 5px 9px; font-size: 10px; }
+  .refresh-payments-button { display:none; }
+  .booking-payment-state { padding: 5px 9px; font-size: 10px; border-radius:0; }
   .booking-balance-summary { display: grid; grid-template-columns: 1fr 1fr; margin: 12px; padding: 14px; }
   .booking-balance-metric { padding: 12px 0 0; border: 0; }
-  .booking-balance-metric.outstanding { grid-column: 1/-1; grid-row: 1; padding: 0 0 16px; border-bottom: 1px solid #d1d5db; }
-  .booking-balance-metric.outstanding strong { font-size: 25px; }
-  .booking-balance-metric.total { padding-right: 10px; }
-  .booking-balance-metric.received { padding-left: 10px; text-align: right; }
+  .booking-balance-metric.total { grid-column:1/-1; grid-row:1; padding:0 0 12px; }
+  .booking-balance-metric.total strong { font-size:30px; }
+  .booking-balance-metric.received { grid-column:1; grid-row:3; padding:12px 10px 0 0; }
+  .booking-balance-metric.outstanding { grid-column:2; grid-row:3; padding:12px 0 0 10px; text-align:right; }
   .booking-balance-metric strong { font-size: 16px; }
-  .booking-payment-progress { grid-column:1/-1; grid-row:2; grid-template-columns: 1fr auto; margin-top: 13px; padding-top: 12px; }
-  .booking-balance-metric.total,.booking-balance-metric.received { grid-row:3; }
+  .booking-payment-progress { grid-column:1/-1; grid-row:2; grid-template-columns:auto 1fr auto; margin-top:0; padding:10px 0; }
+  .booking-payment-progress strong span { display:none; }
+  .mobile-record-payment { display:block; grid-column:1/-1; grid-row:4; min-height:38px; margin-top:12px; border:0; background:#211f20; color:#fff; font-weight:700; }
   .booking-payment-requests,.payments-list { margin: 0 12px 20px; }
   .payment-requests-heading { align-items: center; flex-direction: row; }
-  .payment-requests-heading p { display: none; }
+  .payment-requests-heading p,.payment-request-create,.new-payment-request-link { display: none; }
+  .mobile-balance-request { display:grid; gap:7px; margin-top:7px; }
+  .mobile-balance-request input,.mobile-balance-request button { width:100%; min-height:38px; border-radius:0; }
   .booking-payment-request-row { display: grid; grid-template-columns: 1fr; gap: 8px; padding: 14px; }
   .booking-payment-request-row > div:not(.payment-request-actions):not(.payment-request-identity),.booking-payment-request-row label { display: flex; align-items: center; justify-content: space-between; }
   .payment-request-actions { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr) auto; margin: 2px 0 0; }
   .payment-request-actions button { min-height: 38px; }
   .mobile-history-add { display:block; }
+  .payment-history-total { display:none; }
   .payments-table-container { overflow: visible; }
   .payments-table,.payments-table tbody,.payments-table tr,.payments-table td { display: block; width: 100%; }
   .payments-table thead { display: none; }
-  .payments-table tr { position: relative; padding: 10px 88px 10px 0; border-bottom: 1px solid #d1d5db; }
+  .payments-table tr { position: relative; padding: 12px 10px; border: 1px solid #d1d5db; border-left:2px solid #15803d; }
   .payments-table td { padding: 2px 0; border: 0; white-space: normal; font-size: 11px; }
   .payments-table td:nth-child(1),.payments-table td:nth-child(2),.payments-table td:nth-child(3),.payments-table td:nth-child(5),.payments-table td:nth-child(6) { display: inline; margin-right: 4px; }
   .payments-table td:nth-child(4),.payments-table td:nth-child(8) { display: none; }
-  .payments-table td:nth-child(7) { position: absolute; top: 12px; right: 0; }
+  .payments-table td:nth-child(7) { position: absolute; top: 12px; right: 10px; }
   .payments-table td:nth-child(9) { margin-top: 7px; }
-  .payment-actions { gap: 7px; }
+  .payment-actions { display:grid; grid-template-columns:1.35fr .9fr auto; gap: 7px; }
+  .payment-actions .refund-btn { display:none; }
+  .view-payment-btn span { display:inline; }
 }

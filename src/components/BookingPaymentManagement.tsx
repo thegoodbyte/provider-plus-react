@@ -693,16 +693,21 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
           <span>Booking #{bookingNumber || bookingHash || bookingId.slice(-6)}{clientName ? ` · ${clientName}` : ''}</span>
           <h3>Payments</h3>
         </div>
-        <div className="payment-header-actions"><span className={`booking-payment-state ${isPaidInFull ? 'paid-in-full' : totalPaidBookingCurrency > 0 ? 'partially-paid' : 'unpaid'}`}>
-          {isPaidInFull ? '✓ Paid in full' : totalPaidBookingCurrency > 0 ? 'Partially paid' : 'Unpaid'}
-        </span><button type="button" className="record-payment-button" onClick={() => { setShowLinkExisting(false); setShowAddPayment(true); }}>Record a payment</button></div>
+        <div className="payment-header-actions">
+          <button type="button" className="refresh-payments-button" onClick={() => { void fetchPayments(); void syncPaymentPlan(); }} disabled={isLoading || paymentPlanSaving}>↻ <span>Refresh</span></button>
+          <button type="button" className="record-payment-button" onClick={() => { setShowLinkExisting(false); setShowAddPayment(true); }}><span aria-hidden="true">+</span> Record a payment</button>
+        </div>
       </div>
 
       <div className={`booking-balance-summary ${isPaidInFull ? 'is-paid' : 'has-balance'}`}>
         <div className="booking-balance-metric total"><span>Total cost</span><strong><CurrencyDisplay amount={totalAmount} currency={bookingCurrency} showUSD={false} /></strong><small>{formatUsd(totalCostUsd)} at today's rate</small></div>
         <div className="booking-balance-metric received"><span>Received</span><strong><CurrencyDisplay amount={totalPaidBookingCurrency} currency={bookingCurrency} showUSD={false} /></strong><small>{formatUsd(totalPaidUsd)} · {payments.length} payment{payments.length === 1 ? '' : 's'}</small></div>
         <div className="booking-balance-metric outstanding"><span>{isPaidInFull ? 'Paid in full' : 'Balance outstanding'}</span><strong><CurrencyDisplay amount={isPaidInFull ? 0 : bookingBalance} currency={bookingCurrency} showUSD={false} /></strong><small>{formatUsd(isPaidInFull ? 0 : balanceUsd)}{!isPaidInFull && paymentPlan?.dueDate ? ` · due ${formatCalendarDate(paymentPlan.dueDate)}` : ''}</small></div>
-        <div className="booking-payment-progress"><div><i style={{ width: `${paidPercentage}%` }} /></div><span>{paidPercentage}% of the booking is paid</span></div>
+        <div className="booking-payment-progress">
+          <span className={`booking-payment-state ${isPaidInFull ? 'paid-in-full' : 'unpaid'}`}>{isPaidInFull ? '✓ Paid in full' : 'ⓘ Not fully paid'}</span>
+          <div><i style={{ width: `${paidPercentage}%` }} /></div><strong>{paidPercentage}% <span>paid</span></strong>
+        </div>
+        <button type="button" className="mobile-record-payment" onClick={() => { setShowLinkExisting(false); setShowAddPayment(true); }}>Record a payment</button>
         {totalRefundedUsd > 0 && <div className="booking-refund-summary">Refunded {formatUsd(totalRefundedUsd)}</div>}
       </div>
 
@@ -715,7 +720,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
             <button type="button" disabled={paymentPlanSaving || !paymentPlanDueDate} onClick={() => savePaymentPlan(true)}>{paymentPlanSaving ? 'Creating…' : 'Create balance request'}</button>
           </div>}
         </div>
-        {bookingPaymentRequests.length === 0 ? <p className="payment-requests-empty">No payment request has been created for this booking.</p> : bookingPaymentRequests.map(request => {
+        {bookingPaymentRequests.length === 0 ? <div className="payment-requests-empty"><strong>No payment request yet</strong><span>The client has nothing to pay against. Create the balance request to send them a link.</span>{!paymentPlan && !isPaidInFull && <div className="mobile-balance-request"><input aria-label="Final payment due" type="date" value={paymentPlanDueDate} onChange={event => setPaymentPlanDueDate(event.target.value)} /><button type="button" disabled={paymentPlanSaving || !paymentPlanDueDate} onClick={() => savePaymentPlan(true)}>{paymentPlanSaving ? 'Creating…' : 'Create balance request'}</button></div>}</div> : bookingPaymentRequests.map(request => {
           const linkedPaymentId = typeof request.paymentId === 'object' ? request.paymentId?._id : request.paymentId;
           const requestNumber = request.invoiceNumber || request.display_id || request._id?.slice(-8);
           const canAct = !['paid', 'cancelled'].includes(request.status);
@@ -741,7 +746,8 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
 
       <div className="payments-list">
         <div className="payment-history-header">
-          <h4>Payment History ({payments.length})</h4>
+          <h4>Payment history</h4>
+          <span className="payment-history-total">{payments.length} payment{payments.length === 1 ? '' : 's'} · <CurrencyDisplay amount={totalPaidBookingCurrency} currency={bookingCurrency} showUSD={false} /> received</span>
           <button type="button" className="mobile-history-add" onClick={() => { setShowLinkExisting(false); setShowAddPayment(true); }}>Add</button>
           <div style={{ display: 'flex', gap: '8px' }}>
             {balanceUsd !== null && balanceUsd > 0.005 && (
@@ -1079,6 +1085,11 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
                       <td>{payment.transactionReference || '-'}</td>
                       <td>
                         <div className="payment-actions">
+                          {payment._id && (
+                            <button type="button" onClick={() => navigate(`${routePrefix}/payments/${payment._id}`)} className="view-payment-btn" title="View this payment">
+                              ◉ <span>View payment</span>
+                            </button>
+                          )}
                           {payment.isRefundable && payment.status === 'completed' && !payment.refundedAmount && (
                             <button
                               onClick={() => handleRefundPayment(payment._id!, payment.amount)}

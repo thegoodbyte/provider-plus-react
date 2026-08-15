@@ -54,7 +54,7 @@ const BookingMedicalOverviewPanel: React.FC<BookingMedicalOverviewPanelProps> = 
   const [plan, setPlan] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [uploadRequest, setUploadRequest] = useState<{ stage: NonNullable<MedicalArtifact['documentStage']>; key: number } | null>(null);
+  const [uploadRequest, setUploadRequest] = useState<{ stage: NonNullable<MedicalArtifact['documentStage']>; documentType?: 'EKG' | 'Liver'; key: number } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -91,6 +91,7 @@ const BookingMedicalOverviewPanel: React.FC<BookingMedicalOverviewPanelProps> = 
     event?.stopPropagation();
     setUploadRequest({ stage, key: Date.now() });
   };
+  const requestEntryUpload = (documentType: 'EKG' | 'Liver') => setUploadRequest({ stage: 'entry', documentType, key: Date.now() });
 
   return <div className="booking-medical-panel booking-medical-redesign">
     <header className="booking-medical-page-header">
@@ -131,6 +132,7 @@ const BookingMedicalOverviewPanel: React.FC<BookingMedicalOverviewPanelProps> = 
                 {artifact && <button type="button" onClick={() => openArtifact(artifact)}>Open file</button>}
                 {review && <button type="button" onClick={() => openReview(review)}>Review detail</button>}
                 {artifact && !review && <button type="button" onClick={() => createReview(artifact)}>Create MRR</button>}
+                {clientId && retreatId && <button className="is-primary" type="button" onClick={() => requestEntryUpload(documentType === 'Liver' ? 'Liver' : 'EKG')}>{artifact ? 'Upload another' : `Upload ${documentType === 'Liver' ? 'liver panel' : 'EKG'}`}</button>}
               </div>
             </div>
           </article>;

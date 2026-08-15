@@ -3,6 +3,7 @@ import { ClipboardList, FileHeart, FileText, HeartPulse, Pill, RefreshCw, Scale,
 import { bookingDocumentsApi, bookingFlowApi, medicalArtifactsApi } from '../services/api';
 import { BookingDocument, BookingDocumentType, BookingFlowItem, MedicalArtifact } from '../types';
 import './BookingMedicalUpload.css';
+import { entryMedicalType, isEntryMedicalArtifact, mergeMedicalArtifacts } from './bookingEntryMedicalArtifacts';
 
 interface BookingDocumentsUploadProps {
   bookingId: string;
@@ -137,23 +138,19 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
     setLoading(true);
     setError(null);
     try {
-      const [typesResponse, documentsResponse, flowResponse, medicalArtifactsResponse] = await Promise.all([
+      const [typesResponse, documentsResponse, flowResponse, bookingArtifactsResponse] = await Promise.all([
         bookingDocumentsApi.getTypes(),
         bookingDocumentsApi.getAll({ bookingId }),
         bookingFlowApi.getItems({ bookingId }),
-        medicalArtifactsApi.getAll({ bookingId }),
+        medicalArtifactsApi.getForBooking(bookingId),
       ]);
 
       const items: BookingFlowItem[] = flowResponse.data || [];
       setDocumentTypes(typesResponse.data || []);
       setDocuments(documentsResponse.data || []);
       setFlowItems(items);
-      setEntryMedicalArtifacts((medicalArtifactsResponse.data || []).filter((artifact: MedicalArtifact) =>
-        (artifact.files || []).length > 0
-        && (artifact.documentStage === 'entry' || !artifact.documentStage)
-        && (artifact.artifactType === 'ekg' || artifact.artifactType === 'liver_panel'
-          || artifact.documentType === 'EKG' || artifact.documentType === 'Liver')
-      ));
+      setEntryMedicalArtifacts(mergeMedicalArtifacts(bookingArtifactsResponse.data || [])
+        .filter((artifact: MedicalArtifact) => (artifact.files || []).length > 0 && isEntryMedicalArtifact(artifact)));
 
       setMarkOnUpload((current) => {
         const next = { ...current };
@@ -296,9 +293,7 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
     { type: 'ekg' as const, title: 'Entry EKG', description: "Uploaded through this booking's retreat requirements.", icon: <HeartPulse size={22} strokeWidth={1.6} /> },
     { type: 'liver_panel' as const, title: 'Entry liver panel', description: "Uploaded through this booking's retreat requirements.", icon: <FileHeart size={22} strokeWidth={1.6} /> },
   ];
-  const medicalReceivedCount = medicalRows.filter((row) => entryMedicalArtifacts.some((artifact) =>
-    artifact.artifactType === row.type || (row.type === 'liver_panel' && artifact.documentType === 'Liver')
-  )).length;
+  const medicalReceivedCount = medicalRows.filter((row) => entryMedicalArtifacts.some((artifact) => entryMedicalType(artifact) === row.type)).length;
   const totalCount = orderedSections.length + medicalRows.length;
   const receivedCount = bookingReceivedCount + medicalReceivedCount;
 
@@ -375,7 +370,7 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
         </div>
         <div className="booking-documents-rows">
           {medicalRows.map((row, index) => {
-            const artifact = entryMedicalArtifacts.find((candidate) => candidate.artifactType === row.type || (row.type === 'liver_panel' && candidate.documentType === 'Liver'));
+            const artifact = entryMedicalArtifacts.find((candidate) => entryMedicalType(candidate) === row.type);
             const file = artifact?.files?.[0];
             const received = Boolean(file);
             const inputId = `booking-medical-document-${row.type}`;
