@@ -4,8 +4,9 @@ import LoadingSpinner from './LoadingSpinner';
 import { retreatsApi, housesApi, bookingsApi, bookingFlowApi } from '../services/api';
 import { Retreat, House, RetreatClient, BookingFlowItem, BookingFlowTemplate } from '../types';
 import AppleButton from './AppleButton';
-import { FiPlus, FiEdit2, FiTrash2, FiEye, FiCalendar, FiMapPin } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiEye, FiList } from 'react-icons/fi';
 import { buildBookingStepOptions, getSelectedStepCellTone, isBookingStepComplete } from './RetreatsGrid.helpers';
+import './RetreatsListRedesign.css';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -31,6 +32,8 @@ const RetreatsGrid: React.FC = () => {
   const [editSaving, setEditSaving] = useState(false);
   const [pastRetreatsOpen, setPastRetreatsOpen] = useState(false);
   const [cancelledRetreatsOpen, setCancelledRetreatsOpen] = useState(false);
+  const [retreatSearch, setRetreatSearch] = useState('');
+  const [retreatStatusFilter, setRetreatStatusFilter] = useState('all');
 
   useEffect(() => {
     fetchRetreats();
@@ -73,16 +76,6 @@ const RetreatsGrid: React.FC = () => {
       console.error('Error fetching houses:', error);
       setHouses([]);
     }
-  };
-
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      upcoming: 'bg-blue-100 text-blue-800',
-      active: 'bg-green-100 text-green-800',
-      completed: 'bg-gray-100 text-gray-800',
-      cancelled: 'bg-red-100 text-red-800'
-    };
-    return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
   // Function to generate unique background colors for each retreat row
@@ -172,6 +165,28 @@ const RetreatsGrid: React.FC = () => {
       .filter((booking: any) => getObjectId(booking.retreatId) === retreatId && booking.status !== 'cancelled')
       .sort((a, b) => Number(a.bookingNumber || 0) - Number(b.bookingNumber || 0));
   };
+
+  const displayedRetreats = operationalRetreats.filter((retreat) => {
+    const search = retreatSearch.trim().toLowerCase();
+    const occupied = getRetreatBookings(retreat).length;
+    const capacity = Number(retreat.capacity || 0);
+    const visualStatus = capacity > 0 && occupied >= capacity ? 'full' : occupied > 0 ? 'filling' : 'upcoming';
+    const matchesStatus = retreatStatusFilter === 'all' || visualStatus === retreatStatusFilter || retreat.status === retreatStatusFilter;
+    const matchesSearch = !search || [getRetreatCodeValue(retreat), retreat.name, getRetreatTown(retreat)].filter(Boolean).join(' ').toLowerCase().includes(search);
+    return matchesStatus && matchesSearch;
+  });
+
+  const groupedRetreats = useMemo(() => displayedRetreats.reduce<Array<{ key: string; label: string; retreats: Retreat[] }>>((groups, retreat) => {
+    const date = new Date(retreat.startDate || 0);
+    const key = Number.isNaN(date.getTime()) ? 'unscheduled' : `${date.getFullYear()}-${date.getMonth()}`;
+    let group = groups.find((candidate) => candidate.key === key);
+    if (!group) {
+      group = { key, label: Number.isNaN(date.getTime()) ? 'Unscheduled' : date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }), retreats: [] };
+      groups.push(group);
+    }
+    group.retreats.push(retreat);
+    return groups;
+  }, []), [displayedRetreats]);
 
   const loadStepData = async () => {
     const retreatIds = retreats.map((retreat) => getObjectId(retreat)).filter(Boolean);
@@ -385,37 +400,38 @@ const RetreatsGrid: React.FC = () => {
   }
 
   return (
-    <div className="p-6 h-full">
-      <div className="mb-6 flex justify-between items-center">
+    <div className="retreat-register-page">
+      <div className="retreat-register-header">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Retreats</h1>
-          <div className="mt-3 inline-flex rounded-lg border border-gray-200 bg-white p-1 shadow-sm">
+          <h1>Retreats</h1>
+          <p>{operationalRetreats.length} upcoming · {operationalRetreats.reduce((sum, retreat) => sum + Math.max(0, Number(retreat.capacity || 0) - getRetreatBookings(retreat).length), 0)} places still open{operationalRetreats[0]?.startDate ? ` · next one starts in ${Math.max(0, Math.ceil((new Date(operationalRetreats[0].startDate).getTime() - Date.now()) / 86400000))} days` : ''}</p>
+          <div className="retreat-register-tabs">
             <button
               type="button"
               onClick={() => setViewMode('list')}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium ${viewMode === 'list' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
+              className={viewMode === 'list' ? 'is-active' : ''}
             >
               Retreat List
             </button>
             <button
               type="button"
               onClick={() => setViewMode('holistic')}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium ${viewMode === 'holistic' ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
+              className={viewMode === 'holistic' ? 'is-active' : ''}
             >
               Holistic View
             </button>
             <Link
               to={`/${routePrefix}/booking-step-deadlines`}
-              className="rounded-md px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className=""
             >
               Step Deadlines
             </Link>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="retreat-register-primary-actions">
           <button
             onClick={fetchRetreats}
-            className="inline-flex w-auto shrink-0 items-center whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
+            className="retreat-register-refresh"
           >
             Refresh
           </button>
@@ -434,13 +450,20 @@ const RetreatsGrid: React.FC = () => {
               });
               setIsAddModalOpen(true);
             }}
-            className="inline-flex w-auto shrink-0 items-center whitespace-nowrap rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300"
+            className="retreat-register-add"
           >
             <Icon icon={FiPlus} className="w-4 h-4 mr-1" />
-            Add New Retreat
+            <span className="retreat-register-add-wide">Add retreat</span><span className="retreat-register-add-short">Add</span>
           </button>
         </div>
       </div>
+
+      {viewMode === 'list' && <div className="retreat-register-filters">
+        <input value={retreatSearch} onChange={(event) => setRetreatSearch(event.target.value)} placeholder="Find retreat or code" aria-label="Find retreat or code" />
+        <select value={retreatStatusFilter} onChange={(event) => setRetreatStatusFilter(event.target.value)} aria-label="Filter retreats by status">
+          <option value="all">All statuses</option><option value="full">Full</option><option value="filling">Filling</option><option value="upcoming">Upcoming</option><option value="active">Active</option>
+        </select>
+      </div>}
 
       {viewMode === 'holistic' ? (
         <div className="space-y-6">
@@ -595,154 +618,34 @@ const RetreatsGrid: React.FC = () => {
           })}
         </div>
       ) : (
-      <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="hidden px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider md:table-cell">
-                  Name
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider md:px-6">
-                  Code
-                </th>
-                <th className="hidden px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider md:table-cell">
-                  Dates
-                </th>
-                <th className="hidden px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider md:table-cell">
-                  Location town
-                </th>
-                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider md:px-6">
-                  Capacity
-                </th>
-                <th className="hidden px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider md:table-cell">
-                  Status
-                </th>
-                <th className="hidden px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider lg:table-cell">
-                  Type
-                </th>
-                <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider md:px-6 md:text-left">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {operationalRetreats.map((retreat, index) => (
-                <tr key={retreat._id} className={getRetreatRowColor(retreat._id!, index)}>
-                  <td className="hidden px-6 py-4 whitespace-nowrap md:table-cell">
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleViewRetreat(retreat._id!)}
-                        className="rounded px-2 py-1 text-left text-sm font-medium text-gray-700 hover:text-gray-900 hover:underline focus:outline-none focus:ring-2 focus:ring-gray-500 bg-transparent"
-                        style={retreatLabelStyle(retreat)}
-                      >
-                        {retreat.name}
-                      </button>
-                    </div>
-                    {retreat.description && (
-                      <div className="text-sm text-gray-500 truncate max-w-xs mt-1">
-                        {retreat.description}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-3 py-4 whitespace-nowrap text-sm font-semibold md:px-6">
-                    {retreat._id ? (
-                      <button
-                        type="button"
-                        onClick={() => handleViewRetreat(retreat._id!)}
-                        className="text-gray-700 hover:text-gray-900 hover:underline focus:outline-none"
-                        style={{
-                          backgroundColor: 'transparent !important',
-                          border: 'none',
-                          padding: '0',
-                          background: 'none !important',
-                          boxShadow: 'none',
-                          borderRadius: '0'
-                        }}
-                      >
-                        <span style={{ backgroundColor: 'transparent !important', background: 'none !important' }}>
-                          {getRetreatCodeValue(retreat) || '-'}
-                        </span>
-                      </button>
-                    ) : (
-                      <span className="text-gray-900" style={{ backgroundColor: 'transparent !important', background: 'none !important' }}>
-                        {getRetreatCodeValue(retreat) || '-'}
-                      </span>
-                    )}
-                  </td>
-                  <td className="hidden px-6 py-4 whitespace-nowrap md:table-cell">
-                    <div className="flex items-center text-sm text-gray-900">
-                      <Icon icon={FiCalendar} className="w-4 h-4 mr-1 text-gray-400" />
-                      <div>
-                        <div>{formatDate(retreat.startDate)}</div>
-                        <div className="text-xs text-gray-500">to {formatDate(retreat.endDate)}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="hidden px-6 py-4 whitespace-nowrap md:table-cell">
-                    <div className="flex items-center text-sm text-gray-900">
-                      <Icon icon={FiMapPin} className="w-4 h-4 mr-1 text-gray-400" />
-                      {getRetreatTown(retreat) || 'N/A'}
-                    </div>
-                  </td>
-                  <td className="px-3 py-4 whitespace-nowrap text-sm text-gray-900 md:px-6">
-                    {retreat.capacity ? `${retreat.currentOccupancy || 0}/${retreat.capacity}` : 'N/A'}
-                  </td>
-                  <td className="hidden px-6 py-4 whitespace-nowrap md:table-cell">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(retreat.status || 'upcoming')}`}>
-                      {retreat.status || 'upcoming'}
-                    </span>
-                  </td>
-                  <td className="hidden px-6 py-4 whitespace-nowrap text-sm text-gray-900 lg:table-cell">
-                    {retreat.type || 'regular'}
-                  </td>
-                  <td className="px-3 py-4 whitespace-nowrap text-sm font-medium md:px-6">
-                    <div className="flex items-center justify-end gap-2 md:justify-start">
-                      <button
-                        onClick={() => handleViewRetreat(retreat._id!)}
-                        className="icon-action-btn icon-action-btn-view"
-                        title="View Details"
-                      >
-                        <Icon icon={FiEye} />
-                      </button>
-                      <button
-                        onClick={() => {
-                          setEditingRetreat(retreat);
-                          setFormData({
-                            ...retreat,
-                            code: getRetreatCodeValue(retreat),
-                            retreatCode: getRetreatCodeValue(retreat),
-                            location_town: getRetreatTown(retreat),
-                            location: getRetreatTown(retreat),
-                          });
-                          setEditSaveError('');
-                          setIsEditModalOpen(true);
-                        }}
-                        className="icon-action-btn icon-action-btn-edit"
-                        title="Edit"
-                      >
-                        <Icon icon={FiEdit2} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(retreat._id!)}
-                        className="icon-action-btn icon-action-btn-danger"
-                        title="Delete"
-                      >
-                        <Icon icon={FiTrash2} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {operationalRetreats.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              No retreats found
-            </div>
-          )}
-        </div>
+      <div className="retreat-register-list">
+        {groupedRetreats.map((group) => <section className="retreat-month" key={group.key}>
+          <header><h2>{group.label}</h2><span>{group.retreats.length} retreat{group.retreats.length === 1 ? '' : 's'} · {group.retreats.reduce((sum, retreat) => sum + Math.max(0, Number(retreat.capacity || 0) - getRetreatBookings(retreat).length), 0)} places open</span></header>
+          {group.retreats.map((retreat) => {
+            const occupied = getRetreatBookings(retreat).length;
+            const capacity = Number(retreat.capacity || 0);
+            const places = Math.max(0, capacity - occupied);
+            const percent = capacity ? Math.min(100, occupied / capacity * 100) : 0;
+            const daysAway = retreat.startDate ? Math.max(0, Math.ceil((new Date(retreat.startDate).getTime() - Date.now()) / 86400000)) : null;
+            const visualStatus = capacity && occupied >= capacity ? 'full' : occupied > 0 ? 'filling' : 'upcoming';
+            const accent = retreat.backgroundColor || ['#3b82f6', '#aab98d', '#ef8749', '#65d70a', '#6366f1'][displayedRetreats.indexOf(retreat) % 5];
+            const edit = () => { setEditingRetreat(retreat); setFormData({ ...retreat, code: getRetreatCodeValue(retreat), retreatCode: getRetreatCodeValue(retreat), location_town: getRetreatTown(retreat), location: getRetreatTown(retreat) }); setEditSaveError(''); setIsEditModalOpen(true); };
+            return <article className="retreat-register-card" style={{ '--retreat-accent': accent } as React.CSSProperties} key={retreat._id}>
+              <button className="retreat-register-code" type="button" onClick={() => handleViewRetreat(retreat._id!)}>{getRetreatCodeValue(retreat) || retreat.name}</button>
+              <div className="retreat-register-details"><strong>{new Date(retreat.startDate || 0).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – {new Date(retreat.endDate || 0).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</strong><span>{getRetreatTown(retreat) || 'No location'} · {retreat.type || 'Regular'}</span></div>
+              <span className={`retreat-register-status is-${visualStatus}`}>{visualStatus}</span>
+              <div className="retreat-register-capacity"><strong>{occupied}<small>/{capacity || '—'}</small></strong><span>{places === 0 ? 'no places left' : `${places} place${places === 1 ? '' : 's'} open`}</span></div>
+              <div className="retreat-register-progress"><div><i style={{ width: `${percent}%` }} /></div><span>{daysAway === null ? 'Date not set' : `${daysAway} days away`}</span></div>
+              <div className="retreat-register-actions">
+                <button onClick={() => handleViewRetreat(retreat._id!)} title="View retreat"><Icon icon={FiEye} /><span>View</span></button>
+                <button onClick={edit} title="Edit retreat"><Icon icon={FiEdit2} /><span>Edit</span></button>
+                <button onClick={() => { setViewMode('holistic'); }} title="View retreat clients"><Icon icon={FiList} /></button>
+                <button className="is-danger" onClick={() => handleDelete(retreat._id!)} title="Delete retreat"><Icon icon={FiTrash2} /></button>
+              </div>
+            </article>;
+          })}
+        </section>)}
+        {displayedRetreats.length === 0 && <div className="retreat-register-empty">No retreats match these filters.</div>}
       </div>
       )}
 
