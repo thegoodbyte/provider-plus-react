@@ -44,3 +44,22 @@ export const getSelectedStepCellTone = (complete: boolean) => ({
   cell: complete ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800',
   badge: complete ? 'border-green-200 bg-green-100 text-green-800' : 'border-red-200 bg-red-100 text-red-800',
 });
+
+export const formatRetreatCalendarDate = (
+  value?: string | Date,
+  options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' },
+) => {
+  if (!value) return 'N/A';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString('en-US', { ...options, timeZone: 'UTC' });
+};
+
+export const retreatMonthGroup = (value?: string | Date) => {
+  if (!value) return { key: 'unscheduled', label: 'Unscheduled' };
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return { key: 'unscheduled', label: 'Unscheduled' };
+  return {
+    key: `${date.getUTCFullYear()}-${date.getUTCMonth()}`,
+    label: formatRetreatCalendarDate(date, { month: 'long', year: 'numeric' }),
+  };
+};
