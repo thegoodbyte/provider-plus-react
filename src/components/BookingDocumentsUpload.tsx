@@ -85,7 +85,8 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
   const [entryMedicalArtifacts, setEntryMedicalArtifacts] = useState<MedicalArtifact[]>([]);
   const [documentTypes, setDocumentTypes] = useState<BookingDocumentType[]>([]);
   const [flowItems, setFlowItems] = useState<BookingFlowItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  // Avoid flashing empty/stale counts while the tab's first request starts.
+  const [loading, setLoading] = useState(true);
   const [uploadingType, setUploadingType] = useState<string | null>(null);
   const [markOnUpload, setMarkOnUpload] = useState<Record<string, boolean>>({});
   const [viewer, setViewer] = useState<DocumentFileViewer | null>(null);
@@ -298,7 +299,12 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
   const receivedCount = bookingReceivedCount + medicalReceivedCount;
 
   return (
-    <div className="booking-documents-redesign">
+    <div className="booking-documents-redesign" aria-busy={loading}>
+      {loading && <div className="booking-documents-loading" role="status" aria-live="polite">
+        <RefreshCw size={30} className="booking-medical-loading-spinner" aria-hidden="true" />
+        <strong>Loading documents…</strong>
+        <span>Refreshing booking documents and medical files.</span>
+      </div>}
       <header className="booking-documents-redesign-header">
         <div>
           <div className="booking-documents-eyebrow">Booking #{bookingNumber || '—'}{clientName ? ` · ${clientName}` : ''}</div>
