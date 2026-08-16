@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FiBell, FiCheck, FiExternalLink, FiRefreshCw, FiSearch } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../services/api';
+import { api, bookingDocumentsApi } from '../services/api';
 
 const BellIcon = FiBell as any; const CheckIcon = FiCheck as any; const ExternalLinkIcon = FiExternalLink as any; const RefreshIcon = FiRefreshCw as any; const SearchIcon = FiSearch as any;
 
@@ -31,7 +31,30 @@ const SubmissionNotificationsPage: React.FC<NotificationScope> = ({ clientId, bo
   const filteredRows = useMemo(() => rows.filter(row => (!retreatFilter || idOf(row.retreatId) === retreatFilter) && (!documentTypeFilter || documentTypeOf(row) === documentTypeFilter)), [rows, retreatFilter, documentTypeFilter]);
   const unread = useMemo(() => filteredRows.filter(row => !row.notificationReadAt).length, [filteredRows]);
   const markRead = async (row: Notice) => { if (row.notificationReadAt) return; await api.patch(`/submission-notifications/${row._id}/read`); setRows(current => current.map(item => item._id === row._id ? { ...item, notificationReadAt: new Date().toISOString() } : item)); window.dispatchEvent(new Event('notifications-updated')); };
-  const open = async (row: Notice) => { await markRead(row); const route = row.sourceRoute || fallbackRoute(row); navigate(route || (row.clientId?._id ? `/admin/clients/${row.clientId._id}` : '/admin/tasks')); };
+  const open = async (row: Notice) => {
+    await markRead(row);
+    const route = row.sourceRoute || fallbackRoute(row);
+    // Booking-document notifications historically pointed at the library. Resolve
+    // the linked document and open its protected file endpoint instead.
+    if (/booking-documents(?:$|[/?])/.test(route) && row.bookingId?._id) {
+      const popup = window.open('', '_blank');
+      try {
+        const kind = String(row.sourceId || '').split(':')[0].toLowerCase();
+        const documentType = kind.includes('contract') ? 'contract' : undefined;
+        const response = await bookingDocumentsApi.getAll({ bookingId: row.bookingId._id, documentType });
+        const document: any = (response.data || []).find((item: any) => item.files?.length);
+        const file = document?.files?.[document.files.length - 1];
+        if (document?._id && (file?.s3Key || file?.filePath)) {
+          const fileResponse = await bookingDocumentsApi.getFile(document._id, file.s3Key || file.filePath);
+          const url = URL.createObjectURL(fileResponse.data as Blob);
+          if (popup) { popup.location.href = url; window.setTimeout(() => URL.revokeObjectURL(url), 60_000); }
+          return;
+        }
+        popup?.close();
+      } catch { popup?.close(); }
+    }
+    navigate(route || (row.clientId?._id ? `/admin/clients/${row.clientId._id}` : '/admin/tasks'));
+  };
   const complete = async (row: Notice) => { await api.patch(`/tasks/${row._id}/complete`); if (!row.notificationReadAt) await api.patch(`/submission-notifications/${row._id}/read`); setRows(current => view === 'current' ? current.filter(item => item._id !== row._id) : current.map(item => item._id === row._id ? { ...item, status: 'completed', notificationReadAt: item.notificationReadAt || new Date().toISOString() } : item)); window.dispatchEvent(new Event('notifications-updated')); };
   return <div className="min-h-full bg-slate-50 p-4 md:p-7"><div className="mx-auto max-w-7xl space-y-5">
     <header className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between"><div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-xl bg-blue-100 text-blue-700"><BellIcon size={22}/></span><div><h1 className="text-2xl font-bold text-slate-900">{title}</h1><p className="text-sm text-slate-500">{subtitle || 'Current shows actionable items only. Finished-retreat and completed records remain available in History.'}</p></div></div><div className="flex items-center gap-3"><span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-semibold text-blue-700">{unread} unread</span><button onClick={load} className="inline-flex items-center gap-2 rounded-lg border bg-white px-3 py-2 text-sm font-semibold"><RefreshIcon/> Refresh</button></div></header>
