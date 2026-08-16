@@ -320,6 +320,17 @@ const BookingDocumentsPage: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
+              {loading && (
+                <tr>
+                  <td colSpan={10} className="px-4 py-16 text-center">
+                    <div className="flex flex-col items-center justify-center gap-3 text-gray-600" role="status" aria-live="polite">
+                      <RefreshCw className="h-8 w-8 animate-spin text-blue-600" aria-hidden="true" />
+                      <strong className="text-sm text-gray-800">Loading document library…</strong>
+                      <span className="text-xs text-gray-500">Fetching booking documents and file details.</span>
+                    </div>
+                  </td>
+                </tr>
+              )}
               {!loading && filteredDocuments.map((document) => {
                 const bookingId = getBookingId(document.bookingId);
                 const primaryFile = (document.files || [])[0];
