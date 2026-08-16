@@ -221,12 +221,31 @@
 
 /* PPVC-479: booking document register */
 .booking-documents-redesign {
+    position: relative;
     margin: 20px 0;
     border: 1px solid #d8d8d8;
     background: #fff;
     color: #202020;
     box-shadow: 0 7px 18px rgba(0, 0, 0, 0.12);
 }
+
+.booking-documents-loading {
+    position: absolute;
+    z-index: 20;
+    inset: 0;
+    display: flex;
+    min-height: 260px;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 9px;
+    background: rgba(255, 255, 255, 0.94);
+    color: #172033;
+    text-align: center;
+}
+
+.booking-documents-loading strong { font-size: 16px; }
+.booking-documents-loading span { color: #667085; font-size: 13px; }
 
 .booking-documents-redesign-header {
     display: flex;
