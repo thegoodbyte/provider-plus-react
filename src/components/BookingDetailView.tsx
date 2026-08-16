@@ -119,6 +119,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     // Warm the operational Booking Requirements tab while the user is reading
     // Overview, Payments, Medical, or any other booking tab.
     void bookingFlowApi.getBookingWorkflowSnapshot(bookingId).catch(() => undefined);
+    void bookingFlowApi.getBookingActionLogs(bookingId).catch(() => undefined);
   }, [bookingId]);
 
   const fetchBookingDetails = async () => {

@@ -1410,18 +1410,7 @@ export const bookingFlowApi = {
       items: BookingFlowItem[];
       actionLogs: BookingFlowActionLog[];
       documents: BookingDocument[];
-    }>(key, async () => {
-      // The authoritative aggregate also repairs bookings whose steps have not
-      // yet been materialized. Start it at booking-page entry and cache the same
-      // in-flight promise; unlike the old tab loader, do not make a second
-      // document request after it finishes.
-      const response = await api.get(`/booking-flow/bookings/${bookingId}/requirements`);
-      return { data: {
-        items: response.data.items || [],
-        actionLogs: response.data.actionLogs || [],
-        documents: response.data.documents || [],
-      } };
-    }, 30000);
+    }>(key, () => api.get(`/booking-flow/bookings/${bookingId}/workflow-snapshot`), 30000);
   },
   getMatrix: (retreatId: string) => cachedGet<any>(`booking-flow:matrix:${retreatId}`, () => api.get<any>(`/booking-flow/matrix/${retreatId}`)),
   getItem: (id: string) => cachedGet<BookingFlowItem>(`booking-flow:item:${id}`, () => api.get<BookingFlowItem>(`/booking-flow/items/${id}`)),

@@ -289,21 +289,29 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
       setBookingDocuments(response.data.documents || []);
       setTemplates([]);
       setLibraryTemplates([]);
-      const logsByItem: Record<string, BookingFlowActionLog[]> = (response.data.actionLogs || []).reduce((acc: Record<string, BookingFlowActionLog[]>, log: BookingFlowActionLog) => {
+      const applyActionLogs = (logs: BookingFlowActionLog[]) => {
+        const logsByItem: Record<string, BookingFlowActionLog[]> = logs.reduce((acc: Record<string, BookingFlowActionLog[]>, log: BookingFlowActionLog) => {
         const itemId = getObjectId(log.bookingFlowItemId);
         if (!itemId) return acc;
         acc[itemId] = [...(acc[itemId] || []), log];
         return acc;
-      }, {});
-      Object.values(logsByItem).forEach((logs) => {
-        logs.sort((a, b) => new Date(getActionLogDate(b) || 0).getTime() - new Date(getActionLogDate(a) || 0).getTime());
-      });
-      setActionLogsByItem(logsByItem);
+        }, {});
+        Object.values(logsByItem).forEach((itemLogs) => {
+          itemLogs.sort((a, b) => new Date(getActionLogDate(b) || 0).getTime() - new Date(getActionLogDate(a) || 0).getTime());
+        });
+        setActionLogsByItem(logsByItem);
+      };
+      applyActionLogs(response.data.actionLogs || []);
 
       setItems(nextItems);
       setExpandedStepId((current) => current || (nextItems[0] ? getItemId(nextItems[0]) : ''));
       hydrateDrafts(nextItems);
       setIsEditing(false);
+      // History is useful but non-critical. Populate it after the step grid is
+      // visible, and reuse the page-entry preload when available.
+      void bookingFlowApi.getBookingActionLogs(bookingId)
+        .then((logsResponse) => applyActionLogs(logsResponse.data || []))
+        .catch(() => undefined);
     } catch (err: any) {
       console.error('Failed to load booking workflow', err);
       setError(err?.response?.data?.message || 'Failed to load booking progress');
