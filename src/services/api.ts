@@ -1410,7 +1410,21 @@ export const bookingFlowApi = {
       items: BookingFlowItem[];
       actionLogs: BookingFlowActionLog[];
       documents: BookingDocument[];
-    }>(key, () => api.get(`/booking-flow/bookings/${bookingId}/workflow-snapshot`), 30000);
+    }>(key, async () => {
+      // These existing production endpoints are independently proven. Start all
+      // three while another tab is visible and cache their combined promise, so
+      // opening Booking Requirements performs no blocking waterfall.
+      const [itemsResponse, logsResponse, documentsResponse] = await Promise.all([
+        api.get<BookingFlowItem[]>(`/booking-flow/items?bookingId=${encodeURIComponent(bookingId)}`),
+        api.get<BookingFlowActionLog[]>(`/booking-flow/bookings/${bookingId}/action-logs`),
+        api.get<BookingDocument[]>(`/booking-documents?bookingId=${encodeURIComponent(bookingId)}&compact=true`),
+      ]);
+      return { data: {
+        items: itemsResponse.data || [],
+        actionLogs: logsResponse.data || [],
+        documents: documentsResponse.data || [],
+      } };
+    }, 30000);
   },
   getMatrix: (retreatId: string) => cachedGet<any>(`booking-flow:matrix:${retreatId}`, () => api.get<any>(`/booking-flow/matrix/${retreatId}`)),
   getItem: (id: string) => cachedGet<BookingFlowItem>(`booking-flow:item:${id}`, () => api.get<BookingFlowItem>(`/booking-flow/items/${id}`)),
