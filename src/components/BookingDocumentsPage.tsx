@@ -172,7 +172,7 @@ const BookingDocumentsPage: React.FC = () => {
     setLoading(true);
     setError('');
     try {
-      const response = await bookingDocumentsApi.getAll();
+      const response = await bookingDocumentsApi.getAll({ compact: true });
       setDocuments(response.data || []);
     } catch (loadError: any) {
       setError(loadError?.response?.data?.message || loadError?.message || 'Unable to load booking documents.');
