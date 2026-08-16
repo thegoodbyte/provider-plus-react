@@ -28,6 +28,7 @@ export const useBookingRequirements = ({ bookingId, clientId, retreatId, refresh
   const [libraryArtifacts, setLibraryArtifacts] = useState<MedicalArtifact[]>([]); const [documents, setDocuments] = useState<BookingDocument[]>([]);
   const [libraryDocuments, setLibraryDocuments] = useState<BookingDocument[]>([]); const [reviews, setReviews] = useState<Record<string, MedicalReviewRequest[]>>({});
   const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [linkingRecordId, setLinkingRecordId] = useState('');
+  const [libraryDocumentsLoading, setLibraryDocumentsLoading] = useState(false); const [libraryDocumentsLoaded, setLibraryDocumentsLoaded] = useState(false);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true); setError('');
@@ -42,6 +43,15 @@ export const useBookingRequirements = ({ bookingId, clientId, retreatId, refresh
   }, [bookingId, clientId, retreatId]);
 
   useEffect(() => { load(); }, [load, refreshKey]);
+  const loadDocumentLibrary = useCallback(async () => {
+    if (libraryDocumentsLoading || libraryDocumentsLoaded) return;
+    setLibraryDocumentsLoading(true);
+    try {
+      const response = await bookingFlowApi.getBookingRequirementDocumentCandidates(bookingId);
+      setLibraryDocuments(response.data || []); setLibraryDocumentsLoaded(true);
+    } catch (cause: any) { setError(requirementErrorMessage(cause, 'Unable to load the document library.')); }
+    finally { setLibraryDocumentsLoading(false); }
+  }, [bookingId, libraryDocumentsLoaded, libraryDocumentsLoading]);
   const rows = useMemo(() => buildBookingRequirementRows(items, artifacts, libraryArtifacts, documents, libraryDocuments, reviews), [items, artifacts, libraryArtifacts, documents, libraryDocuments, reviews]);
   const missing = rows.filter(row => row.required && !row.satisfied).length; const total = rows.filter(row => row.required).length;
   useEffect(() => { if (!loading && !error) onStatusChange?.({ missing, total }); }, [error, loading, missing, onStatusChange, total]);
@@ -65,5 +75,5 @@ export const useBookingRequirements = ({ bookingId, clientId, retreatId, refresh
     finally { setLinkingRecordId(''); }
   }, [bookingId, clientId, load, retreatId, rows]);
 
-  return { rows, items, libraryArtifacts, libraryDocuments, loading, error, linkingRecordId, reload: () => load(), link };
+  return { rows, items, libraryArtifacts, libraryDocuments, libraryDocumentsLoading, loading, error, linkingRecordId, reload: () => load(), loadDocumentLibrary, link };
 };

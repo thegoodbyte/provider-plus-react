@@ -5,7 +5,7 @@ import { requirementDefinitions } from './bookingRequirementRows';
 import { indexReviews, relevantArtifact, requirementErrorMessage, reviewTime, useBookingRequirements } from './useBookingRequirements';
 
 jest.mock('./bookingRequirementsLoader', () => ({ fetchBookingRequirementSources: jest.fn() }));
-jest.mock('../services/api', () => ({ bookingFlowApi: { updateItem: jest.fn() }, medicalArtifactsApi: { update: jest.fn() }, bookingDocumentsApi: { update: jest.fn() } }));
+jest.mock('../services/api', () => ({ bookingFlowApi: { updateItem: jest.fn(), getBookingRequirementDocumentCandidates: jest.fn() }, medicalArtifactsApi: { update: jest.fn() }, bookingDocumentsApi: { update: jest.fn() } }));
 const source = (overrides: any = {}) => ({ items: [], artifacts: [], documents: [], documentCandidates: [], reviews: [], ...overrides });
 
 describe('useBookingRequirements', () => {
