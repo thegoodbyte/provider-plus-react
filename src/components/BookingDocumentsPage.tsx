@@ -224,6 +224,7 @@ const BookingDocumentsPage: React.FC = () => {
       if (!normalizedQuery) return true;
       const haystack = [
         document.display_id,
+        document._id,
         document.title,
         document.description,
         document.documentType,
@@ -277,7 +278,7 @@ const BookingDocumentsPage: React.FC = () => {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search booking #, client, retreat, document type, title, or file name"
+            placeholder="Search document ID, booking #, client, retreat, type, title, or file name"
             className="w-full rounded-md border border-gray-300 py-2 pl-9 pr-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
           />
         </label>
@@ -307,6 +308,7 @@ const BookingDocumentsPage: React.FC = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Preview</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Document ID</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Document</th>
                 <th className="px-4 py-3 text-left"><SortHeader label="Type" sortKey="documentType" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
                 <th className="px-4 py-3 text-left"><SortHeader label="Booking" sortKey="booking" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
@@ -327,8 +329,14 @@ const BookingDocumentsPage: React.FC = () => {
                       <FilePreview file={primaryFile} />
                     </td>
                     <td className="px-4 py-4 align-top">
+                      {document.display_id ? (
+                        <span className="inline-flex whitespace-nowrap rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 font-mono text-sm font-bold text-blue-800">#{document.display_id}</span>
+                      ) : (
+                        <span className="block max-w-[150px] break-all font-mono text-xs font-semibold text-gray-700" title={document._id}>#{document._id || '—'}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-4 align-top">
                       <div className="font-semibold text-gray-900">{document.title || titleize(document.documentType)}</div>
-                      <div className="mt-1 text-xs text-gray-500">#{document.display_id || document._id?.slice(-8)}</div>
                       {document.description && <div className="mt-1 max-w-md text-xs text-gray-500">{document.description}</div>}
                     </td>
                     <td className="px-4 py-4 align-top text-sm">
@@ -381,7 +389,7 @@ const BookingDocumentsPage: React.FC = () => {
               })}
               {!loading && filteredDocuments.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-4 py-10 text-center text-sm text-gray-500">
+                  <td colSpan={10} className="px-4 py-10 text-center text-sm text-gray-500">
                     No booking documents found.
                   </td>
                 </tr>
