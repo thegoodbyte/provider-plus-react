@@ -1,15 +1,16 @@
 import React from 'react';
 import { FiArrowLeft, FiArrowRight, FiCheck, FiDownload, FiEdit3, FiEye, FiMail, FiMoreHorizontal, FiSend, FiX } from 'react-icons/fi';
 import { BookingConfirmationLanguage } from './bookingConfirmationWorkflow';
+import NotificationCountBadge, { useNotificationCount } from './NotificationCountBadge';
 
-export type BookingDetailTab = 'overview' | 'activity' | 'payments' | 'requirements' | 'medical' | 'ceremonies' | 'documents' | 'emails' | 'tasks' | 'workflow' | 'notes';
+export type BookingDetailTab = 'overview' | 'activity' | 'payments' | 'requirements' | 'medical' | 'ceremonies' | 'documents' | 'emails' | 'notifications' | 'tasks' | 'workflow' | 'notes';
 export const bookingDetailTabs: { key: BookingDetailTab; label: string }[] = [
-  ['overview', 'Overview'], ['activity', 'Activity'], ['payments', 'Payments'], ['requirements', 'Requirements'], ['medical', 'Medical'], ['ceremonies', 'Ceremonies'], ['documents', 'Documents'], ['emails', 'Emails'], ['tasks', 'Tasks'], ['workflow', 'Booking Requirements'], ['notes', 'Notes'],
+  ['overview', 'Overview'], ['activity', 'Activity'], ['payments', 'Payments'], ['requirements', 'Requirements'], ['medical', 'Medical'], ['ceremonies', 'Ceremonies'], ['documents', 'Documents'], ['emails', 'Emails'], ['notifications', 'Notifications'], ['tasks', 'Tasks'], ['workflow', 'Booking Requirements'], ['notes', 'Notes'],
 ].map(([key, label]) => ({ key: key as BookingDetailTab, label }));
 const Icon: React.FC<{ component: any }> = ({ component: Component }) => <Component />;
 
 type Props = {
-  bookingNumber?: string | number; clientName: string; clientDisplayId?: string | number; clientId?: string; retreatCode: string; retreatId?: string; retreatAddress?: string; bookingTypeCode: string;
+  bookingId?: string; bookingNumber?: string | number; clientName: string; clientDisplayId?: string | number; clientId?: string; retreatCode: string; retreatId?: string; retreatAddress?: string; bookingTypeCode: string;
   language: BookingConfirmationLanguage; activeTab: BookingDetailTab; requirementsStatus: { missing: number; total: number } | null;
   generating: boolean; previewing: boolean; previewPhase?: 'loading' | 'generating' | null; sending: boolean; preparing: boolean; previewUrl: string; previewFileName: string;
   previousBooking?: { bookingNumber?: string | number; clientName?: string } | null; nextBooking?: { bookingNumber?: string | number; clientName?: string } | null;
@@ -18,7 +19,9 @@ type Props = {
   onPreviousBooking?: () => void; onNextBooking?: () => void;
 };
 
-const BookingDetailShell: React.FC<Props> = (props) => <>
+const BookingDetailShell: React.FC<Props> = (props) => {
+  const notificationCount = useNotificationCount({ bookingId: props.bookingId });
+  return <>
   <div className="detail-header">
     <button onClick={props.onBack} className="back-btn" title="Back to bookings" aria-label="Back to bookings"><Icon component={FiArrowLeft} /></button>
     <div className="booking-title-block"><h1>Booking #{props.bookingNumber || 'N/A'}</h1><div className="booking-title-meta"><strong>{props.clientName}</strong>{props.retreatId ? <button type="button" onClick={props.onOpenRetreat}>{props.retreatCode}</button> : <strong>{props.retreatCode}</strong>}{props.clientDisplayId && (props.clientId ? <button type="button" onClick={props.onOpenClient} title={`Open client #${props.clientDisplayId}`}>Client #{props.clientDisplayId}</button> : <span>Client #{props.clientDisplayId}</span>)}<span>Type {props.bookingTypeCode}</span>{Boolean(props.rescheduleCount) && <span>Rescheduled {props.rescheduleCount}×</span>}{props.retreatAddress && <span className="booking-title-address">{props.retreatAddress}</span>}</div></div>
@@ -37,6 +40,7 @@ const BookingDetailShell: React.FC<Props> = (props) => <>
     </div>
   </div>
   {(props.previewing || props.previewUrl) && <div className="booking-pdf-preview-backdrop" role="dialog" aria-modal="true" aria-label="Booking confirmation preview">{props.previewing ? <div className="booking-pdf-loading"><span className="booking-pdf-spinner" aria-hidden="true" /><strong>{props.previewPhase === 'generating' ? 'Generating PDF' : 'Loading PDF'}</strong></div> : <div className="booking-pdf-preview-modal"><div className="booking-pdf-preview-header"><h3>Booking Confirmation Preview</h3><div className="booking-pdf-preview-actions"><a href={props.previewUrl} download={props.previewFileName} className="edit-btn">Download</a><button type="button" onClick={props.onClosePreview} className="booking-pdf-preview-close" aria-label="Close PDF preview"><Icon component={FiX} /></button></div></div><iframe src={props.previewUrl} title={props.previewFileName || 'Booking confirmation preview'} className="booking-pdf-preview-frame" /></div>}</div>}
-  <div className="booking-detail-tabs" role="tablist" aria-label="Booking sections">{bookingDetailTabs.map(tab => <button key={tab.key} type="button" className={`booking-detail-tab ${props.activeTab === tab.key ? 'active' : ''}`} onClick={() => props.onTabChange(tab.key)} role="tab" aria-selected={props.activeTab === tab.key}><span>{tab.label}</span>{tab.key === 'requirements' && props.requirementsStatus && (props.requirementsStatus.missing > 0 ? <span className="booking-requirements-tab-badge is-missing" aria-label={`${props.requirementsStatus.missing} missing requirements`}>{props.requirementsStatus.missing}</span> : <span className="booking-requirements-tab-badge is-complete" aria-label="All requirements complete"><Icon component={FiCheck} /></span>)}</button>)}</div>
+  <div className="booking-detail-tabs" role="tablist" aria-label="Booking sections">{bookingDetailTabs.map(tab => <button key={tab.key} type="button" className={`booking-detail-tab ${props.activeTab === tab.key ? 'active' : ''}`} onClick={() => props.onTabChange(tab.key)} role="tab" aria-selected={props.activeTab === tab.key}><span>{tab.label}</span>{tab.key === 'notifications' && <NotificationCountBadge count={notificationCount} />}{tab.key === 'requirements' && props.requirementsStatus && (props.requirementsStatus.missing > 0 ? <span className="booking-requirements-tab-badge is-missing" aria-label={`${props.requirementsStatus.missing} missing requirements`}>{props.requirementsStatus.missing}</span> : <span className="booking-requirements-tab-badge is-complete" aria-label="All requirements complete"><Icon component={FiCheck} /></span>)}</button>)}</div>
 </>;
+};
 export default BookingDetailShell;

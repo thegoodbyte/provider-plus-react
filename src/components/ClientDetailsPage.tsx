@@ -5,8 +5,10 @@ import LoadingSpinner from './LoadingSpinner';
 import AppleButton from './AppleButton';
 import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
 import EmailHistoryPanel from './EmailHistoryPanel';
+import SubmissionNotificationsPage from './SubmissionNotificationsPage';
+import NotificationCountBadge, { useNotificationCount } from './NotificationCountBadge';
 import { MedicalArtifact, PaymentRequest } from '../types';
-import { FiArrowLeft, FiCamera, FiEdit2, FiTrash2, FiUser, FiMapPin, FiCalendar, FiDollarSign, FiActivity, FiFileText, FiAlertCircle, FiPlus, FiMessageSquare, FiCheckSquare, FiHeart, FiEye, FiEyeOff, FiMail } from 'react-icons/fi';
+import { FiArrowLeft, FiCamera, FiEdit2, FiTrash2, FiUser, FiMapPin, FiCalendar, FiDollarSign, FiActivity, FiFileText, FiAlertCircle, FiPlus, FiMessageSquare, FiCheckSquare, FiHeart, FiEye, FiEyeOff, FiMail, FiBell } from 'react-icons/fi';
 import MedicalRecordsManager from './MedicalRecordsManager';
 import { formatCalendarDate, toDateInputValue } from '../utils/dateFormat';
 import { CreateTaskDto, Task, taskService } from '../services/taskService';
@@ -23,7 +25,7 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
 };
 
 interface TabProps {
-  label: string;
+  label: React.ReactNode;
   icon: any;
   isActive: boolean;
   onClick: () => void;
@@ -144,6 +146,7 @@ const ClientDetailsPage: React.FC = () => {
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
   const [uploadingProfilePicture, setUploadingProfilePicture] = useState(false);
   const [medicalArtifacts, setMedicalArtifacts] = useState<MedicalArtifact[]>([]);
+  const notificationCount = useNotificationCount({ clientId });
 
   const handleResetLoginPin = async () => {
     if (!client?._id) return;
@@ -1125,6 +1128,12 @@ const ClientDetailsPage: React.FC = () => {
             onClick={() => setActiveTab('emails')}
           />
           <Tab
+            label={<span className="inline-flex items-center">Notifications <NotificationCountBadge count={notificationCount} /></span> as any}
+            icon={FiBell}
+            isActive={activeTab === 'notifications'}
+            onClick={() => setActiveTab('notifications')}
+          />
+          <Tab
             label="Notes"
             icon={FiMessageSquare}
             isActive={activeTab === 'notes'}
@@ -2053,6 +2062,10 @@ const ClientDetailsPage: React.FC = () => {
             title="Client emails"
             subtitle="Sent and received emails for this client."
           />
+        )}
+
+        {activeTab === 'notifications' && (
+          <SubmissionNotificationsPage clientId={clientId} title="Client notifications" subtitle="All notifications generated for this client, across their bookings." />
         )}
 
         {/* Notes Tab */}

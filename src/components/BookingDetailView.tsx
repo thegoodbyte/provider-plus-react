@@ -13,6 +13,7 @@ import BookingRequirementsPanel from './BookingRequirementsPanel';
 import BookingMedicalOverviewPanel from './BookingMedicalOverviewPanel';
 import BookingCeremoniesPanel from './BookingCeremoniesPanel';
 import BookingTasksPanel from './BookingTasksPanel';
+import SubmissionNotificationsPage from './SubmissionNotificationsPage';
 import BookingRescheduleDialog from './BookingRescheduleDialog';
 import { confirmationLanguage, BookingConfirmationLanguage } from './bookingConfirmationWorkflow';
 import { useBookingConfirmationPdf } from './useBookingConfirmationPdf';
@@ -229,6 +230,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   return (
     <div className="booking-detail-container">
       <BookingDetailShell
+        bookingId={bookingId}
         bookingNumber={booking.bookingNumber}
         clientName={clientName}
         clientDisplayId={clientDisplayId}
@@ -354,6 +356,10 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
             title="Booking emails"
             subtitle="Only emails related to this booking and client."
           />
+        )}
+
+        {activeTab === 'notifications' && (
+          <SubmissionNotificationsPage bookingId={bookingId} title="Booking notifications" subtitle="Notifications generated for this booking." />
         )}
 
         {activeTab === 'tasks' && (
