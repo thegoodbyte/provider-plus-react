@@ -2,16 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { FiAlertCircle, FiHeart, FiMail } from 'react-icons/fi';
 import { paymentRequestsApi, paymentsApi } from '../services/api';
 import { useBookingRequirements } from './useBookingRequirements';
+import { bookingPaymentSummary, confirmationState, isActivePaymentRequest } from './bookingStatusSelectors';
 
 const AlertIcon = FiAlertCircle as any; const HeartIcon = FiHeart as any; const MailIcon = FiMail as any;
 
 export const formatBookingDate = (date?: string | Date) => { if (!date) return 'N/A'; const value = new Date(date); if (Number.isNaN(value.getTime())) return 'N/A'; return value.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }); };
 export const formatHistoryDateTime = (date?: string | Date) => { if (!date) return 'N/A'; const value = new Date(date); if (Number.isNaN(value.getTime())) return 'N/A'; return value.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); };
 export const retreatTown = (retreat: any) => String(retreat?.location_town || retreat?.locationTown || retreat?.generalTown || retreat?.general_town || retreat?.house?.generalTown || retreat?.house?.general_town || retreat?.house?.city || retreat?.houseId?.generalTown || retreat?.houseId?.general_town || retreat?.houseId?.city || retreat?.location || '').trim();
-const confirmationStatuses = new Set(['sent', 'received', 'sent_for_review', 'in_review', 'reviewed', 'approved', 'completed']);
-export const sentConfirmationStep = (items: any[] = []) => items.find(item =>
-  String(item?.key || '').toLowerCase() === 'booking_confirmation_sent' && confirmationStatuses.has(String(item?.status || '').toLowerCase())
-);
+export { sentConfirmationStep } from './bookingStatusSelectors';
 
 type Props = { bookingId: string; booking: any; client: any; retreat: any; clientName: string; bookingTypeCode: string; retreatCode: string; retreatAddress: string; onEditClient: () => void; onBookingRefresh: () => void; onOpenTab?: (tab: 'payments' | 'requirements' | 'medical') => void; onSendConfirmation?: () => void; };
 const objectId = (value: any) => typeof value === 'object' ? value?._id || value?.id : value;
@@ -27,19 +25,16 @@ const BookingOverviewPanel: React.FC<Props> = ({ bookingId, booking, client, ret
   useEffect(() => { let live = true; Promise.all([paymentsApi.getByBooking(bookingId), paymentRequestsApi.getByBooking(bookingId)]).then(([paid, requested]) => { if (live) { setPayments(paid.data || []); setRequests(requested.data || []); } }).catch(() => undefined); return () => { live = false; }; }, [bookingId]);
   const currency = booking.currency || 'EUR';
   const total = Number(booking.totalAmount || 0);
-  const received = payments.filter(item => !['failed', 'cancelled', 'refunded'].includes(String(item.status || '').toLowerCase())).reduce((sum, item) => sum + Number(item.bookingCurrencyAmount ?? item.amount ?? 0), 0);
-  const outstanding = Math.max(0, total - received); const paidPercent = total > 0 ? Math.min(100, Math.round(received / total * 100)) : 0;
-  const history = useMemo(() => [...(booking?.bookingConfirmationHistory || [])].sort((a: any, b: any) => new Date(b.sentAt || b.createdAt).getTime() - new Date(a.sentAt || a.createdAt).getTime()), [booking]);
-  const confirmationStep = sentConfirmationStep(requirements.items);
-  const confirmationSent = history.length > 0 || Boolean(confirmationStep);
-  const confirmationSentAt = history[0]?.sentAt || history[0]?.createdAt || confirmationStep?.emailSentAt || confirmationStep?.sentAt || confirmationStep?.completedAt || confirmationStep?.updatedAt;
+  const { received, outstanding, paidPercent } = bookingPaymentSummary(payments, total, currency);
+  const confirmation = useMemo(() => confirmationState(booking, requirements.items), [booking, requirements.items]);
+  const confirmationSent = confirmation.sent; const confirmationSentAt = confirmation.sentAt;
   const ekg = requirements.rows.find(row => row.key === 'ekg');
-  const missingRows = requirements.rows.filter(row => row.required && !row.uploaded);
+  const missingRows = requirements.rows.filter(row => row.required && !row.satisfied);
   const complete = Math.max(0, requirements.rows.length - missingRows.length);
   const start = dateValue(retreat, 'startDate'); const end = dateValue(retreat, 'endDate'); const startIn = daysUntil(start);
   const attention = [
-    ...(outstanding > 0 && !requests.length ? [{ icon: <AlertIcon />, title: 'Balance not requested', detail: `${money(outstanding, currency)} outstanding and no payment request exists yet.`, badge: 'Blocking', action: 'Create request', tab: 'payments' as const }] : []),
-    ...(ekg && !ekg.uploaded ? [{ icon: <HeartIcon />, title: 'Entry EKG not received', detail: 'Required before the medical cut-off.', badge: 'Action needed', action: 'Request file', tab: 'medical' as const }] : []),
+    ...(outstanding > 0 && !requests.some(isActivePaymentRequest) ? [{ icon: <AlertIcon />, title: 'Balance not requested', detail: `${money(outstanding, currency)} outstanding and no active payment request exists yet.`, badge: 'Blocking', action: 'Create request', tab: 'payments' as const }] : []),
+    ...(ekg && !ekg.satisfied ? [{ icon: <HeartIcon />, title: 'Entry EKG not received', detail: 'Required before the medical cut-off.', badge: 'Action needed', action: 'Request file', tab: 'medical' as const }] : []),
     ...(!confirmationSent ? [{ icon: <MailIcon />, title: 'Confirmation not sent', detail: 'The client has not received a booking confirmation.', badge: 'Not sent', action: 'Send now' }] : []),
   ];
   const activities = [
@@ -51,7 +46,7 @@ const BookingOverviewPanel: React.FC<Props> = ({ bookingId, booking, client, ret
     <main className="booking-dashboard-main">
       <section className="overview-section"><header><h2>Needs attention</h2><span>{attention.length} thing{attention.length === 1 ? '' : 's'} waiting for you</span></header>{attention.length ? <div className="attention-list">{attention.map((item, index) => <article className="attention-item" key={item.title}><b>{String(index + 1).padStart(2, '0')}</b><i>{item.icon}</i><div><strong>{item.title}</strong><span>{item.detail}</span></div><em>{item.badge}</em><button type="button" onClick={() => 'tab' in item ? onOpenTab?.(item.tab!) : onSendConfirmation?.()}>{item.action}</button></article>)}</div> : <div className="overview-empty">Nothing needs attention.</div>}</section>
       <div className="overview-card-grid"><section className="overview-card money-card"><header><h3>Money</h3><button onClick={() => onOpenTab?.('payments')}>Payments tab</button></header><small>Total cost</small><strong>{money(total, currency)}</strong><div className="payment-progress"><span>{outstanding ? 'Not fully paid' : 'Paid in full'}</span><div><i style={{ width: `${paidPercent}%` }} /></div><b>{paidPercent}%</b></div><footer><span>Received<b>{money(received, currency)}</b></span><span>Outstanding<b>{money(outstanding, currency)}</b></span></footer></section>
-      <section className="overview-card requirements-card"><header><h3>Requirements</h3><button onClick={() => onOpenTab?.('requirements')}>All {requirements.rows.length}</button></header><strong>{complete} <small>/ {requirements.rows.length} done</small></strong><div className="requirement-segments">{requirements.rows.map(row => <i key={row.key} className={row.uploaded ? 'done' : row.required ? 'missing' : ''} />)}</div>{missingRows.slice(0, 3).map(row => <div className="requirement-next" key={row.key}><span>○</span><b>{row.label}</b><small>pending</small></div>)}</section></div>
+      <section className="overview-card requirements-card"><header><h3>Requirements</h3><button onClick={() => onOpenTab?.('requirements')}>All {requirements.rows.length}</button></header><strong>{complete} <small>/ {requirements.rows.length} done</small></strong><div className="requirement-segments">{requirements.rows.map(row => <i key={row.key} className={row.satisfied ? 'done' : row.required ? 'missing' : ''} />)}</div>{missingRows.slice(0, 3).map(row => <div className="requirement-next" key={row.key}><span>○</span><b>{row.label}</b><small>pending</small></div>)}</section></div>
       <section className="overview-retreat"><h3>Retreat</h3><div><b>{retreatCode}</b><strong>{formatBookingDate(start)} – {formatBookingDate(end)}</strong><span>{retreat?.name || retreatTown(retreat) || 'Retreat'}</span><em>{retreat?.capacity ? `${retreat.capacity} places` : ''}</em></div></section>
       <section className="overview-activity"><h3>Recent activity</h3>{activities.map((item, index) => <div key={`${item.text}-${index}`}><time>{formatHistoryDateTime(item.date)}</time><span>{item.text}</span></div>)}</section>
     </main>

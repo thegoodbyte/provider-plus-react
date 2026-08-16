@@ -4,6 +4,7 @@ import { ArrowDown, ArrowLeft, ArrowUp, Lock, Plus, RefreshCw, Save, Trash2, Unl
 import LoadingSpinner from './LoadingSpinner';
 import { bookingsApi, bookingFlowApi, retreatsApi } from '../services/api';
 import { BookingFlowItem, Retreat } from '../types';
+import { isAccomplishedStatus } from './bookingStatusSelectors';
 import {
   getBookingStepColorStyles,
   getBookingStepGroupColor,
@@ -271,8 +272,7 @@ const BookingFlowPage: React.FC = () => {
     .sort((left, right) => left[1].localeCompare(right[1]));
   const actionOptions = Array.from(new Map(allItems.map((item) => [item.category || 'other', titleizeBookingStepGroup(item.category || 'other')])).entries())
     .sort((left, right) => left[1].localeCompare(right[1]));
-  const accomplishedStatuses = new Set<BookingFlowItem['status']>(['received', 'reviewed', 'approved', 'caution', 'completed', 'waived', 'sent']);
-  const isAccomplished = (item: BookingFlowItem) => accomplishedStatuses.has(item.status);
+  const isAccomplished = (item: BookingFlowItem) => isAccomplishedStatus(item.status);
   const dueTime = (item: BookingFlowItem) => item.dueDate ? new Date(item.dueDate).getTime() : Number.NaN;
   const today = new Date();
   const todayTime = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();

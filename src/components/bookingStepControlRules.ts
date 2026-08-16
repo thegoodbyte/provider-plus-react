@@ -2,6 +2,7 @@ import { BookingFlowAction, BookingFlowItem } from '../types';
 import { getBookingStepClientEmail, getBookingStepObjectId } from './bookingStepIdentity';
 import { normalizeBookingStepKey } from './bookingStepActions';
 import { BookingStepMatrixRow } from './bookingStepRows';
+import { isSatisfiedStatus } from './bookingStatusSelectors';
 
 export const bookingDocumentTypeByStep: Record<string, string> = {
   contract_signed: 'contract',
@@ -37,8 +38,7 @@ export const resolveConfiguredBookingStepDocumentType = (item: Pick<BookingFlowI
   return normalizeBookingStepKey(bookingDocumentTypeByStep[item.key] || metadata.expectedBookingDocument || metadata.expectedDocument || (!hasArtifactConfig ? metadata.expectedArtifact : '') || '');
 };
 
-const reminderCompleteStatuses = new Set<BookingFlowItem['status']>(['received', 'reviewed', 'approved', 'completed', 'waived']);
-export const canSendBookingStepReminder = (item: BookingFlowItem | undefined, bookings: any[]): boolean => Boolean(item?._id && !reminderCompleteStatuses.has(item.status) && getBookingStepClientEmail(bookings.find((booking) => getBookingStepObjectId(booking) === getBookingStepObjectId(item.bookingId))));
+export const canSendBookingStepReminder = (item: BookingFlowItem | undefined, bookings: any[]): boolean => Boolean(item?._id && !isSatisfiedStatus(item.status) && getBookingStepClientEmail(bookings.find((booking) => getBookingStepObjectId(booking) === getBookingStepObjectId(item.bookingId))));
 export const canSendBookingStepRowEmail = (row: BookingStepMatrixRow): boolean => Boolean(row.templateId && row.emailEnabled && row.emailTemplateId);
 
 export type BookingStepActionOption = { value: string; label: string; rowKey: string; actionKey: string };

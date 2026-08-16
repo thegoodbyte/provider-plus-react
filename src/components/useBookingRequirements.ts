@@ -43,7 +43,7 @@ export const useBookingRequirements = ({ bookingId, clientId, retreatId, refresh
 
   useEffect(() => { load(); }, [load, refreshKey]);
   const rows = useMemo(() => buildBookingRequirementRows(items, artifacts, libraryArtifacts, documents, libraryDocuments, reviews), [items, artifacts, libraryArtifacts, documents, libraryDocuments, reviews]);
-  const missing = rows.filter(row => row.required && !row.uploaded).length; const total = rows.filter(row => row.required).length;
+  const missing = rows.filter(row => row.required && !row.satisfied).length; const total = rows.filter(row => row.required).length;
   useEffect(() => { if (!loading && !error) onStatusChange?.({ missing, total }); }, [error, loading, missing, onStatusChange, total]);
 
   const link = useCallback(async (definition: RequirementDefinition, kind: 'artifact' | 'document', recordId: string) => {

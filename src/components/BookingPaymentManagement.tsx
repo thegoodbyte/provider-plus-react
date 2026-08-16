@@ -6,6 +6,7 @@ import CurrencyDisplay from './CurrencyDisplay';
 import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
 import { formatCalendarDate, toDateInputValue, todayDateInputValue } from '../utils/dateFormat';
 import './BookingPaymentManagement.css';
+import { bookingPaymentSummary } from './bookingStatusSelectors';
 
 const DEFAULT_EXCHANGE_RATE_PROVIDER_LABEL = 'Revolut';
 
@@ -659,20 +660,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
 
   const balanceUsd = totalCostUsd !== null ? totalCostUsd - totalPaidUsd : null;
 
-  const totalPaidBookingCurrency = payments
-    .filter(p => p.status === 'completed')
-    .reduce((sum, payment) => {
-      const sign = payment.paymentType === 'refund' ? -1 : 1;
-      const refunded = Number(payment.refundedAmount || 0);
-      if (payment.currency === bookingCurrency) return sum + sign * Math.max(Math.abs(Number(payment.amount || 0)) - refunded, 0);
-      if (payment.bookingCurrency === bookingCurrency && Number(payment.bookingCurrencyAmount)) return sum + sign * Math.abs(Number(payment.bookingCurrencyAmount));
-      return sum;
-    }, 0);
-  const bookingBalance = Math.max(Number(totalAmount || 0) - totalPaidBookingCurrency, 0);
-  const isPaidInFull = Number(totalAmount || 0) > 0 && bookingBalance < 0.01;
-  const paidPercentage = Number(totalAmount || 0) > 0
-    ? Math.min(100, Math.max(0, Math.round((totalPaidBookingCurrency / Number(totalAmount)) * 100)))
-    : 0;
+  const { received: totalPaidBookingCurrency, outstanding: bookingBalance, paidInFull: isPaidInFull, paidPercent: paidPercentage } = bookingPaymentSummary(payments, Number(totalAmount || 0), bookingCurrency);
 
   const totalRefundedUsd = payments
     .reduce((sum, p) => sum + (p.refundedAmount ? (p.currency === 'USD' ? p.refundedAmount : 0) : 0), 0);

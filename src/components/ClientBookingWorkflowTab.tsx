@@ -6,6 +6,7 @@ import { BookingDocument, BookingFlowAction, BookingFlowActionLog, BookingFlowIt
 import AppleButton from './AppleButton';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 import LoadingSpinner from './LoadingSpinner';
+import { evidenceReceivedStatuses } from './bookingStatusSelectors';
 import {
   getBookingStepColorStyles,
   getBookingStepGroupColor,
@@ -18,7 +19,7 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
   <IconComponent className={className} />
 );
 
-const fulfilledStatuses = new Set<BookingFlowItem['status']>(['received', 'reviewed', 'approved', 'caution', 'completed']);
+const fulfilledStatuses = evidenceReceivedStatuses;
 
 const artifactUploadsByStep: Record<string, {
   artifactType: NonNullable<MedicalArtifact['artifactType']>;
