@@ -62,6 +62,12 @@ const invalidateBookingRequirements = () => {
   cacheService.clearPattern('booking-flow:booking-requirements:');
 };
 
+const invalidateBookingDocumentDependents = () => {
+  cacheService.clearPattern('booking-documents:');
+  cacheService.clearPattern('booking-flow:items:');
+  invalidateBookingRequirements();
+};
+
 export const retreatsApi = {
   getAll: () => cachedGet<Retreat[]>('retreats:all', () => api.get<Retreat[]>('/retreats')),
   getUpcomingRetreats: () => cachedGet<any>('retreats:upcoming', () => api.get<any>('/retreats?status=upcoming'), 30000),
@@ -1552,20 +1558,20 @@ export const bookingDocumentsApi = {
     return cachedGet<BookingDocument[]>(key, () => api.get<BookingDocument[]>(`/booking-documents?${query.toString()}`));
   },
   create: (data: Partial<BookingDocument> & { bookingId: string; documentType: string }) => {
-    cacheService.clearPattern('booking-documents:');
-    return api.post<BookingDocument>('/booking-documents', data);
+    invalidateBookingDocumentDependents();
+    return api.post<BookingDocument>('/booking-documents', data).finally(invalidateBookingDocumentDependents);
   },
   update: (id: string, data: Partial<BookingDocument> & { bookingId?: string; documentType?: string }) => {
-    cacheService.clearPattern('booking-documents:');
-    return api.patch<BookingDocument>(`/booking-documents/${id}`, data);
+    invalidateBookingDocumentDependents();
+    return api.patch<BookingDocument>(`/booking-documents/${id}`, data).finally(invalidateBookingDocumentDependents);
   },
   uploadFiles: (id: string, files: File[]) => {
-    cacheService.clearPattern('booking-documents:');
+    invalidateBookingDocumentDependents();
     const formData = new FormData();
     files.forEach((file) => formData.append('files', file));
     return api.post(`/booking-documents/${id}/upload-files`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    }).finally(invalidateBookingDocumentDependents);
   },
   getFileViewUrl: (id: string, storedPath: string) => `${api.defaults.baseURL}/booking-documents/${id}/files/view?storedPath=${encodeURIComponent(storedPath)}`,
   getFile: (id: string, storedPath: string) => api.get(
@@ -1573,8 +1579,8 @@ export const bookingDocumentsApi = {
     { responseType: 'blob' },
   ),
   delete: (id: string, reason = 'Upload rollback') => {
-    cacheService.clearPattern('booking-documents:');
-    return api.delete(`/booking-documents/${id}`, { data: { reason } });
+    invalidateBookingDocumentDependents();
+    return api.delete(`/booking-documents/${id}`, { data: { reason } }).finally(invalidateBookingDocumentDependents);
   },
 };
 
