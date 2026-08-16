@@ -6,7 +6,7 @@ import { indexReviews, relevantArtifact, requirementErrorMessage, reviewTime, us
 
 jest.mock('./bookingRequirementsLoader', () => ({ fetchBookingRequirementSources: jest.fn() }));
 jest.mock('../services/api', () => ({ bookingFlowApi: { updateItem: jest.fn() }, medicalArtifactsApi: { update: jest.fn() }, bookingDocumentsApi: { update: jest.fn() } }));
-const source = (overrides: any = {}) => ({ items: [], artifacts: [], documents: [], reviews: [], ...overrides });
+const source = (overrides: any = {}) => ({ items: [], artifacts: [], documents: [], documentCandidates: [], reviews: [], ...overrides });
 
 describe('useBookingRequirements', () => {
   beforeEach(() => { jest.clearAllMocks(); (fetchBookingRequirementSources as jest.Mock).mockResolvedValue(source()); });
@@ -25,10 +25,11 @@ describe('useBookingRequirements', () => {
     expect(result.current.error).toBe(''); expect(fetchBookingRequirementSources).toHaveBeenCalledTimes(2);
   });
   it('links through an existing workflow item', async () => {
-    (fetchBookingRequirementSources as jest.Mock).mockResolvedValue(source({ items: [{ _id: 'item', status: 'pending', isBlocking: true, metadata: { readinessGroup: 'ekg' } }] }));
+    (fetchBookingRequirementSources as jest.Mock).mockResolvedValue(source({ items: [{ _id: 'item', status: 'pending', isBlocking: true, metadata: { isRequirement: true, readinessGroup: 'ekg' } }] }));
     (bookingFlowApi.updateItem as jest.Mock).mockResolvedValue({});
     const { result } = renderHook(() => useBookingRequirements({ bookingId: 'booking', refreshKey: 0 })); await waitFor(() => expect(result.current.loading).toBe(false));
     await act(async () => { expect(await result.current.link(requirementDefinitions[1], 'artifact', 'artifact')).toBe(true); });
+    expect(medicalArtifactsApi.update).toHaveBeenCalledWith('artifact', expect.objectContaining({ bookingId: 'booking' }));
     expect(bookingFlowApi.updateItem).toHaveBeenCalledWith('item', expect.objectContaining({ status: 'received', metadata: expect.objectContaining({ linkedMedicalArtifactId: 'artifact' }) }));
   });
   it.each([['artifact', medicalArtifactsApi.update], ['document', bookingDocumentsApi.update]] as const)('links an unconfigured %s directly', async (kind, update) => {

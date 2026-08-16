@@ -5,6 +5,7 @@ export interface BookingRequirementSources {
   items: BookingFlowItem[];
   artifacts: MedicalArtifact[];
   documents: BookingDocument[];
+  documentCandidates: BookingDocument[];
   reviews: MedicalReviewRequest[];
 }
 
@@ -20,6 +21,7 @@ export const fetchBookingRequirementSources = async (
     items: response.data.items || [],
     artifacts: response.data.artifacts || [],
     documents: response.data.documents || [],
+    documentCandidates: response.data.documentCandidates || response.data.documents || [],
     reviews: response.data.reviews || [],
   };
 };

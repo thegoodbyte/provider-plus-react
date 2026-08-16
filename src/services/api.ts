@@ -1373,6 +1373,7 @@ export const bookingFlowApi = {
     actionLogs: BookingFlowActionLog[];
     artifacts: MedicalArtifact[];
     documents: BookingDocument[];
+    documentCandidates: BookingDocument[];
     reviews: MedicalReviewRequest[];
     requirements: Array<{
       itemId: string;
