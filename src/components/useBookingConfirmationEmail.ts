@@ -83,7 +83,7 @@ export const useBookingConfirmationEmail = ({ bookingId, booking, language, stor
         to: recipient, subject: email.subject, bodyText: email.bodyText, templateId: email.templateId,
         bookingFlowStepKey: email.bookingFlowStepKey || 'booking_confirmation_sent',
         bookingFlowStatusOnSend: email.bookingFlowStatusOnSend || 'sent', variables: email.variables,
-        clientId: resolvedClient?._id, retreatId: resolvedRetreat?._id,
+        bookingId, clientId: resolvedClient?._id, retreatId: resolvedRetreat?._id,
         relatedEntityType: 'booking', relatedEntityId: bookingId,
         attachments: [{ fileName, mimeType: 'application/pdf', contentBase64 }],
       });

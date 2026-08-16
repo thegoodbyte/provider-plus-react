@@ -61,7 +61,7 @@ describe('useBookingConfirmationEmail', () => {
     await act(async () => result.current.prepareReview());
     expect(bookingsApi.prepareConfirmation).toHaveBeenCalledWith('b');
     expect(storePdf).toHaveBeenCalledWith(pdfBlob, 'confirmation.pdf');
-    expect(result.current.draft).toMatchObject({ to: 'client@test.com', subject: 'Subject', clientId: 'c', retreatId: 'r' });
+    expect(result.current.draft).toMatchObject({ to: 'client@test.com', subject: 'Subject', bookingId: 'b', clientId: 'c', retreatId: 'r' });
     expect(result.current.draft?.attachments?.[0]).toMatchObject({ fileName: 'confirmation.pdf', contentBase64: 'base64' });
     expect(result.current.reason).toBe('Original booking confirmation');
     act(() => result.current.closeDraft());
