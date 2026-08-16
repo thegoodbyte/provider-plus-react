@@ -242,6 +242,8 @@ const ClientEditPage: React.FC = () => {
         dietaryRestrictions: formData.dietaryRestrictions,
         notes: formData.notes,
         source: normalizeOptionalValue(formData.source),
+        referralId: typeof formData.referralId === 'object' ? formData.referralId?._id : formData.referralId,
+        referralCommissionPercentage: formData.referralCommissionPercentage ?? null,
         status: normalizeOptionalValue(formData.status) as 'active' | 'inactive' | 'suspended' | undefined,
         workflowStatus: normalizeOptionalValue(formData.workflowStatus) as Client['workflowStatus'],
         language: normalizeOptionalValue(formData.language) as Client['language']
@@ -470,6 +472,43 @@ const ClientEditPage: React.FC = () => {
               </select>
               {!formData.referralId && <input type="text" name="source" value={formData.source || ''} onChange={handleInputChange} placeholder="Legacy referral or how they found us" className="mt-2 w-full p-2 border border-gray-300 rounded-md" />}
             </div>
+
+            {formData.referralId && <div>
+              <label htmlFor="referralCommissionMode" className="block text-sm font-medium text-gray-700 mb-1">Referral commission</label>
+              <select
+                id="referralCommissionMode"
+                value={formData.referralCommissionPercentage == null ? 'default' : 'custom'}
+                onChange={(event) => setFormData({
+                  ...formData,
+                  referralCommissionPercentage: event.target.value === 'default'
+                    ? null
+                    : Number(referrals.find((item) => item._id === (typeof formData.referralId === 'object' ? formData.referralId?._id : formData.referralId))?.defaultCommissionPercentage || 0),
+                })}
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="default">Use referral default</option>
+                <option value="custom">Use custom percentage</option>
+              </select>
+              {formData.referralCommissionPercentage == null ? (
+                <p className="mt-1 text-sm text-gray-500">
+                  Currently inherits {Number(referrals.find((item) => item._id === (typeof formData.referralId === 'object' ? formData.referralId?._id : formData.referralId))?.defaultCommissionPercentage || 0)}% from the selected referral.
+                </p>
+              ) : (
+                <div className="mt-2">
+                  <label htmlFor="referralCommissionPercentage" className="block text-sm text-gray-600 mb-1">Custom commission %</label>
+                  <input
+                    id="referralCommissionPercentage"
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={formData.referralCommissionPercentage}
+                    onChange={(event) => setFormData({ ...formData, referralCommissionPercentage: Number(event.target.value) })}
+                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              )}
+            </div>}
 
             <div className="col-span-full">
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
