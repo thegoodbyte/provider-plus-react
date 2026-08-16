@@ -497,16 +497,10 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
           }
         }
 
-        await updateItem(item, {
-          status: 'received',
-          receivedAt: new Date().toISOString(),
-          metadata: {
-            ...(item.metadata || {}),
-            latestBookingDocumentId: createdDocument.data._id,
-            latestBookingDocumentDisplayId: createdDocument.data.display_id,
-            latestFileName: fileArray[0]?.name,
-          },
-        } as Partial<BookingFlowItem>);
+        // The upload endpoint atomically links the BookingDocument and marks
+        // this step received. Reload that authoritative result instead of
+        // writing the pre-upload item metadata back over the new link.
+        await loadItems(selectedBookingId, true);
         return;
       }
 
