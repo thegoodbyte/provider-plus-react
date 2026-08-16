@@ -307,6 +307,11 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
       setExpandedStepId((current) => current || (nextItems[0] ? getItemId(nextItems[0]) : ''));
       hydrateDrafts(nextItems);
       setIsEditing(false);
+      // Document links are useful but must not block the booking-step grid.
+      // Load the compact booking-scoped list after the persisted steps render.
+      void bookingDocumentsApi.getAll({ bookingId, compact: true })
+        .then((documentsResponse) => setBookingDocuments(documentsResponse.data || []))
+        .catch(() => undefined);
       // History is useful but non-critical. Populate it after the step grid is
       // visible, and reuse the page-entry preload when available.
       void bookingFlowApi.getBookingActionLogs(bookingId)
