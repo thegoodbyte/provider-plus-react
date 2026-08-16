@@ -64,8 +64,17 @@
     "transformIgnorePatterns": [
       "node_modules/(?!axios)"
     ],
+    "collectCoverageFrom": [
+      "src/services/api.ts",
+      "src/services/cacheService.ts",
+      "src/components/ReferralsPage.tsx",
+      "src/components/bookingStep*.ts",
+      "src/components/bookingStep*.tsx",
+      "src/components/bookingRequirement*.ts",
+      "src/components/BookingRequirementsPanel.tsx"
+    ],
     "coverageThreshold": {
-      "global": { "statements": 5.9, "branches": 3.9, "functions": 4, "lines": 6 },
+      "global": { "statements": 20, "branches": 20, "functions": 20, "lines": 20 },
       "**/bookingRequirementsLoader.ts": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
       "**/bookingRequirementRows.ts": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
       "**/useBookingRequirements.ts": { "statements": 80, "branches": 80, "functions": 80, "lines": 80 },
