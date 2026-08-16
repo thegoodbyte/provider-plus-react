@@ -65,6 +65,7 @@ const invalidateBookingRequirements = () => {
 const invalidateBookingDocumentDependents = () => {
   cacheService.clearPattern('booking-documents:');
   cacheService.clearPattern('booking-flow:items:');
+  cacheService.clearPattern('booking-flow:workflow-snapshot:');
   invalidateBookingRequirements();
 };
 
@@ -1402,6 +1403,15 @@ export const bookingFlowApi = {
   },
   getBookingRequirementDocumentCandidates: (bookingId: string) =>
     api.get<BookingDocument[]>(`/booking-flow/bookings/${bookingId}/requirement-document-candidates`),
+  getBookingWorkflowSnapshot: (bookingId: string, options: { refresh?: boolean } = {}) => {
+    const key = `booking-flow:workflow-snapshot:${bookingId}`;
+    if (options.refresh) cacheService.clearPattern(key);
+    return cachedGet<{
+      items: BookingFlowItem[];
+      actionLogs: BookingFlowActionLog[];
+      documents: BookingDocument[];
+    }>(key, () => api.get(`/booking-flow/bookings/${bookingId}/workflow-snapshot`), 30000);
+  },
   getMatrix: (retreatId: string) => cachedGet<any>(`booking-flow:matrix:${retreatId}`, () => api.get<any>(`/booking-flow/matrix/${retreatId}`)),
   getItem: (id: string) => cachedGet<BookingFlowItem>(`booking-flow:item:${id}`, () => api.get<BookingFlowItem>(`/booking-flow/items/${id}`)),
   createItem: (data: Partial<BookingFlowItem> & { bookingId: string; title: string }) => {

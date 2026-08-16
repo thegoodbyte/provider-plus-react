@@ -279,19 +279,16 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
     setDateTimePickerDrafts({});
   };
 
-  const loadItems = async (bookingId = selectedBookingId) => {
+  const loadItems = async (bookingId = selectedBookingId, refresh = false) => {
     if (!bookingId) return;
     try {
       setLoading(true);
       setError(null);
-      const [response, documentsResponse] = await Promise.all([
-        bookingFlowApi.getBookingRequirements(bookingId),
-        bookingDocumentsApi.getAll({ bookingId }).catch(() => ({ data: [] as BookingDocument[] })),
-      ]);
+      const response = await bookingFlowApi.getBookingWorkflowSnapshot(bookingId, { refresh });
       const nextItems = response.data.items || [];
-      setBookingDocuments(documentsResponse.data || []);
-      setTemplates(response.data.templates || []);
-      setLibraryTemplates(response.data.libraryTemplates || []);
+      setBookingDocuments(response.data.documents || []);
+      setTemplates([]);
+      setLibraryTemplates([]);
       const logsByItem: Record<string, BookingFlowActionLog[]> = (response.data.actionLogs || []).reduce((acc: Record<string, BookingFlowActionLog[]>, log: BookingFlowActionLog) => {
         const itemId = getObjectId(log.bookingFlowItemId);
         if (!itemId) return acc;
@@ -694,7 +691,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
             </select>
             )}
             <BookingStepsEditActions isEditing={isEditing} saving={savingId === 'all'} onEdit={() => setIsEditing(true)} onCancel={cancelEditing} onSave={saveDrafts} compact />
-            <AppleButton onClick={() => loadItems()} variant="ghost" className="px-3 py-2">
+            <AppleButton onClick={() => loadItems(undefined, true)} variant="ghost" className="px-3 py-2">
               <Icon icon={FiRefreshCw} className="mr-2 h-4 w-4" />
               Refresh
             </AppleButton>

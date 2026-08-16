@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { bookingsApi, communicationsApi, retreatsApi } from '../services/api';
+import { bookingFlowApi, bookingsApi, communicationsApi, retreatsApi } from '../services/api';
 import BookingPaymentManagement from './BookingPaymentManagement';
 import ClientBookingWorkflowTab from './ClientBookingWorkflowTab';
 import BookingDocumentsUpload from './BookingDocumentsUpload';
@@ -116,6 +116,9 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
 
   useEffect(() => {
     fetchBookingDetails();
+    // Warm the operational Booking Requirements tab while the user is reading
+    // Overview, Payments, Medical, or any other booking tab.
+    void bookingFlowApi.getBookingWorkflowSnapshot(bookingId).catch(() => undefined);
   }, [bookingId]);
 
   const fetchBookingDetails = async () => {
