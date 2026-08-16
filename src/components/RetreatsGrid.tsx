@@ -7,6 +7,7 @@ import AppleButton from './AppleButton';
 import { FiPlus, FiEdit2, FiTrash2, FiEye, FiList } from 'react-icons/fi';
 import { buildBookingStepOptions, formatRetreatCalendarDate, getSelectedStepCellTone, isBookingStepComplete, retreatMonthGroup } from './RetreatsGrid.helpers';
 import './RetreatsListRedesign.css';
+import RetreatHolisticView from './RetreatHolisticView';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -464,14 +465,14 @@ const RetreatsGrid: React.FC = () => {
       </div>}
 
       {viewMode === 'holistic' ? (
-        <div className="space-y-6">
+        <><RetreatHolisticView retreats={operationalRetreats} options={bookingStepOptions} selectedKey={selectedBookingStepKey} onSelect={setSelectedBookingStepKey} matrices={retreatMatrices} getId={getObjectId} getBookings={getRetreatBookings} getCode={getRetreatCodeValue} getTown={getRetreatTown} getClientName={getClientName} getClientDisplayId={getClientDisplayId} getClientLanguage={getClientLanguage} routePrefix={routePrefix} />{false && <div className="space-y-6">
           <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">Holistic retreat status</h2>
                 <p className="text-sm text-gray-500">
                   {selectedBookingStepOption
-                    ? `Showing who has ${selectedBookingStepOption.label} completed across every retreat.`
+                    ? `Showing who has ${selectedBookingStepOption?.label} completed across every retreat.`
                     : 'Choose a booking step to see who has completed it across every retreat.'}
                 </p>
               </div>
@@ -614,7 +615,7 @@ const RetreatsGrid: React.FC = () => {
               </section>
             );
           })}
-        </div>
+        </div>}</>
       ) : (
       <div className="retreat-register-list">
         {groupedRetreats.map((group) => <section className="retreat-month" key={group.key}>
