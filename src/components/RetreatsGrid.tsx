@@ -8,6 +8,7 @@ import { FiPlus, FiEdit2, FiTrash2, FiEye, FiList } from 'react-icons/fi';
 import { buildBookingStepOptions, formatRetreatCalendarDate, getSelectedStepCellTone, isBookingStepComplete, retreatMonthGroup } from './RetreatsGrid.helpers';
 import './RetreatsListRedesign.css';
 import RetreatHolisticView from './RetreatHolisticView';
+import { isCancelledBookingStatus } from './retreatClientVisibility';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -162,7 +163,7 @@ const RetreatsGrid: React.FC = () => {
   const getRetreatBookings = (retreat: Retreat) => {
     const retreatId = getObjectId(retreat);
     return bookings
-      .filter((booking: any) => getObjectId(booking.retreatId) === retreatId && booking.status !== 'cancelled')
+      .filter((booking: any) => getObjectId(booking.retreatId) === retreatId && !isCancelledBookingStatus(booking.status))
       .sort((a, b) => Number(a.bookingNumber || 0) - Number(b.bookingNumber || 0));
   };
 

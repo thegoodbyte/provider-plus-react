@@ -43,6 +43,7 @@ import BiotechRoundedIcon from '@mui/icons-material/BiotechRounded';
 import './ClientsGrid.css';
 import { getEffectivePaidAmount, getPaymentAmountInBookingCurrency } from './retreatPaymentUtils';
 import { filterRetreatEmailTemplates, normalizeTemplateLanguage, RetreatEmailTemplateLanguage } from './retreatEmailTemplateFilters';
+import { activeRetreatClients, isCancelledBookingStatus } from './retreatClientVisibility';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -288,7 +289,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [showEditModal, setShowEditModal] = useState(false);
   const [showQuickBookingModal, setShowQuickBookingModal] = useState(false);
   const [showExistingClientModal, setShowExistingClientModal] = useState(false);
-  const [showCancelledBookings, setShowCancelledBookings] = useState(false);
   const [cancellingBooking, setCancellingBooking] = useState<RetreatClientData | null>(null);
   const [cancellationSaving, setCancellationSaving] = useState(false);
   const [cancellationForm, setCancellationForm] = useState({
@@ -968,8 +968,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   ];
 
   // Sort clients based on current sort field and direction
-  const visibleClients = React.useMemo(() => clients.filter((client) => showCancelledBookings || client.status !== 'cancelled'), [clients, showCancelledBookings]);
-  const activeClientCount = React.useMemo(() => clients.filter((client) => client.status !== 'cancelled').length, [clients]);
+  const visibleClients = React.useMemo(() => activeRetreatClients(clients), [clients]);
+  const activeClientCount = visibleClients.length;
 
   const sortedClients = React.useMemo(() => {
     if (!sortField) return visibleClients;
@@ -993,7 +993,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     const seen = new Set<string>();
     return clients.filter((client) => {
       const email = String(client.clientEmail || '').trim().toLowerCase();
-      if (client.status === 'cancelled' || !email || seen.has(email)) return false;
+      if (isCancelledBookingStatus(client.status) || !email || seen.has(email)) return false;
       seen.add(email);
       return true;
     });
@@ -1013,7 +1013,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   );
   const paymentStatusLabel = (client: RetreatClientData) => {
     const paidAmount = effectiveAmountPaid(client);
-    if (client.status === 'cancelled') {
+    if (isCancelledBookingStatus(client.status)) {
       if (client.cancellationDepositTreatment === 'none') return 'No payment';
       if (client.cancellationDepositTreatment === 'retained') return 'Deposit retained';
       if (client.cancellationDepositTreatment === 'credited') return 'Credit transferred';
@@ -1026,7 +1026,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     const remainingBalance = Math.max(client.totalAmount - paidAmount, 0);
     return `Balance ${formatAmount(remainingBalance, client.currency)}`;
   };
-  const paymentStatusClass = (client: RetreatClientData) => effectiveAmountPaid(client) >= client.totalAmount - 0.01 && client.totalAmount > 0 ? 'bg-green-100 text-green-800' : client.status === 'cancelled' ? 'bg-gray-100 text-gray-700' : 'bg-amber-100 text-amber-800';
+  const paymentStatusClass = (client: RetreatClientData) => effectiveAmountPaid(client) >= client.totalAmount - 0.01 && client.totalAmount > 0 ? 'bg-green-100 text-green-800' : isCancelledBookingStatus(client.status) ? 'bg-gray-100 text-gray-700' : 'bg-amber-100 text-amber-800';
 
   const openCancellation = (client: RetreatClientData) => {
     setCancellingBooking(client);
@@ -1415,10 +1415,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                 <Icon icon={FiPrinter} className="w-4 h-4" />
                 <span>Print Client Grid</span>
               </button>
-              <label className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700">
-                <input type="checkbox" checked={showCancelledBookings} onChange={(event) => setShowCancelledBookings(event.target.checked)} />
-                Show cancelled ({clients.length - activeClientCount})
-              </label>
               <button
                 onClick={() => setShowQuickBookingModal(true)}
                 className="retreat-client-action retreat-client-action-book"
@@ -1570,10 +1566,10 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${client.status === 'cancelled' ? 'bg-red-100 text-red-800' : client.status === 'confirmed' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-700'}`}>
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${isCancelledBookingStatus(client.status) ? 'bg-red-100 text-red-800' : client.status === 'confirmed' ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-700'}`}>
                           {bookingStatusLabel(client.status)}
                         </span>
-                        {client.status === 'cancelled' && client.cancellationReason && <div className="mt-1 max-w-44 whitespace-normal text-xs text-gray-500" title={client.cancellationNotes || client.cancellationReason}>{client.cancellationReason}</div>}
+                        {isCancelledBookingStatus(client.status) && client.cancellationReason && <div className="mt-1 max-w-44 whitespace-normal text-xs text-gray-500" title={client.cancellationNotes || client.cancellationReason}>{client.cancellationReason}</div>}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${paymentStatusClass(client)}`}>{paymentStatusLabel(client)}</span>
@@ -1603,7 +1599,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                           >
                             <Icon icon={FiEdit2} />
                           </button>
-                          {client.status !== 'cancelled' && (
+                          {!isCancelledBookingStatus(client.status) && (
                             <button
                               onClick={() => openCancellation(client)}
                               className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-xs font-semibold text-red-700 hover:bg-red-100"
