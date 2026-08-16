@@ -58,5 +58,5 @@ export const useBookingRequirements = ({ bookingId, clientId, retreatId, refresh
     finally { setLinkingRecordId(''); }
   }, [bookingId, clientId, load, retreatId, rows]);
 
-  return { rows, libraryArtifacts, libraryDocuments, loading, error, linkingRecordId, reload: load, link };
+  return { rows, items, libraryArtifacts, libraryDocuments, loading, error, linkingRecordId, reload: load, link };
 };

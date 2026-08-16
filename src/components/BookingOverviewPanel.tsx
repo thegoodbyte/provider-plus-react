@@ -8,6 +8,10 @@ const AlertIcon = FiAlertCircle as any; const HeartIcon = FiHeart as any; const 
 export const formatBookingDate = (date?: string | Date) => { if (!date) return 'N/A'; const value = new Date(date); if (Number.isNaN(value.getTime())) return 'N/A'; return value.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }); };
 export const formatHistoryDateTime = (date?: string | Date) => { if (!date) return 'N/A'; const value = new Date(date); if (Number.isNaN(value.getTime())) return 'N/A'; return value.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); };
 export const retreatTown = (retreat: any) => String(retreat?.location_town || retreat?.locationTown || retreat?.generalTown || retreat?.general_town || retreat?.house?.generalTown || retreat?.house?.general_town || retreat?.house?.city || retreat?.houseId?.generalTown || retreat?.houseId?.general_town || retreat?.houseId?.city || retreat?.location || '').trim();
+const confirmationStatuses = new Set(['sent', 'received', 'sent_for_review', 'in_review', 'reviewed', 'approved', 'completed']);
+export const sentConfirmationStep = (items: any[] = []) => items.find(item =>
+  String(item?.key || '').toLowerCase() === 'booking_confirmation_sent' && confirmationStatuses.has(String(item?.status || '').toLowerCase())
+);
 
 type Props = { bookingId: string; booking: any; client: any; retreat: any; clientName: string; bookingTypeCode: string; retreatCode: string; retreatAddress: string; onEditClient: () => void; onBookingRefresh: () => void; onOpenTab?: (tab: 'payments' | 'requirements' | 'medical') => void; onSendConfirmation?: () => void; };
 const objectId = (value: any) => typeof value === 'object' ? value?._id || value?.id : value;
@@ -26,6 +30,9 @@ const BookingOverviewPanel: React.FC<Props> = ({ bookingId, booking, client, ret
   const received = payments.filter(item => !['failed', 'cancelled', 'refunded'].includes(String(item.status || '').toLowerCase())).reduce((sum, item) => sum + Number(item.bookingCurrencyAmount ?? item.amount ?? 0), 0);
   const outstanding = Math.max(0, total - received); const paidPercent = total > 0 ? Math.min(100, Math.round(received / total * 100)) : 0;
   const history = useMemo(() => [...(booking?.bookingConfirmationHistory || [])].sort((a: any, b: any) => new Date(b.sentAt || b.createdAt).getTime() - new Date(a.sentAt || a.createdAt).getTime()), [booking]);
+  const confirmationStep = sentConfirmationStep(requirements.items);
+  const confirmationSent = history.length > 0 || Boolean(confirmationStep);
+  const confirmationSentAt = history[0]?.sentAt || history[0]?.createdAt || confirmationStep?.emailSentAt || confirmationStep?.sentAt || confirmationStep?.completedAt || confirmationStep?.updatedAt;
   const ekg = requirements.rows.find(row => row.key === 'ekg');
   const missingRows = requirements.rows.filter(row => row.required && !row.uploaded);
   const complete = Math.max(0, requirements.rows.length - missingRows.length);
@@ -33,11 +40,11 @@ const BookingOverviewPanel: React.FC<Props> = ({ bookingId, booking, client, ret
   const attention = [
     ...(outstanding > 0 && !requests.length ? [{ icon: <AlertIcon />, title: 'Balance not requested', detail: `${money(outstanding, currency)} outstanding and no payment request exists yet.`, badge: 'Blocking', action: 'Create request', tab: 'payments' as const }] : []),
     ...(ekg && !ekg.uploaded ? [{ icon: <HeartIcon />, title: 'Entry EKG not received', detail: 'Required before the medical cut-off.', badge: 'Action needed', action: 'Request file', tab: 'medical' as const }] : []),
-    ...(!history.length ? [{ icon: <MailIcon />, title: 'Confirmation not sent', detail: 'The client has not received a booking confirmation.', badge: 'Not sent', action: 'Send now' }] : []),
+    ...(!confirmationSent ? [{ icon: <MailIcon />, title: 'Confirmation not sent', detail: 'The client has not received a booking confirmation.', badge: 'Not sent', action: 'Send now' }] : []),
   ];
   const activities = [
     ...requirements.rows.filter(row => row.uploaded).slice(0, 3).map(row => ({ date: row.latestArtifact?.updatedAt || row.latestDocument?.updatedAt, text: `${row.label} received` })),
-    ...history.slice(0, 1).map(item => ({ date: item.sentAt || item.createdAt, text: 'Confirmation sent' })),
+    ...(confirmationSentAt ? [{ date: confirmationSentAt, text: 'Confirmation sent' }] : []),
     { date: booking.registrationDate || booking.createdAt, text: 'Booking created' },
   ].filter(item => item.date).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5);
   return <div className="booking-dashboard">
@@ -49,7 +56,7 @@ const BookingOverviewPanel: React.FC<Props> = ({ bookingId, booking, client, ret
       <section className="overview-activity"><h3>Recent activity</h3>{activities.map((item, index) => <div key={`${item.text}-${index}`}><time>{formatHistoryDateTime(item.date)}</time><span>{item.text}</span></div>)}</section>
     </main>
     <aside className="booking-dashboard-rail"><section><header><h3>Client</h3><button onClick={onEditClient}>Edit</button></header><strong>{clientName}</strong><small>Email</small><a href={`mailto:${client?.email || ''}`}>{client?.email || 'N/A'}</a><small>Phone</small><span>{client?.phone || 'N/A'}</span><small>Country</small><span>{client?.country || 'N/A'}</span><div className="rail-actions"><a href={`mailto:${client?.email || ''}`}>Email</a><button onClick={onEditClient}>Client file</button></div></section>
-    <section><h3>Confirmation</h3><em>{history.length ? 'Sent' : 'Not sent'}</em><p>{history.length ? `Last sent ${formatHistoryDateTime(history[0].sentAt || history[0].createdAt)}.` : 'The client has had no confirmation email for this booking.'}</p><button className="rail-primary" onClick={onSendConfirmation}>{history.length ? 'Send again' : 'Send confirmation'}</button></section>
+    <section><h3>Confirmation</h3><em>{confirmationSent ? 'Sent' : 'Not sent'}</em><p>{confirmationSent ? (confirmationSentAt ? `Last sent ${formatHistoryDateTime(confirmationSentAt)}.` : 'Booking confirmation sent.') : 'The client has had no confirmation email for this booking.'}</p><button className="rail-primary" onClick={onSendConfirmation}>{confirmationSent ? 'Send again' : 'Send confirmation'}</button></section>
     <section><h3>Dates</h3><small>Retreat</small><span>{formatBookingDate(start)} – {formatBookingDate(end)}</span><small>Booked</small><span>{formatBookingDate(booking.registrationDate || booking.createdAt)}</span><small>Starts in</small><span>{startIn === null ? 'N/A' : `${startIn} days`}</span></section></aside>
   </div>;
 };
