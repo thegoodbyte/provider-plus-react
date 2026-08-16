@@ -522,7 +522,8 @@ export const bloodPressureReadingsApi = {
 
 export const communicationsApi = {
   getAssets: () => api.get<EmailAsset[]>('/communications/assets'),
-  uploadAsset: (file: File, data: { name: string; key: string; language: string }) => { const form = new FormData(); form.append('file', file); form.append('name', data.name); form.append('key', data.key); form.append('language', data.language); return api.post<EmailAsset>('/communications/assets', form, { headers: { 'Content-Type': 'multipart/form-data' } }); },
+  uploadAsset: (file: File, data: { name: string; key: string; language: string; assetType?: string }) => { const form = new FormData(); form.append('file', file); form.append('name', data.name); form.append('key', data.key); form.append('language', data.language); form.append('assetType', data.assetType || 'attachment'); return api.post<EmailAsset>('/communications/assets', form, { headers: { 'Content-Type': 'multipart/form-data' } }); },
+  updateAsset: (id: string, data: Partial<EmailAsset>) => api.patch<EmailAsset>(`/communications/assets/${id}`, data),
   deleteAsset: (id: string) => api.delete(`/communications/assets/${id}`),
   getSettings: (config: any = {}) => api.get<MailSettings>('/communications/settings', config),
   saveSettings: (data: Partial<MailSettings>) => api.patch<MailSettings>('/communications/settings', data),

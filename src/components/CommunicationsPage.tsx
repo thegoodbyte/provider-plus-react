@@ -567,14 +567,14 @@ const CommunicationsPage: React.FC = () => {
   };
 
   const handleAssetUpload = async () => {
-    if (!assetDraft.file) { alert('Choose a PDF file.'); return; }
+    if (!assetDraft.file) { alert('Choose a PDF or image file.'); return; }
     setUploadingAsset(true);
     try {
       await communicationsApi.uploadAsset(assetDraft.file, assetDraft);
       const response = await communicationsApi.getAssets();
       setEmailAssets(response.data || []);
       setAssetDraft((current) => ({ ...current, file: null }));
-    } catch (error: any) { alert(error?.response?.data?.message || 'PDF upload failed.'); }
+    } catch (error: any) { alert(error?.response?.data?.message || 'Asset upload failed.'); }
     finally { setUploadingAsset(false); }
   };
 
@@ -1232,13 +1232,13 @@ const CommunicationsPage: React.FC = () => {
               </div>
             </div>
             <section className="rounded-md border border-gray-200 bg-gray-50 p-4 space-y-3">
-              <div><h3 className="font-semibold text-gray-900">PDF attachments</h3><p className="text-xs text-gray-500"><b>Step 1:</b> upload a reusable PDF below. <b>Step 2:</b> tick its checkbox to attach it to this template, then save the template.</p></div>
+              <div><h3 className="font-semibold text-gray-900">Email asset library</h3><p className="text-xs text-gray-500"><b>Step 1:</b> upload a reusable PDF or logo/image below. <b>Step 2:</b> select PDFs as attachments; image assets are available for HTML email insertion.</p></div>
               <div className="grid gap-2 md:grid-cols-[1fr_1fr_100px_1.4fr_auto]">
                 <input aria-label="Asset name" value={assetDraft.name} onChange={(e) => setAssetDraft((current) => ({ ...current, name: e.target.value }))} className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Preparation Guide" />
                 <input aria-label="Asset key" value={assetDraft.key} onChange={(e) => setAssetDraft((current) => ({ ...current, key: e.target.value }))} className="rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="preparation_guide" />
                 <select aria-label="Asset language" value={assetDraft.language} onChange={(e) => setAssetDraft((current) => ({ ...current, language: e.target.value }))} className="rounded-md border border-gray-300 px-2 py-2 text-sm"><option value="en">EN</option><option value="cz">CZ</option><option value="pl">PL</option></select>
-                <input aria-label="PDF file" type="file" accept="application/pdf,.pdf" onChange={(e) => setAssetDraft((current) => ({ ...current, file: e.target.files?.[0] || null }))} className="rounded-md border border-gray-300 bg-white px-2 py-2 text-sm" />
-                <button type="button" disabled={uploadingAsset || !assetDraft.file} onClick={handleAssetUpload} className="rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{uploadingAsset ? 'Uploading…' : 'Upload PDF'}</button>
+                <input aria-label="Asset file" type="file" accept="application/pdf,.pdf,image/png,image/jpeg,image/svg+xml" onChange={(e) => setAssetDraft((current) => ({ ...current, file: e.target.files?.[0] || null }))} className="rounded-md border border-gray-300 bg-white px-2 py-2 text-sm" />
+                <button type="button" disabled={uploadingAsset || !assetDraft.file} onClick={handleAssetUpload} className="rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">{uploadingAsset ? 'Uploading…' : 'Upload asset'}</button>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 {emailAssets.map((asset) => <label key={asset._id} className="flex items-center gap-2 rounded-md border border-gray-200 bg-white p-3 text-sm"><input type="checkbox" checked={Boolean(asset._id && (templateForm.attachmentAssetIds || []).includes(asset._id))} onChange={(e) => setTemplateForm((current) => ({ ...current, attachmentAssetIds: e.target.checked ? [...(current.attachmentAssetIds || []), asset._id! ] : (current.attachmentAssetIds || []).filter((id) => id !== asset._id) }))} /><span className="min-w-0 flex-1"><strong className="block truncate">{asset.name} · {asset.language.toUpperCase()}</strong><small className="block truncate text-gray-500">{asset.fileName}</small></span><button type="button" onClick={(event) => { event.preventDefault(); void handleAssetDelete(asset); }} className="text-red-600" aria-label={`Delete ${asset.fileName}`}><Icon icon={FiTrash2} /></button></label>)}

@@ -1646,6 +1646,7 @@ export interface EmailAsset {
   language: 'en' | 'cz' | 'pl' | string;
   fileName: string;
   mimeType?: string;
+  assetType?: 'attachment' | 'image';
   size?: number;
   active?: boolean;
 }
