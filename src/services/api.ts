@@ -1395,6 +1395,9 @@ export const bookingFlowApi = {
       artifactIds: string[];
       documentIds: string[];
       latestReviewId?: string;
+      requiredFromClient: boolean;
+      clientReason?: string;
+      clientInstructions?: string;
     }>;
   }>(
     `booking-flow:booking-requirements:${bookingId}:${options.compact ? 'compact' : 'full'}`,
@@ -1403,6 +1406,8 @@ export const bookingFlowApi = {
   },
   getBookingRequirementDocumentCandidates: (bookingId: string) =>
     api.get<BookingDocument[]>(`/booking-flow/bookings/${bookingId}/requirement-document-candidates`),
+  getMissingClientRequirements: (bookingId: string) =>
+    api.get<{ bookingId: string; count: number; ready: boolean; missing: Array<any> }>(`/booking-flow/bookings/${bookingId}/missing-client-requirements`),
   getBookingWorkflowSnapshot: (bookingId: string, options: { refresh?: boolean } = {}) => {
     const key = `booking-flow:workflow-snapshot:${bookingId}`;
     if (options.refresh) cacheService.clearPattern(key);

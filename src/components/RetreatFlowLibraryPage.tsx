@@ -32,6 +32,9 @@ type TemplateForm = {
   createsTask: boolean;
   reviewRequired: boolean;
   isRequirement: boolean;
+  requiredFromClient: boolean;
+  clientReason: string;
+  clientInstructions: string;
   requirementType: string;
   taskTitle: string;
   taskPriority: 'low' | 'medium' | 'high' | 'urgent';
@@ -68,6 +71,9 @@ const emptyForm = (): TemplateForm => ({
   createsTask: false,
   reviewRequired: false,
   isRequirement: false,
+  requiredFromClient: false,
+  clientReason: '',
+  clientInstructions: '',
   requirementType: '',
   taskTitle: '',
   taskPriority: 'medium',
@@ -205,6 +211,9 @@ const RetreatFlowLibraryPage: React.FC = () => {
       createsTask: !!template.createsTask,
       reviewRequired: !!template.reviewRequired,
       isRequirement: !!template.isRequirement,
+      requiredFromClient: template.requiredFromClient ?? !!template.isRequirement,
+      clientReason: template.clientReason || '',
+      clientInstructions: template.clientInstructions || '',
       requirementType: template.requirementType || '',
       taskTitle: template.taskTitle || '',
       taskPriority: template.taskPriority || 'medium',
@@ -273,6 +282,9 @@ const RetreatFlowLibraryPage: React.FC = () => {
         createsTask: form.createsTask,
         reviewRequired: form.reviewRequired,
         isRequirement: form.isRequirement,
+        requiredFromClient: form.requiredFromClient,
+        clientReason: form.clientReason || undefined,
+        clientInstructions: form.clientInstructions || undefined,
         requirementType: form.isRequirement ? form.requirementType : undefined,
         taskTitle: form.taskTitle,
         taskPriority: form.taskPriority,
@@ -548,6 +560,9 @@ const RetreatFlowLibraryPage: React.FC = () => {
           <label><span className={labelClass}>Category</span><select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value as TemplateForm['category'] })} className={fieldClass}>{['screening','booking','contract','questionnaire','medical','payment','dietary','message','access','approval','reminder','other'].map(v => <option key={v} value={v}>{titleizeBookingStepGroup(v)}</option>)}</select></label>
           <label className="sm:col-span-2"><span className={labelClass}>Retreat types</span><input value={form.applicableRetreatTypes} onChange={(e) => setForm({ ...form, applicableRetreatTypes: e.target.value })} className={fieldClass} placeholder="Leave empty for all, or enter regular, booster" /><span className="mt-1 block text-xs text-gray-500">Comma-separated. Specific retreat copies still override the global policy.</span></label>
           <label className="sm:col-span-2"><span className={labelClass}>What this step means</span><textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} className={fieldClass} /></label>
+          <label className="sm:col-span-2 flex items-center gap-2 text-sm"><input type="checkbox" checked={form.requiredFromClient} onChange={(e) => setForm({ ...form, requiredFromClient: e.target.checked })} /> Required from client — include in the Requirements tab and missing-items email</label>
+          <label><span className={labelClass}>Why the client must provide it</span><textarea value={form.clientReason} onChange={(e) => setForm({ ...form, clientReason: e.target.value })} rows={2} className={fieldClass} placeholder="Explain why this is needed" /></label>
+          <label><span className={labelClass}>Client instructions</span><textarea value={form.clientInstructions} onChange={(e) => setForm({ ...form, clientInstructions: e.target.value })} rows={2} className={fieldClass} placeholder="Tell the client what to submit" /></label>
           <label><span className={labelClass}>Order in the list</span><input type="number" value={form.order} onChange={(e) => setForm({ ...form, order: Number(e.target.value) })} className={fieldClass} /></label>
           <label><span className={labelClass}>Readiness group</span><input value={form.readinessGroup} onChange={(e) => setForm({ ...form, readinessGroup: e.target.value })} className={fieldClass} /></label>
         </div>}

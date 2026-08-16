@@ -86,6 +86,8 @@ const definitionForItem = (item: BookingFlowItem): RequirementDefinition => {
 
 export const isVisibleBookingRequirement = (item: BookingFlowItem) => {
   const template = typeof item.templateId === 'object' ? item.templateId : undefined;
+  const configured = item.metadata?.requiredFromClient ?? template?.requiredFromClient;
+  if (configured !== undefined) return configured === true;
   return item.metadata?.isRequirement === true
     || template?.isRequirement === true
     || Boolean(item.metadata?.requirementType || template?.requirementType)

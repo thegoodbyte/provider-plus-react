@@ -1364,6 +1364,9 @@ export interface BookingFlowTemplate {
   autoCompleteOnArtifact?: boolean;
   autoCompleteStatus?: string;
   isRequirement?: boolean;
+  requiredFromClient?: boolean;
+  clientReason?: string;
+  clientInstructions?: string;
   requirementType?: string;
   emailEnabled?: boolean;
   emailTemplateId?: string | EmailTemplate;
