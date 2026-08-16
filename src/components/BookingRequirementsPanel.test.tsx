@@ -10,7 +10,7 @@ jest.mock('react-router-dom', () => ({ ...jest.requireActual('react-router-dom')
 jest.mock('./useBookingRequirements', () => ({ useBookingRequirements: jest.fn() }));
 const hook = useBookingRequirements as jest.Mock;
 const row = (overrides: any = {}) => ({ ...requirementDefinitions.find(item => item.key === 'ekg'), required: true, uploaded: false, satisfied: false, reviewed: false, relatedItems: [], ...overrides });
-const state = (overrides: any = {}) => ({ rows: [row()], libraryArtifacts: [], libraryDocuments: [], loading: false, error: '', linkingRecordId: '', reload: jest.fn(), link: jest.fn(), ...overrides });
+const state = (overrides: any = {}) => ({ rows: [row()], libraryArtifacts: [], libraryDocuments: [], libraryDocumentsLoading: false, loading: false, error: '', linkingRecordId: '', reload: jest.fn(), loadDocumentLibrary: jest.fn(), link: jest.fn(), ...overrides });
 const view = (initial = '/admin/bookings/1') => render(<MemoryRouter initialEntries={[initial]}><BookingRequirementsPanel bookingId="booking" refreshKey={0} /></MemoryRouter>);
 
 describe('BookingRequirementsPanel', () => {
