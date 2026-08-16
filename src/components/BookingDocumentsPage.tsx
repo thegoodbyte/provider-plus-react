@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowUpDown, Download, Eye, FileText, RefreshCw, Search, SlidersHorizontal, Trash2, X } from 'lucide-react';
+import { ArrowUpDown, ClipboardList, Download, Eye, FileText, Pencil, Pill, RefreshCw, Scale, Search, Trash2, Utensils, X } from 'lucide-react';
 import { bookingDocumentsApi } from '../services/api';
 import { BookingDocument, Client, Retreat, RetreatClient } from '../types';
 
@@ -10,18 +10,17 @@ type BookingDocumentFile = NonNullable<BookingDocument['files']>[number];
 
 const normalizeKey = (value?: string) => String(value || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 
-const formatDate = (value?: Date | string) => {
-  if (!value) return '-';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '-';
-  return date.toLocaleString();
-};
-
 const formatBytes = (size?: number) => {
   if (!size) return '-';
   if (size < 1024) return `${size} B`;
   if (size < 1024 * 1024) return `${Math.round(size / 1024)} KB`;
   return `${(size / 1024 / 1024).toFixed(1)} MB`;
+};
+
+const formatDateOnly = (value?: Date | string) => {
+  if (!value) return '—';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? '—' : date.toLocaleDateString();
 };
 
 const getBookingId = (booking?: string | RetreatClient) => {
@@ -46,6 +45,11 @@ const getRetreatLabel = (retreat?: string | Retreat) => {
   if (!retreat) return '-';
   if (typeof retreat === 'string') return retreat.slice(-8);
   return retreat.name || retreat.code || retreat.retreatCode || retreat._id?.slice(-8) || '-';
+};
+
+const getRetreatCode = (retreat?: string | Retreat) => {
+  if (!retreat || typeof retreat === 'string') return '';
+  return retreat.code || retreat.retreatCode || retreat.name || '';
 };
 
 const titleize = (value: string) => value
@@ -84,40 +88,14 @@ const SortHeader: React.FC<{
   </button>
 );
 
-const FilePreview: React.FC<{ file?: BookingDocumentFile }> = ({ file }) => {
-  if (!file) {
-    return (
-      <div className="flex h-20 w-16 items-center justify-center rounded-md border border-dashed border-gray-300 bg-gray-50 text-gray-400">
-        <FileText className="h-5 w-5" />
-      </div>
-    );
-  }
-
-  if (file.thumbnailUrl || (isImageFile(file) && file.url)) {
-    return (
-      <img
-        src={file.thumbnailUrl || file.url}
-        alt={file.fileName || 'Document preview'}
-        className="h-20 w-16 rounded-md border border-gray-200 bg-white object-cover"
-      />
-    );
-  }
-
-  if (isPdfFile(file) && file.url) {
-    return (
-      <iframe
-        title={file.fileName || 'PDF preview'}
-        src={`${file.url}#page=1&toolbar=0&navpanes=0&scrollbar=0`}
-        className="h-20 w-16 overflow-hidden rounded-md border border-gray-200 bg-white"
-      />
-    );
-  }
-
-  return (
-    <div className="flex h-20 w-16 items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-gray-500">
-      <FileText className="h-5 w-5" />
-    </div>
-  );
+const DocumentTypeIcon: React.FC<{ type?: string }> = ({ type }) => {
+  const normalized = normalizeKey(type);
+  const Icon = normalized === 'contract' || normalized === 'contract_signed' ? Scale
+    : normalized === 'food_intake' || normalized === 'food_form' ? Utensils
+      : normalized === 'medications_form' ? Pill
+        : normalized === 'questionnaire' || normalized === 'health_questionnaire' ? ClipboardList
+          : FileText;
+  return <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#d7c9b4] bg-[#fffaf1] text-[#705d46]"><Icon className="h-4 w-4" /></span>;
 };
 
 const BookingDocumentsPage: React.FC = () => {
@@ -138,6 +116,11 @@ const BookingDocumentsPage: React.FC = () => {
   const [viewerUrl, setViewerUrl] = useState('');
   const [viewerLoading, setViewerLoading] = useState(false);
   const [viewerError, setViewerError] = useState('');
+  const [editingDocument, setEditingDocument] = useState<BookingDocument | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editType, setEditType] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const closeViewer = () => {
     if (viewerUrl) URL.revokeObjectURL(viewerUrl);
@@ -214,6 +197,32 @@ const BookingDocumentsPage: React.FC = () => {
     }
   };
 
+  const beginEdit = (document: BookingDocument) => {
+    setEditingDocument(document);
+    setEditTitle(document.title || '');
+    setEditDescription(document.description || '');
+    setEditType(document.documentType || '');
+  };
+
+  const saveEdit = async () => {
+    if (!editingDocument?._id || !editType.trim()) return;
+    setSavingEdit(true);
+    setError('');
+    try {
+      const response = await bookingDocumentsApi.update(editingDocument._id, {
+        title: editTitle.trim() || undefined,
+        description: editDescription.trim() || undefined,
+        documentType: editType,
+      });
+      setDocuments((current) => current.map((document) => document._id === editingDocument._id ? response.data : document));
+      setEditingDocument(null);
+    } catch (editError: any) {
+      setError(editError?.response?.data?.message || editError?.message || 'Unable to update the document.');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   const filteredDocuments = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     const filtered = documents.filter((document) => {
@@ -255,74 +264,63 @@ const BookingDocumentsPage: React.FC = () => {
   }, [documents, query, sortDirection, sortKey, typeFilter]);
 
   return (
-    <div className="p-6">
-      <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+    <div className="min-h-full bg-[#f7ecd9] p-4 text-[#29251f] sm:p-6">
+      <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Document Library</h1>
-          <p className="mt-1 text-sm text-gray-600">Booking files with previews, document type, booking, client, retreat, and upload details.</p>
+          <h1 className="text-3xl font-bold tracking-tight">Document Library</h1>
+          <p className="mt-1 text-sm text-[#776d60]">Booking files with document type, booking, client, retreat, and upload details.</p>
         </div>
         <button
           type="button"
           onClick={loadDocuments}
           disabled={loading}
-          className="inline-flex items-center justify-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex items-center justify-center gap-2 rounded-full border border-[#d7c9b4] bg-[#fffaf1] px-5 py-2.5 text-sm font-semibold hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
         >
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           Refresh
         </button>
       </div>
 
-      <div className="mb-4 grid gap-3 rounded-lg border border-gray-200 bg-white p-4 shadow-sm md:grid-cols-[1fr_220px]">
+      <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center">
         <label className="relative block">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search document ID, booking #, client, retreat, type, title, or file name"
-            className="w-full rounded-md border border-gray-300 py-2 pl-9 pr-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            placeholder="Search booking #, client, retreat, type, title, or file name"
+            className="w-full rounded-full border border-[#d7c9b4] bg-[#fffaf1] py-3 pl-10 pr-4 text-sm focus:border-[#c97535] focus:outline-none focus:ring-2 focus:ring-[#c97535]/20 lg:min-w-[420px]"
           />
         </label>
-        <label className="relative block">
-          <SlidersHorizontal className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-          <select
-            value={typeFilter}
-            onChange={(event) => setTypeFilter(event.target.value)}
-            className="w-full rounded-md border border-gray-300 py-2 pl-9 pr-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
-          >
-            <option value="all">All document types</option>
-            {documentTypes.map((type) => (
-              <option key={type} value={type}>{titleize(type)}</option>
-            ))}
-          </select>
-        </label>
+        <div className="flex flex-wrap gap-2 lg:ml-auto" aria-label="Filter by document type">
+          <button type="button" onClick={() => setTypeFilter('all')} className={`rounded-full border px-4 py-2 text-sm font-semibold ${typeFilter === 'all' ? 'border-[#c97535] bg-[#c97535] text-white' : 'border-[#d7c9b4] bg-[#fffaf1] hover:bg-white'}`}>All types</button>
+          {documentTypes.map((type) => <button key={type} type="button" onClick={() => setTypeFilter(type)} className={`rounded-full border px-4 py-2 text-sm font-medium ${typeFilter === type ? 'border-[#c97535] bg-[#c97535] text-white' : 'border-[#d7c9b4] bg-[#fffaf1] hover:bg-white'}`}>{titleize(type)}</button>)}
+        </div>
       </div>
 
       {error && <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
-      <div className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-200 px-4 py-3 text-sm text-gray-600">
+      <div className="overflow-hidden rounded-[24px] border border-[#d7c9b4] bg-[#fffaf1] shadow-sm">
+        <div className="border-b border-[#d7c9b4] px-6 py-4 text-sm text-[#776d60]">
           {loading ? 'Loading documents...' : `${filteredDocuments.length} document${filteredDocuments.length === 1 ? '' : 's'}`}
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
+          <table className="min-w-[1100px] w-full">
+            <thead className="bg-[#eee4d3]">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Preview</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Document ID</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Document</th>
-                <th className="px-4 py-3 text-left"><SortHeader label="Type" sortKey="documentType" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
-                <th className="px-4 py-3 text-left"><SortHeader label="Booking" sortKey="booking" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
-                <th className="px-4 py-3 text-left"><SortHeader label="Client" sortKey="client" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
-                <th className="px-4 py-3 text-left"><SortHeader label="Retreat" sortKey="retreat" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
-                <th className="px-4 py-3 text-left"><SortHeader label="Received" sortKey="receivedAt" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Files</th>
-                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-gray-500">Actions</th>
+                <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-widest text-[#655d51]">ID</th>
+                <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-widest text-[#655d51]">Document</th>
+                <th className="px-5 py-3 text-left"><SortHeader label="Type" sortKey="documentType" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
+                <th className="px-5 py-3 text-left"><SortHeader label="Booking" sortKey="booking" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
+                <th className="px-5 py-3 text-left"><SortHeader label="Client" sortKey="client" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
+                <th className="px-5 py-3 text-left"><SortHeader label="Received" sortKey="receivedAt" activeKey={sortKey} direction={sortDirection} onSort={handleSort} /></th>
+                <th className="px-5 py-3 text-left text-[11px] font-bold uppercase tracking-widest text-[#655d51]">File</th>
+                <th className="px-5 py-3 text-right text-[11px] font-bold uppercase tracking-widest text-[#655d51]">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
+            <tbody className="divide-y divide-[#d7c9b4]">
               {loading && (
                 <tr>
-                  <td colSpan={10} className="px-4 py-16 text-center">
+                  <td colSpan={8} className="px-4 py-16 text-center">
                     <div className="flex flex-col items-center justify-center gap-3 text-gray-600" role="status" aria-live="polite">
                       <RefreshCw className="h-8 w-8 animate-spin text-blue-600" aria-hidden="true" />
                       <strong className="text-sm text-gray-800">Loading document library…</strong>
@@ -335,72 +333,61 @@ const BookingDocumentsPage: React.FC = () => {
                 const bookingId = getBookingId(document.bookingId);
                 const primaryFile = (document.files || [])[0];
                 return (
-                  <tr key={document._id} className="hover:bg-gray-50">
-                    <td className="px-4 py-4 align-top">
-                      <FilePreview file={primaryFile} />
+                  <tr key={document._id} className="hover:bg-white/70">
+                    <td className="px-5 py-4 align-middle text-sm text-[#8b8174]">
+                      {document.display_id || document._id?.slice(-6) || '—'}
                     </td>
-                    <td className="px-4 py-4 align-top">
-                      {document.display_id ? (
-                        <span className="inline-flex whitespace-nowrap rounded-md border border-blue-200 bg-blue-50 px-2.5 py-1 font-mono text-sm font-bold text-blue-800">#{document.display_id}</span>
-                      ) : (
-                        <span className="block max-w-[150px] break-all font-mono text-xs font-semibold text-gray-700" title={document._id}>#{document._id || '—'}</span>
-                      )}
+                    <td className="px-5 py-4 align-middle">
+                      <div className="flex items-start gap-3"><DocumentTypeIcon type={document.documentType} /><div><div className="font-bold">{document.title || titleize(document.documentType)}</div>{document.description && <div className="mt-1 max-w-md text-xs text-[#8b8174]">{document.description}</div>}</div></div>
                     </td>
-                    <td className="px-4 py-4 align-top">
-                      <div className="font-semibold text-gray-900">{document.title || titleize(document.documentType)}</div>
-                      {document.description && <div className="mt-1 max-w-md text-xs text-gray-500">{document.description}</div>}
-                    </td>
-                    <td className="px-4 py-4 align-top text-sm">
-                      <span className="inline-flex rounded-full bg-blue-50 px-2.5 py-1 text-xs font-semibold text-blue-700">
+                    <td className="px-5 py-4 align-middle text-sm">
+                      <span className="inline-flex rounded-full bg-[#edf7df] px-3 py-1 text-xs font-medium text-[#50623d]">
                         {titleize(document.documentType)}
                       </span>
                     </td>
-                    <td className="px-4 py-4 align-top text-sm">
+                    <td className="px-5 py-4 align-middle text-sm">
                       {bookingId ? (
-                        <button type="button" className="font-semibold text-blue-700 hover:text-blue-900" onClick={() => navigate(`/${routePrefix}/bookings/${bookingId}`)}>
+                        <button type="button" className="font-bold text-[#9b4f1e] hover:underline" onClick={() => navigate(`/${routePrefix}/bookings/${bookingId}`)}>
                           {getBookingLabel(document.bookingId)}
                         </button>
                       ) : (
                         <span className="text-gray-500">{getBookingLabel(document.bookingId)}</span>
                       )}
                     </td>
-                    <td className="px-4 py-4 align-top text-sm text-gray-900">{getClientLabel(document.clientId)}</td>
-                    <td className="px-4 py-4 align-top text-sm text-gray-900">{getRetreatLabel(document.retreatId)}</td>
-                    <td className="px-4 py-4 align-top text-sm text-gray-600">{formatDate(document.receivedAt || document.createdAt)}</td>
-                    <td className="px-4 py-4 align-top">
-                      <div className="flex flex-col gap-2">
-                        {(document.files || []).length === 0 && <span className="text-sm text-gray-400">No files</span>}
+                    <td className="px-5 py-4 align-middle text-sm"><div>{getClientLabel(document.clientId)}</div>{getRetreatCode(document.retreatId) && <div className="mt-1 text-xs text-[#8b8174]">{getRetreatCode(document.retreatId)}</div>}</td>
+                    <td className="px-5 py-4 align-middle text-sm text-[#665e53]">{formatDateOnly(document.receivedAt || document.createdAt)}</td>
+                    <td className="px-5 py-4 align-middle">
+                      <div className="flex flex-wrap gap-2">
+                        {(document.files || []).length === 0 && <span className="text-sm text-[#8b8174]">No files</span>}
                         {(document.files || []).map((file, index) => (
                           <button
                             key={`${document._id}-${file.s3Key || file.filePath || file.fileName || index}`}
                             type="button"
                             onClick={() => openViewer(document, file)}
                             disabled={!document._id || !(file.s3Key || file.filePath)}
-                            className="inline-flex max-w-xs items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-left text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                            className="inline-flex max-w-[270px] items-center gap-2 rounded-full border border-[#d7c9b4] bg-[#f1e8d8] px-3 py-2 text-left text-xs font-medium hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
                             title={file.originalFileName ? `Preview original upload: ${file.originalFileName}` : 'Preview file'}
                           >
-                            <Eye className="h-3.5 w-3.5 flex-none" />
+                            <FileText className="h-3.5 w-3.5 flex-none" />
                             <span className="truncate">{file.fileName || 'Uploaded file'}</span>
-                            <span className="flex-none text-gray-400">({formatBytes(file.size)})</span>
+                            <span className="flex-none text-[#8b8174]">{formatBytes(file.size)}</span>
                           </button>
                         ))}
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-right align-top">
-                      <button
-                        type="button"
-                        onClick={() => { setDeletingDocument(document); setDeleteReason(''); }}
-                        className="inline-flex items-center gap-1.5 rounded-md border border-red-200 bg-white px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" /> Delete
-                      </button>
+                    <td className="px-5 py-4 text-right align-middle">
+                      <div className="inline-flex gap-2">
+                        <button type="button" onClick={() => primaryFile && openViewer(document, primaryFile)} disabled={!primaryFile} className="rounded-full border border-[#d7c9b4] bg-[#fffaf1] p-2 hover:bg-white disabled:opacity-40" aria-label={`View ${document.title || 'document'}`}><Eye className="h-4 w-4" /></button>
+                        <button type="button" onClick={() => beginEdit(document)} className="rounded-full border border-[#d7c9b4] bg-[#fffaf1] p-2 hover:bg-white" aria-label={`Edit ${document.title || 'document'}`}><Pencil className="h-4 w-4" /></button>
+                        <button type="button" onClick={() => { setDeletingDocument(document); setDeleteReason(''); }} className="rounded-full border border-[#d7c9b4] bg-[#fffaf1] p-2 text-[#a34d1d] hover:bg-white" aria-label={`Delete ${document.title || 'document'}`}><Trash2 className="h-4 w-4" /></button>
+                      </div>
                     </td>
                   </tr>
                 );
               })}
               {!loading && filteredDocuments.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="px-4 py-10 text-center text-sm text-gray-500">
+                  <td colSpan={8} className="px-4 py-10 text-center text-sm text-[#776d60]">
                     No booking documents found.
                   </td>
                 </tr>
@@ -409,6 +396,21 @@ const BookingDocumentsPage: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {editingDocument && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/50 p-4" role="dialog" aria-modal="true" aria-labelledby="edit-document-title">
+          <div className="w-full max-w-lg rounded-2xl bg-[#fffaf1] p-6 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div><h2 id="edit-document-title" className="text-xl font-bold">Edit document</h2><p className="mt-1 text-sm text-[#776d60]">Document #{editingDocument.display_id || editingDocument._id?.slice(-8)}</p></div>
+              <button type="button" onClick={() => setEditingDocument(null)} disabled={savingEdit} className="rounded-full border border-[#d7c9b4] p-2" aria-label="Close edit document"><X className="h-4 w-4" /></button>
+            </div>
+            <label className="mt-5 block text-sm font-semibold">Title<input value={editTitle} onChange={(event) => setEditTitle(event.target.value)} className="mt-2 w-full rounded-lg border border-[#d7c9b4] bg-white px-3 py-2 font-normal" /></label>
+            <label className="mt-4 block text-sm font-semibold">Document type<select value={editType} onChange={(event) => setEditType(event.target.value)} className="mt-2 w-full rounded-lg border border-[#d7c9b4] bg-white px-3 py-2 font-normal">{Array.from(new Set([editType, ...documentTypes])).filter(Boolean).map((type) => <option key={type} value={type}>{titleize(type)}</option>)}</select></label>
+            <label className="mt-4 block text-sm font-semibold">Description<textarea rows={3} value={editDescription} onChange={(event) => setEditDescription(event.target.value)} className="mt-2 w-full rounded-lg border border-[#d7c9b4] bg-white px-3 py-2 font-normal" /></label>
+            <div className="mt-6 flex justify-end gap-3"><button type="button" onClick={() => setEditingDocument(null)} disabled={savingEdit} className="rounded-lg border border-[#d7c9b4] px-4 py-2 font-semibold">Cancel</button><button type="button" onClick={saveEdit} disabled={savingEdit || !editType.trim()} className="rounded-lg bg-[#29251f] px-4 py-2 font-semibold text-white disabled:opacity-50">{savingEdit ? 'Saving…' : 'Save changes'}</button></div>
+          </div>
+        </div>
+      )}
 
       {deletingDocument && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4" role="dialog" aria-modal="true" aria-labelledby="delete-document-title">
