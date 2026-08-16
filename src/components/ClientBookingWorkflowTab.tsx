@@ -22,7 +22,7 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
 export const BookingStepsEditActions: React.FC<{ isEditing: boolean; saving: boolean; onEdit: () => void; onCancel: () => void; onSave: () => void; compact?: boolean }> = ({ isEditing, saving, onEdit, onCancel, onSave, compact = false }) => isEditing ? <div className="flex items-center gap-2">
   <AppleButton onClick={onCancel} variant="ghost" className={compact ? 'px-3 py-2' : 'px-4 py-2'} disabled={saving}>Cancel</AppleButton>
   <AppleButton onClick={onSave} variant="primary" className={compact ? 'px-3 py-2' : 'min-w-[138px] px-4 py-2'} disabled={saving}><Icon icon={FiSave} className="mr-2 h-4 w-4" />{saving ? 'Saving...' : 'Save changes'}</AppleButton>
-</div> : <AppleButton onClick={onEdit} variant="secondary" className={compact ? 'px-3 py-2' : 'rounded-full px-5 py-2'}><Icon icon={FiEdit2} className="mr-2 h-4 w-4" />Edit</AppleButton>;
+</div> : <AppleButton onClick={onEdit} variant="secondary" className={compact ? 'px-3 py-2' : 'rounded-full px-5 py-2'}><Icon icon={FiEdit2} className="mr-2 h-4 w-4" />{compact ? 'Edit' : 'Edit steps & deadlines'}</AppleButton>;
 
 const fulfilledStatuses = evidenceReceivedStatuses;
 
@@ -809,7 +809,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                           )}
                         </span>
                       </label>
-                      <div className={`${isExpanded ? 'grid' : 'hidden'} grid-cols-2 gap-4 md:grid`}>
+                      <div className={`${isExpanded || isEditing ? 'grid' : 'hidden'} grid-cols-2 gap-4 md:grid`}>
                         <label className="grid min-w-0 gap-1">
                           <span className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">Due date</span>
                           {isEditing ? <input
