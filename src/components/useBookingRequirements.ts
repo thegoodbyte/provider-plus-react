@@ -29,8 +29,8 @@ export const useBookingRequirements = ({ bookingId, clientId, retreatId, refresh
   const [libraryDocuments, setLibraryDocuments] = useState<BookingDocument[]>([]); const [reviews, setReviews] = useState<Record<string, MedicalReviewRequest[]>>({});
   const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [linkingRecordId, setLinkingRecordId] = useState('');
 
-  const load = useCallback(async () => {
-    setLoading(true); setError('');
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true); setError('');
     try {
       const sources = await fetchBookingRequirementSources(bookingId, clientId);
       const allArtifacts = mergeArtifacts([sources.artifacts]);
@@ -38,7 +38,7 @@ export const useBookingRequirements = ({ bookingId, clientId, retreatId, refresh
       setLibraryArtifacts(allArtifacts); setDocuments(sources.documents.filter(document => objectId(document.bookingId) === bookingId));
       setLibraryDocuments(sources.documentCandidates || sources.documents); setReviews(indexReviews(sources.reviews));
     } catch (cause: any) { setError(requirementErrorMessage(cause, 'Unable to load booking requirements.')); }
-    finally { setLoading(false); }
+    finally { if (!silent) setLoading(false); }
   }, [bookingId, clientId, retreatId]);
 
   useEffect(() => { load(); }, [load, refreshKey]);
@@ -50,13 +50,20 @@ export const useBookingRequirements = ({ bookingId, clientId, retreatId, refresh
     const row = rows.find(candidate => candidate.key === definition.key); const flowItem = row?.relatedItems.find(item => item._id) || row?.relatedItems[0];
     setLinkingRecordId(`${kind}:${recordId}`); setError('');
     try {
-      if (kind === 'artifact') await medicalArtifactsApi.update(recordId, { bookingId, retreatId, clientId } as Partial<MedicalArtifact>);
-      else await bookingDocumentsApi.update(recordId, { bookingId });
-      if (flowItem?._id) await bookingFlowApi.updateItem(flowItem._id, { status: 'received', completedAt: new Date().toISOString(), metadata: { ...(flowItem.metadata || {}), ...(kind === 'artifact' ? { linkedMedicalArtifactId: recordId, linkedMedicalArtifactIds: [recordId] } : { linkedBookingDocumentId: recordId }), linkedRequirementLibrary: kind === 'artifact' ? 'medical_artifacts' : 'booking_documents', linkedRequirementKey: definition.key } });
+      if (kind === 'document') {
+        // Updating a booking document already reconciles the matching booking-flow
+        // requirement on the API. Do not repeat that mutation or make the modal
+        // wait for the much larger requirements/library bundle to reload.
+        await bookingDocumentsApi.update(recordId, { bookingId });
+        void load(true);
+        return true;
+      }
+      await medicalArtifactsApi.update(recordId, { bookingId, retreatId, clientId } as Partial<MedicalArtifact>);
+      if (flowItem?._id) await bookingFlowApi.updateItem(flowItem._id, { status: 'received', completedAt: new Date().toISOString(), metadata: { ...(flowItem.metadata || {}), linkedMedicalArtifactId: recordId, linkedMedicalArtifactIds: [recordId], linkedRequirementLibrary: 'medical_artifacts', linkedRequirementKey: definition.key } });
       await load(); return true;
     } catch (cause: any) { setError(requirementErrorMessage(cause, 'Unable to link the selected record.')); return false; }
     finally { setLinkingRecordId(''); }
   }, [bookingId, clientId, load, retreatId, rows]);
 
-  return { rows, items, libraryArtifacts, libraryDocuments, loading, error, linkingRecordId, reload: load, link };
+  return { rows, items, libraryArtifacts, libraryDocuments, loading, error, linkingRecordId, reload: () => load(), link };
 };

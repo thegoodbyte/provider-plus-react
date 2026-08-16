@@ -36,6 +36,22 @@ describe('useBookingRequirements', () => {
     (update as jest.Mock).mockResolvedValue({}); const { result } = renderHook(() => useBookingRequirements({ bookingId: 'booking', clientId: 'client', retreatId: 'retreat', refreshKey: 0 })); await waitFor(() => expect(result.current.loading).toBe(false));
     await act(async () => { await result.current.link(requirementDefinitions[0], kind, 'record'); }); expect(update).toHaveBeenCalled();
   });
+  it('links a contract with one mutation and does not wait for the library refresh', async () => {
+    (fetchBookingRequirementSources as jest.Mock).mockResolvedValueOnce(source({ items: [{ _id: 'contract-item', status: 'pending', metadata: { isRequirement: true, readinessGroup: 'contract' } }] }));
+    let finishRefresh: ((value: any) => void) | undefined;
+    (bookingDocumentsApi.update as jest.Mock).mockResolvedValue({});
+    const { result } = renderHook(() => useBookingRequirements({ bookingId: 'booking', refreshKey: 0 }));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    (fetchBookingRequirementSources as jest.Mock).mockImplementationOnce(() => new Promise(resolve => { finishRefresh = resolve; }));
+
+    await act(async () => { expect(await result.current.link(requirementDefinitions[0], 'document', 'contract')).toBe(true); });
+
+    expect(bookingDocumentsApi.update).toHaveBeenCalledTimes(1);
+    expect(bookingFlowApi.updateItem).not.toHaveBeenCalled();
+    expect(result.current.linkingRecordId).toBe('');
+    expect(result.current.loading).toBe(false);
+    await act(async () => { finishRefresh?.(source()); });
+  });
   it('returns false and exposes linking errors', async () => {
     (medicalArtifactsApi.update as jest.Mock).mockRejectedValue({ response: { data: { message: 'cannot link' } } }); const { result } = renderHook(() => useBookingRequirements({ bookingId: 'booking', refreshKey: 0 })); await waitFor(() => expect(result.current.loading).toBe(false));
     await act(async () => { expect(await result.current.link(requirementDefinitions[1], 'artifact', 'bad')).toBe(false); }); expect(result.current.error).toBe('cannot link'); expect(result.current.linkingRecordId).toBe('');
