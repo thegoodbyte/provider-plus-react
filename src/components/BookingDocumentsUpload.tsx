@@ -141,7 +141,9 @@ const BookingDocumentsUpload: React.FC<BookingDocumentsUploadProps> = ({
     try {
       const [typesResponse, documentsResponse, flowResponse, bookingArtifactsResponse] = await Promise.all([
         bookingDocumentsApi.getTypes(),
-        bookingDocumentsApi.getAll({ bookingId }),
+        // File previews/downloads use the secure file endpoint on demand, so the
+        // tab does not need bulk signed URLs or read-time reconciliation.
+        bookingDocumentsApi.getAll({ bookingId, compact: true }),
         bookingFlowApi.getItems({ bookingId }),
         medicalArtifactsApi.getForBooking(bookingId),
       ]);
