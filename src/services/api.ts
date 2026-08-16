@@ -1535,12 +1535,13 @@ export const bookingDocumentsApi = {
     cacheService.clearPattern('booking-documents:');
     return api.delete(`/booking-documents/types/${id}`);
   },
-  getAll: (params: { bookingId?: string; clientId?: string; retreatId?: string; documentType?: string } = {}) => {
+  getAll: (params: { bookingId?: string; clientId?: string; retreatId?: string; documentType?: string; compact?: boolean } = {}) => {
     const query = new URLSearchParams();
     if (params.bookingId) query.set('bookingId', params.bookingId);
     if (params.clientId) query.set('clientId', params.clientId);
     if (params.retreatId) query.set('retreatId', params.retreatId);
     if (params.documentType) query.set('documentType', params.documentType);
+    if (params.compact) query.set('compact', 'true');
     const key = `booking-documents:${query.toString()}`;
     return cachedGet<BookingDocument[]>(key, () => api.get<BookingDocument[]>(`/booking-documents?${query.toString()}`));
   },
