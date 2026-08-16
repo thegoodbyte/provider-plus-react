@@ -171,7 +171,7 @@ export interface Client {
   firstContactDate?: Date | string;
   source?: string;
   referralId?: string | Referral;
-  referralCommissionPercentage?: number;
+  referralCommissionPercentage?: number | null;
   rejectionReason?: string;
   tags?: string[];
   notes?: string;
