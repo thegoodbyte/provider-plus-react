@@ -7,6 +7,10 @@ describe('BookingStepsEditActions', () => {
     const onEdit = jest.fn(); render(<BookingStepsEditActions isEditing={false} saving={false} onEdit={onEdit} onCancel={jest.fn()} onSave={jest.fn()} compact />);
     fireEvent.click(screen.getByRole('button', { name: /edit/i })); expect(onEdit).toHaveBeenCalled();
   });
+  it('makes deadline editing explicit in the full booking toolbar', () => {
+    render(<BookingStepsEditActions isEditing={false} saving={false} onEdit={jest.fn()} onCancel={jest.fn()} onSave={jest.fn()} />);
+    expect(screen.getByRole('button', { name: 'Edit steps & deadlines' })).toBeInTheDocument();
+  });
   it('exposes save and cancel while editing and prevents duplicate saves', () => {
     const onSave = jest.fn(); const onCancel = jest.fn(); const { rerender } = render(<BookingStepsEditActions isEditing saving={false} onEdit={jest.fn()} onCancel={onCancel} onSave={onSave} compact />);
     fireEvent.click(screen.getByRole('button', { name: /save changes/i })); fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
