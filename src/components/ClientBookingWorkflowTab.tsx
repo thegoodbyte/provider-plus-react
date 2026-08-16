@@ -19,6 +19,11 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
   <IconComponent className={className} />
 );
 
+export const BookingStepsEditActions: React.FC<{ isEditing: boolean; saving: boolean; onEdit: () => void; onCancel: () => void; onSave: () => void; compact?: boolean }> = ({ isEditing, saving, onEdit, onCancel, onSave, compact = false }) => isEditing ? <div className="flex items-center gap-2">
+  <AppleButton onClick={onCancel} variant="ghost" className={compact ? 'px-3 py-2' : 'px-4 py-2'} disabled={saving}>Cancel</AppleButton>
+  <AppleButton onClick={onSave} variant="primary" className={compact ? 'px-3 py-2' : 'min-w-[138px] px-4 py-2'} disabled={saving}><Icon icon={FiSave} className="mr-2 h-4 w-4" />{saving ? 'Saving...' : 'Save changes'}</AppleButton>
+</div> : <AppleButton onClick={onEdit} variant="secondary" className={compact ? 'px-3 py-2' : 'rounded-full px-5 py-2'}><Icon icon={FiEdit2} className="mr-2 h-4 w-4" />Edit</AppleButton>;
+
 const fulfilledStatuses = evidenceReceivedStatuses;
 
 const artifactUploadsByStep: Record<string, {
@@ -688,6 +693,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
               })}
             </select>
             )}
+            <BookingStepsEditActions isEditing={isEditing} saving={savingId === 'all'} onEdit={() => setIsEditing(true)} onCancel={cancelEditing} onSave={saveDrafts} compact />
             <AppleButton onClick={() => loadItems()} variant="ghost" className="px-3 py-2">
               <Icon icon={FiRefreshCw} className="mr-2 h-4 w-4" />
               Refresh
@@ -707,19 +713,10 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
               <Icon icon={FiPlus} className="mr-2 h-4 w-4" />
               Add step
             </AppleButton>
-            <AppleButton onClick={cancelEditing} variant="ghost" className="px-3 py-2" disabled={savingId === 'all'}>
-              Cancel
-            </AppleButton>
-            <AppleButton onClick={saveDrafts} variant="primary" className="min-w-[138px] px-4 py-2" disabled={savingId === 'all'}>
-              <Icon icon={FiSave} className="mr-2 h-4 w-4" />
-              {savingId === 'all' ? 'Saving...' : 'Save changes'}
-            </AppleButton>
+            <BookingStepsEditActions isEditing saving={savingId === 'all'} onEdit={() => setIsEditing(true)} onCancel={cancelEditing} onSave={saveDrafts} />
           </>
         ) : (
-          <AppleButton onClick={() => setIsEditing(true)} variant="secondary" className="rounded-full px-5 py-2">
-            <Icon icon={FiEdit2} className="mr-2 h-4 w-4" />
-            Edit
-          </AppleButton>
+          <BookingStepsEditActions isEditing={false} saving={false} onEdit={() => setIsEditing(true)} onCancel={cancelEditing} onSave={saveDrafts} />
         )}
       </div>
 
