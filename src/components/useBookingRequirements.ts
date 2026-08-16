@@ -36,7 +36,7 @@ export const useBookingRequirements = ({ bookingId, clientId, retreatId, refresh
       const allArtifacts = mergeArtifacts([sources.artifacts]);
       setItems(sources.items); setArtifacts(allArtifacts.filter(artifact => relevantArtifact(artifact, bookingId, retreatId)));
       setLibraryArtifacts(allArtifacts); setDocuments(sources.documents.filter(document => objectId(document.bookingId) === bookingId));
-      setLibraryDocuments(sources.documents); setReviews(indexReviews(sources.reviews));
+      setLibraryDocuments(sources.documentCandidates || sources.documents); setReviews(indexReviews(sources.reviews));
     } catch (cause: any) { setError(requirementErrorMessage(cause, 'Unable to load booking requirements.')); }
     finally { setLoading(false); }
   }, [bookingId, clientId, retreatId]);
@@ -50,9 +50,9 @@ export const useBookingRequirements = ({ bookingId, clientId, retreatId, refresh
     const row = rows.find(candidate => candidate.key === definition.key); const flowItem = row?.relatedItems.find(item => item._id) || row?.relatedItems[0];
     setLinkingRecordId(`${kind}:${recordId}`); setError('');
     try {
-      if (flowItem?._id) await bookingFlowApi.updateItem(flowItem._id, { status: 'received', completedAt: new Date().toISOString(), metadata: { ...(flowItem.metadata || {}), ...(kind === 'artifact' ? { linkedMedicalArtifactId: recordId, linkedMedicalArtifactIds: [recordId] } : { linkedBookingDocumentId: recordId }), linkedRequirementLibrary: kind === 'artifact' ? 'medical_artifacts' : 'booking_documents', linkedRequirementKey: definition.key } });
-      else if (kind === 'artifact') await medicalArtifactsApi.update(recordId, { bookingId, retreatId, clientId } as Partial<MedicalArtifact>);
+      if (kind === 'artifact') await medicalArtifactsApi.update(recordId, { bookingId, retreatId, clientId } as Partial<MedicalArtifact>);
       else await bookingDocumentsApi.update(recordId, { bookingId });
+      if (flowItem?._id) await bookingFlowApi.updateItem(flowItem._id, { status: 'received', completedAt: new Date().toISOString(), metadata: { ...(flowItem.metadata || {}), ...(kind === 'artifact' ? { linkedMedicalArtifactId: recordId, linkedMedicalArtifactIds: [recordId] } : { linkedBookingDocumentId: recordId }), linkedRequirementLibrary: kind === 'artifact' ? 'medical_artifacts' : 'booking_documents', linkedRequirementKey: definition.key } });
       await load(); return true;
     } catch (cause: any) { setError(requirementErrorMessage(cause, 'Unable to link the selected record.')); return false; }
     finally { setLinkingRecordId(''); }

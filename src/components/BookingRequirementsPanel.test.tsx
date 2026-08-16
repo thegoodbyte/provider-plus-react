@@ -33,8 +33,18 @@ describe('BookingRequirementsPanel', () => {
     const contract = requirementDefinitions.find(item => item.key === 'contract'); const link = jest.fn().mockResolvedValue(false); hook.mockReturnValue(state({ rows: [row(contract)], link, libraryDocuments: [{ _id: 'empty', documentType: 'contract', files: [] }, { _id: 'doc', documentType: 'contract', files: [{}], createdAt: '2026-01-01' }] })); view('/bookings/1');
     fireEvent.click(screen.getByText('Find and link existing record')); fireEvent.click(screen.getByText('Link document')); await waitFor(() => expect(link).toHaveBeenCalled()); expect(screen.getByRole('dialog')).toBeInTheDocument(); fireEvent.click(screen.getByLabelText('Close record lookup')); expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
+  it('can search compatible contracts and explicitly browse all document types', () => {
+    const contract = requirementDefinitions.find(item => item.key === 'contract'); hook.mockReturnValue(state({ rows: [row(contract)], libraryDocuments: [
+      { _id: 'contract', display_id: 10, documentType: 'signed_contract', title: 'Signed agreement', files: [{}] },
+      { _id: 'questionnaire', display_id: 11, documentType: 'questionnaire', title: 'Health form', files: [{}] },
+    ] })); view();
+    fireEvent.click(screen.getByText('Find and link existing record'));
+    expect(screen.getByText(/#10 Signed agreement/)).toBeInTheDocument(); expect(screen.queryByText(/#11 Health form/)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText('Show all document types')); expect(screen.getByText(/#11 Health form/)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Search booking documents'), { target: { value: '11' } }); expect(screen.queryByText(/#10 Signed agreement/)).not.toBeInTheDocument();
+  });
   it('renders empty lookup states and loading controls', () => {
-    hook.mockReturnValue(state({ loading: true, linkingRecordId: 'artifact:x', rows: [row({ library: 'both', relatedItems: [{ id: 'existing' }] })] })); view(); expect(screen.getByText('Refreshing...')).toBeDisabled(); fireEvent.click(screen.getByText('Find and link existing record')); expect(screen.getByText(/No matching medical/)).toBeInTheDocument(); expect(screen.getByText(/No matching booking/)).toBeInTheDocument();
+    hook.mockReturnValue(state({ loading: true, linkingRecordId: 'artifact:x', rows: [row({ library: 'both', relatedItems: [{ id: 'existing' }] })] })); view(); expect(screen.getByText('Refreshing...')).toBeDisabled(); fireEvent.click(screen.getByText('Find and link existing record')); expect(screen.getByText(/No matching medical/)).toBeInTheDocument(); expect(screen.getByText(/No matching entry ekg documents/)).toBeInTheDocument();
   });
 });
 
