@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { bookingsApi } from '../services/api';
+import { bookingsApi, communicationsApi, retreatsApi } from '../services/api';
 import BookingPaymentManagement from './BookingPaymentManagement';
 import ClientBookingWorkflowTab from './ClientBookingWorkflowTab';
 import BookingDocumentsUpload from './BookingDocumentsUpload';
@@ -13,6 +13,7 @@ import BookingRequirementsPanel from './BookingRequirementsPanel';
 import BookingMedicalOverviewPanel from './BookingMedicalOverviewPanel';
 import BookingCeremoniesPanel from './BookingCeremoniesPanel';
 import BookingTasksPanel from './BookingTasksPanel';
+import BookingRescheduleDialog from './BookingRescheduleDialog';
 import { confirmationLanguage, BookingConfirmationLanguage } from './bookingConfirmationWorkflow';
 import { useBookingConfirmationPdf } from './useBookingConfirmationPdf';
 import { useBookingConfirmationEmail } from './useBookingConfirmationEmail';
@@ -71,6 +72,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [requirementsStatus, setRequirementsStatus] = useState<{ missing: number; total: number } | null>(null);
   const [activeTab, setActiveTab] = useState<BookingDetailTab>('overview');
   const [retreatBookings, setRetreatBookings] = useState<any[]>([]);
+  const [rescheduleOpen, setRescheduleOpen] = useState(false); const [rescheduleRetreats, setRescheduleRetreats] = useState<any[]>([]); const [rescheduling, setRescheduling] = useState(false); const [rescheduleError, setRescheduleError] = useState('');
   const pdfRef = useRef<HTMLDivElement>(null);
   const routePrefix = useMemo(() => {
     const firstSegment = location.pathname.split('/').filter(Boolean)[0];
@@ -161,6 +163,29 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     });
   };
 
+  const openReschedule = async () => {
+    setRescheduleError(''); setRescheduleOpen(true);
+    try { setRescheduleRetreats((await retreatsApi.getAll()).data || []); }
+    catch (error: any) { setRescheduleError(error?.response?.data?.message || error?.message || 'Unable to load retreats.'); }
+  };
+  const submitReschedule = async (data: { targetRetreatId: string; reason: string; note: string; sendEmail: boolean }) => {
+    setRescheduling(true); setRescheduleError('');
+    try {
+      const oldRetreat = retreat; const response = await bookingsApi.reschedule(bookingId, data); const moved: any = response.data; setBooking(moved);
+      if (data.sendEmail) {
+        const lang = confirmationLanguage(moved.clientId || moved.clientDetails); const nextRetreat: any = moved.retreatId || moved.retreatDetails; const recipient = (moved.clientId || moved.clientDetails)?.email;
+        if (!recipient) throw new Error('Booking moved, but the client has no email address.');
+        const oldCode = getRetreatCode(oldRetreat); const newCode = getRetreatCode(nextRetreat); const newDates = `${new Date(nextRetreat.startDate).toLocaleDateString()} – ${new Date(nextRetreat.endDate).toLocaleDateString()}`;
+        const copy: any = { en: [`Your booking has been rescheduled`, `Hello ${clientName},\n\nYour booking has been rescheduled from ${oldCode} to ${newCode} (${newDates}). Updated preparation deadlines are now available in your booking portal.\n\nPlease reply if anything is unclear.`], pl: [`Twój termin wyjazdu został zmieniony`, `Cześć ${clientName},\n\nTwój wyjazd został przeniesiony z ${oldCode} na ${newCode} (${newDates}). Zaktualizowane terminy przygotowań są dostępne w portalu.\n\nOdpowiedz, jeśli coś jest niejasne.`], cz: [`Termín vašeho pobytu byl změněn`, `Dobrý den ${clientName},\n\nVáš pobyt byl přesunut z ${oldCode} na ${newCode} (${newDates}). Aktualizované termíny příprav najdete v portálu.\n\nPokud něco není jasné, odpovězte prosím.`] };
+        const variables: any = { oldRetreatCode: oldCode, newRetreatCode: newCode, newRetreatDates: newDates, client: { firstName: clientName.split(' ')[0] } }; let subject=copy[lang][0]; let bodyText=copy[lang][1]; let templateId: string|undefined;
+        try { const template:any=(await communicationsApi.getTemplateByCategoryAndLanguage('booking_rescheduled',lang)).data; if(template){ templateId=template._id; const fill=(value:string)=>String(value||'').replace(/{{\s*([^}]+)\s*}}/g,(_:string,key:string)=>key.trim().split('.').reduce((v:any,k:string)=>v?.[k],variables)??''); subject=fill(template.subject)||subject; bodyText=fill(template.bodyText)||bodyText; } } catch { /* localized fallback above */ }
+        await communicationsApi.sendEmail({ to: recipient, subject, bodyText, bodyHtml: `<div style="font-family:Arial,sans-serif;white-space:pre-line">${bodyText}</div>`, templateId, clientId, bookingId, retreatId: getObjectId(nextRetreat), variables });
+      }
+      setRescheduleOpen(false); await fetchBookingDetails(); setRequirementsRefreshKey(current=>current+1);
+    } catch (error: any) { setRescheduleError(error?.response?.data?.message || error?.message || 'Unable to reschedule this booking.'); }
+    finally { setRescheduling(false); }
+  };
+
   if (isLoading) {
     return (
       <div className="loading-container">
@@ -220,6 +245,8 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         previewFileName={previewFileName}
         previousBooking={previousBooking ? bookingNavigationLabel(previousBooking) : null}
         nextBooking={nextBooking ? bookingNavigationLabel(nextBooking) : null}
+        rescheduleCount={booking.rescheduleCount || booking.rescheduleHistory?.length || 0}
+        onReschedule={openReschedule}
         onBack={onBack}
         onLanguageChange={setPdfLanguage}
         onEdit={() => navigate(`${routePrefix}/bookings/${bookingId}/edit`)}
@@ -234,6 +261,8 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         onNextBooking={() => nextBooking?._id && navigate(`${routePrefix}/bookings/${nextBooking._id}`)}
         onTabChange={setActiveTab}
       />
+      {rescheduleOpen && <BookingRescheduleDialog currentRetreatId={retreatId} retreats={rescheduleRetreats} saving={rescheduling} error={rescheduleError} onClose={()=>setRescheduleOpen(false)} onSubmit={submitReschedule} />}
+      {booking.rescheduleHistory?.length > 0 && (()=>{const last=booking.rescheduleHistory[booking.rescheduleHistory.length-1]; return <div className="mx-5 mt-3 rounded border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"><strong>Rescheduled {booking.rescheduleCount || booking.rescheduleHistory.length}×</strong> · {last.fromRetreatCode || 'Previous retreat'} → {last.toRetreatCode || retreatCode} · {String(last.reason || '').replace(/_/g,' ')}<div className="mt-1 text-xs text-amber-800">{last.note} · {new Date(last.rescheduledAt).toLocaleString()} · {last.rescheduledBy}</div></div>;})()}
 
       <div className="detail-content" ref={pdfRef}>
 

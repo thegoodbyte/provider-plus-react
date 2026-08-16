@@ -318,6 +318,10 @@ export const bookingsApi = {
     cacheService.clearPattern('payments:');
     return api.patch<RetreatClient>(`/bookings/${id}/cancel`, data);
   },
+  reschedule: (id: string, data: { targetRetreatId: string; reason: string; note: string; sendEmail?: boolean }) => {
+    cacheService.clearPattern('bookings:'); cacheService.clearPattern('booking-flow:'); cacheService.clearPattern('payments:');
+    return api.patch<RetreatClient>(`/bookings/${id}/reschedule`, data);
+  },
   recordConfirmationHistory: (id: string, data: {
     action?: 'created' | 'updated' | 'sent';
     reason: string;
