@@ -1411,18 +1411,15 @@ export const bookingFlowApi = {
       actionLogs: BookingFlowActionLog[];
       documents: BookingDocument[];
     }>(key, async () => {
-      // These existing production endpoints are independently proven. Start all
-      // three while another tab is visible and cache their combined promise, so
-      // opening Booking Requirements performs no blocking waterfall.
-      const [itemsResponse, logsResponse, documentsResponse] = await Promise.all([
-        api.get<BookingFlowItem[]>(`/booking-flow/items?bookingId=${encodeURIComponent(bookingId)}`),
-        api.get<BookingFlowActionLog[]>(`/booking-flow/bookings/${bookingId}/action-logs`),
-        api.get<BookingDocument[]>(`/booking-documents?bookingId=${encodeURIComponent(bookingId)}&compact=true`),
-      ]);
+      // The authoritative aggregate also repairs bookings whose steps have not
+      // yet been materialized. Start it at booking-page entry and cache the same
+      // in-flight promise; unlike the old tab loader, do not make a second
+      // document request after it finishes.
+      const response = await api.get(`/booking-flow/bookings/${bookingId}/requirements`);
       return { data: {
-        items: itemsResponse.data || [],
-        actionLogs: logsResponse.data || [],
-        documents: documentsResponse.data || [],
+        items: response.data.items || [],
+        actionLogs: response.data.actionLogs || [],
+        documents: response.data.documents || [],
       } };
     }, 30000);
   },
