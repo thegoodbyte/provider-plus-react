@@ -1,4 +1,5 @@
 import { BookingDocument, BookingFlowItem, MedicalArtifact, MedicalReviewRequest } from '../types';
+import { hasReceivedEvidence, isReviewedStatus, isSatisfiedStatus } from './bookingStatusSelectors';
 
 export type RequirementDefinition = {
   key: string; label: string; artifactTypes: NonNullable<MedicalArtifact['artifactType']>[];
@@ -16,8 +17,6 @@ export const requirementDefinitions: RequirementDefinition[] = [
   { key: 'food', label: 'Food Form', artifactTypes: ['food_intake'], bookingDocumentTypes: ['food_intake'], readinessGroups: ['food'], library: 'both', matchTerms: ['food intake', 'food form', 'dietary'] },
 ];
 
-const completed = new Set(['received', 'reviewed', 'approved', 'completed', 'caution']);
-const reviewed = new Set(['reviewed', 'approved', 'completed', 'caution', 'rejected', 'needs_resubmission']);
 const canonicalRequirementKeys = new Set([
   'contract_signed',
   'contract_received',
@@ -113,5 +112,7 @@ export const buildBookingRequirementRows = (items: BookingFlowItem[], artifacts:
     const relatedDocuments = [...documents, ...libraryDocuments.filter(document => document._id && linkedDocuments.has(document._id))].filter((document, index, list) => document._id && list.findIndex(candidate => candidate._id === document._id) === index).filter(document => documentMatches(document, definition) && (document.files || []).length > 0).sort((a, b) => time(b.receivedAt || b.createdAt) - time(a.receivedAt || a.createdAt));
     const latestArtifact = relatedArtifacts[0]; const latestDocument = relatedDocuments[0];
     const latestReview = latestArtifact?._id ? [...(reviewsByArtifact[latestArtifact._id] || [])].sort((a, b) => reviewTime(b) - reviewTime(a))[0] : undefined;
-    return { ...definition, required: relatedItems.length === 0 || relatedItems.some(item => item.isBlocking), uploaded: relatedArtifacts.some(artifactHasContent) || relatedDocuments.length > 0 || relatedItems.some(item => completed.has(item.status) || ['sent', 'waived'].includes(item.status)), reviewed: Boolean(latestReview && reviewed.has(latestReview.status)) || relatedItems.some(item => ['reviewed', 'approved', 'caution'].includes(item.status)), latestArtifact, latestDocument, latestReview, relatedItems };
+    const uploaded = relatedArtifacts.some(artifactHasContent) || relatedDocuments.length > 0 || relatedItems.some(item => hasReceivedEvidence(item.status));
+    const satisfied = uploaded || relatedItems.some(item => isSatisfiedStatus(item.status));
+    return { ...definition, required: relatedItems.length === 0 || relatedItems.some(item => item.isBlocking), uploaded, satisfied, reviewed: Boolean(latestReview && isReviewedStatus(latestReview.status as any)) || relatedItems.some(item => isReviewedStatus(item.status)), latestArtifact, latestDocument, latestReview, relatedItems };
   });

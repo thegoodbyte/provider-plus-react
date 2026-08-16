@@ -9,7 +9,7 @@ const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({ ...jest.requireActual('react-router-dom'), useNavigate: () => mockNavigate }));
 jest.mock('./useBookingRequirements', () => ({ useBookingRequirements: jest.fn() }));
 const hook = useBookingRequirements as jest.Mock;
-const row = (overrides: any = {}) => ({ ...requirementDefinitions.find(item => item.key === 'ekg'), required: true, uploaded: false, reviewed: false, relatedItems: [], ...overrides });
+const row = (overrides: any = {}) => ({ ...requirementDefinitions.find(item => item.key === 'ekg'), required: true, uploaded: false, satisfied: false, reviewed: false, relatedItems: [], ...overrides });
 const state = (overrides: any = {}) => ({ rows: [row()], libraryArtifacts: [], libraryDocuments: [], loading: false, error: '', linkingRecordId: '', reload: jest.fn(), link: jest.fn(), ...overrides });
 const view = (initial = '/admin/bookings/1') => render(<MemoryRouter initialEntries={[initial]}><BookingRequirementsPanel bookingId="booking" refreshKey={0} /></MemoryRouter>);
 
@@ -20,7 +20,7 @@ describe('BookingRequirementsPanel', () => {
     expect(screen.getByText('offline')).toBeInTheDocument(); expect(screen.getByText('missing')).toBeInTheDocument(); fireEvent.click(screen.getByText('Refresh')); expect(reload).toHaveBeenCalled();
   });
   it('navigates to linked records with the current role prefix', () => {
-    hook.mockReturnValue(state({ rows: [row({ uploaded: true, reviewed: true, latestArtifact: { _id: 'a', display_id: 1 }, latestDocument: { _id: 'd', display_id: 2 }, latestReview: { _id: 'r', display_id: 3, status: 'approved' } })] })); view();
+    hook.mockReturnValue(state({ rows: [row({ uploaded: true, satisfied: true, reviewed: true, latestArtifact: { _id: 'a', display_id: 1 }, latestDocument: { _id: 'd', display_id: 2 }, latestReview: { _id: 'r', display_id: 3, status: 'approved' } })] })); view();
     fireEvent.click(screen.getByText('Artifact #1')); fireEvent.click(screen.getByText('Document #2')); fireEvent.click(screen.getByText('Review #3'));
     expect(mockNavigate.mock.calls.map(call => call[0])).toEqual(['/admin/medical-artifacts/a', '/admin/booking-documents', '/admin/medical-review-requests/r']);
   });

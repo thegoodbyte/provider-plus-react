@@ -66,6 +66,14 @@ describe('booking requirement rows', () => {
     } as any], [], [], [], [{ _id: 'linked-doc', documentType: 'medications_form', files: [{ fileName: 'meds.pdf' }] } as any], {});
     expect(rows[0]).toMatchObject({ required: false, uploaded: true, reviewed: true, latestDocument: { _id: 'linked-doc' } });
   });
+  it('does not claim a requested file was uploaded merely because its email was sent', () => {
+    const rows = buildBookingRequirementRows([{ _id: 'ekg-item', key: 'entry_ekg_received', title: 'Entry EKG', status: 'sent', isBlocking: true } as any], [], [], [], [], {});
+    expect(rows[0]).toMatchObject({ uploaded: false, satisfied: false });
+  });
+  it('treats waived requirements as satisfied without claiming there is a file', () => {
+    const rows = buildBookingRequirementRows([{ _id: 'ekg-item', key: 'entry_ekg_received', title: 'Entry EKG', status: 'waived', isBlocking: true } as any], [], [], [], [], {});
+    expect(rows[0]).toMatchObject({ uploaded: false, satisfied: true });
+  });
   it('orders artifacts with files first and selects the newest review fallback timestamps', () => {
     const rows = buildBookingRequirementRows([{ _id: 'ekg-item', title: 'EKG', status: 'pending', isBlocking: true, metadata: { isRequirement: true, readinessGroup: 'ekg' } } as any], [
       { _id: 'new-no-file', artifactType: 'ekg', receivedAt: '2026-03-01' },
