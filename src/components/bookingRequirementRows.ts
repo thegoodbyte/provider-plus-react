@@ -116,5 +116,11 @@ export const buildBookingRequirementRows = (items: BookingFlowItem[], artifacts:
     const latestReview = latestArtifact?._id ? [...(reviewsByArtifact[latestArtifact._id] || [])].sort((a, b) => reviewTime(b) - reviewTime(a))[0] : undefined;
     const uploaded = relatedArtifacts.some(artifactHasContent) || relatedDocuments.length > 0 || relatedItems.some(item => hasReceivedEvidence(item.status));
     const satisfied = uploaded || relatedItems.some(item => isSatisfiedStatus(item.status));
-    return { ...definition, required: relatedItems.length === 0 || relatedItems.some(item => item.isBlocking), uploaded, satisfied, reviewed: Boolean(latestReview && isReviewedStatus(latestReview.status as any)) || relatedItems.some(item => isReviewedStatus(item.status)), latestArtifact, latestDocument, latestReview, relatedItems };
+    const requiredFromClient = relatedItems.length === 0 || relatedItems.some(item => {
+      const template = typeof item.templateId === 'object' ? item.templateId : undefined;
+      const explicit = item.metadata?.requiredFromClient ?? template?.requiredFromClient;
+      if (explicit !== undefined) return explicit === true;
+      return (item.metadata?.isRequirement === true || template?.isRequirement === true) && item.isBlocking === true;
+    });
+    return { ...definition, required: requiredFromClient, uploaded, satisfied, reviewed: Boolean(latestReview && isReviewedStatus(latestReview.status as any)) || relatedItems.some(item => isReviewedStatus(item.status)), latestArtifact, latestDocument, latestReview, relatedItems };
   });
