@@ -1,4 +1,5 @@
 import { BookingFlowItem, BookingFlowTemplate } from '../types';
+import { isSatisfiedStatus } from './bookingStatusSelectors';
 
 export type RetreatBookingStepOption = {
   key: string;
@@ -6,17 +7,8 @@ export type RetreatBookingStepOption = {
   order: number;
 };
 
-const completedStatuses = new Set([
-  'received',
-  'reviewed',
-  'approved',
-  'caution',
-  'completed',
-  'waived',
-]);
-
 export const isBookingStepComplete = (item?: Pick<BookingFlowItem, 'status'> | null) =>
-  Boolean(item && completedStatuses.has(String(item.status || '').trim().toLowerCase()));
+  Boolean(item && isSatisfiedStatus(item.status));
 
 export const buildBookingStepOptions = (matrices: Array<{ templates?: BookingFlowTemplate[] }>) => {
   const map = new Map<string, RetreatBookingStepOption>();
