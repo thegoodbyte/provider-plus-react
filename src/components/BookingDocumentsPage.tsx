@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowUpDown, ClipboardList, Download, Eye, FileText, Pencil, Pill, RefreshCw, Scale, Search, Trash2, Utensils, X } from 'lucide-react';
 import { bookingDocumentsApi } from '../services/api';
@@ -121,6 +121,8 @@ const BookingDocumentsPage: React.FC = () => {
   const [editDescription, setEditDescription] = useState('');
   const [editType, setEditType] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
+  const focusedDocumentId = new URLSearchParams(location.search).get('documentId') || '';
+  const focusedDocumentOpened = useRef('');
 
   const closeViewer = () => {
     if (viewerUrl) URL.revokeObjectURL(viewerUrl);
@@ -167,6 +169,22 @@ const BookingDocumentsPage: React.FC = () => {
   useEffect(() => {
     loadDocuments();
   }, []);
+
+  useEffect(() => {
+    if (!focusedDocumentId || loading) return;
+    const focusedDocument = documents.find((candidate) => candidate._id === focusedDocumentId);
+    const element = document.getElementById(`booking-document-${focusedDocumentId}`);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    const firstFile = focusedDocument?.files?.[0];
+    if (focusedDocument && firstFile && focusedDocumentOpened.current !== focusedDocumentId) {
+      focusedDocumentOpened.current = focusedDocumentId;
+      void openViewer(focusedDocument, firstFile);
+    }
+    // openViewer is intentionally stable for this one-shot deep-link effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusedDocumentId, loading, documents]);
 
   const documentTypes = useMemo(() => {
     return Array.from(new Set(documents.map((document) => normalizeKey(document.documentType)).filter((type) => type && type !== 'ekg' && type !== 'liver_panel'))).sort();
@@ -333,7 +351,7 @@ const BookingDocumentsPage: React.FC = () => {
                 const bookingId = getBookingId(document.bookingId);
                 const primaryFile = (document.files || [])[0];
                 return (
-                  <tr key={document._id} className="hover:bg-white/70">
+                  <tr id={`booking-document-${document._id}`} key={document._id} className={`hover:bg-white/70 ${focusedDocumentId === document._id ? 'bg-emerald-50 ring-2 ring-inset ring-emerald-500' : ''}`}>
                     <td className="px-5 py-4 align-middle text-sm text-[#8b8174]">
                       {document.display_id || document._id?.slice(-6) || '—'}
                     </td>

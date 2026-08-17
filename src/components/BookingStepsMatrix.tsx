@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Filter, Lock, Save, Unlock } from 'lucide-react';
 import { bookingDocumentsApi, bookingFlowApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
@@ -34,6 +34,7 @@ import { BookingStepGroupHeader, BookingStepRowHeader } from './BookingStepRowHe
 
 const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [bookings, setBookings] = useState<any[]>([]);
   const [templates, setTemplates] = useState<BookingFlowTemplate[]>([]);
   const [libraryTemplates, setLibraryTemplates] = useState<BookingFlowTemplate[]>([]);
@@ -703,7 +704,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
                           onDateDraftChange={(value) => item?._id && setDatePickerDrafts((current) => ({ ...current, [item._id!]: value }))} onDateCancel={() => item && cancelItemDateDraft(item)} onDateSave={(value) => item && updateItemDate(item, value)} onPaymentChange={(paymentId) => item && selectPaymentForItem(item, paymentId)}
                           onNoteChange={(value) => { if (!item?._id) return; setNoteDrafts((current) => ({ ...current, [item._id!]: value })); setDirtyNoteIds((current) => ({ ...current, [item._id!]: true })); }}
                           onCreateMrr={() => item && openReviewRequestModal(booking, item, row)} onLinkMrr={(action) => item && openExistingReviewRequestLinkModal(booking, item, row, action)} onRunAction={(action) => item && runItemAction(item, action)} onUpload={(action, files) => item && uploadItemDocument(booking, item, action, files)}
-                          onReminder={() => item && openReminderPreview(item)} onAutomation={() => item && openReminderAutomation(item)} onLinkArtifact={() => item && cellModel.artifactStepConfig && openArtifactLinkModal(booking, item, row, cellModel.artifactStepConfig)} onOpenDocuments={() => window.location.assign('/admin/booking-documents')} />
+                          onReminder={() => item && openReminderPreview(item)} onAutomation={() => item && openReminderAutomation(item)} onLinkArtifact={() => item && cellModel.artifactStepConfig && openArtifactLinkModal(booking, item, row, cellModel.artifactStepConfig)} onOpenDocuments={() => cellModel.relatedBookingDocument?._id && navigate(`/admin/booking-documents?documentId=${encodeURIComponent(cellModel.relatedBookingDocument._id)}`)} />
                       );
                     })}
                   </tr>
