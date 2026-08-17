@@ -71,6 +71,7 @@ import PermissionsMatrix from './PermissionsMatrix';
 import ClientMedicationsGrid from './ClientMedicationsGrid';
 import ClientMedicationForm from './ClientMedicationForm';
 import ClientFoodFormsPage from './ClientFoodFormsPage';
+import ClientFormsPage from './ClientFormsPage';
 import BookingStepDeadlinesPage from './BookingStepDeadlinesPage';
 import ScheduledRemindersPage from './ScheduledRemindersPage';
 import MedicationStopPlanPage from './MedicationStopPlanPage';
@@ -890,6 +891,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="client-medications/edit/:id" element={<ClientMedicationForm mode="edit" />} />
                       <Route path="client-medications/view/:id" element={<ClientMedicationForm mode="view" />} />
                       <Route path="client-food-forms" element={<ClientFoodFormsPage />} />
+                      <Route path="client-forms" element={<ClientFormsPage />} />
                       <Route path="analytics" element={<div className="p-6">Analytics - Coming Soon</div>} />
                       <Route path="users" element={<UserManagement />} />
                       <Route path="audit-logs" element={<AuditLogsPage />} />

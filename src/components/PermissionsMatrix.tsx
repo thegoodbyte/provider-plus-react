@@ -32,6 +32,9 @@ const AVAILABLE_PERMISSIONS: Permission[] = [
   { route: 'medical-retreats', name: 'Medical Retreats', description: 'Medical retreat management', category: 'Medical' },
   { route: 'medical', name: 'Medical Profiles', description: 'Client medical profiles', category: 'Medical' },
 
+  // Client forms
+  { route: 'client-forms', name: 'Client Forms', description: 'Food, medication, and questionnaire submissions', category: 'Client Forms' },
+
   // Operations
   { route: 'bookings', name: 'Bookings', description: 'Booking management and scheduling', category: 'Operations' },
   { route: 'retreats', name: 'Retreats', description: 'Retreat management', category: 'Operations' },
@@ -82,6 +85,7 @@ const DEFAULT_PERMISSIONS: RolePermissions = {
   'medical-dashboard': ['medical_staff', 'medical_advisor', 'admin'],
   'medical-retreats': ['medical_staff', 'admin'],
   'medical': ['medical_staff', 'admin'],
+  'client-forms': ['medical_staff', 'admin'],
   'bookings': ['facilitator', 'medical_staff', 'admin'],
   'retreats': ['facilitator', 'medical_staff', 'admin'],
   'ceremonies': ['facilitator', 'medical_staff', 'admin'],

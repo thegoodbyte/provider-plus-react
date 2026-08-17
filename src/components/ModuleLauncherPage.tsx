@@ -180,7 +180,7 @@ const ModuleLauncherPage: React.FC = () => {
         tiles: [
           { id: 'reminders', label: 'Reminders', subtitle: 'Automation', route: 'reminders', icon: Bell, tone: 'slate' },
           { id: 'requirements', label: 'Requirements', subtitle: 'Retreat rules', route: 'requirements', icon: ClipboardCheck, tone: 'slate' },
-          { id: 'client-medications', label: 'Medications', subtitle: 'Client meds', route: 'client-medications', icon: NotebookText, tone: 'slate' },
+          { id: 'client-forms', label: 'Client Forms', subtitle: 'Food, meds, questionnaires', route: 'client-forms', icon: NotebookText, tone: 'slate' },
           { id: 'houses', label: 'Houses', subtitle: 'Assets', route: 'houses', icon: Building2, tone: 'slate' },
           { id: 'users', label: 'Users', subtitle: 'Access', route: 'users', icon: ShieldCheck, tone: 'slate' },
           { id: 'permissions', label: 'Permissions', subtitle: 'Roles', route: 'permissions', icon: ShieldCheck, tone: 'slate' },

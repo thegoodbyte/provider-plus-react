@@ -85,8 +85,16 @@ const FULL_MENU_SECTIONS: MenuSection[] = [
       { id: 'medical-artifacts', label: 'Medical Artifacts', Icon: Fi.FiFileText },
       { id: 'medical-tracking', label: 'Medical Readiness', Icon: Fi.FiHeart },
       { id: 'medical-review-requests', label: 'Review Requests', Icon: Fi.FiInbox },
-      { id: 'client-medications', label: 'Client Medications', Icon: Fi.FiPlusSquare },
-      { id: 'client-food-forms', label: 'Client Food Forms', Icon: Fi.FiCoffee },
+    ],
+  },
+  {
+    id: 'forms',
+    label: 'Client Forms',
+    Icon: Fi.FiFileText,
+    items: [
+      { id: 'client-forms', label: 'Forms overview', Icon: Fi.FiFileText },
+      { id: 'client-food-forms', label: 'Food Forms', Icon: Fi.FiCoffee },
+      { id: 'client-medications', label: 'Medication Forms', Icon: Fi.FiPlusSquare },
     ],
   },
   {
@@ -264,7 +272,16 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
               { id: 'medical-tracking', label: 'Medical Readiness', Icon: Fi.FiHeart },
               { id: 'review-requests', label: 'Review Requests', Icon: Fi.FiInbox },
               { id: 'medical', label: 'Medical Profiles', Icon: Fi.FiActivity },
-              { id: 'client-medications', label: 'Client Medications', Icon: Fi.FiPlusSquare },
+            ],
+          },
+          {
+            id: 'forms',
+            label: 'Client Forms',
+            Icon: Fi.FiFileText,
+            items: [
+              { id: 'client-forms', label: 'Forms overview', Icon: Fi.FiFileText },
+              { id: 'client-food-forms', label: 'Food Forms', Icon: Fi.FiCoffee },
+              { id: 'client-medications', label: 'Medication Forms', Icon: Fi.FiPlusSquare },
             ],
           },
           {
