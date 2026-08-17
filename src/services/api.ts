@@ -1397,8 +1397,8 @@ export const bookingFlowApi = {
       documentIds: string[];
       latestReviewId?: string;
       requiredFromClient: boolean;
-      clientReason?: string;
-      clientInstructions?: string;
+      clientFacingName?: { en?: string; pl?: string; cz?: string };
+      clientFacingDescription?: { en?: string; pl?: string; cz?: string };
     }>;
   }>(
     `booking-flow:booking-requirements:${bookingId}:${options.compact ? 'compact' : 'full'}`,

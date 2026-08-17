@@ -1365,8 +1365,8 @@ export interface BookingFlowTemplate {
   autoCompleteStatus?: string;
   isRequirement?: boolean;
   requiredFromClient?: boolean;
-  clientReason?: string;
-  clientInstructions?: string;
+  clientFacingName?: { en?: string; pl?: string; cz?: string };
+  clientFacingDescription?: { en?: string; pl?: string; cz?: string };
   requirementType?: string;
   emailEnabled?: boolean;
   emailTemplateId?: string | EmailTemplate;

@@ -33,8 +33,8 @@ type TemplateForm = {
   reviewRequired: boolean;
   isRequirement: boolean;
   requiredFromClient: boolean;
-  clientReason: string;
-  clientInstructions: string;
+  clientFacingName: { en: string; pl: string; cz: string };
+  clientFacingDescription: { en: string; pl: string; cz: string };
   requirementType: string;
   taskTitle: string;
   taskPriority: 'low' | 'medium' | 'high' | 'urgent';
@@ -72,8 +72,8 @@ const emptyForm = (): TemplateForm => ({
   reviewRequired: false,
   isRequirement: false,
   requiredFromClient: false,
-  clientReason: '',
-  clientInstructions: '',
+  clientFacingName: { en: '', pl: '', cz: '' },
+  clientFacingDescription: { en: '', pl: '', cz: '' },
   requirementType: '',
   taskTitle: '',
   taskPriority: 'medium',
@@ -123,6 +123,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
   const [importMode, setImportMode] = useState<'merge_by_key' | 'restore_exact_ids'>('merge_by_key');
   const [importing, setImporting] = useState(false);
   const [editorTab, setEditorTab] = useState<EditorTab>('basics');
+  const [clientFacingLanguageTab, setClientFacingLanguageTab] = useState<'en' | 'pl' | 'cz'>('en');
   const [stepSearch, setStepSearch] = useState('');
   const importInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -182,6 +183,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
       } else {
         setSelectedTemplateId('');
         setForm(emptyForm());
+        setClientFacingLanguageTab('en');
       }
     } catch (error) {
       console.error('Error loading retreat flow library:', error);
@@ -195,6 +197,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
   const selectTemplate = (template: BookingFlowTemplate) => {
     const groupKey = normalizeGroupKey(template.readinessGroup || template.category);
     setSelectedTemplateId(template._id || '');
+    setClientFacingLanguageTab('en');
       setForm({
         workflowStage: template.workflowStage || 'potential',
       applicableRetreatTypes: (template.applicableRetreatTypes || []).join(', '),
@@ -212,8 +215,8 @@ const RetreatFlowLibraryPage: React.FC = () => {
       reviewRequired: !!template.reviewRequired,
       isRequirement: !!template.isRequirement,
       requiredFromClient: template.requiredFromClient ?? !!template.isRequirement,
-      clientReason: template.clientReason || '',
-      clientInstructions: template.clientInstructions || '',
+      clientFacingName: { en: template.clientFacingName?.en || '', pl: template.clientFacingName?.pl || '', cz: template.clientFacingName?.cz || '' },
+      clientFacingDescription: { en: template.clientFacingDescription?.en || '', pl: template.clientFacingDescription?.pl || '', cz: template.clientFacingDescription?.cz || '' },
       requirementType: template.requirementType || '',
       taskTitle: template.taskTitle || '',
       taskPriority: template.taskPriority || 'medium',
@@ -283,8 +286,8 @@ const RetreatFlowLibraryPage: React.FC = () => {
         reviewRequired: form.reviewRequired,
         isRequirement: form.isRequirement,
         requiredFromClient: form.requiredFromClient,
-        clientReason: form.clientReason || undefined,
-        clientInstructions: form.clientInstructions || undefined,
+        clientFacingName: form.clientFacingName.en || form.clientFacingName.pl || form.clientFacingName.cz ? form.clientFacingName : undefined,
+        clientFacingDescription: form.clientFacingDescription.en || form.clientFacingDescription.pl || form.clientFacingDescription.cz ? form.clientFacingDescription : undefined,
         requirementType: form.isRequirement ? form.requirementType : undefined,
         taskTitle: form.taskTitle,
         taskPriority: form.taskPriority,
@@ -412,6 +415,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
       ...emptyForm(),
       order: (sortedTemplates.at(-1)?.order || 0) + 10,
     });
+    setClientFacingLanguageTab('en');
   };
 
   const handleTemplateDrop = async (targetTemplateId?: string) => {
@@ -561,8 +565,51 @@ const RetreatFlowLibraryPage: React.FC = () => {
           <label className="sm:col-span-2"><span className={labelClass}>Retreat types</span><input value={form.applicableRetreatTypes} onChange={(e) => setForm({ ...form, applicableRetreatTypes: e.target.value })} className={fieldClass} placeholder="Leave empty for all, or enter regular, booster" /><span className="mt-1 block text-xs text-gray-500">Comma-separated. Specific retreat copies still override the global policy.</span></label>
           <label className="sm:col-span-2"><span className={labelClass}>What this step means</span><textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} className={fieldClass} /></label>
           <label className="sm:col-span-2 flex items-center gap-2 text-sm"><input type="checkbox" checked={form.requiredFromClient} onChange={(e) => setForm({ ...form, requiredFromClient: e.target.checked })} /> Required from client — include in the Requirements tab and missing-items email</label>
-          <label><span className={labelClass}>Why the client must provide it</span><textarea value={form.clientReason} onChange={(e) => setForm({ ...form, clientReason: e.target.value })} rows={2} className={fieldClass} placeholder="Explain why this is needed" /></label>
-          <label><span className={labelClass}>Client instructions</span><textarea value={form.clientInstructions} onChange={(e) => setForm({ ...form, clientInstructions: e.target.value })} rows={2} className={fieldClass} placeholder="Tell the client what to submit" /></label>
+          <div className="sm:col-span-2">
+            <span className={labelClass}>Client-facing name &amp; description</span>
+            <p className="mb-2 text-xs text-gray-500">Shown to the client instead of the admin title/description above &mdash; in the missing-items email today. Translate manually; English is the fallback for any language left blank.</p>
+            <div className="mb-3 inline-flex rounded-lg border border-gray-200 bg-gray-100 p-1" role="tablist" aria-label="Client-facing copy language">
+              {([{ key: 'en', label: 'EN' }, { key: 'pl', label: 'PL' }, { key: 'cz', label: 'CZ' }] as const).map((language) => (
+                <button
+                  key={language.key}
+                  type="button"
+                  role="tab"
+                  aria-selected={clientFacingLanguageTab === language.key}
+                  onClick={() => setClientFacingLanguageTab(language.key)}
+                  className={`rounded-md px-3 py-1.5 text-sm font-semibold transition ${
+                    clientFacingLanguageTab === language.key ? 'bg-white text-blue-700 shadow-sm' : 'text-gray-500 hover:text-gray-800'
+                  }`}
+                >
+                  {language.label}
+                  {!form.clientFacingName[language.key] && !form.clientFacingDescription[language.key] && language.key !== 'en' && (
+                    <span className="ml-1 text-[10px] font-normal text-gray-400">(empty)</span>
+                  )}
+                </button>
+              ))}
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label>
+                <span className={labelClass}>Name ({clientFacingLanguageTab.toUpperCase()})</span>
+                <textarea
+                  value={form.clientFacingName[clientFacingLanguageTab]}
+                  onChange={(e) => setForm({ ...form, clientFacingName: { ...form.clientFacingName, [clientFacingLanguageTab]: e.target.value } })}
+                  rows={2}
+                  className={fieldClass}
+                  placeholder="Short, friendly label the client sees"
+                />
+              </label>
+              <label>
+                <span className={labelClass}>Description ({clientFacingLanguageTab.toUpperCase()})</span>
+                <textarea
+                  value={form.clientFacingDescription[clientFacingLanguageTab]}
+                  onChange={(e) => setForm({ ...form, clientFacingDescription: { ...form.clientFacingDescription, [clientFacingLanguageTab]: e.target.value } })}
+                  rows={2}
+                  className={fieldClass}
+                  placeholder="Tell the client what to do and why"
+                />
+              </label>
+            </div>
+          </div>
           <label><span className={labelClass}>Order in the list</span><input type="number" value={form.order} onChange={(e) => setForm({ ...form, order: Number(e.target.value) })} className={fieldClass} /></label>
           <label><span className={labelClass}>Readiness group</span><input value={form.readinessGroup} onChange={(e) => setForm({ ...form, readinessGroup: e.target.value })} className={fieldClass} /></label>
         </div>}
