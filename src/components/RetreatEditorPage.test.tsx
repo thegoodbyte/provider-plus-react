@@ -51,4 +51,14 @@ describe('RetreatEditorPage', () => {
     expect(confirm).toHaveBeenCalled();
     confirm.mockRestore();
   });
+
+  it('exposes retreat-wide commission and blocks invalid capacity before saving', async () => {
+    renderPage();
+    await screen.findByRole('heading', { name: 'Edit retreat' });
+    expect(screen.getByText('Referral commission override (%)')).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Capacity *'), { target: { value: '0' } });
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save changes' })[0]);
+    expect(await screen.findByText(/positive whole-number capacity/i)).toBeInTheDocument();
+    expect(retreatsApi.update).not.toHaveBeenCalled();
+  });
 });

@@ -27,6 +27,10 @@ export interface Retreat {
   heroImageFileName?: string;
   heroImageMimeType?: string;
   heroImageSource?: 'retreat' | 'house';
+  showOnSite?: boolean;
+  websitePricing?: Record<string, any>;
+  websiteContent?: Record<string, any>;
+  referralCommissionPercentage?: number | null;
   createdAt?: string;
   updatedAt?: string;
   // Legacy format support
