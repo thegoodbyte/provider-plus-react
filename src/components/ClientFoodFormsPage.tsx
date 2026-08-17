@@ -15,6 +15,13 @@ const retreatLabel = (row: ClientFoodForm) => {
   return row.retreat_id.code || row.retreat_id.retreatCode || row.retreat_id.name || '—';
 };
 
+const shortClientName = (name: string) => {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : (parts[0] || '—');
+};
+
+const isEmptyAnswer = (value: string) => !value.trim() || /^(none|n\/a|—|-|no)$/i.test(value.trim());
+
 const ClientFoodFormsPage: React.FC = () => {
   const [rows, setRows] = useState<ClientFoodForm[]>([]);
   const [selected, setSelected] = useState<ClientFoodForm | null>(null);
@@ -48,6 +55,7 @@ const ClientFoodFormsPage: React.FC = () => {
   }, [visible]);
   const matrixLabel = (key: string) => QUESTION_LABELS[matrixLanguage][key] || QUESTION_LABELS.en[key] || label(key);
   const answerText = (value: unknown) => Array.isArray(value) ? value.join(', ') : String(value ?? '—');
+  const matrixValue = (client: ClientFoodForm, key: string) => key === 'fullName' ? client.signature_name : answerText(client.answers?.[key]);
 
   const downloadMatrix = () => {
     if (!retreatFilter || !visible.length) return;
@@ -63,18 +71,18 @@ const ClientFoodFormsPage: React.FC = () => {
     const drawHeader = () => {
       pdf.setFillColor(232, 246, 251); pdf.rect(margin, y - 10, pageWidth - margin * 2, 28, 'F');
       pdf.setFont('helvetica', 'bold'); pdf.setFontSize(8); pdf.text('Question', margin + 5, y + 6);
-      visible.forEach((client, index) => pdf.text(client.signature_name.slice(0, 18), margin + questionWidth + index * clientWidth + 4, y + 6, { maxWidth: clientWidth - 8 }));
+      visible.forEach((client, index) => pdf.text(shortClientName(client.signature_name), margin + questionWidth + index * clientWidth + 4, y + 6, { maxWidth: clientWidth - 8 }));
       y += 28;
     };
     drawHeader();
     pdf.setFont('helvetica', 'normal'); pdf.setFontSize(7);
     matrixRows.forEach((key) => {
-      const values = visible.map((client) => answerText(client.answers?.[key]));
+      const values = visible.map((client) => matrixValue(client, key));
       const rowHeight = 24;
       if (y + rowHeight > pageHeight - margin) { pdf.addPage(); y = margin; drawHeader(); }
       pdf.setDrawColor(210, 210, 210); pdf.line(margin, y, pageWidth - margin, y);
       pdf.setFont('helvetica', 'bold'); pdf.text(matrixLabel(key), margin + 5, y + 15, { maxWidth: questionWidth - 10 });
-      pdf.setFont('helvetica', 'normal'); values.forEach((value, index) => pdf.text(value.slice(0, 42), margin + questionWidth + index * clientWidth + 4, y + 15, { maxWidth: clientWidth - 8 }));
+      pdf.setFont('helvetica', 'normal'); values.forEach((value, index) => pdf.text(isEmptyAnswer(value) ? '✓' : value.slice(0, 42), margin + questionWidth + index * clientWidth + 4, y + 15, { maxWidth: clientWidth - 8 }));
       y += rowHeight;
     });
     pdf.save(`food-matrix-${retreatFilter}.pdf`);
@@ -155,7 +163,7 @@ const ClientFoodFormsPage: React.FC = () => {
       {matrixOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Food matrix">
         <section className="max-h-[92vh] w-full max-w-[1400px] overflow-hidden bg-white p-6 shadow-2xl">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 pb-4"><div><h2 className="font-serif text-2xl font-bold">Food matrix · {retreatFilter}</h2><p className="mt-1 text-sm text-gray-500">Clients are columns; submitted questions are rows.</p></div><div className="flex items-center gap-3"><label className="text-sm text-gray-600">Translation<select className="ml-2 border border-gray-300 px-2 py-1" value={matrixLanguage} onChange={(event) => setMatrixLanguage(event.target.value as 'en' | 'cs' | 'pl')}><option value="en">English</option><option value="cs">Čeština</option><option value="pl">Polski</option></select></label><button type="button" onClick={downloadMatrix} className="bg-[#07516c] px-4 py-2 text-sm text-white hover:bg-[#063d51]">Download PDF</button><button type="button" onClick={() => setMatrixOpen(false)} className="text-sm text-gray-600 hover:underline">Close</button></div></div>
-          <div className="max-h-[70vh] overflow-auto"><table className="min-w-full border-collapse text-sm"><thead className="sticky top-0 bg-[#e8f6fb]"><tr><th className="sticky left-0 z-10 min-w-[180px] border-b border-gray-300 bg-[#e8f6fb] p-3 text-left font-semibold">{matrixLanguage === 'cs' ? 'Otázka' : matrixLanguage === 'pl' ? 'Pytanie' : 'Question'}</th>{visible.map((client) => <th key={client._id} className="min-w-[150px] border-b border-gray-300 p-3 text-left font-semibold">{client.signature_name}</th>)}</tr></thead><tbody>{matrixRows.map((key) => <tr key={key} className="border-b border-gray-200"><th className="sticky left-0 bg-white p-3 text-left font-semibold">{matrixLabel(key)}</th>{visible.map((client) => <td key={`${client._id}-${key}`} className="max-w-[240px] whitespace-pre-wrap p-3 align-top text-gray-700">{answerText(client.answers?.[key])}</td>)}</tr>)}</tbody></table></div>
+          <div className="max-h-[70vh] overflow-auto"><table className="min-w-full border-collapse text-sm"><thead className="sticky top-0 bg-[#e8f6fb]"><tr><th className="sticky left-0 z-10 min-w-[180px] border-b border-gray-300 bg-[#e8f6fb] p-3 text-left font-semibold">{matrixLanguage === 'cs' ? 'Otázka' : matrixLanguage === 'pl' ? 'Pytanie' : 'Question'}</th>{visible.map((client) => <th key={client._id} className="min-w-[150px] border-b border-gray-300 p-3 text-left font-semibold">{shortClientName(client.signature_name)}</th>)}</tr></thead><tbody>{matrixRows.map((key) => <tr key={key} className="border-b border-gray-200"><th className="sticky left-0 bg-white p-3 text-left font-semibold">{matrixLabel(key)}</th>{visible.map((client) => { const value = matrixValue(client, key); const highlighted = key === 'foodIntolerances' || key === 'allergies'; return <td key={`${client._id}-${key}`} className={`max-w-[240px] whitespace-pre-wrap p-3 align-top ${isEmptyAnswer(value) ? 'font-bold text-emerald-600' : highlighted ? 'bg-red-50 font-semibold text-red-800' : 'text-gray-700'}`}>{isEmptyAnswer(value) ? '✓' : value}</td>; })}</tr>)}</tbody></table></div>
         </section>
       </div>}
 
