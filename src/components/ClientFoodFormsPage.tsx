@@ -142,7 +142,7 @@ const ClientFoodFormsPage: React.FC = () => {
                     <td className="whitespace-nowrap px-2 py-4 text-sm text-[#5d5859]">{row.submitted_at ? new Date(row.submitted_at).toLocaleString() : '—'}</td>
                     <td className="px-2 py-4 text-sm uppercase">{row.language === 'cs' ? 'CS' : row.language}</td>
                     <td className="px-2 py-4"><select value={row.status} onChange={(event) => setStatus(row, event.target.value as ClientFoodForm['status'])} className="h-9 min-w-[150px] border border-[#c8c5c5] bg-[#f1f0f0] px-2 text-sm"><option value="submitted">Received</option><option value="reviewed">Reviewed</option><option value="draft">Draft</option></select></td>
-                    <td className="whitespace-nowrap px-2 py-4 text-sm"><button className="mr-3 text-[#07516c] hover:underline" onClick={() => setSelected(row)}>View</button><button className="text-[#8c003d] hover:underline" onClick={() => remove(row)}>Delete</button></td>
+                    <td className="whitespace-nowrap px-2 py-4 text-sm"><button className="mr-3 text-[#07516c] hover:underline" onClick={() => setSelected(row)}>View</button>{row.pdf_file && <a className="mr-3 text-[#07516c] hover:underline" href={clientFoodFormsApi.pdfUrl(row._id)} target="_blank" rel="noreferrer">PDF</a>}<button className="text-[#8c003d] hover:underline" onClick={() => remove(row)}>Delete</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -161,7 +161,7 @@ const ClientFoodFormsPage: React.FC = () => {
 
       {selected && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
         <section className="max-h-[90vh] w-full max-w-3xl overflow-auto bg-white p-6 shadow-2xl">
-          <div className="mb-5 flex justify-between border-b border-gray-200 pb-4"><div><h2 className="font-serif text-2xl font-bold">Food form #{selected.display_id}</h2><p className="text-sm text-gray-500">{selected.signature_name} · {retreatLabel(selected)} · {selected.email}</p></div><button className="text-sm text-gray-600 hover:underline" onClick={() => setSelected(null)}>Close</button></div>
+          <div className="mb-5 flex justify-between border-b border-gray-200 pb-4"><div><h2 className="font-serif text-2xl font-bold">Food form #{selected.display_id}</h2><p className="text-sm text-gray-500">{selected.signature_name} · {retreatLabel(selected)} · {selected.email}</p></div><div className="flex items-center gap-4">{selected.pdf_file && <a className="text-sm font-semibold text-[#07516c] hover:underline" href={clientFoodFormsApi.pdfUrl(selected._id)} target="_blank" rel="noreferrer">Download PDF</a>}<button className="text-sm text-gray-600 hover:underline" onClick={() => setSelected(null)}>Close</button></div></div>
           <dl className="grid gap-4 sm:grid-cols-2">{Object.entries(selected.answers || {}).map(([key, value]) => <div key={key} className="bg-gray-50 p-3"><dt className="text-xs font-semibold uppercase text-gray-500">{label(key)}</dt><dd className="mt-1 whitespace-pre-wrap text-gray-900">{Array.isArray(value) ? value.join(', ') : String(value || '—')}</dd></div>)}</dl>
         </section>
       </div>}
