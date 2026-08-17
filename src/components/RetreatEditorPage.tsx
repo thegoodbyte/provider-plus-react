@@ -25,6 +25,10 @@ const RetreatEditorPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [heroUploading, setHeroUploading] = useState(false);
+  const [websitePricingText, setWebsitePricingText] = useState('{}');
+  const [websiteContentText, setWebsiteContentText] = useState('{}');
+  const [staffText, setStaffText] = useState('[]');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -32,6 +36,9 @@ const RetreatEditorPage: React.FC = () => {
       const item = retreatResponse.data;
       setRetreat(item);
       setForm({ ...item, code: item.code || item.retreatCode, retreatCode: item.code || item.retreatCode, location_town: item.location_town || item.locationTown || item.location, location: item.location_town || item.locationTown || item.location });
+      setWebsitePricingText(JSON.stringify(item.websitePricing || {}, null, 2));
+      setWebsiteContentText(JSON.stringify(item.websiteContent || {}, null, 2));
+      setStaffText(JSON.stringify(item.retreatStaff || [], null, 2));
       setHouses(houseResponse.data || []);
     }).catch((cause) => setError(cause?.response?.data?.message || cause?.message || 'Unable to load retreat.')).finally(() => setLoading(false));
   }, [retreatId]);
@@ -43,9 +50,29 @@ const RetreatEditorPage: React.FC = () => {
     const town = house?.generalTown || house?.general_town || house?.city || house?.name || '';
     set({ houseId, ...(town ? { location_town: town, location: town } : {}) });
   };
+  const uploadHero = async (file?: File) => {
+    if (!file) return;
+    setHeroUploading(true); setError('');
+    try {
+      const response = await retreatsApi.uploadHeroImage(retreatId, file);
+      setForm((current) => ({ ...current, ...(response.data.retreat || {}) }));
+    } catch (cause: any) { setError(cause?.response?.data?.message || cause?.message || 'Unable to upload hero image.'); }
+    finally { setHeroUploading(false); }
+  };
   const save = async () => {
     const town = String(form.location_town || form.locationTown || form.location || '').trim();
-    if (!form.name?.trim() || !town || !form.startDate || !form.endDate || !form.capacity) { setError('Name, location, dates, and capacity are required.'); return; }
+    const start = form.startDate ? new Date(form.startDate).getTime() : NaN;
+    const end = form.endDate ? new Date(form.endDate).getTime() : NaN;
+    const capacityValue = Number(form.capacity);
+    const occupancyValue = Number(form.currentOccupancy || 0);
+    const commission = form.referralCommissionPercentage;
+    if (!form.name?.trim() || !code.trim() || !town || !form.startDate || !form.endDate || !Number.isInteger(capacityValue) || capacityValue < 1) { setError('Name, code, location, dates, and a positive whole-number capacity are required.'); return; }
+    if (!(start < end)) { setError('End date and time must be after the start date and time.'); return; }
+    if (capacityValue < occupancyValue) { setError(`Capacity cannot be below current occupancy (${occupancyValue}).`); return; }
+    if (commission !== null && commission !== undefined && (!Number.isFinite(Number(commission)) || Number(commission) < 0 || Number(commission) > 100)) { setError('Referral commission override must be between 0 and 100%.'); return; }
+    let websitePricing: Record<string, any>, websiteContent: Record<string, any>, retreatStaff: any[];
+    try { websitePricing = JSON.parse(websitePricingText || '{}'); websiteContent = JSON.parse(websiteContentText || '{}'); retreatStaff = JSON.parse(staffText || '[]'); } catch { setError('Website pricing, content, and staff fields must contain valid JSON.'); return; }
+    if (!websitePricing || Array.isArray(websitePricing) || !websiteContent || Array.isArray(websiteContent) || !Array.isArray(retreatStaff)) { setError('Website pricing and content must be JSON objects, and staff must be a JSON array.'); return; }
     setSaving(true); setError('');
     try {
       const code = form.code?.trim() || form.retreatCode?.trim() || undefined;
@@ -56,6 +83,8 @@ const RetreatEditorPage: React.FC = () => {
         type: form.type || 'regular', description: form.description || '', startDate: form.startDate,
         startTime: form.startTime || undefined, endDate: form.endDate, endTime: form.endTime || undefined,
         status: form.status || 'upcoming', backgroundColor: form.backgroundColor, textColor: form.textColor,
+        helpers: form.helpers || '', retreatStaff, showOnSite: form.showOnSite !== false,
+        websitePricing, websiteContent, referralCommissionPercentage: commission == null ? null : Number(commission),
       });
       goBack();
     } catch (cause: any) { const message = cause?.response?.data?.message || cause?.message || 'Unable to save retreat.'; setError(Array.isArray(message) ? message.join(' ') : String(message)); }
@@ -109,7 +138,20 @@ const RetreatEditorPage: React.FC = () => {
         <div className="md:col-span-3"><span className={label}>Fill right now</span><div className="flex items-center gap-3"><div className="h-3 flex-1 bg-gray-200"><div className="h-full bg-blue-600" style={{ width: `${capacity ? Math.min(100, occupancy / capacity * 100) : 0}%` }}/></div><strong className="whitespace-nowrap text-sm">{occupancy} / {capacity || 0} places</strong></div></div>
       </div></section>
 
-      <section className="py-6"><SectionTitle number="04" title="Colour code" detail="The colour identifies this retreat in lists, calendars and booking rows. Pick one and see it in place."/><div className="grid gap-5 md:ml-14 md:grid-cols-[1fr_320px]">
+      <section className="py-6"><SectionTitle number="04" title="Operations and commission" detail="Operational details and the optional referral rate used for every booking in this retreat."/><div className="grid gap-4 md:ml-14 md:grid-cols-6">
+        <label className="md:col-span-3"><span className={label}>Helpers / operational notes</span><textarea className={field} rows={3} value={form.helpers || ''} onChange={(e) => set({ helpers: e.target.value })} placeholder="Internal staffing or operational notes"/></label>
+        <label className="md:col-span-3"><span className={label}>Referral commission override (%)</span><input className={field} type="number" min="0" max="100" step="0.01" value={form.referralCommissionPercentage ?? ''} onChange={(e) => set({ referralCommissionPercentage: e.target.value === '' ? null : Number(e.target.value) })} placeholder="Inherit referral default"/><span className="mt-1 block text-xs text-gray-500">Leave blank to inherit the referral partner’s default. A client-specific override still takes priority.</span></label>
+        <label className="flex items-center gap-3 md:col-span-3"><input aria-label="Show on website" type="checkbox" checked={form.showOnSite !== false} onChange={(e) => set({ showOnSite: e.target.checked })}/><span><strong className="block text-sm">Show on public website</strong><span className="text-xs text-gray-500">Hide cancelled or private retreats without deleting them.</span></span></label>
+        <label className="md:col-span-3"><span className={label}>Retreat staff (advanced JSON)</span><textarea className={`${field} font-mono text-xs`} rows={3} value={staffText} onChange={(e) => setStaffText(e.target.value)}/></label>
+      </div></section>
+
+      <section className="py-6"><SectionTitle number="05" title="Website content" detail="Control public pricing/content and the hero image associated with this retreat."/><div className="grid gap-4 md:ml-14 md:grid-cols-2">
+        <label><span className={label}>Website pricing (JSON)</span><textarea aria-label="Website pricing" className={`${field} font-mono text-xs`} rows={7} value={websitePricingText} onChange={(e) => setWebsitePricingText(e.target.value)}/></label>
+        <label><span className={label}>Website content (JSON)</span><textarea aria-label="Website content" className={`${field} font-mono text-xs`} rows={7} value={websiteContentText} onChange={(e) => setWebsiteContentText(e.target.value)}/></label>
+        <div className="md:col-span-2"><span className={label}>Hero image</span><div className="flex flex-wrap items-center gap-3"><input aria-label="Hero image" type="file" accept="image/*" disabled={heroUploading} onChange={(e) => uploadHero(e.target.files?.[0])}/>{heroUploading && <span className="text-sm text-gray-500">Uploading…</span>}<span className="text-xs text-gray-500">Images up to 8 MB. Uploading saves the image immediately; save the form for the remaining fields.</span></div>{form.heroImageFileName && <div className="mt-2 flex items-center gap-3 text-xs text-gray-600"><span>Current image: {form.heroImageFileName}</span><button type="button" className="text-red-700 underline" onClick={async () => { await retreatsApi.clearHeroImage(retreatId); set({ heroImageFileName: '', heroImageS3Key: '' }); }}>Remove image</button></div>}</div>
+      </div></section>
+
+      <section className="py-6"><SectionTitle number="06" title="Colour code" detail="The colour identifies this retreat in lists, calendars and booking rows. Pick one and see it in place."/><div className="grid gap-5 md:ml-14 md:grid-cols-[1fr_320px]">
         <div><span className={label}>Palette</span><div className="flex flex-wrap gap-2">{PALETTE.map((color) => <button key={color} type="button" aria-label={`Use colour ${color}`} onClick={() => set({ backgroundColor: color, textColor: '#ffffff' })} className="flex h-9 w-9 items-center justify-center border border-black/20 text-white" style={{ backgroundColor: color }}>{accent.toLowerCase() === color && '✓'}</button>)}</div><label className="mt-4 flex items-center gap-3"><span className={label}>Hex</span><input aria-label="Colour hex" className="w-28 border border-[#aeb5bf] bg-white px-3 py-2 text-sm" value={accent} onChange={(e) => set({ backgroundColor: e.target.value })}/><span className="text-xs text-gray-500">Dark colour — chip text prints white</span></label></div>
         <div><span className={label}>Preview</span><div className="border border-gray-300 bg-white p-4"><div className="flex items-center gap-3 border border-gray-200 p-3"><span className="px-3 py-2 text-xs font-bold" style={{ backgroundColor: accent, color: form.textColor || '#fff' }}>{code}</span><div><strong className="block text-sm">{shortDate(form.startDate)} – {shortDate(form.endDate)}, {new Date(form.endDate || '').getFullYear() || ''}</strong><span className="text-xs text-gray-500">{occupancy} / {capacity || 0} places · {form.location_town || form.location}</span></div></div><div className="mt-3 h-2 bg-gray-200"><div className="h-full" style={{ backgroundColor: accent, width: `${capacity ? Math.min(100, occupancy / capacity * 100) : 0}%` }}/></div><p className="mt-3 text-xs text-gray-600"><span className="mr-2 inline-block h-3 w-3 rounded-full" style={{ backgroundColor: accent }}/>Calendar dot and booking row accent</p></div></div>
       </div></section>
