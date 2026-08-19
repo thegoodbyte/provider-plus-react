@@ -13,6 +13,7 @@ import {
   medicalReviewDecisionLabels,
   medicalReviewDecisionOptions,
   normalizeMedicalReviewDecision,
+  sortMedicalReviewRequestsNewestFirst,
   splitMedicalReviewRequestsByTimeline,
 } from './MedicalReviewRequestsPage.helpers';
 
@@ -459,6 +460,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<MedicalReviewTypeFilter>('all');
   const [retreatFilter, setRetreatFilter] = useState('');
   const [requestSearchFilter, setRequestSearchFilter] = useState('');
+  const [pendingOnly, setPendingOnly] = useState(false);
   const [validationError, setValidationError] = useState('');
   const reviewDecisionSectionRef = useRef<HTMLDivElement | null>(null);
   const canEditReview = user?.role === 'admin'
@@ -543,8 +545,9 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const filteredRequests = useMemo(() => {
     const retreatSearch = retreatFilter.trim().toLowerCase();
     const requestSearch = requestSearchFilter.trim().toLowerCase();
-    return requests.filter((request) => {
+    const filtered = requests.filter((request) => {
       if (statusFilter !== 'all' && request.status !== statusFilter) return false;
+      if (pendingOnly && request.status !== 'pending') return false;
       if (!requestMatchesTypeFilter(request, typeFilter)) return false;
       if (retreatSearch && !getRetreatSearchText(request.retreatId).toLowerCase().includes(retreatSearch)) return false;
       if (requestSearch) {
@@ -574,7 +577,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
       }
       return true;
     });
-  }, [requests, requestSearchFilter, retreatFilter, statusFilter, typeFilter]);
+    return sortMedicalReviewRequestsNewestFirst(filtered);
+  }, [pendingOnly, requests, requestSearchFilter, retreatFilter, statusFilter, typeFilter]);
 
   const reviewTimeline = useMemo(() => splitMedicalReviewRequestsByTimeline(selected, history), [history, selected]);
   const associatedRequests = useMemo(
@@ -1246,12 +1250,22 @@ const MedicalReviewRequestsPage: React.FC = () => {
               placeholder="Search client, request, artifact..."
               className="rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
             />
+            <label className="flex items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700">
+              <input
+                type="checkbox"
+                checked={pendingOnly}
+                onChange={(event) => setPendingOnly(event.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              Pending only
+            </label>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => {
                   setTypeFilter('all');
                   setStatusFilter('all');
+                  setPendingOnly(false);
                   setRetreatFilter('');
                   setRequestSearchFilter('');
                 }}

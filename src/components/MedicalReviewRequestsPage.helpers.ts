@@ -77,6 +77,13 @@ const getAttemptKey = (request: MedicalReviewRequest) => request.attemptNumber |
 const sortByTimeline = (a: MedicalReviewRequest, b: MedicalReviewRequest) =>
   getRequestSortKey(a) - getRequestSortKey(b) || getAttemptKey(a) - getAttemptKey(b) || String(a.display_id || '').localeCompare(String(b.display_id || ''));
 
+export const sortMedicalReviewRequestsNewestFirst = (requests: MedicalReviewRequest[]) =>
+  [...requests].sort((a, b) =>
+    getRequestSortKey(b) - getRequestSortKey(a)
+    || getAttemptKey(b) - getAttemptKey(a)
+    || String(b.display_id || '').localeCompare(String(a.display_id || '')),
+  );
+
 export const getAssociatedMedicalReviewRequests = (
   currentRequest: MedicalReviewRequest | null | undefined,
   reviewHistory: MedicalReviewRequest[] = [],

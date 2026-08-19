@@ -111,6 +111,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | MedicalReviewRequest['status']>('all');
+  const [pendingOnly, setPendingOnly] = useState(false);
   const [filterAdvisorId, setFilterAdvisorId] = useState('all');
   const [activeView, setActiveView] = useState<'grouped' | 'all'>('grouped');
   const [advisors, setAdvisors] = useState<User[]>([]);
@@ -217,13 +218,18 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   }, [canManageRequests]);
 
   const filteredRequests = useMemo(() => {
-    return requests.filter((request) => {
+    const filtered = requests.filter((request) => {
       if (!matchesReviewRequestFilters(request, { searchTerm, typeFilter, dateFrom, dateTo })) return false;
       if (filterStatus !== 'all' && request.status !== filterStatus) return false;
+      if (pendingOnly && request.status !== 'pending') return false;
       if (filterAdvisorId !== 'all' && getAssigneeId(request) !== filterAdvisorId) return false;
       return true;
     });
-  }, [requests, dateFrom, dateTo, filterAdvisorId, filterStatus, searchTerm, typeFilter]);
+    return [...filtered].sort((a, b) => {
+      const date = (request: MedicalReviewRequest) => new Date(request.requestedAt || request.createdAt || request.assignedDate || 0).getTime() || 0;
+      return date(b) - date(a) || Number(b.display_id || 0) - Number(a.display_id || 0);
+    });
+  }, [dateFrom, dateTo, filterAdvisorId, filterStatus, pendingOnly, requests, searchTerm, typeFilter]);
 
   const groupedRequestIds = useMemo(() => {
     const ids = new Set<string>();
@@ -731,6 +737,15 @@ const MedicalReviewRequestsGrid: React.FC = () => {
             <option key={status} value={status}>{status}</option>
           ))}
         </select>
+        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+          <input
+            type="checkbox"
+            checked={pendingOnly}
+            onChange={(event) => setPendingOnly(event.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          Pending only
+        </label>
         {canManageRequests && (
           <>
             <label htmlFor="review-advisor-filter" className="text-sm font-medium text-gray-700">Advisor</label>
@@ -998,7 +1013,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                         {normalizedPacketSearch && <div className="mt-1 text-xs text-gray-500">Showing {packetRequests.length} of {group.requests?.length || 0} requests</div>}
                       </div>
                       {packetRequests.length ? packetRequests.map((request) => (
-                        <div key={request._id} className="grid gap-3 px-4 py-4 md:grid-cols-[150px_minmax(0,1fr)_220px_150px_130px] md:items-center">
+                      <div key={request._id} className="grid gap-3 px-4 py-4 md:grid-cols-[150px_minmax(0,1fr)_220px_150px_180px] md:items-center">
                           <div className="min-w-0">
                             <button
                               type="button"
@@ -1022,7 +1037,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                             </span>
                           </div>
                           <div className="flex justify-start md:justify-end">
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-nowrap gap-2">
                               <button
                                 type="button"
                                 onClick={() => navigate(`${basePath}/${request._id}`)}
@@ -1115,13 +1130,26 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                           </span>
                         </div>
                         <div className="flex justify-start md:justify-end">
-                          <button
-                            type="button"
-                            onClick={() => navigate(`${basePath}/${request._id}`)}
-                            className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
-                          >
-                            Open review
-                          </button>
+                          <div className="flex flex-nowrap gap-2">
+                            <button
+                              type="button"
+                              onClick={() => navigate(`${basePath}/${request._id}`)}
+                              className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+                            >
+                              Open review
+                            </button>
+                            {canDeleteRequests && (
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(request._id || '')}
+                                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
+                                title="Delete request"
+                                aria-label="Delete request"
+                              >
+                                <Icon icon={FiTrash2} className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}

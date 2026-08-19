@@ -3,6 +3,7 @@ import {
   formatMedicalReviewDecisionLabel,
   formatMedicalReviewRequestSummary,
   normalizeMedicalReviewDecision,
+  sortMedicalReviewRequestsNewestFirst,
   splitMedicalReviewRequestsByTimeline,
 } from './MedicalReviewRequestsPage.helpers';
 import { MedicalReviewRequest } from '../types';
@@ -92,6 +93,12 @@ describe('medical review request helpers', () => {
     });
 
     expect(formatMedicalReviewRequestSummary(request)).toBe('Entry • EKG');
+  });
+
+  it('sorts the review queue newest first', () => {
+    const older = makeRequest({ _id: 'older', requestedAt: '2026-06-01T10:00:00.000Z' });
+    const newer = makeRequest({ _id: 'newer', requestedAt: '2026-06-20T10:00:00.000Z' });
+    expect(sortMedicalReviewRequestsNewestFirst([older, newer]).map((request) => request._id)).toEqual(['newer', 'older']);
   });
 
   it('returns all other client review requests in timeline order for associated links', () => {
