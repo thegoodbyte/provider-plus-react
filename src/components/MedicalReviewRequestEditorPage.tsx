@@ -506,13 +506,13 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
                 </>
               )}
               <div className="sm:col-span-2">
-                <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="mrr-linked-files-heading mb-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div className="font-medium text-gray-700">Linked files</div>
                   <button
                     type="button"
                     onClick={() => setIsArtifactModalOpen(true)}
                     disabled={!form.clientId}
-                    className="rounded-md border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+                    className="mrr-add-files-button rounded-md border border-blue-200 bg-white px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:opacity-50"
                   >
                     Add More Files
                   </button>
