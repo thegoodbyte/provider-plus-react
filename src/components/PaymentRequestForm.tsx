@@ -28,6 +28,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
 }) => {
   const [clients, setClients] = useState<Client[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]);
   const [ceremonies, setCeremonies] = useState<Ceremony[]>([]);
   const [loading, setLoading] = useState(false);
   const [nextDisplayId, setNextDisplayId] = useState<number | null>(paymentRequest?.display_id || null);
@@ -44,6 +45,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     invoiceNumber: paymentRequest?.invoiceNumber || paymentRequest?.display_id?.toString() || '',
     clientId: resolveId(paymentRequest?.clientId),
     retreatId: resolveId(paymentRequest?.retreatId),
+    bookingId: resolveId(paymentRequest?.bookingId),
     bookingType: paymentRequest?.bookingType || 'full_retreat',
     ceremonyId: resolveId(paymentRequest?.ceremonyId),
     ceremonyNumber: paymentRequest?.ceremonyNumber?.toString() || '',
@@ -91,6 +93,18 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
   // A new request for a client should follow their active booking. This keeps
   // the retreat, quote, balance, and currency aligned with the booking ledger.
   useEffect(() => {
+    if (!formData.clientId) {
+      setBookings([]);
+      return;
+    }
+    bookingsApi.getByClient(formData.clientId)
+      .then((response) => setBookings((response.data || []).filter((booking: any) =>
+        !['cancelled', 'moved', 'declined'].includes(String(booking.status || '').toLowerCase()),
+      )))
+      .catch(() => setBookings([]));
+  }, [formData.clientId]);
+
+  useEffect(() => {
     if (isEdit || !formData.clientId) return;
     let active = true;
     setBookingDefaultsLoading(true);
@@ -103,6 +117,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
       const activeBookings = (bookingsResponse.data || []).filter((booking) =>
         !['cancelled', 'moved', 'declined'].includes(String(booking.status || '').toLowerCase()),
       );
+      setBookings(activeBookings);
       if (!activeBookings.length) {
         setBookingDefaultsMessage('No active booking found for this client.');
         return;
@@ -236,6 +251,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
         invoiceNumber,
         clientId: formData.clientId,
         retreatId: formData.retreatId,
+        bookingId: formData.bookingId || undefined,
         bookingType: formData.bookingType as PaymentRequest['bookingType'],
         ceremonyId: formData.bookingType === 'booster' ? formData.ceremonyId : undefined,
         ceremonyNumber: formData.bookingType === 'booster' ? Number(formData.ceremonyNumber) : undefined,
@@ -330,6 +346,30 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                 placeholder="Search retreat by name or location"
                 className="w-full"
               />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Booking</label>
+              <select
+                value={formData.bookingId}
+                onChange={(event) => {
+                  const booking = bookings.find((item) => item._id === event.target.value);
+                  setFormData((prev) => ({
+                    ...prev,
+                    bookingId: event.target.value,
+                    retreatId: booking ? resolveId(booking.retreatId) : prev.retreatId,
+                  }));
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">No booking linked</option>
+                {bookings.map((booking) => (
+                  <option key={booking._id} value={booking._id}>
+                    #{booking.bookingNumber || booking.display_id || booking._id} — {booking.retreat?.name || booking.retreatName || resolveId(booking.retreatId)}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500">Linking a booking includes recorded payments in its balance.</p>
             </div>
 
             <div>
