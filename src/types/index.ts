@@ -1576,7 +1576,7 @@ export interface PaymentRequest {
   createdAt?: string;
   updatedAt?: string;
   requestDate?: Date | string;
-  requestType?: 'deposit' | 'balance' | 'full_payment' | 'additional';
+  requestType?: 'deposit' | 'balance' | 'installment' | 'full_payment' | 'additional';
   requestedAmount?: number;
   fullPrice?: number;
   notes?: string;

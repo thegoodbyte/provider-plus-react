@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { PaymentRequest, Client, Retreat, Ceremony } from '../types';
 import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
-import { ceremoniesApi, clientsApi, paymentRequestsApi, paymentsApi, retreatsApi } from '../services/api';
+import { bookingsApi, ceremoniesApi, clientsApi, paymentRequestsApi, paymentsApi, retreatsApi } from '../services/api';
 import { FiSave, FiArrowLeft } from 'react-icons/fi';
 import { toDateInputValue, todayDateInputValue } from '../utils/dateFormat';
 
@@ -32,6 +32,8 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
   const [loading, setLoading] = useState(false);
   const [nextDisplayId, setNextDisplayId] = useState<number | null>(paymentRequest?.display_id || null);
   const [formError, setFormError] = useState('');
+  const [bookingDefaultsLoading, setBookingDefaultsLoading] = useState(false);
+  const [bookingDefaultsMessage, setBookingDefaultsMessage] = useState('');
   const [usdPreview, setUsdPreview] = useState({
     amount: paymentRequest?.usd_amount?.toString() || paymentRequest?.fullPriceUsdAmount?.toString() || '',
     loading: false,
@@ -85,6 +87,56 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
 
     loadOptions();
   }, []);
+
+  // A new request for a client should follow their active booking. This keeps
+  // the retreat, quote, balance, and currency aligned with the booking ledger.
+  useEffect(() => {
+    if (isEdit || !formData.clientId) return;
+    let active = true;
+    setBookingDefaultsLoading(true);
+    setBookingDefaultsMessage('');
+    Promise.all([
+      bookingsApi.getByClient(formData.clientId),
+      paymentsApi.getByClient(formData.clientId).catch(() => ({ data: [] })),
+    ]).then(([bookingsResponse, paymentsResponse]) => {
+      if (!active) return;
+      const activeBookings = (bookingsResponse.data || []).filter((booking) =>
+        !['cancelled', 'moved', 'declined'].includes(String(booking.status || '').toLowerCase()),
+      );
+      if (!activeBookings.length) {
+        setBookingDefaultsMessage('No active booking found for this client.');
+        return;
+      }
+      const booking = [...activeBookings].sort((a, b) =>
+        new Date(b.checkInDate || 0).getTime() - new Date(a.checkInDate || 0).getTime(),
+      )[0];
+      const bookingId = booking._id || '';
+      const bookingPayments = (paymentsResponse.data || []).filter((payment: any) => {
+        const paymentBookingId = resolveId(payment.bookingId);
+        return paymentBookingId === bookingId && payment.status === 'completed';
+      });
+      const lastPayment = [...bookingPayments].sort((a: any, b: any) =>
+        new Date(b.paymentDate || b.processedDate || 0).getTime() - new Date(a.paymentDate || a.processedDate || 0).getTime(),
+      )[0] as any;
+      const fullPrice = Number(booking.totalAmount || 0);
+      const remaining = Math.max(0, fullPrice - Number(booking.amountPaid || 0));
+      const currency = lastPayment?.bookingCurrency || lastPayment?.currency || booking.currency || 'EUR';
+      setFormData((prev) => ({
+        ...prev,
+        retreatId: resolveId(booking.retreatId),
+        requestType: 'balance',
+        fullPriceQuote: String(fullPrice),
+        requestedAmount: String(remaining),
+        currency,
+      }));
+      setBookingDefaultsMessage(`Active booking defaults loaded${lastPayment ? ` · currency from last payment (${currency})` : ''}.`);
+    }).catch(() => {
+      if (active) setBookingDefaultsMessage('Unable to load active booking defaults.');
+    }).finally(() => {
+      if (active) setBookingDefaultsLoading(false);
+    });
+    return () => { active = false; };
+  }, [formData.clientId, isEdit]);
 
   useEffect(() => {
     if (!formData.retreatId) {
@@ -341,10 +393,22 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
               >
                 <option value="deposit">Deposit</option>
                 <option value="balance">Balance</option>
+                <option value="installment">Installment</option>
                 <option value="full_payment">Full Payment</option>
                 <option value="additional">Additional</option>
               </select>
             </div>
+
+            {bookingDefaultsLoading && (
+              <div className="md:col-span-2 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                Loading active booking defaults…
+              </div>
+            )}
+            {!bookingDefaultsLoading && bookingDefaultsMessage && (
+              <div className="md:col-span-2 rounded-md border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+                {bookingDefaultsMessage}
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Full Price Quote *</label>
