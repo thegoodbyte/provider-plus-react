@@ -13,7 +13,6 @@ import {
   medicalReviewDecisionLabels,
   medicalReviewDecisionOptions,
   normalizeMedicalReviewDecision,
-  sortMedicalReviewRequestsNewestFirst,
   splitMedicalReviewRequestsByTimeline,
 } from './MedicalReviewRequestsPage.helpers';
 
@@ -26,6 +25,9 @@ const reviewStatusStyle: Record<string, string> = {
   needs_resubmission: 'bg-orange-100 text-orange-800',
   completed: 'bg-gray-100 text-gray-800',
 };
+
+const normalizeReviewStatus = (value?: string) => String(value || '').trim().toLowerCase();
+const isPendingReview = (request: MedicalReviewRequest) => normalizeReviewStatus(request.status) === 'pending';
 
 const decisionOptions = medicalReviewDecisionOptions;
 const decisionLabels = medicalReviewDecisionLabels;
@@ -546,8 +548,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
     const retreatSearch = retreatFilter.trim().toLowerCase();
     const requestSearch = requestSearchFilter.trim().toLowerCase();
     const filtered = requests.filter((request) => {
-      if (statusFilter !== 'all' && request.status !== statusFilter) return false;
-      if (pendingOnly && request.status !== 'pending') return false;
+      if (statusFilter !== 'all' && normalizeReviewStatus(request.status) !== statusFilter) return false;
+      if (pendingOnly && !isPendingReview(request)) return false;
       if (!requestMatchesTypeFilter(request, typeFilter)) return false;
       if (retreatSearch && !getRetreatSearchText(request.retreatId).toLowerCase().includes(retreatSearch)) return false;
       if (requestSearch) {
@@ -577,7 +579,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
       }
       return true;
     });
-    return sortMedicalReviewRequestsNewestFirst(filtered);
+    return [...filtered].sort((a, b) => (isPendingReview(b) ? 0 : 1) - (isPendingReview(a) ? 0 : 1)
+      || new Date(b.requestedAt || b.createdAt || 0).getTime() - new Date(a.requestedAt || a.createdAt || 0).getTime());
   }, [pendingOnly, requests, requestSearchFilter, retreatFilter, statusFilter, typeFilter]);
 
   const reviewTimeline = useMemo(() => splitMedicalReviewRequestsByTimeline(selected, history), [history, selected]);

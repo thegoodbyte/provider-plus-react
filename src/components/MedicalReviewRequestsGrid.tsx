@@ -96,6 +96,9 @@ const statusClass: Record<string, string> = {
   completed: 'bg-gray-100 text-gray-800',
 };
 
+const normalizeReviewStatus = (value?: string) => String(value || '').trim().toLowerCase();
+const isPendingReview = (request: MedicalReviewRequest) => normalizeReviewStatus(request.status) === 'pending';
+
 const MedicalReviewRequestsGrid: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -220,14 +223,16 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const filteredRequests = useMemo(() => {
     const filtered = requests.filter((request) => {
       if (!matchesReviewRequestFilters(request, { searchTerm, typeFilter, dateFrom, dateTo })) return false;
-      if (filterStatus !== 'all' && request.status !== filterStatus) return false;
-      if (pendingOnly && request.status !== 'pending') return false;
+      if (filterStatus !== 'all' && normalizeReviewStatus(request.status) !== filterStatus) return false;
+      if (pendingOnly && !isPendingReview(request)) return false;
       if (filterAdvisorId !== 'all' && getAssigneeId(request) !== filterAdvisorId) return false;
       return true;
     });
     return [...filtered].sort((a, b) => {
       const date = (request: MedicalReviewRequest) => new Date(request.requestedAt || request.createdAt || request.assignedDate || 0).getTime() || 0;
-      return date(b) - date(a) || Number(b.display_id || 0) - Number(a.display_id || 0);
+      return (isPendingReview(b) ? 0 : 1) - (isPendingReview(a) ? 0 : 1)
+        || date(b) - date(a)
+        || Number(b.display_id || 0) - Number(a.display_id || 0);
     });
   }, [dateFrom, dateTo, filterAdvisorId, filterStatus, pendingOnly, requests, searchTerm, typeFilter]);
 
