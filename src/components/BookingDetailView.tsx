@@ -310,6 +310,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
             bookingId={bookingId}
             clientId={getObjectId(client)}
             retreatId={getObjectId(retreat)}
+            recipientEmail={client?.email || client?.emailAddress || ''}
             refreshKey={requirementsRefreshKey}
             onStatusChange={setRequirementsStatus}
           />
