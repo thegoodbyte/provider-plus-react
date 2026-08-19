@@ -296,9 +296,16 @@ const MedicalReviewGroupPage: React.FC = () => {
   if (error) return <div className="p-6 text-sm text-red-700">{error}</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50 px-4 py-6 md:px-6">
+    <div className="min-h-screen bg-white px-0 py-0 md:bg-gray-50 md:px-6 md:py-6">
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="border-b-2 border-gray-900 bg-white px-6 pb-5 pt-5 md:hidden">
+          <div className="mb-5 flex items-center justify-between text-cyan-700"><span className="text-xl">☰</span><div className="flex gap-5 text-lg"><span>⌕</span><span>♧</span><span>☼</span></div></div>
+          <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-cyan-800">Grouped medical review packet</div>
+          <div className="mt-2 flex items-start justify-between gap-4"><h1 className="text-[28px] font-black leading-none tracking-tight text-gray-900">{group?.title || 'Medical review packet'}</h1><div className="pt-1 text-right text-[10px] font-bold uppercase tracking-[0.12em]">Retreat packet<div className="mt-1 text-[11px] font-normal normal-case tracking-normal text-gray-500">{accessLinks.length} link{accessLinks.length === 1 ? '' : 's'} issued</div></div></div>
+          <p className="mt-5 text-[13px] text-gray-700">{group?.retreatName || 'No retreat'} <span className="mx-1 text-gray-400">|</span> <strong>{pendingRequestCount} pending request{pendingRequestCount === 1 ? '' : 's'}</strong></p>
+          <p className="mt-3 max-w-[310px] text-[13px] leading-snug text-gray-600">Use the permanent link below. It only shows pending reviews in this packet.</p>
+        </div>
+        <div className="hidden rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:block">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               <div className="text-xs font-semibold uppercase tracking-wide text-blue-700">Grouped medical review packet</div>
@@ -467,11 +474,11 @@ const MedicalReviewGroupPage: React.FC = () => {
           </div>
         )}
 
-        <div className="space-y-3">
+        <div className="space-y-3 px-6 pb-20 md:space-y-3 md:px-0 md:pb-0">
           {sections.length > 0 ? sections.map((section) => {
             const expanded = expandedSections.includes(section.key);
             return (
-              <div key={section.key} className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+              <div key={section.key} className="overflow-hidden border-y-2 border-gray-900 bg-white md:rounded-2xl md:border md:border-gray-200 md:shadow-sm">
                 <button
                   type="button"
                   className="flex w-full items-center justify-between gap-3 border-b border-gray-200 px-4 py-4 text-left"
@@ -497,7 +504,7 @@ const MedicalReviewGroupPage: React.FC = () => {
                     {section.requests.map((request) => (
                       <div
                         key={request._id}
-                        className={`grid gap-3 px-4 py-4 md:items-center ${canManageGroup ? 'md:grid-cols-[36px_150px_minmax(0,1fr)_220px_150px_130px]' : 'md:grid-cols-[150px_minmax(0,1fr)_220px_150px_130px]'}`}
+                        className={`grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 border-b border-gray-900 px-4 py-3 last:border-b-0 md:items-center md:border-0 md:py-4 ${canManageGroup ? 'md:grid-cols-[36px_150px_minmax(0,1fr)_220px_150px_130px]' : 'md:grid-cols-[150px_minmax(0,1fr)_220px_150px_130px]'}`}
                       >
                         {canManageGroup && packetEditMode && (
                           <div className="flex items-start justify-center">
@@ -513,11 +520,11 @@ const MedicalReviewGroupPage: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => navigate(`/medical/review-requests/${request._id}/edit`)}
-                            className="text-left text-sm font-semibold text-blue-700 hover:underline"
+                            className="text-left text-sm font-bold text-cyan-800 hover:underline"
                           >
                             #{request.display_id || '-'}
                           </button>
-                          <div className="mt-1 text-xs text-gray-500">{request.requestType || 'review'}</div>
+                          <div className="mt-1 text-xs text-gray-700"><span className="mr-2 inline-block border border-gray-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide md:hidden">{request.requestType === 'medications_review' ? 'Medications' : request.requestType || 'review'}</span><span className="hidden md:inline">{request.requestType || 'review'}</span></div>
                         </div>
                         <div className="min-w-0">
                           <div className="truncate text-sm font-medium text-gray-900">{getClientName(request)}</div>
@@ -536,7 +543,7 @@ const MedicalReviewGroupPage: React.FC = () => {
                             <button
                               type="button"
                               onClick={() => navigate(`/medical/review-requests/${request._id}/edit`)}
-                              className="rounded-md bg-blue-600 px-3 py-2 text-xs font-semibold text-white hover:bg-blue-700"
+                              className="rounded-none bg-cyan-700 px-3 py-3 text-xs font-bold text-white hover:bg-cyan-800 md:rounded-md md:py-2"
                             >
                               Open review
                             </button>
@@ -563,6 +570,10 @@ const MedicalReviewGroupPage: React.FC = () => {
               No pending reviews in this packet.
             </div>
           )}
+        </div>
+        <div className="fixed inset-x-0 bottom-0 z-20 flex items-center justify-between border-t border-gray-900 bg-white px-6 py-4 text-[11px] md:hidden">
+          <span className="text-gray-600">Showing pending only</span>
+          {group?.url && <button type="button" onClick={() => copyToClipboard(group.url || '')} className="font-medium text-cyan-800">Copy permanent link</button>}
         </div>
       </div>
 
