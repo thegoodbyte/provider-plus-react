@@ -33,6 +33,7 @@ import BookingStepActionCheckRow from './BookingStepActionCheckRow';
 import { BookingStepGroupHeader, BookingStepRowHeader } from './BookingStepRowHeaders';
 
 const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
+  const defaultAdvisorStorageKey = 'provider-plus.default-medical-advisor';
   const location = useLocation();
   const navigate = useNavigate();
   const [bookings, setBookings] = useState<any[]>([]);
@@ -96,7 +97,8 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       setMedicalArtifacts(artifactsResponse.data || []);
       setReviewRequests(reviewRequestsResponse.data || []);
       setPayments(Array.isArray(paymentsResponse.data) ? paymentsResponse.data : []);
-      setMedicalAdvisors((usersResponse.data || []).filter((user) => user.role === 'medical_advisor' && user.isActive !== false));
+    const advisors = (usersResponse.data || []).filter((user) => user.role === 'medical_advisor' && user.isActive !== false);
+    setMedicalAdvisors(advisors);
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -316,7 +318,8 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       artifactId,
       requestType: config.requestType,
       label: config.label,
-      advisorId: medicalAdvisors.length === 1 ? medicalAdvisors[0]._id : '',
+      advisorId: (() => { const saved = window.localStorage.getItem(defaultAdvisorStorageKey); return advisors.find((advisor) => advisor._id === saved)?._id || (advisors.length === 1 ? advisors[0]._id : '') || ''; })(),
+      rememberAdvisor: Boolean(window.localStorage.getItem(defaultAdvisorStorageKey)),
     });
   };
 
@@ -330,6 +333,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     const savingKey = `mrr:${itemId}`;
     setSaving(savingKey);
     try {
+      if (reviewRequestModal.rememberAdvisor) window.localStorage.setItem(defaultAdvisorStorageKey, reviewRequestModal.advisorId);
       const response = await medicalReviewRequestsApi.createFromArtifact(reviewRequestModal.artifactId, reviewRequestModal.requestType, {
         assignedToUserId: reviewRequestModal.advisorId,
         bookingFlowItemId: itemId,
