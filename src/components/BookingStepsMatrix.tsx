@@ -322,6 +322,9 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
     try {
       const response = await medicalReviewRequestsApi.createFromArtifact(reviewRequestModal.artifactId, reviewRequestModal.requestType, {
         assignedToUserId: reviewRequestModal.advisorId,
+        bookingFlowItemId: itemId,
+        retreatId: getObjectId(booking.retreatId as any) || retreatId,
+        clientId: getBookingClientId(booking) || undefined,
         medicalStaffNotes: `${reviewRequestModal.label} created from booking step "${item.title}" for booking #${getBookingNumber(booking)}.`,
       });
       const reviewRequest = response.data;
