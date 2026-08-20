@@ -22,6 +22,16 @@ describe('bookingStepRows', () => {
     expect(rows[1].templateId).toBe('z-id');
   });
 
+  it('marks rows configured as client requirements from templates or item metadata', () => {
+    const rows = buildBookingStepRows([
+      { key: 'contract', title: 'Contract', order: 1, category: 'contract', isRequirement: true },
+      { key: 'optional', title: 'Optional', order: 2, category: 'other' },
+    ] as any, [
+      { key: 'food', title: 'Food form', order: 3, category: 'dietary', metadata: { requiredFromClient: true } },
+    ] as any);
+    expect(rows.filter((row) => row.isRequirement).map((row) => row.key)).toEqual(['contract', 'food']);
+  });
+
   it('groups rows in first-seen order and carries the first available color', () => {
     const rows: any[] = [
       { key: 'a', title: 'A', groupKey: 'medical', groupLabel: 'Medical', rows: [], order: 1 },
