@@ -22,7 +22,7 @@ const RetreatsGrid: React.FC = () => {
   const [bookings, setBookings] = useState<RetreatClient[]>([]);
   const [houses, setHouses] = useState<House[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'list' | 'holistic'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'holistic' | 'requirements'>('list');
   const [isLoadingStepData, setIsLoadingStepData] = useState(false);
   const [retreatMatrices, setRetreatMatrices] = useState<Record<string, { items: BookingFlowItem[]; templates: BookingFlowTemplate[] }>>({});
   const [selectedBookingStepKey, setSelectedBookingStepKey] = useState('');
@@ -420,6 +420,13 @@ const RetreatsGrid: React.FC = () => {
             >
               Holistic View
             </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('requirements')}
+              className={viewMode === 'requirements' ? 'is-active' : ''}
+            >
+              Requirements
+            </button>
             <Link
               to={`/${routePrefix}/booking-step-deadlines`}
               className=""
@@ -465,8 +472,8 @@ const RetreatsGrid: React.FC = () => {
         </select>
       </div>}
 
-      {viewMode === 'holistic' ? (
-        <><RetreatHolisticView retreats={operationalRetreats} options={bookingStepOptions} selectedKey={selectedBookingStepKey} onSelect={setSelectedBookingStepKey} matrices={retreatMatrices} getId={getObjectId} getBookings={getRetreatBookings} getCode={getRetreatCodeValue} getTown={getRetreatTown} getClientName={getClientName} getClientDisplayId={getClientDisplayId} getClientLanguage={getClientLanguage} routePrefix={routePrefix} />{false && <div className="space-y-6">
+      {viewMode === 'holistic' || viewMode === 'requirements' ? (
+        <><RetreatHolisticView requirementsMode={viewMode === 'requirements'} retreats={operationalRetreats} options={bookingStepOptions} selectedKey={selectedBookingStepKey} onSelect={setSelectedBookingStepKey} matrices={retreatMatrices} getId={getObjectId} getBookings={getRetreatBookings} getCode={getRetreatCodeValue} getTown={getRetreatTown} getClientName={getClientName} getClientDisplayId={getClientDisplayId} getClientLanguage={getClientLanguage} routePrefix={routePrefix} />{false && <div className="space-y-6">
           <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
               <div>

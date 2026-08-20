@@ -13,6 +13,8 @@ export interface BookingStepMatrixRow {
   templateId?: string;
   emailEnabled?: boolean;
   emailTemplateId?: BookingFlowTemplate['emailTemplateId'];
+  /** True when this step is configured as a client requirement. */
+  isRequirement?: boolean;
 }
 
 export interface BookingStepMatrixRowGroup {
@@ -34,6 +36,7 @@ export const buildBookingStepRows = (templates: BookingFlowTemplate[], items: Bo
       templateId: template._id,
       emailEnabled: template.emailEnabled,
       emailTemplateId: template.emailTemplateId,
+      isRequirement: Boolean(template.isRequirement || template.requiredFromClient),
     });
   });
   items.forEach((item) => {
@@ -49,6 +52,7 @@ export const buildBookingStepRows = (templates: BookingFlowTemplate[], items: Bo
       templateId: existing?.templateId || template?._id || (typeof item.templateId === 'string' ? item.templateId : undefined),
       emailEnabled: existing?.emailEnabled || item.emailEnabled || template?.emailEnabled,
       emailTemplateId: existing?.emailTemplateId || item.emailTemplateId || template?.emailTemplateId,
+      isRequirement: Boolean(existing?.isRequirement || template?.isRequirement || template?.requiredFromClient || item.metadata?.isRequirement || item.metadata?.requiredFromClient),
     });
   });
   return Array.from(rowMap.values()).sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));
