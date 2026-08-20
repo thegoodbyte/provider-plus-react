@@ -32,10 +32,10 @@ const RetreatHolisticView: React.FC<Props> = ({ retreats, options, selectedKey, 
     const requiredKeys = new Set<string>();
     Object.values(matrices).forEach(matrix => {
       matrix.templates?.forEach(template => {
-        if (template.isRequirement || template.requiredFromClient) requiredKeys.add(template.key);
+        if (template.isRequirement || template.requiredFromClient || template.requirementType) requiredKeys.add(template.key);
       });
       matrix.items?.forEach(item => {
-        if (item.metadata?.isRequirement || item.metadata?.requiredFromClient) requiredKeys.add(item.key);
+        if (item.metadata?.isRequirement || item.metadata?.requiredFromClient || item.metadata?.requirementType) requiredKeys.add(item.key);
       });
     });
     return options.filter(option => requiredKeys.has(option.key));

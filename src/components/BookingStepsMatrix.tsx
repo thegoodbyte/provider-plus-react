@@ -157,7 +157,17 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
   };
 
   const allRows = useMemo(() => buildBookingStepRows(templates, items), [items, templates]);
-  const rows = useMemo(() => showRequirementsOnly ? allRows.filter((row) => row.isRequirement) : allRows, [allRows, showRequirementsOnly]);
+  // The generated retreat matrix can predate a requirement flag being added.
+  // The booking-step library is the global source of truth, so use it as a
+  // fallback when deciding which columns are client requirements.
+  const globallyRequiredKeys = useMemo(() => new Set(
+    libraryTemplates
+      .filter((template) => template.active !== false && Boolean(template.isRequirement || template.requiredFromClient || template.requirementType))
+      .map((template) => template.key),
+  ), [libraryTemplates]);
+  const rows = useMemo(() => showRequirementsOnly
+    ? allRows.filter((row) => row.isRequirement || globallyRequiredKeys.has(row.key))
+    : allRows, [allRows, globallyRequiredKeys, showRequirementsOnly]);
   const groupedRows = useMemo(() => groupBookingStepRows(rows), [rows]);
   const filteredGroupedRows = useMemo(() => filterBookingStepRowGroups(groupedRows, selectedActionKeys), [groupedRows, selectedActionKeys]);
 

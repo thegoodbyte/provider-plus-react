@@ -197,6 +197,8 @@ const RetreatsGrid: React.FC = () => {
 
     setIsLoadingStepData(true);
     try {
+      const libraryResponse = await bookingFlowApi.getLibraryTemplates().catch(() => ({ data: [] as BookingFlowTemplate[] }));
+      const libraryTemplates = libraryResponse.data || [];
       const results = await Promise.all(
         retreatIds.map(async (retreatId) => {
           try {
@@ -205,7 +207,9 @@ const RetreatsGrid: React.FC = () => {
               retreatId,
               {
                 items: response.data?.items || [],
-                templates: response.data?.templates || [],
+                // Include the global library metadata so the Requirements
+                // view uses the same source of truth as Booking Requirements.
+                templates: [...(response.data?.templates || []), ...libraryTemplates],
               },
             ] as const;
           } catch (error) {
