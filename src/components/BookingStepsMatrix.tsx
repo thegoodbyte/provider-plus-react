@@ -196,6 +196,33 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
 
   const paymentsByClientId = useMemo(() => indexBookingStepPayments(payments), [payments]);
 
+  const requirementsOnlyTable = showRequirementsOnly ? (
+    <table className="min-w-full border-separate border-spacing-0 text-sm">
+      <thead>
+        <tr>
+          <th className="sticky left-0 top-0 z-40 min-w-[240px] border-b border-r border-gray-300 bg-gray-100 px-3 py-3 text-left text-xs font-semibold uppercase text-gray-600 shadow-[4px_0_10px_rgba(15,23,42,0.08)]">Name</th>
+          {rows.map((row) => <th key={row.key} className="min-w-[180px] border-b border-r border-gray-300 bg-gray-100 px-3 py-3 text-left text-xs font-semibold uppercase text-gray-600">{row.title}</th>)}
+        </tr>
+      </thead>
+      <tbody>
+        {bookings.map((booking) => {
+          const bookingId = getObjectId(booking);
+          return <tr key={bookingId}>
+            <BookingStepClientHeader booking={booking} viewMode="simple" routePrefix={routePrefix} />
+            {rows.map((row) => {
+              const item = itemMap.get(`${bookingId}:${row.key}`);
+              const status = getSimpleStepStatus(item);
+              return <td key={`${bookingId}:${row.key}`} className={`border-b border-r border-gray-300 px-3 py-3 text-center ${status.className}`} title={`${row.title}: ${status.label}`}>
+                <span className="font-semibold">{status.icon === 'fulfilled' ? '✓ Done' : status.icon === 'attention' ? '⚠ Review' : status.icon === 'failed' ? '✕ Failed' : '— Not yet'}</span>
+              </td>;
+            })}
+          </tr>;
+        })}
+        {!bookings.length && <tr><td colSpan={rows.length + 1} className="px-4 py-8 text-center text-gray-500">No bookings for this retreat.</td></tr>}
+      </tbody>
+    </table>
+  ) : null;
+
   const toggleItem = async (item: BookingFlowItem | undefined, checked: boolean) => {
     if (!item?._id) return;
     setSaving(item._id);
@@ -669,7 +696,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       <BookingStepsToolbar viewMode={viewMode} isEditing={isEditing} isFullScreen={isFullScreen} saving={saving} message={toolbarMessage} showRequirementsOnly={showRequirementsOnly} onShowRequirementsOnly={setShowRequirementsOnly} onViewMode={setViewMode} onUnlock={() => setIsEditing(true)} onSaveAndLock={() => saveAllChanges(true)} onFullScreen={() => setIsFullScreen((current) => !current)} onRefresh={() => loadData()} onGenerate={generateSteps} />
 
       <div className={`${isFullScreen ? 'min-h-0 flex-1' : 'max-h-[calc(100vh-220px)]'} overflow-auto rounded-lg border border-gray-300 bg-white`}>
-        <table className="min-w-full border-separate border-spacing-0 text-sm">
+        {showRequirementsOnly ? requirementsOnlyTable : <table className="min-w-full border-separate border-spacing-0 text-sm">
           <thead>
             <tr>
               <th className={`sticky left-0 top-0 z-40 border-b border-r border-gray-300 bg-gray-100 bg-clip-padding px-3 py-2 text-left text-xs font-semibold uppercase text-gray-600 shadow-[4px_0_10px_rgba(15,23,42,0.08)] ${viewMode === 'simple' ? 'min-w-[240px]' : 'min-w-[220px]'}`}>
@@ -720,7 +747,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
               </tr>
             )}
           </tbody>
-        </table>
+        </table>}
       </div>
 
       {actionFilterOpen && <BookingStepsActionFilter rows={rows} visibleRows={visibleActionFilterRows} draft={actionFilterDraft} search={actionFilterSearch} position={actionFilterPosition} onDraft={setActionFilterDraft} onSearch={setActionFilterSearch} onClose={() => setActionFilterOpen(false)} onApply={(selection) => { setSelectedActionKeys(selection); setActionFilterOpen(false); }} />}
