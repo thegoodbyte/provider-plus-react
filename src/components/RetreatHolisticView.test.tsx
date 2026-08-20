@@ -20,4 +20,12 @@ describe('RetreatHolisticView', () => {
     fireEvent.change(screen.getByLabelText('Search holistic bookings'), { target: { value: '102' } }); expect(screen.queryByText('Done Client')).not.toBeInTheDocument();
     fireEvent.click(screen.getByText('Collapse all')); expect(screen.queryByText('Missing Client')).not.toBeInTheDocument(); expect(screen.getByText('Show people')).toBeInTheDocument();
   });
+
+  it('shows every configured required step as a column', () => {
+    render(<MemoryRouter><RetreatHolisticView {...props} requirementsMode options={[{ key: 'contract_signed', label: 'Contract received', order: 1 }, { key: 'ekg_received', label: 'Entry EKG', order: 2 }]} matrices={{ r1: { templates: [{ key: 'contract_signed', title: 'Contract received', category: 'contract', offsetDays: 5, isRequirement: true }, { key: 'ekg_received', title: 'Entry EKG', category: 'medical', offsetDays: 21, requiredFromClient: true }] as any, items: [{ bookingId: 'b1', key: 'contract_signed', status: 'completed' }, { bookingId: 'b1', key: 'ekg_received', status: 'pending' }, { bookingId: 'b2', key: 'contract_signed', status: 'pending' }, { bookingId: 'b2', key: 'ekg_received', status: 'completed' }] }}} /></MemoryRouter>);
+    expect(screen.getByText('Contract received')).toBeInTheDocument();
+    expect(screen.getByText('Entry EKG')).toBeInTheDocument();
+    expect(screen.getAllByText('✓ Done')).toHaveLength(2);
+    expect(screen.getAllByText('⊗ Not yet')).toHaveLength(2);
+  });
 });
