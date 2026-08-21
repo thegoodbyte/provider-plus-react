@@ -218,7 +218,7 @@ const RetreatsGrid: React.FC = () => {
           }
         })
       );
-      setRetreatMatrices(Object.fromEntries(results));
+      setRetreatMatrices(Object.fromEntries(results) as Record<string, { items: BookingFlowItem[]; templates: BookingFlowTemplate[] }>);
     } finally {
       setIsLoadingStepData(false);
     }

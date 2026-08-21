@@ -318,7 +318,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       artifactId,
       requestType: config.requestType,
       label: config.label,
-      advisorId: (() => { const saved = window.localStorage.getItem(defaultAdvisorStorageKey); return advisors.find((advisor) => advisor._id === saved)?._id || (advisors.length === 1 ? advisors[0]._id : '') || ''; })(),
+      advisorId: (() => { const saved = window.localStorage.getItem(defaultAdvisorStorageKey); return medicalAdvisors.find((advisor) => advisor._id === saved)?._id || (medicalAdvisors.length === 1 ? medicalAdvisors[0]._id : '') || ''; })(),
       rememberAdvisor: Boolean(window.localStorage.getItem(defaultAdvisorStorageKey)),
     });
   };
