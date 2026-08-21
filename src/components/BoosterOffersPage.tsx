@@ -14,12 +14,28 @@ const BoosterOffersPage: React.FC = () => {
   const [bookings, setBookings] = useState<RetreatClient[]>([]);
   const [ceremonies, setCeremonies] = useState<Ceremony[]>([]);
   const [retreatId, setRetreatId] = useState('');
+  const [retreatSearch, setRetreatSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const selectedRetreat = useMemo(() => retreats.find((item) => item._id === retreatId), [retreatId, retreats]);
-  const occupiedPlaces = bookings.filter((booking) =>
-    idOf(booking.retreatId) === retreatId && !isCancelledBookingStatus(booking.status)
-  ).length;
-  const suggestedPlaces = Math.max(0, Number(selectedRetreat?.capacity || 0) - occupiedPlaces);
+  const activeBookingsFor = (id: string) => bookings.filter((booking) =>
+    idOf(booking.retreatId) === id && !isCancelledBookingStatus(booking.status)
+  );
+  const boosterSpotsFor = (retreat: Retreat) => {
+    const active = activeBookingsFor(idOf(retreat));
+    const ceremonyCount = Math.max(1, Number(retreat.ceremonyCount || 2));
+    const used = active.reduce((sum, booking) => sum + (booking.bookingType === 'booster' ? 1 : ceremonyCount), 0);
+    return Math.max(0, Number(retreat.capacity || 0) * ceremonyCount - used);
+  };
+  const selectedBookings = activeBookingsFor(retreatId);
+  const fullRetreatBookings = selectedBookings.filter((booking) => booking.bookingType !== 'booster').length;
+  const totalBoosterSpots = selectedRetreat ? boosterSpotsFor(selectedRetreat) : 0;
+  const ceremonyRemaining = (ceremony: Ceremony, index: number) => {
+    const boosterBookings = selectedBookings.filter((booking) => booking.bookingType === 'booster' && (
+      idOf(booking.ceremonyId) === idOf(ceremony) || (!booking.ceremonyId && Number(booking.ceremonyNumber) === index + 1)
+    )).length;
+    return Math.max(0, Number(selectedRetreat?.capacity || 0) - fullRetreatBookings - boosterBookings);
+  };
+  const retreatLabel = (retreat: Retreat) => `${retreat.code || retreat.retreatCode || retreat.name} · ${boosterSpotsFor(retreat)} booster spot${boosterSpotsFor(retreat) === 1 ? '' : 's'}`;
 
   const load = async () => {
     setLoading(true);
@@ -40,8 +56,9 @@ const BoosterOffersPage: React.FC = () => {
   }, [retreatId]);
 
   const addCeremony = async (ceremony: Ceremony) => {
-    if (!selectedRetreat || !ceremony._id || suggestedPlaces === 0 || offers.some((offer) => idOf(offer.ceremonyId) === ceremony._id)) return;
     const index = ceremonies.findIndex((item) => item._id === ceremony._id);
+    const available = ceremonyRemaining(ceremony, index);
+    if (!selectedRetreat || !ceremony._id || available === 0 || offers.some((offer) => idOf(offer.ceremonyId) === ceremony._id)) return;
     const next = ceremonies[index + 1];
     await boosterOffersApi.create({
       retreatId,
@@ -49,7 +66,7 @@ const BoosterOffersPage: React.FC = () => {
       ceremonyNumber: index + 1,
       arrivalAt: dateTimeLocal((index === 0 ? selectedRetreat.startDate : ceremony.date) || new Date(), index === 0 ? selectedRetreat.startTime : '19:00'),
       departureAt: dateTimeLocal(next?.date || selectedRetreat.endDate || ceremony.date || new Date(), next ? '19:00' : selectedRetreat.endTime || '11:00'),
-      capacity: Math.max(1, suggestedPlaces),
+      capacity: available,
       currency: 'EUR',
       published: false,
     });
@@ -65,14 +82,27 @@ const BoosterOffersPage: React.FC = () => {
   return <div className="p-6">
     <div className="mb-6 flex items-start justify-between gap-4">
       <div><h1 className="flex items-center gap-2 text-2xl font-semibold text-gray-900"><Icon icon={FiZap} className="text-amber-500" /> Booster Offers</h1><p className="mt-1 text-sm text-gray-600">You control which ceremony slots are publicly offered. Booster bookings automatically reduce availability.</p></div>
-      <select value={retreatId} onChange={(event) => setRetreatId(event.target.value)} className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm">
-        <option value="">Choose a retreat to offer slots</option>{retreats.map((retreat) => <option key={retreat._id} value={retreat._id}>{retreat.code || retreat.retreatCode || retreat.name}</option>)}
-      </select>
+      <div className="w-full max-w-md">
+        <input
+          list="booster-retreat-options"
+          value={retreatSearch}
+          onChange={(event) => {
+            const value = event.target.value;
+            setRetreatSearch(value);
+            const match = retreats.find((retreat) => retreatLabel(retreat) === value);
+            setRetreatId(match?._id || '');
+          }}
+          placeholder="Search retreat code, date or location…"
+          className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm"
+        />
+        <datalist id="booster-retreat-options">{retreats.map((retreat) => <option key={retreat._id} value={retreatLabel(retreat)} />)}</datalist>
+      </div>
     </div>
 
-    {retreatId && <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4"><div className="mb-1 font-medium text-amber-950">Available ceremonies to configure</div><div className="mb-3 text-sm text-amber-800">Live bookings show {occupiedPlaces}/{selectedRetreat?.capacity || 0} places occupied and {suggestedPlaces} empty place{suggestedPlaces === 1 ? '' : 's'}. You still choose exactly which ceremonies to publish.</div><div className="flex flex-wrap gap-2">{ceremonies.map((ceremony, index) => {
+    {retreatId && <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4"><div className="mb-1 font-medium text-amber-950">Available ceremonies to configure</div><div className="mb-3 text-sm text-amber-800">{fullRetreatBookings} full-retreat and {selectedBookings.length - fullRetreatBookings} booster booking{selectedBookings.length - fullRetreatBookings === 1 ? '' : 's'} leave {totalBoosterSpots} booster ceremony spot{totalBoosterSpots === 1 ? '' : 's'}. You still choose exactly which ceremonies to publish.</div><div className="flex flex-wrap gap-2">{ceremonies.map((ceremony, index) => {
       const configured = offers.some((offer) => idOf(offer.ceremonyId) === ceremony._id);
-      return <button key={ceremony._id} disabled={configured || suggestedPlaces === 0} title={suggestedPlaces === 0 ? 'This retreat is full.' : undefined} onClick={() => addCeremony(ceremony)} className="flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"><Icon icon={FiPlus} /> Ceremony {index + 1} · {new Date(ceremony.date).toLocaleDateString()}</button>;
+      const available = ceremonyRemaining(ceremony, index);
+      return <button key={ceremony._id} disabled={configured || available === 0} title={available === 0 ? 'No space remains in this ceremony.' : undefined} onClick={() => addCeremony(ceremony)} className="flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"><Icon icon={FiPlus} /> Ceremony {index + 1} · {new Date(ceremony.date).toLocaleDateString()} · {available} spot{available === 1 ? '' : 's'}</button>;
     })}</div></div>}
 
     <div className="overflow-x-auto rounded-xl bg-white shadow-sm"><table className="min-w-full divide-y divide-gray-200"><thead className="bg-gray-50"><tr>{['Retreat / ceremony','Arrival','Departure','Places','Price','Availability','Public',''].map((label) => <th key={label} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</th>)}</tr></thead><tbody className="divide-y divide-gray-100">
