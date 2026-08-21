@@ -97,6 +97,14 @@ const getFileName = (file: NonNullable<MedicalArtifact['files']>[number]) => {
   return file.fileName || storedPath.split('/').pop() || 'Medical artifact file';
 };
 
+const readableAnswerKey = (key: string) => String(key || '').replace(/^q\d+_/, '').replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()).trim() || key;
+
+const formatAnswerValue = (value: any): string => {
+  if (value === undefined || value === null || value === '') return '—';
+  if (typeof value === 'object') return JSON.stringify(value, null, 2);
+  return String(value);
+};
+
 const getUploadErrorMessage = (error: any) => {
   const data = error?.response?.data;
   const details = data?.details;
@@ -965,6 +973,25 @@ const MedicalArtifactDetailPage: React.FC = () => {
           </form>
         ) : (
           <div className="space-y-4">
+            {artifact.data?.answers && Object.keys(artifact.data.answers).length > 0 && (
+              <section className="rounded-none border-x-0 border-y border-gray-200 bg-white p-4 md:rounded-md md:border" aria-labelledby="artifact-answers-heading">
+                <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                  <div>
+                    <h2 id="artifact-answers-heading" className="text-sm font-semibold uppercase tracking-wide text-gray-500">Submitted answers</h2>
+                    <p className="mt-1 text-xs text-gray-500">Question-and-answer data saved with this medical artifact.</p>
+                  </div>
+                  {artifact.data.language && <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">Language: {String(artifact.data.language).toUpperCase()}</span>}
+                </div>
+                <div className="divide-y divide-gray-100 rounded-md border border-gray-200">
+                  {Object.entries(artifact.data.answers as Record<string, any>).filter(([key]) => key !== 'pretty').map(([key, value]) => (
+                    <div key={key} className="grid gap-1 px-3 py-3 sm:grid-cols-[minmax(180px,0.35fr)_minmax(0,1fr)] sm:gap-4">
+                      <div className="text-sm font-semibold text-gray-700">{readableAnswerKey(key)}</div>
+                      <div className="whitespace-pre-wrap break-words text-sm text-gray-900">{formatAnswerValue(value)}</div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
             {previewFiles.length > 0 && (
               <div className="space-y-4">
                 <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Preview</h2>
