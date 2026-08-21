@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FiPlus, FiTrash2, FiZap } from 'react-icons/fi';
-import { boosterOffersApi, ceremoniesApi, retreatsApi } from '../services/api';
-import { BoosterOffer, Ceremony, Retreat } from '../types';
+import { boosterOffersApi, bookingsApi, ceremoniesApi, retreatsApi } from '../services/api';
+import { BoosterOffer, Ceremony, Retreat, RetreatClient } from '../types';
+import { isCancelledBookingStatus } from './retreatClientVisibility';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: Component, className }) => <Component className={className} />;
 const idOf = (value: any) => String(value?._id || value || '');
@@ -10,18 +11,25 @@ const dateTimeLocal = (value: Date | string, time = '18:00') => `${new Date(valu
 const BoosterOffersPage: React.FC = () => {
   const [offers, setOffers] = useState<BoosterOffer[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
+  const [bookings, setBookings] = useState<RetreatClient[]>([]);
   const [ceremonies, setCeremonies] = useState<Ceremony[]>([]);
   const [retreatId, setRetreatId] = useState('');
   const [loading, setLoading] = useState(true);
   const selectedRetreat = useMemo(() => retreats.find((item) => item._id === retreatId), [retreatId, retreats]);
-  const suggestedPlaces = Math.max(0, Number(selectedRetreat?.capacity || 0) - Number(selectedRetreat?.currentOccupancy || 0));
+  const occupiedPlaces = bookings.filter((booking) =>
+    idOf(booking.retreatId) === retreatId && !isCancelledBookingStatus(booking.status)
+  ).length;
+  const suggestedPlaces = Math.max(0, Number(selectedRetreat?.capacity || 0) - occupiedPlaces);
 
   const load = async () => {
     setLoading(true);
     try {
-      const [offerResponse, retreatResponse] = await Promise.all([boosterOffersApi.getAll(), retreatsApi.getAll()]);
+      const [offerResponse, retreatResponse, bookingResponse] = await Promise.all([
+        boosterOffersApi.getAll(), retreatsApi.getAll(), bookingsApi.getAll(),
+      ]);
       setOffers(offerResponse.data || []);
       setRetreats((retreatResponse.data || []).filter((item: Retreat) => item.status !== 'cancelled'));
+      setBookings(bookingResponse.data || []);
     } finally { setLoading(false); }
   };
 
@@ -32,7 +40,7 @@ const BoosterOffersPage: React.FC = () => {
   }, [retreatId]);
 
   const addCeremony = async (ceremony: Ceremony) => {
-    if (!selectedRetreat || !ceremony._id || offers.some((offer) => idOf(offer.ceremonyId) === ceremony._id)) return;
+    if (!selectedRetreat || !ceremony._id || suggestedPlaces === 0 || offers.some((offer) => idOf(offer.ceremonyId) === ceremony._id)) return;
     const index = ceremonies.findIndex((item) => item._id === ceremony._id);
     const next = ceremonies[index + 1];
     await boosterOffersApi.create({
@@ -62,9 +70,9 @@ const BoosterOffersPage: React.FC = () => {
       </select>
     </div>
 
-    {retreatId && <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4"><div className="mb-1 font-medium text-amber-950">Available ceremonies to configure</div><div className="mb-3 text-sm text-amber-800">Retreat capacity suggests {suggestedPlaces} empty place{suggestedPlaces === 1 ? '' : 's'}. You still choose exactly which ceremonies to publish.</div><div className="flex flex-wrap gap-2">{ceremonies.map((ceremony, index) => {
+    {retreatId && <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50 p-4"><div className="mb-1 font-medium text-amber-950">Available ceremonies to configure</div><div className="mb-3 text-sm text-amber-800">Live bookings show {occupiedPlaces}/{selectedRetreat?.capacity || 0} places occupied and {suggestedPlaces} empty place{suggestedPlaces === 1 ? '' : 's'}. You still choose exactly which ceremonies to publish.</div><div className="flex flex-wrap gap-2">{ceremonies.map((ceremony, index) => {
       const configured = offers.some((offer) => idOf(offer.ceremonyId) === ceremony._id);
-      return <button key={ceremony._id} disabled={configured} onClick={() => addCeremony(ceremony)} className="flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm disabled:opacity-50"><Icon icon={FiPlus} /> Ceremony {index + 1} · {new Date(ceremony.date).toLocaleDateString()}</button>;
+      return <button key={ceremony._id} disabled={configured || suggestedPlaces === 0} title={suggestedPlaces === 0 ? 'This retreat is full.' : undefined} onClick={() => addCeremony(ceremony)} className="flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"><Icon icon={FiPlus} /> Ceremony {index + 1} · {new Date(ceremony.date).toLocaleDateString()}</button>;
     })}</div></div>}
 
     <div className="overflow-x-auto rounded-xl bg-white shadow-sm"><table className="min-w-full divide-y divide-gray-200"><thead className="bg-gray-50"><tr>{['Retreat / ceremony','Arrival','Departure','Places','Price','Availability','Public',''].map((label) => <th key={label} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</th>)}</tr></thead><tbody className="divide-y divide-gray-100">
