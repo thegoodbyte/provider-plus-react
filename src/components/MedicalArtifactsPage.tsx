@@ -171,6 +171,20 @@ const getReviewDecision = (review?: MedicalReviewRequest) => {
   return '';
 };
 
+const getArtifactOutcome = (artifact: MedicalArtifact, latestReview?: MedicalReviewRequest) => {
+  const decision = getReviewDecision(latestReview);
+  if (decision === 'NOT OK') return 'declined';
+  if (decision === 'caution') return 'caution';
+  if (decision === 'OK') return 'ok';
+  if (latestReview?.status === 'needs_resubmission') return 'needs_info';
+  if (latestReview && ['pending', 'assigned', 'in_progress', 'in_review'].includes(latestReview.status || '')) return 'pending';
+  if (artifact.status === 'rejected' || artifact.status === 'needs_resubmission') return artifact.status === 'needs_resubmission' ? 'needs_info' : 'declined';
+  if (artifact.status === 'pending_review') return 'pending';
+  return '';
+};
+
+const outcomeLabel: Record<string, string> = { declined: 'Declined', needs_info: 'Needs info', pending: 'Pending', ok: 'OK', caution: 'Caution' };
+
 const ReviewResultBadge: React.FC<{ review?: MedicalReviewRequest }> = ({ review }) => {
   if (!review) {
     return <span className="text-xs text-gray-400">No review</span>;
@@ -240,6 +254,7 @@ const MedicalArtifactsPage: React.FC = () => {
   const [artifactTypeFilter, setArtifactTypeFilter] = useState<'all' | NonNullable<MedicalArtifact['artifactType']>>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | NonNullable<MedicalArtifact['status']>>('all');
   const [reviewFilter, setReviewFilter] = useState<'all' | 'has_review' | 'no_review'>('all');
+  const [outcomeFilter, setOutcomeFilter] = useState<'all' | 'declined' | 'needs_info' | 'pending'>('all');
   const [activeView, setActiveView] = useState<'artifacts' | 'retreat_submissions'>('artifacts');
   const [retreats, setRetreats] = useState<Retreat[]>([]);
   const [submissionRetreatFilter, setSubmissionRetreatFilter] = useState('');
@@ -252,6 +267,7 @@ const MedicalArtifactsPage: React.FC = () => {
   const [submissionsLoading, setSubmissionsLoading] = useState(false);
   const [submissionsError, setSubmissionsError] = useState('');
   const [deletingArtifactId, setDeletingArtifactId] = useState('');
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -334,6 +350,7 @@ const MedicalArtifactsPage: React.FC = () => {
       const artifactClientId = String(getObjectId(artifact.clientId) || '').toLowerCase();
       const artifactRetreatSearch = getRetreatSearchText(artifact.retreatId).toLowerCase();
       const artifactReviews = artifact._id ? reviewsByArtifactId.get(artifact._id) || [] : [];
+      const outcome = getArtifactOutcome(artifact, artifactReviews[0]);
 
       if (search && !getSearchText(artifact).includes(search)) return false;
       if (bookingId && !artifactBookingId.includes(bookingId)) return false;
@@ -345,9 +362,20 @@ const MedicalArtifactsPage: React.FC = () => {
       if (statusFilter !== 'all' && (artifact.status || 'stored') !== statusFilter) return false;
       if (reviewFilter === 'has_review' && artifactReviews.length === 0) return false;
       if (reviewFilter === 'no_review' && artifactReviews.length > 0) return false;
+      if (outcomeFilter !== 'all' && outcome !== outcomeFilter) return false;
       return true;
     });
-  }, [artifacts, artifactTypeFilter, bookingIdFilter, clientIdFilter, documentTypeFilter, retreatIdFilter, reviewFilter, reviewsByArtifactId, searchFilter, stageFilter, statusFilter]);
+  }, [artifacts, artifactTypeFilter, bookingIdFilter, clientIdFilter, documentTypeFilter, outcomeFilter, retreatIdFilter, reviewFilter, reviewsByArtifactId, searchFilter, stageFilter, statusFilter]);
+
+  const outcomeCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: artifacts.length, declined: 0, needs_info: 0, pending: 0 };
+    artifacts.forEach((artifact) => {
+      const latest = artifact._id ? (reviewsByArtifactId.get(artifact._id) || [])[0] : undefined;
+      const outcome = getArtifactOutcome(artifact, latest);
+      if (outcome === 'declined' || outcome === 'needs_info' || outcome === 'pending') counts[outcome] += 1;
+    });
+    return counts;
+  }, [artifacts, reviewsByArtifactId]);
 
   const retreatOptions = useMemo(() => {
     const map = new Map<string, { value: string; label: string }>();
@@ -435,44 +463,62 @@ const MedicalArtifactsPage: React.FC = () => {
   }
 
   return (
-    <div className="p-3 md:p-6">
-      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div className="min-h-full bg-slate-50 p-3 md:p-6">
+      <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Medical Artifacts</h1>
-          <p className="text-sm text-gray-600">Stored EKGs, liver panels, medication forms, questions, and other medical records.</p>
+          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500"><span className="rounded bg-rose-100 px-2 py-1 text-rose-700">Admin</span><span>Medical records</span></div>
+          <h1 className="text-3xl font-bold tracking-tight text-slate-950 md:text-4xl">Medical Artifacts</h1>
+          <p className="mt-2 max-w-3xl text-sm text-slate-500">Stored EKGs, liver panels, medication forms, questionnaires, and other medical records.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={() => navigate('new')} className="inline-flex items-center gap-2 rounded-md bg-gray-900 px-3 py-2 text-sm font-medium text-white hover:bg-black">
-            <Plus className="h-4 w-4" />
-            Add New
-          </button>
-          <button onClick={loadData} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+        <div className="flex flex-row-reverse items-center justify-end gap-2 md:flex-row">
+          <button onClick={loadData} className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
             <RefreshCw className="h-4 w-4" />
             Refresh
+          </button>
+          <button onClick={() => navigate('new')} className="inline-flex items-center gap-2 rounded-md bg-cyan-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-cyan-800">
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Add New Artifact</span><span className="sm:hidden">Add</span>
           </button>
         </div>
       </div>
 
-      <div className="mb-4 inline-flex rounded-md border border-gray-200 bg-white p-1">
+      <div className="mb-5 flex w-full border-b border-slate-200 bg-white px-2 pt-2 md:max-w-fit md:rounded-t-md md:border md:border-b-0">
         <button
           type="button"
           onClick={() => setActiveView('artifacts')}
-          className={`rounded px-3 py-2 text-sm font-medium ${activeView === 'artifacts' ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
+          className={`border-b-2 px-3 py-3 text-sm font-semibold ${activeView === 'artifacts' ? 'border-cyan-700 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-900'}`}
         >
-          Uploaded Artifacts
+          Uploaded artifacts <span className="ml-1 text-slate-400">{artifacts.length}</span>
         </button>
         <button
           type="button"
           onClick={() => setActiveView('retreat_submissions')}
-          className={`rounded px-3 py-2 text-sm font-medium ${activeView === 'retreat_submissions' ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-50'}`}
+          className={`border-b-2 px-3 py-3 text-sm font-semibold ${activeView === 'retreat_submissions' ? 'border-cyan-700 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-900'}`}
         >
-          Retreat Submissions
+          Retreat submissions
         </button>
       </div>
 
       {activeView === 'artifacts' ? (
         <>
-      <div className="mb-4 rounded-md border border-gray-200 bg-white p-3">
+      <div className="mb-4 md:hidden">
+        <input value={searchFilter} onChange={(event) => setSearchFilter(event.target.value)} placeholder="Client, booking, retreat or artifact #" className="w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-base shadow-sm" />
+        <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+          {(['all', 'declined', 'needs_info', 'pending'] as const).map((value) => (
+            <button key={value} type="button" onClick={() => setOutcomeFilter(value)} className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold ${outcomeFilter === value ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-600'}`}>
+              {value === 'all' ? 'All' : outcomeLabel[value]} <span className={outcomeFilter === value ? 'text-slate-300' : 'text-slate-400'}>{value === 'all' ? outcomeCounts.all : outcomeCounts[value]}</span>
+            </button>
+          ))}
+        </div>
+        <button type="button" onClick={() => setMobileFiltersOpen((open) => !open)} className="mt-3 text-sm font-semibold uppercase tracking-wider text-cyan-700">☷ {mobileFiltersOpen ? 'Hide filters' : 'More filters'}</button>
+        {mobileFiltersOpen && <div className="mt-3 grid gap-2 rounded-lg border border-slate-200 bg-white p-3">
+          <select value={retreatIdFilter} onChange={(event) => setRetreatIdFilter(event.target.value)} className="rounded-md border border-slate-300 px-3 py-2 text-sm"><option value="">All retreats</option>{retreatOptions.map((retreat) => <option key={retreat.value} value={retreat.value}>{retreat.label}</option>)}</select>
+          <select value={documentTypeFilter} onChange={(event) => setDocumentTypeFilter(event.target.value as typeof documentTypeFilter)} className="rounded-md border border-slate-300 px-3 py-2 text-sm"><option value="all">All document types</option>{Object.entries(documentTypeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+          <select value={stageFilter} onChange={(event) => setStageFilter(event.target.value as typeof stageFilter)} className="rounded-md border border-slate-300 px-3 py-2 text-sm"><option value="all">All stages</option>{Object.entries(documentStageLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select>
+          <button type="button" onClick={() => { setSearchFilter(''); setRetreatIdFilter(''); setDocumentTypeFilter('all'); setStageFilter('all'); setOutcomeFilter('all'); }} className="text-left text-sm font-semibold text-cyan-700">Clear filters</button>
+        </div>}
+      </div>
+      <div className="mb-4 hidden rounded-md border border-gray-200 bg-white p-3 md:block">
         <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
           <input
             value={searchFilter}
@@ -539,6 +585,7 @@ const MedicalArtifactsPage: React.FC = () => {
               setArtifactTypeFilter('all');
               setStatusFilter('all');
               setReviewFilter('all');
+              setOutcomeFilter('all');
             }}
             className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
@@ -550,7 +597,7 @@ const MedicalArtifactsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="max-w-full overflow-x-auto rounded-md border border-gray-200">
+      <div className="hidden max-w-full overflow-x-auto rounded-md border border-gray-200 md:block">
         <table className="min-w-[1280px] divide-y divide-gray-200 text-sm">
           <thead className="bg-gray-50 text-left text-xs font-semibold uppercase text-gray-500">
             <tr>
@@ -727,6 +774,24 @@ const MedicalArtifactsPage: React.FC = () => {
             )}
           </tbody>
         </table>
+      </div>
+      <div className="space-y-3 md:hidden">
+        <div className="border-t-4 border-slate-900 bg-white px-3 py-3 text-sm text-slate-500">{filteredArtifacts.length} of {artifacts.length} artifacts</div>
+        {filteredArtifacts.map((artifact) => {
+          const artifactReviews = artifact._id ? reviewsByArtifactId.get(artifact._id) || [] : [];
+          const latestReview = artifactReviews[0];
+          const outcome = getArtifactOutcome(artifact, latestReview);
+          const tone = outcome === 'declined' ? 'border-rose-600 bg-rose-50 text-rose-800' : outcome === 'needs_info' ? 'border-cyan-700 bg-cyan-50 text-cyan-800' : outcome === 'pending' ? 'border-amber-500 bg-amber-50 text-amber-800' : 'border-emerald-600 bg-emerald-50 text-emerald-800';
+          const compactDocumentType = getCompactDocumentType(artifact);
+          return <article key={artifact._id} className={`overflow-hidden rounded-md border-l-4 bg-white shadow-sm ${tone.split(' ')[0]}`}>
+            <div className={`flex items-center justify-between px-3 py-2 ${tone.split(' ').slice(1).join(' ')}`}><span className="font-bold">#{artifact.display_id} <span className="ml-1 text-sm uppercase">{outcomeLabel[outcome] || 'Stored'}</span></span><span className="rounded border border-current px-2 py-1 text-xs font-bold uppercase">{getDocumentStageLabel(artifact.documentStage)}</span></div>
+            <div className="p-3">
+              <div className="flex gap-3"><div className="flex h-16 w-14 shrink-0 items-center justify-center rounded border border-slate-200 text-xs font-bold text-slate-400">PDF</div><div className="min-w-0"><button type="button" onClick={() => navigate(`${artifact._id}`)} className="text-left text-lg font-bold text-cyan-700">{getClientName(artifact.clientId)}</button><div className="text-sm text-slate-500">Client #{typeof artifact.clientId === 'object' ? artifact.clientId.display_id || String(getObjectId(artifact.clientId) || '').slice(-6) : String(getObjectId(artifact.clientId) || '').slice(-6)}</div><div className="text-sm text-slate-500">{getBookingLabel(artifact.bookingId) || 'No booking linked'}</div></div></div>
+              <div className="mt-3 border-t border-slate-100 pt-3"><div className="flex items-center gap-2 text-base font-semibold text-slate-800"><compactDocumentType.Icon className="h-4 w-4" />{getDocumentTypeLabel(artifact.documentType, artifact.artifactType)}</div><div className="text-sm text-slate-500">{artifact.title || 'Medical artifact'} · {artifact.files?.length || 0} file(s)</div><div className="mt-2 text-sm text-slate-600">{latestReview ? `${latestReview.requestType?.replace(/_/g, ' ')} · ${latestReview.status || 'pending'}` : 'No review request yet'}</div>{latestReview?._id && <button type="button" onClick={() => navigate(`/admin/medical-review-requests/${latestReview._id}`)} className="mt-1 text-sm font-semibold text-cyan-700">Open {getReviewLabel(latestReview)}</button>}</div>
+              <div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => navigate(`${artifact._id}`)} className="rounded border border-slate-300 px-3 py-2 text-sm font-semibold">View</button><button type="button" onClick={() => navigate(`${artifact._id}/edit`)} className="rounded border border-slate-300 px-3 py-2 text-sm font-semibold">Edit</button></div>
+            </div>
+          </article>;
+        })}
       </div>
         </>
       ) : (
