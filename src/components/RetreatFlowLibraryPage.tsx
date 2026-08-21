@@ -13,6 +13,7 @@ import {
   titleizeBookingStepGroup,
 } from '../utils/bookingStepColors';
 import BookingStepColorField from './BookingStepColorField';
+import { BOOKING_STEP_TYPES, BookingStepTypeIcon, getBookingStepType } from './bookingStepTypes';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
@@ -23,6 +24,7 @@ type TemplateForm = {
   title: string;
   description: string;
   category: BookingFlowTemplate['category'];
+  stepType: NonNullable<BookingFlowTemplate['stepType']>;
   offsetDays: number;
   latestDaysBeforeRetreat: string;
   deadlineBasis: NonNullable<BookingFlowTemplate['deadlineBasis']>;
@@ -62,6 +64,7 @@ const emptyForm = (): TemplateForm => ({
   title: '',
   description: '',
   category: 'other',
+  stepType: 'internal_task',
   offsetDays: 0,
   latestDaysBeforeRetreat: '',
   deadlineBasis: 'before_retreat_start',
@@ -205,6 +208,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
       title: template.title,
       description: template.description || '',
       category: template.category,
+      stepType: template.stepType || 'internal_task',
       offsetDays: template.offsetDays,
       latestDaysBeforeRetreat: template.latestDaysBeforeRetreat === undefined ? '' : String(template.latestDaysBeforeRetreat),
       deadlineBasis: template.deadlineBasis || (template.triggerType as TemplateForm['deadlineBasis']) || 'before_retreat_start',
@@ -276,6 +280,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
         title: form.title,
         description: form.description,
         category: form.category,
+        stepType: form.stepType,
         offsetDays: form.offsetDays,
         latestDaysBeforeRetreat: form.latestDaysBeforeRetreat === '' ? undefined : Number(form.latestDaysBeforeRetreat),
         deadlineBasis: form.deadlineBasis,
@@ -562,6 +567,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
           <label><span className={labelClass}>Step key (never changes)</span><input value={form.key} onChange={(e) => setForm({ ...form, key: e.target.value })} className={`${fieldClass} bg-gray-50`} /></label>
           <label><span className={labelClass}>Workflow stage</span><select value={form.workflowStage} onChange={(e) => setForm({ ...form, workflowStage: e.target.value as TemplateForm['workflowStage'] })} className={fieldClass}>{['potential','screening','payment','conditional_booking','contract','questionnaire','medical','prep','approved','cancelled'].map(v => <option key={v} value={v}>{titleizeBookingStepGroup(v)}</option>)}</select></label>
           <label><span className={labelClass}>Category</span><select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value as TemplateForm['category'] })} className={fieldClass}>{['screening','booking','contract','questionnaire','medical','payment','dietary','message','access','approval','reminder','other'].map(v => <option key={v} value={v}>{titleizeBookingStepGroup(v)}</option>)}</select></label>
+          <label className="sm:col-span-2"><span className={labelClass}>Step type</span><div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{BOOKING_STEP_TYPES.map((type) => <button key={type.value} type="button" onClick={() => setForm({ ...form, stepType: type.value })} className={`flex items-start gap-3 rounded-lg border p-3 text-left ${form.stepType === type.value ? 'border-sky-500 bg-sky-50 text-sky-900 ring-1 ring-sky-500' : 'border-gray-200 bg-white hover:border-gray-300'}`}><BookingStepTypeIcon type={type.value} className="mt-0.5 h-5 w-5 shrink-0"/><span><strong className="block text-sm">{type.label}</strong><span className="mt-0.5 block text-xs text-gray-500">{type.description}</span></span></button>)}</div></label>
           <label className="sm:col-span-2"><span className={labelClass}>Retreat types</span><input value={form.applicableRetreatTypes} onChange={(e) => setForm({ ...form, applicableRetreatTypes: e.target.value })} className={fieldClass} placeholder="Leave empty for all, or enter regular, booster" /><span className="mt-1 block text-xs text-gray-500">Comma-separated. Specific retreat copies still override the global policy.</span></label>
           <label className="sm:col-span-2"><span className={labelClass}>What this step means</span><textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} className={fieldClass} /></label>
           <label className="sm:col-span-2 flex items-center gap-2 text-sm"><input type="checkbox" checked={form.requiredFromClient} onChange={(e) => setForm({ ...form, requiredFromClient: e.target.checked })} /> Required from client — include in the Requirements tab and missing-items email</label>
@@ -1043,9 +1049,10 @@ const RetreatFlowLibraryPage: React.FC = () => {
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-2">
                         <Icon icon={GripVertical} className="h-4 w-4 shrink-0 text-gray-400" />
+                        <BookingStepTypeIcon type={template.stepType} className="h-4 w-4 shrink-0 text-gray-600" />
                         <div className="min-w-0">
                           <div className="truncate text-sm font-semibold text-gray-900">{template.title}</div>
-                          <div className="mt-1 truncate text-[11px] text-gray-500">{titleizeBookingStepGroup(groupKey)} · Due {formatDeadlineLabel(template)}</div>
+                          <div className="mt-1 truncate text-[11px] text-gray-500">{getBookingStepType(template.stepType).label} · {titleizeBookingStepGroup(groupKey)} · Due {formatDeadlineLabel(template)}</div>
                         </div>
                       </div>
                       <div className="flex items-center gap-1 text-[10px] text-gray-500">

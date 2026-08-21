@@ -78,6 +78,7 @@ const HousesGrid: React.FC = () => {
   const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
   const [heroImageUploading, setHeroImageUploading] = useState(false);
   const heroImageInputRef = useRef<HTMLInputElement | null>(null);
+  const editorRef = useRef<HTMLDivElement | null>(null);
 
   const fetchHouses = useCallback(async () => {
     try {
@@ -99,6 +100,12 @@ const HousesGrid: React.FC = () => {
   useEffect(() => {
     fetchHouses();
   }, [fetchHouses]);
+
+  useEffect(() => {
+    if (isModalOpen && editingHouse) {
+      editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [isModalOpen, editingHouse]);
 
   const handleAdd = () => {
     setEditingHouse(null);
@@ -390,8 +397,18 @@ const HousesGrid: React.FC = () => {
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center">
-          <div className="bg-white p-6 rounded-lg shadow-xl max-w-md w-full mx-4" onClick={(e) => e.stopPropagation()}>
+        <div className={editingHouse
+          ? 'mt-6 w-full'
+          : 'fixed inset-0 z-50 flex h-full w-full items-center justify-center overflow-y-auto bg-gray-600 bg-opacity-50'
+        }>
+          <div
+            ref={editingHouse ? editorRef : undefined}
+            className={editingHouse
+              ? 'w-full rounded-lg bg-white p-6 shadow-sm'
+              : 'mx-4 w-full max-w-md rounded-lg bg-white p-6 shadow-xl'
+            }
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="text-lg font-medium text-gray-900 mb-4">
               {editingHouse ? 'Edit House' : 'Add New House'}
             </h3>

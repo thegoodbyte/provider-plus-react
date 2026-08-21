@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { RefreshCw } from 'lucide-react';
-import { configSummaryApi, fileUploadsApi } from '../services/api';
+import { RefreshCw, AlertTriangle } from 'lucide-react';
+import { configSummaryApi, fileUploadsApi, storageSettingsApi, S3ReadOverrideSettings } from '../services/api';
 import { FileUpload } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 
@@ -85,18 +85,52 @@ const FileUploadsPage: React.FC = () => {
   const [configSummary, setConfigSummary] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [kindFilter, setKindFilter] = useState<'all' | FileUpload['documentKind']>('all');
+  const [s3Override, setS3Override] = useState<S3ReadOverrideSettings | null>(null);
+  const [s3OverrideForm, setS3OverrideForm] = useState({ enabled: false, bucketOverride: '', reason: '', expiresAt: '' });
+  const [s3OverrideSaving, setS3OverrideSaving] = useState(false);
+  const [s3OverrideError, setS3OverrideError] = useState('');
+
+  const applyS3OverrideToForm = (settings: S3ReadOverrideSettings) => {
+    setS3Override(settings);
+    setS3OverrideForm({
+      enabled: settings.enabled,
+      bucketOverride: settings.bucketOverride || '',
+      reason: settings.reason || '',
+      expiresAt: settings.expiresAt ? new Date(settings.expiresAt).toISOString().slice(0, 16) : '',
+    });
+  };
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [filesResponse, configResponse] = await Promise.all([
+      const [filesResponse, configResponse, s3OverrideResponse] = await Promise.all([
         fileUploadsApi.getAll({ isActive: true }),
         configSummaryApi.get().catch(() => null),
+        storageSettingsApi.getS3ReadOverride().catch(() => null),
       ]);
       setFiles(filesResponse.data || []);
       setConfigSummary(configResponse?.data || null);
+      if (s3OverrideResponse?.data) applyS3OverrideToForm(s3OverrideResponse.data);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const saveS3Override = async () => {
+    setS3OverrideSaving(true);
+    setS3OverrideError('');
+    try {
+      const response = await storageSettingsApi.updateS3ReadOverride({
+        enabled: s3OverrideForm.enabled,
+        bucketOverride: s3OverrideForm.bucketOverride,
+        reason: s3OverrideForm.reason,
+        expiresAt: s3OverrideForm.expiresAt ? new Date(s3OverrideForm.expiresAt).toISOString() : undefined,
+      });
+      applyS3OverrideToForm(response.data);
+    } catch (error: any) {
+      setS3OverrideError(error?.response?.data?.message || 'Failed to save the S3 read override.');
+    } finally {
+      setS3OverrideSaving(false);
     }
   };
 
@@ -184,6 +218,76 @@ const FileUploadsPage: React.FC = () => {
           <p className="text-sm text-gray-500">Configuration summary is only visible to admins or could not be loaded.</p>
         )}
       </div>
+
+      {configSummary && configSummary.runtime?.nodeEnv !== 'production' && (
+        <div className="mb-6 rounded-md border border-gray-200 bg-white p-4">
+          <div className="mb-3">
+            <h2 className="text-lg font-semibold text-gray-900">S3 Read Override (PPVC-64)</h2>
+            <p className="text-sm text-gray-600">
+              Temporarily point file <strong>reads</strong> (viewing/downloading) at a different bucket -- e.g. prod's -- to
+              inspect data brought into this environment. Uploads always go to this environment's own bucket regardless of
+              this setting. Not available in production.
+            </p>
+          </div>
+
+          <div className="grid gap-3 text-sm md:grid-cols-2">
+            <label className="flex items-center gap-2 md:col-span-2">
+              <input
+                type="checkbox"
+                checked={s3OverrideForm.enabled}
+                onChange={(event) => setS3OverrideForm((current) => ({ ...current, enabled: event.target.checked }))}
+              />
+              <span className="font-medium text-gray-900">Enable read override</span>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-gray-600">Bucket to read from</span>
+              <input
+                type="text"
+                value={s3OverrideForm.bucketOverride}
+                onChange={(event) => setS3OverrideForm((current) => ({ ...current, bucketOverride: event.target.value }))}
+                placeholder="e.g. prod-provider-plus-uploads"
+                className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-gray-600">Reason (for the audit log)</span>
+              <input
+                type="text"
+                value={s3OverrideForm.reason}
+                onChange={(event) => setS3OverrideForm((current) => ({ ...current, reason: event.target.value }))}
+                placeholder="e.g. investigating PPVC-123"
+                className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-gray-600">Expires at (defaults to +24h if left blank)</span>
+              <input
+                type="datetime-local"
+                value={s3OverrideForm.expiresAt}
+                onChange={(event) => setS3OverrideForm((current) => ({ ...current, expiresAt: event.target.value }))}
+                className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+              />
+            </label>
+          </div>
+
+          {s3OverrideError && <p className="mt-3 text-sm text-red-600">{s3OverrideError}</p>}
+          {s3Override?.enabled && (
+            <p className="mt-3 flex items-center gap-2 text-sm text-amber-700">
+              <AlertTriangle className="h-4 w-4" />
+              Currently reading from <strong>{s3Override.bucketOverride}</strong>
+              {s3Override.expiresAt && <> until {new Date(s3Override.expiresAt).toLocaleString()}</>}.
+            </p>
+          )}
+
+          <button
+            onClick={saveS3Override}
+            disabled={s3OverrideSaving}
+            className="mt-4 inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            {s3OverrideSaving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+      )}
 
       <div className="overflow-hidden rounded-md border border-gray-200">
         <table className="min-w-full divide-y divide-gray-200 text-sm">

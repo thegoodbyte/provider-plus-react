@@ -60,6 +60,7 @@ const FULL_MENU_SECTIONS: MenuSection[] = [
       { id: 'ceremonies', label: 'Ceremonies', Icon: Fi.FiClock },
       { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
       { id: 'houses', label: 'Houses', Icon: Fi.FiHome },
+      { id: 'booster-offers', label: 'Booster Offers', Icon: Fi.FiZap },
       { id: 'retreat-flow', label: 'Retreat Readiness Setup', Icon: Fi.FiCalendar },
       { id: 'retreat-flow-library', label: 'Booking Step Setup', Icon: Fi.FiLayers },
       { id: 'booking-flow', label: 'Booking Flow', Icon: Fi.FiCheckSquare },
@@ -335,6 +336,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
             { id: 'ceremonies', label: 'Ceremonies', Icon: Fi.FiClock },
             { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
             { id: 'houses', label: 'Houses', Icon: Fi.FiHome },
+            { id: 'booster-offers', label: 'Booster Offers', Icon: Fi.FiZap },
           ] },
           { id: 'clients', label: 'Clients', Icon: Fi.FiUsers, items: [
             { id: 'clients', label: 'Clients', Icon: Fi.FiUsers },

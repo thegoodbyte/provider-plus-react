@@ -2,6 +2,14 @@ import { BookingFlowItem, BookingFlowTemplate } from '../types';
 import { titleizeBookingStepGroup } from '../utils/bookingStepColors';
 import { getStepItemGroup, getStepTemplateGroup } from './bookingStepPresentation';
 
+export const DEFAULT_REQUIREMENT_STEP_KEYS = new Set([
+  'contract_signed', 'ekg_received', 'liver_received', 'medications_form_initial_received',
+  'medications_form_30_day_received', 'questionnaire_received', 'food_form_received', 'payment_balance_due',
+]);
+
+export const isConfiguredRequirementStep = (key: string, value?: { isRequirement?: boolean; requiredFromClient?: boolean; requirementType?: string }) =>
+  Boolean(value?.isRequirement || value?.requiredFromClient || value?.requirementType || DEFAULT_REQUIREMENT_STEP_KEYS.has(key));
+
 export interface BookingStepMatrixRow {
   key: string;
   title: string;
@@ -15,6 +23,7 @@ export interface BookingStepMatrixRow {
   emailTemplateId?: BookingFlowTemplate['emailTemplateId'];
   /** True when this step is configured as a client requirement. */
   isRequirement?: boolean;
+  stepType?: BookingFlowTemplate['stepType'];
 }
 
 export interface BookingStepMatrixRowGroup {
@@ -36,7 +45,8 @@ export const buildBookingStepRows = (templates: BookingFlowTemplate[], items: Bo
       templateId: template._id,
       emailEnabled: template.emailEnabled,
       emailTemplateId: template.emailTemplateId,
-      isRequirement: Boolean(template.isRequirement || template.requiredFromClient || template.requirementType),
+      isRequirement: isConfiguredRequirementStep(template.key, template),
+      stepType: template.stepType,
     });
   });
   items.forEach((item) => {
@@ -52,7 +62,8 @@ export const buildBookingStepRows = (templates: BookingFlowTemplate[], items: Bo
       templateId: existing?.templateId || template?._id || (typeof item.templateId === 'string' ? item.templateId : undefined),
       emailEnabled: existing?.emailEnabled || item.emailEnabled || template?.emailEnabled,
       emailTemplateId: existing?.emailTemplateId || item.emailTemplateId || template?.emailTemplateId,
-      isRequirement: Boolean(existing?.isRequirement || template?.isRequirement || template?.requiredFromClient || template?.requirementType || item.metadata?.isRequirement || item.metadata?.requiredFromClient || item.metadata?.requirementType),
+      isRequirement: Boolean(existing?.isRequirement || isConfiguredRequirementStep(item.key, template || undefined) || item.metadata?.isRequirement || item.metadata?.requiredFromClient || item.metadata?.requirementType),
+      stepType: template?.stepType || existing?.stepType,
     });
   });
   return Array.from(rowMap.values()).sort((a, b) => a.order - b.order || a.title.localeCompare(b.title));

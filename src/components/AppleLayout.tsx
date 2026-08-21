@@ -2,8 +2,10 @@ import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { FiBookOpen, FiCalendar, FiChevronDown, FiCreditCard, FiGrid, FiShoppingBag, FiUsers, FiX } from 'react-icons/fi';
 import AppleSidebar from './AppleSidebar';
+import StorageOverrideBanner from './StorageOverrideBanner';
 import UnifiedClientManager from './UnifiedClientManager';
 import HousesGrid from './HousesGrid';
+import BoosterOffersPage from './BoosterOffersPage';
 import RetreatsGrid from './RetreatsGrid';
 import RetreatEditorPage from './RetreatEditorPage';
 import ScreeningClientsGrid from './ScreeningClientsGrid';
@@ -382,6 +384,7 @@ const AppleLayout: React.FC = () => {
       ceremonies: 'retreat/ceremonies',
       bookings: 'retreat/bookings',
       houses: 'retreat/houses',
+      'booster-offers': 'retreat/booster-offers',
     };
     navigate(`/${prefix}/${retreatSectionRoutes[item] || item}`);
     setSidebarOpen(false);
@@ -783,6 +786,8 @@ const AppleLayout: React.FC = () => {
           </div>
         )}
 
+        <StorageOverrideBanner />
+
         {/* Page Content */}
         <main className="h-[calc(100vh-32px)] overflow-y-auto px-4 py-4 sm:px-6 lg:h-[calc(100vh-64px-32px)] lg:px-8 lg:py-6">
           <div className="max-w-7xl mx-auto">
@@ -822,6 +827,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="retreat/ceremonies" element={<CeremoniesPage />} />
                       <Route path="retreat/bookings" element={<BookingsGrid />} />
                       <Route path="retreat/houses" element={<HousesGrid />} />
+                      <Route path="retreat/booster-offers" element={<BoosterOffersPage />} />
                       <Route path="retreat-focus" element={<RetreatFocusModePage />} />
                       <Route path="ceremonies" element={<CeremoniesPage />} />
                       <Route path="houses" element={<HousesGrid />} />
@@ -1025,6 +1031,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="retreat/ceremonies" element={<CeremoniesPage />} />
                       <Route path="retreat/bookings" element={<BookingsGrid />} />
                       <Route path="retreat/houses" element={<HousesGrid />} />
+                      <Route path="retreat/booster-offers" element={<BoosterOffersPage />} />
                       <Route path="retreat-focus" element={<RetreatFocusModePage />} />
                       <Route path="ceremonies" element={<CeremoniesPage />} />
                       <Route path="houses" element={<HousesGrid />} />
@@ -1127,6 +1134,7 @@ const AppleLayout: React.FC = () => {
                 <Route path="/retreats" element={<ProtectedRoute><RetreatsGrid /></ProtectedRoute>} />
                 <Route path="/retreats/:retreatId/edit" element={<ProtectedRoute><RetreatEditorPage /></ProtectedRoute>} />
                 <Route path="/houses" element={<ProtectedRoute><HousesGrid /></ProtectedRoute>} />
+                <Route path="/booster-offers" element={<ProtectedRoute><BoosterOffersPage /></ProtectedRoute>} />
                 <Route path="/bookings" element={<ProtectedRoute><BookingsGrid /></ProtectedRoute>} />
                 <Route path="/bookings/new" element={<ProtectedRoute><BookingEditorPage mode="create" /></ProtectedRoute>} />
                 <Route path="/bookings/:bookingId" element={<ProtectedRoute><BookingDetailRoute /></ProtectedRoute>} />

@@ -12,6 +12,7 @@ import {
   titleizeBookingStepGroup,
 } from '../utils/bookingStepColors';
 import BookingStepColorField from './BookingStepColorField';
+import { BOOKING_STEP_TYPES, BookingStepTypeIcon, getBookingStepType } from './bookingStepTypes';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
@@ -21,6 +22,7 @@ type TemplateForm = {
   title: string;
   description: string;
   category: BookingFlowTemplate['category'];
+  stepType: NonNullable<BookingFlowTemplate['stepType']>;
   offsetDays: number;
   latestDaysBeforeRetreat: string;
   deadlineBasis: NonNullable<BookingFlowTemplate['deadlineBasis']>;
@@ -45,6 +47,7 @@ const emptyForm = (): TemplateForm => ({
   title: '',
   description: '',
   category: 'other',
+  stepType: 'internal_task',
   offsetDays: 0,
   latestDaysBeforeRetreat: '',
   deadlineBasis: 'before_retreat_start',
@@ -147,6 +150,7 @@ const RetreatFlowPage: React.FC = () => {
           title: firstTemplate.title,
           description: firstTemplate.description || '',
           category: firstTemplate.category,
+          stepType: firstTemplate.stepType || 'internal_task',
           offsetDays: firstTemplate.offsetDays,
           latestDaysBeforeRetreat: firstTemplate.latestDaysBeforeRetreat === undefined ? '' : String(firstTemplate.latestDaysBeforeRetreat),
           deadlineBasis: firstTemplate.deadlineBasis || (firstTemplate.triggerType as TemplateForm['deadlineBasis']) || 'before_retreat_start',
@@ -197,6 +201,7 @@ const RetreatFlowPage: React.FC = () => {
       title: template.title,
       description: template.description || '',
       category: template.category,
+      stepType: template.stepType || 'internal_task',
       offsetDays: template.offsetDays,
       latestDaysBeforeRetreat: template.latestDaysBeforeRetreat === undefined ? '' : String(template.latestDaysBeforeRetreat),
       deadlineBasis: template.deadlineBasis || (template.triggerType as TemplateForm['deadlineBasis']) || 'before_retreat_start',
@@ -385,6 +390,7 @@ const RetreatFlowPage: React.FC = () => {
           <option value="reminder">Reminder</option>
           <option value="other">Other</option>
         </select>
+        <label className="sm:col-span-2"><span className="mb-1 block text-xs font-semibold uppercase text-gray-500">Step type</span><select value={form.stepType} onChange={(e) => setForm({ ...form, stepType: e.target.value as TemplateForm['stepType'] })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm">{BOOKING_STEP_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label} — {type.description}</option>)}</select></label>
       </div>
 
       <textarea
@@ -587,9 +593,10 @@ const RetreatFlowPage: React.FC = () => {
                       <div className="min-w-0">
                         <div className="flex min-w-0 items-center gap-2">
                           <span className={`h-2.5 w-2.5 flex-none rounded-full ${tone.dot}`} style={dotStyle} />
+                          <BookingStepTypeIcon type={template.stepType} className="h-4 w-4 flex-none text-gray-600" />
                           <div className="truncate text-sm font-semibold text-gray-900">{template.title}</div>
                         </div>
-                        <div className="truncate text-xs text-gray-500">{titleizeBookingStepGroup(groupKey)} • {formatDeadlineLabel(template)}</div>
+                        <div className="truncate text-xs text-gray-500">{getBookingStepType(template.stepType).label} • {titleizeBookingStepGroup(groupKey)} • {formatDeadlineLabel(template)}</div>
                       </div>
                       <div className="text-right text-xs text-gray-500">
                         <div>{template.workflowStage || 'potential'}</div>

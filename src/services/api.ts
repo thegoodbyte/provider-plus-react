@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, MedicalReviewGroup, MedicalReviewGroupAccessLink, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, MailSettings, EmailTemplate, EmailTemplateSeedOption, EmailAsset, SentEmail, RetreatArtifactSubmissionsResponse, BloodPressureReading } from '../types';
+import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, MedicalReviewGroup, MedicalReviewGroupAccessLink, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, MailSettings, EmailTemplate, EmailTemplateSeedOption, EmailAsset, SentEmail, RetreatArtifactSubmissionsResponse, BloodPressureReading, BoosterOffer } from '../types';
 import { authService } from './authService';
 import { cacheService } from './cacheService';
 import { API_BASE_URL } from '../config/api.config';
@@ -762,6 +762,13 @@ export const ceremoniesApi = {
   getRetreatSummary: (retreatId: string) => api.get<any>(`/ceremonies/retreat/${retreatId}/summary`),
 };
 
+export const boosterOffersApi = {
+  getAll: () => api.get<BoosterOffer[]>('/booster-offers'),
+  create: (data: Omit<BoosterOffer, '_id' | 'reserved' | 'remaining'>) => api.post<BoosterOffer>('/booster-offers', data),
+  update: (id: string, data: Partial<BoosterOffer>) => api.patch<BoosterOffer>(`/booster-offers/${id}`, data),
+  delete: (id: string) => api.delete(`/booster-offers/${id}`),
+};
+
 // Export the base api instance and Client type for use in other services
 export { api };
 export type { Client };
@@ -1036,6 +1043,21 @@ export const jotformApi = {
 
 export const configSummaryApi = {
   get: () => api.get('/config-summary'),
+};
+
+export interface S3ReadOverrideSettings {
+  key: string;
+  enabled: boolean;
+  bucketOverride: string | null;
+  reason: string | null;
+  updatedBy: string | null;
+  expiresAt: string | null;
+}
+
+export const storageSettingsApi = {
+  getS3ReadOverride: () => api.get<S3ReadOverrideSettings>('/storage-settings/s3-read-override'),
+  updateS3ReadOverride: (data: { enabled: boolean; bucketOverride?: string; reason?: string; expiresAt?: string }) =>
+    api.patch<S3ReadOverrideSettings>('/storage-settings/s3-read-override', data),
 };
 
 export const auditLogsApi = {

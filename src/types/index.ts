@@ -88,6 +88,22 @@ export interface House {
   guestCapacity?: number;
 }
 
+export interface BoosterOffer {
+  _id?: string;
+  retreatId: string | Retreat;
+  ceremonyId: string | Ceremony;
+  ceremonyNumber: number;
+  arrivalAt: string;
+  departureAt: string;
+  capacity: number;
+  price?: number;
+  currency: 'CZK' | 'EUR' | 'PLN' | 'USD';
+  publicNotes?: string;
+  published: boolean;
+  reserved?: number;
+  remaining?: number;
+}
+
 export interface ContactBookEntry {
   _id?: string;
   name: string;
@@ -1347,6 +1363,7 @@ export interface BookingFlowTemplate {
   title: string;
   description?: string;
   category: 'screening' | 'booking' | 'payment' | 'contract' | 'questionnaire' | 'medical' | 'dietary' | 'message' | 'access' | 'approval' | 'reminder' | 'other';
+  stepType?: 'notification_sent' | 'request_sent' | 'submission_received' | 'review_requested' | 'review_completed' | 'payment_received' | 'internal_task';
   offsetDays: number;
   latestDaysBeforeRetreat?: number;
   deadlineBasis?: 'after_signup' | 'after_booking' | 'after_initial_payment' | 'before_retreat_start' | 'manual';
