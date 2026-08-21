@@ -225,7 +225,7 @@ const RetreatsGrid: React.FC = () => {
   };
 
   useEffect(() => {
-    if (viewMode !== 'holistic' || retreats.length === 0) return;
+    if ((viewMode !== 'holistic' && viewMode !== 'requirements') || retreats.length === 0) return;
     loadStepData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewMode, retreats]);
@@ -235,7 +235,7 @@ const RetreatsGrid: React.FC = () => {
   }, [retreatMatrices]);
 
   useEffect(() => {
-    if (viewMode !== 'holistic') return;
+    if (viewMode !== 'holistic' && viewMode !== 'requirements') return;
     if (bookingStepOptions.length === 0) {
       setSelectedBookingStepKey('');
       return;
