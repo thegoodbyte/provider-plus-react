@@ -88,6 +88,11 @@ const BoosterOffersPage: React.FC = () => {
     return groups;
   }, []);
   const publishedCount = offers.filter((offer) => offer.published).length;
+  const ceremonyDateFor = (offer: BoosterOffer) => {
+    const ceremony = offer.ceremonyId as Ceremony;
+    return ceremony?.date ? new Date(ceremony.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'Date unavailable';
+  };
+  const retreatCapacityFor = (offer: BoosterOffer) => Number((offer.retreatId as Retreat)?.capacity || 0);
 
   return <div className="min-h-full bg-[#f7f6f4] px-4 py-6 text-[#222] sm:px-6 lg:px-8">
     <header className="mx-auto max-w-[1280px] border-b-4 border-double border-[#222] pb-3">
@@ -107,13 +112,13 @@ const BoosterOffersPage: React.FC = () => {
 
       <div className="space-y-16 pb-20">{groupedOffers.map((group) => <section key={group.key}>
         <h2 className="border-b border-gray-300 pb-2 font-serif text-3xl font-semibold">{group.retreat?.code || group.retreat?.retreatCode || group.retreat?.name || 'Retreat'}</h2>
-        <div className="hidden grid-cols-[120px_minmax(160px,1fr)_minmax(160px,1fr)_62px_125px_145px_105px_28px] gap-2 border-b border-gray-200 py-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500 lg:grid">{['Ceremony','Arrival','Departure','Places','Price','Availability','Public',''].map((label) => <div key={label}>{label}</div>)}</div>
-        <div className="divide-y divide-gray-200">{group.offers.map((offer) => <div key={offer._id} className="grid gap-3 py-4 lg:grid-cols-[120px_minmax(160px,1fr)_minmax(160px,1fr)_62px_125px_145px_105px_28px] lg:items-center lg:gap-2">
+        <div className="hidden grid-cols-[110px_minmax(160px,1fr)_155px_minmax(160px,1fr)_70px_145px_105px_28px] gap-2 border-b border-gray-200 py-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500 lg:grid">{['Ceremony','Arrival','Ceremony date','Departure','Places','Availability','Public',''].map((label) => <div key={label}>{label}</div>)}</div>
+        <div className="divide-y divide-gray-200">{group.offers.map((offer) => <div key={offer._id} className="grid gap-3 py-4 lg:grid-cols-[110px_minmax(160px,1fr)_155px_minmax(160px,1fr)_70px_145px_105px_28px] lg:items-center lg:gap-2">
           <div className="font-serif text-lg font-semibold">Ceremony {offer.ceremonyNumber}</div>
           <label className="text-xs uppercase tracking-wide text-gray-500 lg:text-[0px]"><span className="mb-1 block lg:hidden">Arrival</span><input aria-label="Arrival" type="datetime-local" value={offer.arrivalAt.slice(0,16)} onChange={(e) => update(offer, { arrivalAt: e.target.value })} className="w-full border border-gray-300 bg-[#f1f0ee] px-2 py-2 text-xs text-gray-900"/></label>
+          <div><span className="mb-1 block text-xs uppercase tracking-wide text-gray-500 lg:hidden">Ceremony date</span><span className="font-serif text-sm font-semibold text-gray-800">{ceremonyDateFor(offer)}</span></div>
           <label className="text-xs uppercase tracking-wide text-gray-500 lg:text-[0px]"><span className="mb-1 block lg:hidden">Departure</span><input aria-label="Departure" type="datetime-local" value={offer.departureAt.slice(0,16)} onChange={(e) => update(offer, { departureAt: e.target.value })} className="w-full border border-gray-300 bg-[#f1f0ee] px-2 py-2 text-xs text-gray-900"/></label>
-          <label><span className="mb-1 block text-xs uppercase tracking-wide text-gray-500 lg:hidden">Places</span><input aria-label="Places" type="number" min="1" value={offer.capacity} onChange={(e) => update(offer, { capacity: Number(e.target.value) })} className="w-full border border-gray-300 bg-[#f1f0ee] px-2 py-2 text-center text-xs"/></label>
-          <label><span className="mb-1 block text-xs uppercase tracking-wide text-gray-500 lg:hidden">Price</span><div className="flex"><input aria-label="Price" type="number" min="0" value={offer.price ?? ''} placeholder="—" onChange={(e) => update(offer, { price: e.target.value === '' ? undefined : Number(e.target.value) })} className="min-w-0 flex-1 border border-r-0 border-gray-300 bg-[#f1f0ee] px-2 py-2 text-right text-xs"/><select aria-label="Currency" value={offer.currency} onChange={(e) => update(offer, { currency: e.target.value as BoosterOffer['currency'] })} className="border border-gray-300 bg-[#f1f0ee] px-1 text-[10px] text-gray-600"><option>EUR</option><option>USD</option><option>CZK</option><option>PLN</option></select></div></label>
+          <label><span className="mb-1 block text-xs uppercase tracking-wide text-gray-500 lg:hidden">Places</span><select aria-label="Places" value={offer.capacity} onChange={(e) => update(offer, { capacity: Number(e.target.value) })} className="w-full border border-gray-300 bg-[#f1f0ee] px-2 py-2 text-center text-xs">{Array.from({ length: retreatCapacityFor(offer) + 1 }, (_, places) => <option key={places} value={places}>{places}</option>)}</select></label>
           <div><span className="mb-1 block text-xs uppercase tracking-wide text-gray-500 lg:hidden">Availability</span><strong className="mr-1 font-serif text-xl text-[#007b9d]">{offer.remaining || 0}</strong><span className="text-xs text-gray-500">free · {offer.reserved || 0} booked</span></div>
           <label className="flex items-center gap-3 font-serif text-base"><input type="checkbox" checked={offer.published} onChange={(e) => update(offer, { published: e.target.checked })} className="h-5 w-5 accent-[#0088aa]"/> Published</label>
           <button title="Delete offer" onClick={async () => { if (offer._id && window.confirm('Delete this booster offer?')) { await boosterOffersApi.delete(offer._id); await load(); } }} className="text-pink-600 hover:text-pink-800"><Icon icon={FiTrash2}/></button>
