@@ -152,17 +152,30 @@ const buildPreCeremonyCheckFromArtifacts = (artifacts: MedicalArtifact[] = []): 
 
   if (!bpArtifact && !ekgArtifact) return undefined;
 
+  const rawBpData = bpArtifact?.data || {};
+  const rawEkgData = ekgArtifact?.data || {};
+  const bpCheckId = rawBpData.preCeremonyCheckId;
+  const ekgCheckId = rawEkgData.preCeremonyCheckId;
+  // Never combine a BP and EKG produced by two different ceremony checks.
+  // Doing that makes the later check look as though it owns both artifacts.
+  const artifactsBelongToDifferentChecks = Boolean(bpCheckId && ekgCheckId && bpCheckId !== ekgCheckId);
+  const effectiveEkgArtifact = artifactsBelongToDifferentChecks && bpArtifact ? undefined : ekgArtifact;
   const bpData = bpArtifact?.data || {};
+  const ekgData = effectiveEkgArtifact?.data || {};
   const parsedBp = bpArtifact ? parseBloodPressureText(bpArtifact) : {};
-  const firstEkgFile = ekgArtifact?.files?.[0];
+  const firstEkgFile = effectiveEkgArtifact?.files?.[0];
+  const sourceCheckId = bpData.preCeremonyCheckId || ekgData.preCeremonyCheckId;
   return {
-    id: `artifact-${bpArtifact?._id || ekgArtifact?._id || 'pre-ceremony'}`,
-    recordedAt: bpArtifact?.receivedAt || ekgArtifact?.receivedAt,
-    preCeremonyEkg: ekgArtifact ? {
+    // Ceremony-synced artifacts carry the ID of the participant check that
+    // created them. Reuse it so a reload cannot turn the same EKG into a new
+    // check and submit it back as a duplicate artifact on the next save.
+    id: sourceCheckId || `artifact-${bpArtifact?._id || effectiveEkgArtifact?._id || 'pre-ceremony'}`,
+    recordedAt: bpArtifact?.receivedAt || effectiveEkgArtifact?.receivedAt,
+    preCeremonyEkg: effectiveEkgArtifact ? {
       fileUrl: firstEkgFile?.url || firstEkgFile?.filePath,
       fileName: firstEkgFile?.fileName,
-      uploadedAt: firstEkgFile?.uploadedAt || ekgArtifact.receivedAt,
-      notes: ekgArtifact.notes || ekgArtifact.textContent || '',
+      uploadedAt: firstEkgFile?.uploadedAt || effectiveEkgArtifact.receivedAt,
+      notes: effectiveEkgArtifact.notes || effectiveEkgArtifact.textContent || '',
     } : undefined,
     preCeremonyBloodPressure: bpArtifact ? {
       systolic: Number(bpData.systolic || parsedBp.systolic) || undefined,
@@ -192,6 +205,29 @@ const enrichParticipantsWithPreCeremonyArtifacts = (
   if (!artifactCheck) return participant;
 
   const existingChecks = getPreCeremonyChecks(participant);
+  const matchingCheckIndex = existingChecks.findIndex((check) => check.id === artifactCheck.id);
+  if (matchingCheckIndex >= 0) {
+    const matchingCheck = existingChecks[matchingCheckIndex];
+    const mergedChecks = [...existingChecks];
+    mergedChecks[matchingCheckIndex] = {
+      ...artifactCheck,
+      ...matchingCheck,
+      preCeremonyEkg: matchingCheck.preCeremonyEkg || artifactCheck.preCeremonyEkg,
+      preCeremonyBloodPressure: matchingCheck.preCeremonyBloodPressure || artifactCheck.preCeremonyBloodPressure,
+    };
+    return {
+      ...participant,
+      preCeremonyChecks: mergedChecks,
+      preCeremonyEkg: participant.preCeremonyEkg || artifactCheck.preCeremonyEkg,
+      preCeremonyBloodPressure: participant.preCeremonyBloodPressure || artifactCheck.preCeremonyBloodPressure,
+    };
+  }
+
+  // Persisted participant checks are the source of truth. Artifacts without a
+  // matching check are display fallbacks only and must not be appended to the
+  // editable checks array, otherwise the next save creates a second artifact.
+  if (existingChecks.length > 0) return participant;
+
   return {
     ...participant,
     preCeremonyChecks: [...existingChecks, artifactCheck],
