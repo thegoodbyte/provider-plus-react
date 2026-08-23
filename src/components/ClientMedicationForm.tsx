@@ -62,7 +62,7 @@ const ClientMedicationForm: React.FC<ClientMedicationFormProps> = ({ mode }) => 
     } catch (error) {
       console.error('Error fetching medication data:', error);
       alert('Error loading medication data. Please try again.');
-      navigate('/admin/client-medications');
+      navigate('/admin/client-forms?tab=medications');
     } finally {
       setIsLoading(false);
     }
@@ -127,7 +127,7 @@ const ClientMedicationForm: React.FC<ClientMedicationFormProps> = ({ mode }) => 
       }
 
       alert(`Medication record ${isCreating ? 'created' : 'updated'} successfully!`);
-      navigate('/admin/client-medications');
+      navigate('/admin/client-forms?tab=medications');
     } catch (error) {
       console.error('Error saving medication:', error);
       alert('Error saving medication record. Please try again.');
@@ -167,7 +167,7 @@ const ClientMedicationForm: React.FC<ClientMedicationFormProps> = ({ mode }) => 
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate('/admin/client-medications')}
+            onClick={() => navigate('/admin/client-forms?tab=medications')}
             className="text-gray-600 hover:text-gray-900 flex items-center gap-2"
           >
             <Icon icon={FiArrowLeft} className="w-5 h-5" />
@@ -357,7 +357,7 @@ const ClientMedicationForm: React.FC<ClientMedicationFormProps> = ({ mode }) => 
               <AppleButton
                 type="button"
                 variant="secondary"
-                onClick={() => navigate('/admin/client-medications')}
+                onClick={() => navigate('/admin/client-forms?tab=medications')}
               >
                 <Icon icon={FiX} className="w-4 h-4 mr-2" />
                 Cancel

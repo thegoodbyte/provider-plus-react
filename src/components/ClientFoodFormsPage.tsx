@@ -22,7 +22,7 @@ const shortClientName = (name: string) => {
 
 const isEmptyAnswer = (value: string) => !value.trim() || /^(none|n\/a|—|-|no)$/i.test(value.trim());
 
-const ClientFoodFormsPage: React.FC = () => {
+const ClientFoodFormsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const [rows, setRows] = useState<ClientFoodForm[]>([]);
   const [selected, setSelected] = useState<ClientFoodForm | null>(null);
   const [search, setSearch] = useState('');
@@ -102,13 +102,13 @@ const ClientFoodFormsPage: React.FC = () => {
   };
 
   return (
-    <main className="min-h-full bg-[#f7f6f6] px-6 py-8 text-[#242122] md:px-10 lg:px-12">
+    <main className={embedded ? "text-[#242122]" : "min-h-full bg-[#f7f6f6] px-6 py-8 text-[#242122] md:px-10 lg:px-12"}>
       <div className="max-w-[1240px]">
-        <header className="mb-12">
+        {!embedded && <header className="mb-12">
           <p className="font-sans text-xs font-bold uppercase tracking-[0.28em] text-[#07516c]">Kitchen desk</p>
           <h1 className="mt-2 font-sans text-5xl font-bold tracking-tight md:text-6xl">Client Food Forms</h1>
           <p className="mt-3 font-sans text-lg text-[#5d5859]">Submitted dietary preferences, allergies, and kitchen requirements.</p>
-        </header>
+        </header>}
 
         <section className="mb-10 grid items-end gap-7 md:grid-cols-[300px_300px_1fr]">
           <label className="block font-sans text-sm text-[#514c4d]">

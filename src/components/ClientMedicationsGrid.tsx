@@ -11,7 +11,7 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
   return <IconComponent className={className} />;
 };
 
-const ClientMedicationsGrid: React.FC = () => {
+const ClientMedicationsGrid: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const [medications, setMedications] = useState<ClientMedication[]>([]);
   const [clients, setClients] = useState<Record<string, Client>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -111,11 +111,11 @@ const ClientMedicationsGrid: React.FC = () => {
   }
 
   return (
-    <div className="p-6">
+    <div className={embedded ? "" : "p-6"}>
       {/* Header */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Client Medications</h1>
+          <h1 className={embedded ? "text-xl font-bold text-gray-900" : "text-2xl font-bold text-gray-900"}>Client Medications</h1>
           <p className="text-gray-600 mt-1">Manage client medication documents and records</p>
         </div>
         <AppleButton onClick={() => navigate('/admin/client-medications/create')}>

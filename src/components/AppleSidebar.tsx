@@ -94,8 +94,6 @@ const FULL_MENU_SECTIONS: MenuSection[] = [
     Icon: Fi.FiFileText,
     items: [
       { id: 'client-forms', label: 'Forms overview', Icon: Fi.FiFileText },
-      { id: 'client-food-forms', label: 'Food Forms', Icon: Fi.FiCoffee },
-      { id: 'client-medications', label: 'Medication Forms', Icon: Fi.FiPlusSquare },
     ],
   },
   {
@@ -281,8 +279,6 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
             Icon: Fi.FiFileText,
             items: [
               { id: 'client-forms', label: 'Forms overview', Icon: Fi.FiFileText },
-              { id: 'client-food-forms', label: 'Food Forms', Icon: Fi.FiCoffee },
-              { id: 'client-medications', label: 'Medication Forms', Icon: Fi.FiPlusSquare },
             ],
           },
           {
