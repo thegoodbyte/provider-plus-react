@@ -10,7 +10,7 @@ type FormsTab = 'overview' | 'questionnaires' | 'food' | 'medications';
 
 const tabs: Array<{ id: FormsTab; label: string; Icon: any }> = [
   { id: 'overview', label: 'Overview', Icon: LayoutGrid },
-  { id: 'questionnaires', label: 'Health questionnaires', Icon: ClipboardList },
+  { id: 'questionnaires', label: 'Questionnaires', Icon: ClipboardList },
   { id: 'food', label: 'Food forms', Icon: Coffee },
   { id: 'medications', label: 'Medication forms', Icon: Pill },
 ];
@@ -67,7 +67,7 @@ const QuestionnairesPanel: React.FC = () => {
             <td className="px-4 py-4 text-sm">#{row.display_id || '—'}</td>
             <td className="px-4 py-4 font-medium text-gray-900">{clientName(row)}</td>
             <td className="px-4 py-4 text-sm text-gray-600">{retreatName(row)}</td>
-            <td className="px-4 py-4"><div className="font-medium text-gray-900">{row.title || 'Health Questionnaire'}</div><div className="text-xs capitalize text-gray-500">{row.status || 'received'}</div></td>
+            <td className="px-4 py-4"><div className="font-medium text-gray-900">{row.title || 'Questionnaire'}</div><div className="text-xs capitalize text-gray-500">{row.status || 'received'}</div></td>
             <td className="whitespace-nowrap px-4 py-4 text-sm text-gray-600">{row.receivedAt ? new Date(row.receivedAt).toLocaleString() : '—'}</td>
             <td className="px-4 py-4"><button type="button" onClick={() => setSelected(row)} className="font-semibold text-blue-700 hover:underline">View answers</button></td>
           </tr>)}
@@ -77,7 +77,7 @@ const QuestionnairesPanel: React.FC = () => {
     </div>
     {selected && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Questionnaire answers">
       <section className="max-h-[90vh] w-full max-w-4xl overflow-auto bg-white p-6 shadow-2xl">
-        <div className="mb-5 flex items-start justify-between gap-4 border-b border-gray-200 pb-4"><div><h2 className="text-2xl font-bold text-gray-900">{selected.title || 'Health Questionnaire'} #{selected.display_id || '—'}</h2><p className="mt-1 text-sm text-gray-500">{clientName(selected)} · {retreatName(selected)}</p></div><button type="button" onClick={() => setSelected(null)} className="text-sm text-gray-600 hover:underline">Close</button></div>
+        <div className="mb-5 flex items-start justify-between gap-4 border-b border-gray-200 pb-4"><div><h2 className="text-2xl font-bold text-gray-900">{selected.title || 'Questionnaire'} #{selected.display_id || '—'}</h2><p className="mt-1 text-sm text-gray-500">{clientName(selected)} · {retreatName(selected)}</p></div><button type="button" onClick={() => setSelected(null)} className="text-sm text-gray-600 hover:underline">Close</button></div>
         {answerEntries(selected).length > 0 ? <dl className="grid gap-4 sm:grid-cols-2">{answerEntries(selected).map(([key, value]) => <div key={key} className="bg-gray-50 p-4"><dt className="text-xs font-semibold uppercase tracking-wide text-gray-500">{key.replace(/([A-Z])/g, ' $1').replace(/^./, (letter) => letter.toUpperCase())}</dt><dd className="mt-2 whitespace-pre-wrap text-sm text-gray-900">{Array.isArray(value) ? value.join(', ') : String(value ?? '—')}</dd></div>)}</dl> : <pre className="whitespace-pre-wrap rounded bg-gray-50 p-5 font-sans text-sm leading-6 text-gray-800">{selected.textContent || 'No answer text is available for this submission.'}</pre>}
       </section>
     </div>}
@@ -95,7 +95,7 @@ export const ClientFormsPage: React.FC = () => {
       <header className="mb-7"><div className="flex items-center gap-3"><div className="rounded-xl bg-blue-100 p-3 text-blue-700"><FileText size={24} /></div><div><h1 className="text-3xl font-bold text-gray-900">Client Forms</h1><p className="mt-1 text-gray-600">Questionnaires, food forms, and medication forms in one workspace.</p></div></div></header>
       <nav className="mb-8 flex gap-1 overflow-x-auto border-b border-gray-200" aria-label="Client forms sections">{tabs.map(({ id, label, Icon }) => <button key={id} type="button" onClick={() => selectTab(id)} className={`flex whitespace-nowrap items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold ${activeTab === id ? 'border-blue-700 text-blue-800' : 'border-transparent text-gray-500 hover:text-gray-900'}`}><Icon size={17} />{label}</button>)}</nav>
 
-      {activeTab === 'overview' && <section className="grid gap-5 md:grid-cols-3">{tabs.filter((tab) => tab.id !== 'overview').map(({ id, label, Icon }) => <button key={id} type="button" onClick={() => selectTab(id)} className="group border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md"><Icon className="mb-5 text-blue-700" size={26} /><h2 className="text-lg font-semibold text-gray-900">{label}</h2><p className="mt-2 min-h-12 text-sm leading-6 text-gray-600">{id === 'questionnaires' ? 'Health, intake, and preparation questionnaire submissions.' : id === 'food' ? 'Dietary preferences, allergies, and kitchen requirements.' : 'Medication records and submitted medication forms.'}</p><span className="mt-5 inline-block text-sm font-semibold text-blue-700">Open {label.toLowerCase()} →</span></button>)}</section>}
+      {activeTab === 'overview' && <section className="grid gap-5 md:grid-cols-3">{tabs.filter((tab) => tab.id !== 'overview').map(({ id, label, Icon }) => <button key={id} type="button" onClick={() => selectTab(id)} className="group border border-gray-200 bg-white p-6 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md"><Icon className="mb-5 text-blue-700" size={26} /><h2 className="text-lg font-semibold text-gray-900">{label}</h2><p className="mt-2 min-h-12 text-sm leading-6 text-gray-600">{id === 'questionnaires' ? 'General, intake, and preparation questionnaire submissions.' : id === 'food' ? 'Dietary preferences, allergies, and kitchen requirements.' : 'Medication records and submitted medication forms.'}</p><span className="mt-5 inline-block text-sm font-semibold text-blue-700">Open {label.toLowerCase()} →</span></button>)}</section>}
       {activeTab === 'questionnaires' && <QuestionnairesPanel />}
       {activeTab === 'food' && <ClientFoodFormsPage embedded />}
       {activeTab === 'medications' && <ClientMedicationsGrid embedded />}
