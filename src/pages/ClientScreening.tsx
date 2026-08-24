@@ -867,6 +867,7 @@ const ClientScreening: React.FC = () => {
   };
 
   const persistScreening = async () => {
+    const { referralId, ...screeningFields } = formData;
     const bloodPressure = [
       formData.bloodPressureStatus,
       formData.bloodPressureValue,
@@ -909,7 +910,8 @@ const ClientScreening: React.FC = () => {
     ].filter(Boolean);
 
     return screeningApi.create({
-      ...formData,
+      ...screeningFields,
+      ...(referralId ? { referralId } : {}),
       occupation: formData.occupation.trim(),
       heartCondition: formData.heartConditionOk ? 'OK' : formData.heartCondition,
       liverCondition: formData.liverConditionOk ? 'OK' : formData.liverCondition,
