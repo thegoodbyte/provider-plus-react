@@ -46,6 +46,8 @@ import MedicalReviewPublicPage from './MedicalReviewPublicPage';
 import RemindersPage from './RemindersPage';
 import PaymentsPage from './PaymentsPage';
 import PaymentEditorPage from './PaymentEditorPage';
+import JointPaymentEditorPage from './JointPaymentEditorPage';
+import PaymentReceiptsPage from './PaymentReceiptsPage';
 import PaymentRequestsGrid from './PaymentRequestsGrid';
 import PaymentRequestEditorPage from './PaymentRequestEditorPage';
 import ExpensesPage from './ExpensesPage';
@@ -876,6 +878,8 @@ const AppleLayout: React.FC = () => {
                       <Route path="reminders" element={<RemindersPage />} />
                       <Route path="payments" element={<PaymentsPage />} />
                       <Route path="payments/new" element={<PaymentEditorPage />} />
+                      <Route path="payments/joint/new" element={<JointPaymentEditorPage />} />
+                      <Route path="payments/receipts" element={<PaymentReceiptsPage />} />
                       <Route path="payments/:id" element={<PaymentEditorPage />} />
                       <Route path="payments/:id/edit" element={<PaymentEditorPage />} />
                       <Route path="expenses" element={<ExpensesPage />} />
@@ -1143,6 +1147,8 @@ const AppleLayout: React.FC = () => {
                 <Route path="/payments" element={<ProtectedRoute><PaymentsPage /></ProtectedRoute>} />
                 <Route path="/payments/:id" element={<ProtectedRoute><PaymentEditorPage /></ProtectedRoute>} />
                 <Route path="/payments/:id/edit" element={<ProtectedRoute><PaymentEditorPage /></ProtectedRoute>} />
+                <Route path="/payments/joint/new" element={<ProtectedRoute><JointPaymentEditorPage /></ProtectedRoute>} />
+                <Route path="/payments/receipts" element={<ProtectedRoute><PaymentReceiptsPage /></ProtectedRoute>} />
                 <Route path="/expenses" element={<ProtectedRoute><ExpensesPage /></ProtectedRoute>} />
                 <Route path="/expenses/new" element={<ProtectedRoute><ExpenseEditorPage /></ProtectedRoute>} />
                 <Route path="/expenses/:id" element={<ProtectedRoute><ExpenseDetailPage /></ProtectedRoute>} />

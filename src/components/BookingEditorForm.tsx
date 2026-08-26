@@ -75,6 +75,29 @@ const toDateTimeInput = (value?: string | Date | null) => {
   return local.toISOString().slice(0, 16);
 };
 
+const retreatDatePart = (value?: string | Date) => {
+  if (!value) return '';
+  if (typeof value === 'string') {
+    const match = value.match(/^(\d{4}-\d{2}-\d{2})/);
+    if (match) return match[1];
+  }
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+};
+
+export const retreatBookingDateTimes = (retreat?: Retreat) => {
+  const startDate = retreatDatePart(retreat?.startDate || retreat?.dates?.startDate);
+  const endDate = retreatDatePart(retreat?.endDate || retreat?.dates?.endDate);
+  const startTime = retreat?.startTime || retreat?.dates?.startTime || '';
+  const endTime = retreat?.endTime || retreat?.dates?.endTime || '';
+  return {
+    checkInDate: startDate ? `${startDate}T${startTime || '00:00'}` : '',
+    checkOutDate: endDate ? `${endDate}T${endTime || '00:00'}` : '',
+  };
+};
+
 const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   mode,
   bookingId,
@@ -184,13 +207,17 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   };
 
   const handlePaymentRequestSelect = (paymentRequestId: string, paymentRequest?: PaymentRequest) => {
+    const paymentRetreatId = paymentRequest?.retreatId ? resolveId(paymentRequest.retreatId) : '';
+    const retreatDefaults = retreatBookingDateTimes(retreats.find((retreat) => retreat._id === paymentRetreatId));
     setFormData((prev) => ({
       ...prev,
       paymentRequestId,
       clientId: paymentRequest?.clientId ? resolveId(paymentRequest.clientId) : prev.clientId,
-      retreatId: paymentRequest?.retreatId ? resolveId(paymentRequest.retreatId) : prev.retreatId,
+      retreatId: paymentRetreatId || prev.retreatId,
+      checkInDate: paymentRetreatId && paymentRetreatId !== prev.retreatId ? retreatDefaults.checkInDate : prev.checkInDate,
+      checkOutDate: paymentRetreatId && paymentRetreatId !== prev.retreatId ? retreatDefaults.checkOutDate : prev.checkOutDate,
       totalAmount: paymentRequest?.fullPriceQuote ? Number(paymentRequest.fullPriceQuote) : prev.totalAmount,
-      amountPaid: paymentRequest ? Number(paymentRequest.amountPaid || prev.amountPaid || 0) : prev.amountPaid,
+      amountPaid: prev.amountPaid,
       currency: paymentRequest?.currency ? paymentRequest.currency : prev.currency,
       bookingType: paymentRequest?.bookingType || prev.bookingType,
       ceremonyId: paymentRequest?.bookingType === 'booster'
@@ -207,6 +234,17 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       ...prev,
       clientId,
       paymentRequestId: clientId === prev.clientId ? prev.paymentRequestId : '',
+    }));
+  };
+
+  const handleRetreatSelect = (retreatId: string) => {
+    const selectedRetreat = retreats.find((retreat) => retreat._id === retreatId);
+    const defaults = retreatBookingDateTimes(selectedRetreat);
+    setFormData((prev) => ({
+      ...prev,
+      retreatId,
+      checkInDate: retreatId === prev.retreatId ? prev.checkInDate : defaults.checkInDate,
+      checkOutDate: retreatId === prev.retreatId ? prev.checkOutDate : defaults.checkOutDate,
     }));
   };
 
@@ -247,7 +285,6 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
         retreatId: formData.retreatId,
         paymentRequestId: formData.paymentRequestId || undefined,
         totalAmount: Number(formData.totalAmount || 0),
-        amountPaid: Number(formData.amountPaid || 0),
         currency: formData.currency,
         status: formData.status,
         bookingNumber: Number.isFinite(bookingNumber) ? bookingNumber : undefined,
@@ -424,21 +461,6 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
 
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Arrival</label>
-            <input type="datetime-local" value={formData.checkInDate}
-              onChange={(e) => setFormData((prev) => ({ ...prev, checkInDate: e.target.value }))}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Departure</label>
-            <input type="datetime-local" value={formData.checkOutDate}
-              onChange={(e) => setFormData((prev) => ({ ...prev, checkOutDate: e.target.value }))}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Client</label>
             <SearchableClientSelect
               clients={clients}
@@ -453,10 +475,25 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
             <SearchableRetreatSelect
               retreats={retreats}
               selectedRetreatId={formData.retreatId}
-              onRetreatSelect={(retreatId) => setFormData({ ...formData, retreatId })}
+              onRetreatSelect={handleRetreatSelect}
               placeholder="Search and select a retreat..."
               required
             />
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Arrival</label>
+            <input type="datetime-local" value={formData.checkInDate}
+              onChange={(e) => setFormData((prev) => ({ ...prev, checkInDate: e.target.value }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Departure</label>
+            <input type="datetime-local" value={formData.checkOutDate}
+              onChange={(e) => setFormData((prev) => ({ ...prev, checkOutDate: e.target.value }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
           </div>
         </div>
 
@@ -496,15 +533,14 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Amount paid</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Paid from payment allocations</label>
             <input
               type="number"
-              min="0"
-              step="0.01"
               value={formData.amountPaid}
-              onChange={(e) => setFormData({ ...formData, amountPaid: Number(e.target.value) })}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              readOnly
+              className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700"
             />
+            <p className="mt-1 text-xs text-gray-500">Calculated from completed Payments allocated to this booking. Record money in Payments, not on the booking.</p>
           </div>
         </div>
 

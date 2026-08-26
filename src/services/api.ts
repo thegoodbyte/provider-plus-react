@@ -453,6 +453,13 @@ export const paymentsApi = {
     cacheService.clearPattern('bookings:'); // Clear bookings cache too as payments affect booking status
     return api.post<Payment>('/payments', data);
   },
+  createJoint: (data: any) => {
+    cacheService.clearPattern('payments:');
+    cacheService.clearPattern('bookings:');
+    return api.post<{ allocationGroupId: string; receiptId?: string; totalAmount: number; currency: string; payments: Payment[] }>('/payments/joint', data);
+  },
+  getReceipts: () => api.get<import('../types').PaymentReceipt[]>('/payments/receipts'),
+  getReceipt: (id: string) => api.get<import('../types').PaymentReceipt>(`/payments/receipts/${id}`),
   update: (id: string, data: Partial<Payment>) => {
     cacheService.clearPattern('payments:');
     cacheService.clearPattern('bookings:');
@@ -1042,7 +1049,9 @@ export const jotformApi = {
 };
 
 export const configSummaryApi = {
-  get: () => api.get('/config-summary'),
+  // This is an optional admin-only diagnostic. A denied/unavailable summary
+  // must never replace the current page with the global API error overlay.
+  get: () => api.get('/config-summary', { suppressGlobalError: true } as any),
 };
 
 export interface S3ReadOverrideSettings {

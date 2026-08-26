@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { configSummaryApi } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 /**
  * PPVC-64: app-wide reminder that this environment is currently reading S3
@@ -12,9 +13,15 @@ import { configSummaryApi } from '../services/api';
 const POLL_INTERVAL_MS = 60_000;
 
 const StorageOverrideBanner: React.FC = () => {
+  const { user } = useAuth();
   const [override, setOverride] = useState<{ bucket: string | null; expiresAt: string | null } | null>(null);
+  const isAdmin = user?.role === 'admin' || user?.originalRole === 'admin';
 
   useEffect(() => {
+    if (!isAdmin) {
+      setOverride(null);
+      return;
+    }
     let cancelled = false;
     const check = async () => {
       try {
@@ -33,7 +40,7 @@ const StorageOverrideBanner: React.FC = () => {
       cancelled = true;
       clearInterval(interval);
     };
-  }, []);
+  }, [isAdmin]);
 
   if (!override) return null;
 

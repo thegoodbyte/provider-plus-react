@@ -128,7 +128,8 @@ const PaymentsPage: React.FC = () => {
     const terms = searchTerm.trim().toLowerCase().split(/\s+/).filter(Boolean);
     if (!terms.length) return payments;
     return payments.filter((payment) => {
-      const haystack = [payment.display_id, payment._id, payment.clientDisplayId, payment.clientId, payment.clientName, payment.clientEmail, payment.clientPhone, payment.bookingNumber, payment.bookingId, payment.bookingHash, payment.retreatId, payment.retreatName, payment.paymentRequestId, typeof payment.paymentRequestId === 'object' ? payment.paymentRequestId?._id : payment.paymentRequestId, typeof payment.paymentRequestId === 'object' ? payment.paymentRequestId?.display_id : undefined, typeof payment.paymentRequestId === 'object' ? payment.paymentRequestId?.invoiceNumber : undefined, payment.transactionId, payment.transactionReference, payment.description, payment.notes, payment.status, payment.paymentMethod, payment.paymentType, payment.currency, payment.amount, payment.usd_amount, payment.paymentDate, payment.processedDate, payment.processedBy]
+      const receipt = typeof payment.receiptId === 'object' ? payment.receiptId : null;
+      const haystack = [payment.display_id, payment._id, typeof payment.receiptId === 'string' ? payment.receiptId : receipt?._id, receipt?.payerName, receipt?.transactionReference, payment.clientDisplayId, payment.clientId, payment.clientName, payment.clientEmail, payment.clientPhone, payment.bookingNumber, payment.bookingId, payment.bookingHash, payment.retreatId, payment.retreatName, payment.paymentRequestId, typeof payment.paymentRequestId === 'object' ? payment.paymentRequestId?._id : payment.paymentRequestId, typeof payment.paymentRequestId === 'object' ? payment.paymentRequestId?.display_id : undefined, typeof payment.paymentRequestId === 'object' ? payment.paymentRequestId?.invoiceNumber : undefined, payment.transactionId, payment.transactionReference, payment.allocationGroupId, payment.payerName, payment.description, payment.notes, payment.status, payment.paymentMethod, payment.paymentType, payment.currency, payment.amount, payment.usd_amount, payment.paymentDate, payment.processedDate, payment.processedBy]
         .filter((value) => value !== undefined && value !== null).join(' ').toLowerCase();
       return terms.every((term) => haystack.includes(term.replace(/^#/, '')));
     });
@@ -219,13 +220,11 @@ const PaymentsPage: React.FC = () => {
           <h1 className="text-2xl font-semibold text-gray-900">Payments</h1>
           <p className="text-sm text-gray-600">Manage client payments and invoice settlement records</p>
         </div>
-        <button
-          onClick={() => navigate('/admin/payments/new')}
-          className="ml-auto inline-flex w-auto shrink-0 items-center gap-2 whitespace-nowrap px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
-        >
-          <Icon icon={FiPlus} className="w-4 h-4" />
-          Add Payment
-        </button>
+        <div className="ml-auto flex shrink-0 gap-2">
+          <button onClick={() => navigate('/admin/payments/receipts')} className="inline-flex items-center gap-2 whitespace-nowrap rounded-md border border-gray-300 bg-white px-4 py-2 text-gray-700 hover:bg-gray-50">Receipts</button>
+          <button onClick={() => navigate('/admin/payments/joint/new')} className="inline-flex items-center gap-2 whitespace-nowrap rounded-md border border-blue-600 bg-white px-4 py-2 text-blue-700 hover:bg-blue-50"><Icon icon={FiPlus} className="w-4 h-4" />Joint / Split Payment</button>
+          <button onClick={() => navigate('/admin/payments/new')} className="inline-flex items-center gap-2 whitespace-nowrap rounded-md bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"><Icon icon={FiPlus} className="w-4 h-4" />Add Payment</button>
+        </div>
       </div>
 
       <div className="mb-4 flex items-center gap-3 rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
@@ -272,6 +271,8 @@ const PaymentsPage: React.FC = () => {
                     ) : (
                       payment.display_id ? `#${payment.display_id}` : '-'
                     )}
+                    {payment.allocationGroupId && <div className="mt-1 text-xs font-medium text-violet-700">Joint payment {payment.allocationIndex || '?'} of {payment.allocationCount || '?'}</div>}
+                    {payment.receiptId && <div className="mt-1 text-xs text-gray-500">Receipt {typeof payment.receiptId === 'string' ? payment.receiptId.slice(-8) : payment.receiptId._id?.slice(-8)}</div>}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {formatCalendarDate(payment.paymentDate)}

@@ -598,6 +598,7 @@ export interface ExpenseSummary {
 
 export interface Payment {
   _id?: string;
+  receiptId?: string | PaymentReceipt;
   display_id?: number;
   clientId: string | Client;
   retreatId: string | Retreat;
@@ -618,6 +619,11 @@ export interface Payment {
   description?: string;
   transactionId?: string;
   transactionReference?: string;
+  allocationGroupId?: string;
+  transactionTotalAmount?: number;
+  payerName?: string;
+  allocationCount?: number;
+  allocationIndex?: number;
   paymentDate: Date | string;
   processedDate?: Date | string;
   refundedAmount?: number;
@@ -631,6 +637,27 @@ export interface Payment {
   processedBy?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface PaymentReceipt {
+  _id?: string;
+  paymentRequestId?: string | PaymentRequest;
+  totalAmount: number;
+  currency: 'EUR' | 'USD' | 'CZK' | 'PLN';
+  usdAmount?: number;
+  status: 'pending' | 'received' | 'failed' | 'refunded';
+  paymentMethod: Payment['paymentMethod'];
+  paymentType?: string;
+  payerName?: string;
+  transactionId?: string;
+  transactionReference?: string;
+  receivedDate: Date | string;
+  description?: string;
+  notes?: string;
+  allocatedAmount: number;
+  allocationCount: number;
+  allocations?: Payment[];
+  unallocatedAmount?: number;
 }
 
 export interface PaymentSummary {
