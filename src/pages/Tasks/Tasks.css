@@ -32,6 +32,24 @@
   color: #333;
 }
 
+.tasks-subtitle { margin: 4px 0 0; color: #64748b; font-size: 14px; }
+.task-context-tabs { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.task-context-tabs button { display: grid; gap: 5px; padding: 13px 15px; text-align: left; border: 1px solid #dbe2ea; border-radius: 11px; background: #fff; color: #334155; cursor: pointer; }
+.task-context-tabs button:hover { border-color: #94a3b8; background: #f8fafc; }
+.task-context-tabs button.active { border-color: #3558a8; background: #eef4ff; box-shadow: 0 0 0 1px #3558a8; color: #173a78; }
+.task-context-tabs button span { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 750; }
+.task-context-tabs button em { display: grid; place-items: center; min-width: 25px; height: 22px; padding: 0 6px; border-radius: 11px; background: #e2e8f0; font-size: 11px; font-style: normal; }
+.task-context-tabs button.active em { background: #3558a8; color: #fff; }
+.task-context-tabs button small { color: #64748b; font-size: 11px; }
+.task-origin-bar { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.task-origin-bar > div { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.task-origin-bar strong { margin-right: 3px; color: #64748b; font-size: 12px; text-transform: uppercase; }
+.task-origin-bar button { padding: 7px 11px; border: 1px solid #dbe2ea; border-radius: 999px; background: #fff; color: #475569; cursor: pointer; font-size: 12px; }
+.task-origin-bar button.active { border-color: #475569; background: #334155; color: #fff; }
+.task-origin-bar details { position: relative; }
+.task-origin-bar summary { padding: 7px 10px; color: #64748b; cursor: pointer; font-size: 12px; }
+.task-origin-bar details > div { position: absolute; z-index: 20; right: 0; width: min(900px, 88vw); padding: 12px; border: 1px solid #dbe2ea; border-radius: 10px; background: #fff; box-shadow: 0 12px 35px rgba(15,23,42,.15); }
+
 .header-content .btn {
   padding: 10px 20px;
   border: none;
@@ -151,4 +169,11 @@
     min-width: 80px;
     padding: 8px 10px;
   }
+}
+
+@media (max-width: 760px) {
+  .header-content { align-items: flex-start; gap: 12px; }
+  .task-header-actions { align-items: flex-end; }
+  .task-context-tabs { grid-template-columns: repeat(2, 1fr); }
+  .task-origin-bar { display: grid; }
 }

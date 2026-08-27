@@ -110,6 +110,8 @@ export const TaskList: React.FC<TaskListProps> = ({
     );
   };
 
+  const isSystemTask = (task: Task) => Boolean(task.sourceType || task.sourceId || task.bookingFlowItemId);
+
   if (tasks.length === 0) {
     return (
       <div className="task-list-empty">
@@ -182,7 +184,7 @@ export const TaskList: React.FC<TaskListProps> = ({
           >
             <div className="task-cell task-name">
               <span className="task-cell-label">Task</span>
-              <div className="task-title">{task.name}</div>
+              <div className="task-title-row"><div className="task-title">{task.name}</div><span className={`task-origin-pill ${isSystemTask(task) ? 'system' : 'custom'}`}>{isSystemTask(task) ? 'System' : 'Custom'}</span></div>
             </div>
 
             <div className="task-cell">

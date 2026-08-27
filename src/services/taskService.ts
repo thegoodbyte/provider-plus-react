@@ -5,7 +5,7 @@ export interface Task {
   id: string;
   name: string;
   description: string;
-  type: 'client' | 'retreat' | 'generic';
+  type: 'client' | 'booking' | 'retreat' | 'generic';
   urgency: 'low' | 'medium' | 'high' | 'urgent';
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
   dueDate?: string;
@@ -62,8 +62,9 @@ export interface Task {
 export interface CreateTaskDto {
   name: string;
   description: string;
-  type: 'client' | 'retreat' | 'generic';
+  type: 'client' | 'booking' | 'retreat' | 'generic';
   urgency: 'low' | 'medium' | 'high' | 'urgent';
+  status?: Task['status'];
   dueDate?: string;
   clientId?: string;
   retreatId?: string;
@@ -162,6 +163,22 @@ class TaskService {
       throw new Error(await this.getErrorMessage(response, 'Failed to fetch task'));
     }
 
+    return response.json();
+  }
+
+  async getSprints(): Promise<Array<{ id: string; name: string }>> {
+    const response = await authFetch(`${this.baseUrl}/sprints`);
+    if (!response.ok) throw new Error(await this.getErrorMessage(response, 'Failed to fetch sprints'));
+    return response.json();
+  }
+
+  async createSprint(name: string): Promise<{ id: string; name: string }> {
+    const response = await authFetch(`${this.baseUrl}/sprints`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    if (!response.ok) throw new Error(await this.getErrorMessage(response, 'Failed to create sprint'));
     return response.json();
   }
 

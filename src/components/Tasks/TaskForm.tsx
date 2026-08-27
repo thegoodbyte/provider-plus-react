@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Task, CreateTaskDto } from '../../services/taskService';
-import { clientsApi, retreatsApi } from '../../services/api';
+import { bookingsApi, clientsApi, retreatsApi } from '../../services/api';
 import { SearchableSelect } from './SearchableSelect';
 import './TaskForm.css';
 
@@ -12,6 +12,7 @@ interface TaskFormProps {
   retreatId?: string;
   bookingId?: string;
   bookingLabel?: string;
+  initialType?: CreateTaskDto['type'];
   error?: string | null;
 }
 
@@ -23,12 +24,13 @@ export const TaskForm: React.FC<TaskFormProps> = ({
   retreatId,
   bookingId,
   bookingLabel,
+  initialType,
   error,
 }) => {
   const [formData, setFormData] = useState<CreateTaskDto>({
     name: '',
     description: '',
-    type: 'generic',
+    type: initialType || 'generic',
     urgency: 'medium',
     dueDate: '',
     clientId: clientId || '',
@@ -41,8 +43,10 @@ export const TaskForm: React.FC<TaskFormProps> = ({
   const [tagInput, setTagInput] = useState('');
   const [clients, setClients] = useState<any[]>([]);
   const [retreats, setRetreats] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]);
   const [loadingClients, setLoadingClients] = useState(false);
   const [loadingRetreats, setLoadingRetreats] = useState(false);
+  const [loadingBookings, setLoadingBookings] = useState(false);
 
   const normalizeList = (response: any): any[] => {
     const data = response?.data;
@@ -69,8 +73,9 @@ export const TaskForm: React.FC<TaskFormProps> = ({
       });
     } else {
       // Set type based on context
-      let taskType: 'client' | 'retreat' | 'generic' = 'generic';
-      if (clientId) taskType = 'client';
+      let taskType: CreateTaskDto['type'] = initialType || 'generic';
+      if (bookingId) taskType = 'booking';
+      else if (clientId) taskType = 'client';
       else if (retreatId) taskType = 'retreat';
 
       setFormData(prev => ({
@@ -81,7 +86,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         bookingId: bookingId || '',
       }));
     }
-  }, [task, clientId, retreatId, bookingId]);
+  }, [task, clientId, retreatId, bookingId, initialType]);
 
   // Load clients and retreats when form opens
   useEffect(() => {
@@ -89,19 +94,23 @@ export const TaskForm: React.FC<TaskFormProps> = ({
       try {
         setLoadingClients(true);
         setLoadingRetreats(true);
+        setLoadingBookings(true);
 
-        const [clientsResponse, retreatsResponse] = await Promise.all([
+        const [clientsResponse, retreatsResponse, bookingsResponse] = await Promise.all([
           clientsApi.getAll(),
           retreatsApi.getAll(),
+          bookingsApi.getAll(),
         ]);
 
         setClients(normalizeList(clientsResponse));
         setRetreats(normalizeList(retreatsResponse));
+        setBookings(normalizeList(bookingsResponse));
       } catch (error) {
         console.error('Error loading clients and retreats:', error);
       } finally {
         setLoadingClients(false);
         setLoadingRetreats(false);
+        setLoadingBookings(false);
       }
     };
 
@@ -147,6 +156,16 @@ export const TaskForm: React.FC<TaskFormProps> = ({
     setFormData(prev => ({
       ...prev,
       retreatId: retreatId,
+    }));
+  };
+
+  const handleBookingChange = (selectedBookingId: string) => {
+    const booking = bookings.find(item => (item._id || item.id) === selectedBookingId);
+    setFormData(prev => ({
+      ...prev,
+      bookingId: selectedBookingId,
+      clientId: booking ? (typeof booking.clientId === 'object' ? booking.clientId?._id || booking.clientId?.id : booking.clientId) : prev.clientId,
+      retreatId: booking ? (typeof booking.retreatId === 'object' ? booking.retreatId?._id || booking.retreatId?.id : booking.retreatId) : prev.retreatId,
     }));
   };
 
@@ -202,12 +221,28 @@ export const TaskForm: React.FC<TaskFormProps> = ({
     })
     .filter(option => option.id);
 
+  const bookingOptions = bookings
+    .map(booking => {
+      const id = booking._id || booking.id;
+      const client = typeof booking.clientId === 'object' ? booking.clientId : {};
+      const retreat = typeof booking.retreatId === 'object' ? booking.retreatId : {};
+      const clientName = `${client.firstName || client.fname || ''} ${client.lastName || client.lname || ''}`.trim();
+      const bookingNumber = booking.bookingNumber || booking.display_id || booking.bookingHash || String(id || '').slice(-6);
+      return {
+        id,
+        label: `Booking #${bookingNumber}${clientName ? ` — ${clientName}` : ''}`,
+        sublabel: [retreat.code || retreat.name, booking.status].filter(Boolean).join(' • '),
+      };
+    })
+    .filter(option => option.id);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
     // Create submission data
     const submitData: CreateTaskDto = {
       ...formData,
+      description: formData.description.trim() || formData.name.trim(),
       // Convert empty strings to undefined for optional fields
       dueDate: formData.dueDate || undefined,
       clientId: formData.clientId || undefined,
@@ -260,6 +295,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
               >
                 <option value="generic">Generic</option>
                 <option value="client">Client Related</option>
+                <option value="booking">Booking Related</option>
                 <option value="retreat">Retreat Related</option>
               </select>
             </div>
@@ -298,16 +334,31 @@ export const TaskForm: React.FC<TaskFormProps> = ({
             </div>
           )}
 
+          {formData.type === 'booking' && (
+            <div className="form-group">
+              <label htmlFor="bookingId">Select Booking *</label>
+              <SearchableSelect
+                id="bookingId"
+                name="bookingId"
+                value={formData.bookingId || ''}
+                options={bookingOptions}
+                placeholder="Search by booking or client..."
+                onChange={handleBookingChange}
+                required
+                loading={loadingBookings}
+              />
+            </div>
+          )}
+
           <div className="form-group">
-            <label htmlFor="description">Description *</label>
+            <label htmlFor="description">Description (optional)</label>
             <textarea
               id="description"
               name="description"
               value={formData.description}
               onChange={handleChange}
-              required
               rows={3}
-              placeholder="Describe the task..."
+              placeholder="Add details only if the title is not enough."
             />
           </div>
 
