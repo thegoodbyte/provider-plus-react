@@ -1629,7 +1629,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
           <div className="max-h-[90vh] w-full max-w-3xl overflow-hidden rounded-lg bg-white shadow-xl">
             <div className="border-b border-gray-200 px-5 py-4">
               <h2 className="text-lg font-semibold text-gray-900">Edit packet</h2>
-              <p className="mt-1 text-sm text-gray-600">One packet belongs to one retreat. Only MRRs from that retreat can be included.</p>
+              <p className="mt-1 text-sm text-gray-600">Retreat packets accept only that retreat’s MRRs. A Potentials packet can remain unassigned.</p>
             </div>
             <div className="max-h-[calc(90vh-150px)] space-y-4 overflow-y-auto px-5 py-4">
               {groupError && (
@@ -1653,18 +1653,18 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                 </label>
                 <label className="block">
                   <span className="text-sm font-medium text-gray-700">Packet type</span>
-                  <select value={editingGroupType} onChange={(event) => setEditingGroupType(event.target.value as typeof editingGroupType)} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm">
-                    <option value="retreat">Retreat</option><option value="ceremony">Ceremony</option><option value="custom">Custom</option>
+                  <select value={editingGroupType} onChange={(event) => { const nextType = event.target.value as typeof editingGroupType; setEditingGroupType(nextType); if (nextType === 'custom') { setEditingGroupRetreatId(''); setEditingGroupCeremonyNumber(''); } }} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm">
+                    <option value="retreat">Retreat</option><option value="ceremony">Ceremony</option><option value="custom">Potentials / custom (no retreat)</option>
                   </select>
                 </label>
-                <label className="block">
+                {editingGroupType !== 'custom' && <label className="block">
                   <span className="text-sm font-medium text-gray-700">Retreat</span>
                   <select value={editingGroupRetreatId} onChange={(event) => { setEditingGroupRetreatId(event.target.value); setEditingGroupRequestIds([]); }} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm">
                     <option value="">Select retreat</option>
                     {retreatOptions.map((retreat) => <option key={retreat._id} value={retreat._id}>{getRetreatCode(retreat)}</option>)}
                   </select>
                   <span className="mt-1 block text-xs text-amber-700">Changing retreat clears the item selection so MRRs cannot silently cross retreats.</span>
-                </label>
+                </label>}
                 {editingGroupType === 'ceremony' && <label className="block"><span className="text-sm font-medium text-gray-700">Ceremony #</span><input type="number" min="1" value={editingGroupCeremonyNumber} onChange={(event) => setEditingGroupCeremonyNumber(event.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" /></label>}
               </div>
               <label className="block">
@@ -1678,11 +1678,11 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                 <span className="mt-1 block text-xs text-gray-500">Packets automatically appear under Past after this date.</span>
               </label>
               <section className="rounded-md border border-gray-200 bg-gray-50 p-3">
-                <div className="flex items-center justify-between gap-3"><div><h3 className="text-sm font-semibold text-gray-900">MRRs in this packet ({editingGroupRequestIds.length})</h3><p className="text-xs text-gray-500">Current items plus ungrouped MRRs from the selected retreat.</p></div></div>
+                <div className="flex items-center justify-between gap-3"><div><h3 className="text-sm font-semibold text-gray-900">MRRs in this packet ({editingGroupRequestIds.length})</h3><p className="text-xs text-gray-500">{editingGroupType === 'custom' ? 'Current items plus unfiled potential MRRs.' : 'Current items plus ungrouped MRRs from the selected retreat.'}</p></div></div>
                 <input value={editingGroupSearch} onChange={(event) => setEditingGroupSearch(event.target.value)} placeholder="Search MRR or client" className="mt-3 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm" />
                 <div className="mt-3 max-h-56 overflow-y-auto rounded-md border border-gray-200 bg-white">
                   {editingGroupCandidates.map((request) => { const requestId = getRequestId(request); return <label key={requestId} className="flex cursor-pointer items-start gap-3 border-b border-gray-100 px-3 py-3 last:border-0 hover:bg-gray-50"><input type="checkbox" checked={editingGroupRequestIds.includes(requestId)} onChange={() => setEditingGroupRequestIds((current) => current.includes(requestId) ? current.filter((id) => id !== requestId) : [...current, requestId])} className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600" /><span className="min-w-0 text-sm"><strong>MRR #{request.display_id || requestId.slice(-6)}</strong><span className="ml-2">{request.clientName}</span><span className="ml-2 text-gray-500">{request.retreatName}</span></span></label>; })}
-                  {!editingGroupCandidates.length && <div className="px-3 py-5 text-center text-sm text-gray-500">No eligible MRRs for this retreat.</div>}
+                  {!editingGroupCandidates.length && <div className="px-3 py-5 text-center text-sm text-gray-500">No eligible MRRs for this packet.</div>}
                 </div>
               </section>
             </div>
