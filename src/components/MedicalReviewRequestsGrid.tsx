@@ -1226,7 +1226,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                       <Icon icon={FiFolder} className="h-4 w-4" />
                     </span>
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-gray-900">Ungrouped requests</div>
+                      <div className="truncate text-sm font-semibold text-gray-900">Potentials &amp; unmatched</div>
                       <div className="text-xs text-gray-500">{ungroupedRequests.length} requests</div>
                     </div>
                   </div>
