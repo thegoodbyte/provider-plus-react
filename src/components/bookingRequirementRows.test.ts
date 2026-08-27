@@ -94,4 +94,14 @@ describe('booking requirement rows', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({ key: 'ekg', label: 'Entry EKG', relatedItems: [items[0], items[1]] });
   });
+
+  it('keeps an explicitly displayed requirement visible even when it is not required from the client', () => {
+    const rows = buildBookingRequirementRows([{
+      _id: 'contract', key: 'contract_signed', title: 'Contract', status: 'received',
+      metadata: { isRequirement: true, requiredFromClient: false, requirementType: 'contract_signed' },
+    } as any], [], [], [], [], {});
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].label).toBe('Contract');
+  });
 });

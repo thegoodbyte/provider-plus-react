@@ -1411,6 +1411,7 @@ export interface BookingFlowTemplate {
   clientTagOnComplete?: string;
   autoCompleteOnArtifact?: boolean;
   autoCompleteStatus?: string;
+  autoCompleteCondition?: 'manual' | 'matching_artifact' | 'balance_fully_paid';
   isRequirement?: boolean;
   requiredFromClient?: boolean;
   clientFacingName?: { en?: string; pl?: string; cz?: string };

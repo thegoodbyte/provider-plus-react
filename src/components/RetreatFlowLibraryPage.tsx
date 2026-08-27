@@ -49,6 +49,7 @@ type TemplateForm = {
   clientTagOnComplete: string;
   autoCompleteOnArtifact: boolean;
   autoCompleteStatus: string;
+  autoCompleteCondition: 'manual' | 'matching_artifact' | 'balance_fully_paid';
   emailEnabled: boolean;
   emailTemplateId: string;
   actions: BookingFlowAction[];
@@ -89,6 +90,7 @@ const emptyForm = (): TemplateForm => ({
   clientTagOnComplete: '',
   autoCompleteOnArtifact: false,
   autoCompleteStatus: 'received',
+  autoCompleteCondition: 'manual',
   emailEnabled: false,
   emailTemplateId: '',
   actions: [],
@@ -233,6 +235,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
       clientTagOnComplete: template.clientTagOnComplete || '',
       autoCompleteOnArtifact: !!template.autoCompleteOnArtifact,
       autoCompleteStatus: template.autoCompleteStatus || 'received',
+      autoCompleteCondition: template.autoCompleteCondition || (template.autoCompleteOnArtifact ? 'matching_artifact' : 'manual'),
       emailEnabled: !!template.emailEnabled,
       emailTemplateId: typeof template.emailTemplateId === 'string' ? template.emailTemplateId : template.emailTemplateId?._id || '',
       actions: normalizeTemplateActionsForForm(template),
@@ -306,6 +309,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
         clientTagOnComplete: form.clientTagOnComplete || undefined,
         autoCompleteOnArtifact: form.autoCompleteOnArtifact,
         autoCompleteStatus: form.autoCompleteStatus || 'received',
+        autoCompleteCondition: form.autoCompleteCondition,
         emailEnabled: Boolean(primaryEmailAction),
         emailTemplateId: primaryEmailAction?.emailTemplateId,
         actions: normalizedActions,
