@@ -171,6 +171,29 @@ const PaymentRequestEditorPage: React.FC = () => {
             </div>
           </div>
 
+          {Boolean(paymentRequest.lineItems?.length) && (
+            <div className="mt-6 overflow-hidden rounded-lg border border-gray-200">
+              <div className="bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-800">Itemization</div>
+              <div className="divide-y divide-gray-100">
+                {paymentRequest.lineItems!.map((item, index) => (
+                  <div key={index} className="flex items-start justify-between gap-4 px-4 py-3 text-sm">
+                    <div>
+                      <div className="font-medium text-gray-900">{item.description}</div>
+                      {item.clientName && <div className="text-xs text-gray-500">{item.clientName}</div>}
+                      {item.type === 'charge' && item.allocationAmount !== undefined && <div className="text-xs text-gray-500">Suggested receipt allocation: {formatAmount(item.allocationAmount, paymentRequest.currency)}</div>}
+                    </div>
+                    <div className={item.amount < 0 ? 'font-semibold text-green-700' : 'font-semibold text-gray-900'}>{formatAmount(item.amount, paymentRequest.currency)}</div>
+                  </div>
+                ))}
+              </div>
+              <div className="border-t border-gray-200 bg-gray-50 px-4 py-3 text-right text-sm">
+                <div>Subtotal: {formatAmount(paymentRequest.subtotal, paymentRequest.currency)}</div>
+                <div>Discount: {formatAmount(paymentRequest.discountTotal, paymentRequest.currency)}</div>
+                <div className="mt-1 font-semibold">Total: {formatAmount(paymentRequest.requestedAmount, paymentRequest.currency)}</div>
+              </div>
+            </div>
+          )}
+
           <div className="mt-6 border-t border-gray-200 pt-6">
             <h2 className="text-lg font-semibold text-gray-900">Associated Payment</h2>
             {linkedPaymentId ? (

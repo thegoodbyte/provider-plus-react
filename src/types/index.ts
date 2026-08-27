@@ -1587,6 +1587,21 @@ export interface BookingDocument {
   updatedAt?: string;
 }
 
+export interface PaymentRequestLineItem {
+  type: 'charge' | 'discount';
+  description: string;
+  clientId?: string;
+  bookingId?: string;
+  clientName?: string;
+  bookingLabel?: string;
+  quantity?: number;
+  unitPrice?: number;
+  amount: number;
+  discountType?: 'percentage' | 'fixed';
+  discountPercent?: number;
+  allocationAmount?: number;
+}
+
 export interface PaymentRequest {
   _id?: string;
   display_id?: number;
@@ -1622,6 +1637,9 @@ export interface PaymentRequest {
   requestDate?: Date | string;
   requestType?: 'deposit' | 'balance' | 'installment' | 'full_payment' | 'additional';
   requestedAmount?: number;
+  lineItems?: PaymentRequestLineItem[];
+  subtotal?: number;
+  discountTotal?: number;
   fullPrice?: number;
   notes?: string;
   paymentId?: string | Payment;

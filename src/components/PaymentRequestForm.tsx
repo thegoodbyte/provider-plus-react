@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { PaymentRequest, Client, Retreat, Ceremony } from '../types';
+import { PaymentRequest, PaymentRequestLineItem, Client, Retreat, Ceremony } from '../types';
 import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 import { bookingsApi, ceremoniesApi, clientsApi, paymentRequestsApi, paymentsApi, retreatsApi } from '../services/api';
@@ -35,6 +35,8 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
   const [formError, setFormError] = useState('');
   const [bookingDefaultsLoading, setBookingDefaultsLoading] = useState(false);
   const [bookingDefaultsMessage, setBookingDefaultsMessage] = useState('');
+  const [itemized, setItemized] = useState(Boolean(paymentRequest?.lineItems?.length));
+  const [lineItems, setLineItems] = useState<PaymentRequestLineItem[]>(paymentRequest?.lineItems || []);
   const [usdPreview, setUsdPreview] = useState({
     amount: paymentRequest?.usd_amount?.toString() || paymentRequest?.fullPriceUsdAmount?.toString() || '',
     loading: false,
@@ -199,7 +201,20 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
   }, [formData.fullPriceQuote, formData.currency]);
 
   useEffect(() => {
+    if (!itemized) return;
+    const subtotal = lineItems.filter(item => item.type === 'charge').reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const recalculated = lineItems.map(item => item.type === 'discount' && item.discountType === 'percentage'
+      ? { ...item, amount: -(Math.round(subtotal * Number(item.discountPercent || 0)) / 100) }
+      : item);
+    const changed = recalculated.some((item, index) => item.amount !== lineItems[index].amount);
+    const total = recalculated.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    setFormData(prev => ({ ...prev, requestedAmount: String(Math.round(total * 100) / 100) }));
+    if (changed) setLineItems(recalculated);
+  }, [itemized, lineItems]);
+
+  useEffect(() => {
     const fullPrice = Number(formData.fullPriceQuote);
+    if (itemized) return;
     if (!Number.isFinite(fullPrice) || fullPrice <= 0) return;
 
     if (formData.requestType === 'deposit') {
@@ -210,7 +225,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     } else if (!formData.requestedAmount || Number(formData.requestedAmount) === 0) {
       setFormData(prev => ({ ...prev, requestedAmount: String(fullPrice) }));
     }
-  }, [formData.fullPriceQuote, formData.requestedAmount, formData.requestType]);
+  }, [formData.fullPriceQuote, formData.requestedAmount, formData.requestType, itemized]);
 
   const handleChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -246,6 +261,12 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
 
       const fullPriceQuote = parseFloat(formData.fullPriceQuote);
       const requestedAmount = parseFloat(formData.requestedAmount);
+      if (itemized && (!lineItems.length || lineItems.some(item => !item.description.trim() || !Number(item.amount)))) {
+        setFormError('Every itemized row needs a description and a non-zero amount.');
+        return;
+      }
+      const subtotal = lineItems.filter(item => item.amount > 0).reduce((sum, item) => sum + Number(item.amount), 0);
+      const discountTotal = -lineItems.filter(item => item.amount < 0).reduce((sum, item) => sum + Number(item.amount), 0);
       await onSave({
         display_id: Number.isFinite(Number(formData.display_id)) ? Number(formData.display_id) : undefined,
         invoiceNumber,
@@ -259,6 +280,9 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
         paymentType: formData.paymentType as PaymentRequest['paymentType'],
         requestType: formData.requestType as PaymentRequest['requestType'],
         requestedAmount,
+        lineItems: itemized ? lineItems : [],
+        subtotal: itemized ? subtotal : undefined,
+        discountTotal: itemized ? discountTotal : undefined,
         fullPrice: fullPriceQuote,
         fullPriceQuote,
         amountPaid: requestedAmount,
@@ -478,6 +502,127 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
               />
               {formData.requestType === 'deposit' && (
                 <p className="mt-1 text-xs text-gray-500">Auto-calculated as 40% of the full price.</p>
+              )}
+            </div>
+
+            <div className="md:col-span-2 rounded-lg border border-gray-200 p-4">
+              <label className="flex items-center gap-3 text-sm font-medium text-gray-800">
+                <input
+                  type="checkbox"
+                  checked={itemized}
+                  onChange={(event) => {
+                    const enabled = event.target.checked;
+                    setItemized(enabled);
+                    if (enabled && !lineItems.length) {
+                      setLineItems([{ type: 'charge', description: '', amount: Number(formData.requestedAmount || 0) }]);
+                    }
+                  }}
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                Itemize this payment request
+              </label>
+              <p className="mt-1 text-xs text-gray-500">Use separate people/stays and discounts. The calculated total becomes the requested amount.</p>
+
+              {itemized && (
+                <div className="mt-4 space-y-3">
+                  {lineItems.map((item, index) => (
+                    <div key={index} className="grid grid-cols-1 gap-3 rounded-md bg-gray-50 p-3 md:grid-cols-12">
+                      <select
+                        value={item.type}
+                        onChange={(event) => setLineItems(current => current.map((row, rowIndex) => rowIndex === index
+                          ? { ...row, type: event.target.value as 'charge' | 'discount', amount: event.target.value === 'discount' ? -Math.abs(row.amount || 0) : Math.abs(row.amount || 0) }
+                          : row))}
+                        className="rounded-md border border-gray-300 px-2 py-2 text-sm md:col-span-2"
+                      >
+                        <option value="charge">Charge</option>
+                        <option value="discount">Discount</option>
+                      </select>
+                      <input
+                        value={item.description}
+                        onChange={(event) => setLineItems(current => current.map((row, rowIndex) => rowIndex === index ? { ...row, description: event.target.value } : row))}
+                        placeholder={item.type === 'charge' ? 'Robert — retreat stay' : 'Shared-room discount'}
+                        className="rounded-md border border-gray-300 px-3 py-2 text-sm md:col-span-4"
+                      />
+                      {item.type === 'charge' ? (
+                        <>
+                          <select
+                            value={item.clientId || ''}
+                            onChange={(event) => {
+                              const client = clients.find(candidate => candidate._id === event.target.value);
+                              setLineItems(current => current.map((row, rowIndex) => rowIndex === index ? {
+                                ...row,
+                                clientId: event.target.value || undefined,
+                                clientName: client ? [client.firstName, client.lastName].filter(Boolean).join(' ') : undefined,
+                              } : row));
+                            }}
+                            className="rounded-md border border-gray-300 px-2 py-2 text-sm md:col-span-3"
+                          >
+                            <option value="">No client link</option>
+                            {clients.map(client => <option key={client._id} value={client._id}>{[client.firstName, client.lastName].filter(Boolean).join(' ')}</option>)}
+                          </select>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={Math.abs(item.amount || 0)}
+                            onChange={(event) => setLineItems(current => current.map((row, rowIndex) => rowIndex === index ? { ...row, amount: Number(event.target.value) } : row))}
+                            placeholder="Charge"
+                            className="rounded-md border border-gray-300 px-3 py-2 text-sm md:col-span-2"
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <select
+                            value={item.discountType || 'fixed'}
+                            onChange={(event) => setLineItems(current => current.map((row, rowIndex) => rowIndex === index ? { ...row, discountType: event.target.value as 'percentage' | 'fixed' } : row))}
+                            className="rounded-md border border-gray-300 px-2 py-2 text-sm md:col-span-3"
+                          >
+                            <option value="fixed">Fixed amount</option>
+                            <option value="percentage">Percentage</option>
+                          </select>
+                          <input
+                            type="number"
+                            min="0"
+                            max={item.discountType === 'percentage' ? 100 : undefined}
+                            step="0.01"
+                            value={item.discountType === 'percentage' ? (item.discountPercent || '') : Math.abs(item.amount || 0)}
+                            onChange={(event) => setLineItems(current => current.map((row, rowIndex) => rowIndex === index ? (row.discountType === 'percentage'
+                              ? { ...row, discountPercent: Number(event.target.value) }
+                              : { ...row, amount: -Math.abs(Number(event.target.value)) }) : row))}
+                            placeholder={item.discountType === 'percentage' ? '%' : 'Discount'}
+                            className="rounded-md border border-gray-300 px-3 py-2 text-sm md:col-span-2"
+                          />
+                        </>
+                      )}
+                      <button type="button" onClick={() => setLineItems(current => current.filter((_, rowIndex) => rowIndex !== index))} className="text-sm text-red-600 hover:text-red-800 md:col-span-1">Remove</button>
+                      {item.type === 'charge' && (
+                        <div className="md:col-span-12 flex items-center gap-2">
+                          <label className="text-xs text-gray-600">Final receipt allocation (optional)</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={item.allocationAmount ?? ''}
+                            onChange={(event) => setLineItems(current => current.map((row, rowIndex) => rowIndex === index ? { ...row, allocationAmount: event.target.value === '' ? undefined : Number(event.target.value) } : row))}
+                            placeholder="e.g. 8550"
+                            className="w-36 rounded-md border border-gray-300 px-3 py-1.5 text-sm"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setLineItems(current => [...current, { type: 'charge', description: '', amount: 0 }])} className="rounded-md border border-blue-300 px-3 py-2 text-sm text-blue-700">+ Charge</button>
+                      <button type="button" onClick={() => setLineItems(current => [...current, { type: 'discount', description: '', amount: 0, discountType: 'percentage' }])} className="rounded-md border border-blue-300 px-3 py-2 text-sm text-blue-700">+ Discount</button>
+                    </div>
+                    <div className="text-right text-sm">
+                      <div>Subtotal: {lineItems.filter(item => item.amount > 0).reduce((sum, item) => sum + Number(item.amount), 0).toFixed(2)} {formData.currency}</div>
+                      <div>Discount: {(-lineItems.filter(item => item.amount < 0).reduce((sum, item) => sum + Number(item.amount), 0)).toFixed(2)} {formData.currency}</div>
+                      <div className="font-semibold">Total: {Number(formData.requestedAmount || 0).toFixed(2)} {formData.currency}</div>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
 
