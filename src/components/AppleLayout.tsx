@@ -222,6 +222,7 @@ const AppleLayout: React.FC = () => {
     if (route === 'reminders') return 'reminders';
     if (route === 'contact-book') return 'contact-book';
     if (route === 'referrals') return 'referrals';
+    if (route === 'payments' && pathSegments.includes('receipts')) return 'payment-receipts';
     if (route === 'payments') return 'payments';
     if (route === 'payment-requests') return 'payment-requests';
     if (route === 'communications') return 'communications';
@@ -387,6 +388,7 @@ const AppleLayout: React.FC = () => {
       bookings: 'retreat/bookings',
       houses: 'retreat/houses',
       'booster-offers': 'retreat/booster-offers',
+      'payment-receipts': 'payments/receipts',
     };
     navigate(`/${prefix}/${retreatSectionRoutes[item] || item}`);
     setSidebarOpen(false);
