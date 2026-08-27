@@ -146,6 +146,12 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const [draggedOverGroupId, setDraggedOverGroupId] = useState('');
   const [groupReorderSaving, setGroupReorderSaving] = useState(false);
   const [groupOrderUnlocked, setGroupOrderUnlocked] = useState(false);
+  const [packetAssignmentUnlocked, setPacketAssignmentUnlocked] = useState(false);
+  const [draggedRequestId, setDraggedRequestId] = useState('');
+  const [draggedRequestSourceGroupId, setDraggedRequestSourceGroupId] = useState('');
+  const [draggedOverPacketId, setDraggedOverPacketId] = useState('');
+  const [packetMoveSaving, setPacketMoveSaving] = useState(false);
+  const [packetMoveMessage, setPacketMoveMessage] = useState('');
   const [autoAssignSaving, setAutoAssignSaving] = useState(false);
   const [autoAssignMessage, setAutoAssignMessage] = useState('');
 
@@ -367,6 +373,33 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const handleGroupDragEnd = () => {
     setDraggedGroupId('');
     setDraggedOverGroupId('');
+  };
+
+  const handleRequestDragEnd = () => {
+    setDraggedRequestId('');
+    setDraggedRequestSourceGroupId('');
+    setDraggedOverPacketId('');
+  };
+
+  const moveRequestToPacket = async (requestId: string, sourceGroupId: string, targetGroupId: string) => {
+    if (!requestId || !targetGroupId || sourceGroupId === targetGroupId || packetMoveSaving) {
+      handleRequestDragEnd();
+      return;
+    }
+    const request = requests.find((item) => getRequestId(item) === requestId);
+    const target = groups.find((item) => item._id === targetGroupId);
+    try {
+      setPacketMoveSaving(true);
+      setPacketMoveMessage('');
+      await medicalReviewRequestsApi.addRequestsToGroup(targetGroupId, [requestId]);
+      await loadData();
+      setPacketMoveMessage(`MRR #${request?.display_id || requestId.slice(-6)} moved to ${target?.title || 'packet'}. Change logged.`);
+    } catch (requestError: any) {
+      setPacketMoveMessage(requestError?.response?.data?.message || 'Unable to move the MRR. No local change was kept.');
+    } finally {
+      setPacketMoveSaving(false);
+      handleRequestDragEnd();
+    }
   };
 
   const autoAssignRequestsToPackets = async () => {
@@ -778,9 +811,25 @@ const MedicalReviewRequestsGrid: React.FC = () => {
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
               <div>
                 <div className="text-sm font-semibold text-gray-900">Grouped reviews</div>
-                <div className="text-xs text-gray-500">Collapse a packet, copy the permanent link, or send it directly in WhatsApp.</div>
+                <div className="text-xs text-gray-500">Unlock assignments to drag an MRR into the correct packet. Every move is logged.</div>
               </div>
               <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPacketAssignmentUnlocked((current) => !current);
+                    handleRequestDragEnd();
+                  }}
+                  disabled={packetMoveSaving}
+                  className={`inline-flex w-auto shrink-0 items-center gap-2 whitespace-nowrap rounded-md border px-4 py-2 text-sm font-medium ${
+                    packetAssignmentUnlocked
+                      ? 'border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100'
+                      : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <Icon icon={packetAssignmentUnlocked ? FiLock : FiUnlock} className="h-4 w-4" />
+                  {packetAssignmentUnlocked ? 'Lock assignments' : 'Unlock assignments'}
+                </button>
                 <button
                   type="button"
                   onClick={autoAssignRequestsToPackets}
@@ -825,6 +874,12 @@ const MedicalReviewRequestsGrid: React.FC = () => {
             </div>
           )}
 
+          {packetMoveMessage && (
+            <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800" role="status">
+              {packetMoveMessage}
+            </div>
+          )}
+
           <div className="space-y-3">
             {lifecycleGroups.map((group, groupIndex) => {
               const groupId = group._id || group.title;
@@ -832,6 +887,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
               const groupUrl = group.url || '';
               const isDragged = draggedGroupId === groupId;
               const isOver = draggedOverGroupId === groupId && draggedGroupId !== groupId;
+              const isRequestDropTarget = draggedOverPacketId === groupId && draggedRequestSourceGroupId !== groupId;
               const packetSearch = packetSearchTerms[groupId || ''] || '';
               const normalizedPacketSearch = packetSearch.trim().toLowerCase();
               const packetRequests = normalizedPacketSearch
@@ -854,20 +910,31 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                 )}
                 <div
                   onDragOver={(event) => {
+                    if (canManageRequests && packetAssignmentUnlocked && draggedRequestId) {
+                      event.preventDefault();
+                      event.dataTransfer.dropEffect = 'move';
+                      setDraggedOverPacketId(groupId || '');
+                      return;
+                    }
                     if (!canManageRequests || !groupOrderUnlocked || !draggedGroupId) return;
                     event.preventDefault();
                     setDraggedOverGroupId(groupId || '');
                   }}
                   onDragLeave={() => {
+                    if (draggedOverPacketId === groupId) setDraggedOverPacketId('');
                     if (draggedOverGroupId === groupId) setDraggedOverGroupId('');
                   }}
                   onDrop={(event) => {
                     event.preventDefault();
+                    if (packetAssignmentUnlocked && draggedRequestId && groupId) {
+                      void moveRequestToPacket(draggedRequestId, draggedRequestSourceGroupId, groupId);
+                      return;
+                    }
                     if (groupOrderUnlocked && groupId) void reorderGroups(draggedGroupId, groupId);
                   }}
                   className={`overflow-hidden rounded-2xl border bg-white shadow-sm transition ${
                     isDragged ? 'opacity-50' : 'opacity-100'
-                  } ${isOver ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200'}`}
+                  } ${isOver ? 'border-blue-500 ring-2 ring-blue-200' : isRequestDropTarget ? 'border-emerald-500 ring-2 ring-emerald-200' : 'border-gray-200'}`}
                 >
                   <button
                     type="button"
@@ -1018,7 +1085,20 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                         {normalizedPacketSearch && <div className="mt-1 text-xs text-gray-500">Showing {packetRequests.length} of {group.requests?.length || 0} requests</div>}
                       </div>
                       {packetRequests.length ? packetRequests.map((request) => (
-                      <div key={request._id} className="grid gap-3 px-4 py-4 md:grid-cols-[150px_minmax(0,1fr)_220px_150px_180px] md:items-center">
+                      <div
+                        key={request._id}
+                        draggable={packetAssignmentUnlocked && !packetMoveSaving}
+                        onDragStart={(event) => {
+                          if (!packetAssignmentUnlocked) return;
+                          setDraggedRequestId(request._id || '');
+                          setDraggedRequestSourceGroupId(groupId || '');
+                          event.dataTransfer.effectAllowed = 'move';
+                          event.dataTransfer.setData('text/plain', request._id || '');
+                        }}
+                        onDragEnd={handleRequestDragEnd}
+                        className={`grid gap-3 px-4 py-4 md:items-center ${packetAssignmentUnlocked ? 'cursor-grab bg-amber-50/30 md:grid-cols-[32px_150px_minmax(0,1fr)_220px_150px_180px] active:cursor-grabbing' : 'md:grid-cols-[150px_minmax(0,1fr)_220px_150px_180px]'}`}
+                      >
+                          {packetAssignmentUnlocked && <div className="text-gray-400" title="Drag MRR to another packet"><Icon icon={FiMenu} className="h-5 w-5" /></div>}
                           <div className="min-w-0">
                             <button
                               type="button"
@@ -1111,7 +1191,20 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                 {expandedGroupIds.includes('ungrouped') && (
                   <div className="divide-y divide-gray-100">
                     {ungroupedRequests.map((request) => (
-                      <div key={`ungrouped-${request._id}`} className="grid gap-3 px-4 py-4 md:grid-cols-[150px_minmax(0,1fr)_220px_150px_130px] md:items-center">
+                      <div
+                        key={`ungrouped-${request._id}`}
+                        draggable={packetAssignmentUnlocked && !packetMoveSaving}
+                        onDragStart={(event) => {
+                          if (!packetAssignmentUnlocked) return;
+                          setDraggedRequestId(request._id || '');
+                          setDraggedRequestSourceGroupId('');
+                          event.dataTransfer.effectAllowed = 'move';
+                          event.dataTransfer.setData('text/plain', request._id || '');
+                        }}
+                        onDragEnd={handleRequestDragEnd}
+                        className={`grid gap-3 px-4 py-4 md:items-center ${packetAssignmentUnlocked ? 'cursor-grab bg-amber-50/30 md:grid-cols-[32px_150px_minmax(0,1fr)_220px_150px_130px] active:cursor-grabbing' : 'md:grid-cols-[150px_minmax(0,1fr)_220px_150px_130px]'}`}
+                      >
+                        {packetAssignmentUnlocked && <div className="text-gray-400" title="Drag MRR to a packet"><Icon icon={FiMenu} className="h-5 w-5" /></div>}
                         <div className="min-w-0">
                           <button
                             type="button"
