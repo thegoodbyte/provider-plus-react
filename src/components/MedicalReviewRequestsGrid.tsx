@@ -451,7 +451,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
       setAutoAssignSaving(true);
       setAutoAssignMessage('');
       await Promise.all(Array.from(assignments.entries()).map(([groupId, reviewRequestIds]) => (
-        medicalReviewRequestsApi.updateGroup(groupId, { reviewRequestIds })
+        medicalReviewRequestsApi.addRequestsToGroup(groupId, reviewRequestIds)
       )));
       await loadData();
       setAutoAssignMessage(`${assignedCount} MRR${assignedCount === 1 ? '' : 's'} added to ${assignments.size} retreat packet${assignments.size === 1 ? '' : 's'}${skipped ? `; ${skipped} skipped because no single packet matched.` : '.'}`);
