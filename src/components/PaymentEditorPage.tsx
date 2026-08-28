@@ -6,6 +6,7 @@ import LoadingSpinner from './LoadingSpinner';
 import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
+import SearchableBookingSelect from './SearchableBookingSelect';
 import { FiArrowLeft, FiSave } from 'react-icons/fi';
 import { toDateInputValue, todayDateInputValue } from '../utils/dateFormat';
 
@@ -491,22 +492,15 @@ const PaymentEditorPage: React.FC = () => {
 
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Booking Number {!formData.paymentRequestId && '*'}</label>
-              <select
-                value={formData.bookingId}
-                onChange={(e) => handleBookingSelect(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">{formData.paymentRequestId ? 'Booking not created yet' : 'Select the exact booking'}</option>
-                {bookingOptions.map((booking) => {
-                  const client = typeof booking.clientId === 'object' ? booking.clientId as Client : clients.find((item) => item._id === booking.clientId);
-                  const retreat = typeof booking.retreatId === 'object' ? booking.retreatId as Retreat : retreats.find((item) => item._id === booking.retreatId);
-                  return (
-                    <option key={booking._id} value={booking._id}>
-                      #{booking.bookingNumber || booking._id?.slice(-6)} · {client ? `${client.firstName} ${client.lastName}` : 'Client'} · {retreat?.name || 'Retreat'}
-                    </option>
-                  );
-                })}
-              </select>
+              <SearchableBookingSelect
+                bookings={bookingOptions}
+                clients={clients}
+                retreats={retreats}
+                selectedBookingId={formData.bookingId}
+                onBookingSelect={handleBookingSelect}
+                placeholder="Search booking number, client, or retreat"
+                emptyLabel={formData.paymentRequestId ? 'Booking not created yet' : 'Select the exact booking'}
+              />
               {selectedBooking && (
                 <p className="mt-1 text-xs text-gray-500">
                   Linked to booking #{selectedBooking.bookingNumber || selectedBooking._id?.slice(-6)}
