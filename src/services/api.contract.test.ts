@@ -64,4 +64,16 @@ describe('API endpoint contracts', () => {
     expect((await endpoints.retreatsApi.getOne('cached-retreat')).data.name).toBe('Cached');
     expect(transport.get).toHaveBeenCalledTimes(1);
   });
+
+  it('uploads expense receipts as multipart form data', async () => {
+    const receipt = new File(['image'], 'receipt.jpg', { type: 'image/jpeg' });
+
+    await endpoints.retreatExpensesApi.uploadReceipt('expense-1', receipt);
+
+    expect(transport.post).toHaveBeenCalledWith(
+      '/retreat-expenses/expense-1/receipt',
+      expect.any(FormData),
+      { headers: { 'Content-Type': 'multipart/form-data' } },
+    );
+  });
 });

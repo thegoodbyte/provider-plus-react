@@ -135,6 +135,20 @@ const ExpenseEditorPage: React.FC = () => {
     }
   };
 
+  const selectReceipt = (file?: File) => {
+    if (!file) { setReceipt(null); return; }
+    if (!file.type.startsWith('image/')) {
+      setError('Receipt must be an image file.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError('Receipt image must be 10 MB or smaller.');
+      return;
+    }
+    setError('');
+    setReceipt(file);
+  };
+
   const submit = (event: FormEvent) => { event.preventDefault(); void save(false); };
   if (loading) return <LoadingSpinner message="Loading expense..." />;
 
@@ -182,7 +196,7 @@ const ExpenseEditorPage: React.FC = () => {
           </div>
           <label className="flex min-h-14 cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-blue-300 bg-blue-50 px-4 font-bold text-blue-700">
             <Camera size={21} /> {receipt ? receipt.name : existingReceiptName || 'Add receipt photo'}
-            <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(event) => setReceipt(event.target.files?.[0] || null)} />
+            <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(event) => selectReceipt(event.target.files?.[0])} />
           </label>
         </div>
         {editing && <label className="block"><span className="mb-1 block text-base font-bold">Status</span><select value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as RetreatExpense['status'] })} className={field}><option value="pending">Pending</option><option value="approved">Approved</option><option value="paid">Paid</option><option value="rejected">Rejected</option></select></label>}

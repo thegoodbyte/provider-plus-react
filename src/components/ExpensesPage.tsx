@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Eye, Pencil, Plus, Search, SlidersHorizontal, Trash2 } from 'lucide-react';
+import { Eye, Pencil, Plus, Search, Settings2, SlidersHorizontal, Trash2 } from 'lucide-react';
 import { expenseTypesApi, retreatExpensesApi, retreatsApi } from '../services/api';
 import { ExpenseType, Retreat, RetreatExpense } from '../types';
 import LoadingSpinner from './LoadingSpinner';
@@ -107,7 +107,10 @@ const ExpensesPage: React.FC = () => {
           <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">Expenses</h1>
           <p className="mt-1 text-sm font-medium text-slate-500">{filtered.length} item{filtered.length === 1 ? '' : 's'}{totalUsd > 0 ? ` · $${totalUsd.toLocaleString(undefined, { maximumFractionDigits: 2 })} USD total` : ''}</p>
         </div>
-        <button type="button" aria-label="Expense filters" className="mt-1 rounded-xl p-3 text-cyan-700 hover:bg-cyan-50"><SlidersHorizontal size={23} /></button>
+        <div className="ml-auto flex items-center gap-1">
+          <button type="button" onClick={() => open('/expenses/categories')} className="mt-1 inline-flex items-center gap-2 rounded-xl p-3 font-bold text-slate-600 hover:bg-slate-100" aria-label="Manage expense categories"><Settings2 size={21} /><span className="hidden lg:inline">Categories</span></button>
+          <button type="button" aria-label="Expense filters" className="mt-1 rounded-xl p-3 text-cyan-700 hover:bg-cyan-50"><SlidersHorizontal size={23} /></button>
+        </div>
         <button type="button" onClick={() => open('/expenses/new')} className="hidden min-h-12 items-center justify-center gap-2 rounded-xl bg-cyan-600 px-5 text-base font-bold text-white shadow-sm hover:bg-cyan-700 md:flex">
           <Plus size={21} /> Add expense
         </button>

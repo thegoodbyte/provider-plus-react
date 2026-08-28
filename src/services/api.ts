@@ -412,7 +412,9 @@ export const retreatExpensesApi = {
   uploadReceipt: (id: string, receipt: File) => {
     const formData = new FormData();
     formData.append('receipt', receipt);
-    return api.post<{ expense: RetreatExpense; receiptUrl: string }>(`/retreat-expenses/${id}/receipt`, formData);
+    return api.post<{ expense: RetreatExpense; receiptUrl: string }>(`/retreat-expenses/${id}/receipt`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
   },
   getReceiptUrl: (id: string) => api.get<{ url: string; fileName?: string; mimeType?: string }>(`/retreat-expenses/${id}/receipt-url`),
   delete: (id: string) => api.delete(`/retreat-expenses/${id}`),

@@ -61,6 +61,7 @@ import HelperCurrentRetreatPage from './HelperCurrentRetreatPage';
 import RetreatFocusModePage from './RetreatFocusModePage';
 import RequirementsGrid from './RequirementsGrid';
 import CurrencySettings from './CurrencySettings';
+import ExpenseTypesSettings from './ExpenseTypesSettings';
 import MedicalAdvisorDashboard from './MedicalAdvisorDashboard';
 import MedicalReviewDetail from './MedicalReviewDetail';
 import MedicalRetreats from './MedicalRetreats';
@@ -885,6 +886,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="payments/:id" element={<PaymentEditorPage />} />
                       <Route path="payments/:id/edit" element={<PaymentEditorPage />} />
                       <Route path="expenses" element={<ExpensesPage />} />
+                      <Route path="expenses/categories" element={<ExpenseTypesSettings />} />
                       <Route path="expenses/new" element={<ExpenseEditorPage />} />
                       <Route path="expenses/:id" element={<ExpenseDetailPage />} />
                       <Route path="expenses/:id/edit" element={<ExpenseEditorPage />} />
@@ -1152,6 +1154,7 @@ const AppleLayout: React.FC = () => {
                 <Route path="/payments/joint/new" element={<ProtectedRoute><JointPaymentEditorPage /></ProtectedRoute>} />
                 <Route path="/payments/receipts" element={<ProtectedRoute><PaymentReceiptsPage /></ProtectedRoute>} />
                 <Route path="/expenses" element={<ProtectedRoute><ExpensesPage /></ProtectedRoute>} />
+                <Route path="/expenses/categories" element={<ProtectedRoute><ExpenseTypesSettings /></ProtectedRoute>} />
                 <Route path="/expenses/new" element={<ProtectedRoute><ExpenseEditorPage /></ProtectedRoute>} />
                 <Route path="/expenses/:id" element={<ProtectedRoute><ExpenseDetailPage /></ProtectedRoute>} />
                 <Route path="/expenses/:id/edit" element={<ProtectedRoute><ExpenseEditorPage /></ProtectedRoute>} />
