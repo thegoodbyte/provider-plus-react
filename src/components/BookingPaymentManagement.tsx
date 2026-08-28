@@ -702,7 +702,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       <section className="booking-payment-requests">
         <div className="payment-requests-heading">
           <div><h4>Payment requests</h4><p>Requests issued for this booking, including the final balance.</p></div>
-          <button type="button" className="new-payment-request-link" onClick={() => navigate(`${routePrefix}/payment-requests/new?clientId=${encodeURIComponent(clientId)}&retreatId=${encodeURIComponent(retreatId)}&currency=${encodeURIComponent(bookingCurrency)}&fullPrice=${encodeURIComponent(totalAmount)}`)}>New request</button>
+          <button type="button" className="new-payment-request-link" onClick={() => navigate(`${routePrefix}/payment-requests/new?bookingId=${encodeURIComponent(bookingId)}&clientId=${encodeURIComponent(clientId)}&retreatId=${encodeURIComponent(retreatId)}&currency=${encodeURIComponent(bookingCurrency)}&fullPrice=${encodeURIComponent(totalAmount)}`)}>New request</button>
           {!paymentPlan && !isPaidInFull && <div className="payment-request-create">
             <label>Final payment due<input type="date" value={paymentPlanDueDate} onChange={event => setPaymentPlanDueDate(event.target.value)} /></label>
             <button type="button" disabled={paymentPlanSaving || !paymentPlanDueDate} onClick={() => savePaymentPlan(true)}>{paymentPlanSaving ? 'Creating…' : 'Create balance request'}</button>

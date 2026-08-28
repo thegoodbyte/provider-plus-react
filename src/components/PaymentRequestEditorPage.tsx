@@ -36,6 +36,7 @@ const buildPaymentRequestFromSearch = (search: string): Partial<PaymentRequest> 
   return {
     clientId: params.get('clientId') || undefined,
     retreatId: params.get('retreatId') || undefined,
+    bookingId: params.get('bookingId') || undefined,
     requestType: (params.get('requestType') as PaymentRequest['requestType']) || undefined,
     paymentType: (params.get('paymentType') as PaymentRequest['paymentType']) || undefined,
     fullPriceQuote: params.get('fullPrice') ? Number(params.get('fullPrice')) : undefined,
