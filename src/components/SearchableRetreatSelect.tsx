@@ -36,7 +36,10 @@ const SearchableRetreatSelect: React.FC<SearchableRetreatSelectProps> = ({
   useEffect(() => {
     const filtered = retreats.filter(retreat => {
       const name = (retreat.name || '').toLowerCase();
-      const location = (retreat.location || '').toLowerCase();
+      const location = [retreat.location_town, retreat.locationTown, retreat.location]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
       const id = (retreat._id || '').toLowerCase();
       const search = searchTerm.toLowerCase();
 
