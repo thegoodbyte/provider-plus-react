@@ -134,12 +134,6 @@ export const TasksWidget: React.FC<TasksWidgetProps> = ({
     return 'Tasks';
   };
 
-  const getTaskType = (): 'client' | 'retreat' | 'generic' => {
-    if (retreatId) return 'retreat';
-    if (clientId) return 'client';
-    return 'generic';
-  };
-
   if (loading) {
     return (
       <div className="tasks-widget">
