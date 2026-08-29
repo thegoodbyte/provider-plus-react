@@ -645,7 +645,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                                 </span>
                                 {item.id === 'ir-notifications' && notificationCount > 0 && (
                                   <span className="ml-auto min-w-5 rounded-full bg-red-600 px-1.5 py-0.5 text-center text-xs font-bold text-white">
-                                    {notificationCount > 99 ? '99+' : notificationCount}
+                                    {notificationCount}
                                   </span>
                                 )}
                               </button>
