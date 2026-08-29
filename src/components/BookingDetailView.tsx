@@ -318,7 +318,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
 
         {activeTab === 'medical' && (
           <BookingMedicalOverviewPanel
-            bookingId={bookingId}
+            bookingId={getObjectId(booking) || bookingId}
             bookingNumber={booking.bookingNumber}
             clientId={typeof client === 'object' ? client._id : client}
             retreatId={typeof retreat === 'object' ? retreat._id : retreat}
