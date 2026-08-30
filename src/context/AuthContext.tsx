@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { authService } from '../services/authService';
+import { clearStoredAppMode } from '../utils/appModeStorage';
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -56,6 +57,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const storeSession = useCallback((data: { access_token: string; user: any }) => {
+    if (String(data.user?.accessType || '').startsWith('medical_review_')) clearStoredAppMode();
     authService.storeSession(data);
     setIsAuthenticated(true);
     setUser(data.user);

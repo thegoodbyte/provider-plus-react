@@ -4,6 +4,8 @@ const mockHousesGetAll = jest.fn();
 const mockBookingsGetAll = jest.fn();
 const mockClear = jest.fn();
 
+export {};
+
 jest.mock('./api', () => ({
   clientsApi: { getAll: mockClientsGetAll }, retreatsApi: { getAll: mockRetreatsGetAll },
   housesApi: { getAll: mockHousesGetAll }, bookingsApi: { getAll: mockBookingsGetAll },

@@ -67,6 +67,15 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       return <Navigate to="/login" state={{ from: location, reason: 'full_login_required' }} replace />;
     }
   }
+  if (user.accessType === 'medical_review_group_link') {
+    const allowedGroupId = user.medicalReviewGroupId;
+    const allowedGroupPath = allowedGroupId ? `/medical/review-groups/${allowedGroupId}` : '';
+    const isReviewPath = /^\/medical\/review-requests\/[^/]+(?:\/edit)?$/.test(location.pathname);
+    if (!allowedGroupPath || (location.pathname !== allowedGroupPath && !isReviewPath)) {
+      authService.logout();
+      return <Navigate to="/login" state={{ from: location, reason: 'full_login_required' }} replace />;
+    }
+  }
 
   // Check if user has required role (if specified)
   if (requiredRole) {

@@ -93,28 +93,10 @@ import RetreatClientsPrintPage from './RetreatClientsPrintPage';
 import { bookingsApi, retreatsApi } from '../services/api';
 import { Retreat } from '../types';
 import GlobalSearch from './GlobalSearch';
+import { APP_MODE_STORAGE_KEY, readStoredAppMode, StoredAppMode } from '../utils/appModeStorage';
 
 const BookingEditorPage = lazy(() => import('./BookingEditorPage'));
 const BookingDetailView = lazy(() => import('./BookingDetailView'));
-
-type AppMode = 'normal' | 'retreat' | 'shopping';
-type StoredAppMode = {
-  mode: AppMode;
-  retreatId?: string;
-  retreatLabel?: string;
-};
-
-const APP_MODE_STORAGE_KEY = 'providerPlusAppMode:v1';
-
-const readStoredAppMode = (): StoredAppMode => {
-  try {
-    const parsed = JSON.parse(localStorage.getItem(APP_MODE_STORAGE_KEY) || '{}');
-    if (parsed.mode === 'retreat' || parsed.mode === 'shopping') return parsed;
-  } catch {
-    // Ignore invalid or old local state.
-  }
-  return { mode: 'normal' };
-};
 
 const BookingDetailRoute: React.FC = () => {
   const { bookingId } = useParams();
@@ -175,7 +157,9 @@ const AppleLayout: React.FC = () => {
   const navigate = useNavigate();
 
   const isMedicalAdvisor = user?.role === 'medical_advisor';
-  const isMedicalQuickAccessSession = user?.accessType === 'medical_review_link' && Boolean(user?.medicalReviewRequestId);
+  const isMedicalRequestQuickAccessSession = user?.accessType === 'medical_review_magic_link' && Boolean(user?.medicalReviewRequestId);
+  const isMedicalGroupQuickAccessSession = user?.accessType === 'medical_review_group_link' && Boolean(user?.medicalReviewGroupId);
+  const isMedicalQuickAccessSession = isMedicalRequestQuickAccessSession || isMedicalGroupQuickAccessSession;
   const showQuickMenu = !isMedicalAdvisor;
 
   const getActiveItemFromPath = () => {
@@ -328,7 +312,9 @@ const AppleLayout: React.FC = () => {
 
   useEffect(() => {
     if (isMedicalQuickAccessSession) {
-      const allowedPath = `/medical/review-requests/${user.medicalReviewRequestId}/edit`;
+      const allowedPath = isMedicalGroupQuickAccessSession
+        ? `/medical/review-groups/${user.medicalReviewGroupId}`
+        : `/medical/review-requests/${user.medicalReviewRequestId}/edit`;
       if (location.pathname !== allowedPath) {
         navigate(allowedPath, { replace: true });
       }
@@ -338,7 +324,7 @@ const AppleLayout: React.FC = () => {
     if (location.pathname === '/') {
       navigate(`/${routePrefix}/${defaultRoute}`, { replace: true });
     }
-  }, [defaultRoute, isMedicalQuickAccessSession, location.pathname, navigate, routePrefix, user?.medicalReviewRequestId]);
+  }, [defaultRoute, isMedicalGroupQuickAccessSession, isMedicalQuickAccessSession, location.pathname, navigate, routePrefix, user?.medicalReviewGroupId, user?.medicalReviewRequestId]);
 
   useEffect(() => {
     if (isMedicalQuickAccessSession || appMode.mode === 'normal') return;

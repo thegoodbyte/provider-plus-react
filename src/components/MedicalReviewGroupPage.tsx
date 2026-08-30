@@ -61,7 +61,7 @@ const MedicalReviewGroupPage: React.FC = () => {
   const loadGroup = useCallback(async () => {
     const [groupResponse, linksResponse] = await Promise.all([
       medicalReviewRequestsApi.getGroup(id),
-      medicalReviewRequestsApi.getGroupAccessLinks(id),
+      canManageGroup ? medicalReviewRequestsApi.getGroupAccessLinks(id) : Promise.resolve({ data: [] }),
     ]);
     setGroup(groupResponse.data);
     setAccessLinks(linksResponse.data || []);
@@ -70,7 +70,7 @@ const MedicalReviewGroupPage: React.FC = () => {
       const sections = buildPacketSections(groupResponse.data || null, currentRequests).map((section) => section.key);
       return Array.from(new Set([...current, ...sections]));
     });
-  }, [id]);
+  }, [canManageGroup, id]);
 
   useEffect(() => {
     let mounted = true;

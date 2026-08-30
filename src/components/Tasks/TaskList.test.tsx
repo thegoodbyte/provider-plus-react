@@ -43,7 +43,7 @@ describe('TaskList', () => {
     const onComplete = jest.fn(); const onEdit = jest.fn(); const onDelete = jest.fn();
     const pending = makeTask(); const completed = makeTask({ id: 'two', name: 'Done', status: 'completed' });
     render(<TaskList tasks={[pending, completed]} onEditTask={onEdit} onDeleteTask={onDelete} onCompleteTask={onComplete} />);
-    const pendingRow = screen.getByText('Upload EKG').closest('.task-row')!;
+    const pendingRow = screen.getByText('Upload EKG').closest('.task-row') as HTMLElement;
     fireEvent.click(within(pendingRow).getByLabelText('Mark task as complete'));
     fireEvent.click(within(pendingRow).getByLabelText('Edit task'));
     fireEvent.click(within(pendingRow).getByLabelText('Delete task'));

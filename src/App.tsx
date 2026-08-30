@@ -47,7 +47,9 @@ function AppContent() {
     return <div className="loading">Loading...</div>;
   }
 
-  if (!isAuthenticated && (isPublicMedicalReviewRoute || isPublicPasswordRoute)) {
+  // Medical access links must exchange their token outside the authenticated layout.
+  // Otherwise a previously selected admin app mode can redirect and unmount the exchange page.
+  if (isPublicMedicalReviewRoute || (!isAuthenticated && isPublicPasswordRoute)) {
     return (
       <Routes>
         <Route path="/medical-review-access/:token/:label" element={<MedicalReviewAccessPage />} />
