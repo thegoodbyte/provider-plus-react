@@ -1211,7 +1211,11 @@ const ClientDetailsPage: React.FC = () => {
                   </div>
                   <div className="flex flex-wrap justify-between gap-2">
                     <dt className="text-sm text-gray-600">Referral:</dt>
-                    <dd className="text-sm font-medium">{client.source || 'N/A'}</dd>
+                    <dd className="text-right text-sm font-medium">
+                      {(typeof client.referralId === 'object' ? client.referralId?.name : '') || client.source || 'N/A'}
+                      {client.referralPersonType === 'existing_client' && client.referralClientId && <span className="block text-xs font-normal text-gray-500">Friend: {typeof client.referralClientId === 'object' ? `${client.referralClientId.firstName} ${client.referralClientId.lastName}` : 'Existing client'}</span>}
+                      {client.referralPersonType === 'someone_else' && client.referralPersonName && <span className="block text-xs font-normal text-gray-500">Friend: {client.referralPersonName}</span>}
+                    </dd>
                   </div>
                   <div className="flex flex-wrap justify-between gap-2">
                     <dt className="text-sm text-gray-600">City:</dt>

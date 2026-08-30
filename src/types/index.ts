@@ -191,6 +191,9 @@ export interface Client {
   firstContactDate?: Date | string;
   source?: string;
   referralId?: string | Referral;
+  referralPersonType?: 'existing_client' | 'someone_else';
+  referralClientId?: string | Client;
+  referralPersonName?: string;
   referralCommissionPercentage?: number | null;
   rejectionReason?: string;
   tags?: string[];

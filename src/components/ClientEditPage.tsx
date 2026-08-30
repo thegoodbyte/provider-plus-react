@@ -7,6 +7,7 @@ import AppleButton from './AppleButton';
 import { FiArrowLeft, FiCamera, FiSave, FiUser } from 'react-icons/fi';
 import { clientWorkflowStatusLabels, clientWorkflowStatusSelectOptions, type ClientWorkflowStatus } from '../config/clientWorkflowStatus';
 import './ClientEditPage.css';
+import ClientReferralFields from './ClientReferralFields';
 
 // Icon wrapper component for consistent icon rendering
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -207,6 +208,12 @@ const ClientEditPage: React.FC = () => {
     if (formData.loginPin && !/^\d{6}$/.test(formData.loginPin)) {
       errors.push('Client portal PIN must be 6 digits');
     }
+    const selectedReferral = referrals.find((item) => item._id === (typeof formData.referralId === 'object' ? formData.referralId?._id : formData.referralId));
+    if (String(selectedReferral?.name || '').toLowerCase() === 'friend') {
+      if (!formData.referralPersonType) errors.push('Choose whether the friend is an existing client or someone else');
+      if (formData.referralPersonType === 'existing_client' && !formData.referralClientId) errors.push('Select the existing client who made the referral');
+      if (formData.referralPersonType === 'someone_else' && (formData.referralPersonName || '').trim().length < 2) errors.push('The referring person’s name must contain at least 2 characters');
+    }
 
     // Check if state is required for US customers
     if (formData.country === 'US' && !formData.state?.trim()) {
@@ -243,6 +250,9 @@ const ClientEditPage: React.FC = () => {
         notes: formData.notes,
         source: normalizeOptionalValue(formData.source),
         referralId: typeof formData.referralId === 'object' ? formData.referralId?._id : formData.referralId,
+        referralPersonType: formData.referralPersonType,
+        referralClientId: typeof formData.referralClientId === 'object' ? formData.referralClientId?._id : formData.referralClientId,
+        referralPersonName: normalizeOptionalValue(formData.referralPersonName),
         referralCommissionPercentage: formData.referralCommissionPercentage ?? null,
         status: normalizeOptionalValue(formData.status) as 'active' | 'inactive' | 'suspended' | undefined,
         workflowStatus: normalizeOptionalValue(formData.workflowStatus) as Client['workflowStatus'],
@@ -456,22 +466,7 @@ const ClientEditPage: React.FC = () => {
               />
             </div>
 
-            <div>
-              <label htmlFor="source" className="block text-sm font-medium text-gray-700 mb-1">Referral</label>
-              <select
-                id="source"
-                value={typeof formData.referralId === 'object' ? formData.referralId?._id || '' : formData.referralId || ''}
-                onChange={(event) => {
-                  const referral = referrals.find((item) => item._id === event.target.value);
-                  setFormData({ ...formData, referralId: event.target.value || undefined, source: referral?.name || '' });
-                }}
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">{formData.source ? `Unlinked: ${formData.source}` : 'No referral selected'}</option>
-                {referrals.filter((item) => item.isActive !== false || item._id === (typeof formData.referralId === 'object' ? formData.referralId?._id : formData.referralId)).map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}
-              </select>
-              {!formData.referralId && <input type="text" name="source" value={formData.source || ''} onChange={handleInputChange} placeholder="Legacy referral or how they found us" className="mt-2 w-full p-2 border border-gray-300 rounded-md" />}
-            </div>
+            <ClientReferralFields value={formData} referrals={referrals} currentClientId={clientId} onChange={(patch) => setFormData((current) => ({ ...current, ...patch }))} />
 
             {formData.referralId && <div>
               <label htmlFor="referralCommissionMode" className="block text-sm font-medium text-gray-700 mb-1">Referral commission</label>

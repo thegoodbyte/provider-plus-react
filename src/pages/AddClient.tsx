@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import AppleButton from '../components/AppleButton';
 import AppleInput from '../components/AppleInput';
-import { clientsApi } from '../services/api';
-import { Client } from '../types';
+import { clientsApi, referralsApi } from '../services/api';
+import { Client, Referral } from '../types';
+import ClientReferralFields from '../components/ClientReferralFields';
 import { useAuth } from '../context/AuthContext';
 import { clientWorkflowStatusLabels, clientWorkflowStatusSelectOptions, normalizeClientWorkflowStatus } from '../config/clientWorkflowStatus';
 
@@ -62,6 +63,11 @@ const AddClient: React.FC = () => {
   const [error, setError] = useState('');
   const [profilePictureFile, setProfilePictureFile] = useState<File | null>(null);
   const [profilePicturePreviewUrl, setProfilePicturePreviewUrl] = useState<string | null>(null);
+  const [referrals, setReferrals] = useState<Referral[]>([]);
+
+  useEffect(() => {
+    referralsApi.getAll().then((response) => setReferrals(response.data || [])).catch(() => setReferrals([]));
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -118,6 +124,21 @@ const AddClient: React.FC = () => {
     if (!formData.firstName || !formData.lastName || !formData.phone) {
       setError('First name, last name, and phone are required');
       return;
+    }
+    const selectedReferral = referrals.find((item) => item._id === (typeof formData.referralId === 'object' ? formData.referralId?._id : formData.referralId));
+    if (String(selectedReferral?.name || '').toLowerCase() === 'friend') {
+      if (!formData.referralPersonType) {
+        setError('Choose whether the friend is an existing client or someone else.');
+        return;
+      }
+      if (formData.referralPersonType === 'existing_client' && !formData.referralClientId) {
+        setError('Search for and select the existing client who made the referral.');
+        return;
+      }
+      if (formData.referralPersonType === 'someone_else' && (formData.referralPersonName || '').trim().length < 2) {
+        setError('Enter at least 2 characters for the referring person’s name.');
+        return;
+      }
     }
 
     setSaving(true);
@@ -291,14 +312,7 @@ const AddClient: React.FC = () => {
                   />
                 </div>
 
-                <div>
-                  <AppleInput
-                    label="Referral"
-                    value={formData.source || ''}
-                    onChange={(value) => setFormData({ ...formData, source: value })}
-                    placeholder="Who referred them or how they found us"
-                  />
-                </div>
+                <ClientReferralFields value={formData} referrals={referrals} onChange={(patch) => setFormData((current) => ({ ...current, ...patch }))} />
               </div>
             </div>
 
