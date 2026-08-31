@@ -8,6 +8,14 @@ import SearchableRetreatSelect from './SearchableRetreatSelect';
 import { buildTemplateBookingActionPayload, normalizeTemplateBookingStepKeys } from './emailTemplateBookingActions';
 
 type TabKey = 'settings' | 'templates' | 'compose' | 'sent' | 'inbound';
+type PortalGateSettings = {
+  enabled: boolean;
+  preContractModules: string[];
+  portalAccessByStatus: Record<string, Record<string, string>>;
+  portalModuleCatalog: Array<{ key: string; label: string; category: string; requiresBooking?: boolean; supportsReadOnly?: boolean }>;
+  portalStatusCatalog: Array<{ key: string; label: string }>;
+  portalAccessModes: string[];
+};
 const WELCOME_STEP_OPTIONS = [
   ['booking_confirmation_sent', 'Booking confirmation sent'], ['medical_labs_requested', 'EKG and liver requested'],
   ['medications_form_initial_sent', 'Medications form sent'], ['questionnaire_sent', 'Questionnaire sent'],
@@ -81,7 +89,7 @@ const CommunicationsPage: React.FC = () => {
   const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<MailSettings | null>(null);
-  const [contractGate, setContractGate] = useState({ enabled: true, preContractModules: ['account', 'my_retreat', 'contract'] });
+  const [contractGate, setContractGate] = useState<PortalGateSettings>({ enabled: true, preContractModules: ['account', 'my_retreat', 'contract'], portalAccessByStatus: {}, portalModuleCatalog: [], portalStatusCatalog: [], portalAccessModes: ['available', 'read_only', 'locked', 'hidden'] });
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [emailAssets, setEmailAssets] = useState<EmailAsset[]>([]);
   const [assetDraft, setAssetDraft] = useState({ name: 'Preparation Guide', key: 'preparation_guide', language: 'en', file: null as File | null });
@@ -821,6 +829,19 @@ const CommunicationsPage: React.FC = () => {
             <div className="rounded-md border border-indigo-200 bg-indigo-50 p-4">
               <div className="flex items-start justify-between gap-4"><div><h3 className="font-semibold text-gray-900">IbogaReady contract gate</h3><p className="mt-1 text-sm text-gray-700">Require booked clients to sign the Client Agreement before accessing preparation forms and resources. Account, My Retreat, and Client Agreement remain available.</p></div><label className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={contractGate.enabled} onChange={event=>setContractGate(current=>({...current,enabled:event.target.checked}))}/>{contractGate.enabled?'ON':'OFF'}</label></div>
               <p className="mt-3 text-xs text-indigo-800">This is enforced in both IbogaReady navigation and protected API endpoints. Pre-booking screening is not gated.</p>
+            </div>
+
+            <div className="rounded-md border border-gray-200 bg-white p-4 lg:col-span-2">
+              <div className="mb-4"><h3 className="font-semibold text-gray-900">IbogaReady access by client status</h3><p className="mt-1 text-sm text-gray-600">New registered forms appear here automatically. Available allows use; Read-only allows viewing; Locked shows a lock but blocks the page; Hidden removes it.</p></div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full border-collapse text-sm">
+                  <thead><tr><th className="sticky left-0 z-10 border bg-gray-50 px-3 py-2 text-left">Client status</th>{contractGate.portalModuleCatalog.map(module=><th key={module.key} className="min-w-[150px] border bg-gray-50 px-3 py-2 text-left"><div>{module.label}</div><div className="text-[10px] font-normal text-gray-500">{module.category}{module.requiresBooking?' · booking':''}</div></th>)}</tr></thead>
+                  <tbody>{contractGate.portalStatusCatalog.map(status=><tr key={status.key}><th className="sticky left-0 z-10 border bg-white px-3 py-2 text-left">{status.label}</th>{contractGate.portalModuleCatalog.map(module=>{
+                    const value=contractGate.portalAccessByStatus?.[status.key]?.[module.key] || 'hidden';
+                    return <td key={module.key} className="border p-2"><select aria-label={`${status.label} ${module.label}`} value={value} onChange={event=>setContractGate(current=>({...current,portalAccessByStatus:{...current.portalAccessByStatus,[status.key]:{...(current.portalAccessByStatus?.[status.key]||{}),[module.key]:event.target.value}}}))} className="w-full rounded border border-gray-300 px-2 py-1.5"><option value="available">Available</option>{module.supportsReadOnly&&<option value="read_only">Read-only</option>}<option value="locked">Locked</option><option value="hidden">Hidden</option></select></td>;
+                  })}</tr>)}</tbody>
+                </table>
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-2">

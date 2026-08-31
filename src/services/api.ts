@@ -686,8 +686,14 @@ export const communicationsApi = {
 };
 
 export const contractGateApi = {
-  getSettings: () => api.get<{ enabled: boolean; preContractModules: string[] }>('/client-contracts/gate-settings'),
-  saveSettings: (data: { enabled: boolean; preContractModules: string[] }) => api.patch('/client-contracts/gate-settings', data),
+  getSettings: () => api.get<{
+    enabled: boolean; preContractModules: string[];
+    portalAccessByStatus: Record<string, Record<string, string>>;
+    portalModuleCatalog: Array<{ key: string; label: string; category: string; requiresBooking?: boolean; supportsReadOnly?: boolean }>;
+    portalStatusCatalog: Array<{ key: string; label: string }>;
+    portalAccessModes: string[];
+  }>('/client-contracts/gate-settings'),
+  saveSettings: (data: { enabled: boolean; preContractModules: string[]; portalAccessByStatus?: Record<string, Record<string, string>> }) => api.patch('/client-contracts/gate-settings', data),
 };
 
 export const screeningClientsApi = {
