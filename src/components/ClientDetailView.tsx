@@ -1162,11 +1162,12 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                             </div>
                           </div>
                           <button
-                            onClick={() => navigate(`/admin/payment-requests/${request._id}/edit`)}
+                            onClick={() => navigate(`/admin/payment-requests/${request._id}`)}
                             style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px', background: 'white', cursor: 'pointer' }}
                           >
-                            Edit
+                            View
                           </button>
+                          <button onClick={() => navigate(`/admin/payment-requests/${request._id}/edit`)} style={{ padding: '8px 12px', border: '1px solid #d1d5db', borderRadius: '6px', background: 'white', cursor: 'pointer' }}>Edit</button>
                         </div>
                         {paymentUrl ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '12px' }}>

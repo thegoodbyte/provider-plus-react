@@ -1885,11 +1885,12 @@ const ClientDetailsPage: React.FC = () => {
                             </div>
                           </div>
                           <AppleButton
-                            onClick={() => navigate(`/admin/payment-requests/${request._id}/edit`)}
+                            onClick={() => navigate(`/admin/payment-requests/${request._id}`)}
                             className="apple-button-secondary w-auto flex-none px-3 py-2 whitespace-nowrap"
                           >
-                            Edit Request
+                            View Request
                           </AppleButton>
+                          <AppleButton onClick={() => navigate(`/admin/payment-requests/${request._id}/edit`)} className="apple-button-secondary w-auto flex-none px-3 py-2 whitespace-nowrap">Edit</AppleButton>
                         </div>
 
                         {paymentUrl ? (

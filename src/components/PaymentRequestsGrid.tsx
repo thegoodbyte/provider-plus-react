@@ -398,6 +398,13 @@ const PaymentRequestsGrid: React.FC = () => {
                           <Icon icon={FiSend} />
                         </button>
                         <button
+                          onClick={() => navigate(`/admin/payment-requests/${request._id}`)}
+                          className="icon-action-btn icon-action-btn-view"
+                          title="View"
+                        >
+                          View
+                        </button>
+                        <button
                           onClick={() => navigate(`/admin/payment-requests/${request._id}/edit`)}
                           className="icon-action-btn icon-action-btn-edit"
                           title="Edit"
