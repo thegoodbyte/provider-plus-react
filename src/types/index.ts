@@ -1640,7 +1640,7 @@ export interface PaymentRequest {
   createdAt?: string;
   updatedAt?: string;
   requestDate?: Date | string;
-  requestType?: 'deposit' | 'balance' | 'installment' | 'full_payment' | 'additional';
+  requestType?: 'deposit' | 'balance' | 'payment' | 'installment' | 'full_payment' | 'additional';
   requestedAmount?: number;
   lineItems?: PaymentRequestLineItem[];
   subtotal?: number;

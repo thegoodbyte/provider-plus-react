@@ -54,7 +54,9 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     ceremonyNumber: paymentRequest?.ceremonyNumber?.toString() || '',
     paymentDate: paymentRequest?.paymentDate ? toDateInputValue(paymentRequest.paymentDate) : defaultDate(),
     paymentType: paymentRequest?.paymentType || 'Other',
-    requestType: paymentRequest?.requestType || 'full_payment',
+    requestType: paymentRequest?.requestType === 'additional' || paymentRequest?.requestType === 'full_payment'
+      ? 'payment'
+      : paymentRequest?.requestType || 'deposit',
     fullPriceQuote: paymentRequest?.fullPriceQuote?.toString() || '',
     requestedAmount: (paymentRequest?.requestedAmount ?? paymentRequest?.amountPaid)?.toString() || '',
     currency: paymentRequest?.currency || 'EUR',
@@ -142,6 +144,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
       const currency = lastPayment?.bookingCurrency || lastPayment?.currency || booking.currency || 'EUR';
       setFormData((prev) => ({
         ...prev,
+        bookingId,
         retreatId: resolveId(booking.retreatId),
         requestType: 'balance',
         fullPriceQuote: String(fullPrice),
@@ -170,7 +173,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
   }, [formData.retreatId]);
 
   useEffect(() => {
-    const amount = Number(formData.fullPriceQuote);
+    const amount = Number(formData.requestedAmount);
     if (!amount || Number.isNaN(amount) || !formData.currency) {
       setUsdPreview({ amount: '', loading: false, error: '' });
       return;
@@ -200,7 +203,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
       active = false;
       window.clearTimeout(timeout);
     };
-  }, [formData.fullPriceQuote, formData.currency]);
+  }, [formData.requestedAmount, formData.currency]);
 
   useEffect(() => {
     if (!itemized) return;
@@ -224,8 +227,6 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
       if (formData.requestedAmount !== depositAmount) {
         setFormData(prev => ({ ...prev, requestedAmount: depositAmount }));
       }
-    } else if (!formData.requestedAmount || Number(formData.requestedAmount) === 0) {
-      setFormData(prev => ({ ...prev, requestedAmount: String(fullPrice) }));
     }
   }, [formData.fullPriceQuote, formData.requestedAmount, formData.requestType, itemized]);
 
@@ -238,7 +239,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     setFormError('');
 
     const invoiceNumber = String(formData.invoiceNumber || '').trim();
-    if (!invoiceNumber || !formData.clientId || !formData.retreatId || !formData.paymentDate || !formData.fullPriceQuote || !formData.requestedAmount) {
+    if (!invoiceNumber || !formData.clientId || !formData.retreatId || !formData.paymentDate || !formData.requestedAmount || (formData.requestType === 'deposit' && !formData.fullPriceQuote)) {
       alert('Please fill in all required fields');
       return;
     }
@@ -261,7 +262,10 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
         return;
       }
 
-      const fullPriceQuote = parseFloat(formData.fullPriceQuote);
+      const selectedBooking = bookings.find((booking) => booking._id === formData.bookingId);
+      const fullPriceQuote = parseFloat(formData.fullPriceQuote)
+        || Number(selectedBooking?.totalAmount)
+        || parseFloat(formData.requestedAmount);
       const requestedAmount = parseFloat(formData.requestedAmount);
       if (itemized && (!lineItems.length || lineItems.some(item => !item.description.trim() || !Number(item.amount)))) {
         setFormError('Every itemized row needs a description and a non-zero amount.');
@@ -385,6 +389,8 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                     ...prev,
                     bookingId: event.target.value,
                     retreatId: booking ? resolveId(booking.retreatId) : prev.retreatId,
+                    bookingType: booking?.bookingType || prev.bookingType,
+                    fullPriceQuote: booking?.totalAmount ? String(booking.totalAmount) : prev.fullPriceQuote,
                   }));
                 }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -401,19 +407,25 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Booking type *</label>
-              <select
-                value={formData.bookingType}
-                onChange={(event) => setFormData((prev) => ({
-                  ...prev,
-                  bookingType: event.target.value as 'full_retreat' | 'booster',
-                  ceremonyId: event.target.value === 'booster' ? prev.ceremonyId : '',
-                  ceremonyNumber: event.target.value === 'booster' ? prev.ceremonyNumber : '',
-                }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="full_retreat">Full retreat</option>
-                <option value="booster">Booster in this retreat</option>
-              </select>
+              {formData.requestType === 'deposit' ? (
+                <select
+                  value={formData.bookingType}
+                  onChange={(event) => setFormData((prev) => ({
+                    ...prev,
+                    bookingType: event.target.value as 'full_retreat' | 'booster',
+                    ceremonyId: event.target.value === 'booster' ? prev.ceremonyId : '',
+                    ceremonyNumber: event.target.value === 'booster' ? prev.ceremonyNumber : '',
+                  }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="full_retreat">Full retreat</option>
+                  <option value="booster">Booster in this retreat</option>
+                </select>
+              ) : (
+                <div className="min-h-[42px] rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-gray-800">
+                  {formData.bookingType === 'booster' ? 'Booster in this retreat' : 'Full retreat'}
+                </div>
+              )}
             </div>
 
             {formData.bookingType === 'booster' && (
@@ -460,9 +472,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
               >
                 <option value="deposit">Deposit</option>
                 <option value="balance">Balance</option>
-                <option value="installment">Installment</option>
-                <option value="full_payment">Full Payment</option>
-                <option value="additional">Additional</option>
+                <option value="payment">Payment</option>
               </select>
             </div>
 
@@ -477,19 +487,30 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
               </div>
             )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Full Price Quote *</label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={formData.fullPriceQuote}
-                onChange={(e) => handleChange('fullPriceQuote', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="0.00"
-                required
-              />
-            </div>
+            {formData.requestType === 'deposit' ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Full Booking Price *</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.fullPriceQuote}
+                  onChange={(e) => handleChange('fullPriceQuote', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="0.00"
+                  required
+                />
+                <p className="mt-1 text-xs text-gray-500">This becomes the booking price when the deposit is paid.</p>
+              </div>
+            ) : formData.requestType === 'balance' ? (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Full Booking Price</label>
+                <div className="min-h-[42px] rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-gray-800">
+                  {formData.fullPriceQuote ? `${Number(formData.fullPriceQuote).toLocaleString()} ${formData.currency}` : 'Not set on booking'}
+                </div>
+                <p className="mt-1 text-xs text-gray-500">Shown from the booking; it is not changed by a balance request.</p>
+              </div>
+            ) : null}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Requested Amount *</label>
@@ -505,6 +526,9 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
               />
               {formData.requestType === 'deposit' && (
                 <p className="mt-1 text-xs text-gray-500">Auto-calculated as 40% of the full price.</p>
+              )}
+              {!!usdPreview.amount && (
+                <p className="mt-1 text-xs font-medium text-blue-700">Approximately ${Number(usdPreview.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD for this requested amount.</p>
               )}
             </div>
 
