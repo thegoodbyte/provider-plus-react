@@ -16,6 +16,70 @@
 }
 
 @layer components {
+  .re-shell {
+    --re-ink: #202020;
+    --re-muted: #66615e;
+    --re-line: #d7d7d7;
+    --re-accent: #269dc7;
+    --re-soft-accent: #e7f6fb;
+    background: #f2f4f5;
+    color: var(--re-ink);
+  }
+
+  .re-shell form {
+    color: var(--re-ink);
+  }
+
+  .re-shell form label,
+  .re-shell form legend {
+    color: #333;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+  }
+
+  .re-shell form input:not([type='checkbox']):not([type='radio']):not([type='file']),
+  .re-shell form select,
+  .re-shell form textarea {
+    min-height: 46px;
+    border: 1px solid var(--re-line);
+    border-radius: 0;
+    background: #fff;
+    color: var(--re-ink);
+    box-shadow: none;
+  }
+
+  .re-shell form textarea { min-height: 92px; }
+
+  .re-shell form input:focus,
+  .re-shell form select:focus,
+  .re-shell form textarea:focus {
+    border-color: var(--re-accent);
+    outline: 2px solid rgba(38, 157, 199, .16);
+    outline-offset: 0;
+    box-shadow: none;
+  }
+
+  .re-shell form button[type='submit'] {
+    min-height: 46px;
+    border-radius: 3px;
+    font-weight: 700;
+  }
+
+  .re-shell form h1,
+  .re-shell form h2,
+  .re-shell form h3,
+  .re-shell form h4 {
+    color: var(--re-ink);
+    font-weight: 750;
+  }
+
+  .re-shell form fieldset {
+    border-color: var(--re-line);
+    border-radius: 0;
+  }
+
   .icon-action-btn {
     @apply inline-flex h-10 w-10 items-center justify-center rounded-md border border-transparent bg-transparent transition focus:outline-none focus:ring-2;
   }

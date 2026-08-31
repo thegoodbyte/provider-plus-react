@@ -564,7 +564,7 @@ const AppleLayout: React.FC = () => {
           </div>
         </header>
 
-        <main className="min-h-[calc(100vh-73px)] px-3 py-4 sm:px-6 lg:px-8">
+        <main className="re-shell min-h-[calc(100vh-73px)] px-3 py-4 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-7xl rounded-apple-lg bg-white shadow-apple-sm">
             <Routes>
               <Route path="/medical/review-requests/:id/edit" element={<MedicalReviewRequestsPage />} />
@@ -780,7 +780,7 @@ const AppleLayout: React.FC = () => {
         <StorageOverrideBanner />
 
         {/* Page Content */}
-        <main className="h-[calc(100vh-32px)] overflow-y-auto px-4 py-4 sm:px-6 lg:h-[calc(100vh-64px-32px)] lg:px-8 lg:py-6">
+        <main className="re-shell h-[calc(100vh-32px)] overflow-y-auto px-4 py-4 sm:px-6 lg:h-[calc(100vh-64px-32px)] lg:px-8 lg:py-6">
           <div className="max-w-7xl mx-auto">
             <div className="rounded-apple-lg bg-[#e7eaee] shadow-apple-sm">
               <Routes>

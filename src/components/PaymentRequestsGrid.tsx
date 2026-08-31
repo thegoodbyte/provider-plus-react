@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { paymentRequestsApi } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
 import LoadingSpinner from './LoadingSpinner';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiCheckCircle, FiClock, FiAlertTriangle, FiSend, FiCopy, FiExternalLink, FiDollarSign, FiChevronDown } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiCheckCircle, FiClock, FiAlertTriangle, FiSend, FiDollarSign, FiChevronDown, FiEye, FiCopy, FiExternalLink } from 'react-icons/fi';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 import { formatCalendarDate, parseCalendarDate } from '../utils/dateFormat';
 
@@ -44,7 +44,7 @@ const formatAmount = (amount: any, currency: string) => {
   return `${numericAmount.toLocaleString()} ${currency || ''}`.trim();
 };
 
-type PaymentRequestSortKey = 'invoice' | 'client' | 'retreat' | 'date' | 'paidDate' | 'publicHash' | 'quote' | 'usd' | 'currency' | 'status';
+type PaymentRequestSortKey = 'invoice' | 'client' | 'retreat' | 'date' | 'paidDate' | 'quote' | 'usd' | 'currency' | 'status';
 type SortDirection = 'asc' | 'desc';
 
 const PaymentRequestsGrid: React.FC = () => {
@@ -188,8 +188,6 @@ const PaymentRequestsGrid: React.FC = () => {
         return parseCalendarDate(request.paymentDate)?.getTime() || 0;
       case 'paidDate':
         return parseCalendarDate(request.paidDate)?.getTime() || 0;
-      case 'publicHash':
-        return String(request.publicHash || '').toLowerCase();
       case 'quote':
         return Number(request.fullPriceQuote || request.fullPrice || 0);
       case 'usd':
@@ -278,11 +276,10 @@ const PaymentRequestsGrid: React.FC = () => {
             <thead className="bg-gray-50">
               <tr>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('invoice', 'Invoice #')}</th>
-                <th className="px-4 py-3 text-left">{renderSortableHeader('client', 'Client')}</th>
+                <th className="w-44 px-3 py-3 text-left">{renderSortableHeader('client', 'Client')}</th>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('retreat', 'Retreat')}</th>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('date', 'Request Date')}</th>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('paidDate', 'Paid Date')}</th>
-                <th className="px-4 py-3 text-left">{renderSortableHeader('publicHash', 'Public Hash')}</th>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('quote', 'Quote')}</th>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('usd', 'USD')}</th>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('currency', 'Currency')}</th>
@@ -306,8 +303,8 @@ const PaymentRequestsGrid: React.FC = () => {
                         {request.invoiceNumber || (request.display_id ? `#${request.display_id}` : 'n/a')}
                       </button>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="font-medium text-gray-900">{client.name}</div>
+                    <td className="w-44 max-w-44 px-3 py-4">
+                      <div className="truncate font-medium text-gray-900" title={client.name}>{client.name}</div>
                       {client.displayId && (
                         <div className="mt-1 text-xs font-semibold">
                           {client.id ? (
@@ -331,41 +328,6 @@ const PaymentRequestsGrid: React.FC = () => {
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                       {request.paidDate ? formatCalendarDate(request.paidDate) : '-'}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      {request.publicHash ? (
-                        <div className="flex items-center gap-2">
-                          <code className="rounded bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-800">
-                            {request.publicHash}
-                          </code>
-                          <button
-                            type="button"
-                            onClick={() => copyToClipboard(request.publicHash)}
-                            className="icon-action-btn icon-action-btn-view"
-                            title="Copy hash"
-                          >
-                            <Icon icon={FiCopy} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => copyToClipboard(getPublicPaymentApiUrl(request))}
-                            className="icon-action-btn icon-action-btn-view"
-                            title="Copy agreement API URL"
-                          >
-                            API
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => window.open(getPublicPaymentUrl(request), '_blank', 'noopener,noreferrer')}
-                            className="icon-action-btn icon-action-btn-view"
-                            title="Open client payment form"
-                          >
-                            <Icon icon={FiExternalLink} />
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-amber-700">Save once to generate</span>
-                      )}
-                    </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                       {request.fullPriceQuote?.toLocaleString?.() ?? request.fullPriceQuote} {request.currency}
                     </td>
@@ -381,8 +343,8 @@ const PaymentRequestsGrid: React.FC = () => {
                         {request.status}
                       </span>
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
+                    <td className="sticky right-0 whitespace-nowrap border-l border-gray-100 bg-white px-2 py-4">
+                      <div className="flex items-center gap-1">
                         <button
                           onClick={() => navigate(`/admin/payments/new?paymentRequestId=${request._id}`, { state: { returnTo: '/admin/payment-requests' } })}
                           className="icon-action-btn icon-action-btn-success"
@@ -402,7 +364,7 @@ const PaymentRequestsGrid: React.FC = () => {
                           className="icon-action-btn icon-action-btn-view"
                           title="View"
                         >
-                          View
+                          <Icon icon={FiEye} />
                         </button>
                         <button
                           onClick={() => navigate(`/admin/payment-requests/${request._id}/edit`)}
