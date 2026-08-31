@@ -322,6 +322,18 @@ const PaymentEditorPage: React.FC = () => {
 
     if (isView) return;
 
+    if (isSplitReceipt) {
+      const enteredAmount = Math.abs(Number(formData.amount || 0));
+      const originalBookingId = resolveId(loadedPayment?.bookingId);
+      if (receiptTotal > 0 && enteredAmount === receiptTotal && formData.bookingId === originalBookingId) {
+        await handleUseEntireReceipt();
+        return;
+      }
+      const fullAmount = receiptTotal > 0 ? ` Enter ${receiptTotal.toLocaleString()} ${formData.currency} and press Save to assign the entire receipt to this person.` : '';
+      setFormError(`This is part of a joint receipt, so its amount or booking cannot be changed independently.${fullAmount}`);
+      return;
+    }
+
     if (!isExisting && !formData.bookingId && !formData.paymentRequestId) {
       setFormError('Select the exact booking. A payment request is only sufficient before its booking has been created.');
       return;
