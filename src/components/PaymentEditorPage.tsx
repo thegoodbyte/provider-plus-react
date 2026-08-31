@@ -370,7 +370,7 @@ const PaymentEditorPage: React.FC = () => {
       }
       navigate(returnTo || defaultReturnPath);
     } catch (error) {
-      console.error('Error saving payment:', error);
+      console.error('Error saving payment:', (error as any)?.response?.data || error);
       const message = (error as any)?.response?.data?.message || 'Error saving payment';
       setFormError(Array.isArray(message) ? message.join(', ') : message);
     }
