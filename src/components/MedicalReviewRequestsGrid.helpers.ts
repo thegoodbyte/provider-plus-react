@@ -1,6 +1,28 @@
-import { MedicalReviewRequest } from '../types';
+import { MedicalReviewGroup, MedicalReviewRequest } from '../types';
 
 export type MedicalReviewTypeFilter = 'all' | 'ekg' | 'liver' | 'both' | 'questionnaire' | 'general';
+
+export const medicalReviewStatusPriority = (status?: string) => ({
+  pending: 0,
+  in_review: 1,
+  caution: 2,
+  needs_resubmission: 3,
+  approved: 4,
+  rejected: 5,
+  completed: 6,
+}[String(status || '').trim().toLowerCase()] ?? 7);
+
+export const sortMedicalReviewsPendingFirst = <T extends MedicalReviewRequest>(requests: T[]) => [...requests].sort((a, b) =>
+  medicalReviewStatusPriority(a.status) - medicalReviewStatusPriority(b.status)
+  || Number(b.display_id || 0) - Number(a.display_id || 0));
+
+export const sortMedicalReviewPacketsByExpiry = <T extends MedicalReviewGroup>(groups: T[]) => [...groups].sort((a, b) => {
+  const expiry = (group: MedicalReviewGroup) => {
+    const timestamp = group.endDate ? new Date(group.endDate).getTime() : Number.POSITIVE_INFINITY;
+    return Number.isNaN(timestamp) ? Number.POSITIVE_INFINITY : timestamp;
+  };
+  return expiry(a) - expiry(b) || String(a.title || '').localeCompare(String(b.title || ''));
+});
 
 const requestTypeGroups: Record<Exclude<MedicalReviewTypeFilter, 'all'>, string[]> = {
   ekg: ['ekg', 'ekg_review', 'ceremony_ekg_review'],

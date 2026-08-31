@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FiChevronDown, FiChevronRight, FiCopy, FiEye, FiEdit2, FiFolder, FiLink, FiLock, FiMenu, FiPlus, FiRefreshCw, FiSearch, FiSend, FiTrash2, FiUnlock, FiX, FiZap } from 'react-icons/fi';
+import { FiAlertTriangle, FiCheck, FiChevronDown, FiChevronRight, FiClock, FiCopy, FiEye, FiEdit2, FiFolder, FiLink, FiLock, FiMenu, FiPlus, FiRefreshCw, FiSearch, FiSend, FiThumbsDown, FiThumbsUp, FiTrash2, FiUnlock, FiX, FiZap } from 'react-icons/fi';
 import LoadingSpinner from './LoadingSpinner';
 import MedicalReviewTypeBadge from './MedicalReviewTypeBadge';
 import { medicalReviewRequestsApi, medicalTrackingApi, clientsApi, retreatsApi } from '../services/api';
 import { MedicalItem, MedicalReviewGroup, MedicalReviewRequest, Client, Retreat } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { usersApi, User } from '../services/usersApi';
-import { MedicalReviewTypeFilter, getReviewRequestFilterText, matchesReviewRequestFilters } from './MedicalReviewRequestsGrid.helpers';
+import { MedicalReviewTypeFilter, getReviewRequestFilterText, matchesReviewRequestFilters, sortMedicalReviewPacketsByExpiry, sortMedicalReviewsPendingFirst } from './MedicalReviewRequestsGrid.helpers';
 import ResponsiveModal from './ResponsiveModal';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
@@ -87,13 +87,33 @@ const getClientGridLabel = (request: EnrichedReviewRequest) => (
 );
 
 const statusClass: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-800',
+  pending: 'border border-blue-200 bg-blue-100 text-blue-800',
   in_review: 'bg-blue-100 text-blue-800',
   approved: 'bg-green-100 text-green-800',
   rejected: 'bg-red-100 text-red-800',
   caution: 'bg-amber-100 text-amber-800',
   needs_resubmission: 'bg-orange-100 text-orange-800',
   completed: 'bg-gray-100 text-gray-800',
+};
+
+const statusIcon: Record<string, any> = {
+  pending: FiClock,
+  in_review: FiClock,
+  approved: FiThumbsUp,
+  rejected: FiThumbsDown,
+  caution: FiAlertTriangle,
+  needs_resubmission: FiAlertTriangle,
+  completed: FiCheck,
+};
+
+const statusRowClass: Record<string, string> = {
+  pending: 'border-l-4 border-l-blue-500 bg-blue-50/80',
+  in_review: 'border-l-4 border-l-sky-500 bg-sky-50/80',
+  approved: 'border-l-4 border-l-green-500 bg-green-50/80',
+  rejected: 'border-l-4 border-l-red-500 bg-red-50/80',
+  caution: 'border-l-4 border-l-amber-500 bg-amber-50/90',
+  needs_resubmission: 'border-l-4 border-l-orange-500 bg-orange-50/80',
+  completed: 'border-l-4 border-l-gray-400 bg-gray-50',
 };
 
 const normalizeReviewStatus = (value?: string) => String(value || '').trim().toLowerCase();
@@ -280,8 +300,14 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     end.setHours(23, 59, 59, 999);
     return end.getTime() < Date.now();
   }, []);
-  const activeGroups = useMemo(() => visibleGroups.filter((group) => !isPastPacket(group)), [isPastPacket, visibleGroups]);
-  const pastGroups = useMemo(() => visibleGroups.filter(isPastPacket), [isPastPacket, visibleGroups]);
+  const activeGroups = useMemo(() => {
+    const rows = visibleGroups.filter((group) => !isPastPacket(group));
+    return groupOrderUnlocked ? rows : sortMedicalReviewPacketsByExpiry(rows);
+  }, [groupOrderUnlocked, isPastPacket, visibleGroups]);
+  const pastGroups = useMemo(() => {
+    const rows = visibleGroups.filter(isPastPacket);
+    return groupOrderUnlocked ? rows : sortMedicalReviewPacketsByExpiry(rows);
+  }, [groupOrderUnlocked, isPastPacket, visibleGroups]);
   const lifecycleGroups = useMemo(() => [...activeGroups, ...pastGroups], [activeGroups, pastGroups]);
 
   const applyOrderedGroupIds = useCallback((orderedGroupIds: string[]) => {
@@ -934,9 +960,9 @@ const MedicalReviewRequestsGrid: React.FC = () => {
               const isRequestDropTarget = draggedOverPacketId === groupId && draggedRequestSourceGroupId !== groupId;
               const packetSearch = packetSearchTerms[groupId || ''] || '';
               const normalizedPacketSearch = packetSearch.trim().toLowerCase();
-              const packetRequests = normalizedPacketSearch
+              const packetRequests = sortMedicalReviewsPendingFirst(normalizedPacketSearch
                 ? (group.requests || []).filter((request) => getReviewRequestFilterText(request).includes(normalizedPacketSearch))
-                : (group.requests || []);
+                : (group.requests || []));
               const originalGroupIndex = visibleGroups.findIndex((candidate) => candidate._id === group._id);
               return (
                 <React.Fragment key={`packet-section-${groupId}`}>
@@ -1140,7 +1166,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                           event.dataTransfer.setData('text/plain', request._id || '');
                         }}
                         onDragEnd={handleRequestDragEnd}
-                        className={`grid gap-3 px-4 py-4 md:items-center ${packetAssignmentUnlocked ? 'cursor-grab bg-amber-50/30 md:grid-cols-[32px_150px_minmax(0,1fr)_220px_150px_180px] active:cursor-grabbing' : 'md:grid-cols-[150px_minmax(0,1fr)_220px_150px_180px]'}`}
+                        className={`grid gap-3 border-b border-gray-100 px-4 py-4 last:border-b-0 md:items-center ${statusRowClass[request.status] || 'bg-white'} ${packetAssignmentUnlocked ? 'cursor-grab md:grid-cols-[32px_150px_minmax(0,1fr)_220px_150px_180px] active:cursor-grabbing' : 'md:grid-cols-[150px_minmax(0,1fr)_220px_150px_180px]'}`}
                       >
                           {packetAssignmentUnlocked && <div className="text-gray-400" title="Drag MRR to another packet"><Icon icon={FiMenu} className="h-5 w-5" /></div>}
                           <div className="min-w-0">
@@ -1161,8 +1187,9 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                             <MedicalReviewTypeBadge requestType={request.requestType} />
                           </div>
                           <div>
-                            <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${statusClass[request.status] || 'bg-gray-100 text-gray-700'}`}>
-                              {request.status}
+                            <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass[request.status] || 'bg-gray-100 text-gray-700'}`}>
+                              <Icon icon={statusIcon[request.status] || FiClock} className="h-3.5 w-3.5" />
+                              {String(request.status || 'unknown').replace(/_/g, ' ')}
                             </span>
                           </div>
                           <div className="flex justify-start md:justify-end">
@@ -1234,7 +1261,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                 </button>
                 {expandedGroupIds.includes('ungrouped') && (
                   <div className="divide-y divide-gray-100">
-                    {ungroupedRequests.map((request) => (
+                    {sortMedicalReviewsPendingFirst(ungroupedRequests).map((request) => (
                       <div
                         key={`ungrouped-${request._id}`}
                         draggable={packetAssignmentUnlocked && !packetMoveSaving}
@@ -1246,7 +1273,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                           event.dataTransfer.setData('text/plain', request._id || '');
                         }}
                         onDragEnd={handleRequestDragEnd}
-                        className={`grid gap-3 px-4 py-4 md:items-center ${packetAssignmentUnlocked ? 'cursor-grab bg-amber-50/30 md:grid-cols-[32px_150px_minmax(0,1fr)_220px_150px_130px] active:cursor-grabbing' : 'md:grid-cols-[150px_minmax(0,1fr)_220px_150px_130px]'}`}
+                        className={`grid gap-3 border-b border-gray-100 px-4 py-4 last:border-b-0 md:items-center ${statusRowClass[request.status] || 'bg-white'} ${packetAssignmentUnlocked ? 'cursor-grab md:grid-cols-[32px_150px_minmax(0,1fr)_220px_150px_130px] active:cursor-grabbing' : 'md:grid-cols-[150px_minmax(0,1fr)_220px_150px_130px]'}`}
                       >
                         {packetAssignmentUnlocked && <div className="text-gray-400" title="Drag MRR to a packet"><Icon icon={FiMenu} className="h-5 w-5" /></div>}
                         <div className="min-w-0">
@@ -1267,8 +1294,9 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                           <MedicalReviewTypeBadge requestType={request.requestType} />
                         </div>
                         <div>
-                          <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${statusClass[request.status] || 'bg-gray-100 text-gray-700'}`}>
-                            {request.status}
+                          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass[request.status] || 'bg-gray-100 text-gray-700'}`}>
+                            <Icon icon={statusIcon[request.status] || FiClock} className="h-3.5 w-3.5" />
+                            {String(request.status || 'unknown').replace(/_/g, ' ')}
                           </span>
                         </div>
                         <div className="flex justify-start md:justify-end">
