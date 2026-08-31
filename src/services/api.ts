@@ -467,6 +467,11 @@ export const paymentsApi = {
     cacheService.clearPattern('bookings:');
     return api.put<Payment>(`/payments/${id}`, data);
   },
+  useEntireReceipt: (id: string) => {
+    cacheService.clearPattern('payments:');
+    cacheService.clearPattern('bookings:');
+    return api.post<Payment>(`/payments/${id}/use-entire-receipt`);
+  },
   delete: (id: string) => {
     cacheService.clearPattern('payments:');
     cacheService.clearPattern('bookings:');

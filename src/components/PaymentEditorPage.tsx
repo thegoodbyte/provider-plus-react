@@ -20,6 +20,13 @@ const resolveId = (value: any) => (typeof value === 'object' && value?._id ? val
 
 const defaultDate = () => todayDateInputValue();
 
+const apiErrorMessage = (error: any, fallback: string) => {
+  const message = error?.response?.data?.message || error?.message;
+  if (Array.isArray(message)) return message.join(', ');
+  if (typeof message === 'string' && message.trim()) return message;
+  return fallback;
+};
+
 const getPaymentRequestAmount = (paymentRequest?: PaymentRequest | null) => {
   if (!paymentRequest) return '';
   const candidates = [
@@ -87,6 +94,8 @@ const PaymentEditorPage: React.FC = () => {
   const [usdPreviewError, setUsdPreviewError] = useState('');
   const [bookingCurrencyLoading, setBookingCurrencyLoading] = useState(false);
   const [formError, setFormError] = useState('');
+  const [loadedPayment, setLoadedPayment] = useState<Payment | null>(null);
+  const [reassigningReceipt, setReassigningReceipt] = useState(false);
   const [formData, setFormData] = useState({
     display_id: '',
     paymentRequestId: '',
@@ -133,6 +142,7 @@ const PaymentEditorPage: React.FC = () => {
 
         if (paymentResponse?.data) {
           const payment = paymentResponse.data as Payment;
+          setLoadedPayment(payment);
           const populatedPaymentRequest = typeof payment.paymentRequestId === 'object' ? payment.paymentRequestId as PaymentRequest : null;
           if (populatedPaymentRequest) setSelectedPaymentRequest(populatedPaymentRequest);
           setFormData({
@@ -371,8 +381,29 @@ const PaymentEditorPage: React.FC = () => {
       navigate(returnTo || defaultReturnPath);
     } catch (error) {
       console.error('Error saving payment:', (error as any)?.response?.data || error);
-      const message = (error as any)?.response?.data?.message || 'Error saving payment';
-      setFormError(Array.isArray(message) ? message.join(', ') : message);
+      setFormError(apiErrorMessage(error, 'The payment could not be saved.'));
+    }
+  };
+
+  const isSplitReceipt = Boolean(loadedPayment?.receiptId && Number(loadedPayment?.allocationCount || 0) > 1);
+  const receiptTotal = Number(loadedPayment?.transactionTotalAmount || 0);
+
+  const handleUseEntireReceipt = async () => {
+    if (!id || !isSplitReceipt) return;
+    const client = clients.find((item) => item._id === formData.clientId);
+    const clientName = client ? `${client.firstName || ''} ${client.lastName || ''}`.trim() : 'this person';
+    const totalLabel = receiptTotal > 0 ? `${receiptTotal.toLocaleString()} ${formData.currency}` : `the full ${formData.currency} receipt`;
+    if (!window.confirm(`Assign ${totalLabel} to ${clientName}? The other allocations from this same receipt will be removed and their bookings recalculated. This change is logged.`)) return;
+    try {
+      setReassigningReceipt(true);
+      setFormError('');
+      await paymentsApi.useEntireReceipt(id);
+      navigate(returnTo || defaultReturnPath);
+    } catch (error) {
+      console.error('Error assigning entire receipt:', (error as any)?.response?.data || error);
+      setFormError(apiErrorMessage(error, 'The joint payment could not be reassigned.'));
+    } finally {
+      setReassigningReceipt(false);
     }
   };
 
@@ -415,8 +446,28 @@ const PaymentEditorPage: React.FC = () => {
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
         <form onSubmit={handleSubmit} className="space-y-6">
           {formError && (
-            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-700">
+            <div role="alert" className="rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
               {formError}
+            </div>
+          )}
+          {isSplitReceipt && (
+            <div className="rounded-md border border-blue-300 bg-blue-50 p-4 text-blue-950">
+              <h2 className="font-semibold">This payment belongs to one joint receipt</h2>
+              <p className="mt-1 text-sm">
+                It is allocation {loadedPayment?.allocationIndex || '—'} of {loadedPayment?.allocationCount}.
+                {receiptTotal > 0 ? ` The full received payment was ${receiptTotal.toLocaleString()} ${formData.currency}.` : ''}
+                {' '}Changing this allocation's amount or booking with Save is blocked because that would make the receipt totals incorrect.
+              </p>
+              {!isView && (
+                <button
+                  type="button"
+                  onClick={handleUseEntireReceipt}
+                  disabled={reassigningReceipt}
+                  className="mt-3 rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:cursor-wait disabled:opacity-60"
+                >
+                  {reassigningReceipt ? 'Assigning full receipt…' : 'Use entire joint payment for this person'}
+                </button>
+              )}
             </div>
           )}
           <fieldset disabled={isView} className="grid grid-cols-1 md:grid-cols-2 gap-6 disabled:opacity-90">
