@@ -3,8 +3,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import AppleButton from './AppleButton';
 import AppleInput from './AppleInput';
 import LoadingSpinner from './LoadingSpinner';
-import { bookingsApi, clientsApi, retreatsApi } from '../services/api';
-import { Client, Retreat, RetreatClient } from '../types';
+import { bookingsApi, clientsApi, referralsApi, retreatsApi } from '../services/api';
+import { Client, Referral, Retreat, RetreatClient } from '../types';
+import ClientReferralFields from './ClientReferralFields';
 import {
   bookedWorkflowStatuses,
   clientWorkflowStatusLabels,
@@ -153,6 +154,7 @@ const UnifiedClientManager: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [bookings, setBookings] = useState<RetreatClient[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
+  const [referrals, setReferrals] = useState<Referral[]>([]);
   const [filteredClients, setFilteredClients] = useState<Client[]>([]);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -244,16 +246,19 @@ const UnifiedClientManager: React.FC = () => {
 
   const fetchBookingContext = async () => {
     try {
-      const [bookingsResponse, retreatsResponse] = await Promise.all([
+      const [bookingsResponse, retreatsResponse, referralsResponse] = await Promise.all([
         bookingsApi.getAll(),
         retreatsApi.getAll(),
+        referralsApi.getAll(),
       ]);
       setBookings(bookingsResponse.data || []);
       setRetreats(retreatsResponse.data || []);
+      setReferrals(referralsResponse.data || []);
     } catch (error) {
       console.error('Error fetching booking context:', error);
       setBookings([]);
       setRetreats([]);
+      setReferrals([]);
     }
   };
 
@@ -342,8 +347,26 @@ const UnifiedClientManager: React.FC = () => {
         'city', 'state', 'zipCode', 'country', 'dateOfBirth', 'emergencyContact',
         'emergencyContactPhone', 'medicalConditions', 'dietaryRestrictions', 'status',
         'notes', 'preferredName', 'occupation', 'gender', 'height', 'weight', 'source',
-        'display_id', 'signupDate', 'workflowStatus', 'language'
+        'display_id', 'signupDate', 'workflowStatus', 'language', 'referralId',
+        'referralPersonType', 'referralClientId', 'referralPersonName', 'referralCommissionPercentage'
       ];
+
+      const selectedReferralId = getObjectId(formData.referralId);
+      const selectedReferral = referrals.find((item) => item._id === selectedReferralId);
+      if (String(selectedReferral?.name || '').trim().toLowerCase() === 'friend') {
+        if (!formData.referralPersonType) {
+          alert('Choose whether the referring friend is an existing client or someone else');
+          return;
+        }
+        if (formData.referralPersonType === 'existing_client' && !getObjectId(formData.referralClientId)) {
+          alert('Select the existing client who made the referral');
+          return;
+        }
+        if (formData.referralPersonType === 'someone_else' && String(formData.referralPersonName || '').trim().length < 2) {
+          alert('Enter at least 2 characters for the referring person’s name');
+          return;
+        }
+      }
 
       if (formData.loginPin && !/^\d{6}$/.test(formData.loginPin)) {
         alert('Client portal PIN must be 6 digits');
@@ -377,7 +400,7 @@ const UnifiedClientManager: React.FC = () => {
             acc[key] = value;
           }
         } else {
-          acc[key] = value;
+          acc[key] = ['referralId', 'referralClientId'].includes(key) ? getObjectId(value) : value;
         }
 
         return acc;
@@ -437,7 +460,8 @@ const UnifiedClientManager: React.FC = () => {
       'city', 'state', 'zipCode', 'country', 'dateOfBirth', 'emergencyContact',
       'emergencyContactPhone', 'medicalConditions', 'dietaryRestrictions', 'status',
       'notes', 'preferredName', 'occupation', 'gender', 'height', 'weight', 'source',
-      'display_id', 'signupDate', 'workflowStatus', 'language'
+      'display_id', 'signupDate', 'workflowStatus', 'language', 'referralId',
+      'referralPersonType', 'referralClientId', 'referralPersonName', 'referralCommissionPercentage'
     ];
 
     return allowedFields.reduce((acc, field) => {
@@ -689,6 +713,9 @@ const UnifiedClientManager: React.FC = () => {
                           ({client.preferredName})
                         </span>
                       )}
+                      {(typeof client.referralId === 'object' ? client.referralId?.name : client.source) && (
+                        <div className="ml-9 text-xs text-violet-700">Referral: {typeof client.referralId === 'object' ? client.referralId?.name : client.source}</div>
+                      )}
                     </div>
                   </td>
                   <td className="hidden px-3 py-1.5 whitespace-nowrap sm:table-cell">
@@ -936,6 +963,16 @@ const UnifiedClientManager: React.FC = () => {
                     />
                   </div>
                     </div>
+                  </section>
+
+                  <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm sm:p-5 lg:col-span-2">
+                    <h4 className="mb-4 border-b border-slate-200 pb-3 text-base font-semibold text-slate-900">Referral</h4>
+                    <ClientReferralFields
+                      value={formData}
+                      referrals={referrals}
+                      currentClientId={selectedClient?._id}
+                      onChange={(patch) => setFormData((current) => ({ ...current, ...patch }))}
+                    />
                   </section>
                 </div>
               </div>
