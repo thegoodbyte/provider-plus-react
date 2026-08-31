@@ -19,6 +19,16 @@ export const isPendingReview = (request: MedicalReviewRequest) => request.status
 
 export const getRequestKey = (request: MedicalReviewRequest) => request._id || '';
 
+export const medicalReviewStatusPriority = (status?: string) => ({
+  pending: 0,
+  in_review: 1,
+  caution: 2,
+  needs_resubmission: 3,
+  approved: 4,
+  rejected: 5,
+  completed: 6,
+}[String(status || '')] ?? 7);
+
 type PacketSection = {
   key: string;
   title: string;
@@ -41,7 +51,9 @@ export const buildPacketSections = (group: MedicalReviewGroup | null, requests: 
 
   return Array.from(byKey.entries())
     .map(([key, sectionRequests]) => {
-      const sorted = [...sectionRequests].sort((a, b) => String(a.requestType || '').localeCompare(String(b.requestType || '')) || String(getClientName(a)).localeCompare(getClientName(b)));
+      const sorted = [...sectionRequests].sort((a, b) => medicalReviewStatusPriority(a.status) - medicalReviewStatusPriority(b.status)
+        || String(a.requestType || '').localeCompare(String(b.requestType || ''))
+        || String(getClientName(a)).localeCompare(getClientName(b)));
       if (key.startsWith('ceremony:')) {
         const ceremony = key.split(':')[1];
         return {

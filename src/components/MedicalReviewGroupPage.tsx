@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { FiCheck, FiChevronDown, FiChevronRight, FiCopy, FiEdit2, FiFolder, FiLink, FiPlus, FiRefreshCw, FiTrash2 } from 'react-icons/fi';
+import { FiAlertTriangle, FiCheck, FiChevronDown, FiChevronRight, FiClock, FiCopy, FiEdit2, FiFolder, FiLink, FiPlus, FiRefreshCw, FiThumbsDown, FiThumbsUp, FiTrash2 } from 'react-icons/fi';
 import LoadingSpinner from './LoadingSpinner';
 import ResponsiveModal from './ResponsiveModal';
 import MedicalReviewTypeBadge from './MedicalReviewTypeBadge';
@@ -12,13 +12,33 @@ import { buildPacketSections, getClientName, getRequestKey, getRetreatLabel, isP
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
 const statusClass: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-800',
+  pending: 'border border-blue-200 bg-blue-100 text-blue-800',
   in_review: 'bg-blue-100 text-blue-800',
   approved: 'bg-green-100 text-green-800',
   rejected: 'bg-red-100 text-red-800',
   caution: 'bg-amber-100 text-amber-800',
   needs_resubmission: 'bg-orange-100 text-orange-800',
   completed: 'bg-gray-100 text-gray-800',
+};
+
+const statusIcon: Record<string, any> = {
+  pending: FiClock,
+  in_review: FiClock,
+  approved: FiThumbsUp,
+  rejected: FiThumbsDown,
+  caution: FiAlertTriangle,
+  needs_resubmission: FiAlertTriangle,
+  completed: FiCheck,
+};
+
+const statusRowClass: Record<string, string> = {
+  pending: 'border-l-4 border-l-blue-500 bg-blue-50/80',
+  in_review: 'border-l-4 border-l-sky-500 bg-sky-50/80',
+  approved: 'border-l-4 border-l-green-500 bg-green-50/80',
+  rejected: 'border-l-4 border-l-red-500 bg-red-50/80',
+  caution: 'border-l-4 border-l-amber-500 bg-amber-50/90',
+  needs_resubmission: 'border-l-4 border-l-orange-500 bg-orange-50/80',
+  completed: 'border-l-4 border-l-gray-400 bg-gray-50',
 };
 
 const getGroupUserId = (value?: string | { _id?: string; id?: string } | null) => {
@@ -65,7 +85,7 @@ const MedicalReviewGroupPage: React.FC = () => {
     ]);
     setGroup(groupResponse.data);
     setAccessLinks(linksResponse.data || []);
-    const currentRequests = ((groupResponse.data?.requests || []) as MedicalReviewRequest[]).filter(isPendingReview);
+    const currentRequests = (groupResponse.data?.requests || []) as MedicalReviewRequest[];
     setExpandedSections((current) => {
       const sections = buildPacketSections(groupResponse.data || null, currentRequests).map((section) => section.key);
       return Array.from(new Set([...current, ...sections]));
@@ -275,7 +295,7 @@ const MedicalReviewGroupPage: React.FC = () => {
   };
 
   const sections = useMemo(() => {
-    const groupRequests = ((group?.requests || []) as MedicalReviewRequest[]).filter(isPendingReview);
+    const groupRequests = (group?.requests || []) as MedicalReviewRequest[];
     return buildPacketSections(group, groupRequests);
   }, [group]);
   const pendingRequestCount = (group?.requests || []).filter(isPendingReview).length;
@@ -504,7 +524,7 @@ const MedicalReviewGroupPage: React.FC = () => {
                     {section.requests.map((request) => (
                       <div
                         key={request._id}
-                        className={`grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 border-b border-gray-900 px-4 py-3 last:border-b-0 md:items-center md:border-0 md:py-4 ${canManageGroup ? 'md:grid-cols-[36px_150px_minmax(0,1fr)_220px_150px_130px]' : 'md:grid-cols-[150px_minmax(0,1fr)_220px_150px_130px]'}`}
+                        className={`grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 border-b border-gray-900 px-4 py-3 last:border-b-0 md:items-center md:border-b md:border-gray-100 md:py-4 ${statusRowClass[request.status] || 'bg-white'} ${canManageGroup ? 'md:grid-cols-[36px_150px_minmax(0,1fr)_220px_150px_130px]' : 'md:grid-cols-[150px_minmax(0,1fr)_220px_150px_130px]'}`}
                       >
                         {canManageGroup && packetEditMode && (
                           <div className="flex items-start justify-center">
@@ -534,8 +554,9 @@ const MedicalReviewGroupPage: React.FC = () => {
                           <MedicalReviewTypeBadge requestType={request.requestType} />
                         </div>
                         <div>
-                          <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${statusClass[request.status] || 'bg-gray-100 text-gray-700'}`}>
-                            {request.status}
+                          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass[request.status] || 'bg-gray-100 text-gray-700'}`}>
+                            <Icon icon={statusIcon[request.status] || FiClock} className="h-3.5 w-3.5" />
+                            {String(request.status || 'unknown').replace(/_/g, ' ')}
                           </span>
                         </div>
                         <div className="flex justify-start md:justify-end">
@@ -572,7 +593,7 @@ const MedicalReviewGroupPage: React.FC = () => {
           )}
         </div>
         <div className="fixed inset-x-0 bottom-0 z-20 flex items-center justify-between border-t border-gray-900 bg-white px-6 py-4 text-[11px] md:hidden">
-          <span className="text-gray-600">Showing pending only</span>
+          <span className="text-gray-600">Pending reviews shown first</span>
           {group?.url && <button type="button" onClick={() => copyToClipboard(group.url || '')} className="font-medium text-cyan-800">Copy permanent link</button>}
         </div>
       </div>

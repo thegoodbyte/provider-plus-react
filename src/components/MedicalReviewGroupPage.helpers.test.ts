@@ -1,4 +1,4 @@
-import { buildPacketSections, getPacketRetreatLabel, getClientName, getRetreatLabel, isPendingReview } from './MedicalReviewGroupPage.helpers';
+import { buildPacketSections, getPacketRetreatLabel, getClientName, getRetreatLabel, isPendingReview, medicalReviewStatusPriority } from './MedicalReviewGroupPage.helpers';
 
 describe('MedicalReviewGroupPage helpers', () => {
   it('groups retreat packets by retreat and sorts pending reviews by type then client', () => {
@@ -35,7 +35,8 @@ describe('MedicalReviewGroupPage helpers', () => {
       title: 'JNO-07-25-26',
       subtitle: '3 requests',
     });
-    expect(sections[0].requests.map((request) => request._id)).toEqual(['review-1', 'review-3', 'review-2']);
+    expect(sections[0].requests.map((request) => request._id)).toEqual(['review-1', 'review-2', 'review-3']);
+    expect(medicalReviewStatusPriority('pending')).toBeLessThan(medicalReviewStatusPriority('caution'));
   });
 
   it('falls back to the group retreat name when the request has no retreat', () => {
