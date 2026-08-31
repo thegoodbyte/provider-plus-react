@@ -1635,6 +1635,7 @@ export interface PaymentRequest {
   remindersSent?: number;
   isUrgent?: boolean;
   paymentInstructions?: string;
+  revolutPaymentLink?: string;
   createdBy?: string;
   createdAt?: string;
   updatedAt?: string;
