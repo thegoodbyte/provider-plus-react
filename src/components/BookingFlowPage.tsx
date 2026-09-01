@@ -31,12 +31,16 @@ const getObjectId = (value: any): string => {
 
 const formatDate = (value?: string | Date | null) => {
   if (!value) return '-';
-  const date = new Date(value);
+  const input = String(value);
+  const match = input.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const date = match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : new Date(value);
   return Number.isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
 };
 
 const toDateInputValue = (value?: string | Date | null) => {
   if (!value) return '';
+  const calendarDate = String(value).match(/^(\d{4}-\d{2}-\d{2})/);
+  if (calendarDate) return calendarDate[1];
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return '';
   return date.toISOString().slice(0, 10);
@@ -138,8 +142,11 @@ const BookingFlowPage: React.FC = () => {
 
   const calculateDueDate = (offsetDays: number): string | null => {
     if (!retreat?.startDate) return null;
-    const dueDate = new Date(retreat.startDate);
-    dueDate.setDate(dueDate.getDate() - offsetDays);
+    const match = String(retreat.startDate).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    const dueDate = match
+      ? new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12))
+      : new Date(retreat.startDate);
+    dueDate.setUTCDate(dueDate.getUTCDate() - offsetDays);
     return dueDate.toISOString();
   };
 
@@ -163,7 +170,7 @@ const BookingFlowPage: React.FC = () => {
         title: draft.title.trim(),
         order: Number(draft.order || 0),
         offsetDays,
-        dueDate: draft.dueDate ? new Date(`${draft.dueDate}T12:00:00`).toISOString() : null,
+        dueDate: draft.dueDate ? `${draft.dueDate}T12:00:00.000Z` : null,
         notes: draft.notes,
       });
       await loadData();
@@ -193,7 +200,7 @@ const BookingFlowPage: React.FC = () => {
         title: newStep.title.trim(),
         order: Number(newStep.order || 0),
         offsetDays,
-        dueDate: newStep.dueDate ? new Date(`${newStep.dueDate}T12:00:00`).toISOString() : calculateDueDate(offsetDays),
+        dueDate: newStep.dueDate ? `${newStep.dueDate}T12:00:00.000Z` : calculateDueDate(offsetDays),
         notes: newStep.notes,
         category: 'other',
       });
