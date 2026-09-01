@@ -8,6 +8,7 @@ import HousesGrid from './HousesGrid';
 import BoosterOffersPage from './BoosterOffersPage';
 import RetreatsGrid from './RetreatsGrid';
 import RetreatEditorPage from './RetreatEditorPage';
+import RetreatPricingPage from './RetreatPricingPage';
 import ScreeningClientsGrid from './ScreeningClientsGrid';
 import ClientDetailsPage from './ClientDetailsPage';
 import ClientEditPage from './ClientEditPage';
@@ -810,6 +811,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="potential-clients" element={<UnifiedClientManager />} />
                       <Route path="retreats" element={<RetreatsGrid />} />
                       <Route path="retreats/:retreatId/edit" element={<RetreatEditorPage />} />
+                      <Route path="retreats/:retreatId/pricing" element={<RetreatPricingPage />} />
                       <Route path="retreats/:retreatId/clients-print" element={<RetreatClientsPrintPage />} />
                       <Route path="retreats/:retreatId" element={<RetreatDetailRoute />} />
                       <Route path="retreats/:retreatId/:tab" element={<RetreatDetailRoute />} />
@@ -979,6 +981,7 @@ const AppleLayout: React.FC = () => {
                         <Route path="bookings/:bookingId/edit" element={<BookingEditorPage mode="edit" />} />
                         <Route path="retreats" element={<RetreatsGrid />} />
                         <Route path="retreats/:retreatId/edit" element={<RetreatEditorPage />} />
+                        <Route path="retreats/:retreatId/pricing" element={<RetreatPricingPage />} />
                         <Route path="retreats/:retreatId/clients-print" element={<RetreatClientsPrintPage />} />
                         <Route path="retreats/:retreatId" element={<RetreatDetailRoute />} />
                         <Route path="retreats/:retreatId/:tab" element={<RetreatDetailRoute />} />
@@ -1017,6 +1020,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="bookings" element={<BookingsGrid />} />
                       <Route path="retreats" element={<RetreatsGrid />} />
                       <Route path="retreats/:retreatId/edit" element={<RetreatEditorPage />} />
+                      <Route path="retreats/:retreatId/pricing" element={<RetreatPricingPage />} />
                       <Route path="retreats/:retreatId/clients-print" element={<RetreatClientsPrintPage />} />
                       <Route path="retreats/:retreatId" element={<RetreatDetailRoute />} />
                       <Route path="retreats/:retreatId/:tab" element={<RetreatDetailRoute />} />
@@ -1127,6 +1131,7 @@ const AppleLayout: React.FC = () => {
                 <Route path="/potential-clients" element={<ProtectedRoute><UnifiedClientManager /></ProtectedRoute>} />
                 <Route path="/retreats" element={<ProtectedRoute><RetreatsGrid /></ProtectedRoute>} />
                 <Route path="/retreats/:retreatId/edit" element={<ProtectedRoute><RetreatEditorPage /></ProtectedRoute>} />
+                <Route path="/retreats/:retreatId/pricing" element={<ProtectedRoute><RetreatPricingPage /></ProtectedRoute>} />
                 <Route path="/houses" element={<ProtectedRoute><HousesGrid /></ProtectedRoute>} />
                 <Route path="/booster-offers" element={<ProtectedRoute><BoosterOffersPage /></ProtectedRoute>} />
                 <Route path="/bookings" element={<ProtectedRoute><BookingsGrid /></ProtectedRoute>} />
