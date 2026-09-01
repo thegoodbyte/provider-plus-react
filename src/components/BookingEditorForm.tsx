@@ -345,7 +345,8 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       onSaved();
     } catch (error) {
       console.error('Error saving booking:', error);
-      alert(`Error ${mode === 'edit' ? 'updating' : 'creating'} booking`);
+      const message = (error as any)?.response?.data?.message || (error as any)?.message || `Error ${mode === 'edit' ? 'updating' : 'creating'} booking`;
+      alert(Array.isArray(message) ? message.join(' ') : String(message));
     } finally {
       setSaving(false);
     }
@@ -472,13 +473,16 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Retreat</label>
-            <SearchableRetreatSelect
-              retreats={retreats}
-              selectedRetreatId={formData.retreatId}
-              onRetreatSelect={handleRetreatSelect}
-              placeholder="Search and select a retreat..."
-              required
-            />
+            {mode === 'edit' ? <>
+              <div className="rounded-md border border-gray-300 bg-gray-100 px-3 py-2 text-sm text-gray-800">{(() => { const selected = retreats.find((item) => item._id === formData.retreatId); return selected ? `${selected.name}${selected.location ? ` — ${selected.location}` : ''}` : 'Current retreat'; })()}</div>
+              <p className="mt-1.5 text-xs font-medium text-amber-800">To move this booking, close Edit and use <strong>Reschedule booking</strong>. That also moves deadlines, documents, medical reviews, and payment planning.</p>
+            </> : <SearchableRetreatSelect
+                retreats={retreats}
+                selectedRetreatId={formData.retreatId}
+                onRetreatSelect={handleRetreatSelect}
+                placeholder="Search and select a retreat..."
+                required
+              />}
           </div>
         </div>
 
