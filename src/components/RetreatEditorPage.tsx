@@ -28,6 +28,8 @@ const RetreatEditorPage: React.FC = () => {
   const [heroUploading, setHeroUploading] = useState(false);
   const [websitePricingText, setWebsitePricingText] = useState('{}');
   const [websiteContentText, setWebsiteContentText] = useState('{}');
+  const [plPrices, setPlPrices] = useState({ closeShared: 9500, closePrivate: 10500, closeEnsuite: 11500, midShared: 8500, midPrivate: 9500, midEnsuite: 10500, farShared: 7500, farPrivate: 8500, farEnsuite: 9500, addictionSupport: 1500 });
+  const [plIncluded, setPlIncluded] = useState('');
   const [staffText, setStaffText] = useState('[]');
   const [error, setError] = useState('');
 
@@ -38,6 +40,13 @@ const RetreatEditorPage: React.FC = () => {
       setForm({ ...item, code: item.code || item.retreatCode, retreatCode: item.code || item.retreatCode, location_town: item.location_town || item.locationTown || item.location, location: item.location_town || item.locationTown || item.location });
       setWebsitePricingText(JSON.stringify(item.websitePricing || {}, null, 2));
       setWebsiteContentText(JSON.stringify(item.websiteContent || {}, null, 2));
+      const pl = item.websitePricing?.byRegion?.pl || item.websitePricing?.pl || {};
+      const tiers = Array.isArray(pl.tiers) ? pl.tiers : [];
+      const tier = (key: string, index: number) => tiers.find((entry: any) => entry.key === key) || tiers[index] || {};
+      const close = tier('0_3', 0), mid = tier('4_6', 1), far = tier('6_plus', 2);
+      setPlPrices({ closeShared: Number(close.sharedRoom ?? 9500), closePrivate: Number(close.privateRoom ?? 10500), closeEnsuite: Number(close.privateEnsuite ?? 11500), midShared: Number(mid.sharedRoom ?? 8500), midPrivate: Number(mid.privateRoom ?? 9500), midEnsuite: Number(mid.privateEnsuite ?? 10500), farShared: Number(far.sharedRoom ?? 7500), farPrivate: Number(far.privateRoom ?? 8500), farEnsuite: Number(far.privateEnsuite ?? 9500), addictionSupport: Number(pl.addictionSupport ?? 1500) });
+      const included = item.websiteContent?.includedItems?.pl || (Array.isArray(item.websiteContent?.includedItems) ? item.websiteContent.includedItems : []);
+      setPlIncluded((included || []).join('\n'));
       setStaffText(JSON.stringify(item.retreatStaff || [], null, 2));
       setHouses(houseResponse.data || []);
     }).catch((cause) => setError(cause?.response?.data?.message || cause?.message || 'Unable to load retreat.')).finally(() => setLoading(false));
@@ -75,6 +84,12 @@ const RetreatEditorPage: React.FC = () => {
     if (!websitePricing || Array.isArray(websitePricing) || !websiteContent || Array.isArray(websiteContent) || !Array.isArray(retreatStaff)) { setError('Website pricing and content must be JSON objects, and staff must be a JSON array.'); return; }
     setSaving(true); setError('');
     try {
+      websitePricing = { ...websitePricing, byRegion: { ...(websitePricing.byRegion || {}), pl: { ...(websitePricing.byRegion?.pl || websitePricing.pl || {}), currency: 'PLN', symbol: 'zł', format: '{price} {symbol}', addictionSupport: Number(plPrices.addictionSupport), tiers: [
+        { key: '0_3', label: '0–3 months', daysFrom: 0, daysTo: 90, sharedRoom: Number(plPrices.closeShared), privateRoom: Number(plPrices.closePrivate), privateEnsuite: Number(plPrices.closeEnsuite) },
+        { key: '4_6', label: '4–6 months', daysFrom: 91, daysTo: 180, sharedRoom: Number(plPrices.midShared), privateRoom: Number(plPrices.midPrivate), privateEnsuite: Number(plPrices.midEnsuite) },
+        { key: '6_plus', label: '6+ months', daysFrom: 181, daysTo: null, sharedRoom: Number(plPrices.farShared), privateRoom: Number(plPrices.farPrivate), privateEnsuite: Number(plPrices.farEnsuite) },
+      ] } } };
+      websiteContent = { ...websiteContent, includedItems: { ...(Array.isArray(websiteContent.includedItems) ? { en: websiteContent.includedItems } : websiteContent.includedItems || {}), pl: plIncluded.split('\n').map(item => item.trim()).filter(Boolean) } };
       const code = form.code?.trim() || form.retreatCode?.trim() || undefined;
       await retreatsApi.update(retreatId, {
         name: form.name.trim(), code, retreatCode: code, location_town: town, location: town,
@@ -146,8 +161,12 @@ const RetreatEditorPage: React.FC = () => {
       </div></section>
 
       <section className="py-6"><SectionTitle number="05" title="Website content" detail="Control public pricing/content and the hero image associated with this retreat."/><div className="grid gap-4 md:ml-14 md:grid-cols-2">
-        <label><span className={label}>Website pricing (JSON)</span><textarea aria-label="Website pricing" className={`${field} font-mono text-xs`} rows={7} value={websitePricingText} onChange={(e) => setWebsitePricingText(e.target.value)}/></label>
-        <label><span className={label}>Website content (JSON)</span><textarea aria-label="Website content" className={`${field} font-mono text-xs`} rows={7} value={websiteContentText} onChange={(e) => setWebsiteContentText(e.target.value)}/></label>
+        <div className="md:col-span-2 border border-blue-200 bg-blue-50 p-4"><h3 className="font-bold">Polish website pricing</h3><p className="mb-4 text-xs text-gray-600">Availability comes automatically from this retreat’s capacity and active bookings. These prices override the Polish website.</p><div className="overflow-x-auto"><table className="w-full min-w-[680px] bg-white text-sm"><thead><tr className="border-b"><th className="p-2 text-left">Booking window</th><th className="p-2 text-left">Shared room</th><th className="p-2 text-left">Private room</th><th className="p-2 text-left">Private ensuite</th></tr></thead><tbody>{[
+          ['0–3 months','closeShared','closePrivate','closeEnsuite'],['4–6 months','midShared','midPrivate','midEnsuite'],['6+ months','farShared','farPrivate','farEnsuite']
+        ].map(([title, shared, privateRoom, ensuite]) => <tr key={title} className="border-b"><th className="p-2 text-left">{title}</th>{[shared, privateRoom, ensuite].map(key => <td className="p-2" key={key}><div className="flex items-center"><input aria-label={`${title} ${key}`} className={field} type="number" min="0" step="100" value={(plPrices as any)[key]} onChange={e => setPlPrices(current => ({ ...current, [key]: Number(e.target.value) }))}/><span className="ml-2">PLN</span></div></td>)}</tr>)}</tbody></table></div><label className="mt-4 block max-w-sm"><span className={label}>Additional addiction support</span><div className="flex items-center"><input className={field} type="number" min="0" step="100" value={plPrices.addictionSupport} onChange={e => setPlPrices(current => ({ ...current, addictionSupport: Number(e.target.value) }))}/><span className="ml-2">PLN</span></div></label></div>
+        <label className="md:col-span-2"><span className={label}>What this retreat includes — Polish (one item per line)</span><textarea className={field} rows={7} value={plIncluded} onChange={e => setPlIncluded(e.target.value)} placeholder={'Accommodation\nTwo ceremonies\nMeals\nAirport transfer'}/></label>
+        <details><summary className="cursor-pointer text-xs font-semibold text-gray-600">Advanced website pricing JSON</summary><textarea aria-label="Website pricing" className={`${field} mt-2 font-mono text-xs`} rows={7} value={websitePricingText} onChange={(e) => setWebsitePricingText(e.target.value)}/></details>
+        <details><summary className="cursor-pointer text-xs font-semibold text-gray-600">Advanced website content JSON</summary><textarea aria-label="Website content" className={`${field} mt-2 font-mono text-xs`} rows={7} value={websiteContentText} onChange={(e) => setWebsiteContentText(e.target.value)}/></details>
         <div className="md:col-span-2"><span className={label}>Hero image</span><div className="flex flex-wrap items-center gap-3"><input aria-label="Hero image" type="file" accept="image/*" disabled={heroUploading} onChange={(e) => uploadHero(e.target.files?.[0])}/>{heroUploading && <span className="text-sm text-gray-500">Uploading…</span>}<span className="text-xs text-gray-500">Images up to 8 MB. Uploading saves the image immediately; save the form for the remaining fields.</span></div>{form.heroImageFileName && <div className="mt-2 flex items-center gap-3 text-xs text-gray-600"><span>Current image: {form.heroImageFileName}</span><button type="button" className="text-red-700 underline" onClick={async () => { await retreatsApi.clearHeroImage(retreatId); set({ heroImageFileName: '', heroImageS3Key: '' }); }}>Remove image</button></div>}</div>
       </div></section>
 
