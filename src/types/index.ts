@@ -644,6 +644,7 @@ export interface Payment {
 
 export interface PaymentReceipt {
   _id?: string;
+  display_id?: number;
   paymentRequestId?: string | PaymentRequest;
   totalAmount: number;
   currency: 'EUR' | 'USD' | 'CZK' | 'PLN';
@@ -661,6 +662,9 @@ export interface PaymentReceipt {
   allocationCount: number;
   allocations?: Payment[];
   unallocatedAmount?: number;
+  lastSentAt?: Date | string;
+  lastSentTo?: string;
+  sentCount?: number;
 }
 
 export interface PaymentSummary {

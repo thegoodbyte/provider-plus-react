@@ -10,7 +10,7 @@ interface CurrencySettingsProps {
 
 type ConverterCurrency = 'USD' | 'EUR' | 'CZK' | 'PLN';
 type PaymentTypeSetting = { key: string; label: string; active: boolean; sortOrder: number; system: boolean; behavior: string };
-type PaymentPlanSettings = { enabled: boolean; automaticallyCreateBalanceRequest: boolean; balanceDueDaysBeforeRetreat: number; reminderAutomationEnabled: boolean; reminderOffsetsDays: number[]; showFuturePaymentRequestInPortal: boolean; publicPaymentRequestBaseUrl: string };
+type PaymentPlanSettings = { enabled: boolean; automaticallyCreateBalanceRequest: boolean; balanceDueDaysBeforeRetreat: number; reminderAutomationEnabled: boolean; reminderOffsetsDays: number[]; showFuturePaymentRequestInPortal: boolean; publicPaymentRequestBaseUrl: string; receiptAttachPdf: boolean; receiptAttachBookingConfirmation: boolean; receiptPortalBaseUrl: string };
 const converterCurrencies: ConverterCurrency[] = ['PLN', 'USD', 'EUR', 'CZK'];
 
 const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
@@ -32,7 +32,7 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
   const [paymentTypes, setPaymentTypes] = useState<PaymentTypeSetting[]>([]);
   const [paymentTypesSaving, setPaymentTypesSaving] = useState(false);
   const [newPaymentType, setNewPaymentType] = useState({ key: '', label: '' });
-  const [paymentPlan, setPaymentPlan] = useState<PaymentPlanSettings>({ enabled: true, automaticallyCreateBalanceRequest: true, balanceDueDaysBeforeRetreat: 30, reminderAutomationEnabled: true, reminderOffsetsDays: [5, 3, 0, -1], showFuturePaymentRequestInPortal: true, publicPaymentRequestBaseUrl: 'https://ibogaspirit.com/clients/payment/request' });
+  const [paymentPlan, setPaymentPlan] = useState<PaymentPlanSettings>({ enabled: true, automaticallyCreateBalanceRequest: true, balanceDueDaysBeforeRetreat: 30, reminderAutomationEnabled: true, reminderOffsetsDays: [5, 3, 0, -1], showFuturePaymentRequestInPortal: true, publicPaymentRequestBaseUrl: 'https://ibogaspirit.com/clients/payment/request', receiptAttachPdf: true, receiptAttachBookingConfirmation: false, receiptPortalBaseUrl: 'https://www.ibogaready.com' });
   const [paymentPlanSaving, setPaymentPlanSaving] = useState(false);
 
   useEffect(() => {
@@ -188,6 +188,10 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
             <label><span>Reminder schedule (days before due; use -1 for one day after)</span><input value={paymentPlan.reminderOffsetsDays.join(', ')} onChange={(event) => setPaymentPlan(current => ({ ...current, reminderOffsetsDays: event.target.value.split(',').map(value => Number(value.trim())).filter(Number.isFinite) }))} /></label>
             <label><input type="checkbox" checked={paymentPlan.showFuturePaymentRequestInPortal} onChange={(event) => setPaymentPlan(current => ({ ...current, showFuturePaymentRequestInPortal: event.target.checked }))} /> Show the upcoming request in IbogaReady before it becomes due</label>
             <label><span>Public payment-request URL</span><input type="url" value={paymentPlan.publicPaymentRequestBaseUrl} onChange={(event) => setPaymentPlan(current => ({ ...current, publicPaymentRequestBaseUrl: event.target.value }))} /></label>
+            <h3>Payment receipt emails</h3>
+            <label><input type="checkbox" checked={paymentPlan.receiptAttachPdf} onChange={(event) => setPaymentPlan(current => ({ ...current, receiptAttachPdf: event.target.checked }))} /> Attach a formatted receipt PDF</label>
+            <label><input type="checkbox" checked={paymentPlan.receiptAttachBookingConfirmation} onChange={(event) => setPaymentPlan(current => ({ ...current, receiptAttachBookingConfirmation: event.target.checked }))} /> Attach the latest stored booking confirmation PDF</label>
+            <label><span>IbogaReady details link</span><input type="url" value={paymentPlan.receiptPortalBaseUrl} onChange={(event) => setPaymentPlan(current => ({ ...current, receiptPortalBaseUrl: event.target.value }))} /></label>
             <button className="convert-btn" disabled={paymentPlanSaving} onClick={savePaymentPlan}>{paymentPlanSaving ? 'Saving…' : 'Save payment plan'}</button>
           </div>
         ) : activeTab === 'expense-types' ? (
