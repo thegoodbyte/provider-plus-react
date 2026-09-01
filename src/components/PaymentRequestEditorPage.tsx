@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import PaymentRequestForm from './PaymentRequestForm';
 import LoadingSpinner from './LoadingSpinner';
-import { paymentRequestsApi } from '../services/api';
-import { PaymentRequest } from '../types';
+import { paymentRequestsApi, paymentsApi } from '../services/api';
+import { PaymentReceipt, PaymentRequest } from '../types';
 import { formatCalendarDate } from '../utils/dateFormat';
 import { QRCodeSVG } from 'qrcode.react';
 
@@ -56,6 +56,8 @@ const PaymentRequestEditorPage: React.FC = () => {
   const [paymentRequest, setPaymentRequest] = useState<Partial<PaymentRequest> | undefined>(
     () => (id ? undefined : buildPaymentRequestFromSearch(location.search))
   );
+  const [receipt, setReceipt] = useState<PaymentReceipt | null>(null);
+  const [receiptError, setReceiptError] = useState('');
 
   useEffect(() => {
     const loadRequest = async () => {
@@ -69,6 +71,17 @@ const PaymentRequestEditorPage: React.FC = () => {
         setLoading(true);
         const response = await paymentRequestsApi.getOne(id);
         setPaymentRequest(response.data);
+        const receiptId = typeof response.data.receiptId === 'object' ? response.data.receiptId?._id : response.data.receiptId;
+        if (receiptId) {
+          try {
+            const receiptResponse = await paymentsApi.getReceipt(receiptId);
+            setReceipt(receiptResponse.data);
+          } catch (receiptLoadError: any) {
+            setReceiptError(receiptLoadError?.response?.data?.message || 'Unable to load the receipt allocation breakdown.');
+          }
+        } else {
+          setReceipt(null);
+        }
       } catch (error) {
         console.error('Error loading payment request:', error);
       } finally {
@@ -200,6 +213,33 @@ const PaymentRequestEditorPage: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900">Client payment options</h2>
             {paymentRequest.revolutPaymentLink ? <div className="mt-3 flex flex-col items-start gap-4 rounded-lg border border-blue-200 bg-blue-50 p-4 sm:flex-row sm:items-center"><div className="rounded-lg bg-white p-3"><QRCodeSVG value={paymentRequest.revolutPaymentLink} size={180} level="M" title="Revolut payment QR code" /></div><div><div className="font-semibold text-gray-900">Revolut payment</div><div className="mt-1 text-sm text-gray-700">{formatAmount(paymentRequest.requestedAmount || paymentRequest.amountPaid, paymentRequest.currency)}</div><a href={paymentRequest.revolutPaymentLink} target="_blank" rel="noreferrer" className="mt-3 inline-flex rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white">Open Revolut request</a></div></div> : <p className="mt-2 rounded-md bg-gray-50 p-4 text-gray-600">No unique Revolut payment link has been added.</p>}
             {paymentRequest.paymentInstructions && <div className="mt-3 whitespace-pre-wrap rounded-lg border border-gray-200 p-4 text-sm text-gray-800">{paymentRequest.paymentInstructions}</div>}
+          </div>
+
+          <div className="mt-6 border-t border-gray-200 pt-6">
+            <h2 className="text-lg font-semibold text-gray-900">Receipt allocation</h2>
+            {receipt ? (
+              <div className="mt-3 overflow-hidden rounded-lg border border-violet-200 bg-violet-50">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-violet-200 px-4 py-3">
+                  <div>
+                    <div className="text-xs font-semibold uppercase text-violet-700">Actual joint payment received</div>
+                    <div className="font-semibold text-gray-900">{formatAmount(receipt.totalAmount, receipt.currency)} · {receipt.allocationCount || receipt.allocations?.length || 0} allocation(s)</div>
+                  </div>
+                  <div className="text-sm text-gray-700">{receipt.payerName || receipt.transactionReference || `Receipt ${receipt._id?.slice(-8)}`}</div>
+                </div>
+                <div className="divide-y divide-violet-100 bg-white">
+                  {(receipt.allocations || []).map((allocation, index) => {
+                    const client: any = typeof allocation.clientId === 'object' ? allocation.clientId : null;
+                    const booking: any = typeof allocation.bookingId === 'object' ? allocation.bookingId : null;
+                    return <div key={allocation._id || index} className="grid gap-2 px-4 py-3 text-sm sm:grid-cols-[1fr_auto_auto] sm:items-center">
+                      <div><div className="font-semibold text-gray-900">{resolveClientName(client || allocation.clientId)}</div><div className="text-xs text-gray-500">Booking #{booking?.bookingNumber || String(allocation.bookingId || '').slice(-8) || '—'}</div></div>
+                      <div className="font-semibold text-gray-900">{formatAmount(allocation.amount, allocation.currency || receipt.currency)}</div>
+                      <button type="button" onClick={() => navigate(`/admin/payments/${allocation._id}`)} className="rounded-md border border-blue-200 px-3 py-1.5 font-semibold text-blue-700 hover:bg-blue-50">View</button>
+                    </div>;
+                  })}
+                </div>
+                <div className="border-t border-violet-200 px-4 py-3 text-sm text-gray-700">Allocated: <strong>{formatAmount(receipt.allocatedAmount, receipt.currency)}</strong>{Number(receipt.unallocatedAmount || 0) > 0 && <> · Unallocated: <strong className="text-red-700">{formatAmount(receipt.unallocatedAmount, receipt.currency)}</strong></>}</div>
+              </div>
+            ) : receiptError ? <div role="alert" className="mt-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">{receiptError}</div> : <p className="mt-2 rounded-md bg-gray-50 p-4 text-gray-600">This payment request is not connected to a receipt-backed payment.</p>}
           </div>
 
           <div className="mt-6 border-t border-gray-200 pt-6">

@@ -1648,6 +1648,7 @@ export interface PaymentRequest {
   fullPrice?: number;
   notes?: string;
   paymentId?: string | Payment;
+  receiptId?: string | PaymentReceipt;
   sentToClient?: boolean;
   clientNotified?: Date | string;
   lastReminderDate?: Date | string;
