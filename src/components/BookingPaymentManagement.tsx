@@ -93,6 +93,34 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   const [bookingPaymentRequests, setBookingPaymentRequests] = useState<PaymentRequest[]>([]);
   const [paymentPlanDueDate, setPaymentPlanDueDate] = useState('');
   const [paymentPlanSaving, setPaymentPlanSaving] = useState(false);
+  const [showPriceEditor, setShowPriceEditor] = useState(false);
+  const [priceSaving, setPriceSaving] = useState(false);
+  const [priceDraft, setPriceDraft] = useState(String(totalAmount || ''));
+  const [priceCurrency, setPriceCurrency] = useState(String(currency || 'EUR').toUpperCase());
+  const [priceReason, setPriceReason] = useState('');
+
+  useEffect(() => {
+    if (!showPriceEditor) {
+      setPriceDraft(String(totalAmount || ''));
+      setPriceCurrency(String(currency || 'EUR').toUpperCase());
+    }
+  }, [totalAmount, currency, showPriceEditor]);
+
+  const saveBookingPrice = async () => {
+    const amount = Number(priceDraft);
+    if (!Number.isFinite(amount) || amount <= 0) return alert('Enter a booking price greater than zero.');
+    if (priceReason.trim().length < 3) return alert('Add a short reason so this accounting change is auditable.');
+    try {
+      setPriceSaving(true);
+      await paymentsApi.updateBookingPrice(bookingId, { totalAmount: amount, currency: priceCurrency, reason: priceReason.trim() });
+      setShowPriceEditor(false);
+      setPriceReason('');
+      await syncPaymentPlan();
+      onPaymentUpdate?.();
+    } catch (error: any) {
+      alert(error?.response?.data?.message || 'Unable to change the booking price.');
+    } finally { setPriceSaving(false); }
+  };
 
   const syncPaymentPlan = useCallback(async () => {
     try {
@@ -688,7 +716,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       </div>
 
       <div className={`booking-balance-summary ${isPaidInFull ? 'is-paid' : 'has-balance'}`}>
-        <div className="booking-balance-metric total"><span>Total cost</span><strong><CurrencyDisplay amount={totalAmount} currency={bookingCurrency} showUSD={false} /></strong><small>{formatUsd(totalCostUsd)} at today's rate</small></div>
+        <div className="booking-balance-metric total"><span>Total cost</span><strong><CurrencyDisplay amount={totalAmount} currency={bookingCurrency} showUSD={false} /></strong><small>{formatUsd(totalCostUsd)} at today's rate</small><button type="button" className="change-booking-price" onClick={() => setShowPriceEditor(true)}>Change booking price</button></div>
         <div className="booking-balance-metric received"><span>Received</span><strong><CurrencyDisplay amount={totalPaidBookingCurrency} currency={bookingCurrency} showUSD={false} /></strong><small>{formatUsd(totalPaidUsd)} · {payments.length} payment{payments.length === 1 ? '' : 's'}</small></div>
         <div className="booking-balance-metric outstanding"><span>{isPaidInFull ? 'Paid in full' : 'Balance outstanding'}</span><strong><CurrencyDisplay amount={isPaidInFull ? 0 : bookingBalance} currency={bookingCurrency} showUSD={false} /></strong><small>{formatUsd(isPaidInFull ? 0 : balanceUsd)}{!isPaidInFull && paymentPlan?.dueDate ? ` · due ${formatCalendarDate(paymentPlan.dueDate)}` : ''}</small></div>
         <div className="booking-payment-progress">
@@ -698,6 +726,14 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
         <button type="button" className="mobile-record-payment" onClick={() => { setShowLinkExisting(false); setShowAddPayment(true); }}>Record a payment</button>
         {totalRefundedUsd > 0 && <div className="booking-refund-summary">Refunded {formatUsd(totalRefundedUsd)}</div>}
       </div>
+
+      {showPriceEditor && <div className="booking-price-editor" role="dialog" aria-label="Change booking price">
+        <div><strong>Change booking price</strong><p>This changes the booking ledger, retreat revenue and outstanding balance. It does not alter received payments.</p></div>
+        <label>New price<input type="number" min="0.01" step="0.01" value={priceDraft} onChange={event => setPriceDraft(event.target.value)} /></label>
+        <label>Currency<select value={priceCurrency} onChange={event => setPriceCurrency(event.target.value)}>{['PLN','EUR','USD','CZK'].map(code => <option key={code}>{code}</option>)}</select></label>
+        <label className="booking-price-reason">Reason *<input value={priceReason} onChange={event => setPriceReason(event.target.value)} placeholder="e.g. Joint-booking discount removed" /></label>
+        <div className="booking-price-actions"><button type="button" onClick={() => setShowPriceEditor(false)} disabled={priceSaving}>Cancel</button><button type="button" onClick={saveBookingPrice} disabled={priceSaving}>{priceSaving ? 'Saving…' : 'Save price'}</button></div>
+      </div>}
 
       <section className="booking-payment-requests">
         <div className="payment-requests-heading">

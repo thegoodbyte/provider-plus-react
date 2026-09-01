@@ -428,6 +428,11 @@ export const paymentsApi = {
   syncBookingPlan: (bookingId: string) => api.post(`/payments/plan-settings/sync-booking/${bookingId}`),
   getBookingPlan: (bookingId: string) => api.get(`/payments/plan-settings/booking/${bookingId}`),
   updateBookingPlan: (bookingId: string, data: { enabled?: boolean; dueDate?: string }) => api.patch(`/payments/plan-settings/booking/${bookingId}`, data),
+  updateBookingPrice: (bookingId: string, data: { totalAmount: number; currency: string; reason: string }) => {
+    cacheService.clearPattern('payments:');
+    cacheService.clearPattern('bookings:');
+    return api.patch(`/payments/booking/${bookingId}/price`, data);
+  },
   getTypes: () => api.get<Array<{ key: string; label: string; active: boolean; sortOrder: number; system: boolean; behavior: string }>>('/payments/types/configuration'),
   createType: (data: { key: string; label: string; active?: boolean; sortOrder?: number }) => api.post('/payments/types/configuration', data),
   updateType: (key: string, data: { label?: string; active?: boolean; sortOrder?: number }) => api.patch(`/payments/types/configuration/${encodeURIComponent(key)}`, data),

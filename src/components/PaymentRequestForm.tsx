@@ -500,7 +500,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                   placeholder="0.00"
                   required
                 />
-                <p className="mt-1 text-xs text-gray-500">This becomes the booking price when the deposit is paid.</p>
+                <p className="mt-1 text-xs text-gray-500">For reference only. Change the authoritative price from the booking Payments tab.</p>
               </div>
             ) : formData.requestType === 'balance' ? (
               <div>
