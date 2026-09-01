@@ -462,6 +462,8 @@ export const paymentsApi = {
   },
   getReceipts: () => api.get<import('../types').PaymentReceipt[]>('/payments/receipts'),
   getReceipt: (id: string) => api.get<import('../types').PaymentReceipt>(`/payments/receipts/${id}`),
+  updateReceipt: (id: string, data: Partial<import('../types').PaymentReceipt>) => api.patch<import('../types').PaymentReceipt>(`/payments/receipts/${id}`, data),
+  deleteReceipt: (id: string) => api.delete(`/payments/receipts/${id}`),
   update: (id: string, data: Partial<Payment>) => {
     cacheService.clearPattern('payments:');
     cacheService.clearPattern('bookings:');
