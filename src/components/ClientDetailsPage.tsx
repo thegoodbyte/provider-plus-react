@@ -8,7 +8,7 @@ import EmailHistoryPanel from './EmailHistoryPanel';
 import SubmissionNotificationsPage from './SubmissionNotificationsPage';
 import NotificationCountBadge, { useNotificationCount } from './NotificationCountBadge';
 import { MedicalArtifact, PaymentRequest } from '../types';
-import { FiArrowLeft, FiCamera, FiEdit2, FiTrash2, FiUser, FiMapPin, FiCalendar, FiDollarSign, FiActivity, FiFileText, FiAlertCircle, FiPlus, FiMessageSquare, FiCheckSquare, FiHeart, FiEye, FiEyeOff, FiMail, FiBell } from 'react-icons/fi';
+import { FiArrowLeft, FiCamera, FiEdit2, FiTrash2, FiUser, FiMapPin, FiCalendar, FiDollarSign, FiActivity, FiFileText, FiAlertCircle, FiPlus, FiMessageSquare, FiCheckSquare, FiHeart, FiEye, FiEyeOff, FiMail, FiBell, FiExternalLink } from 'react-icons/fi';
 import MedicalRecordsManager from './MedicalRecordsManager';
 import { formatCalendarDate, toDateInputValue } from '../utils/dateFormat';
 import { CreateTaskDto, Task, taskService } from '../services/taskService';
@@ -114,6 +114,7 @@ const ClientDetailsPage: React.FC = () => {
   const [showLoginPin, setShowLoginPin] = useState(false);
   const [resettingLoginPin, setResettingLoginPin] = useState(false);
   const [loginPinMessage, setLoginPinMessage] = useState<string | null>(null);
+  const [openingIbogaReady, setOpeningIbogaReady] = useState(false);
   const [notes, setNotes] = useState<any[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
@@ -170,6 +171,23 @@ const ClientDetailsPage: React.FC = () => {
       setLoginPinMessage(error?.response?.data?.message || error?.message || 'Failed to reset client PIN.');
     } finally {
       setResettingLoginPin(false);
+    }
+  };
+
+  const handleOpenIbogaReady = async () => {
+    if (!client?._id) return;
+    const popup = window.open('', '_blank');
+    if (popup) popup.opener = null;
+    try {
+      setOpeningIbogaReady(true);
+      const response = await clientsApi.createIbogaReadySupportLink(client._id);
+      if (popup) popup.location.href = response.data.url;
+      else window.open(response.data.url, '_blank', 'noopener,noreferrer');
+    } catch (handoffError: any) {
+      if (popup) popup.close();
+      setError(handoffError?.response?.data?.message || handoffError?.message || 'Unable to open IbogaReady client view.');
+    } finally {
+      setOpeningIbogaReady(false);
     }
   };
 
@@ -1067,6 +1085,15 @@ const ClientDetailsPage: React.FC = () => {
                 {getStatusBadge(client.workflowStatus || client.status)}
               </div>
               <div className="mt-4 flex flex-wrap items-center gap-2">
+                <button
+                  onClick={handleOpenIbogaReady}
+                  disabled={openingIbogaReady}
+                  className="inline-flex items-center gap-2 rounded-md bg-sky-700 px-3 py-2 text-sm font-medium text-white hover:bg-sky-800 disabled:cursor-wait disabled:opacity-60"
+                  title="Open a 20-minute, read-only and audited client support session"
+                >
+                  <Icon icon={FiExternalLink} className="h-4 w-4" />
+                  {openingIbogaReady ? 'Opening…' : 'View in IbogaReady'}
+                </button>
                 <button
                   onClick={() => navigate(`/admin/clients/${clientId}/screening`)}
                   className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"

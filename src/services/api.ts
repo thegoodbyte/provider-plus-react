@@ -193,6 +193,8 @@ export const clientsApi = {
   },
   resetLoginPin: (id: string, notifyClient: boolean) =>
     api.post<{ client: Client; loginPin: string; emailSent: boolean }>(`/clients/${id}/login-pin/reset`, { notifyClient }),
+  createIbogaReadySupportLink: (id: string) =>
+    api.post<{ url: string; expiresAt: string; readOnly: true }>(`/auth/client-portal-handoff/clients/${id}`, {}),
   getProfilePictureBlob: (id: string) =>
     api.get(`/clients/${id}/profile-picture`, { responseType: 'blob', suppressGlobalError: true } as any),
 };
