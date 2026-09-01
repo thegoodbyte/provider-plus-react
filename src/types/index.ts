@@ -1074,7 +1074,19 @@ export interface MedicalArtifact {
     mimeType?: string;
     size?: number;
     uploadedAt?: Date | string;
+    language?: string;
+    variant?: 'original' | 'english_translation';
+    generatedBy?: string;
   }>;
+  translation?: {
+    sourceLanguage: string;
+    targetLanguage: 'en';
+    status: 'pending' | 'translating' | 'ready' | 'failed' | 'outdated';
+    generatedAt?: Date | string;
+    model?: string;
+    disclaimer?: string;
+    error?: string;
+  };
   receivedAt?: Date | string;
   source?: 'client_upload' | 'admin_upload' | 'email' | 'manual' | 'legacy';
   version?: number;

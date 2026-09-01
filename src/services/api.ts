@@ -917,6 +917,10 @@ export const medicalArtifactsApi = {
     return api.get<RetreatArtifactSubmissionsResponse>(`/medical-artifacts/retreat-submissions?${params.toString()}`);
   },
   getOne: (id: string) => cachedGet<MedicalArtifact>(`medical-artifacts:${id}`, () => api.get<MedicalArtifact>(`/medical-artifacts/${id}`)),
+  generateEnglishTranslation: (id: string, sourceLanguage?: string, force = false) => {
+    cacheService.clearPattern('medical-artifacts:');
+    return api.post<MedicalArtifact>(`/medical-artifacts/${id}/english-translation`, { sourceLanguage, force });
+  },
   getNextDisplayId: () => api.get<number>('/medical-artifacts/next-display-id'),
   getUploadTargetPreview: (artifactType: NonNullable<MedicalArtifact['artifactType']>, fileName?: string) => api.get<{
     storage: string;
