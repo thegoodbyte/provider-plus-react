@@ -82,3 +82,12 @@ export const validateRetreatCreateData = (retreat: {
 
   return errors;
 };
+
+export const retreatEndDateFromStart = (startDate: string, durationDays = 7) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) return undefined;
+  const [year, month, day] = startDate.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (Number.isNaN(date.getTime())) return undefined;
+  date.setUTCDate(date.getUTCDate() + durationDays);
+  return date.toISOString();
+};

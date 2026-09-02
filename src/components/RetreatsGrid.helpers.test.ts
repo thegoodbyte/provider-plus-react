@@ -1,4 +1,4 @@
-import { buildBookingStepOptions, formatRetreatCalendarDate, isBookingStepComplete, retreatMonthGroup, validateRetreatCreateData } from './RetreatsGrid.helpers';
+import { buildBookingStepOptions, formatRetreatCalendarDate, isBookingStepComplete, retreatEndDateFromStart, retreatMonthGroup, validateRetreatCreateData } from './RetreatsGrid.helpers';
 import { BookingFlowTemplate } from '../types';
 
 describe('RetreatsGrid helpers', () => {
@@ -58,5 +58,11 @@ describe('RetreatsGrid helpers', () => {
   it('accepts a complete retreat creation form', () => {
     expect(validateRetreatCreateData({ name: 'September', location: 'Jablonné', startDate: '2026-09-12', endDate: '2026-09-19', capacity: 6 }))
       .toEqual([]);
+  });
+
+  it('defaults a retreat end date to seven calendar days after its start date', () => {
+    expect(retreatEndDateFromStart('2026-09-12')).toBe('2026-09-19T00:00:00.000Z');
+    expect(retreatEndDateFromStart('2026-12-28')).toBe('2027-01-04T00:00:00.000Z');
+    expect(retreatEndDateFromStart('')).toBeUndefined();
   });
 });

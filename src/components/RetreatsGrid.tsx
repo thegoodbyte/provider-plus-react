@@ -5,7 +5,7 @@ import { retreatsApi, housesApi, bookingsApi, bookingFlowApi } from '../services
 import { Retreat, House, RetreatClient, BookingFlowItem, BookingFlowTemplate } from '../types';
 import AppleButton from './AppleButton';
 import { FiPlus, FiEdit2, FiTrash2, FiEye, FiList } from 'react-icons/fi';
-import { buildBookingStepOptions, formatRetreatCalendarDate, getSelectedStepCellTone, isBookingStepComplete, retreatMonthGroup, validateRetreatCreateData } from './RetreatsGrid.helpers';
+import { buildBookingStepOptions, formatRetreatCalendarDate, getSelectedStepCellTone, isBookingStepComplete, retreatEndDateFromStart, retreatMonthGroup, validateRetreatCreateData } from './RetreatsGrid.helpers';
 import { apiErrorMessage } from '../utils/apiErrorMessage';
 import './RetreatsListRedesign.css';
 import RetreatHolisticView from './RetreatHolisticView';
@@ -459,7 +459,9 @@ const RetreatsGrid: React.FC = () => {
                 status: 'upcoming',
                 capacity: 20,
                 currentOccupancy: 0,
-                type: 'regular'
+                type: 'regular',
+                startTime: '18:00',
+                endTime: '21:00'
               });
               setEditSaveError('');
               setIsAddModalOpen(true);
@@ -836,7 +838,14 @@ const RetreatsGrid: React.FC = () => {
                 <input
                   type="date"
                   value={formData.startDate ? new Date(formData.startDate).toISOString().split('T')[0] : ''}
-                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value ? new Date(e.target.value).toISOString() : undefined })}
+                  onChange={(e) => {
+                    const startDate = e.target.value;
+                    setFormData({
+                      ...formData,
+                      startDate: startDate ? new Date(startDate).toISOString() : undefined,
+                      endDate: startDate ? retreatEndDateFromStart(startDate) : undefined,
+                    });
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
