@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FiAlertTriangle, FiDownload, FiRefreshCw, FiUpload } from 'react-icons/fi';
+import { FiAlertTriangle, FiCheckCircle, FiDownload, FiLoader, FiRefreshCw, FiUpload } from 'react-icons/fi';
 import { backupsApi } from '../services/api';
 
 const RESTORE_CONFIRMATION = 'RESTORE_PROVIDER_PLUS';
@@ -37,6 +37,18 @@ const DataBackupPage: React.FC = () => {
   const [result, setResult] = useState<any>(null);
   const [notice, setNotice] = useState<RestoreNotice | null>(null);
   const [error, setError] = useState('');
+
+  const activeOperation = busy.endsWith('dry-run')
+    ? {
+        title: 'Dry run in progress',
+        message: 'Uploading and checking the backup. No database data is being changed.',
+      }
+    : busy === 'restore'
+      ? {
+          title: 'Database restore in progress',
+          message: 'Keep this page open until the restore finishes.',
+        }
+      : null;
 
   const commonOptions = {
     collections: collections.trim() || undefined,
@@ -139,7 +151,7 @@ const DataBackupPage: React.FC = () => {
       setError('Choose a backup JSON file first.');
       return;
     }
-    await runImport(dryRun, () => backupsApi.importBackup(selectedFile, {
+    await runImport(dryRun, 'local', () => backupsApi.importBackup(selectedFile, {
       dryRun,
       confirm: dryRun ? undefined : restoreConfirm,
       emailMode: overrideEmails ? 'override' : 'preserve',
@@ -153,7 +165,7 @@ const DataBackupPage: React.FC = () => {
       setError('Choose an S3 backup file first.');
       return;
     }
-    await runImport(dryRun, () => backupsApi.importFromS3({
+    await runImport(dryRun, 's3', () => backupsApi.importFromS3({
       bucket: bucket.trim() || undefined,
       key: selectedS3Key,
       dryRun,
@@ -164,12 +176,12 @@ const DataBackupPage: React.FC = () => {
     }));
   };
 
-  const runImport = async (dryRun: boolean, action: () => Promise<any>) => {
+  const runImport = async (dryRun: boolean, source: 'local' | 's3', action: () => Promise<any>) => {
     if (!dryRun && restoreConfirm !== RESTORE_CONFIRMATION) {
       setError(`Type ${RESTORE_CONFIRMATION} before restoring.`);
       return;
     }
-    setBusy(dryRun ? 'dry-run' : 'restore');
+    setBusy(dryRun ? `${source}-dry-run` : 'restore');
     setError('');
     setResult(null);
     setNotice(null);
@@ -239,6 +251,25 @@ const DataBackupPage: React.FC = () => {
 
   return (
     <div className="p-6 space-y-6">
+      {activeOperation && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-6 right-6 z-50 w-[min(28rem,calc(100vw-3rem))] rounded-lg border border-blue-300 bg-white p-4 shadow-2xl"
+        >
+          <div className="flex items-start gap-3">
+            <Icon icon={FiLoader} className="mt-0.5 shrink-0 animate-spin text-xl text-blue-600" />
+            <div>
+              <div className="font-semibold text-gray-950">{activeOperation.title}</div>
+              <p className="mt-1 text-sm text-gray-700">{activeOperation.message}</p>
+              {selectedFile && busy === 'local-dry-run' && (
+                <p className="mt-2 break-all text-xs text-gray-500">File: {selectedFile.name}</p>
+              )}
+              <p className="mt-2 text-xs font-medium text-blue-700">Large backup files can take several minutes.</p>
+            </div>
+          </div>
+        </div>
+      )}
       <div>
         <h1 className="text-2xl font-semibold text-gray-900">Data Backup</h1>
         <p className="text-sm text-gray-600">Export, upload to S3, and restore Provider Plus Mongo backups.</p>
@@ -247,7 +278,7 @@ const DataBackupPage: React.FC = () => {
       {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
       {notice && (
         <div className="rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-          <div className="font-semibold">{notice.title}</div>
+          <div className="flex items-center gap-2 font-semibold"><Icon icon={FiCheckCircle} />{notice.title}</div>
           <p className="mt-1">{notice.message}</p>
           <dl className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {notice.details.map((detail) => {
@@ -339,7 +370,10 @@ const DataBackupPage: React.FC = () => {
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
           <button onClick={downloadSelectedS3File} disabled={!selectedS3Key || !!busy} className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 disabled:opacity-60">Download Selected</button>
-          <button onClick={() => runS3Import(true)} disabled={!selectedS3Key || !!busy} className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 disabled:opacity-60">Dry Run S3 Restore</button>
+          <button onClick={() => runS3Import(true)} disabled={!selectedS3Key || !!busy} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 disabled:opacity-60">
+            {busy === 's3-dry-run' && <Icon icon={FiLoader} className="animate-spin" />}
+            {busy === 's3-dry-run' ? 'Running dry run…' : 'Dry Run S3 Restore'}
+          </button>
           <button onClick={() => runS3Import(false)} disabled={!selectedS3Key || !!busy || restoreConfirm !== RESTORE_CONFIRMATION} className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">Restore From S3</button>
         </div>
       </section>
@@ -348,7 +382,10 @@ const DataBackupPage: React.FC = () => {
         <h2 className="text-lg font-semibold text-gray-900">Local File Restore</h2>
         <input type="file" accept="application/json,.json" onChange={(e) => setSelectedFile(e.target.files?.[0] || null)} className="mt-4 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm" />
         <div className="mt-4 flex flex-wrap gap-2">
-          <button onClick={() => runLocalImport(true)} disabled={!selectedFile || !!busy} className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 disabled:opacity-60">Dry Run Local Restore</button>
+          <button onClick={() => runLocalImport(true)} disabled={!selectedFile || !!busy} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 disabled:opacity-60">
+            {busy === 'local-dry-run' && <Icon icon={FiLoader} className="animate-spin" />}
+            {busy === 'local-dry-run' ? 'Running dry run…' : 'Dry Run Local Restore'}
+          </button>
           <button onClick={() => runLocalImport(false)} disabled={!selectedFile || !!busy || restoreConfirm !== RESTORE_CONFIRMATION} className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-60">Restore Local File</button>
         </div>
       </section>
