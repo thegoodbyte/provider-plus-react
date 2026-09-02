@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { retreatsApi, bookingsApi, retreatExpensesApi, paymentsApi, clientsApi, housesApi, communicationsApi, contactBookApi, bookingFlowApi } from '../services/api';
 import { Retreat, ExpenseSummary, House, Payment, EmailAsset, EmailTemplate, ContactBookEntry, RetreatStaffAssignment, BookingFlowTemplate } from '../types';
@@ -21,13 +21,11 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiEye,
-  FiImage,
   FiMail,
   FiPlus,
   FiPrinter,
   FiRefreshCw,
   FiTrash2,
-  FiUpload,
   FiUserPlus,
   FiX,
 } from 'react-icons/fi';
@@ -44,6 +42,7 @@ import './ClientsGrid.css';
 import { getEffectivePaidAmount, getPaymentAmountInBookingCurrency } from './retreatPaymentUtils';
 import { filterRetreatEmailTemplates, normalizeTemplateLanguage, RetreatEmailTemplateLanguage } from './retreatEmailTemplateFilters';
 import { activeRetreatClients, isCancelledBookingStatus } from './retreatClientVisibility';
+import { formatDateForInput, formatStaffRole, getHouseIdValue, getHouseTown, getRetreatTown, staffRoleOptions } from './retreatDetailUtils';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -131,42 +130,6 @@ const formatUSD = (amount: number) => {
   });
 };
 
-const getHouseIdValue = (houseId?: string | House) => {
-  if (!houseId) return '';
-  return typeof houseId === 'string' ? houseId : houseId._id || '';
-};
-
-const getHouseTown = (house?: House | null) =>
-  String(house?.generalTown || house?.general_town || house?.city || house?.name || '').trim();
-
-const getRetreatTown = (retreat?: Partial<Retreat> | null, houses: House[] = []) => {
-  const explicitTown = String(retreat?.location_town || retreat?.locationTown || retreat?.location || '').trim();
-  if (explicitTown && explicitTown !== 'Default Location') return explicitTown;
-
-  const houseId = getHouseIdValue(retreat?.houseId as any);
-  const house = houseId ? houses.find((item) => item._id === houseId) : null;
-  return getHouseTown(house) || explicitTown;
-};
-
-const staffRoleOptions = [
-  { value: 'helper', label: 'Helper' },
-  { value: 'second_helper', label: 'Second helper' },
-  { value: 'cook', label: 'Cook' },
-];
-
-const formatStaffRole = (role?: string) => {
-  const match = staffRoleOptions.find((option) => option.value === role);
-  if (match) return match.label;
-  return (role || 'Staff').replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
-};
-
-const formatDateForInput = (date?: Date | string) => {
-  if (!date) return '';
-  const parsed = new Date(date);
-  if (Number.isNaN(parsed.getTime())) return '';
-  return parsed.toISOString().split('T')[0];
-};
-
 const RetreatClientAvatar: React.FC<{ clientId: string; name: string; profilePictureUrl?: string; profilePictureS3Key?: string; profilePictureFileUploadId?: string }> = ({
   clientId,
   name,
@@ -217,64 +180,6 @@ const RetreatClientAvatar: React.FC<{ clientId: string; name: string; profilePic
   );
 };
 
-const cropImageToHeroBanner = (file: File, width = 1200, height = 250): Promise<File> => {
-  return new Promise((resolve, reject) => {
-    if (!file.type.startsWith('image/')) {
-      reject(new Error('Please choose an image file.'));
-      return;
-    }
-
-    const image = new Image();
-    const objectUrl = URL.createObjectURL(file);
-
-    image.onload = () => {
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const context = canvas.getContext('2d');
-        if (!context) throw new Error('Image editor is not available in this browser.');
-
-        const sourceRatio = image.naturalWidth / image.naturalHeight;
-        const targetRatio = width / height;
-        let sourceWidth = image.naturalWidth;
-        let sourceHeight = image.naturalHeight;
-        let sourceX = 0;
-        let sourceY = 0;
-
-        if (sourceRatio > targetRatio) {
-          sourceWidth = image.naturalHeight * targetRatio;
-          sourceX = (image.naturalWidth - sourceWidth) / 2;
-        } else {
-          sourceHeight = image.naturalWidth / targetRatio;
-          sourceY = (image.naturalHeight - sourceHeight) / 2;
-        }
-
-        context.drawImage(image, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, width, height);
-        canvas.toBlob((blob) => {
-          URL.revokeObjectURL(objectUrl);
-          if (!blob) {
-            reject(new Error('Could not prepare retreat hero image.'));
-            return;
-          }
-          const baseName = file.name.replace(/\.[^/.]+$/, '').trim() || 'retreat-hero';
-          resolve(new File([blob], `${baseName}-hero.jpg`, { type: 'image/jpeg' }));
-        }, 'image/jpeg', 0.9);
-      } catch (error) {
-        URL.revokeObjectURL(objectUrl);
-        reject(error);
-      }
-    };
-
-    image.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error('Could not read this image file.'));
-    };
-
-    image.src = objectUrl;
-  });
-};
-
 const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack, initialTab = 'clients', onTabChange }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -308,9 +213,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [metricsCollapsed, setMetricsCollapsed] = useState(true);
   const [helperAssignmentsCollapsed, setHelperAssignmentsCollapsed] = useState(true);
   const [showRetreatEditModal, setShowRetreatEditModal] = useState(false);
-  const [heroImageUrl, setHeroImageUrl] = useState<string | null>(null);
-  const [heroImageSource, setHeroImageSource] = useState<'retreat' | 'house' | null>(null);
-  const [heroImageUploading, setHeroImageUploading] = useState(false);
   const [houses, setHouses] = useState<House[]>([]);
   const [staffDirectory, setStaffDirectory] = useState<ContactBookEntry[]>([]);
   const [retreatFormData, setRetreatFormData] = useState<Partial<Retreat>>({});
@@ -339,7 +241,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   );
   const [quickBookingLoading, setQuickBookingLoading] = useState(false);
   const [selectedExistingClient, setSelectedExistingClient] = useState<Client | null>(null);
-  const heroImageInputRef = useRef<HTMLInputElement | null>(null);
   const firstRouteSegment = location.pathname.split('/').filter(Boolean)[0];
   const routePrefix = ['admin', 'medical', 'staff', 'user', 'helper'].includes(firstRouteSegment) ? firstRouteSegment : 'admin';
 
@@ -360,24 +261,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     return formatDateUTC(new Date(date));
   };
 
-  const loadHeroImageUrl = async (targetRetreat: Retreat) => {
-    if (!targetRetreat?._id) {
-      setHeroImageUrl(null);
-      setHeroImageSource(null);
-      return;
-    }
-
-    try {
-      const response = await retreatsApi.getHeroImageUrl(targetRetreat._id);
-      setHeroImageUrl(response.data.heroImageUrl || null);
-      setHeroImageSource(response.data.source || null);
-    } catch (error) {
-      console.error('Error loading retreat hero image:', error);
-      setHeroImageUrl(null);
-      setHeroImageSource(null);
-    }
-  };
-
   const fetchRetreatData = useCallback(async (showLoading = true) => {
     try {
       if (showLoading) setIsLoading(true);
@@ -395,7 +278,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           const dateDifference = new Date(left.startDate!).getTime() - new Date(right.startDate!).getTime();
           return dateDifference || String(left._id).localeCompare(String(right._id));
         }));
-      await loadHeroImageUrl(retreatResponse.data);
       setExpensesSummary(expensesSummaryResponse.data);
 
       const getObjectId = (value: any) => typeof value === 'object' ? value?._id || value?.id : value;
@@ -605,14 +487,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       alert('Error updating booking. Please try again.');
     }
   }, [editingBookingId, editFormData, fetchRetreatData]);
-
-  const handleExport = useCallback(() => {
-    // CSV export functionality can be implemented using a CSV library
-    // For now, we'll show a simple message
-    const fileName = `retreat-${retreat?.name || 'unknown'}-clients-${new Date().toISOString().split('T')[0]}.csv`;
-    console.log('Export functionality needs CSV library implementation for:', fileName);
-    alert('CSV export functionality requires implementation with a CSV library');
-  }, [retreat]);
 
   const handleRetreatSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -910,43 +784,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       message.error(error?.response?.data?.message || 'Failed to send retreat email.');
     } finally {
       setRetreatEmailLoading(false);
-    }
-  };
-
-  const handleHeroImageSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!retreat?._id || !file) return;
-
-    try {
-      setHeroImageUploading(true);
-      const croppedFile = await cropImageToHeroBanner(file);
-      const response = await retreatsApi.uploadHeroImage(retreat._id, croppedFile);
-      setRetreat(response.data.retreat);
-      setHeroImageUrl(response.data.heroImageUrl);
-      setHeroImageSource('retreat');
-      message.success('Retreat hero image uploaded.');
-    } catch (error: any) {
-      console.error('Error uploading retreat hero image:', error);
-      message.error(error?.response?.data?.message || error?.message || 'Failed to upload retreat hero image.');
-    } finally {
-      setHeroImageUploading(false);
-    }
-  };
-
-  const handleClearHeroImage = async () => {
-    if (!retreat?._id) return;
-    if (!window.confirm('Remove the custom retreat hero image and use the house default?')) return;
-
-    try {
-      const response = await retreatsApi.clearHeroImage(retreat._id);
-      setRetreat(response.data.retreat);
-      setHeroImageUrl(response.data.heroImageUrl || null);
-      setHeroImageSource(response.data.source || null);
-      message.success(response.data.heroImageUrl ? 'Using house default hero image.' : 'Retreat hero image removed.');
-    } catch (error: any) {
-      console.error('Error clearing retreat hero image:', error);
-      message.error(error?.response?.data?.message || error?.message || 'Failed to remove retreat hero image.');
     }
   };
 
