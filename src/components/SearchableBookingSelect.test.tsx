@@ -39,6 +39,18 @@ it('searches bookings by client and retreat details', () => {
   expect(screen.getByText('#1276 · Emil Karkocha')).toBeInTheDocument();
 });
 
+it('matches Polish names without requiring diacritics', () => {
+  render(<SearchableBookingSelect
+    bookings={[{ _id: 'booking-1196', bookingNumber: 1196, clientId: 'client-krysa', retreatId: 'retreat-1' }] as any}
+    clients={[{ _id: 'client-krysa', firstName: 'Bartłomiej', lastName: 'Krysa' }] as any}
+    retreats={retreats}
+    selectedBookingId=""
+    onBookingSelect={jest.fn()}
+  />);
+  fireEvent.change(screen.getByRole('combobox'), { target: { value: 'Bartlomiej Krysa' } });
+  expect(screen.getByText('#1196 · Bartłomiej Krysa')).toBeInTheDocument();
+});
+
 it('shows the selected label, clears it, and uses custom labels', () => {
   const onBookingSelect = jest.fn();
   const { rerender } = render(<SearchableBookingSelect bookings={bookings} clients={clients} retreats={retreats} selectedBookingId="booking-1276" onBookingSelect={onBookingSelect} placeholder="Find" emptyLabel="No request" className="wide" />);

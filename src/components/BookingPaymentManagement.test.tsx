@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import BookingPaymentManagement from './BookingPaymentManagement';
 import { configSummaryApi, paymentRequestsApi, paymentsApi } from '../services/api';
 
@@ -20,10 +20,11 @@ const payment = {
   paymentType: 'deposit_non_refundable', status: 'completed', isRefundable: false,
 };
 
-const renderPage = () => render(<MemoryRouter initialEntries={['/admin/bookings/booking-1/payments']}><BookingPaymentManagement
+const LocationProbe = () => <span data-testid="location">{useLocation().pathname}{useLocation().search}</span>;
+const renderPage = () => render(<MemoryRouter initialEntries={['/admin/bookings/booking-1/payments']}><><BookingPaymentManagement
   bookingId="booking-1" bookingHash="booking-hash" bookingNumber={1186} clientName="Arkadiusz Bujak"
   clientId="client-1" retreatId="retreat-1" totalAmount={7500} currency="PLN"
-/></MemoryRouter>);
+/><LocationProbe/></></MemoryRouter>);
 
 describe('BookingPaymentManagement PPVC-493 layout', () => {
   beforeEach(() => {
@@ -55,5 +56,11 @@ describe('BookingPaymentManagement PPVC-493 layout', () => {
     fireEvent.click(refresh);
     await waitFor(() => expect(paymentsApi.getByBooking).toHaveBeenCalledTimes(2));
     expect(paymentsApi.getBookingPlan).toHaveBeenCalledTimes(2);
+  });
+
+  it('opens the shared payment editor with the exact booking and client', async () => {
+    renderPage();
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Record a payment' }))[0]);
+    expect(screen.getByTestId('location')).toHaveTextContent('/admin/payments/new?bookingId=booking-1&clientId=client-1');
   });
 });

@@ -78,6 +78,8 @@ const PaymentEditorPage: React.FC = () => {
   const isView = isExisting && !location.pathname.endsWith('/edit');
   const isEdit = isExisting && !isView;
   const paymentRequestIdFromQuery = new URLSearchParams(location.search).get('paymentRequestId') || '';
+  const bookingIdFromQuery = new URLSearchParams(location.search).get('bookingId') || '';
+  const clientIdFromQuery = new URLSearchParams(location.search).get('clientId') || '';
   const returnTo = typeof (location.state as any)?.returnTo === 'string' && (location.state as any).returnTo.startsWith('/')
     ? (location.state as any).returnTo
     : null;
@@ -172,8 +174,16 @@ const PaymentEditorPage: React.FC = () => {
           }
           const paymentRequestResponse = await paymentRequestsApi.getOne(paymentRequestIdFromQuery);
           applyPaymentRequest(paymentRequestIdFromQuery, paymentRequestResponse.data, bookingsResponse.data || []);
-        } else if (nextDisplayIdResponse?.data) {
-          setFormData((prev) => ({ ...prev, display_id: String(nextDisplayIdResponse.data) }));
+        } else {
+          const requestedBooking = (bookingsResponse.data || []).find((item: RetreatClient) => item._id === bookingIdFromQuery);
+          setFormData((prev) => ({
+            ...prev,
+            display_id: nextDisplayIdResponse?.data ? String(nextDisplayIdResponse.data) : prev.display_id,
+            bookingId: requestedBooking?._id || '',
+            clientId: resolveId(requestedBooking?.clientId) || clientIdFromQuery || '',
+            retreatId: resolveId(requestedBooking?.retreatId) || '',
+            currency: (requestedBooking?.currency as typeof prev.currency) || prev.currency,
+          }));
         }
       } catch (error) {
         console.error('Error loading payment editor data:', error);
@@ -183,7 +193,7 @@ const PaymentEditorPage: React.FC = () => {
     };
 
     loadData();
-  }, [id, paymentRequestIdFromQuery]);
+  }, [id, paymentRequestIdFromQuery, bookingIdFromQuery, clientIdFromQuery]);
 
   const handleChange = (field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));

@@ -3,6 +3,7 @@ import { Client, Retreat, RetreatClient } from '../types';
 import { FiChevronDown, FiSearch, FiX } from 'react-icons/fi';
 
 const resolveId = (value: any) => (typeof value === 'object' && value?._id ? value._id : value || '');
+export const normalizeBookingSearch = (value: unknown) => String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ł/g, 'l').replace(/Ł/g, 'L').toLowerCase();
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
 interface Props {
@@ -51,7 +52,7 @@ const SearchableBookingSelect: React.FC<Props> = ({
   };
 
   const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase().replace(/^#/, '');
+    const term = normalizeBookingSearch(search.trim().replace(/^#/, ''));
     if (!term) return bookings.slice(0, 80);
     return bookings.filter((booking) => {
       const { client, retreat, clientName, retreatName } = details(booking);
@@ -66,7 +67,7 @@ const SearchableBookingSelect: React.FC<Props> = ({
         retreatName,
         retreat?.code,
         retreat?.retreatCode,
-      ].some((value) => String(value || '').toLowerCase().includes(term));
+      ].some((value) => normalizeBookingSearch(value).includes(term));
     }).slice(0, 80);
   }, [bookings, details, search]);
 

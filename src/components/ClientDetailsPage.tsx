@@ -397,26 +397,14 @@ const ClientDetailsPage: React.FC = () => {
   };
 
   const openAddPaymentModal = () => {
-    setEditingPayment(null);
-    resetNewPayment();
-    setShowAddPaymentModal(true);
+    const params = new URLSearchParams({ clientId: clientId || '' });
+    if (bookings.length === 1 && bookings[0]?._id) params.set('bookingId', bookings[0]._id);
+    navigate(`/admin/payments/new?${params.toString()}`, { state: { returnTo: location.pathname + location.search } });
   };
 
   const openEditPaymentModal = (payment: any) => {
-    setEditingPayment(payment);
-    setNewPayment({
-      date: toDateInputValue(payment.paymentDate),
-      type: getPaymentTypeFormValue(payment.paymentType || payment.type),
-      amount: payment.amount ? String(payment.amount) : '',
-      currency: payment.currency || 'EUR',
-      retreatId: getId(payment.retreatId) || getDefaultRetreatId(),
-      paymentRequestId: getId(payment.paymentRequestId),
-      usdAmount: payment.usd_amount ? String(payment.usd_amount) : '',
-      usdPreviewLoading: false,
-      usdPreviewError: '',
-      note: payment.notes || payment.description || '',
-    });
-    setShowAddPaymentModal(true);
+    if (!payment?._id) return;
+    navigate(`/admin/payments/${payment._id}/edit`, { state: { returnTo: location.pathname + location.search } });
   };
 
   const getPaymentRequestUrl = (request: PaymentRequest) => (

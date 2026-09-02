@@ -681,6 +681,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
     const firstSegment = location.pathname.split('/').filter(Boolean)[0];
     return ['admin', 'medical', 'staff', 'user'].includes(firstSegment) ? `/${firstSegment}` : '';
   })();
+  const openPaymentEditor = () => navigate(`${routePrefix}/payments/new?bookingId=${encodeURIComponent(bookingId)}&clientId=${encodeURIComponent(clientId)}`, { state: { returnTo: location.pathname } });
 
   const totalPaidUsd = payments
     .filter(p => p.status === 'completed')
@@ -711,7 +712,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
         </div>
         <div className="payment-header-actions">
           <button type="button" className="refresh-payments-button" onClick={() => { void fetchPayments(); void syncPaymentPlan(); }} disabled={isLoading || paymentPlanSaving}>↻ <span>Refresh</span></button>
-          <button type="button" className="record-payment-button" onClick={() => { setShowLinkExisting(false); setShowAddPayment(true); }}><span aria-hidden="true">+</span> Record a payment</button>
+          <button type="button" className="record-payment-button" onClick={openPaymentEditor}><span aria-hidden="true">+</span> Record a payment</button>
         </div>
       </div>
 
@@ -723,7 +724,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
           <span className={`booking-payment-state ${isPaidInFull ? 'paid-in-full' : 'unpaid'}`}>{isPaidInFull ? '✓ Paid in full' : 'ⓘ Not fully paid'}</span>
           <div><i style={{ width: `${paidPercentage}%` }} /></div><strong>{paidPercentage}% <span>paid</span></strong>
         </div>
-        <button type="button" className="mobile-record-payment" onClick={() => { setShowLinkExisting(false); setShowAddPayment(true); }}>Record a payment</button>
+        <button type="button" className="mobile-record-payment" onClick={openPaymentEditor}>Record a payment</button>
         {totalRefundedUsd > 0 && <div className="booking-refund-summary">Refunded {formatUsd(totalRefundedUsd)}</div>}
       </div>
 
@@ -772,7 +773,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
         <div className="payment-history-header">
           <h4>Payment history</h4>
           <span className="payment-history-total">{payments.length} payment{payments.length === 1 ? '' : 's'} · <CurrencyDisplay amount={totalPaidBookingCurrency} currency={bookingCurrency} showUSD={false} /> received</span>
-          <button type="button" className="mobile-history-add" onClick={() => { setShowLinkExisting(false); setShowAddPayment(true); }}>Add</button>
+          <button type="button" className="mobile-history-add" onClick={openPaymentEditor}>Add</button>
           <div style={{ display: 'flex', gap: '8px' }}>
             {balanceUsd !== null && balanceUsd > 0.005 && (
               <button
@@ -787,15 +788,12 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
               </button>
             )}
             <button
-              onClick={() => {
-                setShowLinkExisting(false);
-                setShowAddPayment(!showAddPayment);
-              }}
+              onClick={openPaymentEditor}
               className="add-payment-btn"
-              title={showAddPayment ? 'Cancel adding payment' : 'Add new payment'}
-              aria-label={showAddPayment ? 'Cancel adding payment' : 'Add new payment'}
+              title="Add new payment"
+              aria-label="Add new payment"
             >
-              {showAddPayment ? '×' : '+'}
+              +
             </button>
             <button
               type="button"
