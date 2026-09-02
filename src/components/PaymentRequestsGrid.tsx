@@ -6,6 +6,7 @@ import LoadingSpinner from './LoadingSpinner';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiCheckCircle, FiClock, FiAlertTriangle, FiSend, FiDollarSign, FiChevronDown, FiEye, FiCopy, FiExternalLink } from 'react-icons/fi';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 import { formatCalendarDate, parseCalendarDate } from '../utils/dateFormat';
+import { paymentRequestFinancialSummary } from './bookingFinancialSummary';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
@@ -102,8 +103,9 @@ const PaymentRequestsGrid: React.FC = () => {
     const retreat = resolveRetreat(request.retreatId);
     const paymentUrl = getPublicPaymentUrl(request);
     const invoiceNumber = request.invoiceNumber || request.display_id || request._id;
-    const requestedAmount = formatAmount(request.requestedAmount || request.amountPaid || request.fullPriceQuote, request.currency);
-    const totalAmount = formatAmount(request.fullPriceQuote || request.fullPrice || request.fullPriceQuote, request.currency);
+    const financials = paymentRequestFinancialSummary(request);
+    const requestedAmount = formatAmount(financials.requested, financials.currency);
+    const totalAmount = formatAmount(financials.quotedPrice, financials.currency);
     const greetingName = client.firstName || client.name || 'there';
 
     return {
@@ -189,7 +191,7 @@ const PaymentRequestsGrid: React.FC = () => {
       case 'paidDate':
         return parseCalendarDate(request.paidDate)?.getTime() || 0;
       case 'quote':
-        return Number(request.fullPriceQuote || request.fullPrice || 0);
+        return paymentRequestFinancialSummary(request).quotedPrice;
       case 'usd':
         return Number(request.usd_amount || 0);
       case 'currency':

@@ -1,5 +1,6 @@
 import { Payment } from '../types';
 import { bookingCurrencyPaymentAmount } from './bookingStatusSelectors';
+import { bookingFinancialSummary } from './bookingFinancialSummary';
 
 export const getPaymentAmountInBookingCurrency = (payment: Payment, bookingCurrency: string) =>
   bookingCurrencyPaymentAmount(payment, bookingCurrency);
@@ -10,6 +11,5 @@ export const getEffectivePaidAmount = (
   amountPaid: number,
   amountPaidUSD: number,
 ) => {
-  const paidFromUsd = totalAmountUSD > 0 ? (amountPaidUSD / totalAmountUSD) * totalAmount : 0;
-  return Math.max(amountPaid, paidFromUsd);
+  return bookingFinancialSummary({ totalAmount, totalAmountUSD, amountPaid, amountPaidUSD }).netPaid;
 };

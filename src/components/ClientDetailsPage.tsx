@@ -16,6 +16,7 @@ import { TaskForm } from './Tasks/TaskForm';
 import { TaskList } from './Tasks/TaskList';
 import { buildClientMedicalArtifactInput, getClientEntryMedicalArtifacts, getClientMedicalArtifactUploadContext, upsertMedicalArtifact } from './clientMedicalArtifactUpload';
 import { buildBookingCreateUrlFromPayment } from './bookingFromPayment.helpers';
+import { bookingFinancialSummary } from './bookingFinancialSummary';
 import { clientPaymentCreatePath, clientPaymentEditPath } from './clientPaymentNavigation';
 import { loadClientCoreData } from '../services/clientCoreDataService';
 import './ClientsGrid.css';
@@ -239,9 +240,7 @@ const ClientDetailsPage: React.FC = () => {
 
   const getDefaultRetreatId = () => getId(bookings[0]?.retreatId || bookings[0]?.retreat);
 
-  const getBookingFullPrice = (booking: any) => (
-    booking?.totalAmount || booking?.totalPrice || booking?.fullPrice || booking?.fullPriceQuote || ''
-  );
+  const getBookingFullPrice = (booking: any) => bookingFinancialSummary(booking).price || '';
 
   const getRetreatLabel = (retreat: any) => {
     if (!retreat) return 'Unknown retreat';

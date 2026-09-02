@@ -171,24 +171,13 @@ const getPaymentReference = (payment: Payment) =>
   payment.transactionReference || payment.transactionId || payment.paymentMethod || '-';
 
 const getBookingTotalAmount = (booking: any) => {
-  const paymentRequest = booking?.paymentRequestId || booking?.paymentRequest;
-  return toFiniteNumber(
-    booking?.totalAmount ??
-    booking?.totalCost ??
-    paymentRequest?.fullPriceQuote ??
-    paymentRequest?.fullPrice ??
-    paymentRequest?.requestedAmount ??
-    0
-  );
+  return toFiniteNumber(booking?.totalAmount ?? 0);
 };
 
 const getBookingTotalUsdAmount = (booking: any) => {
-  const paymentRequest = booking?.paymentRequestId || booking?.paymentRequest;
   const value = toFiniteNumber(
     booking?.totalAmountUsd ??
     booking?.totalUsdAmount ??
-    paymentRequest?.fullPriceUsdAmount ??
-    paymentRequest?.usd_amount ??
     0
   );
   return Number.isFinite(value) && value > 0 ? value : null;

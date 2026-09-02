@@ -38,7 +38,8 @@ import SpaRoundedIcon from '@mui/icons-material/SpaRounded';
 import TaskAltRoundedIcon from '@mui/icons-material/TaskAltRounded';
 import BiotechRoundedIcon from '@mui/icons-material/BiotechRounded';
 import './ClientsGrid.css';
-import { getEffectivePaidAmount, getPaymentAmountInBookingCurrency } from './retreatPaymentUtils';
+import { getPaymentAmountInBookingCurrency } from './retreatPaymentUtils';
+import { bookingFinancialSummary } from './bookingFinancialSummary';
 import { filterRetreatEmailTemplates, normalizeTemplateLanguage, RetreatEmailTemplateLanguage } from './retreatEmailTemplateFilters';
 import { activeRetreatClients, isCancelledBookingStatus } from './retreatClientVisibility';
 import { formatDateForInput, formatStaffRole, getHouseIdValue, getHouseTown, getRetreatTown, staffRoleOptions } from './retreatDetailUtils';
@@ -846,28 +847,24 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   );
 
   const bookingStatusLabel = (status: string) => ({ pending: 'Conditional', confirmed: 'Confirmed', 'checked-in': 'Checked in', 'checked-out': 'Completed', cancelled: 'Cancelled' }[status] || status);
-  const effectiveAmountPaid = (client: RetreatClientData) => getEffectivePaidAmount(
-    client.totalAmount,
-    client.totalAmountUSD,
-    client.amountPaid,
-    client.amountPaidUSD,
-  );
   const paymentStatusLabel = (client: RetreatClientData) => {
-    const paidAmount = effectiveAmountPaid(client);
+    const summary = bookingFinancialSummary(client);
     if (isCancelledBookingStatus(client.status)) {
       if (client.cancellationDepositTreatment === 'none') return 'No payment';
       if (client.cancellationDepositTreatment === 'retained') return 'Deposit retained';
       if (client.cancellationDepositTreatment === 'credited') return 'Credit transferred';
       if (client.cancellationDepositTreatment === 'partially_refunded') return 'Partial refund';
-      if (client.cancellationDepositTreatment === 'refund_pending') return paidAmount <= 0 ? 'Refunded' : 'Refund pending';
+      if (client.cancellationDepositTreatment === 'refund_pending') return summary.netPaid <= 0 ? 'Refunded' : 'Refund pending';
     }
-    if (client.totalAmount > 0 && paidAmount >= client.totalAmount - 0.01) {
-      return paidAmount > client.totalAmount + 0.01 ? 'Overpaid' : 'Paid in full';
-    }
-    const remainingBalance = Math.max(client.totalAmount - paidAmount, 0);
-    return `Balance ${formatAmount(remainingBalance, client.currency)}`;
+    if (summary.state === 'overpaid') return `Overpaid ${formatAmount(summary.overpayment, summary.currency)}`;
+    if (summary.state === 'paid') return 'Paid in full';
+    return `Balance ${formatAmount(summary.balance, summary.currency)}`;
   };
-  const paymentStatusClass = (client: RetreatClientData) => effectiveAmountPaid(client) >= client.totalAmount - 0.01 && client.totalAmount > 0 ? 'bg-green-100 text-green-800' : isCancelledBookingStatus(client.status) ? 'bg-gray-100 text-gray-700' : 'bg-amber-100 text-amber-800';
+  const paymentStatusClass = (client: RetreatClientData) => {
+    if (isCancelledBookingStatus(client.status)) return 'bg-gray-100 text-gray-700';
+    const state = bookingFinancialSummary(client).state;
+    return state === 'overpaid' ? 'bg-purple-100 text-purple-800' : state === 'paid' ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800';
+  };
 
   const openCancellation = (client: RetreatClientData) => {
     setCancellingBooking(client);
@@ -1422,7 +1419,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                         {formatAmount(client.amountPaid, client.currency)}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {(() => { const difference = client.amountPaid - client.totalAmount; const status = client.amountPaid <= 0 ? ['Unpaid','bg-gray-100 text-gray-700'] : Math.abs(difference) < 0.01 ? ['Paid in full','bg-green-100 text-green-800'] : difference > 0 ? ['Overpaid','bg-purple-100 text-purple-800'] : ['Partially paid','bg-amber-100 text-amber-800']; return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${status[1]}`}>{status[0]}</span>; })()}
+                        {(() => { const state = bookingFinancialSummary(client).state; const status = state === 'unpaid' ? ['Unpaid','bg-gray-100 text-gray-700'] : state === 'paid' ? ['Paid in full','bg-green-100 text-green-800'] : state === 'overpaid' ? ['Overpaid','bg-purple-100 text-purple-800'] : ['Partially paid','bg-amber-100 text-amber-800']; return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${status[1]}`}>{status[0]}</span>; })()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center gap-2">

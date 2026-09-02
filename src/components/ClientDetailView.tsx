@@ -11,6 +11,7 @@ import { normalizeClientTag } from '../utils/clientTags';
 import './ClientsGrid.css';
 import { loadClientCoreData } from '../services/clientCoreDataService';
 import './ComprehensiveMedicalTrackingTab.css';
+import { bookingFinancialSummary } from './bookingFinancialSummary';
 
 interface ClientDetailViewProps {
   clientId: string;
@@ -275,9 +276,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
     return retreat?._id || retreat || '';
   };
 
-  const getBookingFullPrice = (booking: any) => (
-    booking?.totalAmount || booking?.totalPrice || booking?.fullPrice || booking?.fullPriceQuote || ''
-  );
+  const getBookingFullPrice = (booking: any) => bookingFinancialSummary(booking).price || '';
 
   const handleCreateDepositPaymentRequest = () => {
     const selectedBooking = clientBookings.find((booking) => getBookingRetreatId(booking) === selectedRetreatId) || clientBookings[0];
