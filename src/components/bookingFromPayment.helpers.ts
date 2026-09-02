@@ -1,4 +1,5 @@
 import { Payment, PaymentRequest } from '../types';
+import { bookingPriceFromPaymentRequest } from './bookingPaymentRequestPricing';
 
 const resolveId = (value: string | { _id?: string; id?: string } | null | undefined) => {
   if (!value) return '';
@@ -29,19 +30,15 @@ export const buildBookingCreateUrlFromPayment = ({
   const resolvedRetreatId = retreatId || resolveId(payment.retreatId);
   const resolvedPaymentRequestId = resolveId(paymentRequest || payment.paymentRequestId);
   const resolvedCurrency = payment.bookingCurrency || payment.currency || paymentRequest?.currency;
-  const resolvedAmount = resolveNumber(payment.bookingCurrencyAmount)
-    || resolveNumber(payment.amount)
-    || resolveNumber(paymentRequest?.fullPriceQuote)
-    || resolveNumber(paymentRequest?.fullPrice);
+  const paidAllocation = resolveNumber(payment.bookingCurrencyAmount) || resolveNumber(payment.amount);
+  const agreedBookingPrice = bookingPriceFromPaymentRequest(paymentRequest || undefined, resolvedClientId);
 
   if (resolvedClientId) params.set('clientId', resolvedClientId);
   if (resolvedRetreatId) params.set('retreatId', resolvedRetreatId);
   if (resolvedPaymentRequestId) params.set('paymentRequestId', resolvedPaymentRequestId);
   if (resolvedCurrency) params.set('currency', resolvedCurrency);
-  if (resolvedAmount !== undefined) {
-    params.set('amountPaid', String(resolveNumber(payment.amount) ?? resolvedAmount));
-    params.set('totalAmount', String(resolvedAmount));
-  }
+  if (paidAllocation !== undefined) params.set('amountPaid', String(paidAllocation));
+  if (agreedBookingPrice !== undefined) params.set('totalAmount', String(agreedBookingPrice));
   if (payment.status) {
     params.set('status', payment.status === 'completed' ? 'confirmed' : 'pending');
   }

@@ -5,6 +5,7 @@ import { bookingsApi, paymentRequestsApi, paymentsApi } from '../services/api';
 import { Client, Payment, PaymentRequest, Retreat, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import { todayDateInputValue } from '../utils/dateFormat';
+import { splitPaymentEvenly } from './jointPaymentAllocation';
 
 type Allocation = { bookingId: string; amount: string };
 const Icon: React.FC<{ icon: any }> = ({ icon: IconComponent }) => <IconComponent className="h-4 w-4" />;
@@ -45,6 +46,10 @@ const JointPaymentEditorPage: React.FC = () => {
   const allocatedTotal = useMemo(() => allocations.reduce((sum, allocation) => sum + (Number(allocation.amount) || 0), 0), [allocations]);
   const difference = (Number(form.totalAmount) || 0) - allocatedTotal;
   const updateAllocation = (index: number, changes: Partial<Allocation>) => setAllocations((current) => current.map((allocation, itemIndex) => itemIndex === index ? { ...allocation, ...changes } : allocation));
+  const divideEvenly = (total = Number(form.totalAmount) || 0) => {
+    const amounts = splitPaymentEvenly(total, allocations.length);
+    setAllocations(current => current.map((allocation, index) => ({ ...allocation, amount: amounts[index]?.toFixed(2) || '' })));
+  };
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -92,7 +97,7 @@ const JointPaymentEditorPage: React.FC = () => {
         <div className="grid gap-4 md:grid-cols-2">
           <label className="text-sm font-medium text-gray-700">Payer name<input value={form.payerName} onChange={(event) => setForm({ ...form, payerName: event.target.value })} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2" placeholder="Person who sent the money" /></label>
           <label className="text-sm font-medium text-gray-700">Transaction reference<input value={form.transactionId} onChange={(event) => setForm({ ...form, transactionId: event.target.value })} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2" placeholder="Bank, Revolut, PayPal reference" /></label>
-          <label className="text-sm font-medium text-gray-700 md:col-span-2">Payment request (optional)<select value={form.paymentRequestId} onChange={(event) => { const request = requests.find((item) => item._id === event.target.value); setForm({ ...form, paymentRequestId: event.target.value, totalAmount: request ? String(request.requestedAmount) : form.totalAmount, currency: request?.currency || form.currency }); }} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"><option value="">No payment request</option>{requests.filter((request) => request.status !== 'cancelled').map((request) => <option key={request._id} value={request._id}>{request.invoiceNumber || `#${request.display_id}`} · {request.requestedAmount} {request.currency}</option>)}</select><span className="mt-1 block text-xs font-normal text-gray-500">The request belongs to the receipt once; allocations may belong to different clients.</span></label>
+          <label className="text-sm font-medium text-gray-700 md:col-span-2">Payment request (optional)<select value={form.paymentRequestId} onChange={(event) => { const request = requests.find((item) => item._id === event.target.value); const total = request ? Number(request.requestedAmount) : Number(form.totalAmount); setForm({ ...form, paymentRequestId: event.target.value, totalAmount: request ? String(request.requestedAmount) : form.totalAmount, currency: request?.currency || form.currency }); if (request) { const amounts = splitPaymentEvenly(total, allocations.length); setAllocations(current => current.map((allocation, index) => ({ ...allocation, amount: amounts[index]?.toFixed(2) || '' }))); } }} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"><option value="">No payment request</option>{requests.filter((request) => request.status !== 'cancelled').map((request) => <option key={request._id} value={request._id}>{request.invoiceNumber || `#${request.display_id}`} · {request.requestedAmount} {request.currency}</option>)}</select><span className="mt-1 block text-xs font-normal text-gray-500">This sets the actual amount received—not the combined booking price—and proposes an equal split you can edit.</span></label>
           <label className="text-sm font-medium text-gray-700">Total received *<input type="number" min="0.01" step="0.01" required value={form.totalAmount} onChange={(event) => setForm({ ...form, totalAmount: event.target.value })} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2" /></label>
           <label className="text-sm font-medium text-gray-700">Currency *<select value={form.currency} onChange={(event) => setForm({ ...form, currency: event.target.value as Payment['currency'] })} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"><option>EUR</option><option>USD</option><option>CZK</option><option>PLN</option></select></label>
           <label className="text-sm font-medium text-gray-700">Payment date *<input type="date" required value={form.paymentDate} onChange={(event) => setForm({ ...form, paymentDate: event.target.value })} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2" /></label>
@@ -102,7 +107,7 @@ const JointPaymentEditorPage: React.FC = () => {
         </div>
       </section>
       <section className="border-t border-gray-200 pt-6">
-        <div className="mb-4 flex items-center justify-between"><div><h2 className="text-lg font-semibold text-gray-900">Booking allocations</h2><p className="text-sm text-gray-600">Split the received receipt across the bookings it pays for.</p></div><button type="button" onClick={() => setAllocations([...allocations, blankAllocation()])} className="inline-flex items-center gap-2 rounded-md border border-blue-600 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"><Icon icon={FiPlus} /> Add booking</button></div>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-lg font-semibold text-gray-900">Booking allocations</h2><p className="text-sm text-gray-600">Split the received receipt across the bookings it pays for. These amounts are editable.</p></div><div className="flex gap-2"><button type="button" onClick={() => divideEvenly()} className="rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50">Divide equally</button><button type="button" onClick={() => setAllocations([...allocations, blankAllocation()])} className="inline-flex items-center gap-2 rounded-md border border-blue-600 px-3 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"><Icon icon={FiPlus} /> Add booking</button></div></div>
         <div className="space-y-4">
           {allocations.map((allocation, index) => {
             return <div key={index} className="grid gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4 md:grid-cols-[1.8fr_.7fr_auto]">

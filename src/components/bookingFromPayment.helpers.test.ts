@@ -33,7 +33,25 @@ describe('buildBookingCreateUrlFromPayment', () => {
     expect(url).toContain('paymentId=pay-123');
     expect(url).toContain('currency=PLN');
     expect(url).toContain('totalAmount=3300');
-    expect(url).toContain('amountPaid=850');
+    expect(url).toContain('amountPaid=3300');
     expect(url).toContain('status=confirmed');
+  });
+
+  it('keeps a joint receipt allocation separate from the individual agreed booking price', () => {
+    const url = buildBookingCreateUrlFromPayment({
+      payment: { _id: 'allocation-1', clientId: 'anna', retreatId: 'retreat-1', amount: 3420, currency: 'PLN', status: 'completed' } as any,
+      paymentRequest: {
+        _id: 'request-1', currency: 'PLN', fullPriceQuote: 17100,
+        lineItems: [
+          { type: 'charge', description: 'Anna stay', clientId: 'anna', amount: 9000 },
+          { type: 'discount', description: 'Joint booking discount', clientId: 'anna', amount: -450 },
+          { type: 'charge', description: 'Jan stay', clientId: 'jan', amount: 9000 },
+          { type: 'discount', description: 'Joint booking discount', clientId: 'jan', amount: -450 },
+        ],
+      } as any,
+    });
+    expect(url).toContain('amountPaid=3420');
+    expect(url).toContain('totalAmount=8550');
+    expect(url).not.toContain('totalAmount=17100');
   });
 });

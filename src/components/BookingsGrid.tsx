@@ -6,7 +6,6 @@ import AppleButton from './AppleButton';
 import LoadingSpinner from './LoadingSpinner';
 import { FiPlus, FiEdit2, FiTrash2, FiEye, FiUser, FiCalendar, FiFileText, FiSearch, FiChevronUp, FiChevronDown } from 'react-icons/fi';
 import { generateBookingPDF } from './BookingConfirmationPDF';
-import BookingEditorForm from './BookingEditorForm';
 
 // Simple wrapper to fix TypeScript icon issues
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -39,15 +38,6 @@ interface BookingWithDetails extends RetreatClient {
   retreatBackgroundColor?: string;
 }
 
-type BookingFormData = {
-  clientId: string;
-  retreatId: string;
-  totalAmount: number;
-  currency: 'EUR' | 'USD' | 'CZK' | 'PLN';
-  status: 'pending' | 'conditional' | 'confirmed' | 'approved' | 'declined' | 'moved' | 'checked-in' | 'checked-out' | 'cancelled';
-  bookingNumber: string;
-};
-
 type SortField = 'bookingNumber' | 'clientName' | 'retreatName' | 'bookingDate' | 'status';
 type SortDirection = 'asc' | 'desc';
 
@@ -56,19 +46,7 @@ const BookingsGrid: React.FC = () => {
   const location = useLocation();
   const [bookings, setBookings] = useState<BookingWithDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editingBooking, setEditingBooking] = useState<BookingWithDetails | null>(null);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
-  const [formData, setFormData] = useState<BookingFormData>({
-    clientId: '',
-    retreatId: '',
-    totalAmount: 0,
-    currency: 'EUR' as 'EUR' | 'USD' | 'CZK' | 'PLN',
-    status: 'pending',
-    bookingNumber: ''
-  });
-  const [bookingNumberError, setBookingNumberError] = useState('');
   const [pdfLanguage, setPdfLanguage] = useState<'pl' | 'cz' | 'en'>('en');
   const [generatingPDF, setGeneratingPDF] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -76,7 +54,6 @@ const BookingsGrid: React.FC = () => {
   const [selectedRetreatId, setSelectedRetreatId] = useState(queryRetreatId);
   const [sortField, setSortField] = useState<SortField>('bookingNumber');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
-  const isMobileViewport = () => window.matchMedia('(max-width: 767px)').matches;
   const routePrefix = useMemo(() => {
     const firstSegment = location.pathname.split('/').filter(Boolean)[0];
     return ['admin', 'medical', 'staff', 'user'].includes(firstSegment) ? `/${firstSegment}` : '';
@@ -180,64 +157,6 @@ const BookingsGrid: React.FC = () => {
         console.error('Error deleting booking:', error);
       }
     }
-  };
-
-  const checkBookingNumberUniqueness = async (bookingNumber: string, currentBookingId?: string) => {
-    if (!bookingNumber.trim()) {
-      setBookingNumberError('');
-      return true;
-    }
-
-    try {
-      const existingBooking = bookings.find(booking =>
-        booking.bookingNumber?.toString() === bookingNumber &&
-        booking._id !== currentBookingId
-      );
-
-      if (existingBooking) {
-        setBookingNumberError(`Booking number "${bookingNumber}" is already in use`);
-        return false;
-      } else {
-        setBookingNumberError('');
-        return true;
-      }
-    } catch (error) {
-      console.error('Error checking booking number uniqueness:', error);
-      setBookingNumberError('Error checking booking number');
-      return false;
-    }
-  };
-
-  const validateBookingNumber = async (bookingNumber: string, currentBookingId?: string): Promise<boolean> => {
-    if (!bookingNumber || bookingNumber.trim() === '') {
-      setBookingNumberError('');
-      return true; // Allow empty booking numbers
-    }
-
-    const numericBookingNumber = parseInt(bookingNumber);
-    if (isNaN(numericBookingNumber)) {
-      setBookingNumberError('Booking number must be a valid number');
-      return false;
-    }
-
-    // Check for duplicates in current bookings
-    const isDuplicate = bookings.some(booking =>
-      Number(booking.bookingNumber) === numericBookingNumber &&
-      booking._id !== currentBookingId
-    );
-
-    if (isDuplicate) {
-      setBookingNumberError(`Booking number ${numericBookingNumber} is already in use`);
-      return false;
-    }
-
-    setBookingNumberError('');
-    return true;
-  };
-
-  const handleBookingNumberChange = async (value: string, currentBookingId?: string) => {
-    setFormData(prev => ({ ...prev, bookingNumber: value }));
-    await validateBookingNumber(value, currentBookingId);
   };
 
   const formatDate = (date: string | Date) => {
@@ -385,13 +304,7 @@ const BookingsGrid: React.FC = () => {
             </select>
           </div>
           <AppleButton
-            onClick={() => {
-              if (isMobileViewport()) {
-                navigate(`${routePrefix}/bookings/new`);
-                return;
-              }
-              setShowAddModal(true);
-            }}
+            onClick={() => navigate(`${routePrefix}/bookings/new`)}
             className="apple-button-primary"
           >
             <Icon icon={FiPlus} className="w-4 h-4 mr-2" />
@@ -579,23 +492,7 @@ const BookingsGrid: React.FC = () => {
                         <Icon icon={FiTrash2} />
                       </button>
                       <button
-                        onClick={() => {
-                          if (isMobileViewport()) {
-                            navigate(`${routePrefix}/bookings/${booking._id}/edit`);
-                            return;
-                          }
-                          setEditingBooking(booking);
-                          setFormData({
-                            clientId: typeof booking.clientId === 'string' ? booking.clientId : (booking.clientId as any)?._id || '',
-                            retreatId: typeof booking.retreatId === 'string' ? booking.retreatId : (booking.retreatId as any)?._id || '',
-                            totalAmount: booking.totalAmount || 0,
-                            currency: booking.currency || 'EUR',
-                            status: (booking.status || 'pending') as typeof formData.status,
-                            bookingNumber: booking.bookingNumber?.toString() || ''
-                          });
-                          setBookingNumberError('');
-                          setShowEditModal(true);
-                        }}
+                        onClick={() => navigate(`${routePrefix}/bookings/${booking._id}/edit`)}
                         className="icon-action-btn icon-action-btn-edit"
                         title="Edit"
                       >
@@ -636,47 +533,6 @@ const BookingsGrid: React.FC = () => {
         </div>
       </div>
 
-      {/* Add Booking Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-medium mb-4">Add New Booking</h2>
-            <BookingEditorForm
-              mode="create"
-              initialRetreats={retreats}
-              onCancel={() => setShowAddModal(false)}
-              onSaved={() => {
-                fetchBookings();
-                setShowAddModal(false);
-              }}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Edit Booking Modal */}
-      {showEditModal && editingBooking && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-medium mb-4">Edit Booking</h2>
-            <BookingEditorForm
-              mode="edit"
-              initialBooking={editingBooking}
-              initialRetreats={retreats}
-              bookingId={editingBooking._id}
-              onCancel={() => {
-                setShowEditModal(false);
-                setEditingBooking(null);
-              }}
-              onSaved={() => {
-                fetchBookings();
-                setShowEditModal(false);
-                setEditingBooking(null);
-              }}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 };

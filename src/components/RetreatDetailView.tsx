@@ -11,7 +11,6 @@ import SearchableClientSelector from './SearchableClientSelector';
 import RetreatTrackingGrid from './RetreatTrackingGrid';
 import DrugScreeningTab from './DrugScreeningTab';
 import BookingStepsMatrix from './BookingStepsMatrix';
-import BookingEditorForm from './BookingEditorForm';
 import RetreatReserveListPanel from './RetreatReserveListPanel';
 import { TasksWidget } from './Tasks/TasksWidget';
 import { Modal, Form, Input, Select, Button, Checkbox, message } from 'antd';
@@ -240,7 +239,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     [retreatEmailTemplateLanguage, retreatEmailTemplates],
   );
   const [quickBookingLoading, setQuickBookingLoading] = useState(false);
-  const [selectedExistingClient, setSelectedExistingClient] = useState<Client | null>(null);
   const firstRouteSegment = location.pathname.split('/').filter(Boolean)[0];
   const routePrefix = ['admin', 'medical', 'staff', 'user', 'helper'].includes(firstRouteSegment) ? firstRouteSegment : 'admin';
 
@@ -673,8 +671,14 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   };
 
   const handleExistingClientSelect = (selectedClient: Client) => {
-    setSelectedExistingClient(selectedClient);
     setShowExistingClientModal(false);
+    const params = new URLSearchParams({
+      clientId: selectedClient._id || '',
+      retreatId,
+      currency: 'EUR',
+      status: 'confirmed',
+    });
+    navigate(`/${routePrefix}/bookings/new?${params.toString()}`);
   };
 
   const openRetreatEmailModal = async () => {
@@ -2007,39 +2011,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         title="Add Existing Client to Retreat"
       />
 
-      <Modal
-        title={`Book ${selectedExistingClient?.firstName || ''} ${selectedExistingClient?.lastName || ''}`.trim()}
-        open={!!selectedExistingClient}
-        onCancel={() => setSelectedExistingClient(null)}
-        footer={null}
-        width={860}
-        destroyOnClose
-      >
-        {selectedExistingClient && retreat && (
-          <BookingEditorForm
-            mode="create"
-            initialRetreats={[retreat]}
-            initialBookingData={{
-              clientId: selectedExistingClient._id || '',
-              retreatId,
-              totalAmount: 3000,
-              currency: 'EUR',
-              status: 'confirmed',
-              bookingType: 'full_retreat',
-              checkInDate: retreat.startDate ? new Date(retreat.startDate).toISOString().slice(0, 16) : '',
-              checkOutDate: retreat.endDate ? new Date(retreat.endDate).toISOString().slice(0, 16) : '',
-            }}
-            onCancel={() => setSelectedExistingClient(null)}
-            onSaved={async () => {
-              const fullName = `${selectedExistingClient.firstName || ''} ${selectedExistingClient.lastName || ''}`.trim();
-              setSelectedExistingClient(null);
-              await fetchRetreatData();
-              message.success(`${fullName} has been added to this retreat.`);
-            }}
-            submitLabel="Create Booking"
-          />
-        )}
-      </Modal>
 
       {/* Retreat Edit Modal */}
       {showRetreatEditModal && (

@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { bookingsApi, ceremoniesApi, clientsApi, retreatsApi } from '../services/api';
+import { bookingsApi, ceremoniesApi, clientsApi, paymentRequestsApi, retreatsApi } from '../services/api';
 import { RetreatClient, Client, Retreat, PaymentRequest, Ceremony } from '../types';
 import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
 import AppleButton from './AppleButton';
 import LoadingSpinner from './LoadingSpinner';
+import { bookingPriceFromPaymentRequest, bookingPriceLinesForClient } from './bookingPaymentRequestPricing';
 
 type BookingFormData = {
   clientId: string;
@@ -117,6 +118,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   const [booking, setBooking] = useState<RetreatClient | null>(initialBooking || null);
   const [formData, setFormData] = useState<BookingFormData>(emptyForm());
   const [bookingNumberError, setBookingNumberError] = useState('');
+  const [selectedRequest, setSelectedRequest] = useState<PaymentRequest | undefined>();
   const [cancellationReason, setCancellationReason] = useState('');
   const [depositTreatment, setDepositTreatment] = useState<'no_refund' | 'partial_refund' | 'full_refund' | 'credit_transfer'>('no_refund');
   const [cancellationNotes, setCancellationNotes] = useState('');
@@ -200,6 +202,16 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       });
   }, [formData.retreatId]);
 
+  useEffect(() => {
+    if (!formData.paymentRequestId) {
+      setSelectedRequest(undefined);
+      return;
+    }
+    paymentRequestsApi.getOne(formData.paymentRequestId)
+      .then(response => setSelectedRequest(response.data))
+      .catch(() => setSelectedRequest(undefined));
+  }, [formData.paymentRequestId]);
+
   const resolveId = (value: any) => {
     if (!value) return '';
     if (typeof value === 'string') return value;
@@ -209,24 +221,28 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   const handlePaymentRequestSelect = (paymentRequestId: string, paymentRequest?: PaymentRequest) => {
     const paymentRetreatId = paymentRequest?.retreatId ? resolveId(paymentRequest.retreatId) : '';
     const retreatDefaults = retreatBookingDateTimes(retreats.find((retreat) => retreat._id === paymentRetreatId));
-    setFormData((prev) => ({
-      ...prev,
-      paymentRequestId,
-      clientId: paymentRequest?.clientId ? resolveId(paymentRequest.clientId) : prev.clientId,
-      retreatId: paymentRetreatId || prev.retreatId,
-      checkInDate: paymentRetreatId && paymentRetreatId !== prev.retreatId ? retreatDefaults.checkInDate : prev.checkInDate,
-      checkOutDate: paymentRetreatId && paymentRetreatId !== prev.retreatId ? retreatDefaults.checkOutDate : prev.checkOutDate,
-      totalAmount: paymentRequest?.fullPriceQuote ? Number(paymentRequest.fullPriceQuote) : prev.totalAmount,
-      amountPaid: prev.amountPaid,
-      currency: paymentRequest?.currency ? paymentRequest.currency : prev.currency,
-      bookingType: paymentRequest?.bookingType || prev.bookingType,
-      ceremonyId: paymentRequest?.bookingType === 'booster'
-        ? resolveId(paymentRequest.ceremonyId)
-        : prev.ceremonyId,
-      ceremonyNumber: paymentRequest?.bookingType === 'booster'
-        ? String(paymentRequest.ceremonyNumber || '')
-        : prev.ceremonyNumber,
-    }));
+    setSelectedRequest(paymentRequest);
+    setFormData((prev) => {
+      const selectedClientId = prev.clientId || (paymentRequest?.clientId ? resolveId(paymentRequest.clientId) : '');
+      return {
+        ...prev,
+        paymentRequestId,
+        clientId: selectedClientId,
+        retreatId: paymentRetreatId || prev.retreatId,
+        checkInDate: paymentRetreatId && paymentRetreatId !== prev.retreatId ? retreatDefaults.checkInDate : prev.checkInDate,
+        checkOutDate: paymentRetreatId && paymentRetreatId !== prev.retreatId ? retreatDefaults.checkOutDate : prev.checkOutDate,
+        totalAmount: bookingPriceFromPaymentRequest(paymentRequest, selectedClientId) ?? prev.totalAmount,
+        amountPaid: prev.amountPaid,
+        currency: paymentRequest?.currency ? paymentRequest.currency : prev.currency,
+        bookingType: paymentRequest?.bookingType || prev.bookingType,
+        ceremonyId: paymentRequest?.bookingType === 'booster'
+          ? resolveId(paymentRequest.ceremonyId)
+          : prev.ceremonyId,
+        ceremonyNumber: paymentRequest?.bookingType === 'booster'
+          ? String(paymentRequest.ceremonyNumber || '')
+          : prev.ceremonyNumber,
+      };
+    });
   };
 
   const handleClientSelect = (clientId: string) => {
@@ -353,6 +369,10 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   };
 
   const selectedPaymentRequest = useMemo(() => formData.paymentRequestId, [formData.paymentRequestId]);
+  const selectedPriceLines = useMemo(
+    () => bookingPriceLinesForClient(selectedRequest, formData.clientId),
+    [selectedRequest, formData.clientId],
+  );
 
   if (loading) {
     return <LoadingSpinner message={mode === 'edit' ? 'Loading booking...' : 'Loading form...'} />;
@@ -506,11 +526,10 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
           <SearchablePaymentRequestSelect
             selectedPaymentRequestId={formData.paymentRequestId}
             onPaymentRequestSelect={handlePaymentRequestSelect}
-            clientId={formData.clientId || undefined}
-            placeholder={formData.clientId ? "Search this client's payment requests" : 'Search invoice, client, or retreat'}
+            placeholder="Search invoice, client, or retreat"
           />
           <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-            <span>Optional. Select one to auto-fill client, retreat, amount, and currency.</span>
+            <span>Optional. Multi-person requests remain searchable; only client-assigned price lines are copied.</span>
             {selectedPaymentRequest && (
               <button
                 type="button"
@@ -521,11 +540,25 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
               </button>
             )}
           </div>
+          {selectedRequest?.lineItems?.length ? (
+            <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3">
+              <div className="mb-2 flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                <span>Price itemization for this booking</span>
+                {!selectedPriceLines.length && <span className="normal-case tracking-normal text-amber-700">Combined request—set this booking’s agreed price below.</span>}
+              </div>
+              {(selectedPriceLines.length ? selectedPriceLines : selectedRequest.lineItems).map((line, index) => (
+                <div key={index} className="flex justify-between gap-4 border-t border-slate-200 py-2 text-sm first:border-t-0">
+                  <span>{line.description}</span>
+                  <strong className={Number(line.amount) < 0 ? 'text-emerald-700' : 'text-slate-900'}>{Number(line.amount).toFixed(2)} {selectedRequest.currency}</strong>
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Total amount</label>
+            <label className="mb-1 block text-sm font-medium text-gray-700">Agreed price for this booking</label>
             <input
               type="number"
               min="0"
@@ -544,7 +577,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
               readOnly
               className="w-full rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-gray-700"
             />
-            <p className="mt-1 text-xs text-gray-500">Calculated from completed Payments allocated to this booking. Record money in Payments, not on the booking.</p>
+            <p className="mt-1 text-xs text-gray-500">Read-only ledger total. For a 6,840 PLN joint receipt split evenly, each saved booking must receive a 3,420 PLN allocation in Joint / Split Payment.</p>
           </div>
         </div>
 

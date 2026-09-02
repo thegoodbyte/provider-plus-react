@@ -47,7 +47,7 @@ const BookingEditorPage: React.FC<Props> = ({ mode }) => {
         Back
       </button>
 
-      <div className="mx-auto max-w-3xl rounded-lg border border-gray-200 bg-white p-6 max-sm:max-w-none max-sm:rounded-none max-sm:border-0 max-sm:p-4">
+      <div className="mx-auto max-w-5xl rounded-lg border border-gray-200 bg-white p-6 max-sm:max-w-none max-sm:rounded-none max-sm:border-0 max-sm:p-4">
         <h1 className="mb-2 text-2xl font-semibold text-gray-900">
           {mode === 'edit' ? 'Edit Booking' : 'Add New Booking'}
         </h1>
