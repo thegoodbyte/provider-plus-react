@@ -131,6 +131,7 @@ interface ScreeningData {
   handwritingImageUrl: string;
   riskNotes: string;
   generalNotes: string;
+  nextSteps: string;
   desiredRetreat: string;
   quotedPrice: string;
   screenedBy: string;
@@ -377,6 +378,7 @@ const ClientScreening: React.FC = () => {
     handwritingImageUrl: '',
     riskNotes: '',
     generalNotes: '',
+    nextSteps: '',
     desiredRetreat: '',
     quotedPrice: '',
     screenedBy: user?.email || '',
@@ -541,6 +543,7 @@ const ClientScreening: React.FC = () => {
         },
         plantMedicineExperience: hasPlantMedicineExperience,
         generalNotes: existingValue('generalNotes', 'notes') ?? prev.generalNotes,
+        nextSteps: existingValue('nextSteps') ?? prev.nextSteps,
         handwritingImageUrl: existingValue('handwritingImageUrl', 'handwritingImageUrl') ?? prev.handwritingImageUrl,
         screeningDate: existingValue('screeningDate', 'screeningCompletedDate')
           ? new Date(existingValue('screeningDate', 'screeningCompletedDate') as string).toISOString().split('T')[0]
@@ -1947,6 +1950,17 @@ const ClientScreening: React.FC = () => {
               value={formData.generalNotes}
               onChange={handleInputChange}
               rows={3}
+              className="w-full px-3 py-2 border border-gray-200 rounded-md"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Next Steps</label>
+            <textarea
+              name="nextSteps"
+              value={formData.nextSteps}
+              onChange={handleInputChange}
+              rows={4}
+              placeholder="Follow-up actions, owner, and timing"
               className="w-full px-3 py-2 border border-gray-200 rounded-md"
             />
           </div>
