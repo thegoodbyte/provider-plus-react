@@ -102,6 +102,15 @@ const getObjectId = (value: any): string => {
   return value._id || value.id || '';
 };
 
+export const mergeMedicalReviewRequests = (...collections: MedicalReviewRequest[][]) => {
+  const unique = new Map<string, MedicalReviewRequest>();
+  collections.flat().forEach((review) => {
+    const key = getObjectId(review) || `display:${review.display_id}`;
+    if (key) unique.set(key, review);
+  });
+  return Array.from(unique.values());
+};
+
 const getDateValue = (value?: Date | string | null) => {
   if (!value) return 0;
   const date = new Date(value);

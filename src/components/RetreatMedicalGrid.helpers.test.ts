@@ -1,6 +1,12 @@
-import { buildRetreatMedicalGridData } from './RetreatMedicalGrid.helpers';
+import { buildRetreatMedicalGridData, mergeMedicalReviewRequests } from './RetreatMedicalGrid.helpers';
 
 describe('RetreatMedicalGrid helpers', () => {
+  it('merges retreat and artifact-linked MRR results without duplicates', () => {
+    expect(mergeMedicalReviewRequests(
+      [{ _id: 'review-1', display_id: 1 } as any],
+      [{ _id: 'review-1', display_id: 1 } as any, { _id: 'review-2', display_id: 2 } as any],
+    ).map(review => review._id)).toEqual(['review-1', 'review-2']);
+  });
   it('excludes cancelled bookings from the medical grid', () => {
     const data = buildRetreatMedicalGridData([
       { _id: 'active-booking', bookingNumber: 1, status: 'confirmed', clientId: { _id: 'active-client', firstName: 'Active' } },

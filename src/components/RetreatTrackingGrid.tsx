@@ -7,6 +7,7 @@ import { Retreat, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import {
   buildRetreatMedicalGridData,
+  mergeMedicalReviewRequests,
   RetreatMedicalCell,
   RetreatMedicalGridData,
   RetreatMedicalRow,
@@ -72,6 +73,9 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
         medicalArtifactsApi.getAll({ retreatId }),
         medicalReviewRequestsApi.getAll({ retreatId }),
       ]);
+      const artifactIds = (artifactsResponse.data || []).map((artifact: any) => artifact._id).filter(Boolean);
+      const artifactReviewsResponse = await medicalReviewRequestsApi.getByArtifacts(artifactIds);
+      const reviews = mergeMedicalReviewRequests(reviewsResponse.data || [], artifactReviewsResponse.data || []);
 
       const bookings = (bookingsResponse.data || []) as RetreatClient[];
       const retreatFromBookings = bookings
@@ -83,7 +87,7 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
         buildRetreatMedicalGridData(
           bookings,
           artifactsResponse.data || [],
-          reviewsResponse.data || [],
+          reviews,
           retreatFromBookings || { retreatCode: retreatId, code: retreatId, name: retreatId },
         ),
       );
