@@ -15,19 +15,12 @@ import {
   normalizeMedicalReviewDecision,
   splitMedicalReviewRequestsByTimeline,
 } from './MedicalReviewRequestsPage.helpers';
+import { compareMedicalReviewStatuses, isPendingMedicalReviewStatus, medicalReviewStatusPresentation, normalizeMedicalReviewStatus } from './medicalReviewStatus';
 
-const reviewStatusStyle: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-800',
-  in_review: 'bg-blue-100 text-blue-800',
-  approved: 'bg-green-100 text-green-800',
-  rejected: 'bg-red-100 text-red-800',
-  caution: 'bg-amber-100 text-amber-800',
-  needs_resubmission: 'bg-orange-100 text-orange-800',
-  completed: 'bg-gray-100 text-gray-800',
-};
+const reviewStatusStyle = Object.fromEntries(Object.entries(medicalReviewStatusPresentation).map(([status, value]) => [status, value.badgeClass]));
 
-const normalizeReviewStatus = (value?: string) => String(value || '').trim().toLowerCase();
-const isPendingReview = (request: MedicalReviewRequest) => normalizeReviewStatus(request.status) === 'pending';
+const normalizeReviewStatus = normalizeMedicalReviewStatus;
+const isPendingReview = (request: MedicalReviewRequest) => isPendingMedicalReviewStatus(request.status);
 
 const decisionOptions = medicalReviewDecisionOptions;
 const decisionLabels = medicalReviewDecisionLabels;
@@ -579,7 +572,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
       }
       return true;
     });
-    return [...filtered].sort((a, b) => (isPendingReview(b) ? 0 : 1) - (isPendingReview(a) ? 0 : 1)
+    return [...filtered].sort((a, b) => compareMedicalReviewStatuses(a.status, b.status)
       || new Date(b.requestedAt || b.createdAt || 0).getTime() - new Date(a.requestedAt || a.createdAt || 0).getTime());
   }, [pendingOnly, requests, requestSearchFilter, retreatFilter, statusFilter, typeFilter]);
 

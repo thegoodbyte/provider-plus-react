@@ -1,16 +1,9 @@
 import { MedicalReviewGroup, MedicalReviewRequest } from '../types';
+import { medicalReviewStatusPriority } from './medicalReviewStatus';
+
+export { medicalReviewStatusPriority } from './medicalReviewStatus';
 
 export type MedicalReviewTypeFilter = 'all' | 'ekg' | 'liver' | 'both' | 'questionnaire' | 'general';
-
-export const medicalReviewStatusPriority = (status?: string) => ({
-  pending: 0,
-  in_review: 1,
-  caution: 2,
-  needs_resubmission: 3,
-  approved: 4,
-  rejected: 5,
-  completed: 6,
-}[String(status || '').trim().toLowerCase()] ?? 7);
 
 export const sortMedicalReviewsPendingFirst = <T extends MedicalReviewRequest>(requests: T[]) => [...requests].sort((a, b) =>
   medicalReviewStatusPriority(a.status) - medicalReviewStatusPriority(b.status)

@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import { usersApi, User } from '../services/usersApi';
 import { MedicalReviewTypeFilter, getReviewRequestFilterText, matchesReviewRequestFilters, sortMedicalReviewPacketsByExpiry, sortMedicalReviewsPendingFirst } from './MedicalReviewRequestsGrid.helpers';
 import ResponsiveModal from './ResponsiveModal';
+import { compareMedicalReviewStatuses, isPendingMedicalReviewStatus, medicalReviewStatusPresentation } from './medicalReviewStatus';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
@@ -86,15 +87,7 @@ const getClientGridLabel = (request: EnrichedReviewRequest) => (
   `${request.clientDisplayId ? `#${request.clientDisplayId} ` : ''}${request.clientName || 'Unknown client'}`
 );
 
-const statusClass: Record<string, string> = {
-  pending: 'border border-blue-200 bg-blue-100 text-blue-800',
-  in_review: 'bg-blue-100 text-blue-800',
-  approved: 'bg-green-100 text-green-800',
-  rejected: 'bg-red-100 text-red-800',
-  caution: 'bg-amber-100 text-amber-800',
-  needs_resubmission: 'bg-orange-100 text-orange-800',
-  completed: 'bg-gray-100 text-gray-800',
-};
+const statusClass = Object.fromEntries(Object.entries(medicalReviewStatusPresentation).map(([status, value]) => [status, value.badgeClass]));
 
 const statusIcon: Record<string, any> = {
   pending: FiClock,
@@ -106,18 +99,10 @@ const statusIcon: Record<string, any> = {
   completed: FiCheck,
 };
 
-const statusRowClass: Record<string, string> = {
-  pending: 'border-l-4 border-l-blue-500 bg-blue-50/80',
-  in_review: 'border-l-4 border-l-sky-500 bg-sky-50/80',
-  approved: 'border-l-4 border-l-green-500 bg-green-50/80',
-  rejected: 'border-l-4 border-l-red-500 bg-red-50/80',
-  caution: 'border-l-4 border-l-amber-500 bg-amber-50/90',
-  needs_resubmission: 'border-l-4 border-l-orange-500 bg-orange-50/80',
-  completed: 'border-l-4 border-l-gray-400 bg-gray-50',
-};
+const statusRowClass = Object.fromEntries(Object.entries(medicalReviewStatusPresentation).map(([status, value]) => [status, value.rowClass]));
 
 const normalizeReviewStatus = (value?: string) => String(value || '').trim().toLowerCase();
-const isPendingReview = (request: MedicalReviewRequest) => normalizeReviewStatus(request.status) === 'pending';
+const isPendingReview = (request: MedicalReviewRequest) => isPendingMedicalReviewStatus(request.status);
 
 const MedicalReviewRequestsGrid: React.FC = () => {
   const navigate = useNavigate();
@@ -262,7 +247,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     });
     return [...filtered].sort((a, b) => {
       const date = (request: MedicalReviewRequest) => new Date(request.requestedAt || request.createdAt || request.assignedDate || 0).getTime() || 0;
-      return (isPendingReview(b) ? 0 : 1) - (isPendingReview(a) ? 0 : 1)
+      return compareMedicalReviewStatuses(a.status, b.status)
         || date(b) - date(a)
         || Number(b.display_id || 0) - Number(a.display_id || 0);
     });

@@ -1,4 +1,7 @@
 import { MedicalReviewGroup, MedicalReviewRequest } from '../types';
+import { isPendingMedicalReviewStatus, medicalReviewStatusPriority } from './medicalReviewStatus';
+
+export { medicalReviewStatusPriority } from './medicalReviewStatus';
 
 export const getClientName = (request: any) => {
   const client = request.clientId && typeof request.clientId === 'object' ? request.clientId : {};
@@ -15,19 +18,9 @@ export const getPacketRetreatLabel = (group: MedicalReviewGroup | null, request:
   return retreatLabel !== 'Unknown retreat' ? retreatLabel : (group?.retreatName || 'Unknown retreat');
 };
 
-export const isPendingReview = (request: MedicalReviewRequest) => request.status === 'pending' || request.status === 'in_review';
+export const isPendingReview = (request: MedicalReviewRequest) => isPendingMedicalReviewStatus(request.status);
 
 export const getRequestKey = (request: MedicalReviewRequest) => request._id || '';
-
-export const medicalReviewStatusPriority = (status?: string) => ({
-  pending: 0,
-  in_review: 1,
-  caution: 2,
-  needs_resubmission: 3,
-  approved: 4,
-  rejected: 5,
-  completed: 6,
-}[String(status || '')] ?? 7);
 
 type PacketSection = {
   key: string;
