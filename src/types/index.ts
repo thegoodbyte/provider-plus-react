@@ -299,8 +299,10 @@ export interface RetreatClient {
   checkInDate: Date | string;
   checkOutDate: Date | string;
   totalAmount: number;
+  totalAmountUsd?: number;
   currency?: 'EUR' | 'USD' | 'CZK' | 'PLN';
   amountPaid?: number;
+  amountPaidUsd?: number;
   status?: 'pending' | 'conditional' | 'confirmed' | 'approved' | 'declined' | 'moved' | 'checked-in' | 'checked-out' | 'cancelled';
   cancellationReason?: string;
   cancellationDepositTreatment?: 'no_refund' | 'partial_refund' | 'full_refund' | 'credit_transfer';
