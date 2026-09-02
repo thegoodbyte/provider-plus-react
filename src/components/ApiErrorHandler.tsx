@@ -7,6 +7,7 @@ import './ApiErrorHandler.css';
 
 interface ApiError {
   title?: string;
+  isPacketAccessError?: boolean;
   message: string;
   isNetworkError?: boolean;
   code?: string;
@@ -28,7 +29,7 @@ export const ApiErrorContext = React.createContext<{
 });
 
 const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [error, setError] = useState<ApiError | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [showDetails, setShowDetails] = useState(false);
@@ -71,6 +72,7 @@ const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
               const forbidden = getForbiddenErrorPresentation(window.location.pathname, responseMessage, debugEnabled);
               apiError.title = forbidden.title;
               apiError.message = forbidden.message;
+              apiError.isPacketAccessError = forbidden.isPacketAccessError;
               break;
             case 500:
               apiError.message = 'Server error occurred. Please try again later.';
@@ -158,8 +160,8 @@ const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
       <div className="api-error-overlay">
         <div className="api-error-backdrop" />
         <div className="api-error-modal">
-          <div className="api-error-icon">
-            🔌
+          <div className="api-error-icon" aria-hidden="true">
+            {error.isPacketAccessError ? '🔒' : '🔌'}
           </div>
 
           <h2 className="api-error-title">{error.isNetworkError ? 'Connection to server lost' : error.title || 'Request could not be completed'}</h2>
@@ -189,12 +191,20 @@ const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
           )}
 
           <div className="api-error-actions">
-            <button onClick={handleRetry} className="api-error-retry">
-              🔄 Retry {retryCount > 0 && `(${retryCount})`}
-            </button>
-            <button onClick={clearError} className="api-error-dismiss">
-              Dismiss
-            </button>
+            {error.isPacketAccessError ? (
+              <button onClick={logout} className="api-error-dismiss">
+                Sign out
+              </button>
+            ) : (
+              <>
+                <button onClick={handleRetry} className="api-error-retry">
+                  🔄 Retry {retryCount > 0 && `(${retryCount})`}
+                </button>
+                <button onClick={clearError} className="api-error-dismiss">
+                  Dismiss
+                </button>
+              </>
+            )}
           </div>
 
           {debugEnabled && <button type="button" className="api-error-more" onClick={() => setShowDetails((visible) => !visible)} aria-expanded={showDetails}>

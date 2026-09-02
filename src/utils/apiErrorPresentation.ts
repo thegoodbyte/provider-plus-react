@@ -8,11 +8,13 @@ export const getForbiddenErrorPresentation = (pathname: string, responseMessage?
     return {
       title: 'You are not authorized to view this content',
       message: 'This advisor packet cannot be opened in the current Retreat Engine session. Sign out of Retreat Engine in any other tabs or windows, then reopen the original advisor link.',
+      isPacketAccessError: true,
     };
   }
 
   return {
     title: 'Request could not be completed',
     message: debugEnabled ? responseMessage || 'Access denied' : 'You do not have permission to perform this action.',
+    isPacketAccessError: false,
   };
 };

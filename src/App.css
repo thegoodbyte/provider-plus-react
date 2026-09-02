@@ -4,6 +4,19 @@
   overflow: hidden;
 }
 
+body.medical-artifact-capture-mode,
+body.medical-artifact-capture-mode #root,
+body.medical-artifact-capture-mode .App,
+body.medical-artifact-capture-mode .layout,
+body.medical-artifact-capture-mode .main-content,
+body.medical-artifact-capture-mode .content-wrapper,
+body.medical-artifact-capture-mode .re-shell {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
 /* Global Reset */
 * {
   margin: 0;
@@ -80,4 +93,27 @@ textarea:focus-visible {
 
 .shadow-xl {
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+}
+
+@media print {
+  html,
+  body,
+  #root,
+  .App,
+  .layout,
+  .main-content,
+  .content-wrapper,
+  .re-shell,
+  .medical-artifact-page {
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .medical-artifact-page-actions,
+  .sidebar,
+  header {
+    display: none !important;
+  }
 }

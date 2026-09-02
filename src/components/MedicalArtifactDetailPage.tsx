@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Edit, Eye, Plus, Save, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, Camera, Edit, Eye, Plus, Save, Trash2, Upload } from 'lucide-react';
 import { bookingsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { Client, MedicalArtifact, MedicalReviewGroup, MedicalReviewRequest, RetreatClient } from '../types';
@@ -235,6 +235,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
   const routePrefix = location.pathname.startsWith('/medical/') ? '/medical' : '/admin';
   const isEditMode = location.pathname.endsWith('/edit');
   const [artifact, setArtifact] = useState<MedicalArtifact | null>(null);
+  const [captureMode, setCaptureMode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -264,6 +265,11 @@ const MedicalArtifactDetailPage: React.FC = () => {
     bookingId: '',
     ceremonyNumber: '' as number | '',
   });
+
+  useEffect(() => {
+    document.body.classList.toggle('medical-artifact-capture-mode', captureMode);
+    return () => document.body.classList.remove('medical-artifact-capture-mode');
+  }, [captureMode]);
 
   useEffect(() => {
     const loadArtifact = async () => {
@@ -795,13 +801,17 @@ const MedicalArtifactDetailPage: React.FC = () => {
   );
 
   return (
-    <div className="-mx-4 px-4 pb-6 sm:mx-0 sm:p-6">
-      <div className="mb-4 flex items-start justify-between gap-3 sm:mb-6">
+    <div className="medical-artifact-page -mx-4 px-4 pb-6 sm:mx-0 sm:p-6">
+      <div className="medical-artifact-page-actions mb-4 flex items-start justify-between gap-3 sm:mb-6">
         <button onClick={() => navigate(`${routePrefix}/medical-artifacts`)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
           <ArrowLeft className="h-4 w-4" />
           Back
         </button>
         <div className="flex flex-wrap items-center justify-end gap-2">
+          <button type="button" onClick={() => setCaptureMode((current) => !current)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+            <Camera className="h-4 w-4" />
+            {captureMode ? 'Exit capture mode' : 'Capture full page'}
+          </button>
           {!isEditMode && (
             <button onClick={() => navigate(`${routePrefix}/medical-artifacts/${artifact._id}/edit`)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
               <Edit className="h-4 w-4" />
