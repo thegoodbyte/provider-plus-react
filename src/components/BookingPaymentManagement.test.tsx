@@ -75,6 +75,8 @@ describe('BookingPaymentManagement PPVC-493 layout', () => {
     expect(await screen.findByText('✓ Paid in full')).toBeInTheDocument();
     expect(screen.getByText('$2,050.00')).toBeInTheDocument();
     expect(screen.getByText('Total cost · USD booking price')).toBeInTheDocument();
+    expect(screen.getByText('Overpaid · client credit')).toBeInTheDocument();
+    expect(screen.getByText('Paid above the USD booking price')).toBeInTheDocument();
     expect(screen.queryByText(/Not fully paid/)).not.toBeInTheDocument();
   });
 });

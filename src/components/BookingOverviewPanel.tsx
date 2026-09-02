@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { FiAlertCircle, FiHeart, FiMail } from 'react-icons/fi';
 import { paymentRequestsApi, paymentsApi } from '../services/api';
 import { useBookingRequirements } from './useBookingRequirements';
-import { bookingPaymentSummary, confirmationState, isActivePaymentRequest } from './bookingStatusSelectors';
+import { bookingSettlementSummary, confirmationState, isActivePaymentRequest } from './bookingStatusSelectors';
 
 const AlertIcon = FiAlertCircle as any; const HeartIcon = FiHeart as any; const MailIcon = FiMail as any;
 
@@ -20,12 +20,26 @@ const money = (amount: number, currency: string) => new Intl.NumberFormat('en-US
 const BookingOverviewPanel: React.FC<Props> = ({ bookingId, booking, client, retreat, clientName, retreatCode, onEditClient, onBookingRefresh, onOpenTab, onSendConfirmation }) => {
   const [payments, setPayments] = useState<any[]>([]);
   const [requests, setRequests] = useState<any[]>([]);
+  const [totalUsd, setTotalUsd] = useState<number | null>(Number.isFinite(Number(booking?.totalAmountUsd)) ? Number(booking.totalAmountUsd) : null);
   const clientId = objectId(client); const retreatId = objectId(retreat);
   const requirements = useBookingRequirements({ bookingId, clientId, retreatId, refreshKey: 0 });
   useEffect(() => { let live = true; Promise.all([paymentsApi.getByBooking(bookingId), paymentRequestsApi.getByBooking(bookingId)]).then(([paid, requested]) => { if (live) { setPayments(paid.data || []); setRequests(requested.data || []); } }).catch(() => undefined); return () => { live = false; }; }, [bookingId]);
   const currency = booking.currency || 'EUR';
   const total = Number(booking.totalAmount || 0);
-  const { received, outstanding, paidPercent } = bookingPaymentSummary(payments, total, currency);
+  useEffect(() => {
+    if (Number.isFinite(Number(booking?.totalAmountUsd)) && Number(booking.totalAmountUsd) > 0) {
+      setTotalUsd(Number(booking.totalAmountUsd));
+      return;
+    }
+    let live = true;
+    paymentsApi.convertToUsd(total, currency).then(response => {
+      if (live) setTotalUsd(Number(response.data?.usd_amount));
+    }).catch(() => { if (live) setTotalUsd(null); });
+    return () => { live = false; };
+  }, [booking?.totalAmountUsd, total, currency]);
+  const settlement = bookingSettlementSummary(payments, total, currency, totalUsd);
+  const { received, outstanding, overpaid, paidPercent, paidInFull, basis } = settlement;
+  const settlementCurrency = basis === 'USD' ? 'USD' : currency;
   const confirmation = useMemo(() => confirmationState(booking, requirements.items), [booking, requirements.items]);
   const confirmationSent = confirmation.sent; const confirmationSentAt = confirmation.sentAt;
   const ekg = requirements.rows.find(row => row.key === 'ekg');
@@ -33,7 +47,7 @@ const BookingOverviewPanel: React.FC<Props> = ({ bookingId, booking, client, ret
   const complete = Math.max(0, requirements.rows.length - missingRows.length);
   const start = dateValue(retreat, 'startDate'); const end = dateValue(retreat, 'endDate'); const startIn = daysUntil(start);
   const attention = [
-    ...(outstanding > 0 && !requests.some(isActivePaymentRequest) ? [{ icon: <AlertIcon />, title: 'Balance not requested', detail: `${money(outstanding, currency)} outstanding and no active payment request exists yet.`, badge: 'Blocking', action: 'Create request', tab: 'payments' as const }] : []),
+    ...(outstanding > 0 && !requests.some(isActivePaymentRequest) ? [{ icon: <AlertIcon />, title: 'Balance not requested', detail: `${money(outstanding, settlementCurrency)} outstanding and no active payment request exists yet.`, badge: 'Blocking', action: 'Create request', tab: 'payments' as const }] : []),
     ...(ekg && !ekg.satisfied ? [{ icon: <HeartIcon />, title: 'Entry EKG not received', detail: 'Required before the medical cut-off.', badge: 'Action needed', action: 'Request file', tab: 'medical' as const }] : []),
     ...(!confirmationSent ? [{ icon: <MailIcon />, title: 'Confirmation not sent', detail: 'The client has not received a booking confirmation.', badge: 'Not sent', action: 'Send now' }] : []),
   ];
@@ -45,7 +59,7 @@ const BookingOverviewPanel: React.FC<Props> = ({ bookingId, booking, client, ret
   return <div className="booking-dashboard">
     <main className="booking-dashboard-main">
       <section className="overview-section"><header><h2>Needs attention</h2><span>{attention.length} thing{attention.length === 1 ? '' : 's'} waiting for you</span></header>{attention.length ? <div className="attention-list">{attention.map((item, index) => <article className="attention-item" key={item.title}><b>{String(index + 1).padStart(2, '0')}</b><i>{item.icon}</i><div><strong>{item.title}</strong><span>{item.detail}</span></div><em>{item.badge}</em><button type="button" onClick={() => 'tab' in item ? onOpenTab?.(item.tab!) : onSendConfirmation?.()}>{item.action}</button></article>)}</div> : <div className="overview-empty">Nothing needs attention.</div>}</section>
-      <div className="overview-card-grid"><section className="overview-card money-card"><header><h3>Money</h3><button onClick={() => onOpenTab?.('payments')}>Payments tab</button></header><small>Total cost</small><strong>{money(total, currency)}</strong><div className="payment-progress"><span>{outstanding ? 'Not fully paid' : 'Paid in full'}</span><div><i style={{ width: `${paidPercent}%` }} /></div><b>{paidPercent}%</b></div><footer><span>Received<b>{money(received, currency)}</b></span><span>Outstanding<b>{money(outstanding, currency)}</b></span></footer></section>
+      <div className="overview-card-grid"><section className="overview-card money-card"><header><h3>Money</h3><button onClick={() => onOpenTab?.('payments')}>Payments tab</button></header><small>{basis === 'USD' ? 'USD booking price' : 'Total cost'}</small><strong>{money(basis === 'USD' ? Number(totalUsd) : total, settlementCurrency)}</strong>{basis === 'USD' && <small>{money(total, currency)} original price</small>}<div className="payment-progress"><span>{overpaid > 0.005 ? `Overpaid ${money(overpaid, settlementCurrency)}` : paidInFull ? 'Paid in full' : 'Not fully paid'}</span><div><i style={{ width: `${paidPercent}%` }} /></div><b>{paidPercent}%</b></div><footer><span>Received<b>{money(received, settlementCurrency)}</b></span><span>{overpaid > 0.005 ? 'Client credit' : 'Outstanding'}<b>{money(overpaid > 0.005 ? overpaid : outstanding, settlementCurrency)}</b></span></footer></section>
       <section className="overview-card requirements-card"><header><h3>Requirements</h3><button onClick={() => onOpenTab?.('requirements')}>All {requirements.rows.length}</button></header><strong>{complete} <small>/ {requirements.rows.length} done</small></strong><div className="requirement-segments">{requirements.rows.map(row => <i key={row.key} className={row.satisfied ? 'done' : row.required ? 'missing' : ''} />)}</div>{missingRows.slice(0, 3).map(row => <div className="requirement-next" key={row.key}><span>○</span><b>{row.label}</b><small>pending</small></div>)}</section></div>
       <section className="overview-retreat"><h3>Retreat</h3><div><b>{retreatCode}</b><strong>{formatBookingDate(start)} – {formatBookingDate(end)}</strong><span>{retreat?.name || retreatTown(retreat) || 'Retreat'}</span><em>{retreat?.capacity ? `${retreat.capacity} places` : ''}</em></div></section>
       <section className="overview-activity"><h3>Recent activity</h3>{activities.map((item, index) => <div key={`${item.text}-${index}`}><time>{formatHistoryDateTime(item.date)}</time><span>{item.text}</span></div>)}</section>

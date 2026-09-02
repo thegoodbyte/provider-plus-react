@@ -1,4 +1,4 @@
-import { bookingPaymentSummary, confirmationState, hasReceivedEvidence, isActivePaymentRequest, isAccomplishedStatus, isSatisfiedStatus } from './bookingStatusSelectors';
+import { bookingPaymentSummary, bookingSettlementSummary, confirmationState, hasReceivedEvidence, isActivePaymentRequest, isAccomplishedStatus, isSatisfiedStatus } from './bookingStatusSelectors';
 
 describe('canonical booking status selectors', () => {
   it('separates sent requests from received evidence', () => {
@@ -28,5 +28,14 @@ describe('canonical booking status selectors', () => {
     expect(isActivePaymentRequest({ status: 'cancelled' } as any)).toBe(false);
     expect(isActivePaymentRequest({ status: 'paid' } as any)).toBe(false);
     expect(isActivePaymentRequest({ status: 'sent' } as any)).toBe(true);
+  });
+
+  it('reports an explicit USD overpayment for a mixed-currency booking', () => {
+    expect(bookingSettlementSummary([
+      { status: 'completed', amount: 1245, currency: 'USD', usd_amount: 1245 },
+      { status: 'completed', amount: 805, currency: 'USD', usd_amount: 805 },
+    ] as any, 7500, 'PLN', 1950)).toEqual({
+      received: 2050, outstanding: 0, overpaid: 100, paidPercent: 100, paidInFull: true, basis: 'USD',
+    });
   });
 });

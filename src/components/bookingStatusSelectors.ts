@@ -41,3 +41,30 @@ export const bookingPaymentSummary = (payments: Partial<Payment>[], total: numbe
   const outstanding = Math.max(0, Number(total || 0) - received);
   return { received, outstanding, paidPercent: total > 0 ? Math.min(100, Math.max(0, Math.round(received / total * 100))) : 0, paidInFull: total > 0 && outstanding < 0.01 };
 };
+
+export const bookingUsdPaymentAmount = (payment: Partial<Payment>) => {
+  if (String(payment.status || '').toLowerCase() !== 'completed') return 0;
+  const usdAmount = payment.currency === 'USD' ? Number(payment.amount || 0) : Number(payment.usd_amount);
+  if (!Number.isFinite(usdAmount)) return 0;
+  const sign = payment.paymentType === 'refund' ? -1 : 1;
+  const refundedUsd = payment.currency === 'USD' ? Number(payment.refundedAmount || 0) : 0;
+  return sign * Math.max(Math.abs(usdAmount) - refundedUsd, 0);
+};
+
+export const bookingSettlementSummary = (payments: Partial<Payment>[], total: number, currency: string, totalUsd?: number | null) => {
+  const currencySummary = bookingPaymentSummary(payments, total, currency);
+  const completed = payments.filter(payment => String(payment.status || '').toLowerCase() === 'completed');
+  const hasCompleteUsdLedger = Number.isFinite(Number(totalUsd)) && Number(totalUsd) > 0 && completed.length > 0
+    && completed.every(payment => payment.currency === 'USD' || Number.isFinite(Number(payment.usd_amount)));
+  if (!hasCompleteUsdLedger) return { ...currencySummary, overpaid: 0, basis: currency };
+  const received = completed.reduce((sum, payment) => sum + bookingUsdPaymentAmount(payment), 0);
+  const rawBalance = Number(totalUsd) - received;
+  return {
+    received,
+    outstanding: Math.max(0, rawBalance),
+    overpaid: Math.max(0, -rawBalance),
+    paidPercent: Math.min(100, Math.max(0, Math.round(received / Number(totalUsd) * 100))),
+    paidInFull: rawBalance <= 0.005,
+    basis: 'USD',
+  };
+};
