@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { canUseApiDebug, initializeApiDebug, setApiDebugEnabled } from '../utils/apiDebug';
+import { getForbiddenErrorPresentation } from '../utils/apiErrorPresentation';
 import './ApiErrorHandler.css';
 
 interface ApiError {
+  title?: string;
   message: string;
   isNetworkError?: boolean;
   code?: string;
@@ -66,7 +68,9 @@ const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
               apiError.message = debugEnabled ? 'Requested resource not found' : 'The requested information is not available.';
               break;
             case 403:
-              apiError.message = debugEnabled ? responseMessage || 'Access denied' : 'You do not have permission to perform this action.';
+              const forbidden = getForbiddenErrorPresentation(window.location.pathname, responseMessage, debugEnabled);
+              apiError.title = forbidden.title;
+              apiError.message = forbidden.message;
               break;
             case 500:
               apiError.message = 'Server error occurred. Please try again later.';
@@ -158,7 +162,7 @@ const ApiErrorHandler: React.FC<ApiErrorHandlerProps> = ({ children }) => {
             🔌
           </div>
 
-          <h2 className="api-error-title">{error.isNetworkError ? 'Connection to server lost' : 'Request could not be completed'}</h2>
+          <h2 className="api-error-title">{error.isNetworkError ? 'Connection to server lost' : error.title || 'Request could not be completed'}</h2>
 
           <p className="api-error-message">{error.message}</p>
 
