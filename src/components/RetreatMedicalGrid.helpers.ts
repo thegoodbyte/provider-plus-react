@@ -167,8 +167,12 @@ const matchesStageArtifact = (artifact: MedicalArtifact, stage: RetreatMedicalSt
   const artifactType = normalizeType(artifact.artifactType);
   const documentType = normalizeType(artifact.documentType);
 
-  return stage.artifactTypes.some((value) => normalizeType(value) === artifactType)
-    || stage.documentTypes.some((value) => normalizeType(value) === documentType);
+  // documentType is the canonical classification. artifactType is retained only
+  // as a fallback for older records that predate documentType.
+  if (documentType) {
+    return stage.documentTypes.some((value) => normalizeType(value) === documentType);
+  }
+  return stage.artifactTypes.some((value) => normalizeType(value) === artifactType);
 };
 
 const matchesStageReview = (request: MedicalReviewRequest, stage: RetreatMedicalStageDefinition) => {

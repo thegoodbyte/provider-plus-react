@@ -820,9 +820,11 @@
 
 /* Retreat Detail View Styles */
 .retreat-detail-container {
-  padding: 24px;
-  max-width: 1600px;
-  margin: 0 auto;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+  padding: 16px;
+  margin: 0;
   animation: fadeIn 0.3s ease-out;
 }
 
@@ -1080,6 +1082,17 @@
 
 .clients-section {
   margin-top: 32px;
+}
+
+.retreat-clients-table-shell {
+  width: 100%;
+  min-height: 32rem;
+}
+
+.retreat-clients-table-scroll {
+  width: 100%;
+  min-height: 32rem;
+  max-height: calc(100vh - 22rem);
 }
 
 .section-header {

@@ -1293,8 +1293,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden max-h-96">
-            <div className="overflow-x-auto overflow-y-auto max-h-96">
+          <div className="retreat-clients-table-shell bg-white rounded-lg shadow-sm overflow-hidden">
+            <div className="retreat-clients-table-scroll overflow-x-auto overflow-y-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
@@ -1341,7 +1341,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Amount Paid
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Status</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
                     </th>
@@ -1417,9 +1416,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {formatAmount(client.amountPaid, client.currency)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        {(() => { const state = bookingFinancialSummary(client).state; const status = state === 'unpaid' ? ['Unpaid','bg-gray-100 text-gray-700'] : state === 'paid' ? ['Paid in full','bg-green-100 text-green-800'] : state === 'overpaid' ? ['Overpaid','bg-purple-100 text-purple-800'] : ['Partially paid','bg-amber-100 text-amber-800']; return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${status[1]}`}>{status[0]}</span>; })()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex items-center gap-2">

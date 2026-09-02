@@ -237,6 +237,26 @@ describe('RetreatMedicalGrid helpers', () => {
     expect(data.rows.find((row) => row.key === 'ekg')?.cells[0].status).toBe('missing');
   });
 
+  it('uses documentType as authoritative when legacy artifactType disagrees', () => {
+    const bookings = [{
+      _id: 'booking-conflict',
+      bookingNumber: 1235,
+      clientId: { _id: 'client-conflict', firstName: 'Pawel', lastName: 'Dolata' },
+    }] as any;
+    const mislabeledQuestionnaire = {
+      _id: 'artifact-conflict',
+      bookingId: 'booking-conflict',
+      clientId: 'client-conflict',
+      artifactType: 'liver_panel',
+      documentType: 'Questionnaire',
+      title: 'Health questionnaire',
+    } as any;
+
+    const data = buildRetreatMedicalGridData(bookings, [mislabeledQuestionnaire], [], { retreatCode: 'TEST' } as any);
+
+    expect(data.rows.find((row) => row.key === 'liver')?.cells[0].status).toBe('missing');
+  });
+
   it('does not classify review notes as the request type', () => {
     const bookings = [{
       _id: 'booking-review-notes',
