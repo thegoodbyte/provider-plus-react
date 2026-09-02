@@ -213,4 +213,49 @@ describe('RetreatMedicalGrid helpers', () => {
     expect(ekgRow?.cells[1].reviewLabel).toBe('MRR #7002');
     expect(ekgRow?.cells[1].decisionLabel).toBe('Caution');
   });
+
+  it('does not classify questionnaire text as a liver or EKG artifact', () => {
+    const bookings = [{
+      _id: 'booking-questionnaire',
+      bookingNumber: 1235,
+      clientId: { _id: 'client-questionnaire', firstName: 'Pawel', lastName: 'Dolata' },
+    }] as any;
+    const questionnaire = {
+      _id: 'artifact-questionnaire',
+      bookingId: 'booking-questionnaire',
+      clientId: 'client-questionnaire',
+      artifactType: 'questionnaire',
+      documentType: 'Questionnaire',
+      title: 'Health questionnaire',
+      description: 'Client answered questions about liver health and EKG history.',
+      textContent: 'Previous liver tests and EKG were discussed.',
+    } as any;
+
+    const data = buildRetreatMedicalGridData(bookings, [questionnaire], [], { retreatCode: 'TEST' } as any);
+
+    expect(data.rows.find((row) => row.key === 'liver')?.cells[0].status).toBe('missing');
+    expect(data.rows.find((row) => row.key === 'ekg')?.cells[0].status).toBe('missing');
+  });
+
+  it('does not classify review notes as the request type', () => {
+    const bookings = [{
+      _id: 'booking-review-notes',
+      bookingNumber: 1235,
+      clientId: { _id: 'client-review-notes', firstName: 'Pawel', lastName: 'Dolata' },
+    }] as any;
+    const questionnaireReview = {
+      _id: 'questionnaire-review',
+      clientId: 'client-review-notes',
+      bookingId: 'booking-review-notes',
+      requestType: 'questionnaire_review',
+      documentType: 'Questionnaire',
+      reviewNotes: 'Please provide liver results and an EKG.',
+      status: 'pending',
+    } as any;
+
+    const data = buildRetreatMedicalGridData(bookings, [], [questionnaireReview], { retreatCode: 'TEST' } as any);
+
+    expect(data.rows.find((row) => row.key === 'liver')?.cells[0].status).toBe('missing');
+    expect(data.rows.find((row) => row.key === 'ekg')?.cells[0].status).toBe('missing');
+  });
 });

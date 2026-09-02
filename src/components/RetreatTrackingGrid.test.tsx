@@ -7,7 +7,7 @@ import { bookingsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../s
 jest.mock('../services/api', () => ({
   bookingsApi: { getByRetreatWithDetails: jest.fn() },
   medicalArtifactsApi: { getAll: jest.fn() },
-  medicalReviewRequestsApi: { getAll: jest.fn() },
+  medicalReviewRequestsApi: { getAll: jest.fn(), getByArtifacts: jest.fn() },
 }));
 jest.mock('antd', () => ({ Modal: ({ open, children }: any) => open ? <div>{children}</div> : null }));
 
@@ -27,6 +27,7 @@ describe('RetreatTrackingGrid MRR actions', () => {
       _id: 'review-ekg', display_id: 1105, clientId: 'client-1', artifactIds: ['artifact-ekg'],
       requestType: 'ekg_review', status: 'pending',
     }] });
+    (medicalReviewRequestsApi.getByArtifacts as jest.Mock).mockResolvedValue({ data: [] });
   });
 
   it('shows the MRR number or a create action linked to the source artifact', async () => {

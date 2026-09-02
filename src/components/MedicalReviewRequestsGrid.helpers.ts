@@ -5,6 +5,24 @@ export { medicalReviewStatusPriority } from './medicalReviewStatus';
 
 export type MedicalReviewTypeFilter = 'all' | 'ekg' | 'liver' | 'both' | 'questionnaire' | 'general';
 
+export const formatMedicalReviewCreatedAt = (
+  value?: string | Date | null,
+  locale?: string,
+  timeZone?: string,
+) => {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return new Intl.DateTimeFormat(locale, {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    ...(timeZone ? { timeZone } : {}),
+  }).format(date);
+};
+
 export const sortMedicalReviewsPendingFirst = <T extends MedicalReviewRequest>(requests: T[]) => [...requests].sort((a, b) =>
   medicalReviewStatusPriority(a.status) - medicalReviewStatusPriority(b.status)
   || Number(b.display_id || 0) - Number(a.display_id || 0));

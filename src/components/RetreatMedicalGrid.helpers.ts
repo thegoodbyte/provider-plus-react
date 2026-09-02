@@ -133,7 +133,7 @@ const getRequestSortKey = (request: MedicalReviewRequest) =>
 const getArtifactSortKey = (artifact: MedicalArtifact) =>
   getDateValue(artifact.receivedAt || artifact.createdAt || artifact.updatedAt);
 
-const normalizeText = (value: unknown) => String(value || '').toLowerCase();
+const normalizeType = (value: unknown) => String(value || '').trim().toLowerCase().replace(/[\s-]+/g, '_');
 
 const getReviewDecision = (request?: MedicalReviewRequest | null): 'OK' | 'caution' | 'more_info_needed' | 'NOT OK' | '' => {
   if (!request) return '';
@@ -164,35 +164,19 @@ const getDecisionLabel = (decision: 'OK' | 'caution' | 'more_info_needed' | 'NOT
 };
 
 const matchesStageArtifact = (artifact: MedicalArtifact, stage: RetreatMedicalStageDefinition) => {
-  const artifactText = normalizeText([
-    artifact.artifactType,
-    artifact.documentType,
-    artifact.documentStage,
-    artifact.title,
-    artifact.description,
-    artifact.textContent,
-  ].join(' '));
+  const artifactType = normalizeType(artifact.artifactType);
+  const documentType = normalizeType(artifact.documentType);
 
-  return stage.artifactTypes.some((value) => artifact.artifactType === value)
-    || stage.documentTypes.some((value) => artifact.documentType === value)
-    || artifactText.includes(stage.key);
+  return stage.artifactTypes.some((value) => normalizeType(value) === artifactType)
+    || stage.documentTypes.some((value) => normalizeType(value) === documentType);
 };
 
 const matchesStageReview = (request: MedicalReviewRequest, stage: RetreatMedicalStageDefinition) => {
-  const requestText = normalizeText([
-    request.requestType,
-    request.documentType,
-    request.documentStage,
-    request.reviewNotes,
-    request.overallNotes,
-    request.medicalStaffNotes,
-    request.artifactSnapshot?.documentType,
-    request.artifactSnapshot?.notes,
-  ].join(' '));
+  const requestType = normalizeType(request.requestType);
+  const documentType = normalizeType(request.documentType || request.artifactSnapshot?.documentType);
 
-  return stage.requestTypes.includes(request.requestType as any)
-    || stage.documentTypes.includes(request.documentType as any)
-    || requestText.includes(stage.key);
+  return stage.requestTypes.some((value) => normalizeType(value) === requestType)
+    || stage.documentTypes.some((value) => normalizeType(value) === documentType);
 };
 
 const latestBySortKey = <T extends { _id?: string }>(items: T[], getKey: (item: T) => number) =>
@@ -242,7 +226,6 @@ const pickMatchingArtifact = (
   booking: RetreatClient,
 ) => {
   const bookingClientId = getObjectId(booking.clientId);
-  const bookingRetreatId = getObjectId(booking.retreatId);
   const bookingId = getObjectId(booking);
 
   const stageArtifacts = artifacts.filter((artifact) => {

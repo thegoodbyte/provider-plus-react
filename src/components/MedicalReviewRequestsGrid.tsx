@@ -7,7 +7,7 @@ import { medicalReviewRequestsApi, medicalTrackingApi, clientsApi, retreatsApi }
 import { MedicalItem, MedicalReviewGroup, MedicalReviewRequest, Client, Retreat } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { usersApi, User } from '../services/usersApi';
-import { MedicalReviewTypeFilter, getReviewRequestFilterText, matchesReviewRequestFilters, sortMedicalReviewPacketsByExpiry, sortMedicalReviewsPendingFirst } from './MedicalReviewRequestsGrid.helpers';
+import { MedicalReviewTypeFilter, formatMedicalReviewCreatedAt, getReviewRequestFilterText, matchesReviewRequestFilters, sortMedicalReviewPacketsByExpiry, sortMedicalReviewsPendingFirst } from './MedicalReviewRequestsGrid.helpers';
 import ResponsiveModal from './ResponsiveModal';
 import { compareMedicalReviewStatuses, isPendingMedicalReviewStatus, medicalReviewStatusPresentation } from './medicalReviewStatus';
 
@@ -70,6 +70,7 @@ const getAssigneeId = (request: MedicalReviewRequest) => {
 };
 
 const getRequestId = (request: MedicalReviewRequest) => request._id || '';
+const getRequestCreatedAt = (request: MedicalReviewRequest) => request.createdAt || request.requestedAt || request.assignedDate;
 
 const getRequestRetreatId = (request: MedicalReviewRequest) => (
   typeof request.retreatId === 'string' ? request.retreatId : request.retreatId?._id
@@ -1163,6 +1164,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                               #{request.display_id || '-'}
                             </button>
                             <div className="mt-1 text-xs text-gray-500">{request.requestType || 'review'}</div>
+                            <div className="mt-1 text-xs text-gray-500">Created {formatMedicalReviewCreatedAt(getRequestCreatedAt(request))}</div>
                           </div>
                           <div className="min-w-0">
                             <div className="truncate text-sm font-medium text-gray-900">{getClientGridLabel(request)}</div>
@@ -1270,6 +1272,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                             #{request.display_id || '-'}
                           </button>
                           <div className="mt-1 text-xs text-gray-500">{request.requestType || 'review'}</div>
+                          <div className="mt-1 text-xs text-gray-500">Created {formatMedicalReviewCreatedAt(getRequestCreatedAt(request))}</div>
                         </div>
                         <div className="min-w-0">
                           <div className="truncate text-sm font-medium text-gray-900">{getClientGridLabel(request)}</div>
@@ -1331,6 +1334,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                     #{request.display_id || '—'}
                   </button>
                   <MedicalReviewTypeBadge requestType={request.requestType} className="max-w-full justify-start text-[11px]" />
+                  <div className="text-xs text-gray-500">Created {formatMedicalReviewCreatedAt(getRequestCreatedAt(request))}</div>
                 </div>
 
                 <div className="min-w-0">
@@ -1367,6 +1371,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Retreat</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Type</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Attempt</th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Created</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Assignee</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Source</th>
@@ -1385,6 +1390,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                     <MedicalReviewTypeBadge requestType={request.requestType} />
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">{request.attemptNumber || 1}</td>
+                  <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-700">{formatMedicalReviewCreatedAt(getRequestCreatedAt(request))}</td>
                   <td className="px-6 py-4 text-sm text-gray-900">
                     <div className="font-medium">{getAssignee(request).name}</div>
                     {getAssignee(request).email && <div className="text-xs text-gray-500">{getAssignee(request).email}</div>}

@@ -1,4 +1,4 @@
-import { matchesReviewRequestFilters, getReviewRequestFilterText, sortMedicalReviewPacketsByExpiry, sortMedicalReviewsPendingFirst } from './MedicalReviewRequestsGrid.helpers';
+import { formatMedicalReviewCreatedAt, matchesReviewRequestFilters, getReviewRequestFilterText, sortMedicalReviewPacketsByExpiry, sortMedicalReviewsPendingFirst } from './MedicalReviewRequestsGrid.helpers';
 
 describe('MedicalReviewRequestsGrid helpers', () => {
   const request: any = {
@@ -40,5 +40,11 @@ describe('MedicalReviewRequestsGrid helpers', () => {
       { _id: 'none', title: 'No expiry' },
       { _id: 'earlier', title: 'Earlier', endDate: '2026-09-01' },
     ] as any).map((item) => item._id)).toEqual(['earlier', 'later', 'none']);
+  });
+
+  it('formats the MRR creation timestamp and handles missing or invalid values', () => {
+    expect(formatMedicalReviewCreatedAt('2026-09-02T16:15:00.000Z', 'en-US', 'UTC')).toMatch(/Sep 2, 2026.*4:15 PM/);
+    expect(formatMedicalReviewCreatedAt(undefined, 'en-US', 'UTC')).toBe('—');
+    expect(formatMedicalReviewCreatedAt('not-a-date', 'en-US', 'UTC')).toBe('—');
   });
 });
