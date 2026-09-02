@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FileText, HeartPulse, Leaf, RefreshCw } from 'lucide-react';
+import { FileText, HeartPulse, Leaf, Maximize2, Minimize2, RefreshCw } from 'lucide-react';
 import { Modal } from 'antd';
 import { bookingsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { Retreat, RetreatClient } from '../types';
@@ -64,6 +64,21 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
   const [isLoading, setIsLoading] = useState(true);
   const [retreat, setRetreat] = useState<Retreat | null>(null);
   const [historyView, setHistoryView] = useState<{ cell: RetreatMedicalCell; clientName: string; stage: string } | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    if (!isFullscreen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const exitOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsFullscreen(false);
+    };
+    document.addEventListener('keydown', exitOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', exitOnEscape);
+    };
+  }, [isFullscreen]);
 
   const fetchGridData = useCallback(async () => {
     try {
@@ -119,9 +134,7 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
     ];
   }, [gridData]);
 
-  const renderCell = (stageKey: RetreatMedicalRow['key'], cell: RetreatMedicalCell, client: any, clientIndex: number) => {
-    const bookingId = client.bookingId || '';
-    const clientId = client.clientId || '';
+  const renderCell = (stageKey: RetreatMedicalRow['key'], cell: RetreatMedicalCell, client: any) => {
     const artifactId = cell.artifact?._id || '';
     const reviewId = cell.review?._id || '';
     const toneClass = getStageToneClass(cell);
@@ -167,11 +180,6 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
           ) : (
             <span className="medical-cell-mini-muted">Upload an artifact before creating an MRR</span>
           )}
-          {clientId ? (
-            <Link to={`/${routePrefix}/bookings/${bookingId}`} className="medical-cell-mini-link">
-              Booking #{client.bookingNumber || bookingId.slice(-6)}
-            </Link>
-          ) : null}
           {(cell.reviews.length > 1 || cell.artifacts.length > 1) && (
             <button
               type="button"
@@ -200,9 +208,6 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
             <Link to={`/${routePrefix}/clients/${client.clientId}`} className="medical-client-name">
               {client.clientName}
             </Link>
-            <Link to={`/${routePrefix}/bookings/${client.bookingId}`} className="medical-client-booking">
-              Booking #{client.bookingNumber}
-            </Link>
             {displayId ? (
               <Link to={`/${routePrefix}/clients/${client.clientId}`} className="medical-client-id">
                 Client {displayId}
@@ -229,7 +234,7 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
   }
 
   return (
-    <div className="retreat-medical-grid">
+    <div className={`retreat-medical-grid${isFullscreen ? ' medical-grid-fullscreen' : ''}`}>
       <Modal
         title={historyView ? `${historyView.clientName} · ${historyView.stage} history` : 'Medical history'}
         open={Boolean(historyView)}
@@ -279,10 +284,16 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
             EKG, liver, and medication-form review requests with linked artifacts, MRR numbers, submitted dates, decisions, and notes.
           </p>
         </div>
-        <button type="button" onClick={fetchGridData} className="medical-grid-refresh-btn">
-          <RefreshCw className="h-4 w-4" />
-          Refresh
-        </button>
+        <div className="medical-grid-header-actions">
+          <button type="button" onClick={() => setIsFullscreen((current) => !current)} className="medical-grid-refresh-btn" aria-label={isFullscreen ? 'Exit full screen' : 'Full screen'}>
+            {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            {isFullscreen ? 'Exit full screen' : 'Full screen'}
+          </button>
+          <button type="button" onClick={fetchGridData} className="medical-grid-refresh-btn">
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </button>
+        </div>
       </div>
 
       <div className="medical-grid-summary">
@@ -317,7 +328,7 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
                   </td>
                   {row.cells.map((cell, index) => (
                     <td key={`${row.key}-${gridData.clients[index].bookingId}`} className="medical-grid-cell-td">
-                      {renderCell(row.key, cell, gridData.clients[index], index)}
+                      {renderCell(row.key, cell, gridData.clients[index])}
                     </td>
                   ))}
                 </tr>
@@ -338,9 +349,6 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
                 <Link to={`/${routePrefix}/clients/${client.clientId}`} className="medical-client-name">
                   {client.clientName}
                 </Link>
-                <Link to={`/${routePrefix}/bookings/${client.bookingId}`} className="medical-client-booking">
-                  Booking #{client.bookingNumber}
-                </Link>
                 <span className="medical-client-id">
                   {client.clientDisplayId ? `Client #${client.clientDisplayId}` : client.clientId.slice(-6)}
                 </span>
@@ -356,7 +364,7 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
                       <span className="medical-row-icon">{getStageIcon(row.key)}</span>
                       <span>{row.label}</span>
                     </div>
-                    {renderCell(row.key, cell, client, clientIndex)}
+                    {renderCell(row.key, cell, client)}
                   </section>
                 );
               })}

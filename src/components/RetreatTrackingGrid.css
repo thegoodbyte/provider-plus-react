@@ -5,6 +5,26 @@
   gap: 16px;
 }
 
+.retreat-medical-grid.medical-grid-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 16px;
+  background: #f3f4f6;
+}
+
+.medical-grid-fullscreen .medical-grid-table-wrap {
+  max-height: calc(100vh - 190px);
+}
+
+.medical-grid-header-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
 .medical-grid-header {
   display: flex;
   align-items: flex-start;

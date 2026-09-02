@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import RetreatTrackingGrid from './RetreatTrackingGrid';
 import { bookingsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
@@ -38,5 +38,18 @@ describe('RetreatTrackingGrid MRR actions', () => {
       'href',
       '/admin/medical-review-requests/new?artifactId=artifact-liver',
     );
+    expect(screen.queryByText('Booking #1248')).not.toBeInTheDocument();
+  });
+
+  it('opens and exits the medical grid full-screen view', async () => {
+    const { container } = render(<MemoryRouter initialEntries={['/admin/retreats/retreat-1']}><RetreatTrackingGrid retreatId="retreat-1" /></MemoryRouter>);
+    await screen.findByRole('button', { name: 'Full screen' });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Full screen' }));
+    expect(container.querySelector('.retreat-medical-grid')).toHaveClass('medical-grid-fullscreen');
+    expect(screen.getByRole('button', { name: 'Exit full screen' })).toBeInTheDocument();
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(container.querySelector('.retreat-medical-grid')).not.toHaveClass('medical-grid-fullscreen');
   });
 });
