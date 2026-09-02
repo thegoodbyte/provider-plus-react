@@ -9,6 +9,7 @@ import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
 import SearchableBookingSelect from './SearchableBookingSelect';
 import { FiArrowLeft, FiSave } from 'react-icons/fi';
 import { toDateInputValue, todayDateInputValue } from '../utils/dateFormat';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
@@ -19,13 +20,6 @@ const DEFAULT_EXCHANGE_RATE_PROVIDER_LABEL = 'Revolut';
 const resolveId = (value: any) => (typeof value === 'object' && value?._id ? value._id : value || '');
 
 const defaultDate = () => todayDateInputValue();
-
-const apiErrorMessage = (error: any, fallback: string) => {
-  const message = error?.response?.data?.message || error?.message;
-  if (Array.isArray(message)) return message.join(', ');
-  if (typeof message === 'string' && message.trim()) return message;
-  return fallback;
-};
 
 const getPaymentRequestAmount = (paymentRequest?: PaymentRequest | null) => {
   if (!paymentRequest) return '';
@@ -187,6 +181,7 @@ const PaymentEditorPage: React.FC = () => {
         }
       } catch (error) {
         console.error('Error loading payment editor data:', error);
+        setFormError(apiErrorMessage(error, 'The payment form could not be loaded.'));
       } finally {
         setLoading(false);
       }
@@ -350,7 +345,7 @@ const PaymentEditorPage: React.FC = () => {
     }
 
     if (!formData.clientId || !formData.retreatId || !formData.amount) {
-      alert('Please fill in all required fields');
+      setFormError('Complete the required client, retreat, and amount fields before saving.');
       return;
     }
 
