@@ -63,4 +63,18 @@ describe('BookingPaymentManagement PPVC-493 layout', () => {
     fireEvent.click((await screen.findAllByRole('button', { name: 'Record a payment' }))[0]);
     expect(screen.getByTestId('location')).toHaveTextContent('/admin/payments/new?bookingId=booking-1&clientId=client-1');
   });
+
+  it('marks a mixed-currency booking paid from the complete USD ledger', async () => {
+    const usdPayments = [
+      { ...payment, _id: 'payment-balance', amount: 1245, currency: 'USD', usd_amount: 1245 },
+      { ...payment, _id: 'payment-deposit', amount: 805, currency: 'USD', usd_amount: 805 },
+    ];
+    (paymentsApi.getByBookingHash as jest.Mock).mockResolvedValue({ data: usdPayments });
+    (paymentsApi.getByBooking as jest.Mock).mockResolvedValue({ data: usdPayments });
+    renderPage();
+    expect(await screen.findByText('✓ Paid in full')).toBeInTheDocument();
+    expect(screen.getByText('$2,050.00')).toBeInTheDocument();
+    expect(screen.getByText('Total cost · USD booking price')).toBeInTheDocument();
+    expect(screen.queryByText(/Not fully paid/)).not.toBeInTheDocument();
+  });
 });

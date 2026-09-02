@@ -689,7 +689,21 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
 
   const balanceUsd = totalCostUsd !== null ? totalCostUsd - totalPaidUsd : null;
 
-  const { received: totalPaidBookingCurrency, outstanding: bookingBalance, paidInFull: isPaidInFull, paidPercent: paidPercentage } = bookingPaymentSummary(payments, Number(totalAmount || 0), bookingCurrency);
+  const bookingCurrencySummary = bookingPaymentSummary(payments, Number(totalAmount || 0), bookingCurrency);
+  // USD is the canonical settlement ledger when every completed payment has a
+  // normalized USD value. This prevents a valid USD payment from disappearing
+  // merely because an older record lacks a PLN booking-currency allocation.
+  const completedPayments = payments.filter(payment => payment.status === 'completed');
+  const hasCompleteUsdLedger = totalCostUsd !== null && completedPayments.length > 0
+    && completedPayments.every(payment => payment.currency === 'USD' || typeof payment.usd_amount === 'number');
+  const isPaidInFull = hasCompleteUsdLedger
+    ? Number(totalCostUsd) > 0 && Number(balanceUsd) <= 0.005
+    : bookingCurrencySummary.paidInFull;
+  const paidPercentage = hasCompleteUsdLedger && Number(totalCostUsd) > 0
+    ? Math.min(100, Math.max(0, Math.round(totalPaidUsd / Number(totalCostUsd) * 100)))
+    : bookingCurrencySummary.paidPercent;
+  const totalPaidBookingCurrency = bookingCurrencySummary.received;
+  const bookingBalance = isPaidInFull ? 0 : bookingCurrencySummary.outstanding;
 
   const totalRefundedUsd = payments
     .reduce((sum, p) => sum + (p.refundedAmount ? (p.currency === 'USD' ? p.refundedAmount : 0) : 0), 0);
@@ -717,9 +731,9 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       </div>
 
       <div className={`booking-balance-summary ${isPaidInFull ? 'is-paid' : 'has-balance'}`}>
-        <div className="booking-balance-metric total"><span>Total cost</span><strong><CurrencyDisplay amount={totalAmount} currency={bookingCurrency} showUSD={false} /></strong><small>{formatUsd(totalCostUsd)} at today's rate</small><button type="button" className="change-booking-price" onClick={() => setShowPriceEditor(true)}>Change booking price</button></div>
-        <div className="booking-balance-metric received"><span>Received</span><strong><CurrencyDisplay amount={totalPaidBookingCurrency} currency={bookingCurrency} showUSD={false} /></strong><small>{formatUsd(totalPaidUsd)} · {payments.length} payment{payments.length === 1 ? '' : 's'}</small></div>
-        <div className="booking-balance-metric outstanding"><span>{isPaidInFull ? 'Paid in full' : 'Balance outstanding'}</span><strong><CurrencyDisplay amount={isPaidInFull ? 0 : bookingBalance} currency={bookingCurrency} showUSD={false} /></strong><small>{formatUsd(isPaidInFull ? 0 : balanceUsd)}{!isPaidInFull && paymentPlan?.dueDate ? ` · due ${formatCalendarDate(paymentPlan.dueDate)}` : ''}</small></div>
+        <div className="booking-balance-metric total"><span>Total cost · USD booking price</span><strong>{formatUsd(totalCostUsd)}</strong><small><CurrencyDisplay amount={totalAmount} currency={bookingCurrency} showUSD={false} /> original price</small><button type="button" className="change-booking-price" onClick={() => setShowPriceEditor(true)}>Change booking price</button></div>
+        <div className="booking-balance-metric received"><span>Received · USD</span><strong>{formatUsd(totalPaidUsd)}</strong><small><CurrencyDisplay amount={totalPaidBookingCurrency} currency={bookingCurrency} showUSD={false} /> recorded in {bookingCurrency} · {payments.length} payment{payments.length === 1 ? '' : 's'}</small></div>
+        <div className="booking-balance-metric outstanding"><span>{isPaidInFull ? 'Paid in full' : 'Balance outstanding · USD'}</span><strong>{formatUsd(isPaidInFull ? 0 : balanceUsd)}</strong><small><CurrencyDisplay amount={isPaidInFull ? 0 : bookingBalance} currency={bookingCurrency} showUSD={false} />{!isPaidInFull && paymentPlan?.dueDate ? ` · due ${formatCalendarDate(paymentPlan.dueDate)}` : ''}</small></div>
         <div className="booking-payment-progress">
           <span className={`booking-payment-state ${isPaidInFull ? 'paid-in-full' : 'unpaid'}`}>{isPaidInFull ? '✓ Paid in full' : 'ⓘ Not fully paid'}</span>
           <div><i style={{ width: `${paidPercentage}%` }} /></div><strong>{paidPercentage}% <span>paid</span></strong>
