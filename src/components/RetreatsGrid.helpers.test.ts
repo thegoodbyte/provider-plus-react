@@ -1,4 +1,4 @@
-import { buildBookingStepOptions, formatRetreatCalendarDate, isBookingStepComplete, retreatMonthGroup } from './RetreatsGrid.helpers';
+import { buildBookingStepOptions, formatRetreatCalendarDate, isBookingStepComplete, retreatMonthGroup, validateRetreatCreateData } from './RetreatsGrid.helpers';
 import { BookingFlowTemplate } from '../types';
 
 describe('RetreatsGrid helpers', () => {
@@ -46,5 +46,17 @@ describe('RetreatsGrid helpers', () => {
     expect(formatRetreatCalendarDate('2026-08-22T00:00:00.000Z', { month: 'short', day: 'numeric' })).toBe('Aug 22');
     expect(formatRetreatCalendarDate('2026-08-29T00:00:00.000Z')).toBe('Aug 29, 2026');
     expect(retreatMonthGroup('2026-09-01T00:00:00.000Z')).toEqual({ key: '2026-8', label: 'September 2026' });
+  });
+
+  it('blocks incomplete and reversed retreat schedules before calling the API', () => {
+    expect(validateRetreatCreateData({ name: 'September', location: 'Jablonné', capacity: 6 }))
+      .toEqual(['Start date is required.', 'End date is required.']);
+    expect(validateRetreatCreateData({ name: 'September', location: 'Jablonné', startDate: '2026-09-19', endDate: '2026-09-12', capacity: 6 }))
+      .toContain('End date must be after the start date.');
+  });
+
+  it('accepts a complete retreat creation form', () => {
+    expect(validateRetreatCreateData({ name: 'September', location: 'Jablonné', startDate: '2026-09-12', endDate: '2026-09-19', capacity: 6 }))
+      .toEqual([]);
   });
 });

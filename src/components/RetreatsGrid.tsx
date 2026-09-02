@@ -5,7 +5,8 @@ import { retreatsApi, housesApi, bookingsApi, bookingFlowApi } from '../services
 import { Retreat, House, RetreatClient, BookingFlowItem, BookingFlowTemplate } from '../types';
 import AppleButton from './AppleButton';
 import { FiPlus, FiEdit2, FiTrash2, FiEye, FiList } from 'react-icons/fi';
-import { buildBookingStepOptions, formatRetreatCalendarDate, getSelectedStepCellTone, isBookingStepComplete, retreatMonthGroup } from './RetreatsGrid.helpers';
+import { buildBookingStepOptions, formatRetreatCalendarDate, getSelectedStepCellTone, isBookingStepComplete, retreatMonthGroup, validateRetreatCreateData } from './RetreatsGrid.helpers';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
 import './RetreatsListRedesign.css';
 import RetreatHolisticView from './RetreatHolisticView';
 import { isCancelledBookingStatus } from './retreatClientVisibility';
@@ -32,6 +33,7 @@ const RetreatsGrid: React.FC = () => {
   const [formData, setFormData] = useState<Partial<Retreat>>({});
   const [editSaveError, setEditSaveError] = useState('');
   const [editSaving, setEditSaving] = useState(false);
+  const [createSaving, setCreateSaving] = useState(false);
   const [pastRetreatsOpen, setPastRetreatsOpen] = useState(false);
   const [cancelledRetreatsOpen, setCancelledRetreatsOpen] = useState(false);
   const [retreatSearch, setRetreatSearch] = useState('');
@@ -459,6 +461,7 @@ const RetreatsGrid: React.FC = () => {
                 currentOccupancy: 0,
                 type: 'regular'
               });
+              setEditSaveError('');
               setIsAddModalOpen(true);
             }}
             className="retreat-register-add"
@@ -895,23 +898,28 @@ const RetreatsGrid: React.FC = () => {
               <AppleButton
                 variant="secondary"
                 onClick={async () => {
+                  setEditSaveError('');
                   try {
-                    if (!formData.name || !getRetreatTown(formData)) {
-                      alert('Please enter name and location town');
+                    const town = getRetreatTown(formData);
+                    const validationErrors = validateRetreatCreateData({ ...formData, location: town });
+                    if (validationErrors.length) {
+                      setEditSaveError(validationErrors.join(' '));
                       return;
                     }
+                    setCreateSaving(true);
 
                     const retreatData = {
                       name: formData.name!,
                       code: formData.code?.trim() || formData.retreatCode?.trim() || undefined,
                       retreatCode: formData.code?.trim() || formData.retreatCode?.trim() || undefined,
-                      location_town: getRetreatTown(formData),
-                      location: getRetreatTown(formData),
+                      location_town: town,
+                      location: town,
                       houseId: getObjectId(formData.houseId) || undefined,
                       status: formData.status || 'upcoming' as 'upcoming' | 'active' | 'completed' | 'cancelled',
                       capacity: formData.capacity ?? 20,
                       currentOccupancy: formData.currentOccupancy || 0,
                       type: formData.type || 'regular' as 'regular' | 'booster',
+                      ceremonyCount: formData.ceremonyCount ?? 2,
                       description: formData.description || '',
                       startDate: formData.startDate,
                       startTime: formData.startTime,
@@ -926,12 +934,15 @@ const RetreatsGrid: React.FC = () => {
                     setFormData({});
                   } catch (error) {
                     console.error('Error creating retreat:', error);
-                    alert('Error creating retreat. Please try again.');
+                    setEditSaveError(apiErrorMessage(error, 'Unable to create retreat.'));
+                  } finally {
+                    setCreateSaving(false);
                   }
                 }}
+                disabled={createSaving}
                 className="w-full md:w-auto"
               >
-                Create Retreat
+                {createSaving ? 'Creating…' : 'Create Retreat'}
               </AppleButton>
             </div>
           </div>

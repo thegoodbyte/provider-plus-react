@@ -55,3 +55,30 @@ export const retreatMonthGroup = (value?: string | Date) => {
     label: formatRetreatCalendarDate(date, { month: 'long', year: 'numeric' }),
   };
 };
+
+export const validateRetreatCreateData = (retreat: {
+  name?: string;
+  location?: string;
+  startDate?: string | Date;
+  endDate?: string | Date;
+  capacity?: number;
+}) => {
+  const errors: string[] = [];
+  if (!String(retreat.name || '').trim()) errors.push('Retreat name is required.');
+  if (!String(retreat.location || '').trim()) errors.push('Location town is required.');
+  if (!retreat.startDate) errors.push('Start date is required.');
+  if (!retreat.endDate) errors.push('End date is required.');
+  if (!Number.isInteger(Number(retreat.capacity)) || Number(retreat.capacity) < 1) errors.push('Capacity must be a positive whole number.');
+
+  if (retreat.startDate && retreat.endDate) {
+    const start = new Date(retreat.startDate);
+    const end = new Date(retreat.endDate);
+    if (Number.isNaN(start.getTime())) errors.push('Start date is invalid.');
+    if (Number.isNaN(end.getTime())) errors.push('End date is invalid.');
+    if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime()) && start >= end) {
+      errors.push('End date must be after the start date.');
+    }
+  }
+
+  return errors;
+};
