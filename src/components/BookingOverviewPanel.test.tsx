@@ -4,13 +4,13 @@ import BookingOverviewPanel, { formatBookingDate, formatHistoryDateTime, retreat
 import { paymentRequestsApi, paymentsApi } from '../services/api';
 import { useBookingRequirements } from './useBookingRequirements';
 
-jest.mock('../services/api', () => ({ paymentsApi: { getByBooking: jest.fn(), convertToUsd: jest.fn() }, paymentRequestsApi: { getByBooking: jest.fn() } }));
+jest.mock('../services/api', () => ({ paymentsApi: { getByBooking: jest.fn(), getByBookingHash: jest.fn(), convertToUsd: jest.fn() }, paymentRequestsApi: { getByBooking: jest.fn() } }));
 jest.mock('./useBookingRequirements', () => ({ useBookingRequirements: jest.fn() }));
 const requirement = { key: 'ekg', label: 'Entry EKG', required: true, uploaded: false, satisfied: false, reviewed: false, relatedItems: [] };
-const base = { bookingId: 'b', booking: { bookingNumber: 3, totalAmount: 100, currency: 'USD', registrationDate: '2026-01-01', bookingConfirmationHistory: [] }, client: { _id: 'c', email: 'a@b.com', phone: '1', country: 'CZ' }, retreat: { _id: 'r', name: 'Retreat', locationTown: 'Mistrovice', startDate: '2026-09-01', endDate: '2026-09-08' }, clientName: 'Ada', bookingTypeCode: 'F', retreatCode: 'RET', retreatAddress: 'Address', onEditClient: jest.fn(), onBookingRefresh: jest.fn(), onOpenTab: jest.fn(), onSendConfirmation: jest.fn() };
+const base = { bookingId: 'b', booking: { bookingNumber: 3, bookingHash: 'booking-hash', totalAmount: 100, currency: 'USD', registrationDate: '2026-01-01', bookingConfirmationHistory: [] }, client: { _id: 'c', email: 'a@b.com', phone: '1', country: 'CZ' }, retreat: { _id: 'r', name: 'Retreat', locationTown: 'Mistrovice', startDate: '2026-09-01', endDate: '2026-09-08' }, clientName: 'Ada', bookingTypeCode: 'F', retreatCode: 'RET', retreatAddress: 'Address', onEditClient: jest.fn(), onBookingRefresh: jest.fn(), onOpenTab: jest.fn(), onSendConfirmation: jest.fn() };
 
 describe('BookingOverviewPanel', () => {
-  beforeEach(() => { jest.clearAllMocks(); (paymentsApi.getByBooking as jest.Mock).mockResolvedValue({ data: [{ amount: 30, currency: 'USD', status: 'completed' }] }); (paymentsApi.convertToUsd as jest.Mock).mockResolvedValue({ data: { usd_amount: 100 } }); (paymentRequestsApi.getByBooking as jest.Mock).mockResolvedValue({ data: [] }); (useBookingRequirements as jest.Mock).mockReturnValue({ rows: [requirement], items: [], loading: false }); });
+  beforeEach(() => { jest.clearAllMocks(); (paymentsApi.getByBooking as jest.Mock).mockResolvedValue({ data: [{ _id: 'p1', amount: 30, currency: 'USD', status: 'completed' }] }); (paymentsApi.getByBookingHash as jest.Mock).mockResolvedValue({ data: [] }); (paymentsApi.convertToUsd as jest.Mock).mockResolvedValue({ data: { usd_amount: 100 } }); (paymentRequestsApi.getByBooking as jest.Mock).mockResolvedValue({ data: [] }); (useBookingRequirements as jest.Mock).mockReturnValue({ rows: [requirement], items: [], loading: false }); });
   it('formats dates and towns safely', () => { expect(formatBookingDate()).toBe('N/A'); expect(formatBookingDate('bad')).toBe('N/A'); expect(formatHistoryDateTime('bad')).toBe('N/A'); expect(retreatTown({ house: { city: 'Town' } })).toBe('Town'); });
   it('renders the operational dashboard and routes its actions', async () => { render(<BookingOverviewPanel {...base} />); await waitFor(() => expect(screen.getByText('$30.00')).toBeInTheDocument()); expect(screen.getByText('Needs attention')).toBeInTheDocument(); expect(screen.getByText('Entry EKG not received')).toBeInTheDocument(); expect(screen.getByText('Confirmation not sent')).toBeInTheDocument(); fireEvent.click(screen.getByText('Payments tab')); expect(base.onOpenTab).toHaveBeenCalledWith('payments'); fireEvent.click(screen.getByText('Send confirmation')); expect(base.onSendConfirmation).toHaveBeenCalled(); });
   it('shows sent confirmation and completed requirements', () => { (useBookingRequirements as jest.Mock).mockReturnValue({ rows: [{ ...requirement, uploaded: true, satisfied: true }], items: [], loading: false }); render(<BookingOverviewPanel {...base} booking={{ ...base.booking, bookingConfirmationHistory: [{ sentAt: '2026-01-02' }] }} />); expect(screen.getByText('Sent')).toBeInTheDocument(); expect(screen.queryByText('Entry EKG not received')).not.toBeInTheDocument(); });
@@ -27,5 +27,18 @@ describe('BookingOverviewPanel', () => {
     expect(screen.getByText('$2,050.00')).toBeInTheDocument();
     expect(screen.getByText('Client credit')).toBeInTheDocument();
     expect(screen.queryByText('Balance not requested')).not.toBeInTheDocument();
+  });
+  it('includes a newly created refund linked through the legacy booking hash', async () => {
+    (paymentsApi.getByBooking as jest.Mock).mockResolvedValue({ data: [
+      { _id: 'paid', amount: 2050, currency: 'USD', usd_amount: 2050, status: 'completed' },
+    ] });
+    (paymentsApi.getByBookingHash as jest.Mock).mockResolvedValue({ data: [
+      { _id: 'refund', amount: -100, currency: 'USD', usd_amount: -100, paymentType: 'refund', status: 'completed' },
+    ] });
+    (paymentsApi.convertToUsd as jest.Mock).mockResolvedValue({ data: { usd_amount: 1950 } });
+    render(<BookingOverviewPanel {...base} booking={{ ...base.booking, totalAmount: 7500, currency: 'PLN' }} />);
+    expect(await screen.findByText('Paid in full')).toBeInTheDocument();
+    expect(screen.getAllByText('$1,950.00')).toHaveLength(2);
+    expect(screen.queryByText(/Overpaid/)).not.toBeInTheDocument();
   });
 });

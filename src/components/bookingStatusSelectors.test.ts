@@ -38,4 +38,13 @@ describe('canonical booking status selectors', () => {
       received: 2050, outstanding: 0, overpaid: 100, paidPercent: 100, paidInFull: true, basis: 'USD',
     });
   });
+
+  it('reduces a stored booking-currency allocation proportionally after a partial refund', () => {
+    const summary = bookingPaymentSummary([{
+      status: 'completed', amount: 1000, currency: 'USD', refundedAmount: 250,
+      bookingCurrency: 'PLN', bookingCurrencyAmount: 4000,
+    }] as any, 5000, 'PLN');
+    expect(summary.received).toBe(3000);
+    expect(summary.outstanding).toBe(2000);
+  });
 });

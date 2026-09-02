@@ -3,6 +3,7 @@ import { FiAlertCircle, FiHeart, FiMail } from 'react-icons/fi';
 import { paymentRequestsApi, paymentsApi } from '../services/api';
 import { useBookingRequirements } from './useBookingRequirements';
 import { bookingSettlementSummary, confirmationState, isActivePaymentRequest } from './bookingStatusSelectors';
+import { loadBookingPayments } from './loadBookingPayments';
 
 const AlertIcon = FiAlertCircle as any; const HeartIcon = FiHeart as any; const MailIcon = FiMail as any;
 
@@ -23,7 +24,7 @@ const BookingOverviewPanel: React.FC<Props> = ({ bookingId, booking, client, ret
   const [totalUsd, setTotalUsd] = useState<number | null>(Number.isFinite(Number(booking?.totalAmountUsd)) ? Number(booking.totalAmountUsd) : null);
   const clientId = objectId(client); const retreatId = objectId(retreat);
   const requirements = useBookingRequirements({ bookingId, clientId, retreatId, refreshKey: 0 });
-  useEffect(() => { let live = true; Promise.all([paymentsApi.getByBooking(bookingId), paymentRequestsApi.getByBooking(bookingId)]).then(([paid, requested]) => { if (live) { setPayments(paid.data || []); setRequests(requested.data || []); } }).catch(() => undefined); return () => { live = false; }; }, [bookingId]);
+  useEffect(() => { let live = true; Promise.all([loadBookingPayments(bookingId, booking.bookingHash), paymentRequestsApi.getByBooking(bookingId)]).then(([paid, requested]) => { if (live) { setPayments(paid); setRequests(requested.data || []); } }).catch(() => undefined); return () => { live = false; }; }, [bookingId, booking.bookingHash]);
   const currency = booking.currency || 'EUR';
   const total = Number(booking.totalAmount || 0);
   useEffect(() => {

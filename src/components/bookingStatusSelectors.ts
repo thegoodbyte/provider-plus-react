@@ -31,9 +31,13 @@ export const isActivePaymentRequest = (request: Partial<PaymentRequest>) => !['c
 export const bookingCurrencyPaymentAmount = (payment: Partial<Payment>, currency: string) => {
   if (String(payment.status || '').toLowerCase() !== 'completed') return 0;
   const sign = payment.paymentType === 'refund' ? -1 : 1;
+  const amount = Math.abs(Number(payment.amount || 0));
   const refunded = Number(payment.refundedAmount || 0);
-  if (payment.currency === currency) return sign * Math.max(Math.abs(Number(payment.amount || 0)) - refunded, 0);
-  if (payment.bookingCurrency === currency && Number(payment.bookingCurrencyAmount)) return sign * Math.abs(Number(payment.bookingCurrencyAmount));
+  const remainingRatio = amount > 0 ? Math.max(amount - refunded, 0) / amount : 1;
+  if (String(payment.currency || '').toUpperCase() === String(currency || '').toUpperCase()) return sign * Math.max(amount - refunded, 0);
+  if (String(payment.bookingCurrency || '').toUpperCase() === String(currency || '').toUpperCase() && Number(payment.bookingCurrencyAmount)) {
+    return sign * Math.abs(Number(payment.bookingCurrencyAmount)) * remainingRatio;
+  }
   return 0;
 };
 export const bookingPaymentSummary = (payments: Partial<Payment>[], total: number, currency: string) => {
@@ -47,8 +51,10 @@ export const bookingUsdPaymentAmount = (payment: Partial<Payment>) => {
   const usdAmount = payment.currency === 'USD' ? Number(payment.amount || 0) : Number(payment.usd_amount);
   if (!Number.isFinite(usdAmount)) return 0;
   const sign = payment.paymentType === 'refund' ? -1 : 1;
-  const refundedUsd = payment.currency === 'USD' ? Number(payment.refundedAmount || 0) : 0;
-  return sign * Math.max(Math.abs(usdAmount) - refundedUsd, 0);
+  const originalAmount = Math.abs(Number(payment.amount || 0));
+  const refunded = Number(payment.refundedAmount || 0);
+  const remainingRatio = originalAmount > 0 ? Math.max(originalAmount - refunded, 0) / originalAmount : 1;
+  return sign * Math.abs(usdAmount) * remainingRatio;
 };
 
 export const bookingSettlementSummary = (payments: Partial<Payment>[], total: number, currency: string, totalUsd?: number | null) => {

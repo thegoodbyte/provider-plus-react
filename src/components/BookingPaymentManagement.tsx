@@ -7,6 +7,7 @@ import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
 import { formatCalendarDate, toDateInputValue, todayDateInputValue } from '../utils/dateFormat';
 import './BookingPaymentManagement.css';
 import { bookingPaymentSummary, bookingSettlementSummary } from './bookingStatusSelectors';
+import { loadBookingPayments } from './loadBookingPayments';
 
 const DEFAULT_EXCHANGE_RATE_PROVIDER_LABEL = 'Revolut';
 
@@ -288,33 +289,15 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   const fetchPayments = useCallback(async () => {
     try {
       setIsLoading(true);
-      const paymentMap = new Map<string, Payment>();
-
-      const paymentRequests = [
-        bookingHash ? paymentsApi.getByBookingHash(bookingHash) : Promise.resolve({ data: [] as Payment[] }),
-        paymentsApi.getByBooking(bookingId),
-      ];
-      const results = await Promise.allSettled(paymentRequests);
-
-      results.forEach((result) => {
-        if (result.status !== 'fulfilled') return;
-        (result.value.data || []).forEach((payment: Payment) => {
-          if (payment._id) paymentMap.set(payment._id, payment);
-        });
-      });
-
-      if (paymentMap.size === 0 && results.some((result) => result.status === 'rejected')) {
-        console.warn('Booking payment lookup failed, trying fallback:', results);
+      let exactPayments = await loadBookingPayments(bookingId, bookingHash);
+      if (exactPayments.length === 0) {
         const response = await paymentsApi.getByClient(clientId);
         const bookingPayments = (response.data || []).filter((payment: any) =>
           resolvePaymentId(payment.bookingId) === bookingId || payment.bookingHash === bookingHash
         );
-        bookingPayments.forEach((payment: Payment) => {
-          if (payment._id) paymentMap.set(payment._id, payment);
-        });
+        exactPayments = bookingPayments;
       }
-
-      setPayments(Array.from(paymentMap.values()));
+      setPayments(exactPayments);
     } catch (error) {
       console.error('Error fetching payments:', error);
       setPayments([]);
