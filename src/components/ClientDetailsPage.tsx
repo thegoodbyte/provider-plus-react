@@ -3,20 +3,21 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { clientsApi, paymentsApi, clientMedicalApi, bookingsApi, paymentRequestsApi, retreatsApi, medicalArtifactsApi } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
 import AppleButton from './AppleButton';
-import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
 import EmailHistoryPanel from './EmailHistoryPanel';
 import SubmissionNotificationsPage from './SubmissionNotificationsPage';
 import NotificationCountBadge, { useNotificationCount } from './NotificationCountBadge';
 import { MedicalArtifact, PaymentRequest } from '../types';
 import { FiArrowLeft, FiCamera, FiEdit2, FiTrash2, FiUser, FiMapPin, FiCalendar, FiDollarSign, FiActivity, FiFileText, FiAlertCircle, FiPlus, FiMessageSquare, FiCheckSquare, FiHeart, FiEye, FiEyeOff, FiMail, FiBell, FiExternalLink } from 'react-icons/fi';
 import MedicalRecordsManager from './MedicalRecordsManager';
-import { formatCalendarDate, toDateInputValue } from '../utils/dateFormat';
+import { formatCalendarDate } from '../utils/dateFormat';
 import { CreateTaskDto, Task, taskService } from '../services/taskService';
 import { cacheService } from '../services/cacheService';
 import { TaskForm } from './Tasks/TaskForm';
 import { TaskList } from './Tasks/TaskList';
 import { buildClientMedicalArtifactInput, getClientEntryMedicalArtifacts, getClientMedicalArtifactUploadContext, upsertMedicalArtifact } from './clientMedicalArtifactUpload';
 import { buildBookingCreateUrlFromPayment } from './bookingFromPayment.helpers';
+import { clientPaymentCreatePath, clientPaymentEditPath } from './clientPaymentNavigation';
+import { loadClientCoreData } from '../services/clientCoreDataService';
 import './ClientsGrid.css';
 
 // Simple wrapper to fix TypeScript icon issues
@@ -105,8 +106,6 @@ const ClientDetailsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState(() => new URLSearchParams(location.search).get('tab') || 'overview');
   const [error, setError] = useState<string | null>(null);
   const [showAddNoteModal, setShowAddNoteModal] = useState(false);
-  const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
-  const [editingPayment, setEditingPayment] = useState<any | null>(null);
   const [showAddTaskModal, setShowAddTaskModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [taskError, setTaskError] = useState<string | null>(null);
@@ -119,18 +118,6 @@ const ClientDetailsPage: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
   const [newNote, setNewNote] = useState('');
-  const [newPayment, setNewPayment] = useState({
-    date: '',
-    type: '',
-    amount: '',
-    currency: 'EUR',
-    retreatId: '',
-    paymentRequestId: '',
-    usdAmount: '',
-    usdPreviewLoading: false,
-    usdPreviewError: '',
-    note: ''
-  });
   const [newMedical, setNewMedical] = useState({
     type: '',
     title: '',
@@ -213,44 +200,6 @@ const ClientDetailsPage: React.FC = () => {
   }, [clientId, location.search, location.state]);
 
   useEffect(() => {
-    const amount = Number(newPayment.amount);
-    if (!amount || Number.isNaN(amount) || !newPayment.currency) {
-      setNewPayment((current) => ({ ...current, usdAmount: '', usdPreviewError: '', usdPreviewLoading: false }));
-      return;
-    }
-
-    let active = true;
-    const timeout = window.setTimeout(async () => {
-      try {
-        setNewPayment((current) => ({ ...current, usdPreviewLoading: true, usdPreviewError: '' }));
-        const response = await paymentsApi.convertToUsd(amount, newPayment.currency);
-        if (active) {
-          setNewPayment((current) => ({
-            ...current,
-            usdAmount: String(response.data.usd_amount ?? ''),
-            usdPreviewLoading: false,
-          }));
-        }
-      } catch (conversionError) {
-        console.error('Error converting payment amount to USD:', conversionError);
-        if (active) {
-          setNewPayment((current) => ({
-            ...current,
-            usdAmount: '',
-            usdPreviewLoading: false,
-            usdPreviewError: 'USD conversion unavailable',
-          }));
-        }
-      }
-    }, 350);
-
-    return () => {
-      active = false;
-      window.clearTimeout(timeout);
-    };
-  }, [newPayment.amount, newPayment.currency]);
-
-  useEffect(() => {
     let active = true;
     let objectUrl = '';
 
@@ -290,36 +239,9 @@ const ClientDetailsPage: React.FC = () => {
 
   const getDefaultRetreatId = () => getId(bookings[0]?.retreatId || bookings[0]?.retreat);
 
-  const resetNewPayment = () => {
-    setNewPayment({
-      date: '',
-      type: '',
-      amount: '',
-      currency: 'EUR',
-      retreatId: getDefaultRetreatId(),
-      paymentRequestId: '',
-      usdAmount: '',
-      usdPreviewLoading: false,
-      usdPreviewError: '',
-      note: ''
-    });
-  };
-
   const getBookingFullPrice = (booking: any) => (
     booking?.totalAmount || booking?.totalPrice || booking?.fullPrice || booking?.fullPriceQuote || ''
   );
-
-  const getPaymentTypeFormValue = (paymentType?: string) => {
-    const typeMap: Record<string, string> = {
-      deposit_non_refundable: 'deposit',
-      deposit_refundable: 'deposit',
-      regular_payment: 'installment',
-      balance_payment: 'full_payment',
-      refund: 'refund',
-      adjustment: 'installment',
-    };
-    return typeMap[paymentType || ''] || 'installment';
-  };
 
   const getRetreatLabel = (retreat: any) => {
     if (!retreat) return 'Unknown retreat';
@@ -397,14 +319,12 @@ const ClientDetailsPage: React.FC = () => {
   };
 
   const openAddPaymentModal = () => {
-    const params = new URLSearchParams({ clientId: clientId || '' });
-    if (bookings.length === 1 && bookings[0]?._id) params.set('bookingId', bookings[0]._id);
-    navigate(`/admin/payments/new?${params.toString()}`, { state: { returnTo: location.pathname + location.search } });
+    navigate(clientPaymentCreatePath(clientId || '', bookings), { state: { returnTo: location.pathname + location.search } });
   };
 
   const openEditPaymentModal = (payment: any) => {
     if (!payment?._id) return;
-    navigate(`/admin/payments/${payment._id}/edit`, { state: { returnTo: location.pathname + location.search } });
+    navigate(clientPaymentEditPath(payment._id), { state: { returnTo: location.pathname + location.search } });
   };
 
   const getPaymentRequestUrl = (request: PaymentRequest) => (
@@ -428,65 +348,6 @@ const ClientDetailsPage: React.FC = () => {
     if (selectedBooking?.currency) params.set('currency', selectedBooking.currency);
 
     navigate(`/admin/payment-requests/new?${params.toString()}`);
-  };
-
-  const handlePaymentRequestSelect = (paymentRequestId: string, paymentRequest?: PaymentRequest) => {
-    setNewPayment((current) => ({
-      ...current,
-      paymentRequestId,
-      amount: paymentRequest ? String(paymentRequest.fullPriceQuote ?? paymentRequest.amountPaid ?? current.amount) : current.amount,
-      currency: paymentRequest?.currency || current.currency,
-      retreatId: paymentRequest ? getId(paymentRequest.retreatId) : current.retreatId,
-      note: current.note || (paymentRequest ? `Payment for invoice ${paymentRequest.invoiceNumber || paymentRequest.display_id || ''}`.trim() : ''),
-    }));
-  };
-
-  const handleSavePayment = async () => {
-    if (!clientId || !newPayment.date || !newPayment.type || !newPayment.amount) return;
-
-    const retreatId = newPayment.retreatId || getDefaultRetreatId();
-    if (!retreatId) {
-      alert('Please select a retreat for this payment.');
-      return;
-    }
-
-    const paymentTypeMap: Record<string, string> = {
-      deposit: 'deposit_non_refundable',
-      full_payment: 'regular_payment',
-      installment: 'regular_payment',
-      refund: 'refund',
-    };
-
-    try {
-      const paymentData = {
-        clientId,
-        retreatId,
-        paymentRequestId: newPayment.paymentRequestId || undefined,
-        amount: parseFloat(newPayment.amount),
-        usd_amount: newPayment.usdAmount ? Number(newPayment.usdAmount) : undefined,
-        currency: newPayment.currency as any,
-        status: newPayment.type === 'refund' ? 'refunded' : 'completed',
-        paymentMethod: 'other',
-        paymentType: (paymentTypeMap[newPayment.type] || 'regular_payment') as any,
-        description: newPayment.note || undefined,
-        paymentDate: newPayment.date,
-        notes: newPayment.note || undefined,
-      } as any;
-
-      if (editingPayment?._id) {
-        await paymentsApi.update(editingPayment._id, paymentData);
-      } else {
-        await paymentsApi.create(paymentData);
-      }
-
-      await fetchClientData();
-      resetNewPayment();
-      setEditingPayment(null);
-      setShowAddPaymentModal(false);
-    } catch (paymentError) {
-      console.error('Error saving payment:', paymentError);
-      alert('Failed to save payment');
-    }
   };
 
   const handleDeletePayment = async (payment: any) => {
@@ -548,27 +409,25 @@ const ClientDetailsPage: React.FC = () => {
       setError(null);
 
       // Fetch all data in parallel
-      const [clientResponse, paymentsResponse, paymentRequestsResponse, bookingsResponse, retreatsResponse, medicalResponse, artifactsResponse] = await Promise.all([
-        clientsApi.getOne(clientId!),
+      const [coreData, paymentsResponse, paymentRequestsResponse, retreatsResponse, artifactsResponse] = await Promise.all([
+        loadClientCoreData(clientId!),
         paymentsApi.getByClient(clientId!).catch(() => ({ data: [] })),
         paymentRequestsApi.getByClient(clientId!).catch(() => ({ data: [] })),
-        bookingsApi.getByClient(clientId!).catch(() => ({ data: [] })),
         retreatsApi.getAll().catch(() => ({ data: [] })),
-        clientMedicalApi.getByClient(clientId!).catch(() => ({ data: null })),
         medicalArtifactsApi.getAll({ clientId: clientId! }).catch(() => ({ data: [] }))
       ]);
 
-      setClient(clientResponse.data);
+      setClient(coreData.client);
       setPayments(paymentsResponse.data || []);
       setPaymentRequests(paymentRequestsResponse.data || []);
-      const bookingData = bookingsResponse.data || [];
+      const bookingData = coreData.bookings;
       const retreatData = retreatsResponse.data || [];
       setBookings(bookingData);
       setRetreats(retreatData);
       await loadRetreatHeroUrls(bookingData, retreatData);
       // Artifact uploads are valid medical information even when no legacy ClientMedical row exists.
       // Keep the section mounted so newly uploaded EKG/liver artifacts are always visible.
-      setMedicalInfo(medicalResponse.data || ({} as any));
+      setMedicalInfo(coreData.medical || ({} as any));
       setMedicalArtifacts(artifactsResponse.data || []);
       await loadClientTasks();
     } catch (error: any) {
@@ -2228,146 +2087,6 @@ const ClientDetailsPage: React.FC = () => {
           }}
           error={taskError}
         />
-      )}
-
-      {/* Add Payment Modal */}
-      {showAddPaymentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-md">
-            <div className="p-6">
-              <h3 className="text-lg font-semibold mb-4">{editingPayment ? 'Edit Payment' : 'Add Payment'}</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Date
-                  </label>
-                  <input
-                    type="date"
-                    value={newPayment.date}
-                    onChange={(e) => setNewPayment({...newPayment, date: e.target.value})}
-                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Type
-                  </label>
-                  <select
-                    value={newPayment.type}
-                    onChange={(e) => setNewPayment({...newPayment, type: e.target.value})}
-                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Select payment type</option>
-                    <option value="deposit">Deposit</option>
-                    <option value="full_payment">Full Payment</option>
-                    <option value="installment">Installment</option>
-                    <option value="refund">Refund</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Retreat
-                  </label>
-                  <select
-                    value={newPayment.retreatId}
-                    onChange={(e) => setNewPayment({...newPayment, retreatId: e.target.value})}
-                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Select retreat</option>
-                    {getRetreatOptions().map((retreat) => (
-                      <option key={retreat.id} value={retreat.id}>
-                        {retreat.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Payment Request (Optional)
-                  </label>
-                  <SearchablePaymentRequestSelect
-                    selectedPaymentRequestId={newPayment.paymentRequestId}
-                    onPaymentRequestSelect={handlePaymentRequestSelect}
-                    placeholder="Search by invoice/display number, client, or retreat"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Amount
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={newPayment.amount}
-                    onChange={(e) => setNewPayment({...newPayment, amount: e.target.value})}
-                    placeholder="0.00"
-                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Currency
-                    </label>
-                    <select
-                      value={newPayment.currency}
-                      onChange={(e) => setNewPayment({...newPayment, currency: e.target.value})}
-                      className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value="EUR">EUR</option>
-                      <option value="USD">USD</option>
-                      <option value="CZK">CZK</option>
-                      <option value="PLN">PLN</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      USD Amount
-                    </label>
-                    <input
-                      type="text"
-                      value={newPayment.usdPreviewLoading ? 'Calculating...' : newPayment.usdAmount ? `$${Number(newPayment.usdAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : ''}
-                      readOnly
-                      placeholder="Calculated"
-                      className="w-full p-2 border border-gray-200 rounded-md bg-gray-50 text-gray-700"
-                    />
-                    {newPayment.usdPreviewError && <p className="mt-1 text-xs text-red-600">{newPayment.usdPreviewError}</p>}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Note (Optional)
-                  </label>
-                  <textarea
-                    value={newPayment.note}
-                    onChange={(e) => setNewPayment({...newPayment, note: e.target.value})}
-                    placeholder="Add a note about this payment"
-                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    rows={3}
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end space-x-3 mt-6">
-                <AppleButton
-                  onClick={() => {
-                    setShowAddPaymentModal(false);
-                    setEditingPayment(null);
-                    resetNewPayment();
-                  }}
-                  variant="ghost"
-                >
-                  Cancel
-                </AppleButton>
-                <AppleButton
-                  onClick={handleSavePayment}
-                  className="apple-button-primary"
-                >
-                  {editingPayment ? 'Update Payment' : 'Add Payment'}
-                </AppleButton>
-              </div>
-            </div>
-          </div>
-        </div>
       )}
 
       {/* Add Medical Record Modal */}

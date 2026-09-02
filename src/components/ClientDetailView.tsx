@@ -9,6 +9,7 @@ import { TasksWidget } from './Tasks/TasksWidget';
 import { generateBookingPDF } from './BookingConfirmationPDF';
 import { normalizeClientTag } from '../utils/clientTags';
 import './ClientsGrid.css';
+import { loadClientCoreData } from '../services/clientCoreDataService';
 import './ComprehensiveMedicalTrackingTab.css';
 
 interface ClientDetailViewProps {
@@ -91,18 +92,14 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
   const fetchClientData = async () => {
     try {
       setLoading(true);
-      const [clientResponse, medicalResponse, bookingsResponse] = await Promise.all([
-        clientsApi.getOne(clientId),
-        clientMedicalApi.getByClient(clientId),
-        bookingsApi.getByClient(clientId)
-      ]);
+      const coreData = await loadClientCoreData(clientId);
 
-      setClient(clientResponse.data);
-      setMedicalData(medicalResponse.data || []);
-      setClientBookings(bookingsResponse.data || []);
+      setClient(coreData.client);
+      setMedicalData(coreData.medical || []);
+      setClientBookings(coreData.bookings);
 
       // Extract retreats from bookings
-      const clientRetreats = bookingsResponse.data.map((booking: any) => booking.retreatDetails || booking.retreatId).filter(Boolean);
+      const clientRetreats = coreData.bookings.map((booking: any) => booking.retreatDetails || booking.retreatId).filter(Boolean);
       setRetreats(clientRetreats);
 
       // Fetch notes for this client
