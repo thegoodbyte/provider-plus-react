@@ -1,10 +1,10 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import EmailComposeModal from './EmailComposeModal';
-import { communicationsApi } from '../services/api';
+import { bookingsApi, communicationsApi } from '../services/api';
 
 jest.mock('../services/api', () => ({
-  bookingsApi: {},
+  bookingsApi: { getOne: jest.fn() },
   communicationsApi: {
     getSettings: jest.fn(),
     getTemplates: jest.fn(),
@@ -38,5 +38,22 @@ describe('EmailComposeModal client hydration', () => {
     expect(communicationsApi.previewEmail).toHaveBeenCalledWith(expect.not.objectContaining({ bookingId: expect.anything() }));
     const message = await screen.findByDisplayValue(/Cześć Szymon/);
     expect((message as HTMLTextAreaElement).value).toContain('workflow?step=blood_pressure');
+  });
+
+  it('does not prepare a PDF for an explicitly selected missing-requirements email', async () => {
+    (communicationsApi.getTemplates as jest.Mock).mockResolvedValue({ data: [
+      { _id: 'requirements-en', templateKey: 'booking_requirements_reminder', name: 'Missing requirements', language: 'en', active: true, subject: 'Missing steps', bodyText: 'Please complete these steps.' },
+      { _id: 'confirmation-en', templateKey: 'booking_confirmation', category: 'booking_confirmation', name: 'Confirmation', language: 'en', active: true, subject: 'Confirmed', bodyText: 'Welcome.' },
+    ] });
+    (communicationsApi.previewEmail as jest.Mock).mockResolvedValue({ data: { subject: 'Missing steps', bodyText: 'Please complete these steps.', bodyHtml: '', variables: {} } });
+
+    render(<EmailComposeModal initialValues={{
+      templateKey: 'booking_requirements_reminder', bookingId: 'booking-1', relatedEntityType: 'booking', to: 'client@example.com',
+    }} onClose={jest.fn()} />);
+
+    await waitFor(() => expect(communicationsApi.previewEmail).toHaveBeenCalledWith(expect.objectContaining({ templateId: 'requirements-en' })));
+    expect(bookingsApi.getOne).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Send Email' })).toBeEnabled();
+    expect(screen.queryByText('Preparing PDF…')).not.toBeInTheDocument();
   });
 });
