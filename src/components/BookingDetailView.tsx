@@ -19,6 +19,7 @@ import { confirmationLanguage, BookingConfirmationLanguage } from './bookingConf
 import { useBookingConfirmationPdf } from './useBookingConfirmationPdf';
 import { useBookingConfirmationEmail } from './useBookingConfirmationEmail';
 import './BookingDetailView.css';
+import { apiErrorMessage } from '../utils/apiErrorMessage';
 
 interface BookingDetailViewProps {
   bookingId: string;
@@ -171,7 +172,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const openReschedule = async () => {
     setRescheduleError(''); setRescheduleOpen(true);
     try { setRescheduleRetreats((await retreatsApi.getAll()).data || []); }
-    catch (error: any) { setRescheduleError(error?.response?.data?.message || error?.message || 'Unable to load retreats.'); }
+    catch (error: any) { setRescheduleError(apiErrorMessage(error, 'Unable to load retreats.')); }
   };
   const submitReschedule = async (data: { targetRetreatId: string; reason: string; note: string; sendEmail: boolean }) => {
     setRescheduling(true); setRescheduleError('');
@@ -187,7 +188,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
         await communicationsApi.sendEmail({ to: recipient, subject, bodyText, bodyHtml: `<div style="font-family:Arial,sans-serif;white-space:pre-line">${bodyText}</div>`, templateId, clientId, bookingId, retreatId: getObjectId(nextRetreat), variables });
       }
       setRescheduleOpen(false); await fetchBookingDetails(); setRequirementsRefreshKey(current=>current+1);
-    } catch (error: any) { setRescheduleError(error?.response?.data?.message || error?.message || 'Unable to reschedule this booking.'); }
+    } catch (error: any) { setRescheduleError(apiErrorMessage(error, 'Unable to reschedule this booking.')); }
     finally { setRescheduling(false); }
   };
 
