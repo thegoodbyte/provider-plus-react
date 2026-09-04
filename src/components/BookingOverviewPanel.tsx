@@ -21,23 +21,19 @@ const money = (amount: number, currency: string) => new Intl.NumberFormat('en-US
 const BookingOverviewPanel: React.FC<Props> = ({ bookingId, booking, client, retreat, clientName, retreatCode, onEditClient, onBookingRefresh, onOpenTab, onSendConfirmation }) => {
   const [payments, setPayments] = useState<any[]>([]);
   const [requests, setRequests] = useState<any[]>([]);
-  const [totalUsd, setTotalUsd] = useState<number | null>(Number.isFinite(Number(booking?.totalAmountUsd)) ? Number(booking.totalAmountUsd) : null);
+  const [totalUsd, setTotalUsd] = useState<number | null>(null);
   const clientId = objectId(client); const retreatId = objectId(retreat);
   const requirements = useBookingRequirements({ bookingId, clientId, retreatId, refreshKey: 0 });
   useEffect(() => { let live = true; Promise.all([loadBookingPayments(bookingId, booking.bookingHash), paymentRequestsApi.getByBooking(bookingId)]).then(([paid, requested]) => { if (live) { setPayments(paid); setRequests(requested.data || []); } }).catch(() => undefined); return () => { live = false; }; }, [bookingId, booking.bookingHash]);
   const currency = booking.currency || 'EUR';
   const total = Number(booking.totalAmount || 0);
   useEffect(() => {
-    if (Number.isFinite(Number(booking?.totalAmountUsd)) && Number(booking.totalAmountUsd) > 0) {
-      setTotalUsd(Number(booking.totalAmountUsd));
-      return;
-    }
     let live = true;
     paymentsApi.convertToUsd(total, currency).then(response => {
       if (live) setTotalUsd(Number(response.data?.usd_amount));
     }).catch(() => { if (live) setTotalUsd(null); });
     return () => { live = false; };
-  }, [booking?.totalAmountUsd, total, currency]);
+  }, [total, currency]);
   const settlement = bookingSettlementSummary(payments, total, currency, totalUsd);
   const { received, outstanding, overpaid, paidPercent, paidInFull, basis } = settlement;
   const settlementCurrency = basis === 'USD' ? 'USD' : currency;

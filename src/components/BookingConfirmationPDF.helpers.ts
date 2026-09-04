@@ -108,3 +108,17 @@ export const formatPaymentRequestDisplayLabel = (
 
   return String(paymentRequest.invoiceNumber || paymentRequest.display_id || paymentRequest._id || '').trim();
 };
+
+export const buildBookingPriceRows = (booking: any) => {
+  const summary = booking?.pricingSummary;
+  if (summary?.basePrice == null) return [];
+  return [
+    { kind: 'base', label: 'base', amount: Number(summary.basePrice || 0) },
+    ...(summary.adjustments || []).map((item: any) => ({
+      kind: item.type === 'discount' ? 'discount' : 'addition',
+      label: String(item.label || ''),
+      amount: item.type === 'discount' ? -Math.abs(Number(item.amount || 0)) : Math.abs(Number(item.amount || 0)),
+    })),
+    { kind: 'total', label: 'total', amount: Number(summary.finalPrice ?? booking.totalAmount ?? 0) },
+  ];
+};

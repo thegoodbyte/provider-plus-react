@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { message } from 'antd';
 import { bookingsApi } from '../services/api';
-import { createBookingConfirmationPdf } from './BookingConfirmationPDF';
+import { BOOKING_CONFIRMATION_TEMPLATE_VERSION, createBookingConfirmationPdf } from './BookingConfirmationPDF';
 import { BookingConfirmationLanguage } from './bookingConfirmationWorkflow';
 export const useBookingConfirmationPdf = (bookingId: string, booking: any, language: BookingConfirmationLanguage) => {
   const [generating, setGenerating] = useState(false); const [previewing, setPreviewing] = useState(false); const [previewPhase, setPreviewPhase] = useState<'loading' | 'generating' | null>(null); const [previewUrl, setPreviewUrl] = useState(''); const [previewFileName, setPreviewFileName] = useState('');
@@ -19,7 +19,7 @@ export const useBookingConfirmationPdf = (bookingId: string, booking: any, langu
       const generatedAt = +new Date(stored?.generatedAt || 0);
       let blob: Blob;
       let fileName: string;
-      if (stored?.s3Key && generatedAt >= bookingUpdatedAt) {
+      if (stored?.s3Key && stored?.templateVersion === BOOKING_CONFIRMATION_TEMPLATE_VERSION && generatedAt >= bookingUpdatedAt) {
         const response = await bookingsApi.getConfirmationPdf(bookingId, language);
         blob = response.data as Blob;
         fileName = stored.fileName || `booking-confirmation-${freshBooking?.bookingNumber || bookingId}.pdf`;

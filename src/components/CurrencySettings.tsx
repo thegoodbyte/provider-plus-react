@@ -136,7 +136,7 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
       setConverterError(null);
       const response = await paymentsApi.convert(amount, converterFromCurrency, converterToCurrency);
       setConverterResult(response.data.amount);
-      setConverterSource(response.data.provider || 'Revolut');
+      setConverterSource(response.data.provider || 'ECB reference rate');
     } catch (err) {
       try {
         const usdAmount = await currencyService.convertToUSD(amount, converterFromCurrency);
@@ -280,7 +280,7 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
         </div>
 
         <div className="currency-info">
-          <p><strong>Rate provider:</strong> {configSummary?.integrations?.exchangeRateProviderLabel || 'Revolut'}</p>
+          <p><strong>Rate provider:</strong> {configSummary?.integrations?.exchangeRateProviderLabel || 'ECB reference rate'}</p>
           <p><strong>Rate data:</strong> {isLoading ? 'Loading…' : error ? 'Live lookup remains available' : `Updated ${lastUpdated}`}</p>
           {!isLoading && nextUpdate && <p><strong>Next cached-rate update:</strong> {nextUpdate}</p>}
         </div>
@@ -302,7 +302,7 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
               <p><strong>Medical artifact path:</strong> {configSummary.uploads?.medicalArtifactPathPattern}</p>
               <p><strong>Thumbnail path:</strong> {configSummary.uploads?.medicalArtifactThumbnailPathPattern}</p>
               <p><strong>Thumbnail size:</strong> {configSummary.uploads?.thumbnailWidth} x {configSummary.uploads?.thumbnailHeight}</p>
-              <p><strong>Revolut token:</strong> {configSummary.integrations?.revolutApiTokenConfigured ? 'set' : 'missing'}</p>
+              <p><strong>ECB feed:</strong> official daily reference rates, cached for 4 hours</p>
               <p><strong>Google OAuth:</strong> {configSummary.integrations?.googleOAuthConfigured ? 'configured' : 'not configured'}</p>
               {!configSummary.storage?.s3Configured && (
                 <div className="error-message">

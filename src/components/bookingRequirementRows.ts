@@ -26,6 +26,8 @@ const canonicalRequirementKeys = new Set([
   'medications_form_initial_received',
   'questionnaire_received',
   'food_form_received',
+  'food_questionaire_received',
+  'food_questionnaire_received',
   'blood_pressure_received',
 ]);
 export const objectId = (value: any) => typeof value === 'object' ? value?._id || value?.id : value;
@@ -63,7 +65,7 @@ const definitionForItem = (item: BookingFlowItem): RequirementDefinition => {
     contract_signed: 'contract', contract_received: 'contract', client_agreement_received: 'contract',
     entry_ekg_received: 'ekg', entry_liver_panel_received: 'liver',
     medications_form_initial_received: 'medications', questionnaire_received: 'questionnaire',
-    food_form_received: 'food',
+    food_form_received: 'food', food_questionaire_received: 'food', food_questionnaire_received: 'food',
   };
   const canonicalKey = canonicalKeyByStepKey[normalize(item.key)];
   const canonical = requirementDefinitions.find((definition) => definition.key === canonicalKey) || requirementDefinitions.find((definition) =>
@@ -87,8 +89,8 @@ const definitionForItem = (item: BookingFlowItem): RequirementDefinition => {
 export const isVisibleBookingRequirement = (item: BookingFlowItem) => {
   const template = typeof item.templateId === 'object' ? item.templateId : undefined;
   const configured = item.metadata?.requiredFromClient ?? template?.requiredFromClient;
-  return configured === true
-    || item.metadata?.isRequirement === true
+  if (configured !== undefined) return configured === true;
+  return item.metadata?.isRequirement === true
     || template?.isRequirement === true
     || Boolean(item.metadata?.requirementType || template?.requirementType)
     || canonicalRequirementKeys.has(normalize(item.key));

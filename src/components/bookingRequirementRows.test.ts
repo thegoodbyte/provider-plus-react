@@ -95,13 +95,21 @@ describe('booking requirement rows', () => {
     expect(rows[0]).toMatchObject({ key: 'ekg', label: 'Entry EKG', relatedItems: [items[0], items[1]] });
   });
 
-  it('keeps an explicitly displayed requirement visible even when it is not required from the client', () => {
+  it('does not show an explicitly non-client workflow step as a missing client requirement', () => {
     const rows = buildBookingRequirementRows([{
       _id: 'contract', key: 'contract_signed', title: 'Contract', status: 'received',
       metadata: { isRequirement: true, requiredFromClient: false, requirementType: 'contract_signed' },
     } as any], [], [], [], [], {});
 
+    expect(rows).toHaveLength(0);
+  });
+
+  it('collapses a misspelled legacy food-received step onto the submitted Food Form document', () => {
+    const rows = buildBookingRequirementRows([{
+      _id: 'food-received', key: 'food_questionaire_received', title: 'Food Questionaire Received', status: 'pending',
+      metadata: { isRequirement: true, requiredFromClient: true, requirementType: 'food_intake', readinessGroup: 'Dietery' },
+    } as any], [], [], [{ _id: 'food-doc', documentType: 'food_intake', files: [{ fileName: 'food.pdf' }] } as any], [], {});
     expect(rows).toHaveLength(1);
-    expect(rows[0].label).toBe('Contract');
+    expect(rows[0]).toMatchObject({ key: 'food', label: 'Food Form', uploaded: true, satisfied: true, latestDocument: { _id: 'food-doc' } });
   });
 });

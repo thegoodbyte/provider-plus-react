@@ -9,7 +9,7 @@ import './BookingPaymentManagement.css';
 import { bookingPaymentSummary, bookingSettlementSummary } from './bookingStatusSelectors';
 import { loadBookingPayments } from './loadBookingPayments';
 
-const DEFAULT_EXCHANGE_RATE_PROVIDER_LABEL = 'Revolut';
+const DEFAULT_EXCHANGE_RATE_PROVIDER_LABEL = 'ECB reference rate';
 
 interface BookingPaymentManagementProps {
   bookingId: string;
@@ -20,6 +20,7 @@ interface BookingPaymentManagementProps {
   retreatId: string;
   totalAmount: number;
   currency: string;
+  pricingSummary?: any;
   onPaymentUpdate?: () => void;
 }
 
@@ -34,6 +35,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   retreatId,
   totalAmount,
   currency,
+  pricingSummary,
   onPaymentUpdate
 }) => {
   const navigate = useNavigate();
@@ -96,24 +98,27 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
   const [paymentPlanSaving, setPaymentPlanSaving] = useState(false);
   const [showPriceEditor, setShowPriceEditor] = useState(false);
   const [priceSaving, setPriceSaving] = useState(false);
-  const [priceDraft, setPriceDraft] = useState(String(totalAmount || ''));
-  const [priceCurrency, setPriceCurrency] = useState(String(currency || 'EUR').toUpperCase());
+  const [priceDraft, setPriceDraft] = useState(String(pricingSummary?.basePrice ?? totalAmount ?? ''));
+  const [priceAdjustments, setPriceAdjustments] = useState<any[]>(pricingSummary?.adjustments || []);
+  const [priceCurrency, setPriceCurrency] = useState<'PLN' | 'EUR' | 'USD' | 'CZK'>(String(currency || 'EUR').toUpperCase() as 'PLN' | 'EUR' | 'USD' | 'CZK');
   const [priceReason, setPriceReason] = useState('');
 
   useEffect(() => {
     if (!showPriceEditor) {
-      setPriceDraft(String(totalAmount || ''));
-      setPriceCurrency(String(currency || 'EUR').toUpperCase());
+      setPriceDraft(String(pricingSummary?.basePrice ?? totalAmount ?? ''));
+      setPriceAdjustments(pricingSummary?.adjustments || []);
+      setPriceCurrency(String(currency || 'EUR').toUpperCase() as 'PLN' | 'EUR' | 'USD' | 'CZK');
     }
-  }, [totalAmount, currency, showPriceEditor]);
+  }, [totalAmount, currency, pricingSummary, showPriceEditor]);
 
   const saveBookingPrice = async () => {
     const amount = Number(priceDraft);
-    if (!Number.isFinite(amount) || amount <= 0) return alert('Enter a booking price greater than zero.');
+    if (!Number.isFinite(amount) || amount < 0) return alert('Enter a valid basic booking price.');
+    if (priceAdjustments.some(item => !String(item.label || '').trim() || !Number.isFinite(Number(item.amount)) || Number(item.amount) <= 0)) return alert('Every discount or add-on needs a description and an amount greater than zero.');
     if (priceReason.trim().length < 3) return alert('Add a short reason so this accounting change is auditable.');
     try {
       setPriceSaving(true);
-      await paymentsApi.updateBookingPrice(bookingId, { totalAmount: amount, currency: priceCurrency, reason: priceReason.trim() });
+      await paymentsApi.updateBookingPrice(bookingId, { basePrice: amount, currency: priceCurrency, reason: priceReason.trim(), adjustments: priceAdjustments.map(item => ({ ...item, amount: Math.abs(Number(item.amount)) })) });
       setShowPriceEditor(false);
       setPriceReason('');
       await syncPaymentPlan();
@@ -706,7 +711,7 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
       </div>
 
       <div className={`booking-balance-summary ${isPaidInFull ? 'is-paid' : 'has-balance'}`}>
-        <div className="booking-balance-metric total"><span>Total cost · USD booking price</span><strong>{formatUsd(totalCostUsd)}</strong><small><CurrencyDisplay amount={totalAmount} currency={bookingCurrency} showUSD={false} /> original price</small><button type="button" className="change-booking-price" onClick={() => setShowPriceEditor(true)}>Change booking price</button></div>
+        <div className="booking-balance-metric total"><span>Total cost · USD booking price</span><strong>{formatUsd(totalCostUsd)}</strong><small><CurrencyDisplay amount={totalAmount} currency={bookingCurrency} showUSD={false} /> final booking price</small><button type="button" className="change-booking-price" onClick={() => setShowPriceEditor(true)}>Manage booking price</button></div>
         <div className="booking-balance-metric received"><span>Received · USD</span><strong>{formatUsd(totalPaidUsd)}</strong><small><CurrencyDisplay amount={totalPaidBookingCurrency} currency={bookingCurrency} showUSD={false} /> recorded in {bookingCurrency} · {payments.length} payment{payments.length === 1 ? '' : 's'}</small></div>
         <div className="booking-balance-metric outstanding"><span>{overpaymentUsd > 0.005 ? 'Overpaid · client credit' : isPaidInFull ? 'Paid in full' : 'Balance outstanding · USD'}</span><strong>{formatUsd(overpaymentUsd > 0.005 ? overpaymentUsd : isPaidInFull ? 0 : balanceUsd)}</strong><small>{overpaymentUsd > 0.005 ? 'Paid above the USD booking price' : <><CurrencyDisplay amount={isPaidInFull ? 0 : bookingBalance} currency={bookingCurrency} showUSD={false} />{!isPaidInFull && paymentPlan?.dueDate ? ` · due ${formatCalendarDate(paymentPlan.dueDate)}` : ''}</>}</small></div>
         <div className="booking-payment-progress">
@@ -717,10 +722,20 @@ const BookingPaymentManagement: React.FC<BookingPaymentManagementProps> = ({
         {totalRefundedUsd > 0 && <div className="booking-refund-summary">Refunded {formatUsd(totalRefundedUsd)}</div>}
       </div>
 
-      {showPriceEditor && <div className="booking-price-editor" role="dialog" aria-label="Change booking price">
-        <div><strong>Change booking price</strong><p>This changes the booking ledger, retreat revenue and outstanding balance. It does not alter received payments.</p></div>
-        <label>New price<input type="number" min="0.01" step="0.01" value={priceDraft} onChange={event => setPriceDraft(event.target.value)} /></label>
-        <label>Currency<select value={priceCurrency} onChange={event => setPriceCurrency(event.target.value)}>{['PLN','EUR','USD','CZK'].map(code => <option key={code}>{code}</option>)}</select></label>
+      {showPriceEditor && <div className="booking-price-editor" role="dialog" aria-label="Manage booking price">
+        <div><strong>Manage booking price</strong><p>Start with the basic price, then itemize every discount and add-on. Payments remain unchanged.</p></div>
+        <label>Basic booking price<input type="number" min="0" step="0.01" value={priceDraft} onChange={event => setPriceDraft(event.target.value)} /></label>
+        <label>Currency<select value={priceCurrency} onChange={event => setPriceCurrency(event.target.value as 'PLN' | 'EUR' | 'USD' | 'CZK')}>{['PLN','EUR','USD','CZK'].map(code => <option key={code}>{code}</option>)}</select></label>
+        <div className="booking-price-items">
+          {priceAdjustments.map((item, index) => <div className="booking-price-item" key={item.id || index}>
+            <select aria-label={`Price item ${index + 1} type`} value={item.type} onChange={event => setPriceAdjustments(current => current.map((row, rowIndex) => rowIndex === index ? { ...row, type: event.target.value } : row))}><option value="discount">Discount</option><option value="addon">Add-on</option><option value="surcharge">Surcharge</option><option value="adjustment">Adjustment</option></select>
+            <input aria-label={`Price item ${index + 1} description`} placeholder="Description" value={item.label || ''} onChange={event => setPriceAdjustments(current => current.map((row, rowIndex) => rowIndex === index ? { ...row, label: event.target.value } : row))} />
+            <input aria-label={`Price item ${index + 1} amount`} type="number" min="0.01" step="0.01" placeholder="Amount" value={item.amount ?? ''} onChange={event => setPriceAdjustments(current => current.map((row, rowIndex) => rowIndex === index ? { ...row, amount: event.target.value } : row))} />
+            <button type="button" aria-label={`Remove price item ${index + 1}`} onClick={() => setPriceAdjustments(current => current.filter((_, rowIndex) => rowIndex !== index))}>Remove</button>
+          </div>)}
+          <div className="booking-price-add-actions"><button type="button" onClick={() => setPriceAdjustments(current => [...current, { type: 'discount', label: '', amount: '' }])}>+ Add discount</button><button type="button" onClick={() => setPriceAdjustments(current => [...current, { type: 'addon', label: '', amount: '' }])}>+ Add add-on</button></div>
+          <strong>Final booking price: <CurrencyDisplay amount={Math.max(0, Number(priceDraft || 0) + priceAdjustments.reduce((sum, item) => sum + (item.type === 'discount' ? -1 : 1) * Math.abs(Number(item.amount || 0)), 0))} currency={priceCurrency} showUSD={false} /></strong>
+        </div>
         <label className="booking-price-reason">Reason *<input value={priceReason} onChange={event => setPriceReason(event.target.value)} placeholder="e.g. Joint-booking discount removed" /></label>
         <div className="booking-price-actions"><button type="button" onClick={() => setShowPriceEditor(false)} disabled={priceSaving}>Cancel</button><button type="button" onClick={saveBookingPrice} disabled={priceSaving}>{priceSaving ? 'Saving…' : 'Save price'}</button></div>
       </div>}

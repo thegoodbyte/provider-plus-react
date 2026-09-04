@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FiAlertTriangle, FiCheck, FiChevronDown, FiChevronRight, FiClock, FiCopy, FiEye, FiEdit2, FiFolder, FiLink, FiLock, FiMenu, FiPlus, FiRefreshCw, FiSearch, FiSend, FiThumbsDown, FiThumbsUp, FiTrash2, FiUnlock, FiX, FiZap } from 'react-icons/fi';
+import { FiAlertTriangle, FiCheck, FiChevronDown, FiChevronRight, FiClock, FiCopy, FiDownload, FiEye, FiEdit2, FiFolder, FiLink, FiLock, FiMenu, FiPlus, FiRefreshCw, FiSearch, FiSend, FiThumbsDown, FiThumbsUp, FiTrash2, FiUnlock, FiX, FiZap } from 'react-icons/fi';
 import LoadingSpinner from './LoadingSpinner';
 import MedicalReviewTypeBadge from './MedicalReviewTypeBadge';
 import { medicalReviewRequestsApi, medicalTrackingApi, clientsApi, retreatsApi } from '../services/api';
@@ -166,6 +166,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const [packetMoveMessage, setPacketMoveMessage] = useState('');
   const [autoAssignSaving, setAutoAssignSaving] = useState(false);
   const [autoAssignMessage, setAutoAssignMessage] = useState('');
+  const [downloadingPacketId, setDownloadingPacketId] = useState('');
 
   const loadData = useCallback(async () => {
     try {
@@ -484,6 +485,23 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     if (!window.confirm('Delete this review request?')) return;
     await medicalReviewRequestsApi.delete(id);
     await loadData();
+  };
+
+  const downloadPendingArtifacts = async (group: MedicalReviewGroup) => {
+    const groupId = group._id || '';
+    if (!groupId) return;
+    try {
+      setDownloadingPacketId(groupId);
+      const response = await medicalReviewRequestsApi.downloadPendingArtifacts(groupId);
+      // The S3 response supplies Content-Disposition with the packet filename.
+      // Navigating directly avoids browsers blocking a synthetic cross-origin
+      // anchor click after the asynchronous API request has completed.
+      window.location.assign(response.data.url);
+    } catch (requestError: any) {
+      window.alert(requestError?.response?.data?.message || 'Unable to download pending MRR artifacts.');
+    } finally {
+      setDownloadingPacketId('');
+    }
   };
 
   const runConfirmAction = async () => {
@@ -1041,6 +1059,21 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
+                    {canManageRequests && group._id && (
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void downloadPendingArtifacts(group);
+                        }}
+                        disabled={Boolean(downloadingPacketId)}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
+                        title={`Download pending artifacts from ${group.title}`}
+                        aria-label={`Download pending artifacts from ${group.title}`}
+                      >
+                        <Icon icon={FiDownload} className={`h-3.5 w-3.5 ${downloadingPacketId === group._id ? 'animate-pulse' : ''}`} />
+                      </button>
+                    )}
                     {(group.pendingCount || 0) > 0 && (
                       <span
                         className="inline-flex h-7 min-w-7 items-center justify-center rounded-full bg-amber-100 px-2 text-xs font-bold text-amber-800"

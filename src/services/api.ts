@@ -282,7 +282,7 @@ const refreshCanonicalBookingConfirmation = async (bookingId: string) => {
     const { blob, fileName } = await createBookingConfirmationPdf({ booking, language });
     const formData = new FormData();
     formData.append('file', blob, fileName);
-    await api.post(`/bookings/${bookingId}/confirmation-pdf?language=${language}`, formData, {
+    await api.post(`/bookings/${bookingId}/confirmation-pdf?language=${language}&templateVersion=2026-09-03-compact-layout-v3`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     cacheService.clearPattern(`bookings:${bookingId}`);
@@ -327,7 +327,7 @@ export const bookingsApi = {
     cacheService.clearPattern('payments:');
     return api.patch<RetreatClient>(`/bookings/${id}/cancel`, data);
   },
-  reschedule: (id: string, data: { targetRetreatId: string; reason: string; note: string; sendEmail?: boolean }) => {
+  reschedule: (id: string, data: { targetRetreatId: string; reason: string; note: string; sendEmail?: boolean; allowEarlierRetreat?: boolean }) => {
     cacheService.clearPattern('bookings:'); cacheService.clearPattern('booking-flow:'); cacheService.clearPattern('payments:');
     return api.patch<RetreatClient>(`/bookings/${id}/reschedule`, data);
   },
@@ -347,7 +347,7 @@ export const bookingsApi = {
     const formData = new FormData();
     formData.append('file', blob, fileName);
     cacheService.clearPattern('bookings:');
-    return api.post(`/bookings/${id}/confirmation-pdf?language=${language}`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+    return api.post(`/bookings/${id}/confirmation-pdf?language=${language}&templateVersion=2026-09-03-compact-layout-v3`, formData, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
   getConfirmationPdf: (id: string, language: 'en' | 'cz' | 'pl') =>
     api.get(`/bookings/${id}/confirmation-pdf?language=${language}`, { responseType: 'blob' }),
@@ -430,10 +430,14 @@ export const paymentsApi = {
   syncBookingPlan: (bookingId: string) => api.post(`/payments/plan-settings/sync-booking/${bookingId}`),
   getBookingPlan: (bookingId: string) => api.get(`/payments/plan-settings/booking/${bookingId}`),
   updateBookingPlan: (bookingId: string, data: { enabled?: boolean; dueDate?: string }) => api.patch(`/payments/plan-settings/booking/${bookingId}`, data),
-  updateBookingPrice: (bookingId: string, data: { totalAmount: number; currency: string; reason: string }) => {
+  updateBookingPrice: (bookingId: string, data: { basePrice: number; currency: string; reason: string; adjustments: Array<{ id?: string; type: 'discount' | 'addon' | 'surcharge' | 'adjustment'; label: string; amount: number; calculation?: 'fixed' | 'percentage'; percentage?: number; note?: string }> }) => {
     cacheService.clearPattern('payments:');
     cacheService.clearPattern('bookings:');
-    return api.patch(`/payments/booking/${bookingId}/price`, data);
+    const totalAmount = Math.max(0, data.basePrice + data.adjustments.reduce(
+      (sum, item) => sum + (item.type === 'discount' ? -1 : 1) * Math.abs(item.amount),
+      0,
+    ));
+    return api.patch(`/payments/booking/${bookingId}/price`, { ...data, totalAmount });
   },
   getTypes: () => api.get<Array<{ key: string; label: string; active: boolean; sortOrder: number; system: boolean; behavior: string }>>('/payments/types/configuration'),
   createType: (data: { key: string; label: string; active?: boolean; sortOrder?: number }) => api.post('/payments/types/configuration', data),
@@ -1197,6 +1201,7 @@ export const medicalReviewRequestsApi = {
     return cachedGet<MedicalReviewRequest[]>(`medical-review-requests:${suffix || 'all'}`, () => api.get<MedicalReviewRequest[]>(`/medical-review-requests${suffix}`));
   },
   getQueue: () => cachedGet<MedicalReviewRequest[]>('medical-review-requests:queue', () => api.get<MedicalReviewRequest[]>('/medical-review-requests/queue')),
+  downloadPendingArtifacts: (groupId: string) => api.get<{ url: string; fileName: string; fileCount: number; expiresInSeconds: number }>(`/medical-review-requests/groups/${encodeURIComponent(groupId)}/pending-artifacts/download`),
   getOne: (id: string) => cachedGet<MedicalReviewRequest>(`medical-review-requests:${id}`, () => api.get<MedicalReviewRequest>(`/medical-review-requests/${id}`)),
   getContext: (id: string) => cachedGet<any>(`medical-review-requests:${id}:context`, () => api.get<any>(`/medical-review-requests/${id}/context`)),
   generateMedicalSummary: (id: string) => api.post<{ summary: string; generatedBy: 'rules' | 'openai'; model?: string; unavailableReason?: string; generatedAt: string }>(`/medical-review-requests/${id}/medical-summary/generate`),

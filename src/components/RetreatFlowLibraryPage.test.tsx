@@ -48,6 +48,15 @@ describe('RetreatFlowLibraryPage client-facing name/description language tabs', 
     expect(descriptionField.value).toBe('Prześlij wyniki badania EKG.');
   });
 
+  it('clearly marks the step currently open in the editor', async () => {
+    view();
+
+    const selectedStep = await screen.findByRole('button', { name: /Entry EKG received/ });
+    expect(selectedStep).toHaveAttribute('aria-current', 'true');
+    expect(selectedStep).toHaveTextContent('EDITING');
+    expect(selectedStep).toHaveStyle({ backgroundColor: '#e0f2fe' });
+  });
+
   it('editing one language does not clobber the others, and saves the full nested object', async () => {
     view();
 

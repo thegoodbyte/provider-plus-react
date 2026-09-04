@@ -15,7 +15,7 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
   return <IconComponent className={className} />;
 };
 
-const DEFAULT_EXCHANGE_RATE_PROVIDER_LABEL = 'Revolut';
+const DEFAULT_EXCHANGE_RATE_PROVIDER_LABEL = 'ECB reference rate';
 
 const resolveId = (value: any) => (typeof value === 'object' && value?._id ? value._id : value || '');
 

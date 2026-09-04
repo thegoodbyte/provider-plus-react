@@ -53,7 +53,6 @@ const getItemExpectedDocument = (item: BookingFlowItem) => normalizeKey(
   item.metadata?.expectedBookingDocument
   || item.metadata?.expectedDocument
   || item.metadata?.expectedArtifact
-  || item.metadata?.expectedArtifactPurpose
   || ''
 );
 

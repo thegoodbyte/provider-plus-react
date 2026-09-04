@@ -28,6 +28,13 @@ describe('BookingOverviewPanel', () => {
     expect(screen.getByText('Client credit')).toBeInTheDocument();
     expect(screen.queryByText('Balance not requested')).not.toBeInTheDocument();
   });
+  it('recalculates USD from the current price instead of showing a stale pre-edit snapshot', async () => {
+    (paymentsApi.convertToUsd as jest.Mock).mockResolvedValue({ data: { usd_amount: 2223 } });
+    render(<BookingOverviewPanel {...base} booking={{ ...base.booking, totalAmount: 8550, totalAmountUsd: 4446, currency: 'PLN' }} />);
+    expect(await screen.findByText('$2,223.00')).toBeInTheDocument();
+    expect(screen.queryByText('$4,446.00')).not.toBeInTheDocument();
+    expect(paymentsApi.convertToUsd).toHaveBeenCalledWith(8550, 'PLN');
+  });
   it('includes a newly created refund linked through the legacy booking hash', async () => {
     (paymentsApi.getByBooking as jest.Mock).mockResolvedValue({ data: [
       { _id: 'paid', amount: 2050, currency: 'USD', usd_amount: 2050, status: 'completed' },

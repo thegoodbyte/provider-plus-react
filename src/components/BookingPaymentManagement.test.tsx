@@ -7,6 +7,7 @@ jest.mock('../services/api', () => ({
   paymentsApi: {
     getBookingPlan: jest.fn(), getByBooking: jest.fn(), getByBookingHash: jest.fn(),
     getTypes: jest.fn(), convertToUsd: jest.fn(), updateBookingPlan: jest.fn(),
+    updateBookingPrice: jest.fn(),
   },
   paymentRequestsApi: { getByBooking: jest.fn() },
   configSummaryApi: { get: jest.fn().mockResolvedValue({ data: {} }) },
@@ -36,6 +37,19 @@ describe('BookingPaymentManagement PPVC-493 layout', () => {
     (paymentsApi.getTypes as jest.Mock).mockResolvedValue({ data: [] });
     (paymentsApi.convertToUsd as jest.Mock).mockResolvedValue({ data: { usd_amount: 1950 } });
     (configSummaryApi.get as jest.Mock).mockResolvedValue({ data: {} });
+  });
+
+  it('saves an itemized booking price and asks the parent to refresh the canonical booking', async () => {
+    const refreshed = jest.fn();
+    render(<MemoryRouter><BookingPaymentManagement bookingId="booking-1" clientId="client-1" retreatId="retreat-1" totalAmount={9500} currency="PLN" onPaymentUpdate={refreshed} /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Manage booking price' }));
+    fireEvent.click(screen.getByRole('button', { name: '+ Add discount' }));
+    fireEvent.change(screen.getByLabelText('Price item 1 description'), { target: { value: '10% common room discount' } });
+    fireEvent.change(screen.getByLabelText('Price item 1 amount'), { target: { value: '950' } });
+    fireEvent.change(screen.getByLabelText('Reason *'), { target: { value: 'Room discount agreed' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save price' }));
+    await waitFor(() => expect(paymentsApi.updateBookingPrice).toHaveBeenCalledWith('booking-1', expect.objectContaining({ basePrice: 9500, adjustments: [expect.objectContaining({ type: 'discount', amount: 950 })] })));
+    await waitFor(() => expect(refreshed).toHaveBeenCalled());
   });
 
   it('renders the redesigned summary, requests, and payment history', async () => {

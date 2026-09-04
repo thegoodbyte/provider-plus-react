@@ -474,6 +474,11 @@
 .booking-balance-summary.is-paid { border-left-color: #15803d; }
 .change-booking-price { align-self: flex-start; margin-top: 8px; border: 0; padding: 0; background: transparent; color: #075985; font-size: 12px; font-weight: 700; text-decoration: underline; cursor: pointer; }
 .booking-price-editor { display: grid; grid-template-columns: 1.5fr .7fr .55fr 1.3fr auto; align-items: end; gap: 14px; margin: -8px 22px 22px; padding: 16px 18px; border: 1px solid #7dd3fc; border-left: 3px solid #0284c7; background: #f0f9ff; }
+.booking-price-items { grid-column: 1 / -1; display: grid; gap: 9px; padding-top: 12px; border-top: 1px solid #bae6fd; }
+.booking-price-item { display: grid; grid-template-columns: 150px minmax(220px,1fr) 150px auto; gap: 8px; align-items: end; }
+.booking-price-item input,.booking-price-item select { margin-top: 0; }
+.booking-price-item button,.booking-price-add-actions button { min-height: 37px; border: 1px solid #94a3b8; padding: 8px 11px; background: white; color: #334155; font-weight: 700; }
+.booking-price-add-actions { display: flex; gap: 8px; }
 .booking-price-editor p { margin: 4px 0 0; color: #475569; font-size: 12px; }
 .booking-price-editor label { color: #334155; font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
 .booking-price-editor input,.booking-price-editor select { display: block; width: 100%; margin-top: 5px; border: 1px solid #cbd5e1; padding: 9px 10px; background: white; color: #111827; font-size: 14px; font-weight: 400; text-transform: none; }
@@ -542,6 +547,7 @@
   .booking-balance-summary { display: grid; grid-template-columns: 1fr 1fr; margin: 12px; padding: 14px; }
   .booking-price-editor { grid-template-columns: 1fr 1fr; margin: -2px 12px 18px; }
   .booking-price-editor > div:first-child,.booking-price-reason,.booking-price-actions { grid-column: 1 / -1; }
+  .booking-price-item { grid-template-columns: 1fr; }
   .booking-balance-metric { padding: 12px 0 0; border: 0; }
   .booking-balance-metric.total { grid-column:1/-1; grid-row:1; padding:0 0 12px; }
   .booking-balance-metric.total strong { font-size:30px; }

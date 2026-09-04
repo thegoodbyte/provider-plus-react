@@ -2,13 +2,15 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { bookingFlowApi, housesApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import { MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
-import { buildBookingConfirmationRequirementRows, formatPaymentRequestDisplayLabel } from './BookingConfirmationPDF.helpers';
+import { buildBookingConfirmationRequirementRows, buildBookingPriceRows, formatPaymentRequestDisplayLabel } from './BookingConfirmationPDF.helpers';
 
 interface BookingConfirmationPDFProps {
   booking: any;
   language?: 'pl' | 'cz' | 'en';
   onComplete?: () => void;
 }
+
+export const BOOKING_CONFIRMATION_TEMPLATE_VERSION = '2026-09-04-ecb-balances-v4';
 
 const waitForImages = async (container: HTMLElement) => {
   const images = Array.from(container.querySelectorAll('img'));
@@ -157,13 +159,6 @@ const resolveBookingPayments = async (booking: any): Promise<Payment[]> => {
   return Array.from(unique.values());
 };
 
-const fallbackUsdRates: Record<Payment['currency'], number> = {
-  CZK: 0.044,
-  EUR: 1.08,
-  PLN: 0.26,
-  USD: 1,
-};
-
 const getPaymentDate = (payment: Payment) =>
   paymentDateFields(payment).map(parseDate).find(Boolean) || null;
 
@@ -172,15 +167,6 @@ const getPaymentReference = (payment: Payment) =>
 
 const getBookingTotalAmount = (booking: any) => {
   return toFiniteNumber(booking?.totalAmount ?? 0);
-};
-
-const getBookingTotalUsdAmount = (booking: any) => {
-  const value = toFiniteNumber(
-    booking?.totalAmountUsd ??
-    booking?.totalUsdAmount ??
-    0
-  );
-  return Number.isFinite(value) && value > 0 ? value : null;
 };
 
 const resolveInitialPaymentDate = async (booking: any) => {
@@ -505,15 +491,13 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
       console.warn(`Unable to load ${currency}->USD rate for booking PDF:`, error);
     }
 
-    const fallbackRate = fallbackUsdRates[currency] || 1;
-    usdRatesByCurrency[currency] = fallbackRate;
-    return fallbackRate;
+    return null;
   };
   const convertToUsdAmount = async (amount: number | string, currency: Payment['currency']) => {
     const numericAmount = toFiniteNumber(amount, NaN);
     if (!Number.isFinite(numericAmount)) return null;
     const rate = await getUsdRate(currency);
-    return Math.round(numericAmount * rate * 100) / 100;
+    return rate === null ? null : Math.round(numericAmount * rate * 100) / 100;
   };
   const convertUsdToCurrencyAmount = async (amountUsd: number | string, currency: Payment['currency']) => {
     const numericAmountUsd = toFiniteNumber(amountUsd, NaN);
@@ -522,11 +506,16 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
     const rate = await getUsdRate(currency);
     return rate ? Math.round((numericAmountUsd / rate) * 100) / 100 : null;
   };
-  const bookingTotalUsd = getBookingTotalUsdAmount(booking) ?? await convertToUsdAmount(bookingTotal, bookingCurrency);
+  // A stored totalAmountUsd may have been created with the former hard-coded
+  // fallback. Always value a non-USD booking total from its authoritative
+  // booking-currency amount using the current ECB reference rate.
+  const bookingTotalUsd = bookingCurrency === 'USD'
+    ? Math.round(bookingTotal * 100) / 100
+    : await convertToUsdAmount(bookingTotal, bookingCurrency);
   const getExchangeNote = (source?: string, date?: Date | null) => {
     const parts = [
       date ? `as of ${formatDate(date)}` : '',
-      source || 'Revolut',
+      source || 'Recorded exchange value',
     ].filter(Boolean);
     return `<br><span style="font-size: 10px; color: #6b7280;">${escapeHtml(parts.join(' '))}</span>`;
   };
@@ -550,7 +539,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
     const amountUsd = explicitUsdAmount ?? await convertToUsdAmount(payment.amount, payment.currency);
     const bookingCurrencyAmount = await resolveBookingCurrencyAmount(payment, amountUsd);
     const exchangeDate = parseDate(payment.bookingCurrencyExchangeDate) || getPaymentDate(payment) || generatedConversionDate;
-    const exchangeSource = String(payment.bookingCurrencyExchangeSource || 'Revolut').trim();
+    const exchangeSource = String(payment.bookingCurrencyExchangeSource || 'Recorded exchange value').trim();
     return { payment, amountUsd, bookingCurrencyAmount, exchangeDate, exchangeSource };
   }));
 
@@ -585,11 +574,12 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   const totalPaid = resolvedCompletedPayments.reduce((sum, resolvedPayment) => {
     return sum + (resolvedPayment.bookingCurrencyAmount || 0);
   }, 0);
-  const totalPaidUsd = resolvedCompletedPayments.reduce((sum, resolvedPayment) => {
-    return sum + (resolvedPayment.amountUsd || 0);
-  }, 0);
   const balance = bookingTotal - totalPaid;
-  const balanceUsd = bookingTotalUsd !== null ? bookingTotalUsd - totalPaidUsd : null;
+  // Do not subtract settlement USD values captured on different dates. Convert
+  // the authoritative remaining booking-currency balance at one current rate.
+  const balanceUsd = bookingCurrency === 'USD'
+    ? Math.round(balance * 100) / 100
+    : await convertToUsdAmount(balance, bookingCurrency);
   const requiredDeposit = bookingTotal > 0 ? bookingTotal * 0.4 : null;
   const roundUpCurrency = (amount: number) => Math.ceil(amount * 100) / 100;
   const requiredDepositUsd = requiredDeposit && bookingTotalUsd
@@ -648,20 +638,25 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
 
     return `
       <tr>
-        <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">${escapeHtml(formatPaymentType(payment))}</td>
-        <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">${paymentDate ? formatDate(paymentDate) : '-'}</td>
-        <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">${escapeHtml(`${formatPaymentMethod(payment.paymentMethod)}${getPaymentReference(payment) !== '-' ? ` - ${getPaymentReference(payment)}` : ''}`)}</td>
-        <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right;">${formatBookingCurrencyAmount(payment, bookingCurrencyAmount, exchangeDate, exchangeSource)}</td>
-        ${showsSettlementColumn ? `<td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right;">${escapeHtml(formatSettlementAmount(payment, amountUsd))}</td>` : ''}
+        <td style="border: 1px solid rgba(31,41,55,0.16); padding: 4px 8px;">${escapeHtml(formatPaymentType(payment))}</td>
+        <td style="border: 1px solid rgba(31,41,55,0.16); padding: 4px 8px;">${paymentDate ? formatDate(paymentDate) : '-'}</td>
+        <td style="border: 1px solid rgba(31,41,55,0.16); padding: 4px 8px;">${escapeHtml(`${formatPaymentMethod(payment.paymentMethod)}${getPaymentReference(payment) !== '-' ? ` - ${getPaymentReference(payment)}` : ''}`)}</td>
+        <td style="border: 1px solid rgba(31,41,55,0.16); padding: 4px 8px; text-align: right;">${formatBookingCurrencyAmount(payment, bookingCurrencyAmount, exchangeDate, exchangeSource)}</td>
+        ${showsSettlementColumn ? `<td style="border: 1px solid rgba(31,41,55,0.16); padding: 4px 8px; text-align: right;">${escapeHtml(formatSettlementAmount(payment, amountUsd))}</td>` : ''}
       </tr>
     `;
   }).join('');
   const bookingTotalSettlementHtml = bookingTotalUsd !== null
-    ? `${formatAmount(bookingTotalUsd, 'USD')}${bookingCurrency !== 'USD' ? getExchangeNote('Revolut', generatedConversionDate) : ''}`
+    ? `${formatAmount(bookingTotalUsd, 'USD')}${bookingCurrency !== 'USD' ? getExchangeNote('ECB reference rate', generatedConversionDate) : ''}`
     : '';
   const balanceSettlementHtml = balanceUsd !== null ? formatAmount(balanceUsd, 'USD') : '';
   const settlementColumnHeader = bookingCurrency === 'USD' ? t.paidAmount : 'USD';
   const bookingReferenceText = paymentRequestLabel ? `${t.paymentRequest} #${paymentRequestLabel}` : '';
+  const priceBreakdownRows = buildBookingPriceRows(booking).map((row) => {
+    const label = row.kind === 'base' ? (language === 'pl' ? 'Cena podstawowa' : language === 'cz' ? 'Základní cena' : 'Basic booking price') : row.kind === 'total' ? (language === 'pl' ? 'Uzgodniona cena całkowita' : language === 'cz' ? 'Dohodnutá celková cena' : 'Agreed total price') : row.label;
+    const sign = row.kind === 'discount' ? '−' : row.kind === 'addition' ? '+' : '';
+    return `<tr style="height:19px;${row.kind === 'total' ? 'background:#f0fdf4;font-weight:700;' : ''}"><td style="border:1px solid rgba(31,41,55,.16);padding:1px 8px 5px;line-height:1.15;vertical-align:top;">${escapeHtml(label)}</td><td style="border:1px solid rgba(31,41,55,.16);padding:1px 8px 5px;line-height:1.15;vertical-align:top;text-align:right;color:${row.kind === 'discount' ? '#b91c1c' : row.kind === 'addition' ? '#166534' : '#111827'};">${sign}${formatAmount(Math.abs(row.amount))}</td></tr>`;
+  }).join('');
 
   // Create a temporary div for PDF content
   const pdfContent = document.createElement('div');
@@ -703,7 +698,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
       </table>
 
       <!-- Title -->
-      <h1 style="text-align: center; font-size: 28px; margin: 10px 0 15px 0; font-weight: 400; color: #1f2937;">
+      <h1 style="text-align: center; font-size: 28px; margin: -12px 0 8px 0; font-weight: 400; line-height: 1.1; color: #1f2937;">
         ${t.title}
       </h1>
 
@@ -730,14 +725,10 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
           </td>
           <td style="text-align: right; vertical-align: top; padding: 0;">
             <div>
-              <h3 style="font-size: 16px; margin: 0 0 10px 0; font-weight: 500; color: #1f2937;">${t.participant}</h3>
-              <div style="font-size: 13px; line-height: 1.5; text-align: right;">
-                <div style="margin-bottom: 2px;">${t.name}: <strong>${client ? `${client.firstName || client.fname} ${client.lastName || client.lname}` : 'N/A'}</strong></div>
-                <div style="margin-bottom: 8px;">${t.address}: ${client?.city || ''} ${client?.country || t.polska}</div>
-                <div>
-                  <div style="margin-bottom: 2px;">${t.email}: <strong>${client?.email || 'N/A'}</strong></div>
-                  <div>${t.phone}: <strong>${client?.phone || 'N/A'}</strong></div>
-                </div>
+              <h3 style="font-size: 15px; margin: 0 0 4px 0; font-weight: 500; color: #1f2937;">${t.participant}: <strong>${client ? `${client.firstName || client.fname} ${client.lastName || client.lname}` : 'N/A'}</strong></h3>
+              <div style="font-size: 12px; line-height: 1.3; text-align: right;">
+                <div>${t.address}: ${client?.city || ''} ${client?.country || t.polska}</div>
+                <div>${t.email}: <strong>${client?.email || 'N/A'}</strong> &nbsp;|&nbsp; ${t.phone}: <strong>${client?.phone || 'N/A'}</strong></div>
               </div>
             </div>
           </td>
@@ -750,78 +741,75 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
       </div>
 
       <!-- Location Details -->
-      <div style="margin: 20px 0 25px 0; font-size: 13px; line-height: 1.7;">
+      <div style="margin: 12px 0 14px 0; font-size: 13px; line-height: 1.25;">
         <table style="border: none;">
           <tr>
-            <td style="padding: 2px 10px 2px 0; vertical-align: top;">${t.location}:</td>
-            <td style="padding: 2px 0; font-weight: bold;">${escapeHtml(locationTown)}</td>
+            <td style="padding: 0 10px 0 0; vertical-align: top;">${t.location}:</td>
+            <td style="padding: 0; font-weight: bold;">${escapeHtml(locationTown)}</td>
           </tr>
           <tr>
-            <td style="padding: 2px 10px 2px 0; vertical-align: top;">${t.dates}:</td>
-            <td style="padding: 2px 0; font-weight: bold;">${escapeHtml(retreatDateRange)}</td>
+            <td style="padding: 0 10px 0 0; vertical-align: top;">${t.dates}:</td>
+            <td style="padding: 0; font-weight: bold;">${escapeHtml(retreatDateRange)}</td>
           </tr>
           <tr>
-            <td style="padding: 2px 10px 2px 0; vertical-align: top;">${t.checkIn}:</td>
-            <td style="padding: 2px 0; font-weight: bold;">${escapeHtml(retreatCheckIn)}</td>
+            <td style="padding: 0 10px 0 0; vertical-align: top;">${t.checkIn}:</td>
+            <td style="padding: 0; font-weight: bold;">${escapeHtml(retreatCheckIn)}</td>
           </tr>
           <tr>
-            <td style="padding: 2px 10px 2px 0; vertical-align: top;">${t.checkOut}:</td>
-            <td style="padding: 2px 0; font-weight: bold;">${escapeHtml(retreatCheckOut)}</td>
+            <td style="padding: 0 10px 0 0; vertical-align: top;">${t.checkOut}:</td>
+            <td style="padding: 0; font-weight: bold;">${escapeHtml(retreatCheckOut)}</td>
           </tr>
           <tr>
-            <td style="padding: 2px 10px 2px 0; vertical-align: top;">${t.addressLabel}:</td>
-            <td style="padding: 2px 0; font-weight: bold;">${escapeHtml(locationAddress)}</td>
+            <td style="padding: 0 10px 0 0; vertical-align: top;">${t.addressLabel}:</td>
+            <td style="padding: 0; font-weight: bold;">${escapeHtml(locationAddress)}</td>
           </tr>
           <tr>
-            <td style="padding: 2px 10px 2px 0; vertical-align: top;">${t.googleMaps}:</td>
-            <td style="padding: 2px 0;">${googleMapLink ? `<a href="${escapeHtml(googleMapLink)}" style="color: #0066cc; text-decoration: underline;">${escapeHtml(googleMapLink)}</a>` : 'N/A'}</td>
+            <td style="padding: 0 10px 0 0; vertical-align: top;">${t.googleMaps}:</td>
+            <td style="padding: 0;">${googleMapLink ? `<a href="${escapeHtml(googleMapLink)}" style="color: #0066cc; text-decoration: underline;">${escapeHtml(googleMapLink)}</a>` : 'N/A'}</td>
           </tr>
         </table>
       </div>
 
+      ${priceBreakdownRows ? `<div style="margin-top:14px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#374151;">${language === 'pl' ? 'Cena rezerwacji' : language === 'cz' ? 'Cena rezervace' : 'Booking price'}</div><table style="width:100%;border-collapse:collapse;margin-top:4px;font-size:12px;"><tbody>${priceBreakdownRows}</tbody></table>` : ''}
+
       <!-- Payment Table -->
-      <table style="width: 100%; border-collapse: collapse; margin-top: 25px; font-size: 13px;">
+      <table style="width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 12px; line-height: 1.2;">
         <thead>
           <tr style="background-color: rgba(144,238,144,0.42);">
-            <th style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: left; font-weight: 500;">${t.presentation}</th>
-            <th style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: left; font-weight: 500;">${t.tableDate}</th>
-            <th style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: left; font-weight: 500;">${t.reference}</th>
-            <th style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right; font-weight: 500;">${t.price}</th>
-            ${showsSettlementColumn ? `<th style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right; font-weight: 500;">${settlementColumnHeader}</th>` : ''}
+            <th style="border: 1px solid rgba(31,41,55,0.16); padding: 4px 8px; text-align: left; font-weight: 500;">${t.presentation}</th>
+            <th style="border: 1px solid rgba(31,41,55,0.16); padding: 4px 8px; text-align: left; font-weight: 500;">${t.tableDate}</th>
+            <th style="border: 1px solid rgba(31,41,55,0.16); padding: 4px 8px; text-align: left; font-weight: 500;">${t.reference}</th>
+            <th style="border: 1px solid rgba(31,41,55,0.16); padding: 4px 8px; text-align: right; font-weight: 500;">${t.price}</th>
+            ${showsSettlementColumn ? `<th style="border: 1px solid rgba(31,41,55,0.16); padding: 4px 8px; text-align: right; font-weight: 500;">${settlementColumnHeader}</th>` : ''}
           </tr>
         </thead>
         <tbody>
           <tr>
-            <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">${escapeHtml(paymentDescription)}</td>
-            <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;"></td>
-            <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px;">${escapeHtml(bookingReferenceText)}</td>
-            <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right;">${formatAmount(bookingTotal)}</td>
-            ${showsSettlementColumn ? `<td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right;">${bookingTotalSettlementHtml}</td>` : ''}
+            <td style="border: 1px solid rgba(31,41,55,0.16); padding: 4px 8px;">${escapeHtml(paymentDescription)}</td>
+            <td style="border: 1px solid rgba(31,41,55,0.16); padding: 4px 8px;"></td>
+            <td style="border: 1px solid rgba(31,41,55,0.16); padding: 4px 8px;">${escapeHtml(bookingReferenceText)}</td>
+            <td style="border: 1px solid rgba(31,41,55,0.16); padding: 4px 8px; text-align: right;">${formatAmount(bookingTotal)}</td>
+            ${showsSettlementColumn ? `<td style="border: 1px solid rgba(31,41,55,0.16); padding: 4px 8px; text-align: right;">${bookingTotalSettlementHtml}</td>` : ''}
           </tr>
           ${paymentRowsHtml || `
             <tr>
-              <td colspan="${showsSettlementColumn ? '5' : '4'}" style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: center; color: #6b7280;">-</td>
+              <td colspan="${showsSettlementColumn ? '5' : '4'}" style="border: 1px solid rgba(31,41,55,0.16); padding: 4px 8px; text-align: center; color: #6b7280;">-</td>
             </tr>
           `}
           <tr>
-            <td colspan="3" style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right; font-weight: 600;">${t.balance}</td>
-            <td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right; font-weight: 600;">${formatAmount(balance)}</td>
-            ${showsSettlementColumn ? `<td style="border: 1px solid rgba(31,41,55,0.16); padding: 8px 10px; text-align: right; font-weight: 600;">${balanceSettlementHtml}</td>` : ''}
+            <td colspan="3" style="border: 1px solid rgba(31,41,55,0.16); padding: 4px 8px; text-align: right; font-weight: 600;">${t.balance}</td>
+            <td style="border: 1px solid rgba(31,41,55,0.16); padding: 4px 8px; text-align: right; font-weight: 600;">${formatAmount(balance)}</td>
+            ${showsSettlementColumn ? `<td style="border: 1px solid rgba(31,41,55,0.16); padding: 4px 8px; text-align: right; font-weight: 600;">${balanceSettlementHtml}</td>` : ''}
           </tr>
         </tbody>
       </table>
 
       <!-- Footer notes -->
-      <div style="margin-top: 30px; font-size: 11px; line-height: 1.6; color: #4b5563;">
-        <div style="font-style: italic; margin-bottom: 15px;">
-          ${t.balanceDueNote(balanceDueDate ? formatDate(balanceDueDate) : retreatDateRange)}
-        </div>
-
-        ${requiredDeposit ? `
-          <div style="font-style: italic; margin-bottom: 15px;">
-            ${t.requiredDepositNote(formatAmount(requiredDeposit), requiredDepositUsd ? formatAmount(requiredDepositUsd, 'USD') : undefined)}
-          </div>
-        ` : ''}
+      <div style="margin-top: 18px; font-size: 11px; line-height: 1.4; color: #4b5563;">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;line-height:1.35;font-style:italic;"><tbody><tr>
+          <td style="width:50%;padding:0 12px 0 0;vertical-align:top;">${t.balanceDueNote(balanceDueDate ? formatDate(balanceDueDate) : retreatDateRange)}</td>
+          <td style="width:50%;padding:0 0 0 12px;vertical-align:top;">${requiredDeposit ? t.requiredDepositNote(formatAmount(requiredDeposit), requiredDepositUsd ? formatAmount(requiredDepositUsd, 'USD') : undefined) : ''}</td>
+        </tr></tbody></table>
 
         <div style="margin: 20px 0;">
           ${t.footerNote3}

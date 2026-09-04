@@ -1034,6 +1034,12 @@ const RetreatFlowLibraryPage: React.FC = () => {
               const effectiveGroupColor = template.readinessGroupColor || groupColorByKey[normalizeGroupKey(groupKey)];
               const tone = getBookingStepToneWithColor(groupKey, effectiveGroupColor);
               const stepStyle = getBookingStepColorStyles(tone, 'step');
+              const selectedStepStyle = isSelected ? {
+                ...stepStyle,
+                backgroundColor: '#e0f2fe',
+                borderLeftColor: '#0369a1',
+                boxShadow: 'inset 0 0 0 2px #0369a1',
+              } : stepStyle;
 
               return (
                 <React.Fragment key={template._id}>
@@ -1043,23 +1049,25 @@ const RetreatFlowLibraryPage: React.FC = () => {
                     onDragOver={(event) => event.preventDefault()}
                     onDrop={() => handleTemplateDrop(template._id)}
                     onClick={() => selectTemplate(template)}
+                    aria-current={isSelected ? 'true' : undefined}
                     className={`block w-full border-0 border-l-2 px-4 py-3 text-left ${tone.stepStripe} ${
                       isSelected
-                        ? 'border-sky-600 bg-sky-50'
+                        ? 'relative z-10 border-sky-700 bg-sky-100 focus:outline-none'
                         : 'border-transparent bg-transparent hover:bg-white'
                     } ${draggedTemplateId === template._id ? 'opacity-60' : ''}`}
-                    style={stepStyle}
+                    style={selectedStepStyle}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-2">
-                        <Icon icon={GripVertical} className="h-4 w-4 shrink-0 text-gray-400" />
-                        <BookingStepTypeIcon type={template.stepType} className="h-4 w-4 shrink-0 text-gray-600" />
+                        <Icon icon={GripVertical} className={`h-4 w-4 shrink-0 ${isSelected ? 'text-sky-700' : 'text-gray-400'}`} />
+                        <BookingStepTypeIcon type={template.stepType} className={`h-4 w-4 shrink-0 ${isSelected ? 'text-sky-800' : 'text-gray-600'}`} />
                         <div className="min-w-0">
-                          <div className="truncate text-sm font-semibold text-gray-900">{template.title}</div>
+                          <div className={`truncate text-sm font-semibold ${isSelected ? 'text-sky-950' : 'text-gray-900'}`}>{template.title}</div>
                           <div className="mt-1 truncate text-[11px] text-gray-500">{getBookingStepType(template.stepType).label} · {titleizeBookingStepGroup(groupKey)} · Due {formatDeadlineLabel(template)}</div>
                         </div>
                       </div>
                       <div className="flex items-center gap-1 text-[10px] text-gray-500">
+                        {isSelected && <span className="rounded bg-sky-700 px-1.5 py-0.5 font-semibold tracking-wide text-white">EDITING</span>}
                         {template.isBlocking && <span className="border border-red-300 bg-red-50 px-1 text-red-700">B</span>}
                         <span>#{template.order || 0}</span>
                       </div>
