@@ -57,6 +57,19 @@ describe('RetreatFlowLibraryPage client-facing name/description language tabs', 
     expect(selectedStep).toHaveStyle({ backgroundColor: '#e0f2fe' });
   });
 
+  it('uses icon tabs with a filled selected state', async () => {
+    view();
+    await screen.findByRole('button', { name: /Entry EKG received/ });
+    const basics = screen.getByRole('tab', { name: 'Basics' });
+    const artifacts = screen.getByRole('tab', { name: 'Artifact matching' });
+    expect(basics).toHaveAttribute('aria-selected', 'true');
+    expect(basics).toHaveClass('bg-sky-600', 'text-white');
+    expect(basics.querySelector('svg')).toBeInTheDocument();
+    fireEvent.click(artifacts);
+    expect(artifacts).toHaveAttribute('aria-selected', 'true');
+    expect(artifacts).toHaveClass('bg-sky-600', 'text-white');
+  });
+
   it('editing one language does not clobber the others, and saves the full nested object', async () => {
     view();
 

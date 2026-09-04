@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { GripVertical, Save, Trash2, X } from 'lucide-react';
+import { BadgeCheck, BellRing, CalendarCheck2, CalendarClock, ClipboardList, CreditCard, FileSearch, Flag, GripVertical, HeartPulse, KeyRound, LayoutTemplate, ListChecks, Mail, Save, Scale, ShieldCheck, Trash2, Utensils, X } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 import { bookingFlowApi, communicationsApi, retreatsApi } from '../services/api';
@@ -57,6 +57,13 @@ type TemplateForm = {
 };
 
 type EditorTab = 'basics' | 'deadline' | 'artifact' | 'reminders' | 'flags';
+
+const bookingStepCategoryIcons: Record<string, React.ElementType> = {
+  screening: ShieldCheck, booking: CalendarCheck2, contract: Scale, questionnaire: ClipboardList,
+  medical: HeartPulse, payment: CreditCard, payments: CreditCard, dietary: Utensils,
+  message: Mail, access: KeyRound, approval: BadgeCheck, approvals: BadgeCheck,
+  reminder: BellRing, reminders: BellRing, other: ListChecks,
+};
 
 const emptyForm = (): TemplateForm => ({
   workflowStage: 'potential',
@@ -530,12 +537,12 @@ const RetreatFlowLibraryPage: React.FC = () => {
     }));
   };
 
-  const editorTabs: Array<{ id: EditorTab; label: string }> = [
-    { id: 'basics', label: 'Basics' },
-    { id: 'deadline', label: 'Deadline & task' },
-    { id: 'artifact', label: 'Artifact matching' },
-    { id: 'reminders', label: 'Reminders & actions' },
-    { id: 'flags', label: 'Flags & colour' },
+  const editorTabs: Array<{ id: EditorTab; label: string; icon: React.ElementType }> = [
+    { id: 'basics', label: 'Basics', icon: LayoutTemplate },
+    { id: 'deadline', label: 'Deadline & task', icon: CalendarClock },
+    { id: 'artifact', label: 'Artifact matching', icon: FileSearch },
+    { id: 'reminders', label: 'Reminders & actions', icon: BellRing },
+    { id: 'flags', label: 'Flags & colour', icon: Flag },
   ];
 
   const ruleSummary = `${form.title || 'This step'} is due ${form.offsetDays} days ${form.deadlineBasis === 'before_retreat_start' ? 'before the retreat starts' : form.deadlineBasis.replaceAll('_', ' ')}${form.isBlocking ? '. The booking cannot be marked ready until it is done.' : '.'}`;
@@ -560,8 +567,8 @@ const RetreatFlowLibraryPage: React.FC = () => {
           <div className="text-[10px] uppercase tracking-[0.15em] text-sky-800">The rule in words</div>
           <p className="mt-2 text-sm text-gray-900">{ruleSummary}</p>
         </div>
-        <div className="mt-4 flex gap-6 overflow-x-auto border-b border-gray-300">
-          {editorTabs.map((tab) => <button key={tab.id} type="button" onClick={() => setEditorTab(tab.id)} className={`whitespace-nowrap border-b-2 px-0 py-2 text-sm ${editorTab === tab.id ? 'border-gray-900 font-medium text-gray-900' : 'border-transparent text-gray-600 hover:text-gray-900'}`}>{tab.label}</button>)}
+        <div className="mt-4 flex gap-2 overflow-x-auto border-b border-gray-300 pb-2" role="tablist" aria-label="Step editor sections">
+          {editorTabs.map((tab) => { const TabIcon = tab.icon; const selected = editorTab === tab.id; return <button key={tab.id} type="button" role="tab" aria-selected={selected} onClick={() => setEditorTab(tab.id)} className={`inline-flex items-center gap-2 whitespace-nowrap rounded-lg border px-3.5 py-2.5 text-sm font-medium transition ${selected ? 'border-sky-600 bg-sky-600 text-white shadow-sm ring-2 ring-sky-200' : 'border-gray-200 bg-white text-gray-600 hover:border-sky-300 hover:bg-sky-50 hover:text-sky-900'}`}><TabIcon className="h-4 w-4" aria-hidden="true" />{tab.label}</button>; })}
         </div>
       </div>
 
@@ -1040,6 +1047,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
                 borderLeftColor: '#0369a1',
                 boxShadow: 'inset 0 0 0 2px #0369a1',
               } : stepStyle;
+              const CategoryIcon = bookingStepCategoryIcons[normalizeGroupKey(groupKey)] || bookingStepCategoryIcons[normalizeGroupKey(template.category)] || ListChecks;
 
               return (
                 <React.Fragment key={template._id}>
@@ -1060,7 +1068,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex min-w-0 items-center gap-2">
                         <Icon icon={GripVertical} className={`h-4 w-4 shrink-0 ${isSelected ? 'text-sky-700' : 'text-gray-400'}`} />
-                        <BookingStepTypeIcon type={template.stepType} className={`h-4 w-4 shrink-0 ${isSelected ? 'text-sky-800' : 'text-gray-600'}`} />
+                        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md border ${isSelected ? 'border-sky-300 bg-white text-sky-800' : 'border-gray-200 bg-white/80 text-gray-600'}`} title={titleizeBookingStepGroup(groupKey)}><CategoryIcon className="h-4 w-4" aria-hidden="true" /></span>
                         <div className="min-w-0">
                           <div className={`truncate text-sm font-semibold ${isSelected ? 'text-sky-950' : 'text-gray-900'}`}>{template.title}</div>
                           <div className="mt-1 truncate text-[11px] text-gray-500">{getBookingStepType(template.stepType).label} · {titleizeBookingStepGroup(groupKey)} · Due {formatDeadlineLabel(template)}</div>
