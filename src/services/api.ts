@@ -1897,6 +1897,14 @@ export type RetreatReadinessAssistantResult = {
   aiSummary?: string;
 };
 
+export type TodayTask = AssistantTask & { retreatId: string; retreatName?: string; retreatLink?: string };
+
+export type TasksForTodayResult = {
+  generatedAt: string;
+  retreats: Array<{ id: string; name?: string; daysUntilRetreat: number | null; link?: string; highRiskClients: number; totalBookings: number }>;
+  tasks: TodayTask[];
+};
+
 export type AssistantChatResponse = {
   answer: string;
   generatedBy: 'rules' | 'openai';
@@ -1910,6 +1918,7 @@ export const assistantApi = {
     api.get<BookingReadinessAssistantResult>(`/assistant/booking-readiness/${bookingId}`),
   analyzeRetreatReadiness: (retreatId: string) =>
     api.get<RetreatReadinessAssistantResult>(`/assistant/retreat-readiness/${retreatId}`),
+  getTasksForToday: () => api.get<TasksForTodayResult>('/assistant/tasks-for-today'),
   chat: (data: { scope: 'retreat' | 'booking'; retreatId?: string; bookingId?: string; message: string }) =>
     api.post<AssistantChatResponse>('/assistant/chat', data),
 };

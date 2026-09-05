@@ -217,3 +217,147 @@
     font-size: 0.63rem;
   }
 }
+
+.tasks-today-panel {
+  margin: 0 0 22px;
+  padding: 16px 18px;
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.05);
+}
+
+.tasks-today-panel header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.tasks-today-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #4338ca;
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.tasks-today-retreats {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tasks-today-retreats button {
+  border: 1px solid #e2e8f0;
+  border-radius: 999px;
+  background: #f8fafc;
+  padding: 5px 11px;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tasks-today-retreats button:hover {
+  background: #eef2ff;
+  border-color: #c7d2fe;
+}
+
+.tasks-today-clear {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #166534;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tasks-today-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tasks-today-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.tasks-today-list li.severity-high {
+  background: #fff1f2;
+  color: #9f1239;
+}
+
+.tasks-today-list li.severity-medium {
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.tasks-today-list li.severity-low {
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.tasks-today-list li svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.tasks-today-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.tasks-today-item-body button {
+  align-self: flex-start;
+  border: 0;
+  background: none;
+  padding: 0;
+  color: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  text-align: left;
+}
+
+.tasks-today-item-body button:hover {
+  text-decoration: underline;
+}
+
+.tasks-today-item-message {
+  opacity: 0.9;
+}
+
+.tasks-today-item-retreat {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: #64748b;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  opacity: 0.75;
+}
+
+.tasks-today-more {
+  margin-top: 8px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+}

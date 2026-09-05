@@ -25,6 +25,7 @@ import {
   FileText,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import TasksForTodayPanel from './TasksForTodayPanel';
 import './ModuleLauncherPage.css';
 
 type LauncherTile = {
@@ -319,6 +320,8 @@ const ModuleLauncherPage: React.FC = () => {
         </div>
         <div className="module-launcher-role">{user?.role || 'admin'}</div>
       </div>
+
+      <TasksForTodayPanel />
 
       <div className="module-launcher-hive-shell">
         <div
