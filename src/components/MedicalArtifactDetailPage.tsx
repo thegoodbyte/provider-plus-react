@@ -506,6 +506,17 @@ const MedicalArtifactDetailPage: React.FC = () => {
         </div>
         {artifact.translation?.status === 'ready' && <div className="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">AI-generated translation. The original signed submission remains authoritative.</div>}
       </div>
+    )}
+    {artifact.classification?.status === 'flagged' && (
+      <div className="mt-4 rounded-md border border-amber-200 bg-amber-50 p-4">
+        <div className="font-semibold text-amber-950">Possible document mismatch</div>
+        <div className="mt-1 text-sm text-amber-900">
+          This was uploaded as {getArtifactTypeLabel(artifact.artifactType)}, but AI review suggests it looks more like {artifactTypeLabels[artifact.classification.detectedType as keyof typeof artifactTypeLabels] || artifact.classification.detectedType}
+          {typeof artifact.classification.confidence === 'number' ? ` (${Math.round(artifact.classification.confidence * 100)}% confidence)` : ''}.
+          {artifact.classification.explanation ? ` ${artifact.classification.explanation}` : ''}
+        </div>
+        <div className="mt-1 text-xs text-amber-700">This is an automated suggestion, not a diagnosis -- please confirm before relying on it.</div>
+      </div>
     )}</>
   );
 
