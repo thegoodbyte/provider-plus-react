@@ -3,6 +3,7 @@ import { Routes, Route, useLocation, useNavigate, useParams } from 'react-router
 import { FiBookOpen, FiCalendar, FiChevronDown, FiCreditCard, FiGrid, FiShoppingBag, FiUsers, FiX } from 'react-icons/fi';
 import AppleSidebar from './AppleSidebar';
 import StorageOverrideBanner from './StorageOverrideBanner';
+import AiHealthBanner from './AiHealthBanner';
 import UnifiedClientManager from './UnifiedClientManager';
 import HousesGrid from './HousesGrid';
 import BoosterOffersPage from './BoosterOffersPage';
@@ -779,6 +780,7 @@ const AppleLayout: React.FC = () => {
         )}
 
         <StorageOverrideBanner />
+        <AiHealthBanner />
 
         {/* Page Content */}
         <main className="re-shell h-[calc(100vh-32px)] overflow-y-auto px-4 py-4 sm:px-6 lg:h-[calc(100vh-64px-32px)] lg:px-8 lg:py-6">
