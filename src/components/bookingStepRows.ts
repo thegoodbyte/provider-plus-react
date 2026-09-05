@@ -36,6 +36,7 @@ export interface BookingStepMatrixRowGroup {
 export const buildBookingStepRows = (templates: BookingFlowTemplate[], items: BookingFlowItem[]): BookingStepMatrixRow[] => {
   const rowMap = new Map<string, BookingStepMatrixRow>();
   templates.forEach((template) => {
+    if (template.active === false) return;
     rowMap.set(template.key, {
       key: template.key,
       title: template.title,
@@ -52,6 +53,11 @@ export const buildBookingStepRows = (templates: BookingFlowTemplate[], items: Bo
   items.forEach((item) => {
     const template = typeof item.templateId === 'object' ? item.templateId : null;
     const existing = rowMap.get(item.key);
+    // A populated template that's since been deactivated shouldn't manufacture
+    // a row on its own -- but if some other still-active template (or a fully
+    // custom item with no template at all) already claimed this key, leave it
+    // alone rather than erasing it.
+    if (!existing && template && template.active === false) return;
     rowMap.set(item.key, {
       ...existing,
       key: item.key,
