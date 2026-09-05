@@ -141,14 +141,19 @@ const ContactBookPage: React.FC = () => {
     setSaving(true);
     setError(null);
     try {
-      const payload = {
-        ...formData,
+      const payload: Omit<ContactBookEntry, '_id' | 'createdAt' | 'updatedAt'> = {
         name: formData.name.trim(),
         role: formData.role.trim(),
+        organization: formData.organization?.trim() || '',
+        phone: formData.phone?.trim() || '',
+        email: formData.email?.trim() || '',
+        whatsapp: formData.whatsapp?.trim() || '',
+        location: formData.location?.trim() || '',
         languages: formData.languages || [],
         tags: formData.tags || [],
+        notes: formData.notes?.trim() || '',
         isActive: formData.isActive !== false,
-      } as Omit<ContactBookEntry, '_id'>;
+      };
 
       if (editingContact?._id) {
         await contactBookApi.update(editingContact._id, payload);
