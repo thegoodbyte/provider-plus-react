@@ -35,6 +35,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
   const [loading, setLoading] = useState(false);
   const [nextDisplayId, setNextDisplayId] = useState<number | null>(paymentRequest?.display_id || null);
   const [formError, setFormError] = useState('');
+  const [revolutLinkMismatch, setRevolutLinkMismatch] = useState(false);
   const [bookingDefaultsLoading, setBookingDefaultsLoading] = useState(false);
   const [bookingDefaultsMessage, setBookingDefaultsMessage] = useState('');
   const [itemized, setItemized] = useState(Boolean(paymentRequest?.lineItems?.length));
@@ -246,6 +247,10 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     }
     if (formData.bookingType === 'booster' && !formData.ceremonyNumber) {
       alert('Please select the ceremony for this booster.');
+      return;
+    }
+    if (revolutLinkMismatch) {
+      setFormError('The selected Revolut catalog link is for a different amount/currency than this request. Choose a matching link or paste a custom one before saving.');
       return;
     }
 
@@ -747,7 +752,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
             </div>
 
             <div className="md:col-span-2">
-              <RevolutPaymentLinkPicker value={formData.revolutPaymentLink} amount={formData.requestedAmount} currency={formData.currency} onChange={value => handleChange('revolutPaymentLink', value)} />
+              <RevolutPaymentLinkPicker value={formData.revolutPaymentLink} amount={formData.requestedAmount} currency={formData.currency} onChange={value => handleChange('revolutPaymentLink', value)} onMismatchChange={setRevolutLinkMismatch} />
               {formData.revolutPaymentLink && /^https:\/\//i.test(formData.revolutPaymentLink) && <div className="mt-4 flex flex-col items-start gap-3 rounded-lg border border-blue-100 bg-blue-50 p-4 sm:flex-row sm:items-center"><div className="rounded-lg bg-white p-3"><QRCodeSVG value={formData.revolutPaymentLink} size={150} level="M" title="Revolut payment QR code" /></div><div><div className="font-semibold text-gray-900">Revolut QR preview</div><div className="text-sm text-gray-700">{formData.requestedAmount || '0'} {formData.currency}</div><div className="mt-1 text-xs text-gray-500">The QR contains the saved Revolut checkout link.</div></div></div>}
             </div>
 

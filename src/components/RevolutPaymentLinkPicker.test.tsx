@@ -21,4 +21,16 @@ describe('RevolutPaymentLinkPicker', () => {
     fireEvent.change(screen.getByLabelText('Revolut payment link'), { target:{ value:'https://revolut.me/custom' } });
     expect(onChange).toHaveBeenCalledWith('https://revolut.me/custom');
   });
+  it('reports a mismatch when the selected catalog link amount/currency differs from the request', async () => {
+    const onMismatchChange = jest.fn();
+    render(<RevolutPaymentLinkPicker value={catalog[0].checkoutUrl} amount="750" currency="EUR" onChange={jest.fn()} onMismatchChange={onMismatchChange} />);
+    await screen.findByText(/but this request is for/);
+    expect(onMismatchChange).toHaveBeenLastCalledWith(true);
+  });
+  it('reports no mismatch once the selection matches the request amount/currency', async () => {
+    const onMismatchChange = jest.fn();
+    render(<RevolutPaymentLinkPicker value={catalog[0].checkoutUrl} amount="3400" currency="PLN" onChange={jest.fn()} onMismatchChange={onMismatchChange} />);
+    await screen.findByRole('option', { name:/3400 PLN payment/ });
+    expect(onMismatchChange).toHaveBeenLastCalledWith(false);
+  });
 });
