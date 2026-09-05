@@ -17,6 +17,27 @@ body.medical-artifact-capture-mode .re-shell {
   overflow: visible !important;
 }
 
+body.medical-review-capture-mode,
+body.medical-review-capture-mode #root,
+body.medical-review-capture-mode .App,
+body.medical-review-capture-mode .layout,
+body.medical-review-capture-mode .main-content,
+body.medical-review-capture-mode .content-wrapper,
+body.medical-review-capture-mode .re-shell,
+body.medical-review-capture-mode .medical-review-page {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  overflow: visible !important;
+}
+
+body.medical-review-capture-mode .medical-review-page [class*="max-h-"],
+body.medical-review-capture-mode .medical-review-page .overflow-auto,
+body.medical-review-capture-mode .medical-review-page .overflow-y-auto {
+  max-height: none !important;
+  overflow: visible !important;
+}
+
 /* Global Reset */
 * {
   margin: 0;
@@ -104,7 +125,8 @@ textarea:focus-visible {
   .main-content,
   .content-wrapper,
   .re-shell,
-  .medical-artifact-page {
+  .medical-artifact-page,
+  .medical-review-page {
     height: auto !important;
     min-height: 0 !important;
     max-height: none !important;
@@ -112,8 +134,20 @@ textarea:focus-visible {
   }
 
   .medical-artifact-page-actions,
+  .medical-review-page .no-print,
   .sidebar,
   header {
     display: none !important;
+  }
+
+  .medical-review-page [class*="max-h-"],
+  .medical-review-page .overflow-auto,
+  .medical-review-page .overflow-y-auto {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .medical-review-page details:not([open]) > :not(summary) {
+    display: block !important;
   }
 }

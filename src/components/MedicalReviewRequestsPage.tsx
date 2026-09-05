@@ -457,10 +457,16 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [requestSearchFilter, setRequestSearchFilter] = useState('');
   const [pendingOnly, setPendingOnly] = useState(false);
   const [validationError, setValidationError] = useState('');
+  const [captureMode, setCaptureMode] = useState(false);
   const reviewDecisionSectionRef = useRef<HTMLDivElement | null>(null);
   const canEditReview = user?.role === 'admin'
     || isEditRoute
     || (isAdvisorReviewRoute && selected?.status === 'pending' && !isMagicReviewSession);
+
+  useEffect(() => {
+    document.body.classList.toggle('medical-review-capture-mode', captureMode);
+    return () => document.body.classList.remove('medical-review-capture-mode');
+  }, [captureMode]);
 
   const loadRequests = useCallback(async () => {
     try {
@@ -1140,7 +1146,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const artifactRoutePrefix = isMedicalRoute ? '/medical' : '/admin';
 
   return (
-    <div className="overflow-x-hidden p-0 sm:p-6">
+    <div className="medical-review-page overflow-x-hidden p-0 sm:p-6">
       <div className="mb-4 flex items-start justify-between gap-4 sm:mb-6">
         <div>
           <h1 className="text-xl font-semibold leading-tight text-gray-900 sm:text-2xl">
@@ -1195,6 +1201,15 @@ const MedicalReviewRequestsPage: React.FC = () => {
             </p>
           )}
         </div>
+        {isDetailView && (
+          <button
+            type="button"
+            onClick={() => setCaptureMode((enabled) => !enabled)}
+            className="no-print shrink-0 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            {captureMode ? 'Exit full-page mode' : 'Full-page screenshot'}
+          </button>
+        )}
         {!isMedicalRoute && !isDetailView && (
           <button
             onClick={() => navigate('/admin/medical-review-requests/new')}
