@@ -55,6 +55,7 @@ import PaymentReceiptsPage from './PaymentReceiptsPage';
 import PaymentRequestsGrid from './PaymentRequestsGrid';
 import PaymentRequestEditorPage from './PaymentRequestEditorPage';
 import RevolutPaymentLinksPage from './RevolutPaymentLinksPage';
+import PaymentRequestTypesSettings from './PaymentRequestTypesSettings';
 import ExpensesPage from './ExpensesPage';
 import ExpenseDetailPage from './ExpenseDetailPage';
 import ExpenseEditorPage from './ExpenseEditorPage';
@@ -886,6 +887,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="expenses/:id" element={<ExpenseDetailPage />} />
                       <Route path="expenses/:id/edit" element={<ExpenseEditorPage />} />
                       <Route path="payment-requests" element={<PaymentRequestsGrid />} />
+                      <Route path="payment-requests/types" element={<PaymentRequestTypesSettings />} />
                       <Route path="payment-requests/new" element={<PaymentRequestEditorPage />} />
                       <Route path="payment-requests/:id" element={<PaymentRequestEditorPage />} />
                       <Route path="revolut-payment-links" element={<ProtectedRoute requiredRole={['admin']}><RevolutPaymentLinksPage /></ProtectedRoute>} />

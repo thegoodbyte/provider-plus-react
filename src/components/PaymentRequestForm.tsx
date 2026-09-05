@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { PaymentRequest, PaymentRequestLineItem, Client, Retreat, Ceremony } from '../types';
 import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
-import { bookingsApi, ceremoniesApi, clientsApi, paymentRequestsApi, paymentsApi, retreatsApi } from '../services/api';
+import { bookingsApi, ceremoniesApi, clientsApi, paymentRequestsApi, paymentRequestTypesApi, PaymentRequestTypeSetting, paymentsApi, retreatsApi } from '../services/api';
 import { FiSave, FiArrowLeft } from 'react-icons/fi';
 import { toDateInputValue, todayDateInputValue } from '../utils/dateFormat';
 import { QRCodeSVG } from 'qrcode.react';
@@ -30,6 +30,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
 }) => {
   const [clients, setClients] = useState<Client[]>([]);
   const [retreats, setRetreats] = useState<Retreat[]>([]);
+  const [requestTypes, setRequestTypes] = useState<PaymentRequestTypeSetting[]>([]);
   const [bookings, setBookings] = useState<any[]>([]);
   const [ceremonies, setCeremonies] = useState<Ceremony[]>([]);
   const [loading, setLoading] = useState(false);
@@ -75,9 +76,10 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
   useEffect(() => {
     const loadOptions = async () => {
       try {
-        const [clientsResponse, retreatsResponse, nextIdResponse] = await Promise.all([
+        const [clientsResponse, retreatsResponse, requestTypesResponse, nextIdResponse] = await Promise.all([
           clientsApi.getAll(),
           retreatsApi.getAll(),
+          paymentRequestTypesApi.getAll().catch(() => ({ data: [] })),
           isEdit ? Promise.resolve(null) : paymentRequestsApi.getNextDisplayIdFresh().catch((error) => {
             console.error('Error fetching next payment request display ID:', error);
             return null;
@@ -85,6 +87,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
         ]);
         setClients(clientsResponse.data || []);
         setRetreats(retreatsResponse.data || []);
+        setRequestTypes(requestTypesResponse.data || []);
         if (!isEdit && nextIdResponse?.data) {
           setNextDisplayId(nextIdResponse.data);
           handleChange('display_id', nextIdResponse.data);
@@ -476,9 +479,9 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
               >
-                <option value="deposit">Deposit</option>
-                <option value="balance">Balance</option>
-                <option value="payment">Payment</option>
+                {requestTypes.filter((type) => type.active || type.key === formData.requestType).map((type) => (
+                  <option key={type.key} value={type.key}>{type.label}</option>
+                ))}
               </select>
             </div>
 

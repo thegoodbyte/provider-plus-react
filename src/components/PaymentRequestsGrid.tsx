@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { paymentRequestsApi } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
 import LoadingSpinner from './LoadingSpinner';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiCheckCircle, FiClock, FiAlertTriangle, FiSend, FiDollarSign, FiChevronDown, FiEye, FiCopy, FiExternalLink } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiCheckCircle, FiClock, FiAlertTriangle, FiSend, FiDollarSign, FiChevronDown, FiEye, FiCopy, FiExternalLink, FiSettings } from 'react-icons/fi';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 import { formatCalendarDate, parseCalendarDate } from '../utils/dateFormat';
 import { paymentRequestFinancialSummary } from './bookingFinancialSummary';
@@ -250,8 +250,16 @@ const PaymentRequestsGrid: React.FC = () => {
           <p className="text-sm text-gray-600">Invoices and payment requests for clients and retreats</p>
         </div>
         <button
+          onClick={() => navigate('/admin/payment-requests/types')}
+          className="inline-flex w-auto shrink-0 items-center gap-2 whitespace-nowrap px-4 py-2 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+          aria-label="Manage payment request types"
+        >
+          <Icon icon={FiSettings} className="w-4 h-4" />
+          Request Types
+        </button>
+        <button
           onClick={() => navigate('/admin/payment-requests/new')}
-          className="ml-auto inline-flex w-auto shrink-0 items-center gap-2 whitespace-nowrap px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
+          className="inline-flex w-auto shrink-0 items-center gap-2 whitespace-nowrap px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
         >
           <Icon icon={FiPlus} className="w-4 h-4" />
           Add New Invoice

@@ -403,6 +403,14 @@ export const expenseTypesApi = {
   seed: (dryRun: boolean = false) => api.post(`/expense-types/seed${dryRun ? '?dryRun=true' : ''}`, {}),
 };
 
+export type PaymentRequestTypeSetting = { _id: string; key: string; label: string; active: boolean; sortOrder: number; system: boolean };
+
+export const paymentRequestTypesApi = {
+  getAll: () => api.get<PaymentRequestTypeSetting[]>('/payment-request-types'),
+  create: (data: { key: string; label: string; active?: boolean; sortOrder?: number }) => api.post<PaymentRequestTypeSetting>('/payment-request-types', data),
+  update: (key: string, data: { label?: string; active?: boolean; sortOrder?: number }) => api.patch<PaymentRequestTypeSetting>(`/payment-request-types/${encodeURIComponent(key)}`, data),
+};
+
 export const retreatExpensesApi = {
   getAll: () => api.get<RetreatExpense[]>('/retreat-expenses'),
   getOne: (id: string) => api.get<RetreatExpense>(`/retreat-expenses/${id}`),
