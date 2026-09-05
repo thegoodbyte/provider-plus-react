@@ -110,7 +110,7 @@ const BookingEditorRoute: React.FC<React.ComponentProps<typeof BookingEditorPage
   <Suspense fallback={<div className="p-6 text-slate-600">Loading booking editor…</div>}><BookingEditorPage {...props} /></Suspense>
 );
 
-const RETREAT_DETAIL_TABS: RetreatDetailTab[] = ['clients', 'holisticView', 'tracking', 'drugScreening', 'expenses', 'payments', 'ceremonies', 'analytics', 'tasks'];
+const RETREAT_DETAIL_TABS: RetreatDetailTab[] = ['clients', 'holisticView', 'tracking', 'aiSummary', 'drugScreening', 'expenses', 'payments', 'ceremonies', 'analytics', 'tasks'];
 
 const getRetreatTabFromRoute = (tab?: string): RetreatDetailTab => (
   RETREAT_DETAIL_TABS.includes(tab as RetreatDetailTab) ? tab as RetreatDetailTab : 'clients'

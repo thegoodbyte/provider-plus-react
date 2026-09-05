@@ -10,6 +10,7 @@ import CeremonyAnalytics from './CeremonyAnalytics';
 import SearchableClientSelector from './SearchableClientSelector';
 import RetreatTrackingGrid from './RetreatTrackingGrid';
 import FoodMatrixGrid from './FoodMatrixGrid';
+import RetreatAiSummaryTab from './RetreatAiSummaryTab';
 import DrugScreeningTab from './DrugScreeningTab';
 import BookingStepsMatrix from './BookingStepsMatrix';
 import RetreatReserveListPanel from './RetreatReserveListPanel';
@@ -33,6 +34,7 @@ import AssignmentTurnedInRoundedIcon from '@mui/icons-material/AssignmentTurnedI
 import CreditCardRoundedIcon from '@mui/icons-material/CreditCardRounded';
 import FactCheckRoundedIcon from '@mui/icons-material/FactCheckRounded';
 import RestaurantRoundedIcon from '@mui/icons-material/RestaurantRounded';
+import AutoAwesomeRoundedIcon from '@mui/icons-material/AutoAwesomeRounded';
 import InsightsRoundedIcon from '@mui/icons-material/InsightsRounded';
 import PeopleAltRoundedIcon from '@mui/icons-material/PeopleAltRounded';
 import SavingsRoundedIcon from '@mui/icons-material/SavingsRounded';
@@ -61,7 +63,7 @@ interface RetreatDetailViewProps {
   onTabChange?: (tab: RetreatDetailTab) => void;
 }
 
-export type RetreatDetailTab = 'clients' | 'reserveList' | 'holisticView' | 'tracking' | 'foodMatrix' | 'drugScreening' | 'expenses' | 'payments' | 'ceremonies' | 'analytics' | 'tasks';
+export type RetreatDetailTab = 'clients' | 'reserveList' | 'holisticView' | 'tracking' | 'foodMatrix' | 'aiSummary' | 'drugScreening' | 'expenses' | 'payments' | 'ceremonies' | 'analytics' | 'tasks';
 
 interface QuickBookingFormData {
   firstName: string;
@@ -1202,6 +1204,15 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           <span>Food Matrix</span>
         </button>
         <button
+          className={`tab-btn ${activeTab === 'aiSummary' ? 'active' : ''}`}
+          onClick={() => handleTabChange('aiSummary')}
+          role="tab"
+          aria-selected={activeTab === 'aiSummary'}
+        >
+          <AutoAwesomeRoundedIcon className="retreat-tab-icon" />
+          <span>AI Summary</span>
+        </button>
+        <button
           className={`tab-btn ${activeTab === 'expenses' ? 'active' : ''}`}
           onClick={() => handleTabChange('expenses')}
           role="tab"
@@ -1505,6 +1516,12 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
         {activeTab === 'foodMatrix' && (
         <div className="food-matrix-tab-section">
           <FoodMatrixGrid retreatId={retreatId} />
+        </div>
+        )}
+
+        {activeTab === 'aiSummary' && (
+        <div className="ai-summary-tab-section">
+          <RetreatAiSummaryTab retreatId={retreatId} />
         </div>
         )}
 

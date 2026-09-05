@@ -1857,8 +1857,20 @@ export type RetreatReadinessClientRow = {
   openBlockingSteps: number;
   overdueSteps: number;
   missingSteps: string[];
+  balanceDue: number;
+  bookingCurrency: string;
+  isBehindOnEverything: boolean;
   nextAction: string;
   severity: 'high' | 'medium' | 'low';
+};
+
+export type AssistantTask = {
+  severity: 'high' | 'medium' | 'low';
+  category: 'medical' | 'documents' | 'payment' | 'review';
+  clientName: string;
+  clientLink?: string;
+  bookingLink: string;
+  message: string;
 };
 
 export type RetreatReadinessAssistantResult = {
@@ -1880,6 +1892,7 @@ export type RetreatReadinessAssistantResult = {
   findings: AssistantFinding[];
   suggestedActions: AssistantAction[];
   clients: RetreatReadinessClientRow[];
+  tasks: AssistantTask[];
   summary: string;
   aiSummary?: string;
 };
