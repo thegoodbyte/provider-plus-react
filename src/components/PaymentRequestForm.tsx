@@ -352,8 +352,9 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Invoice Number</label>
+              <label htmlFor="invoiceNumber" className="block text-sm font-medium text-gray-700 mb-2">Invoice Number</label>
               <input
+                id="invoiceNumber"
                 type="text"
                 value={formData.invoiceNumber}
                 onChange={(e) => handleChange('invoiceNumber', e.target.value)}
@@ -389,8 +390,9 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Booking</label>
+              <label htmlFor="bookingId" className="block text-sm font-medium text-gray-700 mb-2">Booking</label>
               <select
+                id="bookingId"
                 value={formData.bookingId}
                 onChange={(event) => {
                   const booking = bookings.find((item) => item._id === event.target.value);
@@ -415,9 +417,10 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Booking type *</label>
+              <label htmlFor="bookingType" className="block text-sm font-medium text-gray-700 mb-2">Booking type *</label>
               {formData.requestType === 'deposit' ? (
                 <select
+                  id="bookingType"
                   value={formData.bookingType}
                   onChange={(event) => setFormData((prev) => ({
                     ...prev,
@@ -439,8 +442,9 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
 
             {formData.bookingType === 'booster' && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Ceremony *</label>
+                <label htmlFor="ceremonyNumber" className="block text-sm font-medium text-gray-700 mb-2">Ceremony *</label>
                 <select
+                  id="ceremonyNumber"
                   value={formData.ceremonyNumber}
                   onChange={(event) => {
                     const position = Number(event.target.value);
@@ -461,8 +465,9 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Request Date *</label>
+              <label htmlFor="paymentDate" className="block text-sm font-medium text-gray-700 mb-2">Request Date *</label>
               <input
+                id="paymentDate"
                 type="date"
                 value={formData.paymentDate}
                 onChange={(e) => handleChange('paymentDate', e.target.value)}
@@ -472,8 +477,9 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Request Type</label>
+              <label htmlFor="requestType" className="block text-sm font-medium text-gray-700 mb-2">Request Type</label>
               <select
+                id="requestType"
                 value={formData.requestType}
                 onChange={(e) => handleChange('requestType', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -498,8 +504,9 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
 
             {formData.requestType === 'deposit' ? (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Full Booking Price *</label>
+                <label htmlFor="fullPriceQuote" className="block text-sm font-medium text-gray-700 mb-2">Full Booking Price *</label>
                 <input
+                  id="fullPriceQuote"
                   type="number"
                   min="0"
                   step="0.01"
@@ -522,8 +529,9 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
             ) : null}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Requested Amount *</label>
+              <label htmlFor="requestedAmount" className="block text-sm font-medium text-gray-700 mb-2">Requested Amount *</label>
               <input
+                id="requestedAmount"
                 type="number"
                 min="0"
                 step="0.01"
@@ -663,8 +671,9 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Currency *</label>
+              <label htmlFor="currency" className="block text-sm font-medium text-gray-700 mb-2">Currency *</label>
               <select
+                id="currency"
                 value={formData.currency}
                 onChange={(e) => handleChange('currency', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -678,8 +687,9 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">USD Amount</label>
+              <label htmlFor="usdAmount" className="block text-sm font-medium text-gray-700 mb-2">USD Amount</label>
               <input
+                id="usdAmount"
                 type="text"
                 value={
                   usdPreview.loading
@@ -696,8 +706,9 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Due Date</label>
+              <label htmlFor="dueDate" className="block text-sm font-medium text-gray-700 mb-2">Due Date</label>
               <input
+                id="dueDate"
                 type="date"
                 value={formData.dueDate}
                 onChange={(e) => handleChange('dueDate', e.target.value)}
@@ -706,8 +717,9 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Paid Date</label>
+              <label htmlFor="paidDate" className="block text-sm font-medium text-gray-700 mb-2">Paid Date</label>
               <input
+                id="paidDate"
                 type="date"
                 value={formData.paidDate}
                 onChange={(e) => handleChange('paidDate', e.target.value)}
@@ -717,8 +729,9 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+              <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-2">Status</label>
               <select
+                id="status"
                 value={formData.status}
                 onChange={(e) => handleChange('status', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -744,8 +757,9 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Payment Note</label>
+              <label htmlFor="note" className="block text-sm font-medium text-gray-700 mb-2">Payment Note</label>
               <textarea
+                id="note"
                 value={formData.note}
                 onChange={(e) => handleChange('note', e.target.value)}
                 rows={4}
@@ -760,8 +774,9 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Payment Instructions</label>
+              <label htmlFor="paymentInstructions" className="block text-sm font-medium text-gray-700 mb-2">Payment Instructions</label>
               <textarea
+                id="paymentInstructions"
                 value={formData.paymentInstructions}
                 onChange={(e) => handleChange('paymentInstructions', e.target.value)}
                 rows={3}
