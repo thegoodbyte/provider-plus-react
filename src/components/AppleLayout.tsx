@@ -52,6 +52,7 @@ import JointPaymentEditorPage from './JointPaymentEditorPage';
 import PaymentReceiptsPage from './PaymentReceiptsPage';
 import PaymentRequestsGrid from './PaymentRequestsGrid';
 import PaymentRequestEditorPage from './PaymentRequestEditorPage';
+import RevolutPaymentLinksPage from './RevolutPaymentLinksPage';
 import ExpensesPage from './ExpensesPage';
 import ExpenseDetailPage from './ExpenseDetailPage';
 import ExpenseEditorPage from './ExpenseEditorPage';
@@ -883,6 +884,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="payment-requests" element={<PaymentRequestsGrid />} />
                       <Route path="payment-requests/new" element={<PaymentRequestEditorPage />} />
                       <Route path="payment-requests/:id" element={<PaymentRequestEditorPage />} />
+                      <Route path="revolut-payment-links" element={<ProtectedRoute requiredRole={['admin']}><RevolutPaymentLinksPage /></ProtectedRoute>} />
                       <Route path="payment-requests/:id/edit" element={<PaymentRequestEditorPage />} />
                       <Route path="communications" element={<CommunicationsPage />} />
                       <Route path="assistant" element={<AssistantPage />} />
@@ -1146,6 +1148,7 @@ const AppleLayout: React.FC = () => {
                 <Route path="/payments/:id/edit" element={<ProtectedRoute><PaymentEditorPage /></ProtectedRoute>} />
                 <Route path="/payments/joint/new" element={<ProtectedRoute><JointPaymentEditorPage /></ProtectedRoute>} />
                 <Route path="/payments/receipts" element={<ProtectedRoute><PaymentReceiptsPage /></ProtectedRoute>} />
+                <Route path="/revolut-payment-links" element={<ProtectedRoute requiredRole={['admin']}><RevolutPaymentLinksPage /></ProtectedRoute>} />
                 <Route path="/expenses" element={<ProtectedRoute><ExpensesPage /></ProtectedRoute>} />
                 <Route path="/expenses/categories" element={<ProtectedRoute><ExpenseTypesSettings /></ProtectedRoute>} />
                 <Route path="/expenses/new" element={<ProtectedRoute><ExpenseEditorPage /></ProtectedRoute>} />

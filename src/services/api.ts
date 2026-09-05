@@ -1947,6 +1947,19 @@ export const foodMatrixApi = {
     api.post<{ sent: boolean; to: string; cookName: string; language: string }>(`/retreats/${retreatId}/food-matrix/email-cook`),
 };
 
+export type RevolutPaymentLink = {
+  _id: string; name: string; checkoutUrl: string; externalId: string; amount: number; currency: string;
+  paymentLimit: number | null; observedPaymentCount: number; paymentCountOverride: number | null;
+  effectivePaymentCount: number; remainingPayments: number | null; overrideActive: boolean;
+  status: string; notes?: string; countSource: string; lastCountedAt?: string;
+};
+
+export const revolutPaymentLinksApi = {
+  list: () => api.get<RevolutPaymentLink[]>('/revolut-payment-links'),
+  create: (data: any) => api.post<RevolutPaymentLink>('/revolut-payment-links', data),
+  update: (id: string, data: any) => api.patch<RevolutPaymentLink>(`/revolut-payment-links/${id}`, data),
+};
+
 export const drugScreeningsApi = {
   list: (retreatId: string) => api.get('/drug-screenings', { params: { retreatId } }),
   save: (retreatId: string, bookingId: string, data: { clientId: string; administeredAt: string; testedFor: string[]; result: string; notes?: string }, image?: File) => {
