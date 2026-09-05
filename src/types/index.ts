@@ -1093,6 +1093,17 @@ export interface MedicalArtifact {
     disclaimer?: string;
     error?: string;
   };
+  // Advisory only -- an AI opinion on whether the uploaded file actually
+  // looks like what the uploader claimed. Never authoritative.
+  classification?: {
+    status: 'ok' | 'flagged' | 'skipped';
+    claimedType?: string;
+    detectedType?: string;
+    confidence?: number;
+    explanation?: string;
+    model?: string;
+    checkedAt?: Date | string;
+  };
   receivedAt?: Date | string;
   source?: 'client_upload' | 'admin_upload' | 'email' | 'manual' | 'legacy';
   version?: number;
