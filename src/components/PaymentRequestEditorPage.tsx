@@ -6,6 +6,7 @@ import { paymentRequestsApi, paymentsApi } from '../services/api';
 import { PaymentReceipt, PaymentRequest } from '../types';
 import { formatCalendarDate } from '../utils/dateFormat';
 import { QRCodeSVG } from 'qrcode.react';
+import { getIbogaReadyPaymentUrl, getPolishWebsitePaymentUrl } from './paymentRequestLinks';
 
 const resolveClientName = (value: any) => {
   if (!value) return 'Unknown client';
@@ -214,6 +215,15 @@ const PaymentRequestEditorPage: React.FC = () => {
             {paymentRequest.revolutPaymentLink ? <div className="mt-3 flex flex-col items-start gap-4 rounded-lg border border-blue-200 bg-blue-50 p-4 sm:flex-row sm:items-center"><div className="rounded-lg bg-white p-3"><QRCodeSVG value={paymentRequest.revolutPaymentLink} size={180} level="M" title="Revolut payment QR code" /></div><div><div className="font-semibold text-gray-900">Revolut payment</div><div className="mt-1 text-sm text-gray-700">{formatAmount(paymentRequest.requestedAmount || paymentRequest.amountPaid, paymentRequest.currency)}</div><a href={paymentRequest.revolutPaymentLink} target="_blank" rel="noreferrer" className="mt-3 inline-flex rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white">Open Revolut request</a></div></div> : <p className="mt-2 rounded-md bg-gray-50 p-4 text-gray-600">No unique Revolut payment link has been added.</p>}
             {paymentRequest.paymentInstructions && <div className="mt-3 whitespace-pre-wrap rounded-lg border border-gray-200 p-4 text-sm text-gray-800">{paymentRequest.paymentInstructions}</div>}
           </div>
+
+          {paymentRequest.publicHash && <div className="mt-6 border-t border-gray-200 pt-6">
+            <h2 className="text-lg font-semibold text-gray-900">Public payment-request pages</h2>
+            <p className="mt-1 text-sm text-gray-600">Both pages use the same secure request hash and show the same payment data.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <a href={getIbogaReadyPaymentUrl(paymentRequest)} target="_blank" rel="noreferrer" className="rounded-md border border-blue-200 bg-white px-4 py-2 text-sm font-semibold text-blue-700">Open in IbogaReady</a>
+              <a href={getPolishWebsitePaymentUrl(paymentRequest)} target="_blank" rel="noreferrer" className="rounded-md bg-red-600 px-4 py-2 text-sm font-semibold text-white">Open Polish ISCZ page</a>
+            </div>
+          </div>}
 
           <div className="mt-6 border-t border-gray-200 pt-6">
             <h2 className="text-lg font-semibold text-gray-900">Receipt allocation</h2>

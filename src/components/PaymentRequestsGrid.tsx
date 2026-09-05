@@ -7,6 +7,7 @@ import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiCheckCircle, FiClock, FiAlertTri
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 import { formatCalendarDate, parseCalendarDate } from '../utils/dateFormat';
 import { paymentRequestFinancialSummary } from './bookingFinancialSummary';
+import { getIbogaReadyPaymentUrl, getPolishWebsitePaymentUrl, getPreferredPaymentUrl } from './paymentRequestLinks';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
@@ -30,10 +31,6 @@ const resolveRetreat = (retreatValue: any) => {
   if (typeof retreatValue === 'string') return retreatValue;
   return retreatValue.retreatCode || retreatValue.code || retreatValue.name || 'Unknown Retreat';
 };
-
-const getPublicPaymentUrl = (request: any) => (
-  request?.publicHash ? `https://www.ibogaready.com/payment/${request.publicHash}` : ''
-);
 
 const getPublicPaymentApiUrl = (request: any) => (
   request?.publicHash ? `${API_BASE_URL}/public/invoices/${request.publicHash}` : ''
@@ -101,7 +98,7 @@ const PaymentRequestsGrid: React.FC = () => {
   const buildPaymentEmail = (request: any): EmailComposeInitialValues => {
     const client = resolveClient(request.clientId);
     const retreat = resolveRetreat(request.retreatId);
-    const paymentUrl = getPublicPaymentUrl(request);
+    const paymentUrl = getPreferredPaymentUrl(request);
     const invoiceNumber = request.invoiceNumber || request.display_id || request._id;
     const financials = paymentRequestFinancialSummary(request);
     const requestedAmount = formatAmount(financials.requested, financials.currency);
@@ -415,16 +412,16 @@ const PaymentRequestsGrid: React.FC = () => {
           extraContent={selectedSendRequest.publicHash ? (
             <div className="space-y-3 rounded-md border border-blue-100 bg-blue-50 p-3">
               <div>
-                <div className="mb-1 text-xs font-semibold uppercase text-blue-800">Client URL</div>
+                <div className="mb-1 text-xs font-semibold uppercase text-blue-800">IbogaReady client URL</div>
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <input
                     readOnly
-                    value={getPublicPaymentUrl(selectedSendRequest)}
+                    value={getIbogaReadyPaymentUrl(selectedSendRequest)}
                     className="min-w-0 flex-1 rounded-md border border-blue-200 bg-white px-3 py-2 text-xs text-gray-800"
                   />
                   <button
                     type="button"
-                    onClick={() => copyToClipboard(getPublicPaymentUrl(selectedSendRequest))}
+                    onClick={() => copyToClipboard(getIbogaReadyPaymentUrl(selectedSendRequest))}
                     className="inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700"
                   >
                     <Icon icon={FiCopy} className="h-4 w-4" />
@@ -432,12 +429,20 @@ const PaymentRequestsGrid: React.FC = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => window.open(getPublicPaymentUrl(selectedSendRequest), '_blank', 'noopener,noreferrer')}
+                    onClick={() => window.open(getIbogaReadyPaymentUrl(selectedSendRequest), '_blank', 'noopener,noreferrer')}
                     className="inline-flex items-center justify-center gap-2 rounded-md border border-blue-200 bg-white px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-50"
                   >
                     <Icon icon={FiExternalLink} className="h-4 w-4" />
                     Open
                   </button>
+                </div>
+              </div>
+              <div>
+                <div className="mb-1 text-xs font-semibold uppercase text-blue-800">Polish ISCZ website URL</div>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input readOnly value={getPolishWebsitePaymentUrl(selectedSendRequest)} className="min-w-0 flex-1 rounded-md border border-blue-200 bg-white px-3 py-2 text-xs text-gray-800" />
+                  <button type="button" onClick={() => copyToClipboard(getPolishWebsitePaymentUrl(selectedSendRequest))} className="inline-flex items-center justify-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700"><Icon icon={FiCopy} className="h-4 w-4" />Copy</button>
+                  <button type="button" onClick={() => window.open(getPolishWebsitePaymentUrl(selectedSendRequest), '_blank', 'noopener,noreferrer')} className="inline-flex items-center justify-center gap-2 rounded-md border border-blue-200 bg-white px-3 py-2 text-xs font-medium text-blue-700 hover:bg-blue-50"><Icon icon={FiExternalLink} className="h-4 w-4" />Open</button>
                 </div>
               </div>
               <div>

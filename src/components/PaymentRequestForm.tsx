@@ -6,6 +6,7 @@ import { bookingsApi, ceremoniesApi, clientsApi, paymentRequestsApi, paymentsApi
 import { FiSave, FiArrowLeft } from 'react-icons/fi';
 import { toDateInputValue, todayDateInputValue } from '../utils/dateFormat';
 import { QRCodeSVG } from 'qrcode.react';
+import RevolutPaymentLinkPicker from './RevolutPaymentLinkPicker';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
@@ -746,15 +747,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Revolut payment link</label>
-              <input
-                type="url"
-                value={formData.revolutPaymentLink}
-                onChange={(e) => handleChange('revolutPaymentLink', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="https://revolut.me/..."
-              />
-              <p className="mt-1 text-xs text-gray-500">Paste the unique Revolut Pro request link. It will be shown to this client in IbogaReady.</p>
+              <RevolutPaymentLinkPicker value={formData.revolutPaymentLink} amount={formData.requestedAmount} currency={formData.currency} onChange={value => handleChange('revolutPaymentLink', value)} />
               {formData.revolutPaymentLink && /^https:\/\//i.test(formData.revolutPaymentLink) && <div className="mt-4 flex flex-col items-start gap-3 rounded-lg border border-blue-100 bg-blue-50 p-4 sm:flex-row sm:items-center"><div className="rounded-lg bg-white p-3"><QRCodeSVG value={formData.revolutPaymentLink} size={150} level="M" title="Revolut payment QR code" /></div><div><div className="font-semibold text-gray-900">Revolut QR preview</div><div className="text-sm text-gray-700">{formData.requestedAmount || '0'} {formData.currency}</div><div className="mt-1 text-xs text-gray-500">The QR contains the saved Revolut checkout link.</div></div></div>}
             </div>
 
