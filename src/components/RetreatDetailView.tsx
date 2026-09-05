@@ -5,6 +5,7 @@ import { Retreat, ExpenseSummary, House, Payment, EmailAsset, EmailTemplate, Con
 import ExpensesTab from './ExpensesTab';
 import PaymentsTab from './PaymentsTab';
 import ClientDetailView from './ClientDetailView';
+import ClientAvatar from './ClientAvatar';
 import CeremoniesGrid from './CeremoniesGrid';
 import CeremonyAnalytics from './CeremonyAnalytics';
 import SearchableClientSelector from './SearchableClientSelector';
@@ -140,49 +141,13 @@ const RetreatClientAvatar: React.FC<{ clientId: string; name: string; profilePic
   profilePictureUrl,
   profilePictureS3Key,
   profilePictureFileUploadId,
-}) => {
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(profilePictureUrl || null);
-  const hasProfilePicture = Boolean(profilePictureUrl || profilePictureS3Key || profilePictureFileUploadId);
-
-  useEffect(() => {
-    if (!clientId || profilePictureUrl || !hasProfilePicture) {
-      setAvatarUrl(profilePictureUrl || null);
-      return;
-    }
-
-    let active = true;
-    let objectUrl: string | null = null;
-
-    clientsApi.getProfilePictureBlob(clientId)
-      .then((response) => {
-        if (!active) return;
-        objectUrl = URL.createObjectURL(response.data);
-        setAvatarUrl(objectUrl);
-      })
-      .catch(() => {
-        if (active) setAvatarUrl(null);
-      });
-
-    return () => {
-      active = false;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [clientId, hasProfilePicture, profilePictureUrl]);
-
-  if (!hasProfilePicture) {
-    return (
-      <span className="inline-flex h-8 w-8 flex-none items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-gray-100 text-xs font-semibold text-gray-600">
-        {name.charAt(0).toUpperCase() || '?'}
-      </span>
-    );
-  }
-
-  return (
-    <span className="inline-flex h-8 w-8 flex-none items-center justify-center overflow-hidden rounded-full border border-gray-200 bg-gray-100 text-xs font-semibold text-gray-600">
-      {avatarUrl ? <img src={avatarUrl} alt="" className="h-full w-full object-cover" /> : <span>{name.charAt(0).toUpperCase() || '?'}</span>}
-    </span>
-  );
-};
+}) => (
+  <ClientAvatar
+    client={{ _id: clientId, profilePictureUrl, profilePictureS3Key, profilePictureFileUploadId }}
+    name={name}
+    size="md"
+  />
+);
 
 const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack, initialTab = 'clients', onTabChange }) => {
   const location = useLocation();

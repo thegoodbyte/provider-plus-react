@@ -69,7 +69,7 @@ const ClientListAvatar: React.FC<{ client: Client; name: string }> = ({ client }
   const profilePictureUrl = useClientProfilePictureUrl(client);
 
   return (
-    <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-slate-500 ring-1 ring-slate-200">
+    <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-slate-500 ring-1 ring-slate-200">
       {profilePictureUrl ? (
         <img src={profilePictureUrl} alt="" className="h-full w-full object-cover" />
       ) : (
