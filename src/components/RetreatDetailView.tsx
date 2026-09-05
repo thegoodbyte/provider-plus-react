@@ -64,7 +64,12 @@ interface RetreatDetailViewProps {
   onTabChange?: (tab: RetreatDetailTab) => void;
 }
 
-export type RetreatDetailTab = 'clients' | 'reserveList' | 'holisticView' | 'tracking' | 'foodMatrix' | 'aiSummary' | 'drugScreening' | 'expenses' | 'payments' | 'ceremonies' | 'analytics' | 'tasks';
+// Single source of truth for every retreat detail tab -- both the type and
+// the URL-routing allowlist in AppleLayout.tsx derive from this array, so a
+// new tab can't be added to the UI while staying invisible to deep-linking
+// (the bug that silently dropped 'reserveList' and 'foodMatrix' from URLs).
+export const RETREAT_DETAIL_TABS = ['clients', 'reserveList', 'holisticView', 'tracking', 'foodMatrix', 'aiSummary', 'drugScreening', 'expenses', 'payments', 'ceremonies', 'analytics', 'tasks'] as const;
+export type RetreatDetailTab = typeof RETREAT_DETAIL_TABS[number];
 
 interface QuickBookingFormData {
   firstName: string;

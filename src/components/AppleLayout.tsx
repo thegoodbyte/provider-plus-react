@@ -15,7 +15,7 @@ import ClientDetailsPage from './ClientDetailsPage';
 import ClientEditPage from './ClientEditPage';
 import AddClient from '../pages/AddClient';
 import ClientScreening from '../pages/ClientScreening';
-import RetreatDetailView, { RetreatDetailTab } from './RetreatDetailView';
+import RetreatDetailView, { RETREAT_DETAIL_TABS, RetreatDetailTab } from './RetreatDetailView';
 // import ClientsGrid from './ClientsGrid'; // Now using UnifiedClientManager
 import BookingsGrid from './BookingsGrid';
 import CeremoniesPage from './CeremoniesPage';
@@ -114,10 +114,8 @@ const BookingEditorRoute: React.FC<React.ComponentProps<typeof BookingEditorPage
   <Suspense fallback={<div className="p-6 text-slate-600">Loading booking editor…</div>}><BookingEditorPage {...props} /></Suspense>
 );
 
-const RETREAT_DETAIL_TABS: RetreatDetailTab[] = ['clients', 'holisticView', 'tracking', 'aiSummary', 'drugScreening', 'expenses', 'payments', 'ceremonies', 'analytics', 'tasks'];
-
 const getRetreatTabFromRoute = (tab?: string): RetreatDetailTab => (
-  RETREAT_DETAIL_TABS.includes(tab as RetreatDetailTab) ? tab as RetreatDetailTab : 'clients'
+  (RETREAT_DETAIL_TABS as readonly string[]).includes(tab as RetreatDetailTab) ? tab as RetreatDetailTab : 'clients'
 );
 
 const RetreatDetailRoute: React.FC = () => {
