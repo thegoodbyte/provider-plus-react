@@ -33,6 +33,8 @@ import MedicalTrackingFileViewPage from './MedicalTrackingFileViewPage';
 import WorkflowDashboard from './WorkflowDashboard';
 import RetreatFlowPage from './RetreatFlowPage';
 import RetreatFlowLibraryPage from './RetreatFlowLibraryPage';
+import IntegrationRetreatsPage from './IntegrationRetreatsPage';
+import IntegrationRetreatDetailPage from './IntegrationRetreatDetailPage';
 import BookingFlowPage from './BookingFlowPage';
 import NeedsAttentionPage from './NeedsAttentionPage';
 import BookingDocumentsPage from './BookingDocumentsPage';
@@ -852,6 +854,8 @@ const AppleLayout: React.FC = () => {
                       <Route path="retreat-flow" element={<RetreatFlowPage />} />
                       <Route path="retreat-flow/:retreatId" element={<RetreatFlowPage />} />
                       <Route path="retreat-flow-library" element={<RetreatFlowLibraryPage />} />
+                      <Route path="integration" element={<IntegrationRetreatsPage />} />
+                      <Route path="integration/:retreatId" element={<IntegrationRetreatDetailPage />} />
                       <Route path="scheduled-reminders" element={<ScheduledRemindersPage />} />
                       <Route path="booking-step-deadlines" element={<BookingStepDeadlinesPage />} />
                       <Route path="bookings/:bookingId/medication-stop-plan" element={<MedicationStopPlanPage />} />
@@ -1040,6 +1044,8 @@ const AppleLayout: React.FC = () => {
                       <Route path="clients" element={<UnifiedClientManager />} />
                       <Route path="clients/add" element={<AddClient />} />
                       <Route path="potential-clients" element={<UnifiedClientManager />} />
+                      <Route path="integration" element={<IntegrationRetreatsPage />} />
+                      <Route path="integration/:retreatId" element={<IntegrationRetreatDetailPage />} />
                       <Route path="reminders" element={<RemindersPage />} />
                       <Route path="contact-book" element={<ContactBookPage />} />
                       <Route path="communications" element={<CommunicationsPage />} />

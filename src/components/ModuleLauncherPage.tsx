@@ -23,6 +23,7 @@ import {
   ClipboardPaste,
   ListTodo,
   FileText,
+  PhoneCall,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import TasksForTodayPanel from './TasksForTodayPanel';
@@ -152,6 +153,7 @@ const ModuleLauncherPage: React.FC = () => {
         tiles: [
           { id: 'workflow', label: 'Workflow', subtitle: 'Readiness', route: 'workflow', icon: Workflow, tone: 'violet' },
           { id: 'flow-tasks', label: 'Flow Tasks', subtitle: 'Queue', route: 'flow-tasks', icon: ListTodo, tone: 'violet' },
+          { id: 'integration', label: 'Integration', subtitle: 'Follow-up calls', route: 'integration', icon: PhoneCall, tone: 'violet' },
         ],
       },
       {
@@ -240,6 +242,7 @@ const ModuleLauncherPage: React.FC = () => {
           { id: 'bookings', label: 'Bookings', subtitle: 'Seats', route: 'bookings', icon: ClipboardPaste, tone: 'blue' },
           { id: 'retreats', label: 'Retreats', subtitle: 'Programs', route: 'retreats', icon: CalendarDays, tone: 'blue' },
           { id: 'houses', label: 'Houses', subtitle: 'Locations', route: 'houses', icon: Building2, tone: 'blue' },
+          { id: 'integration', label: 'Integration', subtitle: 'Follow-up calls', route: 'integration', icon: PhoneCall, tone: 'blue' },
         ],
       },
       {

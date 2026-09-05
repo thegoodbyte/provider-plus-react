@@ -86,6 +86,48 @@
 .ai-summary-empty { padding:30px; color:#94a3b8; text-align:center; font-size:13px; }
 @media(max-width:900px){.ai-summary-hero{align-items:flex-start;flex-direction:column}}
 
+/* Integration: post-retreat follow-up call tracking */
+.integration-retreats-shell,.integration-detail-shell{overflow:hidden;border:1px solid #e5e7eb;border-radius:18px;background:#f8fafc;box-shadow:0 12px 30px rgba(15,23,42,.06);padding-bottom:18px;}
+.integration-retreats-hero,.integration-detail-hero{display:flex;align-items:center;gap:13px;padding:20px 22px;background:linear-gradient(120deg,#ecfeff 0%,#fff 52%,#f0fdfa 100%);border-bottom:1px solid #e5e7eb;}
+.integration-retreats-icon{display:grid;place-items:center;width:44px;height:44px;flex:none;border-radius:13px;color:#fff;background:linear-gradient(135deg,#0891b2,#0d9488);box-shadow:0 8px 18px rgba(8,145,178,.28);}
+.integration-retreats-hero h2,.integration-detail-hero h2{margin:0;color:#172033;font-size:24px;line-height:1.15;font-weight:800;}
+.integration-retreats-hero p,.integration-detail-hero p{margin:4px 0 0;color:#64748b;font-size:13px;}
+.integration-retreats-empty{padding:30px;color:#94a3b8;text-align:center;font-size:13px;}
+.integration-retreats-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;padding:16px;}
+.integration-retreat-card{display:flex;flex-direction:column;gap:8px;text-align:left;border:1px solid #e2e8f0;border-radius:14px;background:#fff;box-shadow:0 4px 12px rgba(15,23,42,.04);padding:15px 16px;cursor:pointer;}
+.integration-retreat-card:hover{border-color:#67e8f9;}
+.integration-retreat-card-title{font-size:15px;font-weight:800;color:#0e7490;}
+.integration-retreat-card-dates{font-size:12px;color:#64748b;}
+.integration-retreat-card-checkpoints{display:flex;flex-direction:column;gap:4px;margin-top:4px;}
+.integration-retreat-card-checkpoints span{font-size:11.5px;font-weight:600;color:#475569;border-radius:7px;background:#f1f5f9;padding:5px 8px;}
+.integration-retreat-card-checkpoints span.complete{color:#166534;background:#ecfdf5;}
+
+.integration-checkpoint-tabs{display:flex;gap:6px;padding:16px 22px 0;}
+.integration-checkpoint-tabs button{border:1px solid #e2e8f0;border-radius:10px;background:#fff;padding:8px 16px;font-size:13px;font-weight:700;color:#475569;cursor:pointer;}
+.integration-checkpoint-tabs button.active{background:#0e7490;border-color:#0e7490;color:#fff;}
+.integration-checkpoint-config{display:flex;flex-wrap:wrap;gap:16px;padding:16px 22px;}
+.integration-checkpoint-config label{display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.04em;}
+.integration-checkpoint-config input,.integration-checkpoint-config textarea{font-weight:400;text-transform:none;letter-spacing:normal;border:1px solid #d7dde7;border-radius:9px;padding:8px 10px;font-size:13px;color:#1e293b;background:#fff;}
+.integration-checkpoint-config .integration-session-notes{flex:1;min-width:260px;}
+.integration-checkpoint-config textarea{min-height:38px;resize:vertical;}
+
+.integration-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px;padding:8px 22px 16px;}
+.integration-tile{border:1px solid #e2e8f0;border-radius:14px;background:#fff;box-shadow:0 4px 12px rgba(15,23,42,.04);padding:14px 16px;}
+.integration-tile.status-reached{border-color:#a7f3d0;background:#f0fdfa;}
+.integration-tile.status-no_show{border-color:#fda4af;background:#fff8f8;}
+.integration-tile > header{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:10px;}
+.integration-tile-name{border:0;background:none;padding:0;color:#0e7490;font-size:15px;font-weight:800;cursor:pointer;text-align:left;}
+.integration-tile-name:hover{text-decoration:underline;}
+.integration-tile-controls{display:flex;flex-wrap:wrap;align-items:flex-end;gap:10px;}
+.integration-tile-controls label{display:flex;flex-direction:column;gap:3px;font-size:10px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.04em;}
+.integration-tile-controls select,.integration-tile-controls input{font-weight:400;text-transform:none;letter-spacing:normal;border:1px solid #d7dde7;border-radius:8px;padding:5px 8px;font-size:12px;color:#1e293b;background:#fff;}
+.integration-tile-toggle{align-self:center;border:1px solid #e2e8f0;border-radius:8px;background:#fff;padding:5px;color:#64748b;cursor:pointer;}
+.integration-tile-reached{margin-top:8px;font-size:11.5px;font-weight:700;color:#166534;}
+.integration-tile-body{display:flex;flex-direction:column;gap:10px;margin-top:12px;border-top:1px solid #f1f5f9;padding-top:12px;}
+.integration-tile-question{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:700;color:#334155;}
+.integration-tile-question textarea{font-weight:400;border:1px solid #d7dde7;border-radius:9px;padding:8px 10px;font-size:13px;color:#1e293b;min-height:52px;resize:vertical;}
+@media(max-width:900px){.integration-retreats-hero,.integration-detail-hero{align-items:flex-start;flex-direction:column}.integration-tile-controls{width:100%}}
+
 body.medical-artifact-capture-mode,
 body.medical-artifact-capture-mode #root,
 body.medical-artifact-capture-mode .App,

@@ -1969,3 +1969,45 @@ export const drugScreeningsApi = {
     return api.put(`/drug-screenings/retreat/${retreatId}/booking/${bookingId}`, form, { headers: { 'Content-Type': 'multipart/form-data' } });
   },
 };
+
+export type IntegrationCheckpointSummary = { checkpointNumber: number; targetDate: string; reachedCount: number; totalCount: number };
+
+export type IntegrationRetreatSummary = {
+  id: string;
+  name?: string;
+  startDate?: string;
+  endDate?: string;
+  totalClients: number;
+  checkpoints: IntegrationCheckpointSummary[];
+};
+
+export type IntegrationTile = {
+  responseId: string;
+  clientId: string;
+  clientName: string;
+  clientLink?: string;
+  bookingId?: string;
+  callType: 'group' | 'individual';
+  scheduledAt?: string;
+  status: 'not_reached' | 'reached' | 'no_show' | 'rescheduled';
+  reachedAt?: string;
+  answers: Record<string, string>;
+  notes?: string;
+};
+
+export type IntegrationCheckpointDetail = {
+  retreat: { id: string; name?: string };
+  checkpoint: { id?: string; checkpointNumber: number; targetDate: string; notes?: string };
+  questions: Array<{ key: string; label: string }>;
+  tiles: IntegrationTile[];
+};
+
+export const integrationApi = {
+  listRetreats: () => api.get<IntegrationRetreatSummary[]>('/integration/retreats'),
+  getCheckpointDetail: (retreatId: string, checkpointNumber: number) =>
+    api.get<IntegrationCheckpointDetail>(`/integration/retreats/${retreatId}/checkpoints/${checkpointNumber}`),
+  updateCheckpoint: (retreatId: string, checkpointNumber: number, data: { targetDate?: string; notes?: string }) =>
+    api.patch(`/integration/retreats/${retreatId}/checkpoints/${checkpointNumber}`, data),
+  updateResponse: (responseId: string, data: { callType?: 'group' | 'individual'; status?: string; scheduledAt?: string; answers?: Record<string, string>; notes?: string }) =>
+    api.patch<IntegrationTile>(`/integration/responses/${responseId}`, data),
+};
