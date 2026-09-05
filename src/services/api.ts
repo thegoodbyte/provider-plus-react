@@ -1912,6 +1912,8 @@ export type FoodMatrixColumn = {
 export type FoodMatrixData = {
   questions: Array<{ key: string; label: string }>;
   columns: FoodMatrixColumn[];
+  retreatLabel?: string;
+  cook?: { name: string; email: string; language: 'en' | 'pl' | 'cs' } | null;
   translationWarning?: string;
 };
 
@@ -1919,6 +1921,8 @@ export const foodMatrixApi = {
   get: (retreatId: string) => api.get<FoodMatrixData>(`/retreats/${retreatId}/food-matrix`),
   getPdf: (retreatId: string, language?: string) =>
     api.get(`/retreats/${retreatId}/food-matrix/pdf`, { params: language ? { language } : {}, responseType: 'blob' }),
+  emailCook: (retreatId: string) =>
+    api.post<{ sent: boolean; to: string; cookName: string; language: string }>(`/retreats/${retreatId}/food-matrix/email-cook`),
 };
 
 export const drugScreeningsApi = {
