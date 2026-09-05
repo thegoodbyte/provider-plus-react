@@ -50,4 +50,16 @@ describe('SubmissionNotificationsPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mark selected unread' }));
     await waitFor(() => expect(mockedApi.patch).toHaveBeenCalledWith('/submission-notifications/n2/unread'));
   });
+
+  it('purges past-retreat notifications in one action and reloads the list (PPVC-600)', async () => {
+    mockedApi.patch.mockResolvedValue({ data: { markedCount: 3 } } as any);
+    renderPage();
+    await screen.findByText('Review EKG');
+
+    fireEvent.click(screen.getByRole('button', { name: /purge past retreats/i }));
+
+    await waitFor(() => expect(mockedApi.patch).toHaveBeenCalledWith('/submission-notifications/purge-past-retreats'));
+    expect(await screen.findByText(/3 past-retreat notification/i)).toBeInTheDocument();
+    await waitFor(() => expect(mockedApi.get).toHaveBeenCalledTimes(2));
+  });
 });
