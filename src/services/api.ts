@@ -1901,6 +1901,26 @@ export const assistantApi = {
     api.post<AssistantChatResponse>('/assistant/chat', data),
 };
 
+export type FoodMatrixColumn = {
+  clientId: string;
+  label: string;
+  submitted: boolean;
+  language?: string;
+  answers: Record<string, any>;
+};
+
+export type FoodMatrixData = {
+  questions: Array<{ key: string; label: string }>;
+  columns: FoodMatrixColumn[];
+  translationWarning?: string;
+};
+
+export const foodMatrixApi = {
+  get: (retreatId: string) => api.get<FoodMatrixData>(`/retreats/${retreatId}/food-matrix`),
+  getPdf: (retreatId: string, language?: string) =>
+    api.get(`/retreats/${retreatId}/food-matrix/pdf`, { params: language ? { language } : {}, responseType: 'blob' }),
+};
+
 export const drugScreeningsApi = {
   list: (retreatId: string) => api.get('/drug-screenings', { params: { retreatId } }),
   save: (retreatId: string, bookingId: string, data: { clientId: string; administeredAt: string; testedFor: string[]; result: string; notes?: string }, image?: File) => {
