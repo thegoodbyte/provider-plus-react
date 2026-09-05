@@ -6,6 +6,7 @@ import LoadingSpinner from './LoadingSpinner';
 import { bookingsApi, clientsApi, referralsApi, retreatsApi } from '../services/api';
 import { Client, Referral, Retreat, RetreatClient } from '../types';
 import ClientReferralFields from './ClientReferralFields';
+import { useClientProfilePictureUrl } from './useClientProfilePictureUrl';
 import {
   bookedWorkflowStatuses,
   clientWorkflowStatusLabels,
@@ -65,32 +66,7 @@ const getRetreatCode = (retreat: any) => {
 };
 
 const ClientListAvatar: React.FC<{ client: Client; name: string }> = ({ client }) => {
-  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(client.profilePictureUrl || null);
-  const hasProfilePicture = Boolean(client.profilePictureUrl || client.profilePictureS3Key || client.profilePictureFileUploadId);
-
-  useEffect(() => {
-    if (!client._id || client.profilePictureUrl || !hasProfilePicture) {
-      setProfilePictureUrl(client.profilePictureUrl || null);
-      return;
-    }
-
-    let active = true;
-    let objectUrl = '';
-
-    clientsApi.getProfilePictureBlob(client._id)
-      .then((response) => {
-        objectUrl = URL.createObjectURL(response.data as Blob);
-        if (active) setProfilePictureUrl(objectUrl);
-      })
-      .catch(() => {
-        if (active) setProfilePictureUrl(null);
-      });
-
-    return () => {
-      active = false;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [client._id, client.profilePictureFileUploadId, client.profilePictureS3Key, client.profilePictureUrl, client.updatedAt, hasProfilePicture]);
+  const profilePictureUrl = useClientProfilePictureUrl(client);
 
   return (
     <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-slate-100 text-slate-500 ring-1 ring-slate-200">

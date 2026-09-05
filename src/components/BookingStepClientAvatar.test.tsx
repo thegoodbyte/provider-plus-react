@@ -31,6 +31,13 @@ describe('BookingStepClientAvatar', () => {
     expect(load).not.toHaveBeenCalled();
   });
 
+  it('PPVC-609: fetches an authenticated blob instead of using the internal (JWT-protected) profile route directly', async () => {
+    load.mockResolvedValue({ data: new Blob(['photo']) });
+    const { container } = render(<BookingStepClientAvatar client={{ _id: 'c', profilePictureUrl: '/clients/c/profile-picture' } as any} name="Ada" />);
+    await waitFor(() => expect(container.querySelector('img')).toHaveAttribute('src', 'blob:avatar'));
+    expect(load).toHaveBeenCalledWith('c');
+  });
+
   it('loads a protected profile picture and revokes its object URL', async () => {
     load.mockResolvedValue({ data: new Blob(['photo']) });
     const { container, unmount } = render(<BookingStepClientAvatar client={{ _id: 'c', profilePictureS3Key: 'key' } as any} name="Ada" />);
