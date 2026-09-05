@@ -4,6 +4,7 @@ import { FiPlus, FiEdit2, FiTrash2, FiDollarSign, FiChevronDown, FiSearch, FiX }
 import { paymentsApi, clientsApi, retreatsApi, bookingsApi } from '../services/api';
 import { Payment, Client, Retreat, RetreatClient } from '../types';
 import CurrencyDisplay from './CurrencyDisplay';
+import ClientAvatar from './ClientAvatar';
 import LoadingSpinner from './LoadingSpinner';
 import { formatCalendarDate, parseCalendarDate } from '../utils/dateFormat';
 
@@ -18,6 +19,7 @@ interface PaymentWithDetails extends Payment {
   bookingNumber?: number;
   clientEmail?: string;
   clientPhone?: string;
+  clientRecord?: Client;
 }
 
 type PaymentSortKey = 'display' | 'date' | 'client' | 'retreat' | 'booking' | 'request' | 'amount' | 'usd' | 'method' | 'status' | 'type';
@@ -78,6 +80,7 @@ const PaymentsPage: React.FC = () => {
           retreatId,
           bookingId,
           clientName: client ? `${client.firstName} ${client.lastName}` : 'Unknown Client',
+          clientRecord: client,
           clientDisplayId: client?.display_id,
           clientEmail: client?.email,
           clientPhone: client?.phone,
@@ -278,18 +281,23 @@ const PaymentsPage: React.FC = () => {
                     {formatCalendarDate(payment.paymentDate)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {payment.clientDisplayId && payment.clientId ? (
-                      <Link
-                        to={`/admin/clients/${payment.clientId}`}
-                        className="mr-2 font-semibold text-blue-600 hover:text-blue-800 hover:underline"
-                        title="Open client profile"
-                      >
-                        #{payment.clientDisplayId}
-                      </Link>
-                    ) : payment.clientDisplayId ? (
-                      <span className="mr-2 font-semibold text-blue-600">#{payment.clientDisplayId}</span>
-                    ) : null}
-                    {payment.clientName}
+                    <div className="flex items-center gap-2">
+                      <ClientAvatar client={payment.clientRecord} name={payment.clientName || ''} />
+                      <span>
+                        {payment.clientDisplayId && payment.clientId ? (
+                          <Link
+                            to={`/admin/clients/${payment.clientId}`}
+                            className="mr-2 font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+                            title="Open client profile"
+                          >
+                            #{payment.clientDisplayId}
+                          </Link>
+                        ) : payment.clientDisplayId ? (
+                          <span className="mr-2 font-semibold text-blue-600">#{payment.clientDisplayId}</span>
+                        ) : null}
+                        {payment.clientName}
+                      </span>
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {payment.retreatName}

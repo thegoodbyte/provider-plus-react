@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { FiAlertTriangle, FiCheck, FiChevronDown, FiChevronRight, FiClock, FiCopy, FiDownload, FiEye, FiEdit2, FiFolder, FiLink, FiLock, FiMenu, FiPlus, FiRefreshCw, FiSearch, FiSend, FiThumbsDown, FiThumbsUp, FiTrash2, FiUnlock, FiX, FiZap } from 'react-icons/fi';
 import LoadingSpinner from './LoadingSpinner';
+import ClientAvatar from './ClientAvatar';
 import MedicalReviewTypeBadge from './MedicalReviewTypeBadge';
 import { medicalReviewRequestsApi, medicalTrackingApi, clientsApi, retreatsApi } from '../services/api';
 import { MedicalItem, MedicalReviewGroup, MedicalReviewRequest, Client, Retreat } from '../types';
@@ -15,6 +16,7 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
 
 interface EnrichedReviewRequest extends MedicalReviewRequest {
   clientName?: string;
+  clientRecord?: Client;
   retreatName?: string;
   trackingFileName?: string;
 }
@@ -204,6 +206,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
         return {
           ...request,
           clientName: client ? `${client.firstName} ${client.lastName}` : 'Unknown Client',
+          clientRecord: client,
           clientDisplayId: request.clientDisplayId || client?.display_id,
           retreatName: getRetreatCode(retreat),
           trackingFileName: tracking?.ekgFileName || tracking?.liverPanelFileName || undefined,
@@ -1371,7 +1374,10 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                 </div>
 
                 <div className="min-w-0">
-                  <div className="truncate text-base font-semibold text-gray-900">{getClientGridLabel(request)}</div>
+                  <div className="flex items-center gap-2">
+                    <ClientAvatar client={request.clientRecord} name={request.clientName || ''} />
+                    <div className="min-w-0 truncate text-base font-semibold text-gray-900">{getClientGridLabel(request)}</div>
+                  </div>
                   <div className="truncate text-sm text-gray-500">{retreatLabel}</div>
                 </div>
 
@@ -1416,7 +1422,10 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                 <tr key={request._id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 text-sm font-semibold text-blue-600">#{request.display_id || '—'}</td>
                   <td className="px-6 py-4 text-sm text-gray-900">
-                    {getClientGridLabel(request)}
+                    <div className="flex items-center gap-2">
+                      <ClientAvatar client={request.clientRecord} name={request.clientName || ''} />
+                      <span>{getClientGridLabel(request)}</span>
+                    </div>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">{request.retreatName}</td>
                   <td className="px-6 py-4 text-sm text-gray-900">

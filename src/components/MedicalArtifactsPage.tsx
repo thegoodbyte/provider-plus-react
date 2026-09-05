@@ -4,6 +4,7 @@ import { AlertTriangle, CheckCircle2, Eye, FileText, HeartPulse, Leaf, Pencil, P
 import { medicalArtifactsApi, medicalReviewRequestsApi, retreatsApi } from '../services/api';
 import { Client, MedicalArtifact, MedicalReviewRequest, Retreat, RetreatArtifactSubmissionRow, RetreatArtifactSubmissionsResponse, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
+import ClientAvatar from './ClientAvatar';
 
 const artifactTypeLabels: Record<NonNullable<MedicalArtifact['artifactType']>, string> = {
   ekg: 'EKG',
@@ -886,11 +887,19 @@ const MedicalArtifactsPage: React.FC = () => {
                   return (
                     <tr key={row.id} className={row.status === 'missing' ? 'bg-red-50/40 hover:bg-red-50' : 'bg-green-50/40 hover:bg-green-50'}>
                       <td className="px-4 py-3">
-                        <div className={`inline-flex max-w-full items-center rounded px-2 py-1 text-sm font-medium ring-1 ring-inset ${clientNameClass}`}>
-                          <span className="truncate">{row.clientName}</span>
-                        </div>
-                        <div className="text-xs text-gray-500">
-                          {row.clientDisplayId ? `Client #${row.clientDisplayId}` : row.clientId.slice(-6)}{row.clientEmail ? ` · ${row.clientEmail}` : ''}
+                        <div className="flex items-center gap-2">
+                          <ClientAvatar
+                            client={{ _id: row.clientId, profilePictureUrl: row.clientProfilePictureUrl, profilePictureS3Key: row.clientProfilePictureS3Key, profilePictureFileUploadId: row.clientProfilePictureFileUploadId }}
+                            name={row.clientName}
+                          />
+                          <div className="min-w-0">
+                            <div className={`inline-flex max-w-full items-center rounded px-2 py-1 text-sm font-medium ring-1 ring-inset ${clientNameClass}`}>
+                              <span className="truncate">{row.clientName}</span>
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              {row.clientDisplayId ? `Client #${row.clientDisplayId}` : row.clientId.slice(-6)}{row.clientEmail ? ` · ${row.clientEmail}` : ''}
+                            </div>
+                          </div>
                         </div>
                       </td>
                       <td className="px-4 py-3">

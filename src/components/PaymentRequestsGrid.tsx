@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { paymentRequestsApi } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
 import LoadingSpinner from './LoadingSpinner';
+import ClientAvatar from './ClientAvatar';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiCheckCircle, FiClock, FiAlertTriangle, FiSend, FiDollarSign, FiChevronDown, FiEye, FiCopy, FiExternalLink, FiSettings } from 'react-icons/fi';
 import EmailComposeModal, { EmailComposeInitialValues } from './EmailComposeModal';
 import { formatCalendarDate, parseCalendarDate } from '../utils/dateFormat';
@@ -14,8 +15,8 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
 };
 
 const resolveClient = (clientValue: any) => {
-  if (!clientValue) return { id: '', name: 'Unknown Client', displayId: '', email: '', firstName: '', language: 'en' };
-  if (typeof clientValue === 'string') return { id: clientValue, name: clientValue, displayId: '', email: '', firstName: '', language: 'en' };
+  if (!clientValue) return { id: '', name: 'Unknown Client', displayId: '', email: '', firstName: '', language: 'en', record: undefined };
+  if (typeof clientValue === 'string') return { id: clientValue, name: clientValue, displayId: '', email: '', firstName: '', language: 'en', record: undefined };
   return {
     id: clientValue._id || clientValue.id || '',
     name: `${clientValue.firstName || ''} ${clientValue.lastName || ''}`.trim() || 'Unknown Client',
@@ -23,6 +24,7 @@ const resolveClient = (clientValue: any) => {
     email: clientValue.email || '',
     firstName: clientValue.firstName || '',
     language: clientValue.preferredLanguage || clientValue.preferred_language || clientValue.language || 'en',
+    record: clientValue,
   };
 };
 
@@ -311,22 +313,27 @@ const PaymentRequestsGrid: React.FC = () => {
                       </button>
                     </td>
                     <td className="w-44 max-w-44 px-3 py-4">
-                      <div className="truncate font-medium text-gray-900" title={client.name}>{client.name}</div>
-                      {client.displayId && (
-                        <div className="mt-1 text-xs font-semibold">
-                          {client.id ? (
-                            <Link
-                              to={`/admin/clients/${client.id}`}
-                              className="text-blue-700 hover:text-blue-900 hover:underline"
-                              title="Open client profile"
-                            >
-                              {client.displayId}
-                            </Link>
-                          ) : (
-                            <span className="text-blue-700">{client.displayId}</span>
+                      <div className="flex items-center gap-2">
+                        <ClientAvatar client={client.record} name={client.name} />
+                        <div className="min-w-0">
+                          <div className="truncate font-medium text-gray-900" title={client.name}>{client.name}</div>
+                          {client.displayId && (
+                            <div className="mt-1 text-xs font-semibold">
+                              {client.id ? (
+                                <Link
+                                  to={`/admin/clients/${client.id}`}
+                                  className="text-blue-700 hover:text-blue-900 hover:underline"
+                                  title="Open client profile"
+                                >
+                                  {client.displayId}
+                                </Link>
+                              ) : (
+                                <span className="text-blue-700">{client.displayId}</span>
+                              )}
+                            </div>
                           )}
                         </div>
-                      )}
+                      </div>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">{retreat}</td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">

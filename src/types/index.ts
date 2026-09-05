@@ -1162,6 +1162,9 @@ export interface RetreatArtifactSubmissionRow {
   clientDisplayId?: number;
   clientName: string;
   clientEmail?: string;
+  clientProfilePictureUrl?: string;
+  clientProfilePictureS3Key?: string;
+  clientProfilePictureFileUploadId?: string;
   retreatId: string;
   retreatCode?: string;
   retreatName?: string;
