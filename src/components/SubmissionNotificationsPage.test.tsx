@@ -1,7 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import SubmissionNotificationsPage from './SubmissionNotificationsPage';
+import SubmissionNotificationsPage, { notificationDateKey, notificationDateLabel } from './SubmissionNotificationsPage';
 import { api } from '../services/api';
 
 jest.mock('../services/api', () => ({
@@ -11,8 +11,8 @@ jest.mock('../services/api', () => ({
 
 const mockedApi = api as jest.Mocked<typeof api>;
 const notices = [
-  { _id: 'n1', name: 'Review EKG', status: 'pending', sourceId: 'ekg:1', retreatId: { _id: 'r1', name: 'September retreat' }, clientId: { _id: 'c1', firstName: 'Anna', lastName: 'Nowak' } },
-  { _id: 'n2', name: 'Review medications', status: 'pending', sourceId: 'medications_initial:2', notificationReadAt: '2026-08-29T10:00:00Z', retreatId: { _id: 'r2', name: 'October retreat' }, clientId: { _id: 'c2', firstName: 'Jan', lastName: 'Kowalski' } },
+  { _id: 'n1', name: 'Review EKG', status: 'pending', sourceId: 'ekg:1', createdAt: '2026-09-05T10:00:00Z', retreatId: { _id: 'r1', name: 'September retreat' }, clientId: { _id: 'c1', firstName: 'Anna', lastName: 'Nowak' } },
+  { _id: 'n2', name: 'Review medications', status: 'pending', sourceId: 'medications_initial:2', createdAt: '2026-09-04T10:00:00Z', notificationReadAt: '2026-08-29T10:00:00Z', retreatId: { _id: 'r2', name: 'October retreat' }, clientId: { _id: 'c2', firstName: 'Jan', lastName: 'Kowalski' } },
 ];
 
 const renderPage = () => render(<MemoryRouter><SubmissionNotificationsPage /></MemoryRouter>);
@@ -30,6 +30,12 @@ describe('SubmissionNotificationsPage', () => {
     fireEvent.change(screen.getByLabelText('Filter by retreat'), { target: { value: 'r2' } });
     expect(screen.queryByText('Review EKG')).not.toBeInTheDocument();
     expect(screen.getByText('Review medications')).toBeInTheDocument();
+  });
+
+  it('groups notifications under date headings while preserving each date group', async () => {
+    renderPage();
+    expect(await screen.findByRole('region', { name: notificationDateLabel(notificationDateKey(notices[0])) })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: notificationDateLabel(notificationDateKey(notices[1])) })).toBeInTheDocument();
   });
 
   it('marks multiple selected notifications read', async () => {
