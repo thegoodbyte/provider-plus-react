@@ -90,6 +90,8 @@
   border-radius: 50%;
 }
 
+.module-launcher-orbit-inner { width: 390px; height: 390px; border-color: #e2e8f0; }
+
 .launcher-hex {
   position: absolute;
   left: 50%; top: 50%;
@@ -104,8 +106,10 @@
 }
 
 .launcher-orbit-tile {
-  transform: translate(-50%, -50%) rotate(calc(var(--launcher-index) * (360deg / var(--launcher-count)))) translateY(calc(-1 * var(--launcher-radius))) rotate(calc(var(--launcher-index) * -1 * (360deg / var(--launcher-count))));
+  --launcher-active-radius: var(--launcher-radius);
+  transform: translate(-50%, -50%) rotate(calc(var(--launcher-index) * (360deg / var(--launcher-count)))) translateY(calc(-1 * var(--launcher-active-radius))) rotate(calc(var(--launcher-index) * -1 * (360deg / var(--launcher-count))));
 }
+.launcher-inner-tile { --launcher-active-radius: 195px; }
 
 .launcher-center {
   width: 170px; height: 170px;
@@ -181,6 +185,7 @@
 }
 
 @media (max-width: 1024px) {
+  .launcher-inner-tile { --launcher-active-radius: 175px; }
   .module-launcher-hive {
     --launcher-tile-width: 102px;
     --launcher-radius: 300px;
@@ -188,6 +193,7 @@
 }
 
 @media (max-width: 768px) {
+  .launcher-inner-tile { --launcher-active-radius: 155px; }
   .module-launcher-page {
     padding: 18px 16px 72px;
   }
@@ -206,6 +212,7 @@
 }
 
 @media (max-width: 560px) {
+  .launcher-inner-tile { --launcher-active-radius: 130px; }
   .module-launcher-hive {
     --launcher-tile-width: 72px;
     --launcher-radius: 205px;

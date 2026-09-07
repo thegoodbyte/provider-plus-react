@@ -240,9 +240,18 @@ const ModuleLauncherPage: React.FC = () => {
 
   const centerTile = tiles.find((tile) => tile.id === 'clients') || tiles[0];
   const orbitTiles = tiles.filter((tile) => tile !== centerTile);
+  const innerTiles = orbitTiles.slice(0, 8);
+  const outerTiles = orbitTiles.slice(8);
 
   const handleTileClick = (route: string) => {
     navigate(`${routePrefix}/${route}`);
+  };
+
+  const renderTile = (tile: LauncherTile, index: number, count: number, ring: 'inner' | 'outer') => {
+    const Icon = tile.icon;
+    return <button key={`${ring}-${tile.id}`} type="button" onClick={() => handleTileClick(tile.route)} className={`launcher-hex launcher-orbit-tile launcher-${ring}-tile tone-${tile.tone}`} style={{ '--launcher-index': index, '--launcher-count': count } as React.CSSProperties} title={`${tile.section} - ${tile.label}`} aria-label={`${tile.section} - ${tile.label}`}>
+      <div className="launcher-hex-content"><Icon className="launcher-hex-icon" /><div className="launcher-hex-label">{tile.label}</div>{tile.subtitle && <div className="launcher-hex-subtitle">{tile.subtitle}</div>}</div>
+    </button>;
   };
 
   return (
@@ -263,33 +272,14 @@ const ModuleLauncherPage: React.FC = () => {
       <TasksForTodayPanel />
 
       <div className="module-launcher-hive-shell">
-        <div className="module-launcher-hive" style={{ '--launcher-count': orbitTiles.length } as React.CSSProperties}>
-          <div className="module-launcher-orbit" aria-hidden="true" />
-          {centerTile && [centerTile, ...orbitTiles].map((tile, index) => {
-                const Icon = tile.icon;
-                return (
-                  <button
-                    key={tile.id}
-                    type="button"
-                    onClick={() => handleTileClick(tile.route)}
-                    className={`launcher-hex ${index === 0 ? 'launcher-center' : 'launcher-orbit-tile'} tone-${tile.tone}`}
-                    style={
-                      {
-                        '--launcher-index': index - 1,
-                      } as React.CSSProperties
-                    }
-                    title={`${tile.section} - ${tile.label}`}
-                    aria-label={`${tile.section} - ${tile.label}`}
-                  >
-                    <div className="launcher-hex-content">
-                      <Icon className="launcher-hex-icon" />
-                      <div className="launcher-hex-label">{tile.label}</div>
-                      {tile.subtitle && <div className="launcher-hex-subtitle">{tile.subtitle}</div>}
-                    </div>
-                  </button>
-                );
-              }
-          )}
+        <div className="module-launcher-hive">
+          <div className="module-launcher-orbit module-launcher-orbit-outer" aria-hidden="true" />
+          <div className="module-launcher-orbit module-launcher-orbit-inner" aria-hidden="true" />
+          {centerTile && <button type="button" onClick={() => handleTileClick(centerTile.route)} className={`launcher-hex launcher-center tone-${centerTile.tone}`} title={`${centerTile.section} - ${centerTile.label}`} aria-label={`${centerTile.section} - ${centerTile.label}`}>
+            <div className="launcher-hex-content"><centerTile.icon className="launcher-hex-icon" /><div className="launcher-hex-label">{centerTile.label}</div>{centerTile.subtitle && <div className="launcher-hex-subtitle">{centerTile.subtitle}</div>}</div>
+          </button>}
+          {innerTiles.map((tile, index) => renderTile(tile, index, innerTiles.length, 'inner'))}
+          {outerTiles.map((tile, index) => renderTile(tile, index, outerTiles.length, 'outer'))}
         </div>
       </div>
     </div>
