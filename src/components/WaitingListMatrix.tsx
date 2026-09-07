@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Calendar, MapPin, Users, Clock, AlertCircle, Trash2, MoveUp, MoveDown } from 'lucide-react';
+import { Plus, Search, AlertCircle, Trash2, MoveUp, MoveDown } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
 import { waitingListApi, clientsApi } from '../services/api';
 import './WaitingListMatrix.css';
@@ -45,9 +45,17 @@ interface ClientSearchResult {
   phone: string;
 }
 
+const accentColors = ['#87bdf0', '#d9dd70', '#f4b285', '#ef476f', '#6366f1'];
+
+const formatDate = (dateString: string) =>
+  new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+const sourceLabel = (source?: string) => (source === 'iboga_ready' ? 'Selected by guest in IR' : 'Added in RE');
+
 const WaitingListMatrix: React.FC = () => {
   const [retreatColumns, setRetreatColumns] = useState<RetreatColumn[]>([]);
   const [loading, setLoading] = useState(true);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [searchingClients, setSearchingClients] = useState<{ [key: string]: boolean }>({});
   const [searchResults, setSearchResults] = useState<{ [key: string]: ClientSearchResult[] }>({});
   const [activeSearch, setActiveSearch] = useState<{ [key: string]: string }>({});
@@ -85,10 +93,7 @@ const WaitingListMatrix: React.FC = () => {
         email: client.email || '',
         phone: client.phone || ''
       }));
-      setSearchResults(prev => ({
-        ...prev,
-        [retreatId]: clients
-      }));
+      setSearchResults(prev => ({ ...prev, [retreatId]: clients }));
     } catch (error) {
       console.error('Error searching clients:', error);
       setSearchResults(prev => ({ ...prev, [retreatId]: [] }));
@@ -105,11 +110,9 @@ const WaitingListMatrix: React.FC = () => {
         priority: 'medium'
       });
 
-      // Clear search
       setActiveSearch(prev => ({ ...prev, [retreatId]: '' }));
       setSearchResults(prev => ({ ...prev, [retreatId]: [] }));
 
-      // Refresh matrix
       await fetchWaitingListMatrix();
     } catch (error) {
       console.error('Error adding client to waiting list:', error);
@@ -146,10 +149,7 @@ const WaitingListMatrix: React.FC = () => {
 
     try {
       await waitingListApi.updatePositions(retreatId, {
-        positions: [{
-          waitingListId: entryId,
-          newPosition: newPosition
-        }]
+        positions: [{ waitingListId: entryId, newPosition: newPosition }]
       });
 
       await fetchWaitingListMatrix();
@@ -159,34 +159,31 @@ const WaitingListMatrix: React.FC = () => {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
+  const toggle = (id: string) =>
+    setCollapsed(current => {
+      const next = new Set(current);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
     });
-  };
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high': return 'priority-high';
-      case 'medium': return 'priority-medium';
-      case 'low': return 'priority-low';
-      default: return 'priority-medium';
-    }
-  };
+  const collapseAll = () => setCollapsed(new Set(retreatColumns.map(column => column._id)));
 
   if (loading) {
     return <LoadingSpinner message="Loading waiting list matrix..." />;
   }
 
+  const totalWaiting = retreatColumns.reduce((sum, column) => sum + column.waitingList.length, 0);
+
   return (
-    <div className="waiting-list-matrix">
-      <div className="matrix-header">
-        <h1>Retreat Waiting List Matrix</h1>
-        <p className="matrix-subtitle">
-          Manage waiting lists across all upcoming retreats
-        </p>
+    <div className="holistic-view waiting-list-holistic">
+      <div className="holistic-controls">
+        <div className="holistic-total">
+          <span>Waiting list — across every retreat</span>
+          <strong>{totalWaiting}<small> waiting</small></strong>
+        </div>
+        <div className="holistic-filters">
+          <button onClick={collapseAll}>Collapse all</button>
+        </div>
       </div>
 
       {retreatColumns.length === 0 ? (
@@ -196,154 +193,131 @@ const WaitingListMatrix: React.FC = () => {
           <p>Create a retreat first to start managing waiting lists</p>
         </div>
       ) : (
-        <div className="matrix-grid">
-          {retreatColumns.map((column) => (
-            <div key={column._id} className="retreat-column">
-              {/* Column Header */}
-              <div className="column-header">
-                <div className="retreat-info">
-                  <h3>{column.retreat.name}</h3>
-                  <div className="retreat-details">
-                    <div className="detail-item">
-                      <Calendar size={14} />
-                      <span>{formatDate(column.retreat.startDate)}</span>
-                    </div>
-                    <div className="detail-item">
-                      <MapPin size={14} />
-                      <span>{column.retreat.location}</span>
-                    </div>
-                    <div className="detail-item">
-                      <Users size={14} />
-                      <span>{column.retreat.currentOccupancy}/{column.retreat.capacity}</span>
-                    </div>
+        <div className="holistic-groups">
+          {retreatColumns.map((column, index) => {
+            const accent = accentColors[index % accentColors.length];
+            const isCollapsed = collapsed.has(column._id);
+            return (
+              <section className="holistic-group" style={{ '--accent': accent } as React.CSSProperties} key={column._id}>
+                <header>
+                  <button onClick={() => toggle(column._id)}>
+                    <b>{column.retreat.name}</b>
+                    <span>
+                      {formatDate(column.retreat.startDate)} – {formatDate(column.retreat.endDate)}
+                      <small> · {column.retreat.location}</small>
+                    </span>
+                  </button>
+                  <div className="holistic-group-progress">
+                    <i>
+                      <b
+                        style={{
+                          width: `${column.retreat.capacity ? Math.min(100, (column.retreat.currentOccupancy / column.retreat.capacity) * 100) : 0}%`
+                        }}
+                      />
+                    </i>
+                    <strong>
+                      {column.retreat.currentOccupancy}
+                      <small> / {column.retreat.capacity} booked</small>
+                    </strong>
                   </div>
-                </div>
+                  <button className="holistic-collapse" onClick={() => toggle(column._id)}>
+                    {isCollapsed ? 'Show people' : 'Hide people'}
+                  </button>
+                </header>
 
-                <div className="waiting-count">
-                  <Clock size={16} />
-                  <span>{column.waitingList.length} waiting</span>
-                </div>
-              </div>
-
-              {/* Client Search */}
-              <div className="client-search">
-                <div className="search-input-container">
-                  <Search size={16} />
-                  <input
-                    type="text"
-                    placeholder="Search clients to add..."
-                    value={activeSearch[column._id] || ''}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setActiveSearch(prev => ({ ...prev, [column._id]: value }));
-                      searchClients(column._id, value);
-                    }}
-                    className="search-input"
-                  />
-                </div>
-
-                {/* Search Results */}
-                {searchResults[column._id] && searchResults[column._id].length > 0 && (
-                  <div className="search-results">
-                    {searchResults[column._id].map((client) => (
-                      <div
-                        key={client._id}
-                        className="search-result"
-                        onClick={() => addClientToWaitingList(column._id, client)}
-                      >
-                        <div className="client-info">
-                          <span className="client-name">
-                            {client.firstName} {client.lastName}
-                          </span>
-                          <span className="client-email">{client.email}</span>
-                        </div>
-                        <Plus size={16} />
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {searchingClients[column._id] && (
-                  <div className="search-loading">Searching...</div>
-                )}
-              </div>
-
-              {/* Waiting List */}
-              <div className="waiting-list">
-                {column.waitingList.length === 0 ? (
-                  <div className="empty-list">
-                    <Clock size={24} />
-                    <p>No one waiting</p>
-                  </div>
-                ) : (
-                  column.waitingList.map((entry, index) => (
-                    <div
-                      key={entry.id}
-                      className={`waiting-entry ${getPriorityColor(entry.priority)}`}
-                    >
-                      <div className="entry-header">
-                        <div className="position-badge">#{entry.position}</div>
-                        <div className="client-name">{entry.client.name}</div>
-                        <div className="entry-actions">
-                          <button
-                            className="action-btn"
-                            onClick={() => movePosition(column._id, entry.id, 'up')}
-                            disabled={entry.position === 1}
-                            title="Move up"
-                          >
-                            <MoveUp size={14} />
-                          </button>
-                          <button
-                            className="action-btn"
-                            onClick={() => movePosition(column._id, entry.id, 'down')}
-                            disabled={entry.position === column.waitingList.length}
-                            title="Move down"
-                          >
-                            <MoveDown size={14} />
-                          </button>
-                          <button
-                            className="action-btn danger"
-                            onClick={() => removeFromWaitingList(entry.id)}
-                            title="Remove from list"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
+                {!isCollapsed && (
+                  <>
+                    <div className="waiting-list-add">
+                      <div className="waiting-list-add-input">
+                        <Search size={16} />
+                        <input
+                          type="text"
+                          placeholder="Search clients to add..."
+                          value={activeSearch[column._id] || ''}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            setActiveSearch(prev => ({ ...prev, [column._id]: value }));
+                            searchClients(column._id, value);
+                          }}
+                        />
                       </div>
 
-                      <div className="entry-details">
-                        <div className="contact-info">
-                          <span className="email">{entry.client.email}</span>
-                          <span className="phone">{entry.client.phone}</span>
+                      {searchResults[column._id] && searchResults[column._id].length > 0 && (
+                        <div className="waiting-list-add-results">
+                          {searchResults[column._id].map((client) => (
+                            <div
+                              key={client._id}
+                              className="waiting-list-add-result"
+                              onClick={() => addClientToWaitingList(column._id, client)}
+                            >
+                              <div>
+                                <span className="waiting-list-add-name">{client.firstName} {client.lastName}</span>
+                                <span className="waiting-list-add-email">{client.email}</span>
+                              </div>
+                              <Plus size={16} />
+                            </div>
+                          ))}
                         </div>
+                      )}
 
-                        <div className="meta-info">
-                          <span className={`priority priority-${entry.priority}`}>
-                            {entry.priority} priority
-                          </span>
-                          <span className="joined-date">
-                            Joined {formatDate(entry.joinedDate)}
-                          </span>
-                          <span className="joined-date">
-                            {entry.noticeDays || 1} day{Number(entry.noticeDays || 1) === 1 ? '' : 's'} notice
-                          </span>
-                          <span className="joined-date">
-                            {entry.source === 'iboga_ready' ? 'Selected by guest in IR' : 'Added in RE'}
-                          </span>
-                        </div>
-
-                        {entry.notes && (
-                          <div className="notes">
-                            <strong>Notes:</strong> {entry.notes}
-                          </div>
-                        )}
-                      </div>
+                      {searchingClients[column._id] && <div className="waiting-list-add-loading">Searching...</div>}
                     </div>
-                  ))
+
+                    <div className="holistic-people holistic-waiting-list-table">
+                      <div className="holistic-head">
+                        <span>#</span>
+                        <span>Client</span>
+                        <span>Priority</span>
+                        <span>Joined</span>
+                        <span>Notice</span>
+                        <span>Source</span>
+                        <span>Actions</span>
+                      </div>
+                      {column.waitingList.map((entry) => (
+                        <article key={entry.id}>
+                          <span>#{entry.position}</span>
+                          <span className="waiting-list-client-cell">
+                            <strong>{entry.client.name}</strong>
+                            <small>{entry.client.email}</small>
+                            <small>{entry.client.phone}</small>
+                            {entry.notes && <small className="waiting-list-notes"><b>Notes:</b> {entry.notes}</small>}
+                          </span>
+                          <em className={`waiting-list-priority priority-${entry.priority}`}>{entry.priority}</em>
+                          <span>{formatDate(entry.joinedDate)}</span>
+                          <span>{entry.noticeDays || 1} day{Number(entry.noticeDays || 1) === 1 ? '' : 's'}</span>
+                          <span>{sourceLabel(entry.source)}</span>
+                          <span className="waiting-list-actions">
+                            <button
+                              onClick={() => movePosition(column._id, entry.id, 'up')}
+                              disabled={entry.position === 1}
+                              title="Move up"
+                            >
+                              <MoveUp size={14} />
+                            </button>
+                            <button
+                              onClick={() => movePosition(column._id, entry.id, 'down')}
+                              disabled={entry.position === column.waitingList.length}
+                              title="Move down"
+                            >
+                              <MoveDown size={14} />
+                            </button>
+                            <button
+                              className="is-danger"
+                              onClick={() => removeFromWaitingList(entry.id)}
+                              title="Remove from list"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </span>
+                        </article>
+                      ))}
+                      {column.waitingList.length === 0 && <p>No one waiting.</p>}
+                    </div>
+                  </>
                 )}
-              </div>
-            </div>
-          ))}
+              </section>
+            );
+          })}
         </div>
       )}
     </div>
