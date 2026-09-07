@@ -39,6 +39,14 @@ describe('canonical booking status selectors', () => {
     });
   });
 
+  it('settles a PLN booking in PLN even when PLN payments have USD snapshots', () => {
+    expect(bookingSettlementSummary([
+      { status: 'completed', amount: 7500, currency: 'PLN', usd_amount: 1875 },
+    ] as any, 7500, 'PLN', 1950)).toEqual({
+      received: 7500, outstanding: 0, overpaid: 0, paidPercent: 100, paidInFull: true, basis: 'PLN',
+    });
+  });
+
   it('reduces a stored booking-currency allocation proportionally after a partial refund', () => {
     const summary = bookingPaymentSummary([{
       status: 'completed', amount: 1000, currency: 'USD', refundedAmount: 250,

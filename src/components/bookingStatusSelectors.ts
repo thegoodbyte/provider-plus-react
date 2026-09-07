@@ -60,7 +60,12 @@ export const bookingUsdPaymentAmount = (payment: Partial<Payment>) => {
 export const bookingSettlementSummary = (payments: Partial<Payment>[], total: number, currency: string, totalUsd?: number | null) => {
   const currencySummary = bookingPaymentSummary(payments, total, currency);
   const completed = payments.filter(payment => String(payment.status || '').toLowerCase() === 'completed');
-  const hasCompleteUsdLedger = Number.isFinite(Number(totalUsd)) && Number(totalUsd) > 0 && completed.length > 0
+  // A USD equivalent is only the source of truth when the ledger actually
+  // contains a payment in a different currency. Same-currency bookings (for
+  // example a PLN price paid entirely in PLN) must be settled in that currency;
+  // otherwise a stale/rounded USD conversion can incorrectly leave them unpaid.
+  const hasCrossCurrencyPayment = completed.some(payment => String(payment.currency || '').toUpperCase() !== String(currency || '').toUpperCase());
+  const hasCompleteUsdLedger = hasCrossCurrencyPayment && Number.isFinite(Number(totalUsd)) && Number(totalUsd) > 0 && completed.length > 0
     && completed.every(payment => payment.currency === 'USD' || Number.isFinite(Number(payment.usd_amount)));
   if (!hasCompleteUsdLedger) return { ...currencySummary, overpaid: 0, basis: currency };
   const received = completed.reduce((sum, payment) => sum + bookingUsdPaymentAmount(payment), 0);
