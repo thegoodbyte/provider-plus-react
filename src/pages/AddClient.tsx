@@ -1,12 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import AppleButton from '../components/AppleButton';
 import AppleInput from '../components/AppleInput';
 import { clientsApi, referralsApi } from '../services/api';
 import { Client, Referral } from '../types';
 import ClientReferralFields from '../components/ClientReferralFields';
+import SearchableCountryNameSelector from '../components/SearchableCountryNameSelector';
+import SearchableLanguageSelector from '../components/SearchableLanguageSelector';
 import { useAuth } from '../context/AuthContext';
 import { clientWorkflowStatusLabels, clientWorkflowStatusSelectOptions, normalizeClientWorkflowStatus } from '../config/clientWorkflowStatus';
+import { detectPhoneLocaleAutofill } from '../utils/countries';
 
 const cropImageToProfileSquare = (file: File, size = 200): Promise<File> => {
   return new Promise((resolve, reject) => {
@@ -64,10 +67,21 @@ const AddClient: React.FC = () => {
   const [profilePictureFile, setProfilePictureFile] = useState<File | null>(null);
   const [profilePicturePreviewUrl, setProfilePicturePreviewUrl] = useState<string | null>(null);
   const [referrals, setReferrals] = useState<Referral[]>([]);
+  const lastAutoDetectedCountry = useRef<string | null>(null);
 
   useEffect(() => {
     referralsApi.getAll().then((response) => setReferrals(response.data || [])).catch(() => setReferrals([]));
   }, []);
+
+  const handlePhoneChange = (value: string) => {
+    const autofill = detectPhoneLocaleAutofill(value);
+    if (autofill && autofill.countryCode !== lastAutoDetectedCountry.current) {
+      lastAutoDetectedCountry.current = autofill.countryCode;
+      setFormData((current) => ({ ...current, phone: value, country: autofill.countryCode, language: autofill.language }));
+      return;
+    }
+    setFormData((current) => ({ ...current, phone: value }));
+  };
 
   useEffect(() => {
     return () => {
@@ -294,21 +308,10 @@ const AddClient: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-apple-gray-700 mb-1">Phone *</label>
-                  <AppleInput
-                    value={formData.phone || ''}
-                    onChange={(value) => setFormData({ ...formData, phone: value })}
-                    placeholder="Enter full number with country code"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <AppleInput
+                  <SearchableCountryNameSelector
                     label="Country"
-                    value={formData.country || ''}
-                    onChange={(value) => setFormData({ ...formData, country: value })}
-                    placeholder="Enter country"
+                    value={formData.country}
+                    onChange={(countryCode) => setFormData((current) => ({ ...current, country: countryCode }))}
                   />
                 </div>
 
@@ -330,6 +333,17 @@ const AddClient: React.FC = () => {
 
                 <div className="rounded-apple border border-apple-gray-200 bg-apple-gray-50 px-3 py-2 text-sm text-apple-gray-600">
                   A secure client portal PIN is generated automatically after save and can be resent from the client profile.
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-apple-gray-700 mb-1">Phone *</label>
+                  <AppleInput
+                    value={formData.phone || ''}
+                    onChange={handlePhoneChange}
+                    placeholder="Enter full number with country code"
+                    required
+                  />
+                  <p className="mt-1 text-xs text-apple-gray-500">Country and language auto-fill from the number's country code (e.g. +48 for Poland) and can still be edited manually.</p>
                 </div>
 
                 <AppleInput
@@ -360,18 +374,11 @@ const AddClient: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-apple-gray-700 mb-1">Preferred Language</label>
-                  <select
-                    className="w-full px-3 py-2 border border-apple-gray-200 rounded-apple focus:outline-none focus:ring-2 focus:ring-apple-blue/20 bg-white text-sm"
+                  <SearchableLanguageSelector
+                    label="Preferred Language"
                     value={formData.language || 'EN'}
-                    onChange={(e) => setFormData({ ...formData, language: e.target.value as Client['language'] })}
-                  >
-                    <option value="EN">English</option>
-                    <option value="CZ">Czech</option>
-                    <option value="PL">Polish</option>
-                    <option value="RU">Russian</option>
-                    <option value="OTHER">Other</option>
-                  </select>
+                    onChange={(languageCode) => setFormData((current) => ({ ...current, language: languageCode }))}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-apple-gray-700 mb-1">Workflow Status</label>

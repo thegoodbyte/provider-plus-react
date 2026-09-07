@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import AppleButton from './AppleButton';
 import AppleInput from './AppleInput';
@@ -6,6 +6,9 @@ import LoadingSpinner from './LoadingSpinner';
 import { bookingsApi, clientsApi, referralsApi, retreatsApi } from '../services/api';
 import { Client, Referral, Retreat, RetreatClient } from '../types';
 import ClientReferralFields from './ClientReferralFields';
+import SearchableCountryNameSelector from './SearchableCountryNameSelector';
+import SearchableLanguageSelector from './SearchableLanguageSelector';
+import { detectPhoneLocaleAutofill } from '../utils/countries';
 import { useClientProfilePictureUrl } from './useClientProfilePictureUrl';
 import {
   bookedWorkflowStatuses,
@@ -136,8 +139,8 @@ const UnifiedClientManager: React.FC = () => {
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>(() => getInitialClientFilter(location.pathname, location.search));
-  const [sortField, setSortField] = useState<ClientSortField>('lastName');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [sortField, setSortField] = useState<ClientSortField>('createdAt');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState<Partial<Client>>({
     firstName: '',
@@ -151,6 +154,7 @@ const UnifiedClientManager: React.FC = () => {
     signupDate: new Date().toISOString().split('T')[0],
     status: 'active'
   } as Partial<Client>);
+  const lastAutoDetectedCountry = useRef<string | null>(null);
   const [profilePictureFile, setProfilePictureFile] = useState<File | null>(null);
   const [profilePicturePreviewUrl, setProfilePicturePreviewUrl] = useState<string | null>(null);
 
@@ -205,6 +209,17 @@ const UnifiedClientManager: React.FC = () => {
       signupDate: new Date().toISOString().split('T')[0],
       status: 'active'
     } as Partial<Client>);
+    lastAutoDetectedCountry.current = null;
+  };
+
+  const handlePhoneChange = (value: string) => {
+    const autofill = detectPhoneLocaleAutofill(value);
+    if (autofill && autofill.countryCode !== lastAutoDetectedCountry.current) {
+      lastAutoDetectedCountry.current = autofill.countryCode;
+      setFormData((current) => ({ ...current, phone: value, country: autofill.countryCode, language: autofill.language }));
+      return;
+    }
+    setFormData((current) => ({ ...current, phone: value }));
   };
 
   // Fetch clients
@@ -465,6 +480,7 @@ const UnifiedClientManager: React.FC = () => {
       const cleanFormData = buildClientFormData(client);
       setSelectedClient(client);
       setFormData(cleanFormData);
+      lastAutoDetectedCountry.current = detectPhoneLocaleAutofill(client.phone || '')?.countryCode || null;
       setProfilePictureFile(null);
       setShowForm(true);
     } catch (error) {
@@ -876,24 +892,18 @@ const UnifiedClientManager: React.FC = () => {
                         <label className="block text-sm font-medium text-slate-700 mb-1">Phone *</label>
                         <AppleInput
                           value={formData.phone || ''}
-                          onChange={(value) => setFormData({ ...formData, phone: value })}
+                          onChange={handlePhoneChange}
                           placeholder="Enter full number with country code"
                         />
+                        <p className="mt-1 text-xs text-slate-500">Country and language auto-fill from the number's country code (e.g. +48 for Poland) and can still be edited manually.</p>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Preferred Language</label>
-                        <select
-                          className="w-full px-3 py-2 border border-apple-gray-200 rounded-apple focus:outline-none focus:ring-2 focus:ring-apple-blue/20 bg-white text-sm"
+                        <SearchableLanguageSelector
+                          label="Preferred Language"
                           value={formData.language || 'EN'}
-                          onChange={(e) => setFormData({ ...formData, language: e.target.value as Client['language'] })}
-                        >
-                          <option value="EN">English</option>
-                          <option value="CZ">Czech</option>
-                          <option value="PL">Polish</option>
-                          <option value="RU">Russian</option>
-                          <option value="OTHER">Other</option>
-                        </select>
+                          onChange={(languageCode) => setFormData((current) => ({ ...current, language: languageCode }))}
+                        />
                       </div>
                     </div>
                   </section>
@@ -908,11 +918,10 @@ const UnifiedClientManager: React.FC = () => {
                         placeholder="Enter address"
                       />
 
-                      <AppleInput
+                      <SearchableCountryNameSelector
                         label="Country"
-                        value={formData.country || ''}
-                        onChange={(value) => setFormData({ ...formData, country: value })}
-                        placeholder="Enter country"
+                        value={formData.country}
+                        onChange={(countryCode) => setFormData((current) => ({ ...current, country: countryCode }))}
                       />
 
                   <div>

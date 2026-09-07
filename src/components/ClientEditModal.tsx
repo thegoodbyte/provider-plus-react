@@ -1,6 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { clientsApi } from '../services/api';
 import { Client } from '../types';
+import SearchableCountryNameSelector from './SearchableCountryNameSelector';
+import SearchableLanguageSelector from './SearchableLanguageSelector';
+import { detectPhoneLocaleAutofill } from '../utils/countries';
 import './ClientEditModal.css';
 
 interface ClientEditModalProps {
@@ -17,6 +20,7 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
   const [uploadingProfilePicture, setUploadingProfilePicture] = useState(false);
+  const lastAutoDetectedCountry = useRef<string | null>(detectPhoneLocaleAutofill(client.phone || '')?.countryCode || null);
 
   const getApiErrorMessage = (error: any, fallback: string) => {
     const message = error?.response?.data?.message || error?.response?.data?.error || error?.message;
@@ -34,6 +38,7 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
       ...client,
       yearOfBirth
     });
+    lastAutoDetectedCountry.current = detectPhoneLocaleAutofill(client.phone || '')?.countryCode || null;
   }, [client]);
 
   useEffect(() => {
@@ -70,6 +75,17 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
       ...prev,
       [name]: value
     }));
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const autofill = detectPhoneLocaleAutofill(value);
+    if (autofill && autofill.countryCode !== lastAutoDetectedCountry.current) {
+      lastAutoDetectedCountry.current = autofill.countryCode;
+      setFormData(prev => ({ ...prev, phone: value, country: autofill.countryCode, language: autofill.language }));
+      return;
+    }
+    setFormData(prev => ({ ...prev, phone: value }));
   };
 
   const normalizeOptionalValue = (value?: string) => {
@@ -283,7 +299,7 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
                   id="phone"
                   name="phone"
                   value={formData.phone || ''}
-                  onChange={handleInputChange}
+                  onChange={handlePhoneChange}
                   placeholder="Full number with country code"
                   required
                 />
@@ -319,19 +335,12 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
               </div>
 
               <div className="form-group">
-                <label htmlFor="language">Preferred Language:</label>
-                <select
+                <SearchableLanguageSelector
                   id="language"
-                  name="language"
+                  label="Preferred Language:"
                   value={formData.language || 'EN'}
-                  onChange={handleInputChange}
-                >
-                  <option value="EN">English</option>
-                  <option value="CZ">Czech</option>
-                  <option value="PL">Polish</option>
-                  <option value="RU">Russian</option>
-                  <option value="OTHER">Other</option>
-                </select>
+                  onChange={(languageCode) => setFormData((current) => ({ ...current, language: languageCode }))}
+                />
               </div>
             </div>
 
@@ -383,13 +392,11 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
               </div>
 
               <div className="form-group">
-                <label htmlFor="country">Country:</label>
-                <input
-                  type="text"
+                <SearchableCountryNameSelector
                   id="country"
-                  name="country"
-                  value={formData.country || ''}
-                  onChange={handleInputChange}
+                  label="Country:"
+                  value={formData.country}
+                  onChange={(countryCode) => setFormData((current) => ({ ...current, country: countryCode }))}
                 />
               </div>
             </div>

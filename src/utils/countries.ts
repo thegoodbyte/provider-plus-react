@@ -137,3 +137,39 @@ export const searchCountries = (query: string): Country[] => {
     country.phonePrefix.includes(query)
   );
 };
+
+/**
+ * Finds the country whose calling code the given phone number starts with.
+ * Longest-prefix-first so e.g. "+420" (Czech Republic) isn't shadowed by a
+ * shorter, unrelated prefix.
+ */
+export const findCountryByPhoneNumber = (phone: string): Country | undefined => {
+  const digits = (phone || '').trim();
+  if (!digits.startsWith('+')) return undefined;
+  const candidates = [...COUNTRIES].sort((a, b) => b.phonePrefix.length - a.phonePrefix.length);
+  return candidates.find(country => digits.startsWith(country.phonePrefix));
+};
+
+export type ClientLanguageCode = 'EN' | 'CZ' | 'PL' | 'RU' | 'OTHER';
+
+const COUNTRY_CODE_TO_LANGUAGE: Record<string, ClientLanguageCode> = {
+  CZ: 'CZ',
+  PL: 'PL',
+  RU: 'RU',
+  BY: 'RU',
+  KZ: 'RU',
+  GB: 'EN', US: 'EN', CA: 'EN', AU: 'EN', NZ: 'EN', IE: 'EN',
+};
+
+/** Best-guess client-portal language for a country, used to auto-fill from a phone country code. */
+export const languageForCountryCode = (countryCode?: string): ClientLanguageCode => {
+  if (!countryCode) return 'OTHER';
+  return COUNTRY_CODE_TO_LANGUAGE[countryCode] || 'OTHER';
+};
+
+/** Country + language to auto-fill when a phone number's calling code is recognized, e.g. "+48..." -> Poland/Polish. */
+export const detectPhoneLocaleAutofill = (phone: string): { countryCode: string; language: ClientLanguageCode } | null => {
+  const country = findCountryByPhoneNumber(phone);
+  if (!country) return null;
+  return { countryCode: country.code, language: languageForCountryCode(country.code) };
+};
