@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { clientsApi, referralsApi } from '../services/api';
 import { Client, Referral } from '../types';
@@ -8,6 +8,9 @@ import { FiArrowLeft, FiCamera, FiSave, FiUser } from 'react-icons/fi';
 import { clientWorkflowStatusLabels, clientWorkflowStatusSelectOptions, type ClientWorkflowStatus } from '../config/clientWorkflowStatus';
 import './ClientEditPage.css';
 import ClientReferralFields from './ClientReferralFields';
+import SearchableCountryNameSelector from './SearchableCountryNameSelector';
+import SearchableLanguageSelector from './SearchableLanguageSelector';
+import { detectPhoneLocaleAutofill } from '../utils/countries';
 
 // Icon wrapper component for consistent icon rendering
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
@@ -83,6 +86,7 @@ const ClientEditPage: React.FC = () => {
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
   const [uploadingProfilePicture, setUploadingProfilePicture] = useState(false);
   const [referrals, setReferrals] = useState<Referral[]>([]);
+  const lastAutoDetectedCountry = useRef<string | null>(null);
 
   const getApiErrorMessage = (error: any, fallback: string) => {
     const message = error?.response?.data?.message || error?.response?.data?.error || error?.message;
@@ -141,6 +145,10 @@ const ClientEditPage: React.FC = () => {
         ...clientData,
         yearOfBirth
       });
+      // Seed the "last auto-detected" country from the loaded phone so a small edit
+      // (e.g. fixing a typo) doesn't re-trigger the autofill and clobber a country/
+      // language the client was intentionally set to that differs from their phone.
+      lastAutoDetectedCountry.current = detectPhoneLocaleAutofill(clientData.phone || '')?.countryCode || null;
     } catch (error) {
       console.error('Error fetching client:', error);
       setValidationErrors(['Failed to load client data']);
@@ -155,6 +163,17 @@ const ClientEditPage: React.FC = () => {
       ...prev,
       [name]: value
     }));
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    const autofill = detectPhoneLocaleAutofill(value);
+    if (autofill && autofill.countryCode !== lastAutoDetectedCountry.current) {
+      lastAutoDetectedCountry.current = autofill.countryCode;
+      setFormData(prev => ({ ...prev, phone: value, country: autofill.countryCode, language: autofill.language }));
+      return;
+    }
+    setFormData(prev => ({ ...prev, phone: value }));
   };
 
   const normalizeOptionalValue = (value?: string) => {
@@ -440,29 +459,12 @@ const ClientEditPage: React.FC = () => {
               />
             </div>
 
-            <div className="col-span-full">
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Phone *</label>
-              <input
-                type="tel"
-                id="phone"
-                name="phone"
-                value={formData.phone || ''}
-                onChange={handleInputChange}
-                placeholder="Full number with country code"
-                required
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
             <div>
-              <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">Country</label>
-              <input
-                type="text"
+              <SearchableCountryNameSelector
                 id="country"
-                name="country"
-                value={formData.country || ''}
-                onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                label="Country"
+                value={formData.country}
+                onChange={(countryCode) => setFormData((current) => ({ ...current, country: countryCode }))}
               />
             </div>
 
@@ -538,6 +540,21 @@ const ClientEditPage: React.FC = () => {
               />
             </div>
 
+            <div className="col-span-full">
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Phone *</label>
+              <input
+                type="tel"
+                id="phone"
+                name="phone"
+                value={formData.phone || ''}
+                onChange={handlePhoneChange}
+                placeholder="Full number with country code"
+                required
+                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <p className="mt-1 text-xs text-gray-500">Country and language auto-fill from the number's country code (e.g. +48 for Poland) and can still be edited manually.</p>
+            </div>
+
             <div>
               <label htmlFor="yearOfBirth" className="block text-sm font-medium text-gray-700 mb-1">Year of Birth</label>
               <input
@@ -571,20 +588,12 @@ const ClientEditPage: React.FC = () => {
             </div>
 
             <div>
-              <label htmlFor="language" className="block text-sm font-medium text-gray-700 mb-1">Preferred Language</label>
-              <select
+              <SearchableLanguageSelector
                 id="language"
-                name="language"
+                label="Preferred Language"
                 value={formData.language || 'EN'}
-                onChange={handleInputChange}
-                className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="EN">English</option>
-                <option value="CZ">Czech</option>
-                <option value="PL">Polish</option>
-                <option value="RU">Russian</option>
-                <option value="OTHER">Other</option>
-              </select>
+                onChange={(languageCode) => setFormData((current) => ({ ...current, language: languageCode }))}
+              />
             </div>
             </div>
           </section>

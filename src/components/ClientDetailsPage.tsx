@@ -1035,10 +1035,6 @@ const ClientDetailsPage: React.FC = () => {
                     <dd className="text-sm font-medium">{client.firstName} {client.lastName}</dd>
                   </div>
                   <div className="flex flex-wrap justify-between gap-2">
-                    <dt className="text-sm text-gray-600">Phone:</dt>
-                    <dd className="text-sm font-medium">{client.phone || 'N/A'}</dd>
-                  </div>
-                  <div className="flex flex-wrap justify-between gap-2">
                     <dt className="text-sm text-gray-600">Email:</dt>
                     <dd className="text-sm font-medium">{client.email || 'N/A'}</dd>
                   </div>
@@ -1074,6 +1070,10 @@ const ClientDetailsPage: React.FC = () => {
                       {loginPinMessage}
                     </div>
                   )}
+                  <div className="flex flex-wrap justify-between gap-2">
+                    <dt className="text-sm text-gray-600">Phone:</dt>
+                    <dd className="text-sm font-medium">{client.phone || 'N/A'}</dd>
+                  </div>
                   <div className="flex flex-wrap justify-between gap-2">
                     <dt className="text-sm text-gray-600">Country:</dt>
                     <dd className="text-sm font-medium">{client.country || 'N/A'}</dd>
