@@ -16,6 +16,7 @@ import BookingTasksPanel from './BookingTasksPanel';
 import SubmissionNotificationsPage from './SubmissionNotificationsPage';
 import BookingRescheduleDialog from './BookingRescheduleDialog';
 import { confirmationLanguage, BookingConfirmationLanguage } from './bookingConfirmationWorkflow';
+import { formatRetreatCalendarDate } from './RetreatsGrid.helpers';
 import { useBookingConfirmationPdf } from './useBookingConfirmationPdf';
 import { useBookingConfirmationEmail } from './useBookingConfirmationEmail';
 import './BookingDetailView.css';
@@ -183,7 +184,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
       if (data.sendEmail) {
         const lang = confirmationLanguage(moved.clientId || moved.clientDetails); const nextRetreat: any = moved.retreatId || moved.retreatDetails; const recipient = (moved.clientId || moved.clientDetails)?.email;
         if (!recipient) throw new Error('Booking moved, but the client has no email address.');
-        const oldCode = getRetreatCode(oldRetreat); const newCode = getRetreatCode(nextRetreat); const newDates = `${new Date(nextRetreat.startDate).toLocaleDateString()} – ${new Date(nextRetreat.endDate).toLocaleDateString()}`;
+        const oldCode = getRetreatCode(oldRetreat); const newCode = getRetreatCode(nextRetreat); const newDates = `${formatRetreatCalendarDate(nextRetreat.startDate)} – ${formatRetreatCalendarDate(nextRetreat.endDate)}`;
         const copy: any = { en: [`Your booking has been rescheduled`, `Hello ${clientName},\n\nYour booking has been rescheduled from ${oldCode} to ${newCode} (${newDates}). Updated preparation deadlines are now available in your booking portal.\n\nPlease reply if anything is unclear.`], pl: [`Twój termin wyjazdu został zmieniony`, `Cześć ${clientName},\n\nTwój wyjazd został przeniesiony z ${oldCode} na ${newCode} (${newDates}). Zaktualizowane terminy przygotowań są dostępne w portalu.\n\nOdpowiedz, jeśli coś jest niejasne.`], cz: [`Termín vašeho pobytu byl změněn`, `Dobrý den ${clientName},\n\nVáš pobyt byl přesunut z ${oldCode} na ${newCode} (${newDates}). Aktualizované termíny příprav najdete v portálu.\n\nPokud něco není jasné, odpovězte prosím.`] };
         const variables: any = { oldRetreatCode: oldCode, newRetreatCode: newCode, newRetreatDates: newDates, client: { firstName: clientName.split(' ')[0] } }; let subject=copy[lang][0]; let bodyText=copy[lang][1]; let templateId: string|undefined;
         try { const template:any=(await communicationsApi.getTemplateByCategoryAndLanguage('booking_rescheduled',lang)).data; if(template){ templateId=template._id; const fill=(value:string)=>String(value||'').replace(/{{\s*([^}]+)\s*}}/g,(_:string,key:string)=>key.trim().split('.').reduce((v:any,k:string)=>v?.[k],variables)??''); subject=fill(template.subject)||subject; bodyText=fill(template.bodyText)||bodyText; } } catch { /* localized fallback above */ }

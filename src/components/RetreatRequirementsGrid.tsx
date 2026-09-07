@@ -233,7 +233,7 @@ const RetreatRequirementsGrid: React.FC = () => {
           </h3>
           <div style={{ fontSize: '14px', color: '#666' }}>
             📍 {selectedRetreat.location} |
-            📅 {selectedRetreat.startDate ? new Date(selectedRetreat.startDate).toLocaleDateString() : 'Date TBD'} |
+            📅 {selectedRetreat.startDate ? new Date(selectedRetreat.startDate).toLocaleDateString(undefined, { timeZone: 'UTC' }) : 'Date TBD'} |
             👥 {clientRequirements.length} clients
           </div>
         </div>

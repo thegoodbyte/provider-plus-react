@@ -78,7 +78,7 @@ const getBookingLabel = (booking: RetreatClient) => {
   const parts = [
     booking.bookingNumber ? `Booking #${booking.bookingNumber}` : 'Booking',
     booking.status,
-    booking.checkInDate ? new Date(booking.checkInDate).toLocaleDateString() : '',
+    booking.checkInDate ? new Date(booking.checkInDate).toLocaleDateString(undefined, { timeZone: 'UTC' }) : '',
   ].filter(Boolean);
   return parts.join(' - ');
 };

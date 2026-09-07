@@ -48,6 +48,14 @@ describe('RetreatsGrid helpers', () => {
     expect(retreatMonthGroup('2026-09-01T00:00:00.000Z')).toEqual({ key: '2026-8', label: 'September 2026' });
   });
 
+  it('never shifts a retreat date range a day earlier regardless of the caller\'s local timezone (reschedule email date bug)', () => {
+    // JNO-09-12-26 is stored as UTC-midnight 2026-09-12 -> 2026-09-19; a bare
+    // toLocaleDateString() without timeZone: 'UTC' would render 09/11 - 09/18
+    // in any timezone behind UTC. formatRetreatCalendarDate must not.
+    expect(formatRetreatCalendarDate('2026-09-12T00:00:00.000Z')).toBe('Sep 12, 2026');
+    expect(formatRetreatCalendarDate('2026-09-19T00:00:00.000Z')).toBe('Sep 19, 2026');
+  });
+
   it('blocks incomplete and reversed retreat schedules before calling the API', () => {
     expect(validateRetreatCreateData({ name: 'September', location: 'Jablonné', capacity: 6 }))
       .toEqual(['Start date is required.', 'End date is required.']);

@@ -1350,14 +1350,14 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
 
                     <div className="detail-row">
                       <strong>Registration Date:</strong>
-                      {new Date(booking.registrationDate).toLocaleDateString()}
+                      {new Date(booking.registrationDate).toLocaleDateString(undefined, { timeZone: 'UTC' })}
                     </div>
 
                     {booking.retreatId?.startDate && (
                       <div className="detail-row">
                         <strong>Retreat Dates:</strong>
-                        {new Date(booking.retreatId.startDate).toLocaleDateString()}
-                        {booking.retreatId.endDate && ` - ${new Date(booking.retreatId.endDate).toLocaleDateString()}`}
+                        {new Date(booking.retreatId.startDate).toLocaleDateString(undefined, { timeZone: 'UTC' })}
+                        {booking.retreatId.endDate && ` - ${new Date(booking.retreatId.endDate).toLocaleDateString(undefined, { timeZone: 'UTC' })}`}
                       </div>
                     )}
 
@@ -1433,13 +1433,13 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                     {booking.checkInDate && (
                       <div className="timeline-item completed">
                         <span className="timeline-icon">✅</span>
-                        <span>Checked In: {new Date(booking.checkInDate).toLocaleDateString()}</span>
+                        <span>Checked In: {new Date(booking.checkInDate).toLocaleDateString(undefined, { timeZone: 'UTC' })}</span>
                       </div>
                     )}
                     {booking.checkOutDate && (
                       <div className="timeline-item completed">
                         <span className="timeline-icon">🏁</span>
-                        <span>Checked Out: {new Date(booking.checkOutDate).toLocaleDateString()}</span>
+                        <span>Checked Out: {new Date(booking.checkOutDate).toLocaleDateString(undefined, { timeZone: 'UTC' })}</span>
                       </div>
                     )}
                   </div>

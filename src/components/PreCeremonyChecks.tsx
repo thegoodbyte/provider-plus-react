@@ -256,7 +256,7 @@ const PreCeremonyChecks: React.FC = () => {
             <option value="">-- Select Retreat --</option>
             {retreats.map(retreat => (
               <option key={retreat._id} value={retreat._id}>
-                {retreat.name} - {new Date(retreat.startDate + 'T00:00:00').toLocaleDateString()}
+                {retreat.name} - {new Date(retreat.startDate).toLocaleDateString(undefined, { timeZone: 'UTC' })}
               </option>
             ))}
           </select>

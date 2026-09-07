@@ -492,7 +492,7 @@ const AppleLayout: React.FC = () => {
                 <option value="">{retreatsLoading ? 'Loading retreats…' : 'Select a retreat…'}</option>
                 {retreatOptions.map((retreat) => (
                   <option key={retreat._id} value={retreat._id}>
-                    {String(retreat.code || retreat.retreatCode || retreat.name)}{retreat.startDate ? ` — ${new Date(retreat.startDate).toLocaleDateString()}` : ''}
+                    {String(retreat.code || retreat.retreatCode || retreat.name)}{retreat.startDate ? ` — ${new Date(retreat.startDate).toLocaleDateString(undefined, { timeZone: 'UTC' })}` : ''}
                   </option>
                 ))}
               </select>
