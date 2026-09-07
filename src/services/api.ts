@@ -549,6 +549,10 @@ export const paymentRequestsApi = {
     cacheService.clearPattern('payment-requests:');
     return api.put<PaymentRequest>(`/payment-requests/${id}/mark-overdue`);
   },
+  link: (id: string, linkedPaymentRequestId: string) => {
+    cacheService.clearPattern('payment-requests:');
+    return api.put<PaymentRequest>(`/payment-requests/${id}/link`, { linkedPaymentRequestId });
+  },
   sendReminder: (id: string) => {
     cacheService.clearPattern('payment-requests:');
     return api.put<PaymentRequest>(`/payment-requests/${id}/send-reminder`);

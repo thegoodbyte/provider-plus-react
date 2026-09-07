@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import PaymentRequestForm from './PaymentRequestForm';
+import PaymentRequestForm, { FinalPaymentRequestPreview } from './PaymentRequestForm';
 import LoadingSpinner from './LoadingSpinner';
 import { paymentRequestsApi, paymentsApi } from '../services/api';
 import { PaymentReceipt, PaymentRequest } from '../types';
 import { formatCalendarDate } from '../utils/dateFormat';
 import { QRCodeSVG } from 'qrcode.react';
 import { getIbogaReadyPaymentUrl, getPolishWebsitePaymentUrl } from './paymentRequestLinks';
+
+const resolveId = (value: any) => (typeof value === 'object' && value?._id ? value._id : value || '');
 
 const resolveClientName = (value: any) => {
   if (!value) return 'Unknown client';
@@ -93,11 +95,37 @@ const PaymentRequestEditorPage: React.FC = () => {
     loadRequest();
   }, [id, location.search]);
 
-  const handleSave = async (data: Omit<PaymentRequest, '_id'>) => {
+  const handleSave = async (data: Omit<PaymentRequest, '_id'> & { finalPaymentRequestPreview?: FinalPaymentRequestPreview }) => {
+    const { finalPaymentRequestPreview, ...depositData } = data;
     if (id) {
-      await paymentRequestsApi.update(id, data);
+      await paymentRequestsApi.update(id, depositData);
     } else {
-      await paymentRequestsApi.create(data);
+      const created = await paymentRequestsApi.create(depositData);
+      if (finalPaymentRequestPreview) {
+        const deposit: any = created.data;
+        const finalRequest = await paymentRequestsApi.create({
+          clientId: resolveId(deposit.clientId),
+          retreatId: resolveId(deposit.retreatId),
+          bookingId: deposit.bookingId ? resolveId(deposit.bookingId) : undefined,
+          bookingType: deposit.bookingType,
+          ceremonyId: deposit.ceremonyId,
+          ceremonyNumber: deposit.ceremonyNumber,
+          paymentDate: deposit.paymentDate,
+          paymentType: deposit.paymentType,
+          requestType: 'balance',
+          requestedAmount: finalPaymentRequestPreview.requestedAmount,
+          fullPrice: finalPaymentRequestPreview.fullPrice,
+          fullPriceQuote: finalPaymentRequestPreview.fullPrice,
+          amountPaid: finalPaymentRequestPreview.requestedAmount,
+          currency: finalPaymentRequestPreview.currency as PaymentRequest['currency'],
+          note: `Final balance for invoice ${deposit.invoiceNumber}, due 30 days before the retreat.`,
+          notes: `Final balance for invoice ${deposit.invoiceNumber}, due 30 days before the retreat.`,
+          status: 'pending',
+          dueDate: finalPaymentRequestPreview.dueDate,
+          isUrgent: false,
+        } as Omit<PaymentRequest, '_id'>);
+        await paymentRequestsApi.link(resolveId(deposit._id), resolveId(finalRequest.data._id));
+      }
     }
     navigate('/admin/payment-requests');
   };
@@ -110,6 +138,9 @@ const PaymentRequestEditorPage: React.FC = () => {
     const invoiceNumber = paymentRequest.invoiceNumber || paymentRequest.display_id || id;
     const linkedPayment: any = paymentRequest.paymentId && typeof paymentRequest.paymentId === 'object' ? paymentRequest.paymentId : null;
     const linkedPaymentId = linkedPayment?._id || (typeof paymentRequest.paymentId === 'string' ? paymentRequest.paymentId : '');
+    const linkedRequest: any = paymentRequest.linkedPaymentRequestId && typeof paymentRequest.linkedPaymentRequestId === 'object'
+      ? paymentRequest.linkedPaymentRequestId
+      : null;
     return (
       <div className="p-6 max-w-5xl mx-auto">
         <div className="mb-6 flex items-center justify-between gap-4">
@@ -214,6 +245,23 @@ const PaymentRequestEditorPage: React.FC = () => {
             <h2 className="text-lg font-semibold text-gray-900">Client payment options</h2>
             {paymentRequest.revolutPaymentLink ? <div className="mt-3 flex flex-col items-start gap-4 rounded-lg border border-blue-200 bg-blue-50 p-4 sm:flex-row sm:items-center"><div className="rounded-lg bg-white p-3"><QRCodeSVG value={paymentRequest.revolutPaymentLink} size={180} level="M" title="Revolut payment QR code" /></div><div><div className="font-semibold text-gray-900">Revolut payment</div><div className="mt-1 text-sm text-gray-700">{formatAmount(paymentRequest.requestedAmount || paymentRequest.amountPaid, paymentRequest.currency)}</div><a href={paymentRequest.revolutPaymentLink} target="_blank" rel="noreferrer" className="mt-3 inline-flex rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white">Open Revolut request</a></div></div> : <p className="mt-2 rounded-md bg-gray-50 p-4 text-gray-600">No unique Revolut payment link has been added.</p>}
             {paymentRequest.paymentInstructions && <div className="mt-3 whitespace-pre-wrap rounded-lg border border-gray-200 p-4 text-sm text-gray-800">{paymentRequest.paymentInstructions}</div>}
+          </div>
+
+          <div className="mt-6 border-t border-gray-200 pt-6">
+            <h2 className="text-lg font-semibold text-gray-900">Linked payment request</h2>
+            {linkedRequest ? (
+              <div className="mt-3 rounded-lg border border-indigo-200 bg-indigo-50 p-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div><div className="text-xs font-semibold uppercase text-indigo-700">Invoice</div><div className="mt-1 font-semibold text-gray-900">#{linkedRequest.invoiceNumber || linkedRequest.display_id}</div></div>
+                  <div><div className="text-xs font-semibold uppercase text-indigo-700">Type</div><div className="mt-1 font-semibold text-gray-900">{linkedRequest.requestType || '-'}</div></div>
+                  <div><div className="text-xs font-semibold uppercase text-indigo-700">Amount</div><div className="mt-1 font-semibold text-gray-900">{formatAmount(linkedRequest.requestedAmount, linkedRequest.currency)}</div></div>
+                  <div><div className="text-xs font-semibold uppercase text-indigo-700">Status</div><div className="mt-1 font-semibold text-gray-900">{linkedRequest.status || '-'} {linkedRequest.dueDate ? `· due ${formatDate(linkedRequest.dueDate)}` : ''}</div></div>
+                </div>
+                <button type="button" onClick={() => navigate(`/admin/payment-requests/${linkedRequest._id}`)} className="mt-4 rounded-md bg-indigo-700 px-4 py-2 font-semibold text-white hover:bg-indigo-800">View Request</button>
+              </div>
+            ) : (
+              <p className="mt-2 rounded-md bg-gray-50 p-4 text-gray-600">No other payment request is linked to this one.</p>
+            )}
           </div>
 
           {paymentRequest.publicHash && <div className="mt-6 border-t border-gray-200 pt-6">

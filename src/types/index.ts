@@ -1703,6 +1703,7 @@ export interface PaymentRequest {
   sentToClient?: boolean;
   clientNotified?: Date | string;
   lastReminderDate?: Date | string;
+  linkedPaymentRequestId?: string | PaymentRequest;
 }
 
 export interface MailSettings {

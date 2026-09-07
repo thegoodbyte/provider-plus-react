@@ -4,7 +4,7 @@ import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 import { bookingsApi, ceremoniesApi, clientsApi, paymentRequestsApi, paymentRequestTypesApi, PaymentRequestTypeSetting, paymentsApi, retreatsApi } from '../services/api';
 import { FiSave, FiArrowLeft } from 'react-icons/fi';
-import { toDateInputValue, todayDateInputValue } from '../utils/dateFormat';
+import { parseCalendarDate, toDateInputValue, todayDateInputValue } from '../utils/dateFormat';
 import { QRCodeSVG } from 'qrcode.react';
 import RevolutPaymentLinkPicker from './RevolutPaymentLinkPicker';
 
@@ -12,9 +12,16 @@ const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent
   return <IconComponent className={className} />;
 };
 
+export interface FinalPaymentRequestPreview {
+  dueDate: string;
+  requestedAmount: number;
+  fullPrice: number;
+  currency: string;
+}
+
 interface PaymentRequestFormProps {
   paymentRequest?: Partial<PaymentRequest>;
-  onSave: (data: Omit<PaymentRequest, '_id'>) => Promise<void>;
+  onSave: (data: Omit<PaymentRequest, '_id'> & { finalPaymentRequestPreview?: FinalPaymentRequestPreview }) => Promise<void>;
   onCancel: () => void;
   isEdit?: boolean;
 }
@@ -40,6 +47,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
   const [bookingDefaultsLoading, setBookingDefaultsLoading] = useState(false);
   const [bookingDefaultsMessage, setBookingDefaultsMessage] = useState('');
   const [itemized, setItemized] = useState(Boolean(paymentRequest?.lineItems?.length));
+  const [createFinalPaymentRequest, setCreateFinalPaymentRequest] = useState(false);
   const [lineItems, setLineItems] = useState<PaymentRequestLineItem[]>(paymentRequest?.lineItems || []);
   const [usdPreview, setUsdPreview] = useState({
     amount: paymentRequest?.usd_amount?.toString() || paymentRequest?.fullPriceUsdAmount?.toString() || '',
@@ -239,6 +247,28 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const showFinalPaymentRequestOption = !isEdit && formData.requestType === 'deposit';
+
+  // Preview of the final-balance request the checkbox below will create
+  // alongside this deposit: due 30 days before the retreat starts, for
+  // whatever remains of the full price after this deposit.
+  const finalPaymentRequestPreview = (() => {
+    if (!showFinalPaymentRequestOption || !createFinalPaymentRequest) return null;
+    const selectedRetreat = retreats.find((retreat) => retreat._id === formData.retreatId);
+    const startDate = parseCalendarDate(selectedRetreat?.startDate);
+    const fullPrice = parseFloat(formData.fullPriceQuote);
+    const depositAmount = parseFloat(formData.requestedAmount);
+    if (!startDate || !Number.isFinite(fullPrice) || !Number.isFinite(depositAmount)) return null;
+    const dueDate = new Date(startDate);
+    dueDate.setDate(dueDate.getDate() - 30);
+    return {
+      dueDate: toDateInputValue(dueDate),
+      requestedAmount: Math.max(0, Math.round((fullPrice - depositAmount) * 100) / 100),
+      fullPrice,
+      currency: formData.currency,
+    };
+  })();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
@@ -250,6 +280,10 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     }
     if (formData.bookingType === 'booster' && !formData.ceremonyNumber) {
       alert('Please select the ceremony for this booster.');
+      return;
+    }
+    if (showFinalPaymentRequestOption && createFinalPaymentRequest && !finalPaymentRequestPreview) {
+      alert('Select a retreat with a start date to also create the final payment request.');
       return;
     }
     if (revolutLinkMismatch) {
@@ -311,6 +345,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
         paymentInstructions: formData.paymentInstructions || undefined,
         revolutPaymentLink: formData.revolutPaymentLink.trim() || undefined,
         createdBy: formData.createdBy || undefined,
+        finalPaymentRequestPreview: finalPaymentRequestPreview || undefined,
       });
     } catch (error) {
       console.error('Error saving payment request:', error);
@@ -548,6 +583,34 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                 <p className="mt-1 text-xs font-medium text-blue-700">Approximately ${Number(usdPreview.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD for this requested amount.</p>
               )}
             </div>
+
+            {showFinalPaymentRequestOption && (
+              <div className="md:col-span-2 rounded-lg border border-gray-200 p-4">
+                <label className="flex items-center gap-3 text-sm font-medium text-gray-800">
+                  <input
+                    type="checkbox"
+                    checked={createFinalPaymentRequest}
+                    onChange={(event) => setCreateFinalPaymentRequest(event.target.checked)}
+                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  Also create the final payment request
+                </label>
+                <p className="mt-1 text-xs text-gray-500">
+                  Due 30 days before the retreat starts, for the remaining balance after this deposit. It will show as a linked request on this deposit.
+                </p>
+                {createFinalPaymentRequest && (
+                  finalPaymentRequestPreview ? (
+                    <div className="mt-3 rounded-md bg-gray-50 px-3 py-2 text-sm text-gray-700">
+                      Will create a <span className="font-semibold">balance</span> request for{' '}
+                      <span className="font-semibold">{finalPaymentRequestPreview.requestedAmount.toLocaleString()} {finalPaymentRequestPreview.currency}</span>{' '}
+                      due <span className="font-semibold">{finalPaymentRequestPreview.dueDate}</span>.
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-xs text-amber-700">Select a retreat with a start date to preview the final request.</p>
+                  )
+                )}
+              </div>
+            )}
 
             <div className="md:col-span-2 rounded-lg border border-gray-200 p-4">
               <label className="flex items-center gap-3 text-sm font-medium text-gray-800">

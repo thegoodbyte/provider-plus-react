@@ -30,7 +30,7 @@ jest.mock('./SearchableRetreatSelect', () => (props: any) => (
 ));
 
 const client1 = { _id: 'client-1', firstName: 'Alice', lastName: 'A', display_id: 1, email: 'alice@example.com' };
-const retreat1 = { _id: 'retreat-1', name: 'JNO-01', ceremonyCount: 2 };
+const retreat1 = { _id: 'retreat-1', name: 'JNO-01', ceremonyCount: 2, startDate: '2026-12-15' };
 const requestTypeCatalog = [
   { _id: 't1', key: 'deposit', label: 'Deposit', active: true, sortOrder: 10, system: true },
   { _id: 't2', key: 'balance', label: 'Balance', active: true, sortOrder: 20, system: true },
@@ -188,5 +188,81 @@ describe('PaymentRequestForm', () => {
       fullPriceQuote: 1000,
       invoiceNumber: '2001',
     })));
+  });
+
+  describe('final payment request checkbox', () => {
+    it('is not shown when editing an existing request', async () => {
+      view({ isEdit: true, paymentRequest: { _id: 'pr-1', display_id: 500, invoiceNumber: '500', requestType: 'deposit' } });
+      await screen.findByLabelText('Client');
+      expect(screen.queryByText('Also create the final payment request')).not.toBeInTheDocument();
+    });
+
+    it('is not shown for a non-deposit request type', async () => {
+      view();
+      await screen.findByLabelText('Client');
+      fireEvent.change(screen.getByLabelText('Request Type'), { target: { value: 'balance' } });
+      expect(screen.queryByText('Also create the final payment request')).not.toBeInTheDocument();
+    });
+
+    it('previews the balance request (30 days before retreat start, remaining balance) once checked', async () => {
+      view();
+      await screen.findByLabelText('Client');
+
+      fireEvent.change(screen.getByLabelText('Client'), { target: { value: 'client-1' } });
+      fireEvent.change(screen.getByLabelText('Retreat'), { target: { value: 'retreat-1' } });
+      fireEvent.change(screen.getByLabelText('Full Booking Price *'), { target: { value: '1000' } });
+      await waitFor(() => expect(screen.getByLabelText('Requested Amount *')).toHaveValue(400));
+
+      fireEvent.click(screen.getByLabelText('Also create the final payment request'));
+
+      expect(await screen.findByText(/600/)).toBeInTheDocument();
+      expect(screen.getByText(/2026-11-15/)).toBeInTheDocument();
+    });
+
+    it('warns instead of previewing when the retreat has no start date', async () => {
+      setUp({ retreats: [{ _id: 'retreat-1', name: 'JNO-01', ceremonyCount: 2 }] });
+      view();
+      await screen.findByLabelText('Client');
+
+      fireEvent.change(screen.getByLabelText('Client'), { target: { value: 'client-1' } });
+      fireEvent.change(screen.getByLabelText('Retreat'), { target: { value: 'retreat-1' } });
+      fireEvent.change(screen.getByLabelText('Full Booking Price *'), { target: { value: '1000' } });
+      fireEvent.click(screen.getByLabelText('Also create the final payment request'));
+
+      expect(await screen.findByText('Select a retreat with a start date to preview the final request.')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText('Create Request'));
+      expect(window.alert).toHaveBeenCalledWith('Select a retreat with a start date to also create the final payment request.');
+    });
+
+    it('includes the final payment request preview in the onSave payload when checked', async () => {
+      const { onSave } = view();
+      await screen.findByLabelText('Client');
+
+      fireEvent.change(screen.getByLabelText('Client'), { target: { value: 'client-1' } });
+      fireEvent.change(screen.getByLabelText('Retreat'), { target: { value: 'retreat-1' } });
+      fireEvent.change(screen.getByLabelText('Full Booking Price *'), { target: { value: '1000' } });
+      await waitFor(() => expect(screen.getByLabelText('Requested Amount *')).toHaveValue(400));
+      fireEvent.click(screen.getByLabelText('Also create the final payment request'));
+      await screen.findByText(/600/);
+
+      fireEvent.click(screen.getByText('Create Request'));
+
+      await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+        finalPaymentRequestPreview: { dueDate: '2026-11-15', requestedAmount: 600, fullPrice: 1000, currency: 'EUR' },
+      })));
+    });
+
+    it('omits the preview from the onSave payload when the checkbox is left unchecked', async () => {
+      const { onSave } = view();
+      await screen.findByLabelText('Client');
+
+      fireEvent.change(screen.getByLabelText('Client'), { target: { value: 'client-1' } });
+      fireEvent.change(screen.getByLabelText('Retreat'), { target: { value: 'retreat-1' } });
+      fireEvent.change(screen.getByLabelText('Full Booking Price *'), { target: { value: '1000' } });
+      fireEvent.click(screen.getByText('Create Request'));
+
+      await waitFor(() => expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ finalPaymentRequestPreview: undefined })));
+    });
   });
 });
