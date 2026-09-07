@@ -7,6 +7,7 @@ import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
 import AppleButton from './AppleButton';
 import LoadingSpinner from './LoadingSpinner';
 import { bookingPriceFromPaymentRequest, bookingPriceLinesForClient } from './bookingPaymentRequestPricing';
+import { parseCalendarDate } from '../utils/dateFormat';
 
 type BookingFormData = {
   clientId: string;
@@ -86,6 +87,22 @@ const retreatDatePart = (value?: string | Date) => {
   if (Number.isNaN(date.getTime())) return '';
   const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
   return local.toISOString().slice(0, 10);
+};
+
+// A booster guest arrives the evening before the ceremony they're attending
+// and departs the day of the ceremony itself. Ceremony dates are stored as
+// UTC-midnight calendar days, so parseCalendarDate() is used (rather than a
+// raw `new Date(...)`) to avoid landing on the previous calendar day for a
+// caller in a timezone behind UTC.
+export const ceremonyBookingDateTimes = (ceremony?: Pick<Ceremony, 'date'>) => {
+  const ceremonyDate = parseCalendarDate(ceremony?.date);
+  if (!ceremonyDate) return {};
+  const arrival = new Date(ceremonyDate);
+  arrival.setDate(arrival.getDate() - 1);
+  return {
+    checkInDate: toDateTimeInput(arrival),
+    checkOutDate: toDateTimeInput(ceremonyDate),
+  };
 };
 
 export const retreatBookingDateTimes = (retreat?: Retreat) => {
@@ -305,7 +322,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
         status: formData.status,
         bookingNumber: Number.isFinite(bookingNumber) ? bookingNumber : undefined,
         bookingType: formData.bookingType,
-        ceremonyId: formData.bookingType === 'booster' ? formData.ceremonyId : undefined,
+        ceremonyId: formData.bookingType === 'booster' ? (formData.ceremonyId || undefined) : undefined,
         ceremonyNumber: formData.bookingType === 'booster' ? Number(formData.ceremonyNumber) : undefined,
         registrationDate: booking?.registrationDate || new Date().toISOString(),
         checkInDate: formData.checkInDate ? new Date(formData.checkInDate).toISOString() : undefined,
@@ -324,6 +341,10 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
       }
       if (formData.bookingType === 'booster' && !formData.ceremonyNumber) {
         alert('Please select the ceremony this booster guest will attend.');
+        return;
+      }
+      if (formData.bookingType === 'booster' && formData.ceremonyNumber && !formData.ceremonyId) {
+        alert(`Ceremony ${formData.ceremonyNumber} does not have a ceremony record yet for this retreat. Add it on the Ceremonies tab before booking a booster guest for it.`);
         return;
       }
       if (formData.checkInDate && formData.checkOutDate && new Date(formData.checkOutDate) <= new Date(formData.checkInDate)) {
@@ -434,10 +455,12 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
                   value={formData.ceremonyNumber}
                   onChange={(e) => {
                     const position = Number(e.target.value);
+                    const selectedCeremony = ceremonies[position - 1];
                     setFormData((prev) => ({
                       ...prev,
                       ceremonyNumber: e.target.value,
-                      ceremonyId: ceremonies[position - 1]?._id || '',
+                      ceremonyId: selectedCeremony?._id || '',
+                      ...ceremonyBookingDateTimes(selectedCeremony),
                     }));
                   }}
                   className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -452,6 +475,9 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
                 </select>
                 {!ceremonies.length && formData.retreatId && (
                   <p className="mt-1 text-xs text-amber-700">Add ceremonies to this retreat before making a booster booking.</p>
+                )}
+                {Boolean(ceremonies.length) && formData.ceremonyNumber && !formData.ceremonyId && (
+                  <p className="mt-1 text-xs text-amber-700">Ceremony {formData.ceremonyNumber} doesn't have a ceremony record for this retreat yet — add it on the Ceremonies tab first.</p>
                 )}
               </div>
             )}

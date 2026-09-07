@@ -1,4 +1,16 @@
-import { retreatBookingDateTimes } from './BookingEditorForm';
+import { ceremonyBookingDateTimes, retreatBookingDateTimes } from './BookingEditorForm';
+
+describe('ceremonyBookingDateTimes', () => {
+  it('sets arrival to the evening before the ceremony and departure to the ceremony date', () => {
+    expect(ceremonyBookingDateTimes({ date: '2026-09-19T00:00:00.000Z' }))
+      .toEqual({ checkInDate: '2026-09-18T00:00', checkOutDate: '2026-09-19T00:00' });
+  });
+
+  it('returns no date updates when the ceremony has no date yet', () => {
+    expect(ceremonyBookingDateTimes(undefined)).toEqual({});
+    expect(ceremonyBookingDateTimes({ date: undefined as any })).toEqual({});
+  });
+});
 
 describe('retreatBookingDateTimes', () => {
   it('maps the retreat schedule into booking arrival and departure fields', () => {
