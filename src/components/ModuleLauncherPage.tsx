@@ -252,7 +252,7 @@ const ModuleLauncherPage: React.FC = () => {
   }, []);
   const innerTiles = orbitTiles.filter((tile, index) => (assignmentMap[tile.id] || (index < 8 ? 'inner' : 'outer')) === 'inner');
   const outerTiles = orbitTiles.filter((tile, index) => (assignmentMap[tile.id] || (index < 8 ? 'inner' : 'outer')) === 'outer');
-  const centerIcon = centerTile?.icon;
+  const CenterIcon = centerTile?.icon;
 
   const handleTileClick = (route: string) => {
     navigate(`${routePrefix}/${route}`);
@@ -293,8 +293,8 @@ const ModuleLauncherPage: React.FC = () => {
         <div className="module-launcher-hive">
           <div className="module-launcher-orbit module-launcher-orbit-outer" aria-hidden="true" />
           <div className="module-launcher-orbit module-launcher-orbit-inner" aria-hidden="true" />
-          {centerTile && centerIcon && <button type="button" onClick={() => handleTileClick(centerTile.route)} className={`launcher-hex launcher-center tone-${centerTile.tone}`} title={`${centerTile.section} - ${centerTile.label}`} aria-label={`${centerTile.section} - ${centerTile.label}`}>
-            <div className="launcher-hex-content"><centerIcon className="launcher-hex-icon" /><div className="launcher-hex-label">{centerTile.label}</div>{centerTile.subtitle && <div className="launcher-hex-subtitle">{centerTile.subtitle}</div>}</div>
+          {centerTile && CenterIcon && <button type="button" onClick={() => handleTileClick(centerTile.route)} className={`launcher-hex launcher-center tone-${centerTile.tone}`} title={`${centerTile.section} - ${centerTile.label}`} aria-label={`${centerTile.section} - ${centerTile.label}`}>
+            <div className="launcher-hex-content"><CenterIcon className="launcher-hex-icon" /><div className="launcher-hex-label">{centerTile.label}</div>{centerTile.subtitle && <div className="launcher-hex-subtitle">{centerTile.subtitle}</div>}</div>
           </button>}
           {innerTiles.map((tile, index) => renderTile(tile, index, innerTiles.length, 'inner'))}
           {outerTiles.map((tile, index) => renderTile(tile, index, outerTiles.length, 'outer'))}
