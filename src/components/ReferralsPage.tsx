@@ -2,12 +2,14 @@ import React, { FormEvent, useEffect, useMemo, useState } from 'react';
 import { ChevronRight, Pencil, Plus, Trash2, Wallet, X } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { referralsApi } from '../services/api';
-import { Referral, ReferralReportRow } from '../types';
+import { Referral, ReferralRateRule, ReferralReportRow } from '../types';
 
-const empty = { name: '', referralCode: '', defaultCommissionPercentage: 0, email: '', phone: '', notes: '', isActive: true };
+const emptyRule = (): ReferralRateRule => ({ effectiveFrom: today(), effectiveTo: '', tiers: [{ minPrice: 0, ratePercent: 0 }], notes: '' });
+const empty = { name: '', referralCode: '', defaultCommissionPercentage: 0, email: '', phone: '', notes: '', isActive: true, rateSchedule: [] as ReferralRateRule[] };
 const money = (value: number, currency: string) => new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(value || 0);
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase();
-const today = () => new Date().toISOString().slice(0, 10);
+const toDateInput = (value?: string | null) => (value ? new Date(value).toISOString().slice(0, 10) : '');
+function today() { return new Date().toISOString().slice(0, 10); }
 
 const ReferralsPage: React.FC = () => {
   const navigate = useNavigate();
@@ -18,6 +20,8 @@ const ReferralsPage: React.FC = () => {
   const [form, setForm] = useState(empty);
   const [editingId, setEditingId] = useState('');
   const [selectedReferral, setSelectedReferral] = useState('');
+  const [selectedRetreat, setSelectedRetreat] = useState('');
+  const [search, setSearch] = useState('');
   const [sort, setSort] = useState<'client' | 'retreat' | 'referral'>('referral');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -43,6 +47,16 @@ const ReferralsPage: React.FC = () => {
 
   useEffect(() => { void load(); }, []);
   const reset = () => { setForm(empty); setEditingId(''); setError(''); };
+  const addRule = () => setForm(current => ({ ...current, rateSchedule: [...(current.rateSchedule || []), emptyRule()] }));
+  const removeRule = (index: number) => setForm(current => ({ ...current, rateSchedule: (current.rateSchedule || []).filter((_, i) => i !== index) }));
+  const updateRule = (index: number, patch: Partial<ReferralRateRule>) => setForm(current => ({
+    ...current, rateSchedule: (current.rateSchedule || []).map((rule, i) => i === index ? { ...rule, ...patch } : rule),
+  }));
+  const addTier = (ruleIndex: number) => updateRule(ruleIndex, { tiers: [...(form.rateSchedule[ruleIndex]?.tiers || []), { minPrice: 0, ratePercent: 0 }] });
+  const removeTier = (ruleIndex: number, tierIndex: number) => updateRule(ruleIndex, { tiers: (form.rateSchedule[ruleIndex]?.tiers || []).filter((_, i) => i !== tierIndex) });
+  const updateTier = (ruleIndex: number, tierIndex: number, patch: Partial<{ minPrice: number; ratePercent: number }>) => updateRule(ruleIndex, {
+    tiers: (form.rateSchedule[ruleIndex]?.tiers || []).map((tier, i) => i === tierIndex ? { ...tier, ...patch } : tier),
+  });
   const save = async (event: FormEvent) => {
     event.preventDefault();
     if (!form.name.trim()) return setError('Referral name is required.');
@@ -56,13 +70,22 @@ const ReferralsPage: React.FC = () => {
     }
   };
 
-  const filtered = useMemo(() => report
-    .filter(row => !selectedReferral || row.referralId === selectedReferral)
-    .sort((a, b) => {
-      const av = sort === 'client' ? a.clientName : sort === 'retreat' ? a.retreatCode || a.retreatName || '' : a.referralName;
-      const bv = sort === 'client' ? b.clientName : sort === 'retreat' ? b.retreatCode || b.retreatName || '' : b.referralName;
-      return av.localeCompare(bv);
-    }), [report, selectedReferral, sort]);
+  const retreatOptions = useMemo(() => Object.values(report.reduce<Record<string, { id: string; label: string }>>((sum, row) => {
+    sum[row.retreatId] = sum[row.retreatId] || { id: row.retreatId, label: row.retreatCode || row.retreatName || 'Retreat' };
+    return sum;
+  }, {})).sort((a, b) => a.label.localeCompare(b.label)), [report]);
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return report
+      .filter(row => !selectedReferral || row.referralId === selectedReferral)
+      .filter(row => !selectedRetreat || row.retreatId === selectedRetreat)
+      .filter(row => !query || [row.clientName, row.referralName, row.referredByLabel].filter(Boolean).some(value => String(value).toLowerCase().includes(query)))
+      .sort((a, b) => {
+        const av = sort === 'client' ? a.clientName : sort === 'retreat' ? a.retreatCode || a.retreatName || '' : a.referralName;
+        const bv = sort === 'client' ? b.clientName : sort === 'retreat' ? b.retreatCode || b.retreatName || '' : b.referralName;
+        return av.localeCompare(bv);
+      });
+  }, [report, selectedReferral, selectedRetreat, search, sort]);
   const totals = useMemo(() => filtered.filter(row => !row.paid).reduce<Record<string, number>>((sum, row) => ({ ...sum, [row.owedCurrency]: (sum[row.owedCurrency] || 0) + row.amountOwed }), {}), [filtered]);
   const retreatTotals = useMemo(() => Object.values(filtered.filter(row => !row.paid).reduce<Record<string, { referralId: string; retreatId: string; label: string; currency: string; amount: number; rows: ReferralReportRow[] }>>((sum, row) => {
     const key = `${row.referralId}:${row.retreatId}:${row.owedCurrency}`;
@@ -112,8 +135,30 @@ const ReferralsPage: React.FC = () => {
         <input value={form.referralCode} maxLength={2} onChange={event => setForm({ ...form, referralCode: event.target.value.replace(/[^a-z]/gi, '').toUpperCase() })} placeholder="Code (AD) *" className="min-h-12 rounded-xl border border-slate-300 px-3 uppercase" required />
         <input type="email" value={form.email} onChange={event => setForm({ ...form, email: event.target.value })} placeholder="Email" className="min-h-12 rounded-xl border border-slate-300 px-3" />
         <input value={form.phone} onChange={event => setForm({ ...form, phone: event.target.value })} placeholder="Phone" className="min-h-12 rounded-xl border border-slate-300 px-3" />
-        <label className="text-sm font-semibold text-slate-700">Commission %<input type="number" min="0" max="100" step="0.01" value={form.defaultCommissionPercentage} onChange={event => setForm({ ...form, defaultCommissionPercentage: Number(event.target.value) })} className="mt-1 min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base font-normal" /></label>
+        <label className="text-sm font-semibold text-slate-700">Default commission %<input type="number" min="0" max="100" step="0.01" value={form.defaultCommissionPercentage} onChange={event => setForm({ ...form, defaultCommissionPercentage: Number(event.target.value) })} className="mt-1 min-h-12 w-full rounded-xl border border-slate-300 px-3 text-base font-normal" /></label>
       </div>
+
+      <div className="mt-4 rounded-xl border border-slate-200 p-3">
+        <div className="mb-2 flex items-center justify-between"><h3 className="text-sm font-bold text-slate-700">Rate schedule (optional)</h3><button type="button" onClick={addRule} className="min-h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold">+ Add rate rule</button></div>
+        <p className="mb-3 text-xs text-slate-500">When a rule's date range covers a client's first payment date, its rate wins over the default commission %. Use price tiers when the rate changes by booking price within the same period.</p>
+        {(form.rateSchedule || []).map((rule, ruleIndex) => <div key={ruleIndex} className="mb-2 rounded-lg bg-slate-50 p-3">
+          <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+            <label className="text-xs font-semibold text-slate-600">From<input type="date" value={rule.effectiveFrom} onChange={event => updateRule(ruleIndex, { effectiveFrom: event.target.value })} className="mt-1 min-h-10 w-full rounded-lg border border-slate-300 px-2" required /></label>
+            <label className="text-xs font-semibold text-slate-600">To (blank = ongoing)<input type="date" value={rule.effectiveTo || ''} onChange={event => updateRule(ruleIndex, { effectiveTo: event.target.value })} className="mt-1 min-h-10 w-full rounded-lg border border-slate-300 px-2" /></label>
+            <button type="button" aria-label={`Remove rate rule ${ruleIndex + 1}`} onClick={() => removeRule(ruleIndex)} className="mt-1 self-end rounded-lg p-2 text-red-600 hover:bg-red-50"><Trash2 size={16} /></button>
+          </div>
+          <div className="mt-2 space-y-2">
+            {rule.tiers.map((tier, tierIndex) => <div key={tierIndex} className="flex flex-wrap items-center gap-2">
+              <label className="text-xs text-slate-600">From price<input type="number" min="0" value={tier.minPrice} onChange={event => updateTier(ruleIndex, tierIndex, { minPrice: Number(event.target.value) })} className="ml-1 min-h-9 w-28 rounded-lg border border-slate-300 px-2" /></label>
+              <label className="text-xs text-slate-600">Rate %<input type="number" min="0" max="100" step="0.01" value={tier.ratePercent} onChange={event => updateTier(ruleIndex, tierIndex, { ratePercent: Number(event.target.value) })} className="ml-1 min-h-9 w-24 rounded-lg border border-slate-300 px-2" /></label>
+              {rule.tiers.length > 1 && <button type="button" aria-label={`Remove price tier ${tierIndex + 1} of rule ${ruleIndex + 1}`} onClick={() => removeTier(ruleIndex, tierIndex)} className="rounded-lg p-1.5 text-red-600 hover:bg-red-50"><X size={14} /></button>}
+            </div>)}
+            <button type="button" onClick={() => addTier(ruleIndex)} className="text-xs font-bold text-blue-700 hover:underline">+ Add price tier</button>
+          </div>
+        </div>)}
+        {!(form.rateSchedule || []).length && <p className="text-sm text-slate-400">No dated rate rules — the default commission % always applies.</p>}
+      </div>
+
       <textarea value={form.notes} onChange={event => setForm({ ...form, notes: event.target.value })} placeholder="Notes" className="mt-3 min-h-20 w-full rounded-xl border border-slate-300 p-3" />
       <label className="mt-3 flex items-center gap-2"><input type="checkbox" checked={form.isActive} onChange={event => setForm({ ...form, isActive: event.target.checked })} /> Active</label>
       <button className="mt-4 inline-flex min-h-12 items-center gap-2 rounded-xl bg-blue-600 px-5 font-bold text-white"><Plus size={19} />{editingId ? 'Save changes' : 'Add referral'}</button>
@@ -126,7 +171,7 @@ const ReferralsPage: React.FC = () => {
         return <div key={row._id} role="button" tabIndex={0} onClick={() => setSelectedReferral(selected ? '' : row._id || '')} onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') setSelectedReferral(selected ? '' : row._id || ''); }} className={`flex cursor-pointer items-center gap-3 rounded-2xl border bg-white p-4 shadow-sm transition ${selected ? 'border-blue-500 ring-2 ring-blue-100' : 'border-slate-200 hover:border-blue-300'}`}>
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-100 font-black text-blue-800">{row.referralCode || initials(row.name) || '--'}</span>
           <div className="min-w-0 flex-1"><div className="font-bold text-slate-950">{row.name} {row.isActive === false && <span className="text-xs text-slate-400">Inactive</span>}</div><div className="text-sm text-slate-500">{Number(row.defaultCommissionPercentage || 0)}% commission · {count} booking{count === 1 ? '' : 's'}</div></div>
-          <button type="button" aria-label={`Edit ${row.name}`} onClick={event => { event.stopPropagation(); setEditingId(row._id || ''); setForm({ name: row.name, referralCode: row.referralCode || initials(row.name).slice(0, 2), defaultCommissionPercentage: Number(row.defaultCommissionPercentage || 0), email: row.email || '', phone: row.phone || '', notes: row.notes || '', isActive: row.isActive !== false }); }} className="rounded-lg p-2 hover:bg-slate-100"><Pencil size={18} /></button>
+          <button type="button" aria-label={`Edit ${row.name}`} onClick={event => { event.stopPropagation(); setEditingId(row._id || ''); setForm({ name: row.name, referralCode: row.referralCode || initials(row.name).slice(0, 2), defaultCommissionPercentage: Number(row.defaultCommissionPercentage || 0), email: row.email || '', phone: row.phone || '', notes: row.notes || '', isActive: row.isActive !== false, rateSchedule: (row.rateSchedule || []).map(rule => ({ ...rule, effectiveFrom: toDateInput(rule.effectiveFrom), effectiveTo: toDateInput(rule.effectiveTo) })) }); }} className="rounded-lg p-2 hover:bg-slate-100"><Pencil size={18} /></button>
           <button type="button" aria-label={`Delete ${row.name}`} onClick={async event => { event.stopPropagation(); if (row._id && window.confirm(`Delete referral “${row.name}”?`)) { await referralsApi.delete(row._id); if (selectedReferral === row._id) setSelectedReferral(''); await load(); } }} className="rounded-lg p-2 text-red-600 hover:bg-red-50"><Trash2 size={18} /></button>
           <ChevronRight className={`text-slate-400 transition ${selected ? 'rotate-90' : ''}`} size={20} />
         </div>;
@@ -136,13 +181,13 @@ const ReferralsPage: React.FC = () => {
     <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div><h2 className="text-xl font-black">{selectedName ? `Clients referred by ${selectedName}` : 'Referred clients'}</h2><p className="text-sm text-slate-500">Non-cancelled bookings. Amount owed uses the referral commission percentage.</p></div>
-        <div className="flex flex-wrap gap-2">{selectedRows.length > 0 && <button type="button" onClick={() => startPayout(selectedRows)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-950 px-4 font-bold text-white"><Wallet size={17} />Pay selected ({selectedRows.length})</button>}<select aria-label="Filter by referral" value={selectedReferral} onChange={event => { setSelectedReferral(event.target.value); setSelectedBookings(new Set()); }} className="min-h-11 rounded-xl border border-slate-300 px-3"><option value="">All referrals</option>{rows.map(row => <option key={row._id} value={row._id}>{row.referralCode ? `${row.referralCode} · ` : ''}{row.name}</option>)}</select><select aria-label="Sort referred clients" value={sort} onChange={event => setSort(event.target.value as any)} className="min-h-11 rounded-xl border border-slate-300 px-3"><option value="referral">Sort by referral</option><option value="client">Sort by client</option><option value="retreat">Sort by retreat</option></select></div>
+        <div className="flex flex-wrap gap-2">{selectedRows.length > 0 && <button type="button" onClick={() => startPayout(selectedRows)} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-slate-950 px-4 font-bold text-white"><Wallet size={17} />Pay selected ({selectedRows.length})</button>}<input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search client or referred-by (e.g. a friend's name)" className="min-h-11 min-w-[240px] rounded-xl border border-slate-300 px-3" /><select aria-label="Filter by referral" value={selectedReferral} onChange={event => { setSelectedReferral(event.target.value); setSelectedBookings(new Set()); }} className="min-h-11 rounded-xl border border-slate-300 px-3"><option value="">All referrals</option>{rows.map(row => <option key={row._id} value={row._id}>{row.referralCode ? `${row.referralCode} · ` : ''}{row.name}</option>)}</select><select aria-label="Filter by retreat" value={selectedRetreat} onChange={event => setSelectedRetreat(event.target.value)} className="min-h-11 rounded-xl border border-slate-300 px-3"><option value="">All retreats</option>{retreatOptions.map(option => <option key={option.id} value={option.id}>{option.label}</option>)}</select><select aria-label="Sort referred clients" value={sort} onChange={event => setSort(event.target.value as any)} className="min-h-11 rounded-xl border border-slate-300 px-3"><option value="referral">Sort by referral</option><option value="client">Sort by client</option><option value="retreat">Sort by retreat</option></select></div>
       </div>
       <div className="mb-4 flex flex-wrap gap-3">
         {Object.entries(totals).map(([currency, total]) => <div key={currency} className="rounded-xl bg-emerald-50 px-4 py-3"><div className="text-xs font-bold uppercase text-emerald-700">Total owed</div><div className="text-xl font-black text-emerald-950">{money(total, currency)}</div></div>)}
         {selectedReferral && retreatTotals.map(item => <div key={`${item.referralId}-${item.retreatId}-${item.currency}`} className="flex items-center gap-4 rounded-xl bg-slate-100 px-4 py-3"><div><div className="text-xs font-bold uppercase text-slate-500">{item.label}</div><div className="font-black">{money(item.amount, item.currency)} · {item.rows.length} item{item.rows.length === 1 ? '' : 's'}</div></div><button type="button" onClick={() => startPayout(item.rows)} className="ml-auto min-h-9 rounded-lg bg-slate-950 px-3 text-sm font-bold text-white">Pay retreat</button></div>)}
       </div>
-      <div className="overflow-x-auto"><table className="min-w-full divide-y divide-slate-200"><thead><tr className="text-left text-xs uppercase text-slate-500"><th className="w-10 p-3"><span className="sr-only">Select</span></th><th className="p-3">Client</th><th className="p-3">Retreat</th><th className="p-3">Referral</th><th className="p-3">Booking</th><th className="p-3 text-right">Commission</th><th className="p-3">Payment</th></tr></thead><tbody className="divide-y divide-slate-200">{filtered.map(row => <tr key={row.bookingId} className={row.paid ? 'bg-emerald-50/40' : 'hover:bg-slate-50'}><td className="p-3"><input type="checkbox" aria-label={`Select commission for booking ${row.bookingNumber || row.bookingId}`} checked={selectedBookings.has(row.bookingId)} disabled={row.paid} onChange={event => setSelectedBookings(current => { const next = new Set(current); event.target.checked ? next.add(row.bookingId) : next.delete(row.bookingId); return next; })} /></td><td className="p-3"><button type="button" onClick={() => navigate(`${routePrefix}/clients/${row.clientId}`)} className="text-left font-bold text-slate-950 hover:text-blue-700 hover:underline">{row.clientName}</button><div className="text-xs text-slate-500">Client #{row.clientDisplayId || '—'} · {row.clientEmail || 'No email'}</div></td><td className="p-3 font-semibold">{row.retreatCode || row.retreatName || '—'}</td><td className="p-3"><span className="mr-2 rounded bg-blue-100 px-2 py-1 font-black text-blue-800">{row.referralCode || initials(row.referralName) || '--'}</span>{row.referralName}</td><td className="p-3"><button type="button" onClick={() => navigate(`${routePrefix}/bookings/${row.bookingId}`)} className="hover:text-blue-700 hover:underline">#{row.bookingNumber || '—'} · {row.commissionPercentage}%</button></td><td className="p-3 text-right font-black">{money(row.amountOwed, row.owedCurrency)}</td><td className="p-3">{row.paid && row.expenseId ? <div><button type="button" onClick={() => navigate(`${routePrefix}/expenses/${row.expenseId}`)} className="font-bold text-emerald-700 hover:underline">Paid · view expense</button><div className="text-xs text-slate-500">{row.paidAt ? new Date(row.paidAt).toLocaleDateString() : ''}</div></div> : <button type="button" onClick={() => startPayout([row])} className="min-h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold">Pay</button>}</td></tr>)}{!filtered.length && <tr><td colSpan={7} className="p-8 text-center text-slate-500">{loading ? 'Loading referred bookings…' : 'No referred bookings found.'}</td></tr>}</tbody></table></div>
+      <div className="overflow-x-auto"><table className="min-w-full divide-y divide-slate-200"><thead><tr className="text-left text-xs uppercase text-slate-500"><th className="w-10 p-3"><span className="sr-only">Select</span></th><th className="p-3">Client</th><th className="p-3">Retreat</th><th className="p-3">Referral</th><th className="p-3">Referred by</th><th className="p-3">Booking</th><th className="p-3">First payment</th><th className="p-3 text-right">Commission</th><th className="p-3">Payment</th></tr></thead><tbody className="divide-y divide-slate-200">{filtered.map(row => <tr key={row.bookingId} className={row.paid ? 'bg-emerald-50/40' : 'hover:bg-slate-50'}><td className="p-3"><input type="checkbox" aria-label={`Select commission for booking ${row.bookingNumber || row.bookingId}`} checked={selectedBookings.has(row.bookingId)} disabled={row.paid} onChange={event => setSelectedBookings(current => { const next = new Set(current); event.target.checked ? next.add(row.bookingId) : next.delete(row.bookingId); return next; })} /></td><td className="p-3"><button type="button" onClick={() => navigate(`${routePrefix}/clients/${row.clientId}`)} className="text-left font-bold text-slate-950 hover:text-blue-700 hover:underline">{row.clientName}</button><div className="text-xs text-slate-500">Client #{row.clientDisplayId || '—'} · {row.clientEmail || 'No email'}</div></td><td className="p-3 font-semibold">{row.retreatCode || row.retreatName || '—'}</td><td className="p-3"><span className="mr-2 rounded bg-blue-100 px-2 py-1 font-black text-blue-800">{row.referralCode || initials(row.referralName) || '--'}</span>{row.referralName}</td><td className="p-3">{row.referredByType && row.referredByType !== 'referral' ? <button type="button" onClick={() => setSearch(row.referredByLabel || '')} className="text-left font-semibold text-slate-800 hover:text-blue-700 hover:underline">{row.referredByLabel}{row.referredByType === 'friend_name' && <span className="ml-1 text-xs font-normal text-slate-400">(not a client)</span>}</button> : <span className="text-slate-400">—</span>}</td><td className="p-3"><button type="button" onClick={() => navigate(`${routePrefix}/bookings/${row.bookingId}`)} className="hover:text-blue-700 hover:underline">#{row.bookingNumber || '—'} · {row.commissionPercentage}%</button></td><td className="p-3 text-slate-600">{row.firstPaymentDate ? new Date(row.firstPaymentDate).toLocaleDateString() : '—'}</td><td className="p-3 text-right font-black">{money(row.amountOwed, row.owedCurrency)}</td><td className="p-3">{row.paid && row.expenseId ? <div><button type="button" onClick={() => navigate(`${routePrefix}/expenses/${row.expenseId}`)} className="font-bold text-emerald-700 hover:underline">Paid · view expense</button><div className="text-xs text-slate-500">{row.paidAt ? new Date(row.paidAt).toLocaleDateString() : ''}</div></div> : <button type="button" onClick={() => startPayout([row])} className="min-h-9 rounded-lg border border-slate-300 bg-white px-3 text-sm font-bold">Pay</button>}</td></tr>)}{!filtered.length && <tr><td colSpan={9} className="p-8 text-center text-slate-500">{loading ? 'Loading referred bookings…' : 'No referred bookings found.'}</td></tr>}</tbody></table></div>
     </section>
 
     {payoutRows.length > 0 && <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/45 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-labelledby="referral-payout-title">

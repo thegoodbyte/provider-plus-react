@@ -66,4 +66,73 @@ describe('ReferralsPage payout workflow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Pay selected (2)' }));
     expect(screen.getByText('Select commissions for one referral, one retreat and one currency per payment.')).toBeInTheDocument();
   });
+
+  it('filters referred clients by retreat', async () => {
+    (referralsApi.getReport as jest.Mock).mockResolvedValue({ data: [
+      row({ retreatId: 't1', retreatCode: 'SEP-26' }),
+      row({ bookingId: 'b2', bookingNumber: 102, clientName: 'Jan Kowalski', retreatId: 't2', retreatCode: 'OCT-26' }),
+    ] });
+    view();
+    await screen.findAllByText('Eva Novak');
+    expect(screen.getByText('Jan Kowalski')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Filter by retreat'), { target: { value: 't2' } });
+
+    expect(screen.queryByText('Eva Novak')).not.toBeInTheDocument();
+    expect(screen.getByText('Jan Kowalski')).toBeInTheDocument();
+  });
+
+  it('shows and searches friend attribution for friend-referred clients', async () => {
+    (referralsApi.getReport as jest.Mock).mockResolvedValue({ data: [
+      row({ referredByType: 'friend_client', referredByLabel: 'Arek Kowal' }),
+      row({ bookingId: 'b2', bookingNumber: 102, clientName: 'Jan Kowalski', referredByType: 'friend_name', referredByLabel: 'Basia' }),
+    ] });
+    view();
+    await screen.findAllByText('Eva Novak');
+    expect(screen.getByText('Arek Kowal')).toBeInTheDocument();
+    expect(screen.getByText('Basia')).toBeInTheDocument();
+    expect(screen.getByText('(not a client)')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText(/Search client or referred-by/i), { target: { value: 'Basia' } });
+
+    expect(screen.queryByText('Eva Novak')).not.toBeInTheDocument();
+    expect(screen.getByText('Jan Kowalski')).toBeInTheDocument();
+  });
+
+  it('shows the first payment date when available', async () => {
+    (referralsApi.getReport as jest.Mock).mockResolvedValue({ data: [row({ firstPaymentDate: '2026-07-15T00:00:00.000Z' })] });
+    view();
+    await screen.findAllByText('Eva Novak');
+    expect(screen.getByText(new Date('2026-07-15T00:00:00.000Z').toLocaleDateString())).toBeInTheDocument();
+  });
+
+  it('lets an admin build a dated, price-tiered rate schedule for a referral partner', async () => {
+    view();
+    await screen.findAllByText('Eva Novak');
+
+    fireEvent.click(screen.getByRole('button', { name: '+ Add rate rule' }));
+    const [fromInput, toInput] = screen.getAllByLabelText(/^From$|^To \(blank = ongoing\)$/);
+    fireEvent.change(screen.getByLabelText('From'), { target: { value: '2026-09-01' } });
+    fireEvent.change(screen.getByLabelText('To (blank = ongoing)'), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText(/From price/i), { target: { value: '0' } });
+    fireEvent.change(screen.getByLabelText(/Rate %/i), { target: { value: '10' } });
+    fireEvent.click(screen.getByRole('button', { name: '+ Add price tier' }));
+    const rateInputs = screen.getAllByLabelText(/Rate %/i);
+    const priceInputs = screen.getAllByLabelText(/From price/i);
+    fireEvent.change(priceInputs[1], { target: { value: '8500' } });
+    fireEvent.change(rateInputs[1], { target: { value: '20' } });
+
+    fireEvent.change(screen.getByPlaceholderText('Name *'), { target: { value: 'Alchemia Dobrostanu' } });
+    fireEvent.change(screen.getByPlaceholderText('Code (AD) *'), { target: { value: 'AD' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add referral' }));
+
+    await waitFor(() => expect(referralsApi.create).toHaveBeenCalledWith(expect.objectContaining({
+      rateSchedule: [expect.objectContaining({
+        effectiveFrom: '2026-09-01',
+        tiers: [{ minPrice: 0, ratePercent: 10 }, { minPrice: 8500, ratePercent: 20 }],
+      })],
+    })));
+    expect(fromInput).toBeDefined();
+    expect(toInput).toBeDefined();
+  });
 });

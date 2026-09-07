@@ -2,6 +2,7 @@ import React, { useState, useEffect, ChangeEvent, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import AppleButton from '../components/AppleButton';
+import ClientReferralFields from '../components/ClientReferralFields';
 import { clientsApi, referralsApi, screeningApi } from '../services/api';
 import { Client, Referral } from '../types';
 
@@ -16,6 +17,9 @@ interface ScreeningData {
   occupation: string;
   referralId: string;
   source: string;
+  referralPersonType?: 'existing_client' | 'someone_else';
+  referralClientId?: string | Client;
+  referralPersonName?: string;
   sexualAbuse: boolean;
   sexualAbuseDetails: string;
   physicalAbuse: boolean;
@@ -485,6 +489,9 @@ const ClientScreening: React.FC = () => {
         occupation: existingValue('occupation') ?? prev.occupation,
         referralId: typeof existingReferral === 'object' ? existingReferral?._id || '' : String(existingReferral || ''),
         source: String(existingValue('source', 'source') || ''),
+        referralPersonType: existingValue('referralPersonType', 'referralPersonType') as ScreeningData['referralPersonType'],
+        referralClientId: existingValue('referralClientId', 'referralClientId') as ScreeningData['referralClientId'],
+        referralPersonName: existingValue('referralPersonName', 'referralPersonName') as string | undefined,
         heartConditionOk: existingScreening.heartConditionOk === true || heartCondition === 'OK',
         heartCondition,
         liverConditionOk: existingScreening.liverConditionOk === true || liverCondition === 'OK',
@@ -870,7 +877,8 @@ const ClientScreening: React.FC = () => {
   };
 
   const persistScreening = async () => {
-    const { referralId, ...screeningFields } = formData;
+    const { referralId, referralClientId: rawReferralClientId, ...screeningFields } = formData;
+    const referralClientId = typeof rawReferralClientId === 'object' ? rawReferralClientId?._id : rawReferralClientId;
     const bloodPressure = [
       formData.bloodPressureStatus,
       formData.bloodPressureValue,
@@ -915,6 +923,7 @@ const ClientScreening: React.FC = () => {
     return screeningApi.create({
       ...screeningFields,
       ...(referralId ? { referralId } : {}),
+      ...(referralClientId ? { referralClientId } : {}),
       occupation: formData.occupation.trim(),
       heartCondition: formData.heartConditionOk ? 'OK' : formData.heartCondition,
       liverCondition: formData.liverConditionOk ? 'OK' : formData.liverCondition,
@@ -1084,19 +1093,30 @@ const ClientScreening: React.FC = () => {
             />
           </div>
           <div className="md:col-span-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Referral</label>
-            <select
-              value={formData.referralId}
-              onChange={(event) => {
-                const referral = referrals.find((item) => item._id === event.target.value);
-                setHasChanges(true);
-                setFormData((current) => ({ ...current, referralId: event.target.value, source: referral?.name || '' }));
+            <ClientReferralFields
+              value={{
+                referralId: formData.referralId,
+                source: formData.source,
+                referralPersonType: formData.referralPersonType,
+                referralClientId: formData.referralClientId,
+                referralPersonName: formData.referralPersonName,
               }}
-              className="w-full px-3 py-2 border border-gray-200 rounded-md"
-            >
-              <option value="">{formData.source ? `Unlinked: ${formData.source}` : 'No referral selected'}</option>
-              {referrals.filter((item) => item.isActive !== false || item._id === formData.referralId).map((item) => <option key={item._id} value={item._id}>{item.name}</option>)}
-            </select>
+              referrals={referrals}
+              currentClientId={clientId}
+              onChange={(patch) => {
+                setHasChanges(true);
+                setFormData((current) => ({
+                  ...current,
+                  source: 'source' in patch ? (patch.source ?? '') : current.source,
+                  referralPersonType: 'referralPersonType' in patch ? patch.referralPersonType : current.referralPersonType,
+                  referralClientId: 'referralClientId' in patch ? patch.referralClientId : current.referralClientId,
+                  referralPersonName: 'referralPersonName' in patch ? patch.referralPersonName : current.referralPersonName,
+                  referralId: 'referralId' in patch
+                    ? (typeof patch.referralId === 'object' ? patch.referralId?._id || '' : patch.referralId || '')
+                    : current.referralId,
+                }));
+              }}
+            />
           </div>
         </div>
       </div>

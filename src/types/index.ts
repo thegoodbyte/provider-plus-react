@@ -121,11 +121,24 @@ export interface ContactBookEntry {
   updatedAt?: string;
 }
 
+export interface ReferralRateTier {
+  minPrice: number;
+  ratePercent: number;
+}
+
+export interface ReferralRateRule {
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  tiers: ReferralRateTier[];
+  notes?: string;
+}
+
 export interface Referral {
   _id?: string;
   name: string;
   referralCode?: string;
   defaultCommissionPercentage?: number;
+  rateSchedule?: ReferralRateRule[];
   email?: string;
   phone?: string;
   notes?: string;
@@ -139,6 +152,7 @@ export interface ReferralReportRow {
   bookingNumber?: number;
   bookingStatus?: string;
   registrationDate?: string;
+  firstPaymentDate?: string;
   clientId: string;
   clientDisplayId?: number;
   clientName: string;
@@ -146,6 +160,11 @@ export interface ReferralReportRow {
   referralId: string;
   referralName: string;
   referralCode?: string;
+  referredByType?: 'referral' | 'friend_client' | 'friend_name';
+  referredByLabel?: string;
+  referralPersonType?: 'existing_client' | 'someone_else';
+  referralClientId?: string;
+  referralPersonName?: string;
   commissionPercentage: number;
   retreatId: string;
   retreatName?: string;
