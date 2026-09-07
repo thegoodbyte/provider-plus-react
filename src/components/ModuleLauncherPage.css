@@ -1,11 +1,7 @@
 .module-launcher-page {
   min-height: 100%;
-  padding: 24px 24px 76px;
-  background:
-    radial-gradient(circle at 50% 18%, rgba(96, 165, 250, 0.12), transparent 26%),
-    radial-gradient(circle at 10% 70%, rgba(168, 85, 247, 0.08), transparent 24%),
-    radial-gradient(circle at 90% 72%, rgba(52, 211, 153, 0.08), transparent 24%),
-    linear-gradient(180deg, rgba(248, 250, 252, 0.95), rgba(241, 245, 249, 1));
+  padding: 30px 28px 86px;
+  background: #fff;
 }
 
 .module-launcher-header {
@@ -69,49 +65,59 @@
 .module-launcher-hive-shell {
   display: flex;
   justify-content: center;
-  padding: 10px 0 34px;
+  padding: 8px 0 42px;
   overflow-x: auto;
-  overflow-y: visible;
+  overflow-y: hidden;
 }
 
 .module-launcher-hive {
   --launcher-tile-width: 112px;
-  --launcher-tile-height: calc(var(--launcher-tile-width) * 0.8660254);
-  --launcher-x-step: var(--launcher-tile-width);
-  --launcher-y-step: calc(var(--launcher-tile-height) * 0.75);
-  --launcher-hive-width: calc(var(--launcher-max-row-length) * var(--launcher-tile-width));
-  --launcher-hive-height: calc(var(--launcher-tile-height) + (var(--launcher-row-count) - 1) * var(--launcher-y-step));
+  --launcher-radius: clamp(260px, 31vw, 370px);
   position: relative;
-  width: var(--launcher-hive-width);
-  height: var(--launcher-hive-height);
-  min-width: min(100%, 360px);
+  width: min(100%, 820px);
+  height: 760px;
+  min-width: 680px;
   margin: 0 auto;
-  padding: 8px 0 18px;
 }
 
-.module-launcher-row {
-  display: contents;
+.module-launcher-orbit {
+  position: absolute;
+  left: 50%; top: 50%;
+  width: calc(var(--launcher-radius) * 2);
+  height: calc(var(--launcher-radius) * 2);
+  transform: translate(-50%, -50%);
+  border: 1px dashed #dbe4ef;
+  border-radius: 50%;
 }
 
 .launcher-hex {
-  --launcher-row-width: calc(var(--launcher-row-length) * var(--launcher-tile-width));
   position: absolute;
-  left: calc(((var(--launcher-hive-width) - var(--launcher-row-width)) / 2) + var(--launcher-col-index) * var(--launcher-x-step));
-  top: calc(var(--launcher-row-index) * var(--launcher-y-step));
+  left: 50%; top: 50%;
   width: var(--launcher-tile-width);
-  height: var(--launcher-tile-height);
-  padding: 12px 10px 14px;
-  border: none;
+  height: var(--launcher-tile-width);
+  padding: 14px 10px;
+  border: 1px solid rgba(255,255,255,.45);
+  border-radius: 50%;
   color: #fff;
-  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
-  box-shadow: 0 12px 22px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 9px 22px rgba(31, 55, 86, .18);
   transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
 }
 
-.launcher-hex:hover {
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: 0 18px 28px rgba(15, 23, 42, 0.18);
-  filter: saturate(1.05);
+.launcher-orbit-tile {
+  transform: translate(-50%, -50%) rotate(calc(var(--launcher-index) * (360deg / var(--launcher-count)))) translateY(calc(-1 * var(--launcher-radius))) rotate(calc(var(--launcher-index) * -1 * (360deg / var(--launcher-count))));
+}
+
+.launcher-center {
+  width: 170px; height: 170px;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  box-shadow: 0 15px 32px rgba(37, 99, 235, .3);
+}
+
+.launcher-hex:hover, .launcher-hex:focus-visible {
+  box-shadow: 0 14px 30px rgba(31, 55, 86, .28);
+  filter: saturate(1.08) brightness(1.04);
+  z-index: 3;
 }
 
 .launcher-hex-content {
@@ -145,7 +151,7 @@
 }
 
 .tone-blue {
-  background: linear-gradient(145deg, #374151, #9ca3af);
+  background: linear-gradient(145deg, #2563eb, #60a5fa);
   color: #fff;
 }
 
@@ -176,7 +182,8 @@
 
 @media (max-width: 1024px) {
   .module-launcher-hive {
-    --launcher-tile-width: 104px;
+    --launcher-tile-width: 102px;
+    --launcher-radius: 300px;
   }
 }
 
@@ -191,13 +198,19 @@
   }
 
   .module-launcher-hive {
-    --launcher-tile-width: 96px;
+    --launcher-tile-width: 88px;
+    --launcher-radius: 245px;
+    min-width: 560px;
+    height: 590px;
   }
 }
 
 @media (max-width: 560px) {
   .module-launcher-hive {
-    --launcher-tile-width: 84px;
+    --launcher-tile-width: 72px;
+    --launcher-radius: 205px;
+    min-width: 480px;
+    height: 500px;
   }
 
   .launcher-hex {
@@ -210,7 +223,7 @@
   }
 
   .launcher-hex-label {
-    font-size: 0.78rem;
+    font-size: 0.7rem;
   }
 
   .launcher-hex-subtitle {

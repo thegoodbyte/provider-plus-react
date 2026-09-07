@@ -45,11 +45,6 @@ type LauncherSection = {
   tiles: Omit<LauncherTile, 'section'>[];
 };
 
-type LauncherRow = {
-  tiles: LauncherTile[];
-  offset: number;
-};
-
 const getRoutePrefix = (pathname: string, role?: string) => {
   if (role === 'admin') return '/admin';
   if (pathname.startsWith('/medical/')) return '/medical';
@@ -67,62 +62,6 @@ const getRoutePrefix = (pathname: string, role?: string) => {
     default:
       return '/admin';
   }
-};
-
-const buildRows = (tiles: LauncherTile[]): LauncherRow[] => {
-  const count = tiles.length;
-  const patterns: Record<number, number[]> = {
-    24: [1, 2, 3, 4, 5, 4, 3, 2],
-    23: [1, 2, 3, 4, 5, 4, 3, 1],
-    14: [2, 3, 4, 3, 2],
-    13: [1, 2, 3, 4, 3],
-    12: [1, 2, 3, 4, 2],
-    8: [1, 2, 3, 2],
-    7: [1, 2, 2, 2],
-    3: [1, 2],
-  };
-
-  const pattern = patterns[count] ?? (() => {
-    const rows: number[] = [];
-    let remaining = count;
-    let width = 1;
-
-    while (remaining > 0) {
-      const nextWidth = Math.min(width, remaining);
-      rows.push(nextWidth);
-      remaining -= nextWidth;
-      if (remaining <= 0) {
-        break;
-      }
-      if (nextWidth === width && width < 5) {
-        width += 1;
-      } else if (remaining < width) {
-        width = remaining;
-      }
-    }
-
-    return rows;
-  })();
-
-  const rows: LauncherRow[] = [];
-  let index = 0;
-
-  pattern.forEach((rowLength, rowIndex) => {
-    rows.push({
-      tiles: tiles.slice(index, index + rowLength),
-      offset: rowIndex % 2,
-    });
-    index += rowLength;
-  });
-
-  if (index < tiles.length) {
-    rows.push({
-      tiles: tiles.slice(index),
-      offset: rows.length % 2,
-    });
-  }
-
-  return rows.filter((row) => row.tiles.length > 0);
 };
 
 const ModuleLauncherPage: React.FC = () => {
@@ -299,11 +238,8 @@ const ModuleLauncherPage: React.FC = () => {
     [sections],
   );
 
-  const rows = useMemo(() => buildRows(tiles), [tiles]);
-  const maxRowLength = useMemo(
-    () => rows.reduce((max, row) => Math.max(max, row.tiles.length), 1),
-    [rows],
-  );
+  const centerTile = tiles.find((tile) => tile.id === 'clients') || tiles[0];
+  const orbitTiles = tiles.filter((tile) => tile !== centerTile);
 
   const handleTileClick = (route: string) => {
     navigate(`${routePrefix}/${route}`);
@@ -327,39 +263,19 @@ const ModuleLauncherPage: React.FC = () => {
       <TasksForTodayPanel />
 
       <div className="module-launcher-hive-shell">
-        <div
-          className="module-launcher-hive"
-          style={
-            {
-              '--launcher-row-count': rows.length,
-              '--launcher-max-row-length': maxRowLength,
-            } as React.CSSProperties
-          }
-        >
-          {rows.map((row, rowIndex) => (
-            <div
-              key={`row-${rowIndex}`}
-              className="module-launcher-row"
-              style={
-                {
-                  '--launcher-row-index': rowIndex,
-                  '--launcher-row-length': row.tiles.length,
-                  '--launcher-row-offset': row.offset,
-                } as React.CSSProperties
-              }
-            >
-              {row.tiles.map((tile, tileIndex) => {
+        <div className="module-launcher-hive" style={{ '--launcher-count': orbitTiles.length } as React.CSSProperties}>
+          <div className="module-launcher-orbit" aria-hidden="true" />
+          {centerTile && [centerTile, ...orbitTiles].map((tile, index) => {
                 const Icon = tile.icon;
                 return (
                   <button
                     key={tile.id}
                     type="button"
                     onClick={() => handleTileClick(tile.route)}
-                    className={`launcher-hex ${tile.tone === 'blue' ? 'tone-blue' : ''} ${tile.tone === 'violet' ? 'tone-violet' : ''} ${tile.tone === 'emerald' ? 'tone-emerald' : ''} ${tile.tone === 'amber' ? 'tone-amber' : ''} ${tile.tone === 'rose' ? 'tone-rose' : ''} ${tile.tone === 'slate' ? 'tone-slate' : ''}`}
+                    className={`launcher-hex ${index === 0 ? 'launcher-center' : 'launcher-orbit-tile'} tone-${tile.tone}`}
                     style={
                       {
-                        '--launcher-col-index': tileIndex,
-                        clipPath: 'polygon(50% 0%, 93.3% 25%, 93.3% 75%, 50% 100%, 6.7% 75%, 6.7% 25%)',
+                        '--launcher-index': index - 1,
                       } as React.CSSProperties
                     }
                     title={`${tile.section} - ${tile.label}`}
@@ -372,9 +288,8 @@ const ModuleLauncherPage: React.FC = () => {
                     </div>
                   </button>
                 );
-              })}
-            </div>
-          ))}
+              }
+          )}
         </div>
       </div>
     </div>
