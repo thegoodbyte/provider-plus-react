@@ -61,6 +61,15 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
+.module-launcher-header-actions { display: flex; align-items: center; gap: 10px; }
+.module-launcher-edit-button, .module-launcher-save-button { border: 0; border-radius: 10px; padding: 10px 14px; background: #172033; color: #fff; font-weight: 700; cursor: pointer; }
+.module-launcher-edit-button:hover, .module-launcher-save-button:hover { background: #2563eb; }
+.module-launcher-editor { margin: 0 auto 22px; max-width: 1100px; border: 1px solid #dbe4ef; border-radius: 16px; padding: 18px; background: #f8fafc; }
+.module-launcher-editor h2 { margin: 0; font-size: 1.05rem; }
+.module-launcher-editor p { margin: 4px 0 14px; color: #64748b; font-size: .9rem; }
+.module-launcher-editor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.module-launcher-editor-grid label { display: grid; gap: 5px; color: #334155; font-size: .8rem; font-weight: 700; }
+.module-launcher-editor-grid select { width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px; background: #fff; color: #172033; }
 
 .module-launcher-hive-shell {
   display: flex;

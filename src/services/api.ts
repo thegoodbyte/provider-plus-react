@@ -100,6 +100,11 @@ export const retreatsApi = {
   },
 };
 
+export const launcherConfigApi = {
+  get: () => api.get<{ assignments: Array<{ moduleId: string; ring: 'inner' | 'outer' | 'hidden' }> }>('/launcher-config'),
+  save: (assignments: Array<{ moduleId: string; ring: 'inner' | 'outer' | 'hidden' }>) => api.patch('/launcher-config', { assignments }),
+};
+
 export const housesApi = {
   getAll: () => cachedGet<House[]>('houses:all', () => api.get<House[]>('/houses'), 300000), // 5 minutes - houses don't change often
   getOne: (id: string) => cachedGet<House>(`houses:${id}`, () => api.get<House>(`/houses/${id}`), 300000),

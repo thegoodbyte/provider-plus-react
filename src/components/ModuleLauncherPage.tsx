@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Activity,
@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import TasksForTodayPanel from './TasksForTodayPanel';
+import { launcherConfigApi } from '../services/api';
 import './ModuleLauncherPage.css';
 
 type LauncherTile = {
@@ -68,6 +69,9 @@ const ModuleLauncherPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+  const [editMode, setEditMode] = useState(false);
+  const [assignmentMap, setAssignmentMap] = useState<Record<string, 'inner' | 'outer' | 'hidden'>>({});
+  const [saving, setSaving] = useState(false);
   const routePrefix = useMemo(() => getRoutePrefix(location.pathname, user?.role), [location.pathname, user?.role]);
 
   const sections = useMemo<LauncherSection[]>(() => {
@@ -240,8 +244,15 @@ const ModuleLauncherPage: React.FC = () => {
 
   const centerTile = tiles.find((tile) => tile.id === 'clients') || tiles[0];
   const orbitTiles = tiles.filter((tile) => tile !== centerTile);
-  const innerTiles = orbitTiles.slice(0, 8);
-  const outerTiles = orbitTiles.slice(8);
+  useEffect(() => {
+    launcherConfigApi.get().then(({ data }) => {
+      const saved = Object.fromEntries((data.assignments || []).map((item) => [item.moduleId, item.ring]));
+      setAssignmentMap(saved);
+    }).catch(() => undefined);
+  }, []);
+  const innerTiles = orbitTiles.filter((tile, index) => (assignmentMap[tile.id] || (index < 8 ? 'inner' : 'outer')) === 'inner');
+  const outerTiles = orbitTiles.filter((tile, index) => (assignmentMap[tile.id] || (index < 8 ? 'inner' : 'outer')) === 'outer');
+  const centerIcon = centerTile?.icon;
 
   const handleTileClick = (route: string) => {
     navigate(`${routePrefix}/${route}`);
@@ -252,6 +263,11 @@ const ModuleLauncherPage: React.FC = () => {
     return <button key={`${ring}-${tile.id}`} type="button" onClick={() => handleTileClick(tile.route)} className={`launcher-hex launcher-orbit-tile launcher-${ring}-tile tone-${tile.tone}`} style={{ '--launcher-index': index, '--launcher-count': count } as React.CSSProperties} title={`${tile.section} - ${tile.label}`} aria-label={`${tile.section} - ${tile.label}`}>
       <div className="launcher-hex-content"><Icon className="launcher-hex-icon" /><div className="launcher-hex-label">{tile.label}</div>{tile.subtitle && <div className="launcher-hex-subtitle">{tile.subtitle}</div>}</div>
     </button>;
+  };
+
+  const saveConfiguration = async () => {
+    setSaving(true);
+    try { await launcherConfigApi.save(orbitTiles.map((tile, index) => ({ moduleId: tile.id, ring: assignmentMap[tile.id] || (index < 8 ? 'inner' : 'outer') }))); setEditMode(false); } finally { setSaving(false); }
   };
 
   return (
@@ -266,8 +282,10 @@ const ModuleLauncherPage: React.FC = () => {
             <p>Pick the section you need.</p>
           </div>
         </div>
-        <div className="module-launcher-role">{user?.role || 'admin'}</div>
+        <div className="module-launcher-header-actions"><div className="module-launcher-role">{user?.role || 'admin'}</div>{user?.role === 'admin' && <button type="button" className="module-launcher-edit-button" onClick={() => setEditMode((value) => !value)}>{editMode ? 'Close editor' : 'Edit layout'}</button>}</div>
       </div>
+
+      {editMode && user?.role === 'admin' && <section className="module-launcher-editor"><div><h2>Configure launcher circles</h2><p>Choose where each module appears. Clients remains the center hub.</p></div><div className="module-launcher-editor-grid">{orbitTiles.map((tile, index) => <label key={tile.id}>{tile.label}<select value={assignmentMap[tile.id] || (index < 8 ? 'inner' : 'outer')} onChange={(event) => setAssignmentMap((current) => ({ ...current, [tile.id]: event.target.value as 'inner' | 'outer' | 'hidden' }))}><option value="inner">Inner circle</option><option value="outer">Outer circle</option><option value="hidden">Hidden</option></select></label>)}</div><button type="button" className="module-launcher-save-button" disabled={saving} onClick={saveConfiguration}>{saving ? 'Saving…' : 'Save layout'}</button></section>}
 
       <TasksForTodayPanel />
 
@@ -275,8 +293,8 @@ const ModuleLauncherPage: React.FC = () => {
         <div className="module-launcher-hive">
           <div className="module-launcher-orbit module-launcher-orbit-outer" aria-hidden="true" />
           <div className="module-launcher-orbit module-launcher-orbit-inner" aria-hidden="true" />
-          {centerTile && <button type="button" onClick={() => handleTileClick(centerTile.route)} className={`launcher-hex launcher-center tone-${centerTile.tone}`} title={`${centerTile.section} - ${centerTile.label}`} aria-label={`${centerTile.section} - ${centerTile.label}`}>
-            <div className="launcher-hex-content"><centerTile.icon className="launcher-hex-icon" /><div className="launcher-hex-label">{centerTile.label}</div>{centerTile.subtitle && <div className="launcher-hex-subtitle">{centerTile.subtitle}</div>}</div>
+          {centerTile && centerIcon && <button type="button" onClick={() => handleTileClick(centerTile.route)} className={`launcher-hex launcher-center tone-${centerTile.tone}`} title={`${centerTile.section} - ${centerTile.label}`} aria-label={`${centerTile.section} - ${centerTile.label}`}>
+            <div className="launcher-hex-content"><centerIcon className="launcher-hex-icon" /><div className="launcher-hex-label">{centerTile.label}</div>{centerTile.subtitle && <div className="launcher-hex-subtitle">{centerTile.subtitle}</div>}</div>
           </button>}
           {innerTiles.map((tile, index) => renderTile(tile, index, innerTiles.length, 'inner'))}
           {outerTiles.map((tile, index) => renderTile(tile, index, outerTiles.length, 'outer'))}
