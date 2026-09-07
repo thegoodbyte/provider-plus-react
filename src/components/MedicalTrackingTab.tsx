@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ClientMedical } from '../types';
 import { clientMedicalApi } from '../services/api';
+import { formatCalendarDate } from '../utils/dateFormat';
 import './ClientsGrid.css';
 
 interface MedicalTrackingTabProps {
@@ -146,7 +147,7 @@ const MedicalTrackingTab: React.FC<MedicalTrackingTabProps> = ({ clientId, retre
           </div>
 
           {medicalData?.liverPanelReceivedDate && (
-            <p><strong>Received:</strong> {new Date(medicalData.liverPanelReceivedDate).toLocaleDateString()}</p>
+            <p><strong>Received:</strong> {formatCalendarDate(medicalData.liverPanelReceivedDate)}</p>
           )}
 
           {medicalData?.liverPanelFileName && (
@@ -166,7 +167,7 @@ const MedicalTrackingTab: React.FC<MedicalTrackingTabProps> = ({ clientId, retre
           </div>
 
           {medicalData?.liverPanelSentToAdvisorDate && (
-            <p><strong>Sent to Advisor:</strong> {new Date(medicalData.liverPanelSentToAdvisorDate).toLocaleDateString()}</p>
+            <p><strong>Sent to Advisor:</strong> {formatCalendarDate(medicalData.liverPanelSentToAdvisorDate)}</p>
           )}
 
           {medicalData?.liverPanelAdvisorNotes && (
@@ -201,7 +202,7 @@ const MedicalTrackingTab: React.FC<MedicalTrackingTabProps> = ({ clientId, retre
           </div>
 
           {medicalData?.ekgReceivedDate && (
-            <p><strong>Received:</strong> {new Date(medicalData.ekgReceivedDate).toLocaleDateString()}</p>
+            <p><strong>Received:</strong> {formatCalendarDate(medicalData.ekgReceivedDate)}</p>
           )}
 
           {medicalData?.ekgFileName && (
@@ -221,7 +222,7 @@ const MedicalTrackingTab: React.FC<MedicalTrackingTabProps> = ({ clientId, retre
           </div>
 
           {medicalData?.ekgSentToAdvisorDate && (
-            <p><strong>Sent to Advisor:</strong> {new Date(medicalData.ekgSentToAdvisorDate).toLocaleDateString()}</p>
+            <p><strong>Sent to Advisor:</strong> {formatCalendarDate(medicalData.ekgSentToAdvisorDate)}</p>
           )}
 
           {medicalData?.ekgAdvisorNotes && (
@@ -259,7 +260,7 @@ const MedicalTrackingTab: React.FC<MedicalTrackingTabProps> = ({ clientId, retre
           </div>
 
           {medicalData?.medicalClearanceDate && (
-            <p><strong>Clearance Date:</strong> {new Date(medicalData.medicalClearanceDate).toLocaleDateString()}</p>
+            <p><strong>Clearance Date:</strong> {formatCalendarDate(medicalData.medicalClearanceDate)}</p>
           )}
 
           <div className="form-group">

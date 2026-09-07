@@ -1,5 +1,6 @@
 import { BookingFlowItem, BookingFlowTemplate } from '../types';
 import { isSatisfiedStatus } from './bookingStatusSelectors';
+import { formatCalendarDate, parseCalendarDate } from '../utils/dateFormat';
 
 export type RetreatBookingStepOption = {
   key: string;
@@ -40,19 +41,14 @@ export const getSelectedStepCellTone = (complete: boolean) => ({
 export const formatRetreatCalendarDate = (
   value?: string | Date,
   options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' },
-) => {
-  if (!value) return 'N/A';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString('en-US', { ...options, timeZone: 'UTC' });
-};
+) => formatCalendarDate(value, 'en-US', options);
 
 export const retreatMonthGroup = (value?: string | Date) => {
-  if (!value) return { key: 'unscheduled', label: 'Unscheduled' };
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return { key: 'unscheduled', label: 'Unscheduled' };
+  const date = parseCalendarDate(value);
+  if (!date) return { key: 'unscheduled', label: 'Unscheduled' };
   return {
-    key: `${date.getUTCFullYear()}-${date.getUTCMonth()}`,
-    label: formatRetreatCalendarDate(date, { month: 'long', year: 'numeric' }),
+    key: `${date.getFullYear()}-${date.getMonth()}`,
+    label: formatRetreatCalendarDate(value, { month: 'long', year: 'numeric' }),
   };
 };
 

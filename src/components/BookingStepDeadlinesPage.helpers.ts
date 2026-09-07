@@ -1,4 +1,5 @@
 import { BookingFlowItem } from '../types';
+import { formatCalendarDate } from '../utils/dateFormat';
 
 export type BookingStepDeadlinesFilters = {
   search: string;
@@ -59,14 +60,8 @@ export const formatDateKey = (value?: string | Date | null): string => {
 };
 
 const formatDateLabel = (value?: string | Date | null): string => {
-  if (!value) return 'No due date';
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return 'No due date';
-  return date.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit',
-  });
+  const formatted = formatCalendarDate(value, undefined, { year: 'numeric', month: 'short', day: '2-digit' });
+  return formatted === 'N/A' ? 'No due date' : formatted;
 };
 
 const getClientLabel = (client: unknown): string => {

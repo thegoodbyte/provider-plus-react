@@ -12,6 +12,7 @@ import './ClientsGrid.css';
 import { loadClientCoreData } from '../services/clientCoreDataService';
 import './ComprehensiveMedicalTrackingTab.css';
 import { bookingFinancialSummary } from './bookingFinancialSummary';
+import { formatCalendarDate } from '../utils/dateFormat';
 
 interface ClientDetailViewProps {
   clientId: string;
@@ -909,7 +910,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
 
                           <div className="requirement-details">
                             <div className="detail-row">
-                              <strong>Due Date:</strong> {req.dueDate ? new Date(req.dueDate).toLocaleDateString() : 'Not set'}
+                              <strong>Due Date:</strong> {req.dueDate ? formatCalendarDate(req.dueDate) : 'Not set'}
                             </div>
 
                             {(req.requirementId as any)?.requiresAmount && req.amount && (
@@ -929,19 +930,19 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
 
                             {req.receivedDate && (
                               <div className="detail-row">
-                                <strong>Received:</strong> {new Date(req.receivedDate).toLocaleDateString()}
+                                <strong>Received:</strong> {formatCalendarDate(req.receivedDate)}
                               </div>
                             )}
 
                             {req.reviewedDate && (
                               <div className="detail-row">
-                                <strong>Reviewed:</strong> {new Date(req.reviewedDate).toLocaleDateString()}
+                                <strong>Reviewed:</strong> {formatCalendarDate(req.reviewedDate)}
                               </div>
                             )}
 
                             {req.approvedDate && (
                               <div className="detail-row">
-                                <strong>Approved:</strong> {new Date(req.approvedDate).toLocaleDateString()}
+                                <strong>Approved:</strong> {formatCalendarDate(req.approvedDate)}
                                 {req.approvedBy && ` by ${req.approvedBy}`}
                               </div>
                             )}
@@ -1220,7 +1221,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                   <div className="reminder-details">
                     <p>{reminder.description}</p>
                     <div className="detail-row">
-                      <strong>Due Date:</strong> {new Date(reminder.dueDate).toLocaleDateString()}
+                      <strong>Due Date:</strong> {formatCalendarDate(reminder.dueDate)}
                     </div>
                     <div className="detail-row">
                       <strong>Priority:</strong>
@@ -1350,14 +1351,14 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
 
                     <div className="detail-row">
                       <strong>Registration Date:</strong>
-                      {new Date(booking.registrationDate).toLocaleDateString(undefined, { timeZone: 'UTC' })}
+                      {formatCalendarDate(booking.registrationDate)}
                     </div>
 
                     {booking.retreatId?.startDate && (
                       <div className="detail-row">
                         <strong>Retreat Dates:</strong>
-                        {new Date(booking.retreatId.startDate).toLocaleDateString(undefined, { timeZone: 'UTC' })}
-                        {booking.retreatId.endDate && ` - ${new Date(booking.retreatId.endDate).toLocaleDateString(undefined, { timeZone: 'UTC' })}`}
+                        {formatCalendarDate(booking.retreatId.startDate)}
+                        {booking.retreatId.endDate && ` - ${formatCalendarDate(booking.retreatId.endDate)}`}
                       </div>
                     )}
 
@@ -1433,13 +1434,13 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                     {booking.checkInDate && (
                       <div className="timeline-item completed">
                         <span className="timeline-icon">✅</span>
-                        <span>Checked In: {new Date(booking.checkInDate).toLocaleDateString(undefined, { timeZone: 'UTC' })}</span>
+                        <span>Checked In: {formatCalendarDate(booking.checkInDate)}</span>
                       </div>
                     )}
                     {booking.checkOutDate && (
                       <div className="timeline-item completed">
                         <span className="timeline-icon">🏁</span>
-                        <span>Checked Out: {new Date(booking.checkOutDate).toLocaleDateString(undefined, { timeZone: 'UTC' })}</span>
+                        <span>Checked Out: {formatCalendarDate(booking.checkOutDate)}</span>
                       </div>
                     )}
                   </div>
@@ -1494,7 +1495,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                         </span>
                         <span className="note-type">{note.type}</span>
                         <span className="note-date">
-                          {new Date(note.createdAt).toLocaleDateString()}
+                          {formatCalendarDate(note.createdAt)}
                         </span>
                       </div>
                     </div>

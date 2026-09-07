@@ -5,6 +5,7 @@ import { bookingsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../s
 import { usersApi, User } from '../services/usersApi';
 import { Client, MedicalArtifact, MedicalReviewGroup, MedicalReviewRequest, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
+import { formatCalendarDate } from '../utils/dateFormat';
 
 const artifactTypeLabels: Record<NonNullable<MedicalArtifact['artifactType']>, string> = {
   ekg: 'EKG',
@@ -78,7 +79,7 @@ const getBookingLabel = (booking: RetreatClient) => {
   const parts = [
     booking.bookingNumber ? `Booking #${booking.bookingNumber}` : 'Booking',
     booking.status,
-    booking.checkInDate ? new Date(booking.checkInDate).toLocaleDateString(undefined, { timeZone: 'UTC' }) : '',
+    booking.checkInDate ? formatCalendarDate(booking.checkInDate) : '',
   ].filter(Boolean);
   return parts.join(' - ');
 };

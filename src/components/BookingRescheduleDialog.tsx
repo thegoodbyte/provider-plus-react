@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Retreat } from '../types';
+import { formatCalendarDate } from '../utils/dateFormat';
 
 const reasons = [
   ['client_requested', 'Client requested'], ['illness', 'Illness'],
@@ -8,7 +9,7 @@ const reasons = [
 ];
 const id = (value: any) => (typeof value === 'object' ? value?._id : value);
 const code = (retreat: any) => retreat.code || retreat.retreatCode || retreat.name || 'Retreat';
-const date = (value: any) => (value ? new Date(value).toLocaleDateString() : '—');
+const date = (value: any) => { const formatted = formatCalendarDate(value); return formatted === 'N/A' ? '—' : formatted; };
 const availablePlaces = (retreat: any) => {
   const capacity = Number(retreat.capacity || 0);
   return capacity > 0 ? Math.max(0, capacity - Number(retreat.currentOccupancy || 0)) : null;

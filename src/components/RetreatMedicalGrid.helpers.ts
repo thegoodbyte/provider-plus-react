@@ -1,4 +1,5 @@
 import { MedicalArtifact, MedicalReviewRequest, RetreatClient } from '../types';
+import { formatCalendarDate } from '../utils/dateFormat';
 
 export type RetreatMedicalStageKey = 'ekg' | 'liver' | 'medications';
 
@@ -310,7 +311,7 @@ export const buildRetreatMedicalGridData = (
         review,
         artifactLabel,
         reviewLabel,
-        submittedAt: submittedAt ? new Date(submittedAt).toLocaleDateString() : '',
+        submittedAt: submittedAt ? formatCalendarDate(submittedAt) : '',
         decisionLabel: getDecisionLabel(decision, review),
         decisionTone: getDecisionTone(decision),
         notes,

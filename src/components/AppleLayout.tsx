@@ -1,6 +1,7 @@
 import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { FiBookOpen, FiCalendar, FiChevronDown, FiCreditCard, FiGrid, FiShoppingBag, FiUsers, FiX } from 'react-icons/fi';
+import { formatCalendarDate } from '../utils/dateFormat';
 import AppleSidebar from './AppleSidebar';
 import StorageOverrideBanner from './StorageOverrideBanner';
 import AiHealthBanner from './AiHealthBanner';
@@ -492,7 +493,7 @@ const AppleLayout: React.FC = () => {
                 <option value="">{retreatsLoading ? 'Loading retreats…' : 'Select a retreat…'}</option>
                 {retreatOptions.map((retreat) => (
                   <option key={retreat._id} value={retreat._id}>
-                    {String(retreat.code || retreat.retreatCode || retreat.name)}{retreat.startDate ? ` — ${new Date(retreat.startDate).toLocaleDateString(undefined, { timeZone: 'UTC' })}` : ''}
+                    {String(retreat.code || retreat.retreatCode || retreat.name)}{retreat.startDate ? ` — ${formatCalendarDate(retreat.startDate)}` : ''}
                   </option>
                 ))}
               </select>

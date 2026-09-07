@@ -9,7 +9,7 @@ const Icon: React.FC<{ component: any }> = ({ component }) => React.createElemen
 
 const idOf = (value: any) => typeof value === 'object' ? value?._id || value?.id || '' : value || '';
 const dateValue = (value?: string | Date) => value ? new Date(value).toISOString().slice(0, 10) : '';
-const shortDate = (value?: string | Date) => { const date = value ? new Date(value) : null; return date && !Number.isNaN(date.getTime()) ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric' }).format(date) : '—'; };
+const shortDate = (value?: string | Date) => { const date = value ? new Date(value) : null; return date && !Number.isNaN(date.getTime()) ? new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(date) : '—'; };
 const retreatLength = (start?: string | Date, end?: string | Date) => start && end ? Math.max(0, Math.round((new Date(end).getTime() - new Date(start).getTime()) / 86_400_000)) : 0;
 const daysUntil = (value?: string | Date) => value ? Math.max(0, Math.ceil((new Date(value).getTime() - Date.now()) / 86_400_000)) : 0;
 const PALETTE = ['#2563eb', '#38a9df', '#34998c', '#a8b58f', '#78d10f', '#f59e0b', '#df8b4d', '#c73d0b', '#e61b4d', '#8257ee', '#6366e9', '#a8a29e'];

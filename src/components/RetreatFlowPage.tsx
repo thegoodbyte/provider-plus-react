@@ -3,6 +3,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { GripVertical, Mail, Plus, Save, Trash2 } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
 import { bookingFlowApi, communicationsApi, retreatsApi } from '../services/api';
+import { formatCalendarDate } from '../utils/dateFormat';
 import { BookingFlowTemplate, EmailTemplate, Retreat } from '../types';
 import {
   getBookingStepDefaultColor,
@@ -66,11 +67,7 @@ const emptyForm = (): TemplateForm => ({
   emailTemplateId: '',
 });
 
-const formatDate = (value?: string | Date | null) => {
-  if (!value) return '—';
-  const d = new Date(value);
-  return Number.isNaN(d.getTime()) ? '—' : d.toLocaleDateString();
-};
+const formatDate = (value?: string | Date | null) => { const formatted = formatCalendarDate(value); return formatted === 'N/A' ? '—' : formatted; };
 
 const formatDeadlineLabel = (template: BookingFlowTemplate) => {
   const basis = template.deadlineBasis || template.triggerType || 'before_retreat_start';

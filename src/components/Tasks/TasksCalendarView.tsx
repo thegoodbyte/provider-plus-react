@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { BookingFlowItem, Client, Retreat, RetreatClient } from '../../types';
 import { Task, taskService } from '../../services/taskService';
+import { parseCalendarDate } from '../../utils/dateFormat';
 
 type CalendarEvent = {
   id: string;
@@ -19,10 +20,8 @@ interface TasksCalendarViewProps {
 }
 
 const toDateOnly = (value?: string | Date | null) => {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const date = parseCalendarDate(value);
+  return date ? new Date(date.getFullYear(), date.getMonth(), date.getDate()) : null;
 };
 
 const dateKey = (date: Date) => date.toLocaleDateString('en-CA');

@@ -3,6 +3,7 @@ import { FiPlus, FiTrash2 } from 'react-icons/fi';
 import { boosterOffersApi, bookingsApi, ceremoniesApi, retreatsApi } from '../services/api';
 import { BoosterOffer, Ceremony, Retreat, RetreatClient } from '../types';
 import { isCancelledBookingStatus } from './retreatClientVisibility';
+import { formatCalendarDate } from '../utils/dateFormat';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: Component, className }) => <Component className={className} />;
 const idOf = (value: any) => String(value?._id || value || '');
@@ -90,10 +91,10 @@ const BoosterOffersPage: React.FC = () => {
   const publishedCount = offers.filter((offer) => offer.published).length;
   const ceremonyDateFor = (offer: BoosterOffer) => {
     const ceremony = offer.ceremonyId as Ceremony;
-    return ceremony?.date ? new Date(ceremony.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'Date unavailable';
+    return ceremony?.date ? formatCalendarDate(ceremony.date, undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }) : 'Date unavailable';
   };
   const retreatCapacityFor = (offer: BoosterOffer) => Number((offer.retreatId as Retreat)?.capacity || 0);
-  const weekdayFor = (value: string) => new Date(value).toLocaleDateString(undefined, { weekday: 'long' });
+  const weekdayFor = (value: string) => formatCalendarDate(value, undefined, { weekday: 'long' });
 
   return <div className="min-h-full bg-[#f7f6f4] px-4 py-6 text-[#222] sm:px-6 lg:px-8">
     <header className="mx-auto max-w-[1280px] border-b-4 border-double border-[#222] pb-3">
@@ -106,7 +107,7 @@ const BoosterOffersPage: React.FC = () => {
     <main className="mx-auto max-w-[1280px]">
       {retreatId && <section className="grid gap-8 py-10 lg:grid-cols-[1fr_1.15fr] lg:items-start">
         <div><div className="mb-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-pink-700">Available to configure</div><p className="max-w-xl font-serif text-2xl font-semibold leading-[1.3]">{fullRetreatBookings} full-retreat and {selectedBookings.length - fullRetreatBookings} booster booking{selectedBookings.length - fullRetreatBookings === 1 ? '' : 's'} leave {totalBoosterSpots} booster ceremony spot{totalBoosterSpots === 1 ? '' : 's'}. You still choose exactly which ceremonies to publish.</p></div>
-        <div className="space-y-3">{ceremonies.map((ceremony, index) => { const configured = offers.some((offer) => idOf(offer.ceremonyId) === ceremony._id); const available = ceremonyRemaining(ceremony, index); return <button key={ceremony._id} disabled={configured || available === 0} onClick={() => addCeremony(ceremony)} className="flex w-full items-center justify-between border border-gray-300 bg-white px-5 py-4 text-left transition hover:border-[#0088aa] hover:bg-cyan-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-55"><span className="flex items-center gap-4 font-serif text-lg font-semibold"><Icon icon={FiPlus} className="text-[#0088aa]"/> Ceremony {index + 1}</span><span className="text-sm text-gray-500">{new Date(ceremony.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })} · {available} spot{available === 1 ? '' : 's'}{configured ? ' · configured' : ''}</span></button>; })}</div>
+        <div className="space-y-3">{ceremonies.map((ceremony, index) => { const configured = offers.some((offer) => idOf(offer.ceremonyId) === ceremony._id); const available = ceremonyRemaining(ceremony, index); return <button key={ceremony._id} disabled={configured || available === 0} onClick={() => addCeremony(ceremony)} className="flex w-full items-center justify-between border border-gray-300 bg-white px-5 py-4 text-left transition hover:border-[#0088aa] hover:bg-cyan-50 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:opacity-55"><span className="flex items-center gap-4 font-serif text-lg font-semibold"><Icon icon={FiPlus} className="text-[#0088aa]"/> Ceremony {index + 1}</span><span className="text-sm text-gray-500">{formatCalendarDate(ceremony.date, undefined, { day: 'numeric', month: 'short', year: 'numeric' })} · {available} spot{available === 1 ? '' : 's'}{configured ? ' · configured' : ''}</span></button>; })}</div>
       </section>}
 
       {!retreatId && <div className="py-14 text-center font-serif text-xl text-gray-500">Search for a retreat above to configure additional ceremony offers.</div>}

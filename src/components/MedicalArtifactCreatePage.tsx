@@ -5,6 +5,7 @@ import { bookingsApi, ceremoniesApi, clientsApi, medicalArtifactsApi, retreatsAp
 import { Ceremony, Client, MedicalArtifact, Retreat, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import { bookingsBelongingToClient } from './medicalArtifactBookingLookup';
+import { formatCalendarDate } from '../utils/dateFormat';
 
 type DocumentStage = NonNullable<MedicalArtifact['documentStage']>;
 type DocumentType = NonNullable<MedicalArtifact['documentType']>;
@@ -51,7 +52,7 @@ const getBookingLabel = (booking: RetreatClient) => {
   const parts = [
     booking.bookingNumber ? `Booking #${booking.bookingNumber}` : 'Booking',
     booking.status,
-    booking.checkInDate ? new Date(booking.checkInDate).toLocaleDateString(undefined, { timeZone: 'UTC' }) : '',
+    booking.checkInDate ? formatCalendarDate(booking.checkInDate) : '',
   ].filter(Boolean);
   return parts.join(' - ');
 };
@@ -60,7 +61,7 @@ const getRetreatLabel = (retreat: Retreat) =>
   retreat.code || retreat.retreatCode || retreat.name || `Retreat ${retreat._id?.slice(-6) || ''}`;
 
 const getCeremonyLabel = (ceremony: Ceremony) => {
-  const date = ceremony.date ? new Date(ceremony.date).toLocaleDateString() : '';
+  const date = ceremony.date ? formatCalendarDate(ceremony.date) : '';
   return [`Ceremony #${ceremony.ceremonyNumber}`, date, ceremony.status].filter(Boolean).join(' - ');
 };
 

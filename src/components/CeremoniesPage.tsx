@@ -5,11 +5,11 @@ import LoadingSpinner from './LoadingSpinner';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
 import { retreatsApi } from '../services/api';
 import { Retreat } from '../types';
+import { formatCalendarDate } from '../utils/dateFormat';
 
 const formatDate = (value?: string | Date | null) => {
-  if (!value) return 'No date';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? 'No date' : date.toLocaleDateString();
+  const formatted = formatCalendarDate(value);
+  return formatted === 'N/A' ? 'No date' : formatted;
 };
 
 const getRetreatStartDate = (retreat: Retreat) => retreat.startDate || retreat.dates?.startDate || null;

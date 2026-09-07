@@ -3,13 +3,14 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { FiAlertTriangle, FiClock, FiRefreshCw, FiSearch } from 'react-icons/fi';
 import { bookingDocumentsApi, bookingFlowApi, medicalReviewRequestsApi, paymentRequestsApi, remindersApi } from '../services/api';
 import { AttentionItem, classifyAttention, clientLabel, entityId, entityLabel, isCompleteStatus, isPastRetreat, retreatEndDate, sortAttentionItems } from './NeedsAttentionPage.helpers';
+import { formatCalendarDate } from '../utils/dateFormat';
 
 const AlertIcon = FiAlertTriangle as any;
 const ClockIcon = FiClock as any;
 const RefreshIcon = FiRefreshCw as any;
 const SearchIcon = FiSearch as any;
 const dueValue = (record: any) => record?.dueDate || record?.deadline || record?.reminderDate || record?.followUpDate || record?.requestedAt;
-const displayDate = (value?: string) => value ? new Date(value).toLocaleDateString() : 'No deadline';
+const displayDate = (value?: string) => { const formatted = formatCalendarDate(value); return formatted === 'N/A' ? 'No deadline' : formatted; };
 
 const NeedsAttentionPage: React.FC = () => {
   const navigate = useNavigate();

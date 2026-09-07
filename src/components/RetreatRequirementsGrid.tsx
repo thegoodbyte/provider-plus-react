@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { clientRequirementsApi, retreatsApi, requirementsApi } from '../services/api';
 import { Retreat, ClientRequirement, Requirement } from '../types';
+import { formatCalendarDate } from '../utils/dateFormat';
 import { FiCheck, FiX, FiClock } from 'react-icons/fi';
 import './RetreatsGrid.css';
 
@@ -233,7 +234,7 @@ const RetreatRequirementsGrid: React.FC = () => {
           </h3>
           <div style={{ fontSize: '14px', color: '#666' }}>
             📍 {selectedRetreat.location} |
-            📅 {selectedRetreat.startDate ? new Date(selectedRetreat.startDate).toLocaleDateString(undefined, { timeZone: 'UTC' }) : 'Date TBD'} |
+            📅 {selectedRetreat.startDate ? formatCalendarDate(selectedRetreat.startDate) : 'Date TBD'} |
             👥 {clientRequirements.length} clients
           </div>
         </div>

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CheckSquare, Clock, GripVertical, Plus, Search, Trash2, Users } from 'lucide-react';
 import { clientsApi, waitingListApi } from '../services/api';
+import { formatCalendarDate } from '../utils/dateFormat';
 
 type ClientSearchResult = {
   _id: string;
@@ -50,11 +51,7 @@ const getClientLabel = (client?: WaitingListClient | string | null) => {
   return [client.firstName, client.lastName].filter(Boolean).join(' ') || client.email || 'Unknown client';
 };
 
-const formatDate = (value?: string) => {
-  if (!value) return '-';
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? '-' : parsed.toLocaleDateString();
-};
+const formatDate = (value?: string) => { const formatted = formatCalendarDate(value); return formatted === 'N/A' ? '-' : formatted; };
 
 const RetreatReserveListPanel: React.FC<RetreatReserveListPanelProps> = ({ retreatId, retreatName }) => {
   const [entries, setEntries] = useState<WaitingListEntry[]>([]);

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ClientMedical, MedicalArtifact } from '../types';
 import { clientMedicalApi, medicalArtifactsApi } from '../services/api';
+import { formatCalendarDate } from '../utils/dateFormat';
 import './ClientsGrid.css';
 
 interface ComprehensiveMedicalTrackingTabProps {
@@ -375,17 +376,17 @@ const ComprehensiveMedicalTrackingTab: React.FC<ComprehensiveMedicalTrackingTabP
             <div className="action-details">
               {action.receivedDate && (
                 <div className="detail-row">
-                  <strong>Received:</strong> {new Date(action.receivedDate).toLocaleDateString()}
+                  <strong>Received:</strong> {formatCalendarDate(action.receivedDate)}
                 </div>
               )}
               {action.reviewedDate && (
                 <div className="detail-row">
-                  <strong>Reviewed:</strong> {new Date(action.reviewedDate).toLocaleDateString()}
+                  <strong>Reviewed:</strong> {formatCalendarDate(action.reviewedDate)}
                 </div>
               )}
               {action.approvedDate && (
                 <div className="detail-row">
-                  <strong>Approved:</strong> {new Date(action.approvedDate).toLocaleDateString()}
+                  <strong>Approved:</strong> {formatCalendarDate(action.approvedDate)}
                 </div>
               )}
               {action.fileName && (
@@ -445,7 +446,7 @@ const ComprehensiveMedicalTrackingTab: React.FC<ComprehensiveMedicalTrackingTabP
             ✅ Final Medical Clearance Approved
           </div>
           {medicalData.medicalClearanceDate && (
-            <p>Approved on: {new Date(medicalData.medicalClearanceDate).toLocaleDateString()}</p>
+            <p>Approved on: {formatCalendarDate(medicalData.medicalClearanceDate)}</p>
           )}
         </div>
       )}

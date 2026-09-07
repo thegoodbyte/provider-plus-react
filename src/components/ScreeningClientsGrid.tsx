@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { clientsApi } from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
 import AppleButton from './AppleButton';
+import { formatCalendarDate } from '../utils/dateFormat';
 import { FiPlus, FiEdit2, FiTrash2, FiUser, FiPhone, FiMail, FiEye, FiUserCheck } from 'react-icons/fi';
 import {
   clientWorkflowStatusLabels,
@@ -78,10 +79,7 @@ const ScreeningClientsGrid: React.FC = () => {
     return normalizeClientWorkflowStatus(client.workflowStatus) === normalizeClientWorkflowStatus(filterStatus);
   });
 
-  const formatDate = (date: Date | string | undefined) => {
-    if (!date) return 'N/A';
-    return new Date(date).toLocaleDateString();
-  };
+  const formatDate = (date: Date | string | undefined) => formatCalendarDate(date);
 
   if (isLoading) {
     return <LoadingSpinner message="Loading screening clients..." />;

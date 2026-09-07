@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Task, taskService } from '../../services/taskService';
+import { formatCalendarDate } from '../../utils/dateFormat';
 import './SprintBoard.css';
 
 type Status = Task['status'];
@@ -131,7 +132,7 @@ export const SprintBoard: React.FC<{ tasks: Task[]; onChanged: () => Promise<voi
                 {columnTasks.map(task => <article className={`sprint-task-card urgency-edge-${task.urgency}`} draggable key={task.id} onDragStart={() => setDraggedId(task.id)} onDoubleClick={() => onEdit(task)}>
                   <div className="sprint-card-top"><span className={`task-origin-pill ${isSystemTask(task) ? 'system' : 'custom'}`}>{isSystemTask(task) ? 'System' : 'Custom'}</span><select aria-label={`Move ${task.name} to sprint`} value={selectedSprint} onClick={event => event.stopPropagation()} onChange={event => void assignSprint(task, event.target.value)}>{sprints.map(sprint => <option key={sprint} value={sprint}>{sprint}</option>)}</select></div>
                   <strong title={task.name}>{task.name}</strong>
-                  <div><span className={`sprint-priority priority-${task.urgency}`}>{task.urgency}</span><time>{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : 'No due date'}</time></div>
+                  <div><span className={`sprint-priority priority-${task.urgency}`}>{task.urgency}</span><time>{task.dueDate ? formatCalendarDate(task.dueDate) : 'No due date'}</time></div>
                 </article>)}
                 {!columnTasks.length && <div className="sprint-empty-column">Drop task here</div>}
               </div>

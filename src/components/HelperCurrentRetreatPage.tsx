@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FiActivity, FiEdit2, FiFileText, FiRefreshCw, FiSave, FiTrash2, FiUpload, FiX } from 'react-icons/fi';
 import { helperAccessApi } from '../services/api';
+import { formatCalendarDate } from '../utils/dateFormat';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => {
   return <IconComponent className={className} />;
@@ -48,12 +49,7 @@ type HelperDashboard = {
   records: HelperRecord[];
 };
 
-const formatDate = (value?: string) => {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString();
-};
+const formatDate = (value?: string) => { const formatted = formatCalendarDate(value); return formatted === 'N/A' ? '' : formatted; };
 
 const toDateTimeInput = (value?: string) => {
   const date = value ? new Date(value) : new Date();

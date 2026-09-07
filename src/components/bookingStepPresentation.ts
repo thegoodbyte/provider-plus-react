@@ -2,8 +2,9 @@ import React from 'react';
 import { BookingFlowItem, BookingFlowTemplate, Payment } from '../types';
 import { titleizeBookingStepGroup } from '../utils/bookingStepColors';
 import { attentionStatuses, evidenceReceivedStatuses, failedStatuses } from './bookingStatusSelectors';
+import { formatCalendarDate } from '../utils/dateFormat';
 
-export const formatStepDate = (value?: Date | string | null) => { if (!value) return ''; const date = new Date(value); return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString(); };
+export const formatStepDate = (value?: Date | string | null) => { const formatted = formatCalendarDate(value); return formatted === 'N/A' ? '' : formatted; };
 export const formatStepDateTime = (value?: Date | string | null) => { if (!value) return ''; const date = new Date(value); return Number.isNaN(date.getTime()) ? '' : date.toLocaleString([], { month: '2-digit', day: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }); };
 export const formatStepDateInput = (value?: Date | string | null) => { if (!value) return ''; const date = new Date(value); return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10); };
 export const formatStepMoney = (amount?: number, currency?: string) => { const number = Number(amount); return Number.isFinite(number) ? `${number.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency || ''}`.trim() : ''; };

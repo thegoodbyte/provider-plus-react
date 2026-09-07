@@ -32,7 +32,7 @@ describe('SprintBoard', () => {
     expect(screen.getByText('System')).toBeInTheDocument();
     expect(screen.queryByText('Hidden')).not.toBeInTheDocument();
     expect(screen.getAllByText('No due date')).toHaveLength(3);
-    expect(screen.getByText(new Date('2026-09-01').toLocaleDateString())).toBeInTheDocument();
+    expect(screen.getByText(new Date(2026, 8, 1).toLocaleDateString())).toBeInTheDocument();
   });
 
   it('loads server sprints and migrates unique local sprints', async () => {

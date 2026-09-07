@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Heart, Activity, FileText, Save, Clock, AlertCircle } from 'lucide-react';
 import { API_BASE_URL } from '../config/api.config';
+import { formatCalendarDate } from '../utils/dateFormat';
 import './PreCeremonyChecks.css';
 
 interface Client {
@@ -256,7 +257,7 @@ const PreCeremonyChecks: React.FC = () => {
             <option value="">-- Select Retreat --</option>
             {retreats.map(retreat => (
               <option key={retreat._id} value={retreat._id}>
-                {retreat.name} - {new Date(retreat.startDate).toLocaleDateString(undefined, { timeZone: 'UTC' })}
+                {retreat.name} - {formatCalendarDate(retreat.startDate)}
               </option>
             ))}
           </select>

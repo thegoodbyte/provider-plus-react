@@ -4,10 +4,11 @@ import { paymentRequestsApi, paymentsApi } from '../services/api';
 import { useBookingRequirements } from './useBookingRequirements';
 import { bookingSettlementSummary, confirmationState, isActivePaymentRequest } from './bookingStatusSelectors';
 import { loadBookingPayments } from './loadBookingPayments';
+import { formatCalendarDate } from '../utils/dateFormat';
 
 const AlertIcon = FiAlertCircle as any; const HeartIcon = FiHeart as any; const MailIcon = FiMail as any;
 
-export const formatBookingDate = (date?: string | Date) => { if (!date) return 'N/A'; const value = new Date(date); if (Number.isNaN(value.getTime())) return 'N/A'; return value.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }); };
+export const formatBookingDate = (date?: string | Date) => formatCalendarDate(date, 'en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 export const formatHistoryDateTime = (date?: string | Date) => { if (!date) return 'N/A'; const value = new Date(date); if (Number.isNaN(value.getTime())) return 'N/A'; return value.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); };
 export const retreatTown = (retreat: any) => String(retreat?.location_town || retreat?.locationTown || retreat?.generalTown || retreat?.general_town || retreat?.house?.generalTown || retreat?.house?.general_town || retreat?.house?.city || retreat?.houseId?.generalTown || retreat?.houseId?.general_town || retreat?.houseId?.city || retreat?.location || '').trim();
 export { sentConfirmationStep } from './bookingStatusSelectors';

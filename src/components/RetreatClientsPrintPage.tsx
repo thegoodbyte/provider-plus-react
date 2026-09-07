@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { FiArrowLeft, FiPrinter } from 'react-icons/fi';
 import { bookingsApi, retreatsApi } from '../services/api';
 import { Retreat } from '../types';
+import { formatCalendarDate } from '../utils/dateFormat';
 import './RetreatClientsPrintPage.css';
 
 const Icon: React.FC<{ icon: any }> = ({ icon: IconComponent }) => <IconComponent />;
@@ -21,11 +22,7 @@ type PrintClient = {
 
 const getId = (value: any) => typeof value === 'object' ? value?._id || value?.id : value;
 
-const formatDate = (value?: string | Date) => {
-  if (!value) return '';
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString();
-};
+const formatDate = (value?: string | Date) => { const formatted = formatCalendarDate(value); return formatted === 'N/A' ? '' : formatted; };
 
 const getRetreatCode = (retreat?: Retreat | null) => String(
   retreat?.retreatCode || retreat?.code || retreat?.name || 'Retreat',
