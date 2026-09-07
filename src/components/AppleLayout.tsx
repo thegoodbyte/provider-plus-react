@@ -79,6 +79,7 @@ import ReserveListsPage from './ReserveListsPage';
 import ProtectedRoute from './ProtectedRoute';
 import Unauthorized from './Unauthorized';
 import PermissionsMatrix from './PermissionsMatrix';
+import AnalyticsPage from './AnalyticsPage';
 import ClientMedicationsGrid from './ClientMedicationsGrid';
 import ClientMedicationForm from './ClientMedicationForm';
 import ClientFoodFormsPage from './ClientFoodFormsPage';
@@ -902,7 +903,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="client-medications/view/:id" element={<ClientMedicationForm mode="view" />} />
                       <Route path="client-food-forms" element={<ClientFoodFormsPage />} />
                       <Route path="client-forms" element={<ClientFormsPage />} />
-                      <Route path="analytics" element={<div className="p-6">Analytics - Coming Soon</div>} />
+                      <Route path="analytics" element={<AnalyticsPage />} />
                       <Route path="users" element={<UserManagement />} />
                       <Route path="audit-logs" element={<AuditLogsPage />} />
                       <Route path="backups" element={<DataBackupPage />} />
