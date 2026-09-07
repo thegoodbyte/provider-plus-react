@@ -39,7 +39,7 @@ export const getSelectedStepCellTone = (complete: boolean) => ({
 });
 
 export const formatRetreatCalendarDate = (
-  value?: string | Date,
+  value?: string | Date | null,
   options: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' },
 ) => formatCalendarDate(value, 'en-US', options);
 
