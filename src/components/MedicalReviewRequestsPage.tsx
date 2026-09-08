@@ -1512,7 +1512,25 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 </details>
               </div>
             )}
-            <div className={`${isDetailView ? 'hidden sm:block' : ''} space-y-4 sm:space-y-5`}>
+            {isDetailView && (
+              <section className="mrr-desktop-canvas hidden sm:block">
+                <div className="mrr-canvas-header">
+                  <div><div className="mrr-canvas-kicker">Medical review request</div><h2>Request #{selected.display_id || '—'}</h2><p>{selectedClientName} · {formatCompactDocumentMeta(selected) || getRequestTypeLabel(selected.requestType)}</p></div>
+                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${reviewStatusStyle[selected.status] || 'bg-gray-100 text-gray-700'}`}>{selected.status}</span>
+                </div>
+                <div className="mrr-canvas-reviewing">Reviewing — Attempt {selected.attemptNumber || 1}</div>
+                <div className="mrr-canvas-body">
+                  <div className="mrr-canvas-preview">
+                    {linkedArtifacts[0]?.files?.[0] ? <ArtifactInlinePreview artifactId={linkedArtifacts[0]._id} file={linkedArtifacts[0].files[0]} index={0} frame={false} /> : linkedArtifacts[0]?.textContent ? <div className="whitespace-pre-wrap p-6 text-sm text-gray-700">{linkedArtifacts[0].textContent}</div> : <div className="mrr-canvas-placeholder">No uploaded document available</div>}
+                  </div>
+                  <div className="mrr-canvas-thumbnails">{linkedArtifacts.flatMap((artifact) => (artifact.files || []).map((file, index) => <button key={`${artifact._id}-${index}`} type="button" className="mrr-canvas-thumb" onClick={() => document.getElementById(`mrr-artifact-${artifact._id}-${index}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>PG {index + 1}</button>))}</div>
+                </div>
+                <div ref={reviewDecisionSectionRef} className="mrr-canvas-actions">
+                  {isReadOnlyView ? <div className="rounded-md bg-gray-50 p-3 text-sm"><strong>{formatMedicalReviewDecisionLabel(selected.reviewDecision)}</strong><p className="mt-1 whitespace-pre-wrap text-gray-600">{selected.medicalStaffNotes || selected.overallNotes || selected.reviewNotes || 'No notes saved.'}</p></div> : <><div className="flex flex-wrap gap-2">{decisionOptions.map((option) => <button key={option} type="button" onClick={() => setReviewDecision(option)} className={getDecisionButtonClass(option, reviewDecision === option, 'sm')}>{decisionLabels[option]}</button>)}</div><textarea value={medicalStaffNotes} onChange={(event) => setMedicalStaffNotes(event.target.value)} rows={3} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Review notes and recommendations" /><button type="button" onClick={() => handleSaveReview()} disabled={savingReview || !reviewDecision || medicalStaffNotes.trim().length < 2} className="w-fit rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{savingReview ? 'Saving...' : 'Save review'}</button></>}
+                </div>
+              </section>
+            )}
+            <div className={`${isDetailView ? 'hidden mrr-desktop-legacy' : ''} space-y-4 sm:space-y-5`}>
               {!isDetailView && (
               <div className="flex items-start justify-between gap-3">
                 <div>
