@@ -20,7 +20,7 @@ import './styles/animations.css';
 installNativeDialogReplacement();
 
 function AppContent() {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, user, loading } = useAuth();
   const location = useLocation();
   const isPublicMedicalReviewRoute = location.pathname.startsWith('/medical-review-access/')
     || location.pathname.startsWith('/medical-review-group-access/')
@@ -33,6 +33,11 @@ function AppContent() {
   // Preload essential data when user is authenticated (non-blocking)
   useEffect(() => {
     if (isAuthenticated) {
+      // Packet/MRR link sessions are deliberately scoped and cannot call the
+      // normal application preload endpoints. Skipping preload prevents a
+      // harmless 403 from a global request being shown as an access-denied
+      // popup while the packet itself is loading.
+      if (String(user?.accessType || '').startsWith('medical_review_')) return;
       // In development, disable preloading for faster page loads
       if (process.env.NODE_ENV === 'development') {
         console.log('🚀 Preloading disabled in development for faster loading');
@@ -41,7 +46,7 @@ function AppContent() {
       // Start preloading in background without blocking UI
       preloaderService.preloadEssentialData().catch(console.error);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user?.accessType]);
 
   if (loading) {
     return <div className="loading">Loading...</div>;
