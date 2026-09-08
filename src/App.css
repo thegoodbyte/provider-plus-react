@@ -218,6 +218,12 @@ body.medical-review-capture-mode .medical-review-page .overflow-y-auto {
 .mrr-canvas-thumb { height: 3rem; border: 1px solid #dbe2ea; border-radius: .45rem; background: #fff; color: #64748b; font-size: .62rem; font-weight: 700; }
 .mrr-canvas-thumb:hover { border-color: #2563eb; color: #1d4ed8; }
 .mrr-canvas-actions { display: grid; gap: .75rem; margin-top: .85rem; }
+.mrr-decision-buttons { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .6rem; width: 100%; }
+.mrr-decision-buttons > button { min-height: 2.75rem; width: 100%; border-radius: .55rem !important; white-space: nowrap; font-size: .8rem; }
+@media (max-width: 640px) {
+  .mrr-decision-buttons { display: flex; flex-wrap: nowrap; gap: .35rem; overflow-x: auto; padding-bottom: .15rem; }
+  .mrr-decision-buttons > button { flex: 1 0 7.2rem; min-height: 2.55rem; padding-left: .45rem; padding-right: .45rem; font-size: .68rem; }
+}
 @media (max-width: 640px) { .mrr-related-toggle { top: .65rem; left: .65rem; } .mrr-related-bar { top: 5.15rem; padding-left: .75rem; padding-top: 1rem; } .mrr-related-bar-inner { align-items: flex-start; } }
 @media (min-width: 641px) { .mrr-related-toggle { display: none; } }
 
