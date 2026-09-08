@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
 import { Client, MedicalArtifact, MedicalReviewRequest, Retreat } from '../types';
-import { AlertTriangle, ChevronDown, FileText, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { Activity, AlertTriangle, ChevronDown, ClipboardList, Droplets, FileQuestion, FileText, HeartPulse, Pill, ThumbsDown, ThumbsUp } from 'lucide-react';
 import {
   formatMedicalReviewDecisionLabel,
   formatMedicalReviewRequestSummary,
@@ -60,6 +60,17 @@ const requestTypeLabels: Record<string, string> = {
 
 const getRequestTypeLabel = (requestType?: MedicalReviewRequest['requestType']) =>
   requestType ? requestTypeLabels[requestType] || requestType : 'Medical Review';
+
+const relatedRecordIcon = (label: string) => {
+  const value = label.toLowerCase();
+  if (value.includes('ekg') || value.includes('heart')) return HeartPulse;
+  if (value.includes('liver')) return Droplets;
+  if (value.includes('blood pressure') || value.includes('pressure')) return Activity;
+  if (value.includes('medication')) return Pill;
+  if (value.includes('questionnaire') || value.includes('food')) return ClipboardList;
+  if (value.includes('question')) return FileQuestion;
+  return FileText;
+};
 
 const medicalReviewTypeFilters = [
   { value: 'all', label: 'All review types' },
@@ -1188,7 +1199,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   const item = record.item as any;
                   const shortLabel = record.label.replace(/\s+Panel$/i, '').replace(/\s+Review$/i, '');
                   return <button key={`${record.kind}-${record.id}`} type="button" className="mrr-related-record" onClick={() => record.kind === 'request' ? handleSelect(item) : navigate(`${artifactRoutePrefix}/medical-artifacts/${record.id}/edit`)} title={`${record.label}${record.date ? ` · ${formatDateTime(record.date)}` : ''}`}>
-                    <span className={`mrr-related-record-icon ${record.kind === 'request' ? 'request' : ''}`}>{shortLabel.slice(0, 3).toUpperCase()}</span>
+                    <span className={`mrr-related-record-icon ${record.kind === 'request' ? 'request' : ''}`}>{React.createElement(relatedRecordIcon(record.label), { size: 20, strokeWidth: 2.1 })}</span>
                     <span className="mrr-related-record-text"><strong>{shortLabel}</strong><small>{record.date ? formatDateTime(record.date) : 'Date unavailable'}</small></span>
                   </button>;
                 }) : <span className="mrr-related-empty">No previous or related records.</span>}
