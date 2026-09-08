@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
 import { Client, MedicalArtifact, MedicalReviewRequest, Retreat } from '../types';
-import { AlertTriangle, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { AlertTriangle, ChevronDown, FileText, ThumbsDown, ThumbsUp } from 'lucide-react';
 import {
   formatMedicalReviewDecisionLabel,
   formatMedicalReviewRequestSummary,
@@ -458,6 +458,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [pendingOnly, setPendingOnly] = useState(false);
   const [validationError, setValidationError] = useState('');
   const [captureMode, setCaptureMode] = useState(false);
+  const [relatedRecordsOpen, setRelatedRecordsOpen] = useState(false);
   const reviewDecisionSectionRef = useRef<HTMLDivElement | null>(null);
   const canEditReview = user?.role === 'admin'
     || isEditRoute
@@ -601,6 +602,25 @@ const MedicalReviewRequestsPage: React.FC = () => {
     }
     return relatedArtifacts.filter((artifact) => artifact._id && selectedArtifactIds.has(artifact._id));
   }, [relatedArtifacts, selected, selectedArtifactIds]);
+
+  const relatedRecordItems = useMemo(() => {
+    if (!selected) return [] as Array<{ id: string; kind: 'artifact' | 'request'; label: string; date?: string | Date; item: MedicalArtifact | MedicalReviewRequest }>;
+    const records: Array<{ id: string; kind: 'artifact' | 'request'; label: string; date?: string | Date; item: MedicalArtifact | MedicalReviewRequest }> = [];
+    const seen = new Set<string>();
+    linkedArtifacts.forEach((artifact) => {
+      const id = String(artifact._id || '');
+      if (!id || seen.has(`a:${id}`)) return;
+      seen.add(`a:${id}`);
+      records.push({ id, kind: 'artifact', label: artifact.documentType || artifact.artifactType || 'Artifact', date: artifact.receivedAt || artifact.createdAt, item: artifact });
+    });
+    [...history, ...associatedRequests].forEach((request) => {
+      const id = String(request._id || '');
+      if (!id || id === selected._id || seen.has(`r:${id}`)) return;
+      seen.add(`r:${id}`);
+      records.push({ id, kind: 'request', label: getRequestTypeLabel(request.requestType), date: request.createdAt || request.requestedAt, item: request });
+    });
+    return records.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
+  }, [associatedRequests, history, linkedArtifacts, selected]);
 
   const profileHref = useMemo(() => {
     const clientId = getId(selected?.clientId);
@@ -1147,6 +1167,36 @@ const MedicalReviewRequestsPage: React.FC = () => {
 
   return (
     <div className="medical-review-page overflow-x-hidden p-0 sm:p-6">
+      {isDetailView && selected && (
+        <>
+          <button
+            type="button"
+            className={`mrr-related-toggle ${relatedRecordsOpen ? 'is-open' : ''}`}
+            onClick={() => setRelatedRecordsOpen((open) => !open)}
+            aria-expanded={relatedRecordsOpen}
+            aria-controls="mrr-related-records"
+          >
+            <span className="mrr-related-toggle-icon"><FileText size={20} /></span>
+            <span>Related records</span>
+            <ChevronDown size={14} className="mrr-related-chevron" />
+          </button>
+          {relatedRecordsOpen && (
+            <div id="mrr-related-records" className="mrr-related-bar" role="region" aria-label="Related records">
+              <div className="mrr-related-bar-inner">
+                <span className="mrr-related-bar-title">Related records</span>
+                {relatedRecordItems.length ? relatedRecordItems.map((record) => {
+                  const item = record.item as any;
+                  const shortLabel = record.label.replace(/\s+Panel$/i, '').replace(/\s+Review$/i, '');
+                  return <button key={`${record.kind}-${record.id}`} type="button" className="mrr-related-record" onClick={() => record.kind === 'request' ? handleSelect(item) : navigate(`${artifactRoutePrefix}/medical-artifacts/${record.id}/edit`)} title={`${record.label}${record.date ? ` · ${formatDateTime(record.date)}` : ''}`}>
+                    <span className={`mrr-related-record-icon ${record.kind === 'request' ? 'request' : ''}`}>{shortLabel.slice(0, 3).toUpperCase()}</span>
+                    <span className="mrr-related-record-text"><strong>{shortLabel}</strong><small>{record.date ? formatDateTime(record.date) : 'Date unavailable'}</small></span>
+                  </button>;
+                }) : <span className="mrr-related-empty">No previous or related records.</span>}
+              </div>
+            </div>
+          )}
+        </>
+      )}
       <div className="mb-4 flex items-start justify-between gap-4 sm:mb-6">
         <div>
           <h1 className="text-xl font-semibold leading-tight text-gray-900 sm:text-2xl">

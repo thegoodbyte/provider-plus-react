@@ -162,6 +162,41 @@ body.medical-review-capture-mode .medical-review-page .overflow-y-auto {
   overflow: visible !important;
 }
 
+/* Floating related-records navigator for MRR detail pages. */
+.mrr-related-toggle {
+  position: fixed;
+  z-index: 60;
+  top: 1.25rem;
+  left: 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .35rem .55rem .45rem;
+  border: 1px solid #dbeafe;
+  border-radius: 999px;
+  background: #fff;
+  color: #172033;
+  font-size: .72rem;
+  font-weight: 700;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, .14);
+}
+.mrr-related-toggle:hover, .mrr-related-toggle.is-open { border-color: #2563eb; color: #1d4ed8; }
+.mrr-related-toggle-icon { display: grid; place-items: center; width: 2.15rem; height: 2.15rem; margin: -.65rem 0 -.5rem -.5rem; border: 2px solid #f59e0b; border-radius: 50%; background: #1475d1; color: #fff; }
+.mrr-related-chevron { transition: transform .2s ease; }
+.mrr-related-toggle.is-open .mrr-related-chevron { transform: rotate(180deg); }
+.mrr-related-bar { position: fixed; z-index: 55; top: 0; left: 0; right: 0; min-height: 6.8rem; padding: 1.1rem 1.5rem 1rem 5rem; background: rgba(255, 255, 255, .98); border-bottom: 1px solid #e5e7eb; box-shadow: 0 10px 24px rgba(15, 23, 42, .12); }
+.mrr-related-bar-inner { display: flex; align-items: center; gap: 1.25rem; max-width: 90rem; margin: 0 auto; overflow-x: auto; }
+.mrr-related-bar-title { flex: 0 0 auto; color: #111827; font-size: .75rem; font-weight: 800; }
+.mrr-related-record { display: inline-flex; flex: 0 0 auto; align-items: center; gap: .5rem; padding: .15rem .35rem; border: 0; background: transparent; text-align: left; cursor: pointer; }
+.mrr-related-record:hover .mrr-related-record-icon { transform: translateY(-2px); box-shadow: 0 5px 12px rgba(37, 99, 235, .22); }
+.mrr-related-record-icon { display: grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; background: #dbeafe; color: #1d4ed8; font-size: .58rem; font-weight: 800; transition: .2s ease; }
+.mrr-related-record-icon.request { background: #ede9fe; color: #6d28d9; }
+.mrr-related-record-text { display: flex; flex-direction: column; gap: .08rem; }
+.mrr-related-record-text strong { color: #111827; font-size: .72rem; white-space: nowrap; }
+.mrr-related-record-text small { color: #6b7280; font-size: .62rem; white-space: nowrap; }
+.mrr-related-empty { color: #6b7280; font-size: .75rem; }
+@media (max-width: 640px) { .mrr-related-toggle { top: .65rem; left: .65rem; } .mrr-related-bar { padding-left: .75rem; padding-top: 4rem; } .mrr-related-bar-inner { align-items: flex-start; } }
+
 /* Global Reset */
 * {
   margin: 0;
