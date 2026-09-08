@@ -169,6 +169,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const [autoAssignSaving, setAutoAssignSaving] = useState(false);
   const [autoAssignMessage, setAutoAssignMessage] = useState('');
   const [downloadingPacketId, setDownloadingPacketId] = useState('');
+  const [generatingPacketLinkId, setGeneratingPacketLinkId] = useState('');
 
   const loadData = useCallback(async () => {
     try {
@@ -482,6 +483,23 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     if (!url) return;
     const text = encodeURIComponent(`${label || 'Medical review packet'}: ${url}`);
     window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener,noreferrer');
+  };
+
+  const generatePacketLink = async (group: MedicalReviewGroup) => {
+    if (!group._id) return;
+    try {
+      setGeneratingPacketLinkId(group._id);
+      const response = await medicalReviewRequestsApi.issueGroupAccessLink(group._id, { expiresInDays: 7 });
+      const url = response.data?.url;
+      if (url) {
+        await copyText(url);
+        window.alert('New pocket link copied to your clipboard.');
+      }
+    } catch (requestError: any) {
+      window.alert(requestError?.response?.data?.message || 'Unable to generate a pocket link.');
+    } finally {
+      setGeneratingPacketLinkId('');
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -1089,7 +1107,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                     {groupReorderSaving && draggedGroupId === groupId && (
                       <span className="text-xs font-medium text-blue-700">Saving...</span>
                     )}
-                    {groupUrl && (
+                  {groupUrl && (
                       <>
                         <button
                           type="button"
@@ -1117,6 +1135,18 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                           </button>
                         </>
                       )}
+                  {canManageRequests && groupId && (
+                    <button
+                      type="button"
+                      onClick={(event) => { event.stopPropagation(); void generatePacketLink(group); }}
+                      disabled={generatingPacketLinkId === groupId}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 disabled:opacity-60"
+                      title="Generate new pocket link"
+                      aria-label="Generate new pocket link"
+                    >
+                      <Icon icon={FiLink} className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                   {canManageRequests && (
                         <>
                           <button
