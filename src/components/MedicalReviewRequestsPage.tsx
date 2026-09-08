@@ -1220,6 +1220,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
           {isDetailView && selected && (
             <div className="mt-2 hidden flex-wrap items-center gap-2 text-xs text-gray-500 sm:flex">
               <span>Request #{selected.display_id || '—'}</span>
+              <button type="button" className="mrr-related-inline-toggle" onClick={() => setRelatedRecordsOpen((open) => !open)} aria-expanded={relatedRecordsOpen}><FileText size={13} /> Related records <ChevronDown size={12} className={relatedRecordsOpen ? 'rotate-180' : ''} /></button>
               <span>
                 {selected.createdAt
                   ? `Created ${formatDateTime(selected.createdAt)}`
@@ -1445,6 +1446,11 @@ const MedicalReviewRequestsPage: React.FC = () => {
                             type="button"
                             onClick={() => {
                               setReviewDecision(option);
+                              if (option === 'OK') setMedicalStaffNotes('OK');
+                              else if (option === 'caution') {
+                                setMedicalStaffNotes('');
+                                window.setTimeout(() => document.getElementById('mobile-medical-staff-notes')?.focus(), 0);
+                              }
                               if (validationError && medicalStaffNotes.trim().length >= 2) setValidationError('');
                             }}
                             className={getDecisionButtonClass(option, reviewDecision === option, 'sm')}
@@ -1514,10 +1520,6 @@ const MedicalReviewRequestsPage: React.FC = () => {
             )}
             {isDetailView && (
               <section className="mrr-desktop-canvas hidden sm:block">
-                <div className="mrr-canvas-header">
-                  <div><div className="mrr-canvas-kicker">Medical review request</div><h2>Request #{selected.display_id || '—'}</h2><p>{selectedClientName} · {formatCompactDocumentMeta(selected) || getRequestTypeLabel(selected.requestType)}</p></div>
-                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${reviewStatusStyle[selected.status] || 'bg-gray-100 text-gray-700'}`}>{selected.status}</span>
-                </div>
                 <div className="mrr-canvas-reviewing">Reviewing — Attempt {selected.attemptNumber || 1}</div>
                 <div className="mrr-canvas-body">
                   <div className="mrr-canvas-preview">
@@ -1526,7 +1528,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   <div className="mrr-canvas-thumbnails">{linkedArtifacts.flatMap((artifact) => (artifact.files || []).map((file, index) => <button key={`${artifact._id}-${index}`} type="button" className="mrr-canvas-thumb" onClick={() => document.getElementById(`mrr-artifact-${artifact._id}-${index}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>PG {index + 1}</button>))}</div>
                 </div>
                 <div ref={reviewDecisionSectionRef} className="mrr-canvas-actions">
-                  {isReadOnlyView ? <div className="rounded-md bg-gray-50 p-3 text-sm"><strong>{formatMedicalReviewDecisionLabel(selected.reviewDecision)}</strong><p className="mt-1 whitespace-pre-wrap text-gray-600">{selected.medicalStaffNotes || selected.overallNotes || selected.reviewNotes || 'No notes saved.'}</p></div> : <><div className="flex flex-wrap gap-2">{decisionOptions.map((option) => <button key={option} type="button" onClick={() => setReviewDecision(option)} className={getDecisionButtonClass(option, reviewDecision === option, 'sm')}>{decisionLabels[option]}</button>)}</div><textarea value={medicalStaffNotes} onChange={(event) => setMedicalStaffNotes(event.target.value)} rows={3} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Review notes and recommendations" /><button type="button" onClick={() => handleSaveReview()} disabled={savingReview || !reviewDecision || medicalStaffNotes.trim().length < 2} className="w-fit rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{savingReview ? 'Saving...' : 'Save review'}</button></>}
+                  {isReadOnlyView ? <div className="rounded-md bg-gray-50 p-3 text-sm"><strong>{formatMedicalReviewDecisionLabel(selected.reviewDecision)}</strong><p className="mt-1 whitespace-pre-wrap text-gray-600">{selected.medicalStaffNotes || selected.overallNotes || selected.reviewNotes || 'No notes saved.'}</p></div> : <><div className="flex flex-wrap gap-2">{decisionOptions.map((option) => <button key={option} type="button" onClick={() => { setReviewDecision(option); if (option === 'OK') setMedicalStaffNotes('OK'); else if (option === 'caution') { setMedicalStaffNotes(''); window.setTimeout(() => document.getElementById('desktop-medical-staff-notes')?.focus(), 0); } }} className={getDecisionButtonClass(option, reviewDecision === option, 'sm')}>{decisionLabels[option]}</button>)}</div><textarea id="desktop-medical-staff-notes" value={medicalStaffNotes} onChange={(event) => setMedicalStaffNotes(event.target.value)} rows={3} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder={reviewDecision === 'caution' ? 'Explain the caution and recommended follow-up (required)' : 'Review notes and recommendations'} /><button type="button" onClick={() => handleSaveReview()} disabled={savingReview || !reviewDecision || medicalStaffNotes.trim().length < 2} className="w-fit rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{savingReview ? 'Saving...' : 'Save review'}</button></>}
                 </div>
               </section>
             )}

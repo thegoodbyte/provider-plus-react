@@ -184,6 +184,8 @@ body.medical-review-capture-mode .medical-review-page .overflow-y-auto {
   font-weight: 700;
   box-shadow: 0 8px 22px rgba(15, 23, 42, .14);
 }
+.mrr-related-inline-toggle { display: inline-flex; align-items: center; gap: .3rem; margin-left: .75rem; padding: .35rem .65rem; border: 1px solid #dbeafe; border-radius: 999px; background: #fff; color: #1d4ed8; font-size: .68rem; font-weight: 700; vertical-align: middle; }
+.mrr-related-inline-toggle:hover { background: #eff6ff; }
 .mrr-related-toggle:hover, .mrr-related-toggle.is-open { border-color: #2563eb; color: #1d4ed8; }
 .mrr-related-toggle-icon { display: grid; place-items: center; width: 2.35rem; height: 2.35rem; border: 2px solid #f59e0b; border-radius: 50%; background: #1475d1; color: #fff; }
 .mrr-related-chevron { transition: transform .2s ease; }
@@ -202,8 +204,11 @@ body.medical-review-capture-mode .medical-review-page .overflow-y-auto {
 .mrr-desktop-canvas { padding: 1.5rem; border: 1px solid #e5e7eb; border-radius: 1rem; background: #f8fafc; }
 .mrr-canvas-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding-bottom: 1.25rem; border-bottom: 1px solid #e5e7eb; }
 .mrr-canvas-kicker { color: #64748b; font-size: .68rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
-.mrr-canvas-header h2 { margin-top: .2rem; color: #0f172a; font-size: 1.45rem; font-weight: 800; }
-.mrr-canvas-header p { margin-top: .2rem; color: #64748b; font-size: .85rem; }
+.mrr-canvas-request-line { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem; }
+.mrr-canvas-header h2 { margin-top: .2rem; color: #475569; font-size: .95rem; font-weight: 700; }
+.mrr-canvas-header h2 span { color: #0f172a; font-size: 1.05rem; }
+.mrr-canvas-header h3 { margin-top: .25rem; color: #0f172a; font-size: 1.75rem; font-weight: 850; letter-spacing: -.02em; }
+.mrr-canvas-header p { margin-top: .3rem; color: #0f172a; font-size: 1.05rem; font-weight: 800; letter-spacing: .08em; }
 .mrr-canvas-reviewing { margin: 1.25rem 0 .75rem; color: #1e293b; font-size: .95rem; font-weight: 700; }
 .mrr-canvas-body { display: flex; gap: .75rem; min-height: 32rem; }
 .mrr-canvas-preview { display: flex; flex: 1; min-width: 0; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #dbe2ea; border-radius: .75rem; background: repeating-linear-gradient(-45deg, #f8fafc, #f8fafc 10px, #eef2f5 10px, #eef2f5 20px); }
@@ -214,6 +219,7 @@ body.medical-review-capture-mode .medical-review-page .overflow-y-auto {
 .mrr-canvas-thumb:hover { border-color: #2563eb; color: #1d4ed8; }
 .mrr-canvas-actions { display: grid; gap: .75rem; margin-top: .85rem; }
 @media (max-width: 640px) { .mrr-related-toggle { top: .65rem; left: .65rem; } .mrr-related-bar { padding-left: .75rem; padding-top: 4rem; } .mrr-related-bar-inner { align-items: flex-start; } }
+@media (min-width: 641px) { .mrr-related-toggle { display: none; } }
 
 /* Global Reset */
 * {
