@@ -229,7 +229,7 @@ const PaymentRequestEditorPage: React.FC = () => {
                       {item.clientName && <div className="text-xs text-gray-500">{item.clientName}</div>}
                       {item.type === 'charge' && item.allocationAmount !== undefined && <div className="text-xs text-gray-500">Suggested receipt allocation: {formatAmount(item.allocationAmount, paymentRequest.currency)}</div>}
                     </div>
-                    <div className={item.amount < 0 ? 'font-semibold text-green-700' : 'font-semibold text-gray-900'}>{formatAmount(item.amount, paymentRequest.currency)}</div>
+                    <div className={item.type === 'info' ? 'font-semibold text-gray-500' : item.amount < 0 ? 'font-semibold text-green-700' : 'font-semibold text-gray-900'}>{item.type === 'info' ? 'Information' : formatAmount(item.amount, paymentRequest.currency)}</div>
                   </div>
                 ))}
               </div>

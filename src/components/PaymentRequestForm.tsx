@@ -310,8 +310,8 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
         || Number(selectedBooking?.totalAmount)
         || parseFloat(formData.requestedAmount);
       const requestedAmount = parseFloat(formData.requestedAmount);
-      if (itemized && (!lineItems.length || lineItems.some(item => !item.description.trim() || !Number(item.amount)))) {
-        setFormError('Every itemized row needs a description and a non-zero amount.');
+      if (itemized && (!lineItems.length || lineItems.some(item => !item.description.trim() || (item.type !== 'info' && !Number(item.amount))))) {
+        setFormError('Every charge or discount needs a description and amount. Informational items only need a description.');
         return;
       }
       const subtotal = lineItems.filter(item => item.amount > 0).reduce((sum, item) => sum + Number(item.amount), 0);
@@ -637,20 +637,23 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                       <select
                         value={item.type}
                         onChange={(event) => setLineItems(current => current.map((row, rowIndex) => rowIndex === index
-                          ? { ...row, type: event.target.value as 'charge' | 'discount', amount: event.target.value === 'discount' ? -Math.abs(row.amount || 0) : Math.abs(row.amount || 0) }
+                          ? { ...row, type: event.target.value as 'charge' | 'discount' | 'info', amount: event.target.value === 'discount' ? -Math.abs(row.amount || 0) : event.target.value === 'info' ? 0 : Math.abs(row.amount || 0) }
                           : row))}
                         className="rounded-md border border-gray-300 px-2 py-2 text-sm md:col-span-2"
                       >
                         <option value="charge">Charge</option>
                         <option value="discount">Discount</option>
+                        <option value="info">Information only</option>
                       </select>
                       <input
                         value={item.description}
                         onChange={(event) => setLineItems(current => current.map((row, rowIndex) => rowIndex === index ? { ...row, description: event.target.value } : row))}
-                        placeholder={item.type === 'charge' ? 'Robert — retreat stay' : 'Shared-room discount'}
+                        placeholder={item.type === 'charge' ? 'Robert — retreat stay' : item.type === 'info' ? 'Retreat dates or payment context' : 'Shared-room discount'}
                         className="rounded-md border border-gray-300 px-3 py-2 text-sm md:col-span-4"
                       />
-                      {item.type === 'charge' ? (
+                      {item.type === 'info' ? (
+                        <div className="flex items-center text-sm text-gray-500 md:col-span-5">Shown on the request; does not change the amount.</div>
+                      ) : item.type === 'charge' ? (
                         <>
                           <select
                             value={item.clientId || ''}
@@ -722,6 +725,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                     <div className="flex gap-2">
                       <button type="button" onClick={() => setLineItems(current => [...current, { type: 'charge', description: '', amount: 0 }])} className="rounded-md border border-blue-300 px-3 py-2 text-sm text-blue-700">+ Charge</button>
                       <button type="button" onClick={() => setLineItems(current => [...current, { type: 'discount', description: '', amount: 0, discountType: 'percentage' }])} className="rounded-md border border-blue-300 px-3 py-2 text-sm text-blue-700">+ Discount</button>
+                      <button type="button" onClick={() => setLineItems(current => [...current, { type: 'info', description: '', amount: 0 }])} className="rounded-md border border-blue-300 px-3 py-2 text-sm text-blue-700">+ Information</button>
                     </div>
                     <div className="text-right text-sm">
                       <div>Subtotal: {lineItems.filter(item => item.amount > 0).reduce((sum, item) => sum + Number(item.amount), 0).toFixed(2)} {formData.currency}</div>

@@ -1643,7 +1643,7 @@ export interface BookingDocument {
 }
 
 export interface PaymentRequestLineItem {
-  type: 'charge' | 'discount';
+  type: 'charge' | 'discount' | 'info';
   description: string;
   clientId?: string;
   bookingId?: string;
