@@ -618,9 +618,19 @@ const MedicalReviewRequestsPage: React.FC = () => {
     if (!selected) return [] as Array<{ id: string; kind: 'artifact' | 'request'; label: string; date?: string | Date; item: MedicalArtifact | MedicalReviewRequest }>;
     const records: Array<{ id: string; kind: 'artifact' | 'request'; label: string; date?: string | Date; item: MedicalArtifact | MedicalReviewRequest }> = [];
     const seen = new Set<string>();
+    const requestsForArtifact = [...history, ...associatedRequests].filter((request) => request._id && (request.artifactIds || []).some((artifact) => getId(artifact) && linkedArtifacts.some((linked) => getId(linked) === getId(artifact))));
     linkedArtifacts.forEach((artifact) => {
       const id = String(artifact._id || '');
       if (!id || seen.has(`a:${id}`)) return;
+      const linkedRequest = requestsForArtifact.find((request) => (request.artifactIds || []).some((requestArtifact) => getId(requestArtifact) === id));
+      if (linkedRequest?._id) {
+        if (!seen.has(`r:${linkedRequest._id}`)) {
+          seen.add(`r:${linkedRequest._id}`);
+          records.push({ id: String(linkedRequest._id), kind: 'request', label: getRequestTypeLabel(linkedRequest.requestType), date: linkedRequest.createdAt || linkedRequest.requestedAt, item: linkedRequest });
+        }
+        seen.add(`a:${id}`);
+        return;
+      }
       seen.add(`a:${id}`);
       records.push({ id, kind: 'artifact', label: artifact.documentType || artifact.artifactType || 'Artifact', date: artifact.receivedAt || artifact.createdAt, item: artifact });
     });
