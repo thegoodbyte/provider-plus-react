@@ -225,10 +225,11 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
       ? { ...item, amount: -(Math.round(subtotal * Number(item.discountPercent || 0)) / 100) }
       : item);
     const changed = recalculated.some((item, index) => item.amount !== lineItems[index].amount);
-    const total = recalculated.reduce((sum, item) => sum + Number(item.amount || 0), 0);
+    const fullPriceBaseline = formData.requestType === 'payment' ? Number(formData.fullPriceQuote || 0) : 0;
+    const total = fullPriceBaseline + recalculated.reduce((sum, item) => sum + Number(item.amount || 0), 0);
     setFormData(prev => ({ ...prev, requestedAmount: String(Math.round(total * 100) / 100) }));
     if (changed) setLineItems(recalculated);
-  }, [itemized, lineItems]);
+  }, [itemized, lineItems, formData.requestType, formData.fullPriceQuote]);
 
   useEffect(() => {
     const fullPrice = Number(formData.fullPriceQuote);
@@ -274,7 +275,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     setFormError('');
 
     const invoiceNumber = String(formData.invoiceNumber || '').trim();
-    if (!invoiceNumber || !formData.clientId || !formData.retreatId || !formData.paymentDate || !formData.requestedAmount || (formData.requestType === 'deposit' && !formData.fullPriceQuote)) {
+    if (!invoiceNumber || !formData.clientId || !formData.retreatId || !formData.paymentDate || !formData.requestedAmount || (['deposit', 'payment'].includes(formData.requestType) && !formData.fullPriceQuote)) {
       alert('Please fill in all required fields');
       return;
     }
@@ -537,7 +538,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
               </div>
             )}
 
-            {formData.requestType === 'deposit' ? (
+            {formData.requestType === 'deposit' || formData.requestType === 'payment' ? (
               <div>
                 <label htmlFor="fullPriceQuote" className="block text-sm font-medium text-gray-700 mb-2">Full Booking Price *</label>
                 <input
@@ -551,7 +552,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                   placeholder="0.00"
                   required
                 />
-                <p className="mt-1 text-xs text-gray-500">For reference only. Change the authoritative price from the booking Payments tab.</p>
+                <p className="mt-1 text-xs text-gray-500">The full price before any payment-request discount. The requested amount is calculated below it.</p>
               </div>
             ) : formData.requestType === 'balance' ? (
               <div>
@@ -578,6 +579,9 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
               />
               {formData.requestType === 'deposit' && (
                 <p className="mt-1 text-xs text-gray-500">Auto-calculated as 40% of the full price.</p>
+              )}
+              {formData.requestType === 'payment' && itemized && (
+                <p className="mt-1 text-xs text-gray-500">Calculated as full booking price plus charges and minus discounts.</p>
               )}
               {!!usdPreview.amount && (
                 <p className="mt-1 text-xs font-medium text-blue-700">Approximately ${Number(usdPreview.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD for this requested amount.</p>
@@ -621,14 +625,14 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                     const enabled = event.target.checked;
                     setItemized(enabled);
                     if (enabled && !lineItems.length) {
-                      setLineItems([{ type: 'charge', description: '', amount: Number(formData.requestedAmount || 0) }]);
+                      setLineItems([{ type: 'charge', description: '', amount: formData.requestType === 'payment' ? 0 : Number(formData.requestedAmount || 0) }]);
                     }
                   }}
                   className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
                 Itemize this payment request
               </label>
-              <p className="mt-1 text-xs text-gray-500">Use separate people/stays and discounts. The calculated total becomes the requested amount.</p>
+              <p className="mt-1 text-xs text-gray-500">Use charges, discounts, or information-only lines. For a payment, the full booking price is the starting point and the lines adjust the requested amount.</p>
 
               {itemized && (
                 <div className="mt-4 space-y-3">
@@ -728,7 +732,8 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                       <button type="button" onClick={() => setLineItems(current => [...current, { type: 'info', description: '', amount: 0 }])} className="rounded-md border border-blue-300 px-3 py-2 text-sm text-blue-700">+ Information</button>
                     </div>
                     <div className="text-right text-sm">
-                      <div>Subtotal: {lineItems.filter(item => item.amount > 0).reduce((sum, item) => sum + Number(item.amount), 0).toFixed(2)} {formData.currency}</div>
+                      {formData.requestType === 'payment' && <div>Full booking price: {Number(formData.fullPriceQuote || 0).toFixed(2)} {formData.currency}</div>}
+                      <div>Additional charges: {lineItems.filter(item => item.amount > 0).reduce((sum, item) => sum + Number(item.amount), 0).toFixed(2)} {formData.currency}</div>
                       <div>Discount: {(-lineItems.filter(item => item.amount < 0).reduce((sum, item) => sum + Number(item.amount), 0)).toFixed(2)} {formData.currency}</div>
                       <div className="font-semibold">Total: {Number(formData.requestedAmount || 0).toFixed(2)} {formData.currency}</div>
                     </div>
