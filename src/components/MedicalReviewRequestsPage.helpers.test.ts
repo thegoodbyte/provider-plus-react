@@ -2,6 +2,7 @@ import {
   getAssociatedMedicalReviewRequests,
   formatMedicalReviewDecisionLabel,
   formatMedicalReviewRequestSummary,
+  getArtifactSourceLanguage,
   getQuestionnaireLanguageLabel,
   getQuestionnaireSourceLanguage,
   getQuestionnaireTranslationDisplayState,
@@ -166,5 +167,13 @@ describe('PPVC-621 questionnaire translation helpers', () => {
   it('getQuestionnaireTranslationDisplayState surfaces a failed translation distinctly from never having tried', () => {
     expect(getQuestionnaireTranslationDisplayState('pl', { status: 'failed' }, false)).toBe('failed');
     expect(getQuestionnaireTranslationDisplayState('pl', undefined, false)).toBe('not_started');
+  });
+
+  it('getArtifactSourceLanguage reads the artifact data, falls back to the translation record, then defaults to English', () => {
+    expect(getArtifactSourceLanguage({ data: { sourceLanguage: 'pl' } })).toBe('pl');
+    expect(getArtifactSourceLanguage({ translation: { sourceLanguage: 'cs' } })).toBe('cs');
+    expect(getArtifactSourceLanguage({ data: { sourceLanguage: 'PL' } })).toBe('pl');
+    expect(getArtifactSourceLanguage(null)).toBe('en');
+    expect(getArtifactSourceLanguage({})).toBe('en');
   });
 });

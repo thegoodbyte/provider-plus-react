@@ -9,6 +9,7 @@ import { Activity, AlertTriangle, ChevronDown, CircleHelp, ClipboardList, Drople
 import {
   formatMedicalReviewDecisionLabel,
   formatMedicalReviewRequestSummary,
+  getArtifactSourceLanguage,
   getAssociatedMedicalReviewRequests,
   getQuestionnaireLanguageLabel,
   getQuestionnaireSourceLanguage,
@@ -443,6 +444,61 @@ const ArtifactInlinePreview: React.FC<{ artifactId?: string; file: ArtifactFile;
   );
 };
 
+// PPVC-621: any artifact (questionnaire, medications, etc.) received in a
+// non-English language shows its AI-translated English answers first, with
+// the original document collapsed underneath -- everywhere an artifact's
+// file is previewed, not just the aggregated Client Medical Summary section.
+const ArtifactDocumentPreview: React.FC<{
+  artifact: MedicalArtifact;
+  file: ArtifactFile;
+  index: number;
+  frame?: boolean;
+  isGenerating: boolean;
+  onRetry: () => void;
+}> = ({ artifact, file, index, frame = true, isGenerating, onRetry }) => {
+  const sourceLanguage = getArtifactSourceLanguage(artifact);
+  const displayState = getQuestionnaireTranslationDisplayState(sourceLanguage, artifact.translation, isGenerating);
+
+  if (displayState === 'not_needed') {
+    return <ArtifactInlinePreview artifactId={artifact._id} file={file} index={index} frame={frame} />;
+  }
+
+  const englishItems = artifact.translation?.items || [];
+  const languageLabel = getQuestionnaireLanguageLabel(sourceLanguage);
+
+  return (
+    <div className="space-y-2">
+      {displayState === 'ready' && englishItems.length > 0 && (
+        <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3">
+          <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-bold uppercase text-emerald-900">English (AI translation)</div>
+          <div className="space-y-2">
+            {englishItems.map((item, itemIndex) => (
+              <div key={item.key || `${item.label}-${itemIndex}`} className="rounded-md bg-white px-3 py-2">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{item.label}</div>
+                <div className="mt-1 whitespace-pre-wrap text-sm text-gray-900">{item.value || 'Not provided'}</div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-2 text-[11px] text-gray-500">{artifact.translation?.disclaimer || 'AI-generated translation. The original signed submission remains authoritative.'}</div>
+        </div>
+      )}
+      {displayState === 'translating' && (
+        <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800">Translating this {languageLabel} document to English…</div>
+      )}
+      {displayState === 'failed' && (
+        <div className="flex items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <span>English translation failed.</span>
+          <button type="button" onClick={onRetry} className="no-print rounded-md bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-800">Retry translation</button>
+        </div>
+      )}
+      <details open={displayState !== 'ready'}>
+        <summary className="no-print cursor-pointer text-xs font-semibold text-gray-600">Original document ({languageLabel})</summary>
+        <ArtifactInlinePreview artifactId={artifact._id} file={file} index={index} frame={frame} />
+      </details>
+    </div>
+  );
+};
+
 const MedicalReviewRequestsPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -470,6 +526,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [fileReviews, setFileReviews] = useState<FileReviewDraft[]>([]);
   const [reviewContext, setReviewContext] = useState<ReviewContext | null>(null);
   const [questionnaireTranslationStatus, setQuestionnaireTranslationStatus] = useState<'idle' | 'generating' | 'error'>('idle');
+  const [artifactTranslationStatus, setArtifactTranslationStatus] = useState<Record<string, 'generating' | 'error'>>({});
   const [generatedMedicalSummary, setGeneratedMedicalSummary] = useState<{ summary: string; generatedBy: 'rules' | 'openai'; model?: string; language?: string; unavailableReason?: string; generatedAt: string } | null>(null);
   const [generatingMedicalSummary, setGeneratingMedicalSummary] = useState(false);
   const [accessLinks, setAccessLinks] = useState<MedicalReviewAccessLink[]>([]);
@@ -689,6 +746,92 @@ const MedicalReviewRequestsPage: React.FC = () => {
     return relatedArtifacts.filter((artifact) => artifact._id && selectedArtifactIds.has(artifact._id));
   }, [relatedArtifacts, selected, selectedArtifactIds]);
 
+  // PPVC-621: patch a freshly-translated artifact into every place a copy of
+  // it is cached -- relatedArtifacts (drives linkedArtifacts, the document
+  // preview panes) and reviewContext.artifacts (drives the Client Medical
+  // Summary section) -- so both surfaces pick up the translation immediately.
+  const applyArtifactTranslation = useCallback((artifactId: string, updatedArtifact: MedicalArtifact) => {
+    setRelatedArtifacts((current) => current.map((item) => (item._id === artifactId ? updatedArtifact : item)));
+    setReviewContext((current) => {
+      if (!current?.artifacts) return current;
+      const patch = (list?: MedicalArtifact[]) => (list ? list.map((item) => (item._id === artifactId ? updatedArtifact : item)) : list);
+      return {
+        ...current,
+        artifacts: {
+          ...current.artifacts,
+          all: patch(current.artifacts.all),
+          entryEkg: patch(current.artifacts.entryEkg),
+          entryLiver: patch(current.artifacts.entryLiver),
+          medications: patch(current.artifacts.medications),
+          questionnaire: patch(current.artifacts.questionnaire),
+          other: patch(current.artifacts.other),
+        },
+      };
+    });
+  }, []);
+
+  // PPVC-621: auto-generate an English translation the moment an advisor
+  // opens a request containing a non-English artifact of any type (medication
+  // forms included, not just questionnaires) -- mirrors the dedicated
+  // questionnaire effect above but covers every artifact shown in the
+  // detail-view document preview. Only fires once per artifact (no
+  // translation attempted yet); a failed or in-flight one is left alone here.
+  useEffect(() => {
+    // linkedArtifacts covers the detail-view document preview; reviewContext's
+    // "all" bucket covers the Client Medical Summary section -- a medication
+    // artifact can appear in one without the other depending on how it's
+    // linked, so both get checked.
+    const candidates = new Map<string, MedicalArtifact>();
+    [...linkedArtifacts, ...(reviewContext?.artifacts?.all || [])].forEach((artifact) => {
+      if (artifact._id) candidates.set(artifact._id, artifact);
+    });
+    const targets = Array.from(candidates.values()).filter((artifact) => (
+      artifact._id
+      && !artifact.translation
+      && !artifactTranslationStatus[artifact._id]
+      && getArtifactSourceLanguage(artifact) !== 'en'
+    ));
+    if (!targets.length) return;
+    let active = true;
+    targets.forEach((artifact) => {
+      const artifactId = artifact._id as string;
+      setArtifactTranslationStatus((prev) => ({ ...prev, [artifactId]: 'generating' }));
+      medicalArtifactsApi.generateEnglishTranslation(artifactId, getArtifactSourceLanguage(artifact))
+        .then((response) => {
+          if (!active) return;
+          setArtifactTranslationStatus((prev) => {
+            const next = { ...prev };
+            delete next[artifactId];
+            return next;
+          });
+          if (response?.data) applyArtifactTranslation(artifactId, response.data);
+        })
+        .catch(() => {
+          if (active) setArtifactTranslationStatus((prev) => ({ ...prev, [artifactId]: 'error' }));
+        });
+    });
+    return () => { active = false; };
+  }, [linkedArtifacts, reviewContext, artifactTranslationStatus, applyArtifactTranslation]);
+
+  const retryArtifactTranslation = async (artifact: MedicalArtifact) => {
+    const artifactId = artifact._id;
+    if (!artifactId) return;
+    const sourceLanguage = getArtifactSourceLanguage(artifact);
+    if (sourceLanguage === 'en') return;
+    setArtifactTranslationStatus((prev) => ({ ...prev, [artifactId]: 'generating' }));
+    try {
+      const response = await medicalArtifactsApi.generateEnglishTranslation(artifactId, sourceLanguage, true);
+      setArtifactTranslationStatus((prev) => {
+        const next = { ...prev };
+        delete next[artifactId];
+        return next;
+      });
+      if (response?.data) applyArtifactTranslation(artifactId, response.data);
+    } catch {
+      setArtifactTranslationStatus((prev) => ({ ...prev, [artifactId]: 'error' }));
+    }
+  };
+
   const relatedRecordItems = useMemo(() => {
     if (!selected) return [] as Array<{ id: string; kind: 'artifact' | 'request'; label: string; date?: string | Date; item: MedicalArtifact | MedicalReviewRequest }>;
     const records: Array<{ id: string; kind: 'artifact' | 'request'; label: string; date?: string | Date; item: MedicalArtifact | MedicalReviewRequest }> = [];
@@ -903,7 +1046,16 @@ const MedicalReviewRequestsPage: React.FC = () => {
         {artifact.data && Object.keys(artifact.data).length > 0 && (
           <pre className="mt-2 max-h-28 overflow-auto rounded bg-gray-50 p-2 text-[11px] text-gray-600">{JSON.stringify(artifact.data, null, 2)}</pre>
         )}
-        {hasRealFile && <ArtifactInlinePreview artifactId={artifact._id} file={target.file} index={0} frame={false} />}
+        {hasRealFile && (
+          <ArtifactDocumentPreview
+            artifact={artifact}
+            file={target.file}
+            index={0}
+            frame={false}
+            isGenerating={Boolean(artifact._id && artifactTranslationStatus[artifact._id] === 'generating')}
+            onRetry={() => retryArtifactTranslation(artifact)}
+          />
+        )}
         {isReadOnlyView ? (
           <div className="mt-2 rounded-md bg-gray-50 p-2 text-xs">
             <div className="font-semibold text-gray-900">{fileReview.decision || 'Not reviewed'}</div>
@@ -1105,7 +1257,15 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 {artifact.files.map((file, index) => {
                   const url = getArtifactFileUrl(file);
                   return (artifact._id && (file.s3Key || file.filePath)) || url ? (
-                    <ArtifactInlinePreview key={`${file.fileName || url}-${index}`} artifactId={artifact._id} file={file} index={index} frame={false} />
+                    <ArtifactDocumentPreview
+                      key={`${file.fileName || url}-${index}`}
+                      artifact={artifact}
+                      file={file}
+                      index={index}
+                      frame={false}
+                      isGenerating={Boolean(artifact._id && artifactTranslationStatus[artifact._id] === 'generating')}
+                      onRetry={() => retryArtifactTranslation(artifact)}
+                    />
                   ) : (
                     <span key={`${file.fileName || index}`} className="rounded-md border border-gray-200 px-2 py-1 text-xs text-gray-500">{file.fileName || `File ${index + 1}`}</span>
                   );
@@ -1179,6 +1339,9 @@ const MedicalReviewRequestsPage: React.FC = () => {
     const questionnaire = reviewContext?.questionnaires?.[0];
     const medicalRecord = reviewContext?.medicalRecords?.[0];
     const medicationRecords = reviewContext?.medications || [];
+    const medicationArtifacts = reviewContext?.artifacts?.medications || [];
+    const getMedicationArtifact = (medication: any) =>
+      medicationArtifacts.find((artifact) => String(artifact.data?.intakeId || '') === String(medication?._id || ''));
     const bpReadings = reviewContext?.bloodPressureReadings || [];
     const allArtifacts = reviewContext?.artifacts?.all || [];
     const entryEkg = allArtifacts.filter((artifact) => artifact.documentStage === 'entry' && (artifact.artifactType === 'ekg' || artifact.documentType === 'EKG'));
@@ -1258,6 +1421,45 @@ const MedicalReviewRequestsPage: React.FC = () => {
       </>
     );
 
+    // PPVC-621: same English-translation-first treatment as the questionnaire
+    // above, applied to each medication form's linked artifact (matched by
+    // artifact.data.intakeId -> medication._id).
+    const renderMedicationContent = (medication: any) => {
+      const medicationArtifact = getMedicationArtifact(medication);
+      const sourceLanguage = getArtifactSourceLanguage(medicationArtifact);
+      const isGenerating = Boolean(medicationArtifact?._id && artifactTranslationStatus[medicationArtifact._id] === 'generating');
+      const translationDisplayState = getQuestionnaireTranslationDisplayState(sourceLanguage, medicationArtifact?.translation, isGenerating);
+      const englishValues = (medicationArtifact?.translation?.items || []).map((item) => ({ label: item.label, value: item.value }));
+      return (
+        <div key={medication._id} className="rounded-md bg-gray-50 p-3">
+          {sourceHeader('Medication form', medication.date_collected || medication.createdAt, medication.display_id)}
+          {translationDisplayState === 'ready' && englishValues.length > 0 && (
+            <div className="mb-2">
+              <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-bold uppercase text-emerald-900">English (AI translation)</div>
+              {valuesGrid(englishValues)}
+              <div className="mt-2 text-[11px] text-gray-500">{medicationArtifact?.translation?.disclaimer || 'AI-generated translation. The original signed submission remains authoritative.'}</div>
+            </div>
+          )}
+          {translationDisplayState === 'translating' && (
+            <div className="mb-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800">Translating to English…</div>
+          )}
+          {translationDisplayState === 'failed' && (
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              <span>English translation failed.</span>
+              <button type="button" onClick={() => medicationArtifact && retryArtifactTranslation(medicationArtifact)} className="no-print rounded-md bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-800">Retry translation</button>
+            </div>
+          )}
+          {medication.admin_notes && <div className="text-sm text-gray-800">Admin notes: {medication.admin_notes}</div>}
+          {medication.medstaff_review_notes && <div className="mt-1 text-sm text-gray-800">Medical notes: {medication.medstaff_review_notes}</div>}
+          {medication.pdf_file && (
+            <a href={getMedicationPdfUrl(medication.pdf_file)} target="_blank" rel="noreferrer" className="no-print mt-2 inline-block text-xs font-semibold text-blue-700">
+              {translationDisplayState === 'ready' || translationDisplayState === 'translating' ? `Open original PDF (${getQuestionnaireLanguageLabel(sourceLanguage)})` : 'Open source PDF'}
+            </a>
+          )}
+        </div>
+      );
+    };
+
     return <section id="mrr-medical-summary" className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-200 pb-4">
         <div><div className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">Source-backed clinical context</div><h2 className="mt-1 text-xl font-semibold text-gray-950">Client Medical Summary</h2><p className="mt-1 text-sm text-gray-600">Compiled for MRR #{selected?.display_id || '—'} on {new Date().toLocaleString()}. Verify clinical decisions against the linked source records.</p></div>
@@ -1275,7 +1477,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
         <details className="rounded-md border border-gray-200 p-3"><summary className="cursor-pointer font-semibold text-gray-900">Overall medical form / history</summary><div className="mt-3">{medicalRecord ? <>{sourceHeader('Overall medical record', medicalRecord.updatedAt || medicalRecord.createdAt, medicalRecord.display_id)}{valuesGrid([
           { label: 'General notes', value: medicalRecord.generalNotes }, { label: 'Final medical clearance', value: medicalRecord.finalMedicalClearance === true ? 'Yes' : medicalRecord.finalMedicalClearance === false ? 'No' : '' }, { label: 'Clearance notes', value: medicalRecord.medicalClearanceNotes }, { label: 'EKG result', value: medicalRecord.ekgResults }, { label: 'Liver result', value: medicalRecord.liverPanelResults }, { label: 'Blood pressure', value: medicalRecord.bloodPressureSystolic && medicalRecord.bloodPressureDiastolic ? `${medicalRecord.bloodPressureSystolic}/${medicalRecord.bloodPressureDiastolic}` : '' },
         ].filter((item) => item.value))}</> : missing('Overall medical form')}</div></details>
-        <details className="rounded-md border border-gray-200 p-3"><summary className="cursor-pointer font-semibold text-gray-900">Medication forms · {medicationRecords.length || 'Not received'}</summary><div className="mt-3 space-y-2">{medicationRecords.length ? medicationRecords.map((medication) => <div key={medication._id} className="rounded-md bg-gray-50 p-3">{sourceHeader('Medication form', medication.date_collected || medication.createdAt, medication.display_id)}{medication.admin_notes && <div className="text-sm text-gray-800">Admin notes: {medication.admin_notes}</div>}{medication.medstaff_review_notes && <div className="mt-1 text-sm text-gray-800">Medical notes: {medication.medstaff_review_notes}</div>}{medication.pdf_file && <a href={getMedicationPdfUrl(medication.pdf_file)} target="_blank" rel="noreferrer" className="no-print mt-2 inline-block text-xs font-semibold text-blue-700">Open source PDF</a>}</div>) : missing('Medication form')}</div></details>
+        <details className="rounded-md border border-gray-200 p-3"><summary className="cursor-pointer font-semibold text-gray-900">Medication forms · {medicationRecords.length || 'Not received'}</summary><div className="mt-3 space-y-2">{medicationRecords.length ? medicationRecords.map((medication) => renderMedicationContent(medication)) : missing('Medication form')}</div></details>
         <details className="rounded-md border border-gray-200 p-3" open><summary className="cursor-pointer font-semibold text-gray-900">Entry EKG and liver panel</summary><div className="mt-3 grid gap-3 lg:grid-cols-2"><div><div className="mb-2 text-xs font-bold uppercase text-gray-500">Entry EKG</div>{entryEkg.length ? renderArtifactList(entryEkg, '') : missing('Entry EKG')}</div><div><div className="mb-2 text-xs font-bold uppercase text-gray-500">Entry liver panel</div>{entryLiver.length ? renderArtifactList(entryLiver, '') : missing('Entry liver panel')}</div></div></details>
         <details className="rounded-md border border-gray-200 p-3" open><summary className="cursor-pointer font-semibold text-gray-900">Pre-retreat blood pressures · {bpReadings.length || 'Not received'}</summary><div className="mt-3">{bpReadings.length ? <div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead><tr className="border-b text-xs uppercase text-gray-500"><th className="p-2">Recorded</th><th className="p-2">BP</th><th className="p-2">Pulse</th><th className="p-2">Source</th><th className="p-2">Notes</th></tr></thead><tbody>{bpReadings.map((reading) => <tr key={reading._id} className="border-b border-gray-100"><td className="p-2">{formatDateTime(reading.recordedAt)}</td><td className="p-2 font-semibold">{reading.systolic}/{reading.diastolic}</td><td className="p-2">{reading.pulse || '—'}</td><td className="p-2">{reading.source || 'record'}</td><td className="p-2">{reading.notes || '—'}</td></tr>)}</tbody></table></div> : missing('Pre-retreat blood pressure readings')}</div></details>
         <details className="rounded-md border border-gray-200 p-3"><summary className="cursor-pointer font-semibold text-gray-900">Pre-ceremony data · {preCeremony.length || 'Not received'}</summary><div className="mt-3">{preCeremony.length ? renderArtifactList(preCeremony, '') : missing('Pre-ceremony BP / EKG data')}</div></details>
@@ -1601,7 +1803,14 @@ const MedicalReviewRequestsPage: React.FC = () => {
                         )}
                         {artifact.files?.length ? artifact.files.map((file, index) => (
                           <div key={`${file.fileName || file.s3Key || index}`} className="min-w-0 overflow-hidden rounded-md border border-gray-200">
-                            <ArtifactInlinePreview artifactId={artifact._id} file={file} index={index} frame={false} />
+                            <ArtifactDocumentPreview
+                              artifact={artifact}
+                              file={file}
+                              index={index}
+                              frame={false}
+                              isGenerating={Boolean(artifact._id && artifactTranslationStatus[artifact._id] === 'generating')}
+                              onRetry={() => retryArtifactTranslation(artifact)}
+                            />
                           </div>
                         )) : (
                           <div className="rounded-md bg-gray-50 p-2 text-xs text-gray-500">No uploaded picture or PDF.</div>
@@ -1736,7 +1945,16 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 <div className="mrr-canvas-reviewing">Reviewing — Attempt {selected.attemptNumber || 1}</div>
                 <div className="mrr-canvas-body">
                   <div className="mrr-canvas-preview">
-                    {linkedArtifacts[0]?.files?.[0] ? <ArtifactInlinePreview artifactId={linkedArtifacts[0]._id} file={linkedArtifacts[0].files[0]} index={0} frame={false} /> : linkedArtifacts[0]?.textContent ? <div className="whitespace-pre-wrap p-6 text-sm text-gray-700">{linkedArtifacts[0].textContent}</div> : <div className="mrr-canvas-placeholder">No uploaded document available</div>}
+                    {linkedArtifacts[0]?.files?.[0] ? (
+                      <ArtifactDocumentPreview
+                        artifact={linkedArtifacts[0]}
+                        file={linkedArtifacts[0].files[0]}
+                        index={0}
+                        frame={false}
+                        isGenerating={Boolean(linkedArtifacts[0]._id && artifactTranslationStatus[linkedArtifacts[0]._id as string] === 'generating')}
+                        onRetry={() => retryArtifactTranslation(linkedArtifacts[0])}
+                      />
+                    ) : linkedArtifacts[0]?.textContent ? <div className="whitespace-pre-wrap p-6 text-sm text-gray-700">{linkedArtifacts[0].textContent}</div> : <div className="mrr-canvas-placeholder">No uploaded document available</div>}
                   </div>
                   <div className="mrr-canvas-thumbnails">{linkedArtifacts.flatMap((artifact) => (artifact.files || []).map((file, index) => <button key={`${artifact._id}-${index}`} type="button" className="mrr-canvas-thumb" onClick={() => document.getElementById(`mrr-artifact-${artifact._id}-${index}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>PG {index + 1}</button>))}</div>
                 </div>
@@ -2106,7 +2324,14 @@ const MedicalReviewRequestsPage: React.FC = () => {
                                 const fileReview = getFileReview(artifact, file);
                                 return (
                                   <div key={`${file.fileName || file.s3Key || index}`} className="space-y-3">
-                                    <ArtifactInlinePreview artifactId={artifact._id} file={file} index={index} frame={false} />
+                                    <ArtifactDocumentPreview
+                              artifact={artifact}
+                              file={file}
+                              index={index}
+                              frame={false}
+                              isGenerating={Boolean(artifact._id && artifactTranslationStatus[artifact._id] === 'generating')}
+                              onRetry={() => retryArtifactTranslation(artifact)}
+                            />
                                     {isReadOnlyView ? (
                                       <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm">
                                         <div className="font-medium text-gray-900">File decision: {fileReview.decision || 'Not reviewed'}</div>

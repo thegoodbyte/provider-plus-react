@@ -161,6 +161,13 @@ export const getQuestionnaireSourceLanguage = (
   questionnaireArtifact?: { data?: { sourceLanguage?: string } } | null,
 ): string => String(questionnaire?.language || questionnaireArtifact?.data?.sourceLanguage || 'en').toLowerCase();
 
+// Same idea as getQuestionnaireSourceLanguage but for any artifact shown
+// standalone (medications, EKG, liver panel, etc.) where there's no separate
+// "document" record to prefer a language off of -- just the artifact itself.
+export const getArtifactSourceLanguage = (
+  artifact?: { data?: { sourceLanguage?: string } | null; translation?: { sourceLanguage?: string } | null } | null,
+): string => String(artifact?.data?.sourceLanguage || artifact?.translation?.sourceLanguage || 'en').toLowerCase();
+
 export type QuestionnaireTranslationDisplayState = 'not_needed' | 'ready' | 'translating' | 'failed' | 'not_started';
 
 export const getQuestionnaireTranslationDisplayState = (
