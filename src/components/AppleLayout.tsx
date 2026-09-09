@@ -321,7 +321,13 @@ const AppleLayout: React.FC = () => {
       const allowedPath = isMedicalGroupQuickAccessSession
         ? `/medical/review-groups/${user.medicalReviewGroupId}`
         : `/medical/review-requests/${user.medicalReviewRequestId}/edit`;
-      if (location.pathname !== allowedPath) {
+      // A grouped-link session is also allowed to open any individual review
+      // request from its packet -- ProtectedRoute already permits this path
+      // shape. Without this check, clicking a request from the packet list
+      // bounced straight back here before the request page could even load.
+      const isAllowedReviewRequestPath = isMedicalGroupQuickAccessSession
+        && /^\/medical\/review-requests\/[^/]+(?:\/edit)?$/.test(location.pathname);
+      if (location.pathname !== allowedPath && !isAllowedReviewRequestPath) {
         navigate(allowedPath, { replace: true });
       }
       return;
