@@ -256,6 +256,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
   const [deletingArtifact, setDeletingArtifact] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [translating, setTranslating] = useState(false);
+  const [assessing, setAssessing] = useState(false);
   const [translationLanguage, setTranslationLanguage] = useState('pl');
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [reviewRequests, setReviewRequests] = useState<MedicalReviewRequest[]>([]);
@@ -476,6 +477,17 @@ const MedicalArtifactDetailPage: React.FC = () => {
     }
   };
 
+  const handleAiAssessment = async () => {
+    if (!id) return;
+    setAssessing(true); setError(null);
+    try {
+      const response = await medicalArtifactsApi.generateAiAssessment(id, Boolean(artifact?.aiAssessment?.status === 'ready'));
+      setArtifact(response.data);
+    } catch (assessmentError: any) {
+      setError(assessmentError?.response?.data?.message || assessmentError?.message || 'AI assessment could not be generated.');
+    } finally { setAssessing(false); }
+  };
+
   if (loading) {
     return <LoadingSpinner message="Loading medical artifact..." />;
   }
@@ -525,6 +537,15 @@ const MedicalArtifactDetailPage: React.FC = () => {
           <div className="flex items-end gap-2"><label className="text-xs font-semibold text-blue-900">Original language<select value={translationLanguage} onChange={(event) => setTranslationLanguage(event.target.value)} className="mt-1 block rounded-md border border-blue-300 bg-white px-3 py-2 text-sm"><option value="pl">Polish</option><option value="cs">Czech</option><option value="de">German</option><option value="es">Spanish</option><option value="fr">French</option><option value="other">Other</option></select></label><button type="button" onClick={handleGenerateEnglish} disabled={translating} className="rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-60">{translating ? 'Generating…' : artifact.translation?.status === 'ready' ? 'Regenerate English' : 'Generate English'}</button></div>
         </div>
         {artifact.translation?.status === 'ready' && <div className="mt-3 rounded border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">AI-generated translation. The original signed submission remains authoritative.</div>}
+      </div>
+    )}
+    {['ekg', 'liver_panel'].includes(String(artifact.artifactType)) && (
+      <div className="mt-4 rounded-md border border-indigo-200 bg-indigo-50 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div><div className="font-semibold text-indigo-950">AI assessment</div><div className="mt-1 text-sm text-indigo-900">Clinical summary only; a medical advisor must make the final decision.</div></div>
+          <button type="button" onClick={handleAiAssessment} disabled={assessing} className="rounded-md bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-800 disabled:opacity-60">{assessing ? 'Assessing…' : artifact.aiAssessment?.status === 'ready' ? 'Re-run AI assessment' : 'Run AI assessment'}</button>
+        </div>
+        {artifact.aiAssessment?.status === 'ready' && <details className="mt-3 rounded border border-indigo-200 bg-white p-3"><summary className="cursor-pointer text-sm font-bold text-indigo-950">View assessment ({artifact.aiAssessment.assessedAt ? new Date(artifact.aiAssessment.assessedAt).toLocaleString() : 'saved'})</summary><div className="mt-2 space-y-2 text-sm text-gray-800">{!!artifact.aiAssessment.extractedValues?.length && <div><strong>Extracted values</strong><ul className="list-disc pl-5">{artifact.aiAssessment.extractedValues.map((item) => <li key={item.label}>{item.label}: {item.value}</li>)}</ul></div>}{!!artifact.aiAssessment.missingOrUnreadable?.length && <div><strong>Missing or unreadable</strong><ul className="list-disc pl-5">{artifact.aiAssessment.missingOrUnreadable.map((item) => <li key={item}>{item}</li>)}</ul></div>}{!!artifact.aiAssessment.potentialConcerns?.length && <div className="text-amber-800"><strong>Potential concerns</strong><ul className="list-disc pl-5">{artifact.aiAssessment.potentialConcerns.map((item) => <li key={item}>{item}</li>)}</ul></div>}<div className="border-t pt-2 text-xs font-semibold">Requires medical advisor review.</div></div></details>}
       </div>
     )}
     {artifact.classification?.status === 'flagged' && (

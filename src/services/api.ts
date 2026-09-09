@@ -952,6 +952,10 @@ export const medicalArtifactsApi = {
     cacheService.clearPattern('medical-artifacts:');
     return api.post<MedicalArtifact>(`/medical-artifacts/${id}/english-translation`, { sourceLanguage, force });
   },
+  generateAiAssessment: (id: string, force = false) => {
+    cacheService.clearPattern('medical-artifacts:');
+    return api.post<MedicalArtifact>(`/medical-artifacts/${id}/ai-assessment`, { force });
+  },
   getNextDisplayId: () => api.get<number>('/medical-artifacts/next-display-id'),
   getUploadTargetPreview: (artifactType: NonNullable<MedicalArtifact['artifactType']>, fileName?: string) => api.get<{
     storage: string;
