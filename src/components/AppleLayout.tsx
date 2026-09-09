@@ -162,6 +162,7 @@ const AppleLayout: React.FC = () => {
   const navigate = useNavigate();
 
   const isMedicalAdvisor = user?.role === 'medical_advisor';
+  const isMedicalReviewScreen = location.pathname.includes('/medical/review-requests') || location.pathname.includes('/medical-review-requests');
   const isMedicalQuickAccessSession = user?.accessType === 'medical_review_magic_link' && Boolean(user?.medicalReviewRequestId);
   const showQuickMenu = !isMedicalAdvisor;
 
@@ -625,8 +626,8 @@ const AppleLayout: React.FC = () => {
               </button>
             )}
             <button
+              className={isMedicalReviewScreen ? 'hidden' : 'pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-apple-gray-700 shadow-apple-sm backdrop-blur-apple transition-colors hover:bg-white'}
               onClick={() => setShowSettings(true)}
-              className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-apple-gray-700 shadow-apple-sm backdrop-blur-apple transition-colors hover:bg-white"
               aria-label="Currency converter"
               title="Revolut currency converter"
             >
@@ -686,8 +687,8 @@ const AppleLayout: React.FC = () => {
                 {/* Actions */}
               <div className="flex items-center gap-2">
                 <button
+                  className={isMedicalReviewScreen ? 'hidden' : 'inline-flex items-center gap-2 rounded-apple bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 transition-colors hover:bg-emerald-100'}
                   onClick={() => setShowSettings(true)}
-                  className="inline-flex items-center gap-2 rounded-apple bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 transition-colors hover:bg-emerald-100"
                   aria-label="Currency converter"
                   title="Revolut currency converter"
                 >
