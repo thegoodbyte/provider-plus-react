@@ -1048,6 +1048,20 @@ const MedicalArtifactsPage: React.FC = () => {
           </div>
         </div>
       )}
+      {quickMrrArtifact && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4" role="dialog" aria-modal="true" aria-label="Create quick medical review request">
+          <div className="w-full max-w-lg rounded-xl bg-white p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-4"><div><h2 className="text-lg font-bold text-slate-900">Quick MRR</h2><p className="mt-1 text-sm text-slate-500">Artifact #{quickMrrArtifact.display_id} · {getDocumentTypeLabel(quickMrrArtifact.documentType, quickMrrArtifact.artifactType)}</p></div><button type="button" onClick={() => setQuickMrrArtifact(null)} className="text-2xl leading-none text-slate-400 hover:text-slate-700" aria-label="Close">×</button></div>
+            <div className="mt-5 grid gap-4">
+              <label className="text-sm font-medium text-slate-700">Review type<select className="mt-1 w-full rounded-md border border-slate-300 p-2" value={quickMrrForm.requestType} onChange={(event) => setQuickMrrForm({ ...quickMrrForm, requestType: event.target.value as NonNullable<MedicalReviewRequest['requestType']> })}>{(quickMrrTypes.length ? quickMrrTypes : [{ key: 'general_clearance', label: 'General clearance' }]).map((type) => <option key={type.key} value={type.key}>{type.label}</option>)}</select></label>
+              <label className="text-sm font-medium text-slate-700">Medical advisor<select className="mt-1 w-full rounded-md border border-slate-300 p-2" value={quickMrrForm.advisorId} onChange={(event) => setQuickMrrForm({ ...quickMrrForm, advisorId: event.target.value })}><option value="">Select advisor</option>{quickMrrAdvisors.map((advisor) => <option key={advisor._id} value={advisor._id}>{[advisor.firstName, advisor.lastName].filter(Boolean).join(' ') || advisor.email}</option>)}</select></label>
+              <label className="text-sm font-medium text-slate-700">Review pocket<select className="mt-1 w-full rounded-md border border-slate-300 p-2" value={quickMrrForm.groupId} onChange={(event) => setQuickMrrForm({ ...quickMrrForm, groupId: event.target.value })}><option value="">Select pocket</option>{quickMrrGroups.map((group) => <option key={group._id} value={group._id}>{group.title}</option>)}</select></label>
+              <label className="flex items-center gap-2 rounded-md border border-blue-100 bg-blue-50 p-3 text-sm text-slate-700"><input type="checkbox" checked={quickMrrForm.notifyClient} onChange={(event) => setQuickMrrForm({ ...quickMrrForm, notifyClient: event.target.checked })} /> Notify client that the record was submitted for review</label>
+            </div>
+            <div className="mt-6 flex justify-end gap-2"><button type="button" onClick={() => setQuickMrrArtifact(null)} className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700">Cancel</button><button type="button" onClick={createQuickMrr} disabled={quickMrrSaving || !quickMrrForm.advisorId || !quickMrrForm.groupId} className="rounded-md bg-cyan-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">{quickMrrSaving ? 'Creating…' : 'Create MRR'}</button></div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
