@@ -553,6 +553,7 @@ const CommunicationsPage: React.FC = () => {
         autoCcEmail: settings?.autoCcEmail || 'info@ibogaspirit.cz',
         automatedBookingRemindersEnabled: settings?.automatedBookingRemindersEnabled === true,
         clientMedicalReviewEmailsEnabled: settings?.clientMedicalReviewEmailsEnabled !== false,
+        clientMedicalSubmittedEmailsEnabled: settings?.clientMedicalSubmittedEmailsEnabled !== false,
         clientMedicalApprovedEmailsEnabled: settings?.clientMedicalApprovedEmailsEnabled !== false,
         clientMedicalNeedsInfoEmailsEnabled: settings?.clientMedicalNeedsInfoEmailsEnabled === true,
         clientMedicalDeclinedEmailsEnabled: settings?.clientMedicalDeclinedEmailsEnabled === true,
@@ -560,6 +561,7 @@ const CommunicationsPage: React.FC = () => {
         medicalReviewEmailTestMode: settings?.medicalReviewEmailTestMode === true,
         medicalReviewEmailTestRecipient: settings?.medicalReviewEmailTestRecipient || '',
         medicalReviewApprovedTemplates: settings?.medicalReviewApprovedTemplates,
+        medicalReviewSubmittedTemplates: settings?.medicalReviewSubmittedTemplates,
         medicalReviewNeedsInfoTemplates: settings?.medicalReviewNeedsInfoTemplates,
         medicalReviewDeclinedTemplates: settings?.medicalReviewDeclinedTemplates,
       });
@@ -886,6 +888,7 @@ const CommunicationsPage: React.FC = () => {
               {[
                 ['clientMedicalReviewEmailsEnabled', 'Master email switch'],
                 ['clientMedicalApprovedEmailsEnabled', 'Approved emails'],
+                ['clientMedicalSubmittedEmailsEnabled', 'Submitted emails'],
                 ['clientMedicalNeedsInfoEmailsEnabled', 'Needs-info emails'],
                 ['clientMedicalDeclinedEmailsEnabled', 'Declined emails'],
                 ['medicalReviewInternalNotificationsEnabled', 'Internal RE notifications'],
@@ -903,6 +906,19 @@ const CommunicationsPage: React.FC = () => {
                 CC medical-review client emails
               </label>
               <label className="block"><span className="text-xs font-semibold uppercase text-blue-900">CC recipient</span><input type="email" className="mt-1 w-full rounded-md border border-blue-200 px-3 py-2 text-sm" value={settings?.medicalReviewClientCcEmail || 'info@ibogaspirit.cz'} onChange={(event) => setSettings((prev) => ({ ...(prev || {}), medicalReviewClientCcEmail: event.target.value }))} disabled={settings?.medicalReviewClientCcEnabled === false}/></label>
+            </div>
+            <h3 className="font-semibold text-gray-900">Submitted-for-review email templates</h3>
+            <div className="grid gap-4 lg:grid-cols-3">
+              {[['en','English'],['cs','Czech'],['pl','Polish']].map(([language, label]) => {
+                const defaults: any = {
+                  en: { subject: 'Your medical record was submitted for review', body: 'Your medical record - {{document.type}} has been submitted for review to our medical team.\n\nYou will receive another email once it has been approved, or hear from us if we need more information.\n\nDue to high demand, it may take a few days to review your file. Please be patient.' },
+                  cs: { subject: 'Váš zdravotní záznam byl odeslán ke kontrole', body: 'Váš zdravotní záznam - {{document.type}} byl odeslán ke kontrole našemu zdravotnímu týmu.\n\nDalší e-mail obdržíte po schválení, nebo se vám ozveme, pokud budeme potřebovat další informace.\n\nZ důvodu vysokého zájmu může kontrola vašeho souboru trvat několik dní. Prosíme o trpělivost.' },
+                  pl: { subject: 'Twój dokument medyczny został wysłany do weryfikacji', body: 'Twój dokument medyczny - {{document.type}} został wysłany do weryfikacji przez nasz zespół medyczny.\n\nOtrzymasz kolejny e-mail po jego zatwierdzeniu lub skontaktujemy się z Tobą, jeśli będziemy potrzebować dodatkowych informacji.\n\nZe względu na duże zainteresowanie weryfikacja może potrwać kilka dni. Prosimy o cierpliwość.' },
+                };
+                const template = settings?.medicalReviewSubmittedTemplates?.[language] || defaults[language];
+                const update = (field: 'subject'|'body', value: string) => setSettings((prev) => ({ ...(prev || {}), medicalReviewSubmittedTemplates: { ...(prev?.medicalReviewSubmittedTemplates || {}), [language]: { ...template, [field]: value } } }));
+                return <div key={language} className="rounded-md border p-3"><h3 className="font-semibold">{label}</h3><input className="mt-2 w-full rounded-md border px-3 py-2 text-sm" value={template.subject} onChange={(event) => update('subject', event.target.value)}/><textarea className="mt-2 min-h-36 w-full rounded-md border px-3 py-2 text-sm" value={template.body} onChange={(event) => update('body', event.target.value)}/></div>;
+              })}
             </div>
             <h3 className="font-semibold text-gray-900">Approved email templates</h3>
             <p className="text-xs text-gray-500">Available placeholders: <code>{'{{document.type}}'}</code>, <code>{'{{document.stage}}'}</code>, <code>{'{{client.firstName}}'}</code>, <code>{'{{review.number}}'}</code>, and <code>{'{{links.clientPortal}}'}</code>.</p>

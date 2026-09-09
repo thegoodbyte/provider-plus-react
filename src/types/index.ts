@@ -1329,6 +1329,9 @@ export interface MedicalReviewRequest {
   requestedAt?: Date | string;
   requestedBy?: string;
   sentForReviewAt?: Date | string;
+  notifyClientOnSubmission?: boolean;
+  clientSubmissionNotificationSentAt?: Date | string;
+  clientSubmissionNotificationKey?: string;
   requestedByUserId?: string | any;
   assignedTo?: string;
   assignedToUserId?: string | any;
@@ -1717,6 +1720,7 @@ export interface MailSettings {
   automatedBookingRemindersEnabled?: boolean;
   automationEnvironmentKillSwitch?: boolean;
   clientMedicalReviewEmailsEnabled?: boolean;
+  clientMedicalSubmittedEmailsEnabled?: boolean;
   clientMedicalApprovedEmailsEnabled?: boolean;
   clientMedicalNeedsInfoEmailsEnabled?: boolean;
   clientMedicalDeclinedEmailsEnabled?: boolean;
@@ -1726,6 +1730,7 @@ export interface MailSettings {
   medicalReviewClientCcEnabled?: boolean;
   medicalReviewClientCcEmail?: string;
   medicalReviewApprovedTemplates?: Record<string, { subject: string; body: string }>;
+  medicalReviewSubmittedTemplates?: Record<string, { subject: string; body: string }>;
   medicalReviewNeedsInfoTemplates?: Record<string, { subject: string; body: string }>;
   medicalReviewDeclinedTemplates?: Record<string, { subject: string; body: string }>;
   gmailUserEmail?: string;

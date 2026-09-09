@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner';
 import SearchableMedicalTrackingSelect from './SearchableMedicalTrackingSelect';
-import { clientsApi, medicalArtifactsApi, medicalReviewRequestsApi, medicalTrackingApi, retreatsApi } from '../services/api';
+import { clientsApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi, medicalTrackingApi, retreatsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { useAuth } from '../context/AuthContext';
 import { Client, MedicalArtifact, MedicalItem, MedicalReviewGroup, MedicalReviewRequest, Retreat } from '../types';
@@ -22,6 +22,7 @@ type FormState = {
   status: MedicalReviewRequest['status'];
   requestedBy: string;
   sentForReviewAt: string;
+  notifyClientOnSubmission: boolean;
   assignedTo: string;
   assignedToUserId: string;
   reviewDecision: 'OK' | 'caution' | 'more_info_needed' | 'NOT OK' | '';
@@ -155,6 +156,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
     status: 'pending',
     requestedBy: 'Provider Plus CRM',
     sentForReviewAt: '',
+    notifyClientOnSubmission: true,
     assignedTo: '',
     assignedToUserId: '',
     reviewDecision: '',
@@ -175,7 +177,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
   const loadData = async () => {
     try {
       setLoading(true);
-      const [trackingResponse, clientsResponse, retreatsResponse, groupsResponse, nextDisplayResponse, usersResponse, artifactResponse, requestTypesResponse] = await Promise.all([
+      const [trackingResponse, clientsResponse, retreatsResponse, groupsResponse, nextDisplayResponse, usersResponse, artifactResponse, requestTypesResponse, communicationSettingsResponse] = await Promise.all([
         medicalTrackingApi.getAll(),
         clientsApi.getAll(),
         retreatsApi.getAll(),
@@ -184,6 +186,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
         usersApi.getAll().catch(() => ({ data: [] as User[] })),
         artifactId ? medicalArtifactsApi.getOne(artifactId).catch(() => null) : Promise.resolve(null),
         medicalReviewRequestsApi.getRequestTypes(),
+        communicationsApi.getSettings().catch(() => ({ data: {} as any })),
       ]);
 
       const clientById = new Map<string | undefined, Client>((clientsResponse.data || []).map((client: Client) => [client._id, client]));
@@ -207,6 +210,9 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
       setMedicalUsers((usersResponse.data || []).filter((item) => item.role === 'medical_advisor' && item.isActive !== false));
       setRequestNumber(nextDisplayResponse.data || null);
       setRequestTypes(requestTypesResponse.data || []);
+      if (!isEdit) {
+        setForm((previous) => ({ ...previous, notifyClientOnSubmission: communicationSettingsResponse.data?.clientMedicalSubmittedEmailsEnabled !== false }));
+      }
       if (!isEdit && !artifactResponse?.data && requestTypesResponse.data?.length) {
         setForm((previous) => requestTypesResponse.data.some((type) => type.key === previous.requestType)
           ? previous
@@ -242,6 +248,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           status: record.status,
           requestedBy: record.requestedBy || '',
           sentForReviewAt: record.sentForReviewAt ? new Date(record.sentForReviewAt).toISOString() : '',
+          notifyClientOnSubmission: record.notifyClientOnSubmission !== false,
           assignedTo: record.assignedTo || '',
           assignedToUserId: typeof record.assignedToUserId === 'string' ? record.assignedToUserId : record.assignedToUserId?._id || '',
           reviewDecision: record.reviewDecision || '',
@@ -365,6 +372,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           status: form.status,
           requestedBy: form.requestedBy,
           ...(form.sentForReviewAt ? { sentForReviewAt: form.sentForReviewAt } : {}),
+          notifyClientOnSubmission: form.notifyClientOnSubmission,
           assignedTo: form.assignedTo,
           assignedToUserId: form.assignedToUserId,
           reviewDecision: form.reviewDecision || undefined,
@@ -393,6 +401,7 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
           overallNotes: form.overallNotes,
           medicalStaffNotes: form.medicalStaffNotes,
           ...(form.sentForReviewAt ? { sentForReviewAt: form.sentForReviewAt } : {}),
+          notifyClientOnSubmission: form.notifyClientOnSubmission,
         };
         if (selectedArtifact?._id) {
           await medicalReviewRequestsApi.createFromArtifact(selectedArtifact._id, form.requestType, payload);
@@ -596,10 +605,15 @@ const MedicalReviewRequestEditorPage: React.FC = () => {
                 className="mt-1 h-4 w-4"
               />
               <span>
-                <span className="block font-medium text-gray-900">Notify the reviewer now</span>
-                <span className="block text-xs text-gray-500">
-                  {form.sentForReviewAt ? `Notification scheduled ${new Date(form.sentForReviewAt).toLocaleString()}` : 'Sends the packet by email as soon as the request is created.'}
-                </span>
+                <span className="block font-medium text-gray-900">Notify medical reviewer now</span>
+                <span className="block text-xs text-gray-500">Sends the review assignment email when the request is created.</span>
+              </span>
+            </label>
+            <label className="mrr-notify-option">
+              <input type="checkbox" checked={form.notifyClientOnSubmission} onChange={(e) => setForm((prev) => ({ ...prev, notifyClientOnSubmission: e.target.checked }))} className="mt-1 h-4 w-4" />
+              <span>
+                <span className="block font-medium text-gray-900">Notify client when submitted</span>
+                <span className="block text-xs text-gray-500">Sends the configured “submitted for review” email to the client when this MRR is sent.</span>
               </span>
             </label>
           </section>
