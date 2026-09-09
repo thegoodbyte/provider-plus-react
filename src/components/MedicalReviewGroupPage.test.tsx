@@ -87,4 +87,16 @@ describe('MedicalReviewGroupPage', () => {
     await waitFor(() => expect(screen.queryByText('Omar D.')).not.toBeInTheDocument());
     expect(screen.getByText('Maria S.')).toBeInTheDocument();
   });
+
+  it('lets an admin copy the plain, login-gated packet URL (not a token link) to share', async () => {
+    (useAuth as jest.Mock).mockReturnValue({ user: { role: 'admin' } });
+    const writeText = jest.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    renderPage();
+    await screen.findByText('Maria S.');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Copy packet link' }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(`${window.location.origin}/medical/review-groups/group-1`));
+  });
 });

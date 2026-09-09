@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { FiAlertTriangle, FiCheck, FiChevronDown, FiChevronRight, FiClock, FiEdit2, FiFileText, FiFolder, FiPlus, FiSliders, FiThumbsDown, FiThumbsUp, FiTrash2 } from 'react-icons/fi';
+import { FiAlertTriangle, FiCheck, FiChevronDown, FiChevronRight, FiClock, FiCopy, FiEdit2, FiFileText, FiFolder, FiPlus, FiSliders, FiThumbsDown, FiThumbsUp, FiTrash2 } from 'react-icons/fi';
 import { Activity, Droplets, FileText } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
 import ResponsiveModal from './ResponsiveModal';
@@ -142,6 +142,16 @@ const MedicalReviewGroupPage: React.FC = () => {
       title: 'Remove MRR from packet?',
       message: 'The review request will stay in the system. Only the packet link will be updated.',
     });
+  };
+
+  const copyPacketLink = async () => {
+    if (!group?._id) return;
+    const url = `${window.location.origin}/medical/review-groups/${group._id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      window.prompt('Copy packet link', url);
+    }
   };
 
   const deletePacket = async () => {
@@ -365,6 +375,15 @@ const MedicalReviewGroupPage: React.FC = () => {
                 <h1 className={`text-2xl font-semibold ${pendingRequestCount ? 'text-gray-900' : 'text-gray-400'}`}>{group?.title || 'Medical review packet'}</h1>
                 {canManageGroup && (
                   <>
+                    <button
+                      type="button"
+                      onClick={copyPacketLink}
+                      className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+                      aria-label="Copy packet link"
+                      title="Copy packet link"
+                    >
+                      <Icon icon={FiCopy} className="h-4 w-4" />
+                    </button>
                     <button
                       type="button"
                       onClick={openAddModal}

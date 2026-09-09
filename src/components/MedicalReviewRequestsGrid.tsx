@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FiAlertTriangle, FiCheck, FiChevronDown, FiChevronRight, FiClock, FiDownload, FiEye, FiEdit2, FiFolder, FiLink, FiLock, FiMenu, FiPlus, FiRefreshCw, FiSearch, FiThumbsDown, FiThumbsUp, FiTrash2, FiUnlock, FiX, FiZap } from 'react-icons/fi';
+import { FiAlertTriangle, FiCheck, FiChevronDown, FiChevronRight, FiClock, FiCopy, FiDownload, FiEye, FiEdit2, FiFolder, FiLink, FiLock, FiMenu, FiPlus, FiRefreshCw, FiSearch, FiThumbsDown, FiThumbsUp, FiTrash2, FiUnlock, FiX, FiZap } from 'react-icons/fi';
 import LoadingSpinner from './LoadingSpinner';
 import ClientAvatar from './ClientAvatar';
 import MedicalReviewTypeBadge from './MedicalReviewTypeBadge';
@@ -472,6 +472,19 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     if (!window.confirm('Delete this review request?')) return;
     await medicalReviewRequestsApi.delete(id);
     await loadData();
+  };
+
+  const copyPacketLink = async (group: MedicalReviewGroup) => {
+    if (!group._id) return;
+    // Always the /medical/... path -- a medical_advisor login can't reach
+    // /admin/medical-review-groups/:id, so that's the one URL that works
+    // for whoever this link actually gets sent to.
+    const url = `${window.location.origin}/medical/review-groups/${group._id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      window.prompt('Copy packet link', url);
+    }
   };
 
   const downloadPendingArtifacts = async (group: MedicalReviewGroup) => {
@@ -1034,6 +1047,20 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
+                    {canManageRequests && group._id && (
+                      <button
+                        type="button"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void copyPacketLink(group);
+                        }}
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-200 bg-white text-blue-700 hover:bg-blue-50"
+                        title={`Copy link to ${group.title}`}
+                        aria-label={`Copy link to ${group.title}`}
+                      >
+                        <Icon icon={FiCopy} className="h-3.5 w-3.5" />
+                      </button>
+                    )}
                     {canManageRequests && group._id && (
                       <button
                         type="button"
