@@ -539,7 +539,7 @@ const MedicalReviewGroupPage: React.FC = () => {
                         <div className="min-w-0">
                           <button
                             type="button"
-                            onClick={() => navigate(`/medical/review-requests/${request._id}/edit`)}
+                            onClick={() => navigate(`/medical/review-requests/${request._id}`)}
                             className="text-left text-sm font-bold text-cyan-800 hover:underline"
                           >
                             #{request.display_id || '-'}
@@ -563,7 +563,7 @@ const MedicalReviewGroupPage: React.FC = () => {
                           <div className="flex flex-wrap gap-2">
                             <button
                               type="button"
-                              onClick={() => navigate(`/medical/review-requests/${request._id}/edit`)}
+                              onClick={() => navigate(`/medical/review-requests/${request._id}`)}
                               className="rounded-none bg-cyan-700 px-3 py-3 text-xs font-bold text-white hover:bg-cyan-800 md:rounded-md md:py-2"
                             >
                               Open review
