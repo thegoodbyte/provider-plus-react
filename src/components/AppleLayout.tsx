@@ -602,7 +602,7 @@ const AppleLayout: React.FC = () => {
         <div className="fixed left-4 right-4 top-4 z-40 flex items-center justify-between md:hidden pointer-events-none">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-apple-gray-700 shadow-apple-sm backdrop-blur-apple transition-colors hover:bg-white"
+            className={isMedicalReviewScreen ? 'pointer-events-auto fixed right-4 top-4 z-50 inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-apple-gray-700 shadow-apple-sm backdrop-blur-apple transition-colors hover:bg-white' : 'pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-apple-gray-700 shadow-apple-sm backdrop-blur-apple transition-colors hover:bg-white'}
             aria-label="Toggle menu"
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

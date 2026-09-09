@@ -229,6 +229,9 @@ body.medical-review-capture-mode .medical-review-page .overflow-y-auto {
 .mrr-mobile-view-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: .25rem; padding: .2rem; border: 1px solid #dbe2ea; border-radius: .65rem; background: #f8fafc; }
 .mrr-mobile-view-toggle button { padding: .42rem .6rem; border: 0; border-radius: .45rem; background: transparent; color: #64748b; font-size: .72rem; font-weight: 750; }
 .mrr-mobile-view-toggle button.is-active { background: #2563eb; color: #fff; box-shadow: 0 2px 5px rgba(37,99,235,.2); }
+.mrr-review-navigation { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .4rem; }
+.mrr-review-navigation button { min-height: 2.5rem; border: 1px solid #bfdbfe; border-radius: .55rem; background: #eff6ff; color: #1d4ed8; font-size: .72rem; font-weight: 750; }
+.mrr-review-navigation button:disabled { opacity: .4; }
 .mrr-mobile-artifact-strip.is-list { display: block; overflow: visible; }
 .mrr-mobile-artifact-strip.is-list .mrr-mobile-artifact-slide { margin-bottom: .75rem; }
 @media (max-width: 640px) {

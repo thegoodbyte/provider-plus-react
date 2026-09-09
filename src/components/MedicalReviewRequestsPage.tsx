@@ -1313,6 +1313,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
     if (today < new Date(today.getFullYear(), date.getMonth(), date.getDate())) age -= 1;
     return age > 0 ? `${age}` : '';
   })();
+  const selectedClientGender = String((reviewContext?.client as any)?.gender || (reviewContext?.client as any)?.screeningData?.gender || '').trim();
   const retreatStartDate = (() => {
     const retreat: any = typeof selected?.retreatId === 'object' ? selected.retreatId : (reviewContext as any)?.booking?.retreat;
     const value = retreat?.startDate || retreat?.dateFrom || retreat?.checkInDate;
@@ -1327,6 +1328,18 @@ const MedicalReviewRequestsPage: React.FC = () => {
       ].filter((artifactId): artifactId is string => Boolean(artifactId))))
     : [];
   const artifactRoutePrefix = isMedicalRoute ? '/medical' : '/admin';
+  const selectedRequestIndex = selected ? requests.findIndex((request) => request._id === selected._id) : -1;
+  const previousRequest = selectedRequestIndex > 0 ? requests[selectedRequestIndex - 1] : undefined;
+  const nextRequest = selectedRequestIndex >= 0 ? requests[selectedRequestIndex + 1] : undefined;
+  const reviewListPath = isMedicalRoute ? '/medical/review-requests' : '/admin/medical-review-requests';
+  const reviewNav = (request?: MedicalReviewRequest) => request?._id && navigate(`${reviewListPath}/${request._id}`);
+  const navigationControls = (className = '') => isDetailView && selected ? (
+    <div className={`mrr-review-navigation ${className}`}>
+      <button type="button" disabled={!previousRequest} onClick={() => reviewNav(previousRequest)}>← Previous</button>
+      <button type="button" onClick={() => navigate(reviewListPath)}>↑ List view</button>
+      <button type="button" disabled={!nextRequest} onClick={() => reviewNav(nextRequest)}>Next →</button>
+    </div>
+  ) : null;
 
   return (
     <div className="medical-review-page overflow-x-hidden p-0 sm:p-6">
@@ -1342,12 +1355,13 @@ const MedicalReviewRequestsPage: React.FC = () => {
           </div>
         </div>
       )}
+      {navigationControls('mb-3 sm:hidden')}
       <div className="mb-4 flex items-start justify-between gap-4 sm:mb-6">
         <div>
           <h1 className="text-xl font-semibold leading-tight text-gray-900 sm:text-2xl">
             {isDetailView && selected ? (
               <>
-                <span className="sm:hidden">{selectedClientName}{selectedClientAge ? ` · ${selectedClientAge}` : ''}</span>
+                <span className="sm:hidden">{selectedClientName}{selectedClientAge ? ` · ${selectedClientAge} yo` : ''}{selectedClientGender ? ` · ${selectedClientGender}` : ''}</span>
                 <span className="hidden sm:inline">Medical Review</span>
               </>
             ) : 'Medical Review Requests'}
@@ -1357,9 +1371,14 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   <div className="hidden text-base font-medium text-gray-900 sm:block sm:text-lg">{selectedClientName}</div>
                   <div className="text-sm text-gray-600">{formatCompactDocumentMeta(selected) || getRequestTypeLabel(selected.requestType)}</div>
                   {retreatStartDate && <div className="mt-1 text-xs font-medium text-gray-500">Retreat starts {retreatStartDate}</div>}
-                  <button type="button" className="mrr-related-mobile-toggle sm:hidden" onClick={() => setRelatedRecordsOpen((open) => !open)} aria-expanded={relatedRecordsOpen} aria-controls="mrr-related-records">
-                    <FileText size={15} /> Related records <ChevronDown size={13} className={relatedRecordsOpen ? 'rotate-180' : ''} />
-                  </button>
+                  <div className="mt-2 flex flex-wrap gap-2 sm:hidden">
+                    <button type="button" className="mrr-related-mobile-toggle" onClick={() => setRelatedRecordsOpen((open) => !open)} aria-expanded={relatedRecordsOpen} aria-controls="mrr-related-records">
+                      <FileText size={15} /> Related reviews <ChevronDown size={13} className={relatedRecordsOpen ? 'rotate-180' : ''} />
+                    </button>
+                    <button type="button" className="mrr-related-mobile-toggle" onClick={() => document.getElementById('mobile-additional-info')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+                      Additional information <ChevronDown size={13} />
+                    </button>
+                  </div>
                 </div>
               ) : (
             <p className="text-sm text-gray-600">
@@ -1369,7 +1388,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
           {isDetailView && selected && (
             <div className="mt-2 hidden flex-wrap items-center gap-2 text-xs text-gray-500 sm:flex">
               <span>Request #{selected.display_id || '—'}</span>
-              <button type="button" className="mrr-related-inline-toggle" onClick={() => setRelatedRecordsOpen((open) => !open)} aria-expanded={relatedRecordsOpen}><FileText size={13} /> Related records <ChevronDown size={12} className={relatedRecordsOpen ? 'rotate-180' : ''} /></button>
+              <button type="button" className="mrr-related-inline-toggle" onClick={() => setRelatedRecordsOpen((open) => !open)} aria-expanded={relatedRecordsOpen}><FileText size={13} /> Related reviews <ChevronDown size={12} className={relatedRecordsOpen ? 'rotate-180' : ''} /></button>
               <span>
                 {selected.createdAt
                   ? `Created ${formatDateTime(selected.createdAt)}`
@@ -1549,9 +1568,6 @@ const MedicalReviewRequestsPage: React.FC = () => {
             {isDetailView && (
               <div className="space-y-3 sm:hidden">
                 <section className="mrr-mobile-artifact-section overflow-hidden">
-                  <div className="px-0 py-2 text-base font-bold text-gray-900">
-                    {formatCompactDocumentMeta(selected) || getRequestTypeLabel(selected.requestType)} · MRR #{selected.display_id || '—'}
-                  </div>
                   <div className="mrr-mobile-artifact-strip p-2">
                     {linkedArtifacts.length === 0 ? (
                       <div className="p-3 text-sm text-gray-500">No linked document is available.</div>
@@ -1559,7 +1575,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                       <div key={artifact._id} className="mrr-mobile-artifact-slide min-w-0 space-y-2">
                         <div className="flex items-center gap-2 px-1 text-base font-bold text-blue-900">
                           <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700"><FileText size={19} /></span>
-                          {getArtifactTypeLabel(artifact.artifactType)}{artifact.title ? ` · ${artifact.title}` : ''}
+                          <span className="sr-only">{getArtifactTypeLabel(artifact.artifactType)}</span>
                         </div>
                         {artifact.textContent && (
                           <div className="whitespace-pre-wrap rounded-md bg-gray-50 p-2 text-xs text-gray-700">{artifact.textContent}</div>
@@ -1647,7 +1663,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   )}
                 </section>
 
-                <details className="mrr-mobile-additional-info">
+                <details id="mobile-additional-info" className="mrr-mobile-additional-info">
                   <summary className="cursor-pointer py-3 text-sm font-semibold text-gray-900">Additional information</summary>
                   <div className="space-y-3 py-3 text-sm">
                     <div className="grid grid-cols-2 gap-2 text-xs">
@@ -2264,6 +2280,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   {validationError}
                 </div>
               )}
+
+              {navigationControls('mt-3 sm:hidden')}
 
               <div className="flex items-center justify-between gap-3">
                 <div className="text-xs text-gray-500">
