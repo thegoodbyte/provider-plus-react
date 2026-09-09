@@ -679,7 +679,7 @@ const MedicalArtifactsPage: React.FC = () => {
                     <button
                       type="button"
                       title="View artifact"
-                      onClick={() => navigate(`${artifact._id}?quickMrr=1`)}
+                      onClick={() => navigate(`${artifact._id}`)}
                       className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                     >
                       <Eye className="h-3.5 w-3.5" />
@@ -697,7 +697,7 @@ const MedicalArtifactsPage: React.FC = () => {
                     <button
                       type="button"
                       title="Quick MRR"
-                      onClick={() => navigate(`${artifact._id}`)}
+                      onClick={() => navigate(`${artifact._id}?quickMrr=1`)}
                       disabled={!artifact._id}
                       className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 disabled:opacity-50"
                     >
