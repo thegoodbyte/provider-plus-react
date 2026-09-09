@@ -75,7 +75,7 @@ export const isBookingDocumentFilePreviewable = (file: BookingDocumentFile) => i
 // BookingDocumentTranslationService on the backend) -- these can be shown as
 // HTML built straight from that data, and translated to English on demand,
 // instead of relying on the flat uploaded PDF.
-const HTML_VIEW_DOCUMENT_TYPES = new Set(['contract', 'questionnaire', 'health_questionnaire', 'food_intake', 'food_form']);
+const HTML_VIEW_DOCUMENT_TYPES = new Set(['contract', 'questionnaire', 'health_questionnaire', 'food_intake', 'food_form', 'medications_form', 'medication_list']);
 export const isHtmlViewSupported = (documentType?: string) => HTML_VIEW_DOCUMENT_TYPES.has(normalizeKey(documentType));
 
 const documentLanguageLabels: Record<string, string> = { en: 'English', pl: 'Polish', cs: 'Czech' };
