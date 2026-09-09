@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, Eye, FileText, HeartPulse, Leaf, Pencil, Plus, RefreshCw, Send, Trash2, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Eye, FileText, HeartPulse, Leaf, Pencil, Plus, RefreshCw, Send, Trash2, XCircle, Zap } from 'lucide-react';
 import { medicalArtifactsApi, medicalReviewRequestsApi, retreatsApi } from '../services/api';
 import { Client, MedicalArtifact, MedicalReviewRequest, Retreat, RetreatArtifactSubmissionRow, RetreatArtifactSubmissionsResponse, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
@@ -13,7 +13,7 @@ const artifactTypeLabels: Record<NonNullable<MedicalArtifact['artifactType']>, s
   liver_panel: 'Liver Panel',
   medications_form: 'Medications Form',
   medication_list: 'Medication List',
-  questionnaire: 'Questionnaire',
+  questionnaire: 'Health Questionnaire',
   food_intake: 'Food Intake',
   contract: 'Contract',
   question: 'Question',
@@ -694,6 +694,15 @@ const MedicalArtifactsPage: React.FC = () => {
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </button>
+                    <button
+                      type="button"
+                      title="Quick MRR"
+                      onClick={() => navigate(`${artifact._id}`)}
+                      disabled={!artifact._id}
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                    >
+                      <Zap className="h-3.5 w-3.5" />
+                    </button>
                     {latestReview?._id ? (
                       <button
                         type="button"
@@ -790,7 +799,7 @@ const MedicalArtifactsPage: React.FC = () => {
             <div className="p-3">
               <div className="flex gap-3"><div className="flex h-16 w-14 shrink-0 items-center justify-center rounded border border-slate-200 text-xs font-bold text-slate-400">PDF</div><div className="min-w-0"><button type="button" onClick={() => navigate(`${artifact._id}`)} className="text-left text-lg font-bold text-cyan-700">{getClientName(artifact.clientId)}</button><div className="text-sm text-slate-500">Client #{typeof artifact.clientId === 'object' ? artifact.clientId.display_id || String(getObjectId(artifact.clientId) || '').slice(-6) : String(getObjectId(artifact.clientId) || '').slice(-6)}</div><div className="text-sm text-slate-500">{getBookingLabel(artifact.bookingId) || 'No booking linked'}</div></div></div>
               <div className="mt-3 border-t border-slate-100 pt-3"><div className="flex items-center gap-2 text-base font-semibold text-slate-800"><compactDocumentType.Icon className="h-4 w-4" />{getDocumentTypeLabel(artifact.documentType, artifact.artifactType)}</div><div className="text-sm text-slate-500">{artifact.title || 'Medical artifact'} · {artifact.files?.length || 0} file(s)</div><div className="mt-2 text-sm text-slate-600">{latestReview ? `${latestReview.requestType?.replace(/_/g, ' ')} · ${latestReview.status || 'pending'}` : 'No review request yet'}</div>{latestReview?._id && <button type="button" onClick={() => navigate(`/admin/medical-review-requests/${latestReview._id}`)} className="mt-1 text-sm font-semibold text-cyan-700">Open {getReviewLabel(latestReview)}</button>}</div>
-              <div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => navigate(`${artifact._id}`)} className="rounded border border-slate-300 px-3 py-2 text-sm font-semibold">View</button><button type="button" onClick={() => navigate(`${artifact._id}/edit`)} className="rounded border border-slate-300 px-3 py-2 text-sm font-semibold">Edit</button></div>
+              <div className="mt-3 grid grid-cols-3 gap-2"><button type="button" onClick={() => navigate(`${artifact._id}`)} className="rounded border border-slate-300 px-3 py-2 text-sm font-semibold">View</button><button type="button" onClick={() => navigate(`${artifact._id}`)} className="inline-flex items-center justify-center gap-1 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800"><Zap className="h-3.5 w-3.5" />Quick MRR</button><button type="button" onClick={() => navigate(`${artifact._id}/edit`)} className="rounded border border-slate-300 px-3 py-2 text-sm font-semibold">Edit</button></div>
             </div>
           </article>;
         })}

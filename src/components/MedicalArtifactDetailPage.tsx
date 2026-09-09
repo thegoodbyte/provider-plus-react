@@ -391,6 +391,12 @@ const MedicalArtifactDetailPage: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    if (!artifact || isEditMode || quickMrrOpen || new URLSearchParams(location.search).get('quickMrr') !== '1') return;
+    void openQuickMrr();
+    navigate(location.pathname, { replace: true });
+  }, [artifact, isEditMode, quickMrrOpen, location.pathname, location.search, navigate]);
+
   const createQuickMrr = async () => {
     if (!artifact?._id || !quickMrr.advisorId || !quickMrr.groupId) return;
     setQuickMrrSaving(true);
