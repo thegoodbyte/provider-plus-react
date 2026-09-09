@@ -23,6 +23,7 @@ function AppContent() {
   const { isAuthenticated, user, loading } = useAuth();
   const location = useLocation();
   const isPublicMedicalReviewRoute = location.pathname.startsWith('/medical-review-access/')
+    || location.pathname.startsWith('/medical/review-groups/access/')
     || location.pathname.startsWith('/medical-review-group-access/')
     || location.pathname.startsWith('/medical/review-link/')
     || location.pathname.startsWith('/clients/contracts/jotform/link/');
@@ -59,6 +60,7 @@ function AppContent() {
       <Routes>
         <Route path="/medical-review-access/:token/:label" element={<MedicalReviewAccessPage />} />
         <Route path="/medical-review-access/:token" element={<MedicalReviewAccessPage />} />
+        <Route path="/medical/review-groups/access/:token" element={<MedicalReviewGroupAccessPage />} />
         <Route path="/medical-review-group-access/:token" element={<MedicalReviewGroupAccessPage />} />
         <Route path="/medical/review-link/:token" element={<MedicalReviewPublicPage />} />
         <Route path="/clients/contracts/jotform/link/:bookingId" element={<ContractRedirectPage />} />

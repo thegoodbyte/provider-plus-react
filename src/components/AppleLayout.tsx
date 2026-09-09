@@ -802,6 +802,7 @@ const AppleLayout: React.FC = () => {
                 <Route path="/medical/review-link/:token" element={<MedicalReviewPublicPage />} />
                 <Route path="/medical-review-access/:token/:label" element={<MedicalReviewAccessPage />} />
                 <Route path="/medical-review-access/:token" element={<MedicalReviewAccessPage />} />
+                <Route path="/medical/review-groups/access/:token" element={<MedicalReviewGroupAccessPage />} />
                 <Route path="/medical-review-group-access/:token" element={<MedicalReviewGroupAccessPage />} />
                 <Route path="/users/forgot-password" element={<ForgotPassword />} />
                 <Route path="/users/forgot-pasword" element={<ForgotPassword />} />

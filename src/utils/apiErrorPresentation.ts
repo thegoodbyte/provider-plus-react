@@ -1,5 +1,6 @@
 export const isMedicalReviewPacketPath = (pathname: string) => (
   pathname.startsWith('/medical/review-groups/')
+  || pathname.startsWith('/medical/review-groups/access/')
   || pathname.startsWith('/medical-review-group-access/')
 );
 
