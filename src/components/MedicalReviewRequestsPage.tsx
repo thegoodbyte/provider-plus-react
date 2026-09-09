@@ -460,7 +460,6 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [medicalStaffNotes, setMedicalStaffNotes] = useState('');
   const [savingReview, setSavingReview] = useState(false);
   const [nextReviewPrompt, setNextReviewPrompt] = useState<{ remaining: number; nextId?: string } | null>(null);
-  const [mobileReviewMode, setMobileReviewMode] = useState<'full' | 'list'>('full');
   const [resettingReview, setResettingReview] = useState(false);
   const [clientVisibleAdminNote, setClientVisibleAdminNote] = useState('');
   const [savingClientVisibleAdminNote, setSavingClientVisibleAdminNote] = useState(false);
@@ -1190,6 +1189,16 @@ const MedicalReviewRequestsPage: React.FC = () => {
         ? `${selected.clientId.firstName} ${selected.clientId.lastName || ''}`.trim()
         : 'Unknown client'
     : '';
+  const selectedClientAge = (() => {
+    const dob = reviewContext?.client?.dateOfBirth || reviewContext?.client?.birthDate || reviewContext?.client?.screeningData?.dateOfBirth;
+    if (!dob) return '';
+    const date = new Date(dob);
+    if (Number.isNaN(date.getTime())) return '';
+    const today = new Date();
+    let age = today.getFullYear() - date.getFullYear();
+    if (today < new Date(today.getFullYear(), date.getMonth(), date.getDate())) age -= 1;
+    return age > 0 ? `${age}` : '';
+  })();
   const isMissingOverallDecision = Boolean(validationError && !reviewDecision);
   const isMissingMedicalStaffNotes = Boolean(validationError && medicalStaffNotes.trim().length < 2);
   const originalArtifactIds = selected
@@ -1219,7 +1228,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
           <h1 className="text-xl font-semibold leading-tight text-gray-900 sm:text-2xl">
             {isDetailView && selected ? (
               <>
-                <span className="sm:hidden">{selectedClientName} · MRR #{selected.display_id || '—'}</span>
+                <span className="sm:hidden">{selectedClientName}{selectedClientAge ? ` · ${selectedClientAge}` : ''}</span>
                 <span className="hidden sm:inline">Medical Review</span>
               </>
             ) : 'Medical Review Requests'}
@@ -1419,15 +1428,11 @@ const MedicalReviewRequestsPage: React.FC = () => {
             <>
             {isDetailView && (
               <div className="space-y-3 sm:hidden">
-                <div className="mrr-mobile-view-toggle" role="group" aria-label="Review layout">
-                  <button type="button" className={mobileReviewMode === 'full' ? 'is-active' : ''} onClick={() => setMobileReviewMode('full')}>Full view</button>
-                  <button type="button" className={mobileReviewMode === 'list' ? 'is-active' : ''} onClick={() => setMobileReviewMode('list')}>List view</button>
-                </div>
                 <section className="overflow-hidden rounded-lg border border-gray-200 bg-white">
                   <div className="border-b border-gray-200 px-3 py-2 text-sm font-semibold text-gray-900">
-                    {formatCompactDocumentMeta(selected) || getRequestTypeLabel(selected.requestType)}
+                    {formatCompactDocumentMeta(selected) || getRequestTypeLabel(selected.requestType)} · MRR #{selected.display_id || '—'}
                   </div>
-                  <div className={`mrr-mobile-artifact-strip p-2 ${mobileReviewMode === 'list' ? 'is-list' : ''}`}>
+                  <div className="mrr-mobile-artifact-strip p-2">
                     {linkedArtifacts.length === 0 ? (
                       <div className="p-3 text-sm text-gray-500">No linked document is available.</div>
                     ) : linkedArtifacts.map((artifact) => (
