@@ -1331,7 +1331,10 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const selectedRequestIndex = selected ? requests.findIndex((request) => request._id === selected._id) : -1;
   const previousRequest = selectedRequestIndex > 0 ? requests[selectedRequestIndex - 1] : undefined;
   const nextRequest = selectedRequestIndex >= 0 ? requests[selectedRequestIndex + 1] : undefined;
-  const reviewListPath = isMedicalRoute ? '/medical/review-requests' : '/admin/medical-review-requests';
+  const returnToPath = typeof (location.state as any)?.returnTo === 'string' && (location.state as any).returnTo.includes('/medical/review-groups/')
+    ? (location.state as any).returnTo
+    : '';
+  const reviewListPath = returnToPath || (isMedicalRoute ? '/medical/review-requests' : '/admin/medical-review-requests');
   const reviewNav = (request?: MedicalReviewRequest) => request?._id && navigate(`${reviewListPath}/${request._id}`);
   const navigationControls = (className = '') => isDetailView && selected ? (
     <div className={`mrr-review-navigation ${className}`}>

@@ -487,7 +487,7 @@ const MedicalReviewGroupPage: React.FC = () => {
                       <React.Fragment key={request._id}>
                         <button
                           type="button"
-                          onClick={() => navigate(`/medical/review-requests/${request._id}`)}
+                          onClick={() => navigate(`/medical/review-requests/${request._id}`, { state: { returnTo: location.pathname } })}
                           className="flex w-full items-center gap-3 border-b border-gray-100 bg-white px-4 py-4 text-left last:border-b-0 md:hidden"
                         >
                           <span className="w-5 shrink-0 text-sm font-semibold text-gray-400">{rowNumber}</span>
@@ -520,7 +520,7 @@ const MedicalReviewGroupPage: React.FC = () => {
                         <div className="min-w-0">
                           <button
                             type="button"
-                            onClick={() => navigate(`/medical/review-requests/${request._id}`)}
+                            onClick={() => navigate(`/medical/review-requests/${request._id}`, { state: { returnTo: location.pathname } })}
                             className="text-left text-sm font-bold text-cyan-800 hover:underline"
                           >
                             #{request.display_id || '-'}
@@ -544,7 +544,7 @@ const MedicalReviewGroupPage: React.FC = () => {
                           <div className="flex flex-wrap gap-2">
                             <button
                               type="button"
-                              onClick={() => navigate(`/medical/review-requests/${request._id}`)}
+                            onClick={() => navigate(`/medical/review-requests/${request._id}`, { state: { returnTo: location.pathname } })}
                               className="rounded-md bg-cyan-700 px-3 py-2 text-xs font-bold text-white hover:bg-cyan-800"
                             >
                               Open review
