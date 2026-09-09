@@ -54,6 +54,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   const userRole = user.role;
+  // Medical advisors on a magic-link/group-link quick-access session have no
+  // password -- /login is a dead end for them. Straying outside the allowed
+  // path (a stray click, a bounce during a redirect, a stale bookmark) should
+  // bounce them back to the one page they DO have valid access to, not
+  // destroy their session. Only an actually broken session (no assigned
+  // review/group id at all) falls back to a full logout.
   if (user.accessType === 'medical_review_magic_link') {
     const allowedReviewId = user.medicalReviewRequestId;
     const allowedPaths = allowedReviewId
@@ -63,6 +69,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
       ]
       : [];
     if (!allowedPaths.includes(location.pathname)) {
+      if (allowedReviewId) {
+        return <Navigate to={`/medical/review-requests/${allowedReviewId}/edit`} replace />;
+      }
       authService.logout();
       return <Navigate to="/login" state={{ from: location, reason: 'full_login_required' }} replace />;
     }
@@ -72,6 +81,9 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     const allowedGroupPath = allowedGroupId ? `/medical/review-groups/${allowedGroupId}` : '';
     const isReviewPath = /^\/medical\/review-requests\/[^/]+(?:\/edit)?$/.test(location.pathname);
     if (!allowedGroupPath || (location.pathname !== allowedGroupPath && !isReviewPath)) {
+      if (allowedGroupPath) {
+        return <Navigate to={allowedGroupPath} replace />;
+      }
       authService.logout();
       return <Navigate to="/login" state={{ from: location, reason: 'full_login_required' }} replace />;
     }

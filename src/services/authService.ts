@@ -154,6 +154,12 @@ export const authService = {
   },
 
   storeSession(data: LoginResponse) {
+    // The only real callers of this method are the magic-link/group-link
+    // quick-access exchange pages (medical advisors have no password to log
+    // in with). Clearing everything first guarantees a clean slate on every
+    // link open -- a stale token/appMode left over from a previously opened
+    // packet or request can never leak into this new session.
+    localStorage.clear();
     cacheService.clear();
     localStorage.setItem('token', data.access_token);
     localStorage.setItem('user', JSON.stringify(data.user));

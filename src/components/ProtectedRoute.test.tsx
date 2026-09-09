@@ -26,11 +26,25 @@ describe('ProtectedRoute grouped medical access', () => {
     expect(authService.logout).not.toHaveBeenCalled();
   });
 
-  it('logs out a grouped-link session that navigates elsewhere', () => {
+  it('bounces a grouped-link session that navigates elsewhere back to its own packet, without logging it out', () => {
     mockUseAuth.mockReturnValue({ isAuthenticated: true, user: { role: 'medical_advisor', accessType: 'medical_review_group_link', medicalReviewGroupId: 'g1' } });
+    view('/medical/medical-dashboard');
+    expect(screen.getByText('Allowed group')).toBeInTheDocument();
+    expect(authService.logout).not.toHaveBeenCalled();
+  });
+
+  it('logs out a grouped-link session with no assigned group at all (a genuinely broken session)', () => {
+    mockUseAuth.mockReturnValue({ isAuthenticated: true, user: { role: 'medical_advisor', accessType: 'medical_review_group_link', medicalReviewGroupId: undefined } });
     view('/medical/medical-dashboard');
     expect(screen.getByText('Login required')).toBeInTheDocument();
     expect(authService.logout).toHaveBeenCalled();
+  });
+
+  it('bounces a magic-link session that navigates elsewhere back to its own review, without logging it out', () => {
+    mockUseAuth.mockReturnValue({ isAuthenticated: true, user: { role: 'medical_advisor', accessType: 'medical_review_magic_link', medicalReviewRequestId: 'r1' } });
+    view('/medical/medical-dashboard');
+    expect(screen.getByText('Allowed review')).toBeInTheDocument();
+    expect(authService.logout).not.toHaveBeenCalled();
   });
 
   it('allows opening a review from the assigned packet', () => {

@@ -23,6 +23,20 @@ describe('authService', () => {
     expect(authService.isAuthenticated()).toBe(true);
   });
 
+  it('storeSession wipes any prior localStorage state before writing the new session (medical-advisor quick-access links must never see a stale token)', () => {
+    localStorage.setItem('token', 'stale-token-from-a-different-packet');
+    localStorage.setItem('user', JSON.stringify({ email: 'stale@example.com', role: 'medical_advisor' }));
+    localStorage.setItem('appMode', JSON.stringify({ mode: 'retreat', retreatId: 'stale-retreat' }));
+    localStorage.setItem('unrelatedKey', 'should also be gone');
+
+    authService.storeSession(session);
+
+    expect(authService.getToken()).toBe('new-token');
+    expect(authService.getUser()).toEqual(session.user);
+    expect(localStorage.getItem('appMode')).toBeNull();
+    expect(localStorage.getItem('unrelatedKey')).toBeNull();
+  });
+
   it.each([
     [401, '', 'Invalid credentials'],
     [503, '', 'Server error. Please try again later.'],
