@@ -54,6 +54,7 @@ const documentTypeLabels: Record<NonNullable<MedicalReviewRequest['documentType'
   EKG: 'EKG',
   BP: 'Blood Pressure',
   meds: 'Meds',
+  questionnaire: 'Health Questionnaire',
   additional: 'Additional',
   Liver: 'Liver panel tests',
   Medications: 'Medications',

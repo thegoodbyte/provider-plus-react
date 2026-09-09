@@ -23,6 +23,7 @@ const documentTypeLabels: Record<NonNullable<MedicalArtifact['documentType']>, s
   EKG: 'EKG',
   BP: 'Blood Pressure',
   meds: 'Meds',
+  questionnaire: 'Health Questionnaire',
   additional: 'Additional',
   Liver: 'Liver panel tests',
   Medications: 'Medications',

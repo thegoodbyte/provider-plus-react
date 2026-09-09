@@ -1062,7 +1062,7 @@ export interface MedicalArtifact {
 
   // New document categorization
   documentStage: 'entry' | 'pre_ceremony' | 'in_ceremony' | 'post_ceremony' | 'other' | 'additional';
-  documentType: 'EKG' | 'BP' | 'meds' | 'additional' | 'Liver' | 'Medications' | 'other';
+  documentType: 'EKG' | 'BP' | 'meds' | 'questionnaire' | 'additional' | 'Liver' | 'Medications' | 'other';
   ceremonyNumber?: number; // Required for pre/in/post ceremony stages
 
   // Legacy fields (kept for backward compatibility)

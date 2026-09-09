@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Camera, Edit, Eye, Plus, Save, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, Camera, Edit, Eye, Plus, Save, Trash2, Upload, Zap } from 'lucide-react';
 import { bookingsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { Client, MedicalArtifact, MedicalReviewGroup, MedicalReviewRequest, RetreatClient } from '../types';
@@ -23,6 +23,17 @@ const artifactTypeLabels: Record<NonNullable<MedicalArtifact['artifactType']>, s
 
 const getArtifactTypeLabel = (artifactType?: MedicalArtifact['artifactType']) =>
   artifactType ? artifactTypeLabels[artifactType] : 'Medical Artifact';
+
+const reviewTypeByArtifact = (artifactType: MedicalArtifact['artifactType']): NonNullable<MedicalReviewRequest['requestType']> => {
+  if (artifactType === 'ekg' || artifactType === 'ceremony_ekg') return artifactType === 'ceremony_ekg' ? 'ceremony_ekg_review' : 'ekg_review';
+  if (artifactType === 'blood_pressure') return 'blood_pressure_review';
+  if (artifactType === 'liver_panel') return 'liver_panel_review';
+  if (artifactType === 'medications_form' || artifactType === 'medication_list') return 'medications_review';
+  if (artifactType === 'questionnaire') return 'questionnaire_review';
+  if (artifactType === 'food_intake') return 'food_review';
+  if (artifactType === 'question') return 'medical_question';
+  return 'general_clearance';
+};
 
 const contextTypeLabels: Record<NonNullable<MedicalArtifact['contextType']>, string> = {
   client: 'Client profile',
@@ -52,6 +63,7 @@ const documentTypeLabels: Record<NonNullable<MedicalArtifact['documentType']>, s
   EKG: 'EKG',
   BP: 'Blood Pressure',
   meds: 'Meds',
+  questionnaire: 'Health Questionnaire',
   additional: 'Additional',
   Liver: 'Liver panel tests',
   Medications: 'Medications',
@@ -252,7 +264,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
   const [quickMrrAdvisors, setQuickMrrAdvisors] = useState<User[]>([]);
   const [quickMrrGroups, setQuickMrrGroups] = useState<MedicalReviewGroup[]>([]);
   const [quickMrrTypes, setQuickMrrTypes] = useState<Array<{ key: NonNullable<MedicalReviewRequest['requestType']>; label: string }>>([]);
-  const [quickMrr, setQuickMrr] = useState<{ requestType: NonNullable<MedicalReviewRequest['requestType']>; advisorId: string; groupId: string }>({ requestType: 'general_clearance', advisorId: '', groupId: '' });
+  const [quickMrr, setQuickMrr] = useState<{ requestType: NonNullable<MedicalReviewRequest['requestType']>; documentStage: NonNullable<MedicalArtifact['documentStage']> | ''; advisorId: string; groupId: string; notifyClient: boolean }>({ requestType: 'general_clearance', documentStage: '', advisorId: '', groupId: '', notifyClient: true });
   const [bookings, setBookings] = useState<RetreatClient[]>([]);
   const [form, setForm] = useState({
     title: '',
@@ -371,7 +383,8 @@ const MedicalArtifactDetailPage: React.FC = () => {
       setQuickMrrAdvisors(advisors);
       setQuickMrrGroups(groups.data || []);
       setQuickMrrTypes(types.data || []);
-      setQuickMrr({ requestType: types.data?.[0]?.key || 'general_clearance', advisorId: advisors.some((item) => item._id === savedAdvisor) ? savedAdvisor : advisors.length === 1 ? advisors[0]._id || '' : '', groupId: '' });
+      const matchingGroup = (groups.data || []).find((group) => getObjectId(group.retreatId as any) === getObjectId(artifact?.retreatId as any)) || groups.data?.[0];
+      setQuickMrr({ requestType: reviewTypeByArtifact(artifact?.artifactType || 'other'), documentStage: artifact?.documentStage || '', advisorId: advisors.some((item) => item._id === savedAdvisor) ? savedAdvisor : advisors.length === 1 ? advisors[0]._id || '' : '', groupId: matchingGroup?._id || '', notifyClient: true });
       setQuickMrrOpen(true);
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Unable to load the quick MRR form.');
@@ -382,7 +395,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
     if (!artifact?._id || !quickMrr.advisorId || !quickMrr.groupId) return;
     setQuickMrrSaving(true);
     try {
-      await medicalReviewRequestsApi.createFromArtifact(artifact._id, quickMrr.requestType, { assignedToUserId: quickMrr.advisorId, medicalReviewGroupId: quickMrr.groupId, retreatId: getObjectId(artifact.retreatId) || undefined, clientId: getObjectId(artifact.clientId) || undefined });
+      await medicalReviewRequestsApi.createFromArtifact(artifact._id, quickMrr.requestType, { assignedToUserId: quickMrr.advisorId, medicalReviewGroupId: quickMrr.groupId, documentStage: quickMrr.documentStage || undefined, sentForReviewAt: new Date().toISOString(), notifyClientOnSubmission: quickMrr.notifyClient });
       setQuickMrrOpen(false);
       await reloadArtifact();
     } catch (err: any) {
@@ -830,9 +843,9 @@ const MedicalArtifactDetailPage: React.FC = () => {
               Edit
             </button>
           )}
-          <button onClick={openQuickMrr} className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700">
-            <Plus className="h-4 w-4" />
-            Quick MRR
+          <button onClick={openQuickMrr} className="inline-flex items-center gap-1.5 rounded-md border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-sm font-semibold text-amber-800 hover:bg-amber-100" title="Create quick medical review request" aria-label="Quick MRR">
+            <Zap className="h-4 w-4" />
+            <span className="hidden sm:inline">Quick MRR</span>
           </button>
           <button onClick={() => navigate(`${routePrefix}/medical-review-requests/new?artifactId=${artifact._id}`)} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
             <Plus className="h-4 w-4" />
@@ -877,11 +890,18 @@ const MedicalArtifactDetailPage: React.FC = () => {
                   {quickMrrAdvisors.map((item) => <option key={item._id} value={item._id}>{[item.firstName, item.lastName].filter(Boolean).join(' ') || item.email}</option>)}
                 </select>
               </label>
+              <label className="block text-sm font-medium text-gray-700">Document stage
+                <div className="mt-1 rounded border bg-gray-50 p-2 text-gray-700">{quickMrr.documentStage ? quickMrr.documentStage.replace(/_/g, ' ') : 'Not recorded'}</div>
+              </label>
               <label className="block text-sm font-medium text-gray-700">Review pocket
                 <select className="mt-1 w-full rounded border p-2" value={quickMrr.groupId} onChange={(e) => setQuickMrr({ ...quickMrr, groupId: e.target.value })}>
                   <option value="">Select pocket</option>
                   {quickMrrGroups.map((group) => <option key={group._id} value={group._id}>{group.title}</option>)}
                 </select>
+              </label>
+              <label className="flex items-start gap-2 rounded border border-blue-100 bg-blue-50 p-3 text-sm text-gray-800">
+                <input type="checkbox" checked={quickMrr.notifyClient} onChange={(e) => setQuickMrr({ ...quickMrr, notifyClient: e.target.checked })} className="mt-0.5 h-4 w-4" />
+                <span><strong className="block">Notify client</strong><span className="text-xs text-gray-600">Send the configured submitted-for-review email when this MRR is created.</span></span>
               </label>
             </div>
             <div className="mt-5 flex justify-end gap-2">
