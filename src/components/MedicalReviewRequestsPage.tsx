@@ -1332,9 +1332,9 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const selectedRequestIndex = selected ? requests.findIndex((request) => request._id === selected._id) : -1;
   const previousRequest = selectedRequestIndex > 0 ? requests[selectedRequestIndex - 1] : undefined;
   const nextRequest = selectedRequestIndex >= 0 ? requests[selectedRequestIndex + 1] : undefined;
-  const returnToPath = typeof (location.state as any)?.returnTo === 'string' && (location.state as any).returnTo.includes('/medical/review-groups/')
-    ? (location.state as any).returnTo
-    : '';
+  const stateReturnPath = (location.state as any)?.returnTo;
+  const storedReturnPath = sessionStorage.getItem('medicalReviewReturnPath');
+  const returnToPath = [stateReturnPath, storedReturnPath].find((path) => typeof path === 'string' && path.includes('/medical/review-groups/')) || '';
   const reviewListPath = returnToPath || (isMedicalRoute ? '/medical/review-requests' : '/admin/medical-review-requests');
   const reviewNav = (request?: MedicalReviewRequest) => request?._id && navigate(`${reviewListPath}/${request._id}`);
   const navigationControls = (className = '') => isDetailView && selected ? (
