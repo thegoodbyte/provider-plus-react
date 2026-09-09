@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
 import { Client, MedicalArtifact, MedicalReviewRequest, Retreat } from '../types';
-import { Activity, AlertTriangle, ChevronDown, ClipboardList, Droplets, FileQuestion, FileText, HeartPulse, Pill, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { Activity, AlertTriangle, ChevronDown, CircleHelp, ClipboardList, Droplets, FileQuestion, FileText, HeartPulse, Pill, RotateCcw, ThumbsDown, ThumbsUp } from 'lucide-react';
 import {
   formatMedicalReviewDecisionLabel,
   formatMedicalReviewRequestSummary,
@@ -24,6 +24,13 @@ const isPendingReview = (request: MedicalReviewRequest) => isPendingMedicalRevie
 
 const decisionOptions = medicalReviewDecisionOptions;
 const decisionLabels = medicalReviewDecisionLabels;
+
+const decisionIcons: Record<string, any> = {
+  OK: ThumbsUp,
+  caution: AlertTriangle,
+  more_info_needed: CircleHelp,
+  'NOT OK': ThumbsDown,
+};
 
 const getDecisionButtonClass = (option: typeof decisionOptions[number], selected: boolean, size: 'sm' | 'lg' = 'sm') => {
   const base = size === 'lg'
@@ -452,6 +459,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [reviewDecision, setReviewDecision] = useState<(typeof decisionOptions)[number] | ''>('');
   const [medicalStaffNotes, setMedicalStaffNotes] = useState('');
   const [savingReview, setSavingReview] = useState(false);
+  const [nextReviewPrompt, setNextReviewPrompt] = useState<{ remaining: number; nextId?: string } | null>(null);
   const [resettingReview, setResettingReview] = useState(false);
   const [clientVisibleAdminNote, setClientVisibleAdminNote] = useState('');
   const [savingClientVisibleAdminNote, setSavingClientVisibleAdminNote] = useState(false);
@@ -681,6 +689,10 @@ const MedicalReviewRequestsPage: React.FC = () => {
         reviewedBy: [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || 'medical_staff',
       });
       await loadRequests();
+      if (isMedicalRoute && !options?.redirectAfterSave) {
+        const remainingRequests = requests.filter((request) => request._id !== selected._id && isPendingReview(request));
+        setNextReviewPrompt({ remaining: remainingRequests.length, nextId: remainingRequests[0]?._id });
+      }
       if (options?.redirectAfterSave) {
         navigate('/medical-dashboard');
       }
@@ -1189,6 +1201,18 @@ const MedicalReviewRequestsPage: React.FC = () => {
 
   return (
     <div className="medical-review-page overflow-x-hidden p-0 sm:p-6">
+      {nextReviewPrompt && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/30 px-4" role="dialog" aria-modal="true" aria-label="Review saved">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 text-center shadow-2xl">
+            <div className="text-lg font-bold text-gray-900">Review saved</div>
+            <div className="mt-2 text-sm text-gray-600">{nextReviewPrompt.remaining} remaining</div>
+            <div className="mt-5 flex gap-2">
+              <button type="button" onClick={() => setNextReviewPrompt(null)} className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700">Stay here</button>
+              <button type="button" disabled={!nextReviewPrompt.nextId} onClick={() => { const nextId = nextReviewPrompt.nextId; setNextReviewPrompt(null); if (nextId) navigate(`${isMedicalRoute ? '/medical/review-requests' : '/admin/medical-review-requests'}/${nextId}`); }} className="flex-1 rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">Next review</button>
+            </div>
+          </div>
+        </div>
+      )}
       {isDetailView && selected && (
         <>
           <button
@@ -1278,7 +1302,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
           <button
             type="button"
             onClick={() => setCaptureMode((enabled) => !enabled)}
-            className="no-print shrink-0 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            className="no-print hidden shrink-0 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 sm:inline-flex"
           >
             {captureMode ? 'Exit full-page mode' : 'Full-page screenshot'}
           </button>
@@ -1477,9 +1501,20 @@ const MedicalReviewRequestsPage: React.FC = () => {
                             }}
                             className={getDecisionButtonClass(option, reviewDecision === option, 'sm')}
                           >
-                            {decisionLabels[option]}
+                            {React.createElement(decisionIcons[option], { size: 17, strokeWidth: 2.2 })}
+                            <span>{decisionLabels[option]}</span>
                           </button>
                         ))}
+                        <button
+                          type="button"
+                          onClick={() => { setReviewDecision(''); setMedicalStaffNotes(''); setValidationError(''); }}
+                          className="mrr-clear-decision-button"
+                          aria-label="Clear decision"
+                          title="Clear decision"
+                        >
+                          <RotateCcw size={17} strokeWidth={2.2} />
+                          <span>Clear</span>
+                        </button>
                       </div>
                       <button
                         type="button"
