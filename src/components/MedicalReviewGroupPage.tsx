@@ -350,7 +350,7 @@ const MedicalReviewGroupPage: React.FC = () => {
             <div className="min-w-0">
               <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-cyan-800">{group?.retreatName || 'Grouped medical review packet'}</div>
               <h1 className="mt-1 text-[26px] font-black leading-none tracking-tight text-gray-900">{group?.title || 'Medical review packet'}</h1>
-              <p className="mt-3 max-w-[280px] text-[13px] leading-snug text-gray-600">Review pending requests and update decisions or comments.</p>
+              <p className="mt-3 max-w-[280px] text-[13px] font-semibold leading-snug text-red-700">{pendingRequestCount} request{pendingRequestCount === 1 ? '' : 's'} awaiting review</p>
             </div>
             <button
               type="button"
@@ -361,10 +361,6 @@ const MedicalReviewGroupPage: React.FC = () => {
             >
               <Icon icon={FiSliders} className="h-5 w-5" />
             </button>
-          </div>
-          <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-red-50 px-4 py-2 text-sm font-semibold text-red-700">
-            <Icon icon={FiFileText} className="h-4 w-4" />
-            {pendingRequestCount} request{pendingRequestCount === 1 ? '' : 's'} awaiting review
           </div>
         </div>
         <div className="hidden rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:block">
@@ -476,7 +472,7 @@ const MedicalReviewGroupPage: React.FC = () => {
                       <Icon icon={FiFolder} className="h-4 w-4" />
                     </span>
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-gray-900">{section.title}</div>
+                      <div className={`truncate text-sm font-semibold text-gray-900 ${section.title === group?.title ? 'md:block hidden' : ''}`}>{section.title}</div>
                       <div className="text-xs text-gray-500">{section.subtitle}</div>
                     </div>
                   </div>

@@ -162,7 +162,7 @@ const AppleLayout: React.FC = () => {
   const navigate = useNavigate();
 
   const isMedicalAdvisor = user?.role === 'medical_advisor';
-  const isMedicalReviewScreen = location.pathname.includes('/medical/review-requests') || location.pathname.includes('/medical-review-requests');
+  const isMedicalReviewScreen = location.pathname.includes('/medical/review-requests') || location.pathname.includes('/medical-review-requests') || location.pathname.includes('/medical/review-groups') || location.pathname.includes('/medical-review-group-access');
   const isMedicalQuickAccessSession = user?.accessType === 'medical_review_magic_link' && Boolean(user?.medicalReviewRequestId);
   const showQuickMenu = !isMedicalAdvisor;
 
@@ -613,7 +613,7 @@ const AppleLayout: React.FC = () => {
             <div className="pointer-events-auto">
               {renderQuickMenu()}
             </div>
-            {canChangeOwnPassword && (
+            {canChangeOwnPassword && !isMedicalReviewScreen && (
               <button
                 onClick={() => navigate('/users/change-password')}
                 className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-apple-gray-700 shadow-apple-sm backdrop-blur-apple transition-colors hover:bg-white"
@@ -634,8 +634,9 @@ const AppleLayout: React.FC = () => {
               <span className="text-lg font-bold" aria-hidden="true">$↔</span>
             </button>
             <button
+              disabled={isMedicalReviewScreen}
               onClick={() => setShowSettings(true)}
-              className="pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-apple-gray-700 shadow-apple-sm backdrop-blur-apple transition-colors hover:bg-white"
+              className={isMedicalReviewScreen ? 'hidden' : 'pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-apple-gray-700 shadow-apple-sm backdrop-blur-apple transition-colors hover:bg-white'}
               aria-label="Settings"
             >
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
