@@ -186,6 +186,7 @@ body.medical-review-capture-mode .medical-review-page .overflow-y-auto {
 }
 .mrr-related-inline-toggle { display: inline-flex; align-items: center; gap: .3rem; margin-left: .75rem; padding: .35rem .65rem; border: 1px solid #dbeafe; border-radius: 999px; background: #fff; color: #1d4ed8; font-size: .68rem; font-weight: 700; vertical-align: middle; }
 .mrr-related-inline-toggle:hover { background: #eff6ff; }
+.mrr-related-mobile-toggle { display: inline-flex; align-items: center; gap: .35rem; margin-top: .55rem; padding: .45rem .7rem; border: 1px solid #bfdbfe; border-radius: 999px; background: #eff6ff; color: #1d4ed8; font-size: .75rem; font-weight: 750; }
 .mrr-related-toggle:hover, .mrr-related-toggle.is-open { border-color: #2563eb; color: #1d4ed8; }
 .mrr-related-toggle-icon { display: grid; place-items: center; width: 2.35rem; height: 2.35rem; border: 2px solid #f59e0b; border-radius: 50%; background: #1475d1; color: #fff; }
 .mrr-related-chevron { transition: transform .2s ease; }
@@ -220,12 +221,15 @@ body.medical-review-capture-mode .medical-review-page .overflow-y-auto {
 .mrr-canvas-actions { display: grid; gap: .75rem; margin-top: .85rem; }
 .mrr-decision-buttons { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .6rem; width: 100%; }
 .mrr-decision-buttons > button { min-height: 2.75rem; width: 100%; border-radius: .55rem !important; white-space: nowrap; font-size: .8rem; }
+.mrr-mobile-artifact-strip { display: flex; gap: .75rem; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none; }
+.mrr-mobile-artifact-strip::-webkit-scrollbar { display: none; }
+.mrr-mobile-artifact-slide { flex: 0 0 min(88vw, 32rem); scroll-snap-align: start; }
 @media (max-width: 640px) {
   .mrr-decision-buttons { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .3rem; width: 100%; overflow: visible; padding-bottom: 0; }
   .mrr-decision-buttons > button { min-width: 0; min-height: 3.15rem; padding: .35rem .15rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .18rem; border-radius: .55rem !important; white-space: normal; text-align: center; font-size: .58rem; line-height: 1.05; }
   .mrr-clear-decision-button { border: 1px solid #d1d5db; background: #f9fafb; color: #4b5563; }
 }
-@media (max-width: 640px) { .mrr-related-toggle { top: .65rem; left: .65rem; } .mrr-related-bar { top: 5.15rem; padding-left: .75rem; padding-top: 1rem; } .mrr-related-bar-inner { align-items: flex-start; } }
+@media (max-width: 640px) { .mrr-related-toggle { display: none; } .mrr-related-bar { position: static; min-height: 0; padding: .65rem 0 .2rem; background: transparent; border: 0; box-shadow: none; } .mrr-related-bar-inner { align-items: flex-start; gap: .75rem; padding: 0 .25rem; } .mrr-related-bar-title { display: none; } }
 @media (min-width: 641px) { .mrr-related-toggle { display: none; } }
 
 /* Global Reset */

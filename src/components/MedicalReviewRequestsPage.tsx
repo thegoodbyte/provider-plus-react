@@ -1213,36 +1213,6 @@ const MedicalReviewRequestsPage: React.FC = () => {
           </div>
         </div>
       )}
-      {isDetailView && selected && (
-        <>
-          <button
-            type="button"
-            className={`mrr-related-toggle ${relatedRecordsOpen ? 'is-open' : ''}`}
-            onClick={() => setRelatedRecordsOpen((open) => !open)}
-            aria-expanded={relatedRecordsOpen}
-            aria-controls="mrr-related-records"
-          >
-            <span className="mrr-related-toggle-icon"><FileText size={20} /></span>
-            <span>Related records</span>
-            <ChevronDown size={14} className="mrr-related-chevron" />
-          </button>
-          {relatedRecordsOpen && (
-            <div id="mrr-related-records" className="mrr-related-bar" role="region" aria-label="Related records">
-              <div className="mrr-related-bar-inner">
-                <span className="mrr-related-bar-title">Related records</span>
-                {relatedRecordItems.length ? relatedRecordItems.map((record) => {
-                  const item = record.item as any;
-                  const shortLabel = record.label.replace(/\s+Panel$/i, '').replace(/\s+Review$/i, '');
-                  return <button key={`${record.kind}-${record.id}`} type="button" className="mrr-related-record" onClick={() => record.kind === 'request' ? handleSelect(item) : navigate(`${artifactRoutePrefix}/medical-artifacts/${record.id}/edit`)} title={`${record.label}${record.date ? ` · ${formatDateTime(record.date)}` : ''}`}>
-                    <span className={`mrr-related-record-icon ${record.kind === 'request' ? 'request' : ''}`}>{React.createElement(relatedRecordIcon(record.label), { size: 20, strokeWidth: 2.1 })}</span>
-                    <span className="mrr-related-record-text"><strong>{shortLabel}</strong><small>{record.date ? formatDateTime(record.date) : 'Date unavailable'}</small></span>
-                  </button>;
-                }) : <span className="mrr-related-empty">No previous or related records.</span>}
-              </div>
-            </div>
-          )}
-        </>
-      )}
       <div className="mb-4 flex items-start justify-between gap-4 sm:mb-6">
         <div>
           <h1 className="text-xl font-semibold leading-tight text-gray-900 sm:text-2xl">
@@ -1257,6 +1227,9 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 <div className="mt-1">
                   <div className="hidden text-base font-medium text-gray-900 sm:block sm:text-lg">{selectedClientName}</div>
                   <div className="text-sm text-gray-600">{formatCompactDocumentMeta(selected) || getRequestTypeLabel(selected.requestType)}</div>
+                  <button type="button" className="mrr-related-mobile-toggle sm:hidden" onClick={() => setRelatedRecordsOpen((open) => !open)} aria-expanded={relatedRecordsOpen} aria-controls="mrr-related-records">
+                    <FileText size={15} /> Related records <ChevronDown size={13} className={relatedRecordsOpen ? 'rotate-180' : ''} />
+                  </button>
                 </div>
               ) : (
             <p className="text-sm text-gray-600">
@@ -1320,8 +1293,23 @@ const MedicalReviewRequestsPage: React.FC = () => {
             <button type="button" onClick={() => navigate(`/admin/medical-review-requests/${selected._id}/edit`)} className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Edit request</button>
             <button type="button" disabled={resettingReview || (!selected.reviewDecision && selected.status === 'pending')} onClick={handleResetReview} className="rounded-md border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50">{resettingReview ? 'Resetting...' : 'Reset review'}</button>
           </div>
+          )}
+        </div>
+        {isDetailView && selected && relatedRecordsOpen && (
+          <div id="mrr-related-records" className="mrr-related-bar" role="region" aria-label="Related records">
+            <div className="mrr-related-bar-inner">
+              <span className="mrr-related-bar-title">Related records</span>
+              {relatedRecordItems.length ? relatedRecordItems.map((record) => {
+                const item = record.item as any;
+                const shortLabel = record.label.replace(/\s+Panel$/i, '').replace(/\s+Review$/i, '');
+                return <button key={`${record.kind}-${record.id}`} type="button" className="mrr-related-record" onClick={() => record.kind === 'request' ? handleSelect(item) : navigate(`${artifactRoutePrefix}/medical-artifacts/${record.id}/edit`)} title={`${record.label}${record.date ? ` · ${formatDateTime(record.date)}` : ''}`}>
+                  <span className={`mrr-related-record-icon ${record.kind === 'request' ? 'request' : ''}`}>{React.createElement(relatedRecordIcon(record.label), { size: 20, strokeWidth: 2.1 })}</span>
+                  <span className="mrr-related-record-text"><strong>{shortLabel}</strong><small>{record.date ? formatDateTime(record.date) : 'Date unavailable'}</small></span>
+                </button>;
+              }) : <span className="mrr-related-empty">No previous or related records.</span>}
+            </div>
+          </div>
         )}
-      </div>
 
       {!isDetailView && (
         <div className="mb-4 rounded-lg border border-gray-200 bg-white p-3">
@@ -1434,12 +1422,13 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   <div className="border-b border-gray-200 px-3 py-2 text-sm font-semibold text-gray-900">
                     {formatCompactDocumentMeta(selected) || getRequestTypeLabel(selected.requestType)}
                   </div>
-                  <div className="space-y-3 p-2">
+                  <div className="mrr-mobile-artifact-strip p-2">
                     {linkedArtifacts.length === 0 ? (
                       <div className="p-3 text-sm text-gray-500">No linked document is available.</div>
                     ) : linkedArtifacts.map((artifact) => (
-                      <div key={artifact._id} className="min-w-0 space-y-2">
-                        <div className="px-1 text-xs font-semibold text-blue-800">
+                      <div key={artifact._id} className="mrr-mobile-artifact-slide min-w-0 space-y-2">
+                        <div className="flex items-center gap-2 px-1 text-base font-bold text-blue-900">
+                          <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700"><FileText size={19} /></span>
                           {getArtifactTypeLabel(artifact.artifactType)}{artifact.title ? ` · ${artifact.title}` : ''}
                         </div>
                         {artifact.textContent && (
