@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, MedicalReviewGroup, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, MailSettings, EmailTemplate, EmailTemplateSeedOption, EmailAsset, SentEmail, RetreatArtifactSubmissionsResponse, BloodPressureReading, BoosterOffer } from '../types';
+import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, MedicalReviewGroup, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, BookingDocumentContent, MailSettings, EmailTemplate, EmailTemplateSeedOption, EmailAsset, SentEmail, RetreatArtifactSubmissionsResponse, BloodPressureReading, BoosterOffer } from '../types';
 import { authService } from './authService';
 import { cacheService } from './cacheService';
 import { API_BASE_URL } from '../config/api.config';
@@ -1651,6 +1651,11 @@ export const bookingDocumentsApi = {
     `/booking-documents/${id}/files/view?storedPath=${encodeURIComponent(storedPath)}`,
     { responseType: 'blob' },
   ),
+  getContent: (id: string) => api.get<BookingDocumentContent | null>(`/booking-documents/${id}/content`),
+  generateEnglishTranslation: (id: string, force = false) => {
+    invalidateBookingDocumentDependents();
+    return api.post<BookingDocument>(`/booking-documents/${id}/english-translation`, { force }).finally(invalidateBookingDocumentDependents);
+  },
   delete: (id: string, reason = 'Upload rollback') => {
     invalidateBookingDocumentDependents();
     return api.delete(`/booking-documents/${id}`, { data: { reason } }).finally(invalidateBookingDocumentDependents);

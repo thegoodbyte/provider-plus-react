@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowUpDown, ClipboardList, Download, Eye, FileText, Pencil, Pill, RefreshCw, Scale, Search, Trash2, Utensils, X } from 'lucide-react';
 import { bookingDocumentsApi } from '../services/api';
-import { BookingDocument, Client, Retreat, RetreatClient } from '../types';
+import { BookingDocument, BookingDocumentContent, Client, Retreat, RetreatClient } from '../types';
 
 type SortKey = 'receivedAt' | 'documentType' | 'booking' | 'client' | 'retreat';
 type SortDirection = 'asc' | 'desc';
@@ -70,6 +70,17 @@ const isImageFile = (file: BookingDocumentFile) => Boolean(
 
 export const isBookingDocumentFilePreviewable = (file: BookingDocumentFile) => isPdfFile(file) || isImageFile(file);
 
+// Contract, questionnaire, and food-intake documents already store their
+// content as structured question/answer data in the database (see
+// BookingDocumentTranslationService on the backend) -- these can be shown as
+// HTML built straight from that data, and translated to English on demand,
+// instead of relying on the flat uploaded PDF.
+const HTML_VIEW_DOCUMENT_TYPES = new Set(['contract', 'questionnaire', 'health_questionnaire', 'food_intake', 'food_form']);
+export const isHtmlViewSupported = (documentType?: string) => HTML_VIEW_DOCUMENT_TYPES.has(normalizeKey(documentType));
+
+const documentLanguageLabels: Record<string, string> = { en: 'English', pl: 'Polish', cs: 'Czech' };
+const getDocumentLanguageLabel = (code: string) => documentLanguageLabels[code] || code.toUpperCase();
+
 const SortHeader: React.FC<{
   label: string;
   sortKey: SortKey;
@@ -98,6 +109,75 @@ const DocumentTypeIcon: React.FC<{ type?: string }> = ({ type }) => {
   return <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#d7c9b4] bg-[#fffaf1] text-[#705d46]"><Icon className="h-4 w-4" /></span>;
 };
 
+type BookingDocumentTranslation = NonNullable<BookingDocument['metadata']>['translation'];
+
+const BookingDocumentHtmlView: React.FC<{
+  content: BookingDocumentContent;
+  translation?: BookingDocumentTranslation;
+  isGenerating: boolean;
+  onRetry: () => void;
+}> = ({ content, translation, isGenerating, onRetry }) => {
+  const languageLabel = getDocumentLanguageLabel(content.sourceLanguage);
+  const needsTranslation = content.sourceLanguage !== 'en';
+  const displayState: 'not_needed' | 'ready' | 'translating' | 'failed' | 'not_started' = !needsTranslation
+    ? 'not_needed'
+    : translation?.status === 'ready' && translation.items?.length
+      ? 'ready'
+      : isGenerating || translation?.status === 'translating'
+        ? 'translating'
+        : translation?.status === 'failed'
+          ? 'failed'
+          : 'not_started';
+
+  const grid = (items: Array<{ key: string; label: string; value: string }>) => (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {items.map((item) => (
+        <div key={item.key} className="rounded-md border border-gray-200 bg-white px-3 py-2">
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{item.label}</div>
+          <div className="mt-1 whitespace-pre-wrap text-sm text-gray-900">{item.value || 'Not provided'}</div>
+        </div>
+      ))}
+    </div>
+  );
+
+  return (
+    <div className="mx-auto max-w-3xl space-y-4">
+      {(content.signedBy || content.submittedAt) && (
+        <div className="text-xs text-gray-500">
+          {content.signedBy && <span>Signed by {content.signedBy}</span>}
+          {content.signedBy && content.submittedAt && <span> · </span>}
+          {content.submittedAt && <span>{new Date(content.submittedAt).toLocaleString()}</span>}
+        </div>
+      )}
+
+      {displayState === 'not_needed' ? grid(content.items) : (
+        <div className="space-y-3">
+          {displayState === 'ready' ? (
+            <div>
+              <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-bold uppercase text-emerald-900">English (AI translation)</div>
+              {grid(translation!.items!)}
+              <div className="mt-2 text-[11px] text-gray-500">{translation?.disclaimer || 'AI-generated translation. The original record remains authoritative.'}</div>
+            </div>
+          ) : displayState === 'translating' ? (
+            <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-3 text-sm text-blue-800">Translating to English…</div>
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900">
+              <span>{displayState === 'failed' ? 'English translation failed.' : 'No English translation yet.'}</span>
+              <button type="button" onClick={onRetry} className="rounded-md bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-800">
+                {displayState === 'failed' ? 'Retry translation' : 'Generate English translation'}
+              </button>
+            </div>
+          )}
+          <details>
+            <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-gray-500">Original ({languageLabel})</summary>
+            <div className="mt-2">{grid(content.items)}</div>
+          </details>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const BookingDocumentsPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -116,6 +196,11 @@ const BookingDocumentsPage: React.FC = () => {
   const [viewerUrl, setViewerUrl] = useState('');
   const [viewerLoading, setViewerLoading] = useState(false);
   const [viewerError, setViewerError] = useState('');
+  const [viewMode, setViewMode] = useState<'file' | 'html'>('file');
+  const [htmlContent, setHtmlContent] = useState<BookingDocumentContent | null>(null);
+  const [htmlLoading, setHtmlLoading] = useState(false);
+  const [htmlError, setHtmlError] = useState('');
+  const [translationStatus, setTranslationStatus] = useState<'idle' | 'generating' | 'error'>('idle');
   const [editingDocument, setEditingDocument] = useState<BookingDocument | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDescription, setEditDescription] = useState('');
@@ -129,6 +214,10 @@ const BookingDocumentsPage: React.FC = () => {
     setViewer(null);
     setViewerUrl('');
     setViewerError('');
+    setViewMode('file');
+    setHtmlContent(null);
+    setHtmlError('');
+    setTranslationStatus('idle');
   };
 
   const openViewer = async (document: BookingDocument, file: BookingDocumentFile) => {
@@ -139,6 +228,10 @@ const BookingDocumentsPage: React.FC = () => {
     setViewerUrl('');
     setViewerError('');
     setViewerLoading(true);
+    setHtmlContent(null);
+    setHtmlError('');
+    setTranslationStatus('idle');
+    setViewMode('file');
     try {
       const response = await bookingDocumentsApi.getFile(document._id, storedPath);
       setViewerUrl(URL.createObjectURL(response.data));
@@ -147,11 +240,58 @@ const BookingDocumentsPage: React.FC = () => {
     } finally {
       setViewerLoading(false);
     }
+
+    if (!isHtmlViewSupported(document.documentType)) return;
+    setHtmlLoading(true);
+    try {
+      const response = await bookingDocumentsApi.getContent(document._id);
+      setHtmlContent(response.data);
+      if (response.data && response.data.sourceLanguage !== 'en') setViewMode('html');
+    } catch (contentError: any) {
+      setHtmlError(contentError?.response?.data?.message || contentError?.message || 'Unable to load this document as HTML.');
+    } finally {
+      setHtmlLoading(false);
+    }
   };
 
   useEffect(() => () => {
     if (viewerUrl) URL.revokeObjectURL(viewerUrl);
   }, [viewerUrl]);
+
+  // Same pattern as the MRR medical-artifact translation fix: generate an
+  // English translation automatically the moment a non-English document is
+  // opened, if one hasn't been attempted yet. A failed or in-flight one is
+  // left alone here (manual "Retry" only) so it isn't silently retried on
+  // every open.
+  useEffect(() => {
+    const document = viewer?.document;
+    if (!document?._id || !htmlContent || htmlContent.sourceLanguage === 'en') return;
+    const translation = document.metadata?.translation;
+    if (translation) return;
+    let active = true;
+    setTranslationStatus('generating');
+    bookingDocumentsApi.generateEnglishTranslation(document._id)
+      .then((response) => {
+        if (!active) return;
+        setTranslationStatus('idle');
+        setViewer((current) => current && current.document._id === document._id ? { ...current, document: response.data } : current);
+      })
+      .catch(() => { if (active) setTranslationStatus('error'); });
+    return () => { active = false; };
+  }, [viewer?.document?._id, htmlContent, viewer?.document?.metadata?.translation]);
+
+  const retryDocumentTranslation = async () => {
+    const document = viewer?.document;
+    if (!document?._id || !htmlContent || htmlContent.sourceLanguage === 'en') return;
+    setTranslationStatus('generating');
+    try {
+      const response = await bookingDocumentsApi.generateEnglishTranslation(document._id, true);
+      setTranslationStatus('idle');
+      setViewer((current) => current && current.document._id === document._id ? { ...current, document: response.data } : current);
+    } catch {
+      setTranslationStatus('error');
+    }
+  };
 
   const loadDocuments = async () => {
     setLoading(true);
@@ -460,19 +600,43 @@ const BookingDocumentsPage: React.FC = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-950/70 p-3 sm:p-6" role="dialog" aria-modal="true" aria-labelledby="document-preview-title">
           <section className="flex h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
             <header className="flex items-center justify-between gap-4 border-b border-gray-200 px-4 py-3 sm:px-5">
-              <div className="min-w-0"><h2 id="document-preview-title" className="truncate text-lg font-semibold text-gray-900">{viewer.document.title || titleize(viewer.document.documentType)}</h2><p className="truncate text-xs text-gray-500">{viewer.file.fileName || viewer.file.originalFileName || 'Uploaded file'}</p></div>
+              <div className="min-w-0">
+                <h2 id="document-preview-title" className="truncate text-lg font-semibold text-gray-900">{viewer.document.title || titleize(viewer.document.documentType)}</h2>
+                <p className="truncate text-xs text-gray-500">{viewer.file.fileName || viewer.file.originalFileName || 'Uploaded file'}</p>
+              </div>
               <div className="flex shrink-0 items-center gap-2">
+                {htmlContent && (
+                  <div className="inline-flex rounded-md border border-gray-300 p-0.5 text-xs font-semibold">
+                    <button type="button" onClick={() => setViewMode('file')} className={`rounded px-2.5 py-1.5 ${viewMode === 'file' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>Document</button>
+                    <button type="button" onClick={() => setViewMode('html')} className={`rounded px-2.5 py-1.5 ${viewMode === 'html' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>HTML</button>
+                  </div>
+                )}
                 {viewerUrl && <a href={viewerUrl} download={viewer.file.fileName || viewer.file.originalFileName || 'document'} className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"><Download className="h-4 w-4" /> Download</a>}
                 <button type="button" onClick={closeViewer} className="rounded-md border border-gray-300 p-2 text-gray-600 hover:bg-gray-50" aria-label="Close document preview"><X className="h-5 w-5" /></button>
               </div>
             </header>
-            <div className="flex min-h-0 flex-1 items-center justify-center bg-gray-100 p-3">
-              {viewerLoading && <p className="text-sm text-gray-600">Loading secure preview…</p>}
-              {!viewerLoading && viewerError && <div className="max-w-xl rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">{viewerError}</div>}
-              {!viewerLoading && !viewerError && viewerUrl && isPdfFile(viewer.file) && <iframe src={viewerUrl} title={viewer.file.fileName || 'PDF preview'} className="h-full w-full rounded-md border-0 bg-white" />}
-              {!viewerLoading && !viewerError && viewerUrl && isImageFile(viewer.file) && <img src={viewerUrl} alt={viewer.file.fileName || 'Image preview'} className="max-h-full max-w-full object-contain" />}
-              {!viewerLoading && !viewerError && viewerUrl && !isBookingDocumentFilePreviewable(viewer.file) && <div className="rounded-md bg-white p-6 text-center text-gray-700"><FileText className="mx-auto mb-3 h-10 w-10 text-gray-400" /><p>Preview is unavailable for this file type.</p><p className="mt-1 text-sm text-gray-500">Use Download to open the file in its native application.</p></div>}
-            </div>
+            {viewMode === 'file' ? (
+              <div className="flex min-h-0 flex-1 items-center justify-center bg-gray-100 p-3">
+                {viewerLoading && <p className="text-sm text-gray-600">Loading secure preview…</p>}
+                {!viewerLoading && viewerError && <div className="max-w-xl rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">{viewerError}</div>}
+                {!viewerLoading && !viewerError && viewerUrl && isPdfFile(viewer.file) && <iframe src={viewerUrl} title={viewer.file.fileName || 'PDF preview'} className="h-full w-full rounded-md border-0 bg-white" />}
+                {!viewerLoading && !viewerError && viewerUrl && isImageFile(viewer.file) && <img src={viewerUrl} alt={viewer.file.fileName || 'Image preview'} className="max-h-full max-w-full object-contain" />}
+                {!viewerLoading && !viewerError && viewerUrl && !isBookingDocumentFilePreviewable(viewer.file) && <div className="rounded-md bg-white p-6 text-center text-gray-700"><FileText className="mx-auto mb-3 h-10 w-10 text-gray-400" /><p>Preview is unavailable for this file type.</p><p className="mt-1 text-sm text-gray-500">Use Download to open the file in its native application.</p></div>}
+              </div>
+            ) : (
+              <div className="min-h-0 flex-1 overflow-y-auto bg-gray-50 p-4 sm:p-6">
+                {htmlLoading && <p className="text-sm text-gray-600">Loading document content…</p>}
+                {!htmlLoading && htmlError && <div className="max-w-xl rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">{htmlError}</div>}
+                {!htmlLoading && !htmlError && htmlContent && (
+                  <BookingDocumentHtmlView
+                    content={htmlContent}
+                    translation={viewer.document.metadata?.translation}
+                    isGenerating={translationStatus === 'generating'}
+                    onRetry={retryDocumentTranslation}
+                  />
+                )}
+              </div>
+            )}
           </section>
         </div>
       )}

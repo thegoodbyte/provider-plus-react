@@ -1630,9 +1630,27 @@ export interface BookingDocument {
     size?: number;
     uploadedAt?: Date | string;
   }>;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, any> & {
+    translation?: {
+      sourceLanguage?: string;
+      targetLanguage?: string;
+      status?: 'pending' | 'translating' | 'ready' | 'failed';
+      items?: Array<{ key: string; label: string; value: string }>;
+      disclaimer?: string;
+      generatedAt?: string;
+      model?: string;
+      error?: string;
+    };
+  };
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface BookingDocumentContent {
+  sourceLanguage: string;
+  items: Array<{ key: string; label: string; value: string }>;
+  submittedAt?: string;
+  signedBy?: string;
 }
 
 export interface PaymentRequestLineItem {
