@@ -1199,6 +1199,11 @@ const MedicalReviewRequestsPage: React.FC = () => {
     if (today < new Date(today.getFullYear(), date.getMonth(), date.getDate())) age -= 1;
     return age > 0 ? `${age}` : '';
   })();
+  const retreatStartDate = (() => {
+    const retreat: any = typeof selected?.retreatId === 'object' ? selected.retreatId : (reviewContext as any)?.booking?.retreat;
+    const value = retreat?.startDate || retreat?.dateFrom || retreat?.checkInDate;
+    return value ? new Date(value).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+  })();
   const isMissingOverallDecision = Boolean(validationError && !reviewDecision);
   const isMissingMedicalStaffNotes = Boolean(validationError && medicalStaffNotes.trim().length < 2);
   const originalArtifactIds = selected
@@ -1237,6 +1242,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 <div className="mt-1">
                   <div className="hidden text-base font-medium text-gray-900 sm:block sm:text-lg">{selectedClientName}</div>
                   <div className="text-sm text-gray-600">{formatCompactDocumentMeta(selected) || getRequestTypeLabel(selected.requestType)}</div>
+                  {retreatStartDate && <div className="mt-1 text-xs font-medium text-gray-500">Retreat starts {retreatStartDate}</div>}
                   <button type="button" className="mrr-related-mobile-toggle sm:hidden" onClick={() => setRelatedRecordsOpen((open) => !open)} aria-expanded={relatedRecordsOpen} aria-controls="mrr-related-records">
                     <FileText size={15} /> Related records <ChevronDown size={13} className={relatedRecordsOpen ? 'rotate-180' : ''} />
                   </button>
