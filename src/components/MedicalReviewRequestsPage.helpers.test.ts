@@ -2,6 +2,9 @@ import {
   getAssociatedMedicalReviewRequests,
   formatMedicalReviewDecisionLabel,
   formatMedicalReviewRequestSummary,
+  getQuestionnaireLanguageLabel,
+  getQuestionnaireSourceLanguage,
+  getQuestionnaireTranslationDisplayState,
   normalizeMedicalReviewDecision,
   sortMedicalReviewRequestsNewestFirst,
   splitMedicalReviewRequestsByTimeline,
@@ -128,5 +131,40 @@ describe('medical review request helpers', () => {
       'req-1',
       'req-3',
     ]);
+  });
+});
+
+describe('PPVC-621 questionnaire translation helpers', () => {
+  it('getQuestionnaireSourceLanguage prefers the questionnaire record, then the linked artifact, then defaults to English', () => {
+    expect(getQuestionnaireSourceLanguage({ language: 'pl' }, { data: { sourceLanguage: 'cs' } })).toBe('pl');
+    expect(getQuestionnaireSourceLanguage(null, { data: { sourceLanguage: 'cs' } })).toBe('cs');
+    expect(getQuestionnaireSourceLanguage(null, null)).toBe('en');
+    expect(getQuestionnaireSourceLanguage({ language: 'PL' }, null)).toBe('pl');
+  });
+
+  it('getQuestionnaireLanguageLabel maps known codes and falls back to an uppercased code', () => {
+    expect(getQuestionnaireLanguageLabel('pl')).toBe('Polish');
+    expect(getQuestionnaireLanguageLabel('cs')).toBe('Czech');
+    expect(getQuestionnaireLanguageLabel('en')).toBe('English');
+    expect(getQuestionnaireLanguageLabel('de')).toBe('DE');
+  });
+
+  it('getQuestionnaireTranslationDisplayState needs no translation for an English source', () => {
+    expect(getQuestionnaireTranslationDisplayState('en', undefined, false)).toBe('not_needed');
+    expect(getQuestionnaireTranslationDisplayState('en', { status: 'failed' }, false)).toBe('not_needed');
+  });
+
+  it('getQuestionnaireTranslationDisplayState shows the ready translation once generated', () => {
+    expect(getQuestionnaireTranslationDisplayState('pl', { status: 'ready' }, false)).toBe('ready');
+  });
+
+  it('getQuestionnaireTranslationDisplayState reports translating both while an in-flight request is tracked locally and while the record itself says so', () => {
+    expect(getQuestionnaireTranslationDisplayState('pl', undefined, true)).toBe('translating');
+    expect(getQuestionnaireTranslationDisplayState('pl', { status: 'translating' }, false)).toBe('translating');
+  });
+
+  it('getQuestionnaireTranslationDisplayState surfaces a failed translation distinctly from never having tried', () => {
+    expect(getQuestionnaireTranslationDisplayState('pl', { status: 'failed' }, false)).toBe('failed');
+    expect(getQuestionnaireTranslationDisplayState('pl', undefined, false)).toBe('not_started');
   });
 });

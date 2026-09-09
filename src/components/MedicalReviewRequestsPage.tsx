@@ -10,6 +10,9 @@ import {
   formatMedicalReviewDecisionLabel,
   formatMedicalReviewRequestSummary,
   getAssociatedMedicalReviewRequests,
+  getQuestionnaireLanguageLabel,
+  getQuestionnaireSourceLanguage,
+  getQuestionnaireTranslationDisplayState,
   medicalReviewDecisionLabels,
   medicalReviewDecisionOptions,
   normalizeMedicalReviewDecision,
@@ -466,6 +469,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [clientVisibleAdminNoteStatus, setClientVisibleAdminNoteStatus] = useState('');
   const [fileReviews, setFileReviews] = useState<FileReviewDraft[]>([]);
   const [reviewContext, setReviewContext] = useState<ReviewContext | null>(null);
+  const [questionnaireTranslationStatus, setQuestionnaireTranslationStatus] = useState<'idle' | 'generating' | 'error'>('idle');
   const [generatedMedicalSummary, setGeneratedMedicalSummary] = useState<{ summary: string; generatedBy: 'rules' | 'openai'; model?: string; language?: string; unavailableReason?: string; generatedAt: string } | null>(null);
   const [generatingMedicalSummary, setGeneratingMedicalSummary] = useState(false);
   const [accessLinks, setAccessLinks] = useState<MedicalReviewAccessLink[]>([]);
@@ -563,6 +567,68 @@ const MedicalReviewRequestsPage: React.FC = () => {
   useEffect(() => {
     loadRequests();
   }, [loadRequests]);
+
+  // PPVC-621: a non-English questionnaire should have its English translation
+  // generated automatically the moment an advisor views it, if one wasn't
+  // already produced at submission time (e.g. the auto-trigger failed, or
+  // this is a legacy record from before that existed). Only fires when no
+  // translation has ever been attempted -- a 'failed' or 'translating'
+  // status is left alone here so a broken translation doesn't get silently
+  // retried (and billed) on every page view; that's a manual "Retry" action.
+  useEffect(() => {
+    const artifact = reviewContext?.artifacts?.questionnaire?.[0];
+    const questionnaire = reviewContext?.questionnaires?.[0];
+    const artifactId = artifact?._id;
+    if (!artifactId || artifact.translation) {
+      setQuestionnaireTranslationStatus('idle');
+      return;
+    }
+    const sourceLanguage = String(questionnaire?.language || (artifact.data as any)?.sourceLanguage || 'en').toLowerCase();
+    if (sourceLanguage === 'en') {
+      setQuestionnaireTranslationStatus('idle');
+      return;
+    }
+    let active = true;
+    setQuestionnaireTranslationStatus('generating');
+    medicalArtifactsApi.generateEnglishTranslation(artifactId, sourceLanguage)
+      .then((response) => {
+        if (!active) return;
+        setQuestionnaireTranslationStatus('idle');
+        setReviewContext((current) => current ? {
+          ...current,
+          artifacts: {
+            ...current.artifacts,
+            questionnaire: (current.artifacts?.questionnaire || []).map((item) => item._id === artifactId ? response.data : item),
+            all: (current.artifacts?.all || []).map((item) => item._id === artifactId ? response.data : item),
+          },
+        } : current);
+      })
+      .catch(() => { if (active) setQuestionnaireTranslationStatus('error'); });
+    return () => { active = false; };
+  }, [reviewContext?.artifacts?.questionnaire?.[0]?._id, Boolean(reviewContext?.artifacts?.questionnaire?.[0]?.translation)]);
+
+  const retryQuestionnaireTranslation = async () => {
+    const artifact = reviewContext?.artifacts?.questionnaire?.[0];
+    const questionnaire = reviewContext?.questionnaires?.[0];
+    if (!artifact?._id) return;
+    const sourceLanguage = String(questionnaire?.language || (artifact.data as any)?.sourceLanguage || artifact.translation?.sourceLanguage || '').toLowerCase();
+    if (!sourceLanguage || sourceLanguage === 'en') return;
+    setQuestionnaireTranslationStatus('generating');
+    try {
+      const response = await medicalArtifactsApi.generateEnglishTranslation(artifact._id, sourceLanguage, true);
+      setQuestionnaireTranslationStatus('idle');
+      setReviewContext((current) => current ? {
+        ...current,
+        artifacts: {
+          ...current.artifacts,
+          questionnaire: (current.artifacts?.questionnaire || []).map((item) => item._id === artifact._id ? response.data : item),
+          all: (current.artifacts?.all || []).map((item) => item._id === artifact._id ? response.data : item),
+        },
+      } : current);
+    } catch {
+      setQuestionnaireTranslationStatus('error');
+    }
+  };
 
   const filteredRequests = useMemo(() => {
     const retreatSearch = retreatFilter.trim().toLowerCase();
@@ -1120,6 +1186,15 @@ const MedicalReviewRequestsPage: React.FC = () => {
     const preCeremony = allArtifacts.filter((artifact) => artifact.documentStage === 'pre_ceremony');
     const ceremonyData = allArtifacts.filter((artifact) => artifact.documentStage === 'in_ceremony' || artifact.documentStage === 'post_ceremony');
     const questionnaireValues = flattenMedicalValues(questionnaire?.answers || {});
+    const questionnaireArtifact = reviewContext?.artifacts?.questionnaire?.[0];
+    const questionnaireSourceLanguage = getQuestionnaireSourceLanguage(questionnaire, questionnaireArtifact);
+    const questionnaireTranslation = questionnaireArtifact?.translation;
+    const questionnaireEnglishValues = (questionnaireTranslation?.items || []).map((item) => ({ label: item.label, value: item.value }));
+    const questionnaireTranslationDisplayState = getQuestionnaireTranslationDisplayState(
+      questionnaireSourceLanguage,
+      questionnaireTranslation,
+      questionnaireTranslationStatus === 'generating',
+    );
     const latestBp = bpReadings[0];
     const generatedOverview = [
       screening ? 'Screening form received.' : 'Screening form not received.',
@@ -1143,6 +1218,45 @@ const MedicalReviewRequestsPage: React.FC = () => {
         {values.map((item, index) => <div key={`${item.label}-${index}`} className="rounded-md bg-gray-50 px-3 py-2"><div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{item.label}</div><div className="mt-1 whitespace-pre-wrap text-sm text-gray-900">{item.value}</div></div>)}
       </div>
     );
+    // PPVC-621: a non-English questionnaire shows its AI-translated English
+    // answers first (the version the advisor can actually read), with the
+    // original-language answers underneath in a collapsed section -- the
+    // original submission stays available and is never replaced by the
+    // translation, just reordered. Branching lives in
+    // getQuestionnaireTranslationDisplayState (MedicalReviewRequestsPage.helpers.ts).
+    const questionnaireContent = !questionnaire ? missing('Initial questionnaire') : (
+      <>
+        {sourceHeader('Initial questionnaire', questionnaire.submitted_at || questionnaire.createdAt, questionnaire.display_id)}
+        {!questionnaireValues.length ? (
+          <div className="text-sm text-gray-500">The questionnaire record exists but contains no answers.</div>
+        ) : questionnaireTranslationDisplayState === 'not_needed' ? (
+          valuesGrid(questionnaireValues)
+        ) : (
+          <div className="space-y-3">
+            {questionnaireTranslationDisplayState === 'ready' && questionnaireEnglishValues.length ? (
+              <div>
+                <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-bold uppercase text-emerald-900">English (AI translation)</div>
+                {valuesGrid(questionnaireEnglishValues)}
+                <div className="mt-2 text-[11px] text-gray-500">{questionnaireTranslation?.disclaimer || 'AI-generated translation. The original signed submission remains authoritative.'}</div>
+              </div>
+            ) : questionnaireTranslationDisplayState === 'translating' ? (
+              <div className="rounded-md border border-blue-200 bg-blue-50 px-3 py-3 text-sm text-blue-800">Translating to English…</div>
+            ) : (
+              <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900">
+                <span>{questionnaireTranslationDisplayState === 'failed' ? 'English translation failed.' : 'No English translation yet.'}</span>
+                <button type="button" onClick={retryQuestionnaireTranslation} className="no-print rounded-md bg-amber-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-800 disabled:opacity-60">
+                  {questionnaireTranslationDisplayState === 'failed' ? 'Retry translation' : 'Generate English translation'}
+                </button>
+              </div>
+            )}
+            <details>
+              <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-gray-500">Original ({getQuestionnaireLanguageLabel(questionnaireSourceLanguage)})</summary>
+              <div className="mt-2">{valuesGrid(questionnaireValues)}</div>
+            </details>
+          </div>
+        )}
+      </>
+    );
 
     return <section id="mrr-medical-summary" className="rounded-xl border border-slate-300 bg-white p-4 shadow-sm sm:p-5">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-gray-200 pb-4">
@@ -1157,7 +1271,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
 
       <div className="mt-4 space-y-3">
         <details className="rounded-md border border-gray-200 p-3" open><summary className="cursor-pointer font-semibold text-gray-900">Screening form</summary><div className="mt-3">{screening ? <>{sourceHeader('Screening form', screening.screeningCompletedDate || screening.updatedAt || screening.createdAt, screening.display_id)}{renderReadOnlyScreening(screening)}</> : missing('Screening form')}</div></details>
-        <details className="rounded-md border border-gray-200 p-3" open><summary className="cursor-pointer font-semibold text-gray-900">Questionnaire</summary><div className="mt-3">{questionnaire ? <>{sourceHeader('Initial questionnaire', questionnaire.submitted_at || questionnaire.createdAt, questionnaire.display_id)}{questionnaireValues.length ? valuesGrid(questionnaireValues) : <div className="text-sm text-gray-500">The questionnaire record exists but contains no answers.</div>}</> : missing('Initial questionnaire')}</div></details>
+        <details className="rounded-md border border-gray-200 p-3" open><summary className="cursor-pointer font-semibold text-gray-900">Questionnaire</summary><div className="mt-3">{questionnaireContent}</div></details>
         <details className="rounded-md border border-gray-200 p-3"><summary className="cursor-pointer font-semibold text-gray-900">Overall medical form / history</summary><div className="mt-3">{medicalRecord ? <>{sourceHeader('Overall medical record', medicalRecord.updatedAt || medicalRecord.createdAt, medicalRecord.display_id)}{valuesGrid([
           { label: 'General notes', value: medicalRecord.generalNotes }, { label: 'Final medical clearance', value: medicalRecord.finalMedicalClearance === true ? 'Yes' : medicalRecord.finalMedicalClearance === false ? 'No' : '' }, { label: 'Clearance notes', value: medicalRecord.medicalClearanceNotes }, { label: 'EKG result', value: medicalRecord.ekgResults }, { label: 'Liver result', value: medicalRecord.liverPanelResults }, { label: 'Blood pressure', value: medicalRecord.bloodPressureSystolic && medicalRecord.bloodPressureDiastolic ? `${medicalRecord.bloodPressureSystolic}/${medicalRecord.bloodPressureDiastolic}` : '' },
         ].filter((item) => item.value))}</> : missing('Overall medical form')}</div></details>

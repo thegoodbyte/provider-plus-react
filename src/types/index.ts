@@ -1107,8 +1107,10 @@ export interface MedicalArtifact {
     sourceLanguage: string;
     targetLanguage: 'en';
     status: 'pending' | 'translating' | 'ready' | 'failed' | 'outdated';
+    sourceVersion?: number;
     generatedAt?: Date | string;
     model?: string;
+    items?: Array<{ key: string; label: string; value: string }>;
     disclaimer?: string;
     error?: string;
   };

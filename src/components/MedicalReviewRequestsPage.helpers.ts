@@ -147,6 +147,34 @@ export const formatMedicalReviewRequestSummary = (request: MedicalReviewRequest)
   return parts.join(' • ');
 };
 
+// PPVC-621: a non-English questionnaire shows its AI-translated English
+// answers first, with the original underneath. These pure helpers decide
+// which language is the "source" and which display state to render from,
+// kept separate from MedicalReviewRequestsPage.tsx's rendering so the
+// branching logic is unit-testable without mounting that (very heavy) page.
+const questionnaireLanguageLabels: Record<string, string> = { en: 'English', pl: 'Polish', cs: 'Czech' };
+
+export const getQuestionnaireLanguageLabel = (code: string) => questionnaireLanguageLabels[code] || code.toUpperCase();
+
+export const getQuestionnaireSourceLanguage = (
+  questionnaire?: { language?: string } | null,
+  questionnaireArtifact?: { data?: { sourceLanguage?: string } } | null,
+): string => String(questionnaire?.language || questionnaireArtifact?.data?.sourceLanguage || 'en').toLowerCase();
+
+export type QuestionnaireTranslationDisplayState = 'not_needed' | 'ready' | 'translating' | 'failed' | 'not_started';
+
+export const getQuestionnaireTranslationDisplayState = (
+  sourceLanguage: string,
+  translation: { status?: string } | null | undefined,
+  isGenerating: boolean,
+): QuestionnaireTranslationDisplayState => {
+  if (sourceLanguage === 'en') return 'not_needed';
+  if (translation?.status === 'ready') return 'ready';
+  if (isGenerating || translation?.status === 'translating') return 'translating';
+  if (translation?.status === 'failed') return 'failed';
+  return 'not_started';
+};
+
 export const splitMedicalReviewRequestsByTimeline = (
   currentRequest: MedicalReviewRequest | null | undefined,
   reviewHistory: MedicalReviewRequest[] = [],
