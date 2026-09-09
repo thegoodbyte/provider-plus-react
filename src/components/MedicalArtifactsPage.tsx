@@ -448,6 +448,9 @@ const MedicalArtifactsPage: React.FC = () => {
   };
 
   const openQuickMrr = async (artifact: MedicalArtifact) => {
+    const fallbackType = quickReviewTypeForArtifact(artifact.artifactType);
+    setQuickMrrForm({ requestType: fallbackType, advisorId: '', groupId: '', notifyClient: true });
+    setQuickMrrArtifact(artifact);
     try {
       const [users, groups, types] = await Promise.all([usersApi.getAll(), medicalReviewRequestsApi.getGroups(), medicalReviewRequestsApi.getRequestTypes()]);
       const advisors = (users.data || []).filter((item) => item.role === 'medical_advisor' && item.isActive !== false);
@@ -456,7 +459,6 @@ const MedicalArtifactsPage: React.FC = () => {
       setQuickMrrGroups(groups.data || []);
       setQuickMrrTypes(types.data || []);
       setQuickMrrForm({ requestType: quickReviewTypeForArtifact(artifact.artifactType), advisorId: advisors[0]?._id || '', groupId: matchingGroup?._id || '', notifyClient: true });
-      setQuickMrrArtifact(artifact);
     } catch (error: any) {
       alert(error?.response?.data?.message || 'Unable to load the Quick MRR form.');
     }
