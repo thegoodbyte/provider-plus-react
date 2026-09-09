@@ -1329,6 +1329,19 @@ const MedicalReviewRequestsPage: React.FC = () => {
       ].filter((artifactId): artifactId is string => Boolean(artifactId))))
     : [];
   const artifactRoutePrefix = isMedicalRoute ? '/medical' : '/admin';
+  const aiAssessmentArtifact = linkedArtifacts.find((artifact) => artifact.aiAssessment);
+  const aiAssessment = aiAssessmentArtifact?.aiAssessment;
+  const aiAssessmentPanel = aiAssessment ? (
+    <details className="rounded-lg border border-blue-200 bg-blue-50 p-3">
+      <summary className="cursor-pointer text-sm font-bold text-blue-950">AI analysis</summary>
+      <div className="mt-3 space-y-2 text-sm text-blue-950">
+        {!!aiAssessment.extractedValues?.length && <div><div className="font-semibold">Extracted values</div><ul className="mt-1 list-disc pl-5">{aiAssessment.extractedValues.map((item) => <li key={item.label}>{item.label}: {item.value}</li>)}</ul></div>}
+        {!!aiAssessment.missingOrUnreadable?.length && <div><div className="font-semibold">Missing or unreadable</div><ul className="mt-1 list-disc pl-5">{aiAssessment.missingOrUnreadable.map((item) => <li key={item}>{item}</li>)}</ul></div>}
+        {!!aiAssessment.potentialConcerns?.length && <div><div className="font-semibold text-amber-800">Potential concerns</div><ul className="mt-1 list-disc pl-5 text-amber-800">{aiAssessment.potentialConcerns.map((item) => <li key={item}>{item}</li>)}</ul></div>}
+        <div className="border-t border-blue-200 pt-2 text-xs font-bold">Requires medical advisor review{aiAssessment.assessedAt ? ` · ${formatDateTime(aiAssessment.assessedAt)}` : ''}</div>
+      </div>
+    </details>
+  ) : null;
   const pocketRequestIds = (() => { try { const parsed = JSON.parse(sessionStorage.getItem('medicalReviewPocketRequestIds') || '[]'); return Array.isArray(parsed) ? parsed.filter(Boolean) : []; } catch { return []; } })();
   const navigationRequests = pocketRequestIds.length ? pocketRequestIds.map((requestId: string) => requests.find((request) => request._id === requestId)).filter(Boolean) as MedicalReviewRequest[] : requests;
   const selectedRequestIndex = selected ? navigationRequests.findIndex((request) => request._id === selected._id) : -1;
@@ -1669,6 +1682,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   )}
                 </section>
 
+                {aiAssessmentPanel}
+
                 <details id="mobile-additional-info" className="mrr-mobile-additional-info">
                   <summary className="cursor-pointer py-3 text-sm font-semibold text-gray-900">Additional information</summary>
                   <div className="space-y-3 py-3 text-sm">
@@ -1728,6 +1743,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 <div ref={reviewDecisionSectionRef} className="mrr-canvas-actions">
                   {isReadOnlyView ? <div className="rounded-md bg-gray-50 p-3 text-sm"><strong>{formatMedicalReviewDecisionLabel(selected.reviewDecision)}</strong><p className="mt-1 whitespace-pre-wrap text-gray-600">{selected.medicalStaffNotes || selected.overallNotes || selected.reviewNotes || 'No notes saved.'}</p></div> : <><textarea id="desktop-medical-staff-notes" value={medicalStaffNotes} onChange={(event) => setMedicalStaffNotes(event.target.value)} rows={3} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder={reviewDecision === 'caution' ? 'Explain the caution and recommended follow-up (required)' : 'Add your review notes here...'} /><div className="mrr-decision-buttons">{decisionOptions.map((option) => <button key={option} type="button" onClick={() => { setReviewDecision(option); if (option === 'OK') setMedicalStaffNotes('OK'); else if (option === 'caution') { setMedicalStaffNotes(''); window.setTimeout(() => document.getElementById('desktop-medical-staff-notes')?.focus(), 0); } }} className={getDecisionButtonClass(option, reviewDecision === option, 'sm')}>{decisionLabels[option]}</button>)}</div><button type="button" onClick={() => handleSaveReview()} disabled={savingReview || !reviewDecision || medicalStaffNotes.trim().length < 2} className="w-fit rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{savingReview ? 'Saving...' : 'Save review'}</button></>}
                 </div>
+                {aiAssessmentPanel}
               </section>
             )}
             <div className={`${isDetailView ? 'hidden mrr-desktop-legacy' : ''} space-y-4 sm:space-y-5`}>

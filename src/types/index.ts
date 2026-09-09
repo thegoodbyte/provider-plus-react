@@ -1085,6 +1085,17 @@ export interface MedicalArtifact {
   description?: string;
   textContent?: string;
   data?: Record<string, any>;
+  aiAssessment?: {
+    status: 'ready' | 'failed';
+    assessmentType: 'ekg' | 'liver_panel';
+    extractedValues?: Array<{ label: string; value: string }>;
+    missingOrUnreadable?: string[];
+    potentialConcerns?: string[];
+    disclaimer?: string;
+    assessedAt?: Date | string;
+    model?: string;
+    error?: string;
+  };
   files?: Array<{
     fileName?: string;
     filePath?: string;
