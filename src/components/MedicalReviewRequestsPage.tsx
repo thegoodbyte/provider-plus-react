@@ -1428,8 +1428,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
             <>
             {isDetailView && (
               <div className="space-y-3 sm:hidden">
-                <section className="overflow-hidden rounded-lg border border-gray-200 bg-white">
-                  <div className="border-b border-gray-200 px-3 py-2 text-sm font-semibold text-gray-900">
+                <section className="mrr-mobile-artifact-section overflow-hidden">
+                  <div className="px-0 py-2 text-base font-bold text-gray-900">
                     {formatCompactDocumentMeta(selected) || getRequestTypeLabel(selected.requestType)} · MRR #{selected.display_id || '—'}
                   </div>
                   <div className="mrr-mobile-artifact-strip p-2">
@@ -1458,7 +1458,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
 
                 <section
                   ref={reviewDecisionSectionRef}
-                  className={`rounded-lg border bg-white p-3 ${
+                  className={`mrr-mobile-review-section ${
                     isMissingOverallDecision || isMissingMedicalStaffNotes ? 'border-red-300' : 'border-gray-200'
                   }`}
                 >
@@ -1527,9 +1527,9 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   )}
                 </section>
 
-                <details className="rounded-lg border border-gray-200 bg-white">
-                  <summary className="cursor-pointer px-3 py-3 text-sm font-semibold text-gray-900">Additional information</summary>
-                  <div className="space-y-3 border-t border-gray-200 p-3 text-sm">
+                <details className="mrr-mobile-additional-info">
+                  <summary className="cursor-pointer py-3 text-sm font-semibold text-gray-900">Additional information</summary>
+                  <div className="space-y-3 py-3 text-sm">
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div><span className="text-gray-500">Status</span><div className="font-semibold text-gray-900">{selected.status}</div></div>
                       <div><span className="text-gray-500">Created</span><div className="font-semibold text-gray-900">{formatDateTime(selected.createdAt || selected.requestedAt)}</div></div>
