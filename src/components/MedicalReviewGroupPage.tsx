@@ -108,7 +108,6 @@ const MedicalReviewGroupPage: React.FC = () => {
   const openRequestFromPocket = (requestId?: string) => {
     if (!requestId) return;
     sessionStorage.setItem('medicalReviewReturnPath', location.pathname);
-    sessionStorage.setItem('medicalReviewPocketRequestIds', JSON.stringify((group?.requests || []).map((request: any) => request?._id).filter(Boolean)));
     navigate(`/medical/review-requests/${requestId}`, { state: { returnTo: location.pathname } });
   };
 

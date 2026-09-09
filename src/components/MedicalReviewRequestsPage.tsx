@@ -1544,8 +1544,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
       </div>
     </details>
   ) : null;
-  const pocketRequestIds = (() => { try { const parsed = JSON.parse(sessionStorage.getItem('medicalReviewPocketRequestIds') || '[]'); return Array.isArray(parsed) ? parsed.filter(Boolean) : []; } catch { return []; } })();
-  const navigationRequests = pocketRequestIds.length ? pocketRequestIds.map((requestId: string) => requests.find((request) => request._id === requestId)).filter(Boolean) as MedicalReviewRequest[] : requests;
+  const navigationRequests = requests;
   const selectedRequestIndex = selected ? navigationRequests.findIndex((request) => request._id === selected._id) : -1;
   const previousRequest = selectedRequestIndex > 0 ? navigationRequests[selectedRequestIndex - 1] : undefined;
   const nextRequest = selectedRequestIndex >= 0 ? navigationRequests[selectedRequestIndex + 1] : undefined;
