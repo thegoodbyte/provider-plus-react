@@ -224,6 +224,11 @@ body.medical-review-capture-mode .medical-review-page .overflow-y-auto {
 .mrr-mobile-artifact-strip { display: flex; gap: .75rem; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none; }
 .mrr-mobile-artifact-strip::-webkit-scrollbar { display: none; }
 .mrr-mobile-artifact-slide { flex: 0 0 min(88vw, 32rem); scroll-snap-align: start; }
+.mrr-mobile-view-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: .25rem; padding: .2rem; border: 1px solid #dbe2ea; border-radius: .65rem; background: #f8fafc; }
+.mrr-mobile-view-toggle button { padding: .42rem .6rem; border: 0; border-radius: .45rem; background: transparent; color: #64748b; font-size: .72rem; font-weight: 750; }
+.mrr-mobile-view-toggle button.is-active { background: #2563eb; color: #fff; box-shadow: 0 2px 5px rgba(37,99,235,.2); }
+.mrr-mobile-artifact-strip.is-list { display: block; overflow: visible; }
+.mrr-mobile-artifact-strip.is-list .mrr-mobile-artifact-slide { margin-bottom: .75rem; }
 @media (max-width: 640px) {
   .mrr-decision-buttons { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .3rem; width: 100%; overflow: visible; padding-bottom: 0; }
   .mrr-decision-buttons > button { min-width: 0; min-height: 3.15rem; padding: .35rem .15rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .18rem; border-radius: .55rem !important; white-space: normal; text-align: center; font-size: .58rem; line-height: 1.05; }

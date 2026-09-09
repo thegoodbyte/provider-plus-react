@@ -460,6 +460,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [medicalStaffNotes, setMedicalStaffNotes] = useState('');
   const [savingReview, setSavingReview] = useState(false);
   const [nextReviewPrompt, setNextReviewPrompt] = useState<{ remaining: number; nextId?: string } | null>(null);
+  const [mobileReviewMode, setMobileReviewMode] = useState<'full' | 'list'>('full');
   const [resettingReview, setResettingReview] = useState(false);
   const [clientVisibleAdminNote, setClientVisibleAdminNote] = useState('');
   const [savingClientVisibleAdminNote, setSavingClientVisibleAdminNote] = useState(false);
@@ -1418,11 +1419,15 @@ const MedicalReviewRequestsPage: React.FC = () => {
             <>
             {isDetailView && (
               <div className="space-y-3 sm:hidden">
+                <div className="mrr-mobile-view-toggle" role="group" aria-label="Review layout">
+                  <button type="button" className={mobileReviewMode === 'full' ? 'is-active' : ''} onClick={() => setMobileReviewMode('full')}>Full view</button>
+                  <button type="button" className={mobileReviewMode === 'list' ? 'is-active' : ''} onClick={() => setMobileReviewMode('list')}>List view</button>
+                </div>
                 <section className="overflow-hidden rounded-lg border border-gray-200 bg-white">
                   <div className="border-b border-gray-200 px-3 py-2 text-sm font-semibold text-gray-900">
                     {formatCompactDocumentMeta(selected) || getRequestTypeLabel(selected.requestType)}
                   </div>
-                  <div className="mrr-mobile-artifact-strip p-2">
+                  <div className={`mrr-mobile-artifact-strip p-2 ${mobileReviewMode === 'list' ? 'is-list' : ''}`}>
                     {linkedArtifacts.length === 0 ? (
                       <div className="p-3 text-sm text-gray-500">No linked document is available.</div>
                     ) : linkedArtifacts.map((artifact) => (
