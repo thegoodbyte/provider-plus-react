@@ -5,7 +5,6 @@ import { Login } from './components/Login/Login';
 import { ForgotPassword } from './components/Login/ForgotPassword';
 import { ResetPassword } from './components/Login/ResetPassword';
 import MedicalReviewAccessPage from './components/MedicalReviewAccessPage';
-import MedicalReviewGroupAccessPage from './components/MedicalReviewGroupAccessPage';
 import MedicalReviewPublicPage from './components/MedicalReviewPublicPage';
 import ContractRedirectPage from './components/ContractRedirectPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -23,8 +22,6 @@ function AppContent() {
   const { isAuthenticated, user, loading } = useAuth();
   const location = useLocation();
   const isPublicMedicalReviewRoute = location.pathname.startsWith('/medical-review-access/')
-    || location.pathname.startsWith('/medical/review-groups/access/')
-    || location.pathname.startsWith('/medical-review-group-access/')
     || location.pathname.startsWith('/medical/review-link/')
     || location.pathname.startsWith('/clients/contracts/jotform/link/');
   const isPublicPasswordRoute = location.pathname === '/users/forgot-password'
@@ -60,8 +57,6 @@ function AppContent() {
       <Routes>
         <Route path="/medical-review-access/:token/:label" element={<MedicalReviewAccessPage />} />
         <Route path="/medical-review-access/:token" element={<MedicalReviewAccessPage />} />
-        <Route path="/medical/review-groups/access/:token" element={<MedicalReviewGroupAccessPage />} />
-        <Route path="/medical-review-group-access/:token" element={<MedicalReviewGroupAccessPage />} />
         <Route path="/medical/review-link/:token" element={<MedicalReviewPublicPage />} />
         <Route path="/clients/contracts/jotform/link/:bookingId" element={<ContractRedirectPage />} />
         <Route path="/users/forgot-password" element={<ForgotPassword />} />

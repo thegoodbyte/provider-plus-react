@@ -45,7 +45,6 @@ import MedicalReviewRequestsGrid from './MedicalReviewRequestsGrid';
 import MedicalReviewRequestEditorPage from './MedicalReviewRequestEditorPage';
 import MedicalReviewRequestsPage from './MedicalReviewRequestsPage';
 import MedicalReviewAccessPage from './MedicalReviewAccessPage';
-import MedicalReviewGroupAccessPage from './MedicalReviewGroupAccessPage';
 import MedicalReviewGroupPage from './MedicalReviewGroupPage';
 import MedicalReviewPublicPage from './MedicalReviewPublicPage';
 import RemindersPage from './RemindersPage';
@@ -163,9 +162,7 @@ const AppleLayout: React.FC = () => {
   const navigate = useNavigate();
 
   const isMedicalAdvisor = user?.role === 'medical_advisor';
-  const isMedicalRequestQuickAccessSession = user?.accessType === 'medical_review_magic_link' && Boolean(user?.medicalReviewRequestId);
-  const isMedicalGroupQuickAccessSession = user?.accessType === 'medical_review_group_link' && Boolean(user?.medicalReviewGroupId);
-  const isMedicalQuickAccessSession = isMedicalRequestQuickAccessSession || isMedicalGroupQuickAccessSession;
+  const isMedicalQuickAccessSession = user?.accessType === 'medical_review_magic_link' && Boolean(user?.medicalReviewRequestId);
   const showQuickMenu = !isMedicalAdvisor;
 
   const getActiveItemFromPath = () => {
@@ -318,16 +315,8 @@ const AppleLayout: React.FC = () => {
 
   useEffect(() => {
     if (isMedicalQuickAccessSession) {
-      const allowedPath = isMedicalGroupQuickAccessSession
-        ? `/medical/review-groups/${user.medicalReviewGroupId}`
-        : `/medical/review-requests/${user.medicalReviewRequestId}/edit`;
-      // A grouped-link session is also allowed to open any individual review
-      // request from its packet -- ProtectedRoute already permits this path
-      // shape. Without this check, clicking a request from the packet list
-      // bounced straight back here before the request page could even load.
-      const isAllowedReviewRequestPath = isMedicalGroupQuickAccessSession
-        && /^\/medical\/review-requests\/[^/]+(?:\/edit)?$/.test(location.pathname);
-      if (location.pathname !== allowedPath && !isAllowedReviewRequestPath) {
+      const allowedPath = `/medical/review-requests/${user.medicalReviewRequestId}/edit`;
+      if (location.pathname !== allowedPath) {
         navigate(allowedPath, { replace: true });
       }
       return;
@@ -336,7 +325,7 @@ const AppleLayout: React.FC = () => {
     if (location.pathname === '/') {
       navigate(`/${routePrefix}/${defaultRoute}`, { replace: true });
     }
-  }, [defaultRoute, isMedicalGroupQuickAccessSession, isMedicalQuickAccessSession, location.pathname, navigate, routePrefix, user?.medicalReviewGroupId, user?.medicalReviewRequestId]);
+  }, [defaultRoute, isMedicalQuickAccessSession, location.pathname, navigate, routePrefix, user?.medicalReviewRequestId]);
 
   useEffect(() => {
     if (isMedicalQuickAccessSession || appMode.mode === 'normal') return;
@@ -802,8 +791,6 @@ const AppleLayout: React.FC = () => {
                 <Route path="/medical/review-link/:token" element={<MedicalReviewPublicPage />} />
                 <Route path="/medical-review-access/:token/:label" element={<MedicalReviewAccessPage />} />
                 <Route path="/medical-review-access/:token" element={<MedicalReviewAccessPage />} />
-                <Route path="/medical/review-groups/access/:token" element={<MedicalReviewGroupAccessPage />} />
-                <Route path="/medical-review-group-access/:token" element={<MedicalReviewGroupAccessPage />} />
                 <Route path="/users/forgot-password" element={<ForgotPassword />} />
                 <Route path="/users/forgot-pasword" element={<ForgotPassword />} />
                 <Route path="/users/change-password/:token" element={<ResetPassword />} />

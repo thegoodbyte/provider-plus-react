@@ -1384,22 +1384,6 @@ export interface MedicalReviewRequest {
   updatedAt?: string;
 }
 
-export interface MedicalReviewGroupAccessLink {
-  _id?: string;
-  tokenHash?: string;
-  label?: string;
-  url?: string;
-  createdAt?: string | Date;
-  createdByUserId?: string;
-  createdByName?: string;
-  firstAccessedAt?: string | Date;
-  lastAccessedAt?: string | Date;
-  accessCount?: number;
-  expiresAt?: string | Date;
-  revokedAt?: string | Date;
-  status?: 'active' | 'revoked' | 'expired';
-}
-
 type MedicalReviewGroupUserRef = string | {
   _id?: string;
   firstName?: string;
@@ -1426,14 +1410,7 @@ export interface MedicalReviewGroup {
   reviewerEmail?: string;
   createdByUserId?: MedicalReviewGroupUserRef;
   createdByName?: string;
-  url?: string;
-  accessLinks?: MedicalReviewGroupAccessLink[];
-  firstAccessedAt?: string | Date;
-  expiresAt?: string | Date;
-  accessCount?: number;
-  revokedAt?: string | Date;
   createdAt?: string | Date;
-  status?: 'active' | 'expired' | 'revoked' | 'not_accessed';
 }
 
 export interface BookingFlowTemplate {

@@ -7,7 +7,6 @@ import { useAuth } from '../context/AuthContext';
 jest.mock('../services/api', () => ({
   medicalReviewRequestsApi: {
     getGroup: jest.fn(),
-    getGroupAccessLinks: jest.fn(),
   },
 }));
 jest.mock('../context/AuthContext', () => ({ useAuth: jest.fn() }));
@@ -49,7 +48,6 @@ describe('MedicalReviewGroupPage', () => {
     jest.clearAllMocks();
     (useAuth as jest.Mock).mockReturnValue({ user: { role: 'medical_advisor' } });
     (medicalReviewRequestsApi.getGroup as jest.Mock).mockResolvedValue({ data: group });
-    (medicalReviewRequestsApi.getGroupAccessLinks as jest.Mock).mockResolvedValue({ data: [] });
   });
 
   it('shows only pending/in-review requests by default, hiding approved and rejected ones', async () => {

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, MedicalReviewGroup, MedicalReviewGroupAccessLink, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, MailSettings, EmailTemplate, EmailTemplateSeedOption, EmailAsset, SentEmail, RetreatArtifactSubmissionsResponse, BloodPressureReading, BoosterOffer } from '../types';
+import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, MedicalReviewGroup, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, MailSettings, EmailTemplate, EmailTemplateSeedOption, EmailAsset, SentEmail, RetreatArtifactSubmissionsResponse, BloodPressureReading, BoosterOffer } from '../types';
 import { authService } from './authService';
 import { cacheService } from './cacheService';
 import { API_BASE_URL } from '../config/api.config';
@@ -1295,9 +1295,6 @@ export const medicalReviewRequestsApi = {
   revokeAccessLink: (accessLinkId: string) => api.patch<any>(`/medical-review-requests/access-links/${accessLinkId}/revoke`, {}),
   getGroups: () => api.get<MedicalReviewGroup[]>('/medical-review-requests/groups'),
   getGroup: (id: string) => api.get<MedicalReviewGroup>(`/medical-review-requests/groups/${id}`),
-  getGroupAccessLinks: (id: string) => api.get<MedicalReviewGroupAccessLink[]>(`/medical-review-requests/groups/${id}/access-links`),
-  issueGroupAccessLink: (id: string, data: { expiresInDays?: number } = {}) => api.post<MedicalReviewGroupAccessLink>(`/medical-review-requests/groups/${id}/access-links`, data),
-  revokeGroupAccessLink: (accessLinkId: string) => api.patch<MedicalReviewGroupAccessLink>(`/medical-review-requests/groups/access-links/${accessLinkId}/revoke`, {}),
   reorderGroups: (orderedGroupIds: string[]) => {
     cacheService.clearPattern('medical-review-requests:');
     return api.patch<MedicalReviewGroup[]>('/medical-review-requests/groups/order', { orderedGroupIds });
@@ -1333,30 +1330,10 @@ export const medicalReviewRequestsApi = {
     endDate?: string;
     reviewRequestIds: string[];
     reviewerUserId: string;
-    expiresInDays?: number;
   }) => {
     cacheService.clearPattern('medical-review-requests:');
     return api.post<any>('/medical-review-requests/groups', data);
   },
-  exchangeGroupAccessLink: (token: string) => api.post<{
-    access_token: string;
-    expiresAt: string;
-    redirectTo: string;
-    reviewGroupId: string;
-    user: {
-      id?: string;
-      email: string;
-      role: string;
-      firstName?: string;
-      lastName?: string;
-      accessType?: string;
-      medicalReviewGroupId?: string;
-    };
-  }>(
-    `/medical-review-public/group-access/${encodeURIComponent(token)}`,
-    {},
-    { suppressAuthRedirect: true, suppressGlobalError: true } as any
-  ),
   review: (id: string, reviewData: {
     status?: string;
     reviewDecision?: 'OK' | 'caution' | 'more_info_needed' | 'NOT OK';

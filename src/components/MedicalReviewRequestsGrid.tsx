@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FiAlertTriangle, FiCheck, FiChevronDown, FiChevronRight, FiClock, FiCopy, FiDownload, FiEye, FiEdit2, FiFolder, FiLink, FiLock, FiMenu, FiPlus, FiRefreshCw, FiSearch, FiSend, FiThumbsDown, FiThumbsUp, FiTrash2, FiUnlock, FiX, FiZap } from 'react-icons/fi';
+import { FiAlertTriangle, FiCheck, FiChevronDown, FiChevronRight, FiClock, FiDownload, FiEye, FiEdit2, FiFolder, FiLink, FiLock, FiMenu, FiPlus, FiRefreshCw, FiSearch, FiThumbsDown, FiThumbsUp, FiTrash2, FiUnlock, FiX, FiZap } from 'react-icons/fi';
 import LoadingSpinner from './LoadingSpinner';
 import ClientAvatar from './ClientAvatar';
 import MedicalReviewTypeBadge from './MedicalReviewTypeBadge';
@@ -135,7 +135,6 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const [groupEndDate, setGroupEndDate] = useState('');
   const [selectedGroupRequestIds, setSelectedGroupRequestIds] = useState<string[]>([]);
   const [groupSearchTerm, setGroupSearchTerm] = useState('');
-  const [createdGroupUrl, setCreatedGroupUrl] = useState('');
   const [groupError, setGroupError] = useState('');
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [editingGroupId, setEditingGroupId] = useState('');
@@ -169,7 +168,6 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const [autoAssignSaving, setAutoAssignSaving] = useState(false);
   const [autoAssignMessage, setAutoAssignMessage] = useState('');
   const [downloadingPacketId, setDownloadingPacketId] = useState('');
-  const [generatingPacketLinkId, setGeneratingPacketLinkId] = useState('');
 
   const loadData = useCallback(async () => {
     try {
@@ -380,15 +378,6 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     });
   }, [groups]);
 
-  const copyText = async (value: string) => {
-    if (!value) return;
-    try {
-      await navigator.clipboard.writeText(value);
-    } catch {
-      window.prompt('Copy link', value);
-    }
-  };
-
   const handleGroupDragStart = (groupId: string) => {
     setDraggedGroupId(groupId);
   };
@@ -441,7 +430,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
         continue;
       }
 
-      const retreatGroups = groups.filter((group) => getGroupRetreatId(group) === retreatId && group._id && !group.revokedAt);
+      const retreatGroups = groups.filter((group) => getGroupRetreatId(group) === retreatId && group._id);
       const ceremonyNumber = request.ceremonyNumber;
       const exactCeremonyGroups = typeof ceremonyNumber === 'number'
         ? retreatGroups.filter((group) => group.ceremonyNumber === ceremonyNumber)
@@ -476,29 +465,6 @@ const MedicalReviewRequestsGrid: React.FC = () => {
       setAutoAssignMessage(requestError?.response?.data?.message || 'Unable to auto-assign MRRs.');
     } finally {
       setAutoAssignSaving(false);
-    }
-  };
-
-  const openWhatsAppShare = (url?: string, label?: string) => {
-    if (!url) return;
-    const text = encodeURIComponent(`${label || 'Medical review packet'}: ${url}`);
-    window.open(`https://wa.me/?text=${text}`, '_blank', 'noopener,noreferrer');
-  };
-
-  const generatePacketLink = async (group: MedicalReviewGroup) => {
-    if (!group._id) return;
-    try {
-      setGeneratingPacketLinkId(group._id);
-      const response = await medicalReviewRequestsApi.issueGroupAccessLink(group._id, { expiresInDays: 7 });
-      const url = response.data?.url;
-      if (url) {
-        await copyText(url);
-        window.alert('New pocket link copied to your clipboard.');
-      }
-    } catch (requestError: any) {
-      window.alert(requestError?.response?.data?.message || 'Unable to generate a pocket link.');
-    } finally {
-      setGeneratingPacketLinkId('');
     }
   };
 
@@ -560,7 +526,6 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     setGroupRetreatId('');
     setGroupEndDate('');
     setGroupSearchTerm('');
-    setCreatedGroupUrl('');
     setGroupError('');
     setGroupModalOpen(true);
   };
@@ -719,7 +684,6 @@ const MedicalReviewRequestsGrid: React.FC = () => {
 
   const createGroup = async () => {
     setGroupError('');
-    setCreatedGroupUrl('');
     if (!groupReviewerUserId) {
       setGroupError('Select a medical advisor.');
       return;
@@ -739,7 +703,6 @@ const MedicalReviewRequestsGrid: React.FC = () => {
         reviewRequestIds: selectedGroupRequestIds,
         reviewerUserId: groupReviewerUserId,
       });
-      setCreatedGroupUrl(response.data.url || '');
       if (response.data?._id) {
         setGroupModalOpen(false);
         navigate(`${location.pathname.startsWith('/medical') ? '/medical/review-groups' : '/admin/medical-review-groups'}/${response.data._id}`);
@@ -758,14 +721,6 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     return source.filter((request) => getReviewRequestFilterText(request).includes(search));
   }, [groupSearchTerm, groupedRequestIds, requests]);
 
-  const copyGroupUrl = async () => {
-    if (!createdGroupUrl) return;
-    try {
-      await navigator.clipboard.writeText(createdGroupUrl);
-    } catch (error) {
-      window.prompt('Copy grouped review link', createdGroupUrl);
-    }
-  };
 
   if (loading) {
     return <LoadingSpinner message="Loading medical review requests..." />;
@@ -979,7 +934,6 @@ const MedicalReviewRequestsGrid: React.FC = () => {
             {lifecycleGroups.map((group, groupIndex) => {
               const groupId = group._id || group.title;
               const expanded = expandedGroupIds.includes(groupId || '');
-              const groupUrl = group.url || '';
               const isDragged = draggedGroupId === groupId;
               const isOver = draggedOverGroupId === groupId && draggedGroupId !== groupId;
               const isRequestDropTarget = draggedOverPacketId === groupId && draggedRequestSourceGroupId !== groupId;
@@ -1107,46 +1061,6 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                     {groupReorderSaving && draggedGroupId === groupId && (
                       <span className="text-xs font-medium text-blue-700">Saving...</span>
                     )}
-                  {groupUrl && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                              event.stopPropagation();
-                              copyText(groupUrl);
-                            }}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-200 bg-white text-blue-700 hover:bg-blue-50"
-                            title="Copy permanent link"
-                            aria-label="Copy permanent link"
-                          >
-                            <Icon icon={FiCopy} className="h-3.5 w-3.5" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(event) => {
-                              event.stopPropagation();
-                              openWhatsAppShare(groupUrl, group.title);
-                            }}
-                            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-green-200 bg-green-50 text-green-700 hover:bg-green-100"
-                            title="Send link in WhatsApp"
-                            aria-label="Send link in WhatsApp"
-                          >
-                            <Icon icon={FiSend} className="h-3.5 w-3.5" />
-                          </button>
-                        </>
-                      )}
-                  {canManageRequests && groupId && (
-                    <button
-                      type="button"
-                      onClick={(event) => { event.stopPropagation(); void generatePacketLink(group); }}
-                      disabled={generatingPacketLinkId === groupId}
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 disabled:opacity-60"
-                      title="Generate new pocket link"
-                      aria-label="Generate new pocket link"
-                    >
-                      <Icon icon={FiLink} className="h-3.5 w-3.5" />
-                    </button>
-                  )}
                   {canManageRequests && (
                         <>
                           <button
@@ -1533,27 +1447,6 @@ const MedicalReviewRequestsGrid: React.FC = () => {
               {groupError && (
                 <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{groupError}</div>
               )}
-              {createdGroupUrl && (
-                <div className="mb-4 rounded-md border border-green-200 bg-green-50 p-3">
-                  <div className="text-sm font-semibold text-green-800">Grouped review link created</div>
-                  <div className="mt-2 flex gap-2">
-                    <input
-                      value={createdGroupUrl}
-                      readOnly
-                      className="min-w-0 flex-1 rounded-md border border-green-200 bg-white px-3 py-2 text-sm text-gray-800"
-                    />
-                    <button
-                      type="button"
-                      onClick={copyGroupUrl}
-                      className="inline-flex items-center gap-2 rounded-md bg-green-700 px-3 py-2 text-sm font-semibold text-white hover:bg-green-800"
-                    >
-                      <Icon icon={FiCopy} className="h-4 w-4" />
-                      Copy
-                    </button>
-                  </div>
-                </div>
-              )}
-
               <div className="mb-4 rounded-md border border-gray-200 bg-gray-50 p-3">
                 <label className="block">
                   <span className="text-sm font-medium text-gray-700">Search requests</span>
