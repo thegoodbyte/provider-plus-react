@@ -528,7 +528,7 @@ const ClientDetailView: React.FC<ClientDetailViewProps> = ({ clientId, onBack })
                     {client.referralPersonType === 'someone_else' && client.referralPersonName && <> · Friend: {client.referralPersonName}</>}
                   </div>
                   <div className="info-row">
-                    <strong>Year of Birth:</strong> {client.dateOfBirth ? new Date(client.dateOfBirth).getFullYear() : (client as any)?.screeningData?.year_of_birth || (client as any)?.screeningData?.yearOfBirth || 'N/A'}
+                    <strong>Date of Birth:</strong> {client.dateOfBirth ? new Date(client.dateOfBirth).toLocaleDateString() : 'N/A'} {(client as any)?.dateOfBirthSource === 'AI' && <span className="ml-1 text-xs text-blue-600">(AI)</span>}
                   </div>
                   <div className="info-row">
                     <strong>Gender:</strong> {client.gender || 'N/A'}
