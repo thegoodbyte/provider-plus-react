@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Eye, FileText, HeartPulse, Leaf, Pencil, Plus, RefreshCw, Send, Trash2, XCircle, Zap } from 'lucide-react';
 import { medicalArtifactsApi, medicalReviewRequestsApi, retreatsApi } from '../services/api';
+import { usersApi, User } from '../services/usersApi';
 import { Client, MedicalArtifact, MedicalReviewRequest, Retreat, RetreatArtifactSubmissionRow, RetreatArtifactSubmissionsResponse, RetreatClient } from '../types';
 import LoadingSpinner from './LoadingSpinner';
 import ClientAvatar from './ClientAvatar';
@@ -148,6 +149,17 @@ const getReviewTime = (review: MedicalReviewRequest) =>
 const getReviewLabel = (review: MedicalReviewRequest) =>
   `MRR #${review.display_id || review._id?.slice(-6) || 'linked'}`;
 
+const quickReviewTypeForArtifact = (artifactType?: MedicalArtifact['artifactType']): NonNullable<MedicalReviewRequest['requestType']> => {
+  if (artifactType === 'ekg' || artifactType === 'ceremony_ekg') return artifactType === 'ceremony_ekg' ? 'ceremony_ekg_review' : 'ekg_review';
+  if (artifactType === 'blood_pressure') return 'blood_pressure_review';
+  if (artifactType === 'liver_panel') return 'liver_panel_review';
+  if (artifactType === 'medications_form' || artifactType === 'medication_list') return 'medications_review';
+  if (artifactType === 'questionnaire') return 'questionnaire_review';
+  if (artifactType === 'food_intake') return 'food_review';
+  if (artifactType === 'question') return 'medical_question';
+  return 'general_clearance';
+};
+
 const getReviewArtifactIds = (review: MedicalReviewRequest): string[] => {
   const ids = new Set<string>();
   const addId = (value: any) => {
@@ -270,6 +282,12 @@ const MedicalArtifactsPage: React.FC = () => {
   const [submissionsError, setSubmissionsError] = useState('');
   const [deletingArtifactId, setDeletingArtifactId] = useState('');
   const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [quickMrrArtifact, setQuickMrrArtifact] = useState<MedicalArtifact | null>(null);
+  const [quickMrrAdvisors, setQuickMrrAdvisors] = useState<User[]>([]);
+  const [quickMrrGroups, setQuickMrrGroups] = useState<any[]>([]);
+  const [quickMrrTypes, setQuickMrrTypes] = useState<Array<{ key: NonNullable<MedicalReviewRequest['requestType']>; label: string }>>([]);
+  const [quickMrrForm, setQuickMrrForm] = useState({ requestType: 'general_clearance' as NonNullable<MedicalReviewRequest['requestType']>, advisorId: '', groupId: '', notifyClient: true });
+  const [quickMrrSaving, setQuickMrrSaving] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -427,6 +445,33 @@ const MedicalArtifactsPage: React.FC = () => {
   const handleRequestReview = async (artifact: MedicalArtifact) => {
     if (!artifact._id) return;
     navigate(`/admin/medical-review-requests/new?artifactId=${artifact._id}`);
+  };
+
+  const openQuickMrr = async (artifact: MedicalArtifact) => {
+    try {
+      const [users, groups, types] = await Promise.all([usersApi.getAll(), medicalReviewRequestsApi.getGroups(), medicalReviewRequestsApi.getRequestTypes()]);
+      const advisors = (users.data || []).filter((item) => item.role === 'medical_advisor' && item.isActive !== false);
+      const matchingGroup = (groups.data || []).find((group: any) => getObjectId(group.retreatId) === getObjectId(artifact.retreatId)) || groups.data?.[0];
+      setQuickMrrAdvisors(advisors);
+      setQuickMrrGroups(groups.data || []);
+      setQuickMrrTypes(types.data || []);
+      setQuickMrrForm({ requestType: quickReviewTypeForArtifact(artifact.artifactType), advisorId: advisors[0]?._id || '', groupId: matchingGroup?._id || '', notifyClient: true });
+      setQuickMrrArtifact(artifact);
+    } catch (error: any) {
+      alert(error?.response?.data?.message || 'Unable to load the Quick MRR form.');
+    }
+  };
+
+  const createQuickMrr = async () => {
+    if (!quickMrrArtifact?._id || !quickMrrForm.advisorId || !quickMrrForm.groupId) return;
+    setQuickMrrSaving(true);
+    try {
+      await medicalReviewRequestsApi.createFromArtifact(quickMrrArtifact._id, quickMrrForm.requestType, { assignedToUserId: quickMrrForm.advisorId, medicalReviewGroupId: quickMrrForm.groupId, documentStage: quickMrrArtifact.documentStage, sentForReviewAt: new Date().toISOString(), notifyClientOnSubmission: quickMrrForm.notifyClient });
+      setQuickMrrArtifact(null);
+      await loadData();
+    } catch (error: any) {
+      alert(error?.response?.data?.message || 'Unable to create the medical review request.');
+    } finally { setQuickMrrSaving(false); }
   };
 
   const handleDeleteArtifact = async (artifact: MedicalArtifact) => {
@@ -669,7 +714,7 @@ const MedicalArtifactsPage: React.FC = () => {
                         className="w-fit text-xs font-semibold text-blue-700 hover:text-blue-900 hover:underline"
                       >
                         Create MRR
-                      </button><button type="button" title="Quick MRR" aria-label={`Quick MRR for artifact #${artifact.display_id}`} onClick={() => navigate(`${artifact._id}?quickMrr=1`)} disabled={!artifact._id} className="inline-flex h-6 w-6 items-center justify-center rounded border border-amber-300 bg-amber-50 text-amber-800"><Zap className="h-3.5 w-3.5" /></button></div>
+                      </button><button type="button" title="Quick MRR" aria-label={`Quick MRR for artifact #${artifact.display_id}`} onClick={() => openQuickMrr(artifact)} disabled={!artifact._id} className="inline-flex h-6 w-6 items-center justify-center rounded border border-amber-300 bg-amber-50 text-amber-800"><Zap className="h-3.5 w-3.5" /></button></div>
                     )}
                     <ReviewResultBadge review={latestReview} />
                   </div>
@@ -789,7 +834,7 @@ const MedicalArtifactsPage: React.FC = () => {
             <div className={`flex items-center justify-between px-3 py-2 ${tone.split(' ').slice(1).join(' ')}`}><span className="font-bold">#{artifact.display_id} <span className="ml-1 text-sm uppercase">{outcomeLabel[outcome] || 'Stored'}</span></span><span className="rounded border border-current px-2 py-1 text-xs font-bold uppercase">{getDocumentStageLabel(artifact.documentStage)}</span></div>
             <div className="p-3">
               <div className="flex gap-3"><div className="flex h-16 w-14 shrink-0 items-center justify-center rounded border border-slate-200 text-xs font-bold text-slate-400">PDF</div><div className="min-w-0"><button type="button" onClick={() => navigate(`${artifact._id}`)} className="text-left text-lg font-bold text-cyan-700">{getClientName(artifact.clientId)}</button><div className="text-sm text-slate-500">Client #{typeof artifact.clientId === 'object' ? artifact.clientId.display_id || String(getObjectId(artifact.clientId) || '').slice(-6) : String(getObjectId(artifact.clientId) || '').slice(-6)}</div><div className="text-sm text-slate-500">{getBookingLabel(artifact.bookingId) || 'No booking linked'}</div></div></div>
-              <div className="mt-3 border-t border-slate-100 pt-3"><div className="flex items-center gap-2 text-base font-semibold text-slate-800"><compactDocumentType.Icon className="h-4 w-4" />{getDocumentTypeLabel(artifact.documentType, artifact.artifactType)}</div><div className="text-sm text-slate-500">{artifact.title || 'Medical artifact'} · {artifact.files?.length || 0} file(s)</div>{latestReview ? <div className="mt-2 text-sm text-slate-600">{latestReview.requestType?.replace(/_/g, ' ')} · {latestReview.status || 'pending'}</div> : <div className="mt-2 flex items-center gap-2"><button type="button" onClick={() => handleRequestReview(artifact)} className="text-sm font-semibold text-cyan-700">Create MRR</button><button type="button" title="Quick MRR" aria-label={`Quick MRR for artifact #${artifact.display_id}`} onClick={() => navigate(`${artifact._id}?quickMrr=1`)} disabled={!artifact._id} className="inline-flex h-6 w-6 items-center justify-center rounded border border-amber-300 bg-amber-50 text-amber-800"><Zap className="h-3.5 w-3.5" /></button></div>}{latestReview?._id && <button type="button" onClick={() => navigate(`/admin/medical-review-requests/${latestReview._id}`)} className="mt-1 text-sm font-semibold text-cyan-700">Open {getReviewLabel(latestReview)}</button>}</div>
+              <div className="mt-3 border-t border-slate-100 pt-3"><div className="flex items-center gap-2 text-base font-semibold text-slate-800"><compactDocumentType.Icon className="h-4 w-4" />{getDocumentTypeLabel(artifact.documentType, artifact.artifactType)}</div><div className="text-sm text-slate-500">{artifact.title || 'Medical artifact'} · {artifact.files?.length || 0} file(s)</div>{latestReview ? <div className="mt-2 text-sm text-slate-600">{latestReview.requestType?.replace(/_/g, ' ')} · {latestReview.status || 'pending'}</div> : <div className="mt-2 flex items-center gap-2"><button type="button" onClick={() => handleRequestReview(artifact)} className="text-sm font-semibold text-cyan-700">Create MRR</button><button type="button" title="Quick MRR" aria-label={`Quick MRR for artifact #${artifact.display_id}`} onClick={() => openQuickMrr(artifact)} disabled={!artifact._id} className="inline-flex h-6 w-6 items-center justify-center rounded border border-amber-300 bg-amber-50 text-amber-800"><Zap className="h-3.5 w-3.5" /></button></div>}{latestReview?._id && <button type="button" onClick={() => navigate(`/admin/medical-review-requests/${latestReview._id}`)} className="mt-1 text-sm font-semibold text-cyan-700">Open {getReviewLabel(latestReview)}</button>}</div>
               <div className="mt-3 grid grid-cols-2 gap-2"><button type="button" onClick={() => navigate(`${artifact._id}`)} className="rounded border border-slate-300 px-3 py-2 text-sm font-semibold">View</button><button type="button" onClick={() => navigate(`${artifact._id}/edit`)} className="rounded border border-slate-300 px-3 py-2 text-sm font-semibold">Edit</button></div>
             </div>
           </article>;
