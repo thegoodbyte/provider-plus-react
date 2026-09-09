@@ -224,6 +224,10 @@ body.medical-review-capture-mode .medical-review-page .overflow-y-auto {
 .mrr-mobile-artifact-strip { display: flex; gap: .75rem; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scrollbar-width: none; }
 .mrr-mobile-artifact-strip::-webkit-scrollbar { display: none; }
 .mrr-mobile-artifact-slide { flex: 0 0 min(88vw, 32rem); scroll-snap-align: start; }
+.mrr-index-page > .mb-4 { margin: 0 -0.75rem 1rem; padding: 1.25rem 1rem 1.1rem; background: #f7f4ee; }
+.mrr-index-page > .mb-4 h1 { font-size: 1.65rem; font-weight: 850; }
+.mrr-index-page > .mb-4 p { color: #b91c1c; font-weight: 700; }
+@media (min-width: 641px) { .mrr-index-page > .mb-4 { margin: 0 0 1.5rem; padding: 0; background: transparent; } .mrr-index-page > .mb-4 h1 { font-size: inherit; font-weight: inherit; } .mrr-index-page > .mb-4 p { color: inherit; font-weight: inherit; } }
 .mrr-mobile-review-section { padding: .75rem 0; border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; }
 .mrr-mobile-additional-info { border-bottom: 1px solid #e5e7eb; }
 .mrr-mobile-view-toggle { display: grid; grid-template-columns: 1fr 1fr; gap: .25rem; padding: .2rem; border: 1px solid #dbe2ea; border-radius: .65rem; background: #f8fafc; }

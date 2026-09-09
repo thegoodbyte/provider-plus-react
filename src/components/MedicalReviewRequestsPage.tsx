@@ -1321,6 +1321,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   })();
   const isMissingOverallDecision = Boolean(validationError && !reviewDecision);
   const isMissingMedicalStaffNotes = Boolean(validationError && medicalStaffNotes.trim().length < 2);
+  const pendingQueueCount = requests.filter((request) => isPendingReview(request)).length;
   const originalArtifactIds = selected
     ? Array.from(new Set([
         getId(selected.medicalArtifactId),
@@ -1345,7 +1346,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   ) : null;
 
   return (
-    <div className="medical-review-page overflow-x-hidden p-0 sm:p-6">
+    <div className={`medical-review-page overflow-x-hidden p-0 sm:p-6 ${!isDetailView ? 'mrr-index-page' : ''}`}>
       {nextReviewPrompt && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/30 px-4" role="dialog" aria-modal="true" aria-label="Review saved">
           <div className="w-full max-w-sm rounded-2xl bg-white p-5 text-center shadow-2xl">
@@ -1367,7 +1368,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 <span className="sm:hidden">{selectedClientName}{selectedClientAge ? ` · ${selectedClientAge} yo` : ''}{selectedClientGender ? ` · ${selectedClientGender}` : ''}</span>
                 <span className="hidden sm:inline">Medical Review</span>
               </>
-            ) : 'Medical Review Requests'}
+          ) : 'Medical Review Requests'}
           </h1>
               {isDetailView && selected ? (
                 <div className="mt-1">
@@ -1419,7 +1420,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
           )}
           {!isDetailView && (
             <p className="mt-1 text-xs text-gray-500 sm:text-sm">
-              {canEditReview ? 'Review the linked files and record decisions and comments.' : ''}
+              {pendingQueueCount} request{pendingQueueCount === 1 ? '' : 's'} awaiting review
             </p>
           )}
         </div>
