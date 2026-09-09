@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { FiAlertTriangle, FiCheck, FiChevronDown, FiChevronRight, FiClock, FiCopy, FiEdit2, FiFolder, FiLink, FiPlus, FiRefreshCw, FiThumbsDown, FiThumbsUp, FiTrash2 } from 'react-icons/fi';
+import { FiAlertTriangle, FiCheck, FiChevronDown, FiChevronRight, FiClock, FiCopy, FiEdit2, FiFileText, FiFolder, FiLink, FiPlus, FiRefreshCw, FiSliders, FiThumbsDown, FiThumbsUp, FiTrash2 } from 'react-icons/fi';
+import { Activity, Droplets, FileText } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
 import ResponsiveModal from './ResponsiveModal';
 import MedicalReviewTypeBadge from './MedicalReviewTypeBadge';
@@ -8,37 +9,65 @@ import { medicalReviewRequestsApi } from '../services/api';
 import { MedicalReviewGroup, MedicalReviewRequest } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { buildPacketSections, getClientName, getRequestKey, getRetreatLabel, isPendingReview } from './MedicalReviewGroupPage.helpers';
+import { isPendingMedicalReviewStatus, medicalReviewStatusPresentation, medicalReviewStatuses, normalizeMedicalReviewStatus } from './medicalReviewStatus';
 
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => <IconComponent className={className} />;
 
-const statusClass: Record<string, string> = {
-  pending: 'border border-blue-200 bg-blue-100 text-blue-800',
-  in_review: 'bg-blue-100 text-blue-800',
-  approved: 'bg-green-100 text-green-800',
-  rejected: 'bg-red-100 text-red-800',
-  caution: 'bg-amber-100 text-amber-800',
-  needs_resubmission: 'bg-orange-100 text-orange-800',
-  completed: 'bg-gray-100 text-gray-800',
+const statusIconByName: Record<string, any> = {
+  clock: FiClock,
+  'thumbs-up': FiThumbsUp,
+  'thumbs-down': FiThumbsDown,
+  alert: FiAlertTriangle,
+  check: FiCheck,
 };
 
-const statusIcon: Record<string, any> = {
-  pending: FiClock,
-  in_review: FiClock,
-  approved: FiThumbsUp,
-  rejected: FiThumbsDown,
-  caution: FiAlertTriangle,
-  needs_resubmission: FiAlertTriangle,
-  completed: FiCheck,
+const statusClass = Object.fromEntries(
+  Object.entries(medicalReviewStatusPresentation).map(([status, presentation]) => [status, presentation.badgeClass]),
+);
+const statusIcon = Object.fromEntries(
+  Object.entries(medicalReviewStatusPresentation).map(([status, presentation]) => [status, statusIconByName[presentation.icon] || FiClock]),
+);
+const statusRowClass = Object.fromEntries(
+  Object.entries(medicalReviewStatusPresentation).map(([status, presentation]) => [status, presentation.rowClass]),
+);
+
+const statusFilterLabels: Record<string, string> = {
+  pending: 'Pending',
+  in_review: 'In review',
+  caution: 'Caution',
+  needs_resubmission: 'Needs resubmission',
+  approved: 'Approved',
+  rejected: 'Rejected',
+  completed: 'Completed',
 };
 
-const statusRowClass: Record<string, string> = {
-  pending: 'border-l-4 border-l-blue-500 bg-blue-50/80',
-  in_review: 'border-l-4 border-l-sky-500 bg-sky-50/80',
-  approved: 'border-l-4 border-l-green-500 bg-green-50/80',
-  rejected: 'border-l-4 border-l-red-500 bg-red-50/80',
-  caution: 'border-l-4 border-l-amber-500 bg-amber-50/90',
-  needs_resubmission: 'border-l-4 border-l-orange-500 bg-orange-50/80',
-  completed: 'border-l-4 border-l-gray-400 bg-gray-50',
+const DEFAULT_STATUS_FILTER = new Set<string>(medicalReviewStatuses.filter((status) => isPendingMedicalReviewStatus(status)));
+
+const mobileTypeTileConfig: Record<string, { Icon: any; tileClass: string; iconClass: string; label: string }> = {
+  ekg: { Icon: Activity, tileClass: 'bg-green-100', iconClass: 'text-green-600', label: 'EKG' },
+  ekg_review: { Icon: Activity, tileClass: 'bg-green-100', iconClass: 'text-green-600', label: 'EKG' },
+  ceremony_ekg_review: { Icon: Activity, tileClass: 'bg-green-100', iconClass: 'text-green-600', label: 'EKG' },
+  liver: { Icon: Droplets, tileClass: 'bg-red-100', iconClass: 'text-red-600', label: 'Liver panel tests' },
+  liver_panel: { Icon: Droplets, tileClass: 'bg-red-100', iconClass: 'text-red-600', label: 'Liver panel tests' },
+  liver_panel_review: { Icon: Droplets, tileClass: 'bg-red-100', iconClass: 'text-red-600', label: 'Liver panel tests' },
+  bp: { Icon: Activity, tileClass: 'bg-blue-100', iconClass: 'text-blue-600', label: 'Blood pressure' },
+  blood_pressure: { Icon: Activity, tileClass: 'bg-blue-100', iconClass: 'text-blue-600', label: 'Blood pressure' },
+  blood_pressure_review: { Icon: Activity, tileClass: 'bg-blue-100', iconClass: 'text-blue-600', label: 'Blood pressure' },
+  additional: { Icon: FileText, tileClass: 'bg-amber-100', iconClass: 'text-amber-700', label: 'Additional' },
+  medications_review: { Icon: FileText, tileClass: 'bg-amber-100', iconClass: 'text-amber-700', label: 'Medications' },
+};
+const getMobileTypeTile = (requestType?: string) => mobileTypeTileConfig[String(requestType || '').toLowerCase()] || {
+  Icon: FileText,
+  tileClass: 'bg-gray-100',
+  iconClass: 'text-gray-600',
+  label: requestType ? String(requestType).replace(/_/g, ' ') : 'Review',
+};
+
+const getShortClientName = (request: MedicalReviewRequest) => {
+  const client = request.clientId && typeof request.clientId === 'object' ? (request.clientId as any) : {};
+  const firstName = client.firstName || '';
+  const lastInitial = client.lastName ? `${String(client.lastName).charAt(0)}.` : '';
+  return [firstName, lastInitial].filter(Boolean).join(' ') || getClientName(request);
 };
 
 const getGroupUserId = (value?: string | { _id?: string; id?: string } | null) => {
@@ -75,6 +104,9 @@ const MedicalReviewGroupPage: React.FC = () => {
   const [requestSearch, setRequestSearch] = useState('');
   const [expandedSections, setExpandedSections] = useState<string[]>([]);
   const [packetEditMode, setPacketEditMode] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<Set<string>>(() => new Set(DEFAULT_STATUS_FILTER));
+  const [draftStatusFilter, setDraftStatusFilter] = useState<Set<string>>(() => new Set(DEFAULT_STATUS_FILTER));
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(null);
   const canManageGroup = user?.role === 'admin' || user?.role === 'medical_staff';
 
@@ -294,11 +326,45 @@ const MedicalReviewGroupPage: React.FC = () => {
     }
   };
 
-  const sections = useMemo(() => {
-    const groupRequests = (group?.requests || []) as MedicalReviewRequest[];
-    return buildPacketSections(group, groupRequests);
-  }, [group]);
-  const pendingRequestCount = (group?.requests || []).filter(isPendingReview).length;
+  const allGroupRequests = (group?.requests || []) as MedicalReviewRequest[];
+  const filteredGroupRequests = useMemo(
+    () => allGroupRequests.filter((request) => statusFilter.has(normalizeMedicalReviewStatus(request.status))),
+    [allGroupRequests, statusFilter],
+  );
+  const sections = useMemo(
+    () => buildPacketSections(group, filteredGroupRequests),
+    [group, filteredGroupRequests],
+  );
+  const orderedRequestNumbers = useMemo(() => {
+    const map = new Map<string, number>();
+    sections.flatMap((section) => section.requests).forEach((request, index) => {
+      map.set(getRequestKey(request), index + 1);
+    });
+    return map;
+  }, [sections]);
+  const pendingRequestCount = allGroupRequests.filter(isPendingReview).length;
+  const isDefaultStatusFilter = statusFilter.size === DEFAULT_STATUS_FILTER.size
+    && Array.from(statusFilter).every((status) => DEFAULT_STATUS_FILTER.has(status));
+
+  const openFilterModal = () => {
+    setDraftStatusFilter(new Set(statusFilter));
+    setFilterModalOpen(true);
+  };
+  const toggleDraftStatus = (status: string) => {
+    setDraftStatusFilter((current) => {
+      const next = new Set(current);
+      if (next.has(status)) next.delete(status);
+      else next.add(status);
+      return next;
+    });
+  };
+  const applyStatusFilter = () => {
+    setStatusFilter(new Set(draftStatusFilter.size ? draftStatusFilter : DEFAULT_STATUS_FILTER));
+    setFilterModalOpen(false);
+  };
+  const resetStatusFilterToPending = () => {
+    setDraftStatusFilter(new Set(DEFAULT_STATUS_FILTER));
+  };
   const filteredCandidates = useMemo(() => {
     const search = requestSearch.trim().toLowerCase();
     if (!search) return allRequests;
@@ -318,12 +384,27 @@ const MedicalReviewGroupPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-white px-0 py-0 md:bg-gray-50 md:px-6 md:py-6">
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <div className="border-b-2 border-gray-900 bg-white px-6 pb-5 pt-5 md:hidden">
-          <div className="mb-5 flex items-center justify-between text-cyan-700"><span className="text-xl">☰</span><div className="flex gap-5 text-lg"><span>⌕</span><span>♧</span><span>☼</span></div></div>
-          <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-cyan-800">Grouped medical review packet</div>
-          <div className="mt-2 flex items-start justify-between gap-4"><h1 className="text-[28px] font-black leading-none tracking-tight text-gray-900">{group?.title || 'Medical review packet'}</h1><div className="pt-1 text-right text-[10px] font-bold uppercase tracking-[0.12em]">Retreat packet<div className="mt-1 text-[11px] font-normal normal-case tracking-normal text-gray-500">{accessLinks.length} link{accessLinks.length === 1 ? '' : 's'} issued</div></div></div>
-          <p className="mt-5 text-[13px] text-gray-700">{group?.retreatName || 'No retreat'} <span className="mx-1 text-gray-400">|</span> <strong>{pendingRequestCount} pending request{pendingRequestCount === 1 ? '' : 's'}</strong></p>
-          <p className="mt-3 max-w-[310px] text-[13px] leading-snug text-gray-600">Use the permanent link below. It only shows pending reviews in this packet.</p>
+        <div className="bg-[#f7f4ee] px-6 pb-6 pt-6 md:hidden">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-cyan-800">{group?.retreatName || 'Grouped medical review packet'}</div>
+              <h1 className="mt-1 text-[26px] font-black leading-none tracking-tight text-gray-900">{group?.title || 'Medical review packet'}</h1>
+              <p className="mt-3 max-w-[280px] text-[13px] leading-snug text-gray-600">Review pending requests and update decisions or comments.</p>
+            </div>
+            <button
+              type="button"
+              onClick={openFilterModal}
+              className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${isDefaultStatusFilter ? 'bg-red-100 text-red-700' : 'bg-red-600 text-white'}`}
+              aria-label="Filter requests"
+              title="Filter requests"
+            >
+              <Icon icon={FiSliders} className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-red-50 px-4 py-2 text-sm font-semibold text-red-700">
+            <Icon icon={FiFileText} className="h-4 w-4" />
+            {pendingRequestCount} request{pendingRequestCount === 1 ? '' : 's'} awaiting review
+          </div>
         </div>
         <div className="hidden rounded-2xl border border-gray-200 bg-white p-5 shadow-sm md:block">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -521,11 +602,33 @@ const MedicalReviewGroupPage: React.FC = () => {
                 </button>
                 {expanded && (
                   <div className="divide-y divide-gray-100">
-                    {section.requests.map((request) => (
-                      <div
-                        key={request._id}
-                        className={`grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 border-b border-gray-900 px-4 py-3 last:border-b-0 md:items-center md:border-b md:border-gray-100 md:py-4 ${statusRowClass[request.status] || 'bg-white'} ${canManageGroup ? 'md:grid-cols-[36px_150px_minmax(0,1fr)_220px_150px_130px]' : 'md:grid-cols-[150px_minmax(0,1fr)_220px_150px_130px]'}`}
-                      >
+                    {section.requests.map((request) => {
+                      const tile = getMobileTypeTile(request.requestType);
+                      const rowNumber = orderedRequestNumbers.get(getRequestKey(request));
+                      return (
+                      <React.Fragment key={request._id}>
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/medical/review-requests/${request._id}`)}
+                          className="flex w-full items-center gap-3 border-b border-gray-100 bg-white px-4 py-4 text-left last:border-b-0 md:hidden"
+                        >
+                          <span className="w-5 shrink-0 text-sm font-semibold text-gray-400">{rowNumber}</span>
+                          <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${tile.tileClass}`}>
+                            <Icon icon={tile.Icon} className={`h-5 w-5 ${tile.iconClass}`} />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-[15px] font-bold text-gray-900">{tile.label}</span>
+                            <span className="block truncate text-sm text-gray-500">{getShortClientName(request)}</span>
+                          </span>
+                          <span className={`inline-flex shrink-0 items-center rounded-full px-3 py-1 text-xs font-semibold ${statusClass[request.status] || 'bg-gray-100 text-gray-700'}`}>
+                            {String(request.status || 'unknown').replace(/_/g, ' ')}
+                          </span>
+                          <Icon icon={FiChevronRight} className="h-5 w-5 shrink-0 text-gray-300" />
+                        </button>
+
+                        <div
+                          className={`hidden md:grid md:items-center md:gap-x-3 md:border-b md:border-gray-100 md:py-4 ${statusRowClass[request.status] || 'bg-white'} ${canManageGroup ? 'md:grid-cols-[36px_150px_minmax(0,1fr)_220px_150px_130px]' : 'md:grid-cols-[150px_minmax(0,1fr)_220px_150px_130px]'}`}
+                        >
                         {canManageGroup && packetEditMode && (
                           <div className="flex items-start justify-center">
                             <input
@@ -544,7 +647,7 @@ const MedicalReviewGroupPage: React.FC = () => {
                           >
                             #{request.display_id || '-'}
                           </button>
-                          <div className="mt-1 text-xs text-gray-700"><span className="mr-2 inline-block border border-gray-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide md:hidden">{request.requestType === 'medications_review' ? 'Medications' : request.requestType || 'review'}</span><span className="hidden md:inline">{request.requestType || 'review'}</span></div>
+                          <div className="mt-1 text-xs text-gray-700">{request.requestType || 'review'}</div>
                         </div>
                         <div className="min-w-0">
                           <div className="truncate text-sm font-medium text-gray-900">{getClientName(request)}</div>
@@ -559,12 +662,12 @@ const MedicalReviewGroupPage: React.FC = () => {
                             {String(request.status || 'unknown').replace(/_/g, ' ')}
                           </span>
                         </div>
-                        <div className="flex justify-start md:justify-end">
+                        <div className="flex justify-end">
                           <div className="flex flex-wrap gap-2">
                             <button
                               type="button"
                               onClick={() => navigate(`/medical/review-requests/${request._id}`)}
-                              className="rounded-none bg-cyan-700 px-3 py-3 text-xs font-bold text-white hover:bg-cyan-800 md:rounded-md md:py-2"
+                              className="rounded-md bg-cyan-700 px-3 py-2 text-xs font-bold text-white hover:bg-cyan-800"
                             >
                               Open review
                             </button>
@@ -580,15 +683,19 @@ const MedicalReviewGroupPage: React.FC = () => {
                             )}
                           </div>
                         </div>
-                      </div>
-                    ))}
+                        </div>
+                      </React.Fragment>
+                      );
+                    })}
                   </div>
                 )}
               </div>
             );
           }) : (
             <div className="rounded-2xl border border-gray-200 bg-white p-6 text-sm text-gray-500 shadow-sm">
-              No pending reviews in this packet.
+              {isDefaultStatusFilter
+                ? 'No pending reviews in this packet.'
+                : 'No requests match the current filter.'}
             </div>
           )}
         </div>
@@ -723,6 +830,51 @@ const MedicalReviewGroupPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ResponsiveModal
+        isOpen={filterModalOpen}
+        onClose={() => setFilterModalOpen(false)}
+        title="Filter requests"
+        size="sm"
+        footer={(
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={resetStatusFilterToPending}
+              className="text-sm font-medium text-gray-600 hover:text-gray-900"
+            >
+              Reset to pending only
+            </button>
+            <button
+              type="button"
+              onClick={applyStatusFilter}
+              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              Apply
+            </button>
+          </div>
+        )}
+      >
+        <div className="space-y-2">
+          <p className="text-sm text-gray-600">Choose which statuses to show. By default only pending requests are shown.</p>
+          {medicalReviewStatuses.map((status) => (
+            <label key={status} className="flex cursor-pointer items-center justify-between gap-3 rounded-md border border-gray-200 px-3 py-2.5 text-sm hover:bg-gray-50">
+              <span className="flex items-center gap-2 font-medium text-gray-800">
+                <input
+                  type="checkbox"
+                  checked={draftStatusFilter.has(status)}
+                  onChange={() => toggleDraftStatus(status)}
+                  className="h-4 w-4 rounded border-gray-300 text-blue-600"
+                />
+                {statusFilterLabels[status] || status}
+              </span>
+              <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${statusClass[status] || 'bg-gray-100 text-gray-700'}`}>
+                {statusFilterLabels[status] || status}
+              </span>
+            </label>
+          ))}
+        </div>
+      </ResponsiveModal>
 
       <ResponsiveModal
         isOpen={Boolean(confirmAction)}
