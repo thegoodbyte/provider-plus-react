@@ -975,7 +975,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
   };
   const handleTranslateClientVisibleAdminNote = async () => {
     if (!selected?._id || !clientVisibleAdminNote.trim()) { setClientVisibleAdminNoteStatus('Save an English message before translating it.'); return; }
-    const language = String((typeof selected.clientId === 'object' ? (selected.clientId as any).language : '') || 'en').toLowerCase().startsWith('pl') ? 'pl' : String((typeof selected.clientId === 'object' ? (selected.clientId as any).language : '') || '').toLowerCase().startsWith('cs') ? 'cs' : 'en';
+    const profileLanguage = String((reviewContext?.client as any)?.language || (typeof selected.clientId === 'object' ? (selected.clientId as any).language : '') || '').toLowerCase();
+    const language = profileLanguage.startsWith('pl') ? 'pl' : profileLanguage.startsWith('cs') || profileLanguage.startsWith('cz') ? 'cs' : 'en';
     if (language === 'en') { setClientVisibleAdminNoteStatus('The client profile language is English.'); return; }
     try { setTranslatingClientVisibleAdminNote(true); await medicalReviewRequestsApi.updateClientVisibleAdminNote(selected._id, clientVisibleAdminNote); const response = await medicalReviewRequestsApi.translateClientVisibleAdminNote(selected._id, language); setSelected(response.data); setClientVisibleAdminNoteStatus(`Translated to ${language === 'pl' ? 'Polish' : 'Czech'} for this client.`); } catch (error: any) { setClientVisibleAdminNoteStatus(error?.response?.data?.message || 'Unable to translate the client message.'); } finally { setTranslatingClientVisibleAdminNote(false); }
   };
