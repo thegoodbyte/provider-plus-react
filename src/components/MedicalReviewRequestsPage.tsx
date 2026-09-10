@@ -507,6 +507,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const isMedicalRoute = location.pathname.startsWith('/medical/');
   const isEditRoute = location.pathname.endsWith('/edit');
   const isAdvisorReviewRoute = isMedicalRoute || user?.role === 'medical_advisor';
+  const isAdminUser = ['admin', 'administrator'].includes(String(user?.role || '').toLowerCase());
   const isMagicReviewSession = user?.accessType === 'medical_review_magic_link';
   const canManageAccessLinks = user?.role === 'admin';
   const routeId = id === 'new' ? undefined : id;
@@ -523,6 +524,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [clientVisibleAdminNote, setClientVisibleAdminNote] = useState('');
   const [savingClientVisibleAdminNote, setSavingClientVisibleAdminNote] = useState(false);
   const [clientVisibleAdminNoteStatus, setClientVisibleAdminNoteStatus] = useState('');
+  const [emailingClientVisibleAdminNote, setEmailingClientVisibleAdminNote] = useState(false);
   const [fileReviews, setFileReviews] = useState<FileReviewDraft[]>([]);
   const [reviewContext, setReviewContext] = useState<ReviewContext | null>(null);
   const [questionnaireTranslationStatus, setQuestionnaireTranslationStatus] = useState<'idle' | 'generating' | 'error'>('idle');
@@ -962,6 +964,13 @@ const MedicalReviewRequestsPage: React.FC = () => {
     } finally {
       setSavingClientVisibleAdminNote(false);
     }
+  };
+
+  const handleEmailClientVisibleAdminNote = async () => {
+    if (!selected?._id || !clientVisibleAdminNote.trim()) { setClientVisibleAdminNoteStatus('Save a message before emailing it.'); return; }
+    try { setEmailingClientVisibleAdminNote(true); await medicalReviewRequestsApi.updateClientVisibleAdminNote(selected._id, clientVisibleAdminNote); const response = await medicalReviewRequestsApi.emailClientVisibleAdminNote(selected._id); setClientVisibleAdminNoteStatus(response.data.message || 'Client message emailed.'); }
+    catch (error: any) { setClientVisibleAdminNoteStatus(error?.response?.data?.message || 'Unable to email the client message.'); }
+    finally { setEmailingClientVisibleAdminNote(false); }
   };
 
   const handleCopyAccessLink = async (url: string) => {
@@ -1544,6 +1553,14 @@ const MedicalReviewRequestsPage: React.FC = () => {
       </div>
     </details>
   ) : null;
+  const clientVisibleAdminNotePanel = isAdminUser ? (
+    <section className="rounded-md border border-indigo-200 bg-indigo-50 p-3">
+      <label htmlFor="mrr-client-visible-admin-note" className="block text-sm font-semibold text-indigo-950">Client-visible admin note</label>
+      <p className="mt-1 text-xs leading-relaxed text-indigo-800">This message appears below the client’s submitted medical form in IbogaReady. Medical advisor notes remain private.</p>
+      <textarea id="mrr-client-visible-admin-note" value={clientVisibleAdminNote} onChange={(event) => { setClientVisibleAdminNote(event.target.value); setClientVisibleAdminNoteStatus(''); }} rows={4} maxLength={5000} className="mt-3 w-full rounded-md border border-indigo-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" placeholder="Write the client-safe explanation here..." />
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2"><span className="text-xs text-indigo-700">{clientVisibleAdminNoteStatus || `${clientVisibleAdminNote.length}/5000 characters`}</span><div className="flex gap-2"><button type="button" onClick={handleSaveClientVisibleAdminNote} disabled={savingClientVisibleAdminNote} className="rounded-md border border-indigo-300 bg-white px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50">{savingClientVisibleAdminNote ? 'Saving...' : 'Save message'}</button><button type="button" onClick={handleEmailClientVisibleAdminNote} disabled={emailingClientVisibleAdminNote || savingClientVisibleAdminNote || !clientVisibleAdminNote.trim()} className="rounded-md bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-800 disabled:opacity-50">{emailingClientVisibleAdminNote ? 'Emailing...' : 'Save & email client'}</button></div></div>
+    </section>
+  ) : null;
   const navigationRequests = requests;
   const selectedRequestIndex = selected ? navigationRequests.findIndex((request) => request._id === selected._id) : -1;
   const previousRequest = selectedRequestIndex > 0 ? navigationRequests[selectedRequestIndex - 1] : undefined;
@@ -1891,6 +1908,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 </section>
 
                 {aiAssessmentPanel}
+                {clientVisibleAdminNotePanel}
 
                 <details id="mobile-additional-info" className="mrr-mobile-additional-info">
                   <summary className="cursor-pointer py-3 text-sm font-semibold text-gray-900">Additional information</summary>
@@ -1961,6 +1979,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   {isReadOnlyView ? <div className="rounded-md bg-gray-50 p-3 text-sm"><strong>{formatMedicalReviewDecisionLabel(selected.reviewDecision)}</strong><p className="mt-1 whitespace-pre-wrap text-gray-600">{selected.medicalStaffNotes || selected.overallNotes || selected.reviewNotes || 'No notes saved.'}</p></div> : <><textarea id="desktop-medical-staff-notes" value={medicalStaffNotes} onChange={(event) => setMedicalStaffNotes(event.target.value)} rows={3} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder={reviewDecision === 'caution' ? 'Explain the caution and recommended follow-up (required)' : 'Add your review notes here...'} /><div className="mrr-decision-buttons">{decisionOptions.map((option) => <button key={option} type="button" onClick={() => { setReviewDecision(option); if (option === 'OK') setMedicalStaffNotes('OK'); else if (option === 'caution') { setMedicalStaffNotes(''); window.setTimeout(() => document.getElementById('desktop-medical-staff-notes')?.focus(), 0); } }} className={getDecisionButtonClass(option, reviewDecision === option, 'sm')}>{decisionLabels[option]}</button>)}</div><button type="button" onClick={() => handleSaveReview()} disabled={savingReview || !reviewDecision || medicalStaffNotes.trim().length < 2} className="w-fit rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{savingReview ? 'Saving...' : 'Save review'}</button></>}
                 </div>
                 {aiAssessmentPanel}
+                {clientVisibleAdminNotePanel}
               </section>
             )}
             <div className={`${isDetailView ? 'hidden mrr-desktop-legacy' : ''} space-y-4 sm:space-y-5`}>

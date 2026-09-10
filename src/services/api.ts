@@ -1270,6 +1270,7 @@ export const medicalReviewRequestsApi = {
     invalidateBookingRequirements();
     return api.patch<MedicalReviewRequest>(`/medical-review-requests/${id}/client-visible-admin-note`, { note });
   },
+  emailClientVisibleAdminNote: (id: string) => api.post<{ emailSent: boolean; message: string }>(`/medical-review-requests/${id}/client-visible-admin-note/email`),
   getPublic: (token: string) => api.get<{ request: MedicalReviewRequest; artifacts: MedicalArtifact[] }>(
     `/medical-review-public/${encodeURIComponent(token)}`,
     { suppressAuthRedirect: true, suppressGlobalError: true } as any
