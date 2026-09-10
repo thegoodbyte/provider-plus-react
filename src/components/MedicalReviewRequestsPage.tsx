@@ -72,6 +72,26 @@ const requestTypeLabels: Record<string, string> = {
 const getRequestTypeLabel = (requestType?: MedicalReviewRequest['requestType']) =>
   requestType ? requestTypeLabels[requestType] || requestType : 'Medical Review';
 
+// Translation responses for older medication forms may contain serialized
+// arrays/objects. Never expose that transport JSON to reviewers; turn it into
+// readable labelled rows instead.
+const formatTranslatedValue = (value: unknown): string => {
+  if (value == null || value === '') return 'Not provided';
+  let parsed: any = value;
+  if (typeof value === 'string') {
+    try { parsed = JSON.parse(value); } catch { return value; }
+  }
+  if (Array.isArray(parsed)) {
+    return parsed.map((entry) => typeof entry === 'object' && entry !== null
+      ? Object.entries(entry).map(([key, item]) => `${key.replace(/_/g, ' ')}: ${formatTranslatedValue(item)}`).join(' · ')
+      : String(entry)).join('\n');
+  }
+  if (typeof parsed === 'object') {
+    return Object.entries(parsed).map(([key, item]) => `${key.replace(/_/g, ' ')}: ${formatTranslatedValue(item)}`).join('\n');
+  }
+  return String(parsed);
+};
+
 const relatedRecordIcon = (label: string) => {
   const value = label.toLowerCase();
   if (value.includes('ekg') || value.includes('heart')) return HeartPulse;
@@ -475,7 +495,7 @@ const ArtifactDocumentPreview: React.FC<{
             {englishItems.map((item, itemIndex) => (
               <div key={item.key || `${item.label}-${itemIndex}`} className="rounded-md bg-white px-3 py-2">
                 <div className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">{item.label}</div>
-                <div className="mt-1 whitespace-pre-wrap text-sm text-gray-900">{item.value || 'Not provided'}</div>
+                <div className="mt-1 whitespace-pre-wrap text-sm text-gray-900">{formatTranslatedValue(item.value)}</div>
               </div>
             ))}
           </div>
@@ -1466,7 +1486,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
       const sourceLanguage = getArtifactSourceLanguage(medicationArtifact);
       const isGenerating = Boolean(medicationArtifact?._id && artifactTranslationStatus[medicationArtifact._id] === 'generating');
       const translationDisplayState = getQuestionnaireTranslationDisplayState(sourceLanguage, medicationArtifact?.translation, isGenerating);
-      const englishValues = (medicationArtifact?.translation?.items || []).map((item) => ({ label: item.label, value: item.value }));
+      const englishValues = (medicationArtifact?.translation?.items || []).map((item) => ({ label: item.label, value: formatTranslatedValue(item.value) }));
       return (
         <div key={medication._id} className="rounded-md bg-gray-50 p-3">
           {sourceHeader('Medication form', medication.date_collected || medication.createdAt, medication.display_id)}
