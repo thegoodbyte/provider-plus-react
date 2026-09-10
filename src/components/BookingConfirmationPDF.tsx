@@ -195,6 +195,10 @@ const buildRequirementStatus = async (booking: any) => {
     missingRequirements: ['EKG review', 'liver panel review', 'signed participant agreement'],
   };
 
+  if (booking?.bookingType === 'booster') {
+    return { status: 'confirmed', ekgVerified: false, liverVerified: false, contractSigned: true, missingRequirements: [] };
+  }
+
   if (!bookingId) return fallback;
 
   try {
@@ -435,10 +439,15 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   // Get translations for selected language
   const t = translations[language];
   const requirementLabels = [t.ekgStatus, t.liverStatus, t.contractStatus];
-  const requirementRowsWithLabels = requirementRows.map((row, index) => ({
-    ...row,
-    label: requirementLabels[index] || row.label,
-  }));
+  const requirementRowsWithLabels = requirementRows
+    .filter((row: any) => !(booking?.bookingType === 'booster' && /contract|agreement/i.test(String(row.key || row.label || ''))))
+    .map((row, index) => ({
+      ...row,
+      label: booking?.bookingType === 'booster'
+        ? `${language === 'pl' ? 'Opcjonalne' : language === 'cz' ? 'Volitelné' : 'Optional'} ${requirementLabels[index] || row.label}`
+        : (requirementLabels[index] || row.label),
+      complete: booking?.bookingType === 'booster' ? true : row.complete,
+    }));
   const bookingStatusText = requirementStatus.status === 'confirmed' ? t.confirmedStatus : t.conditionalStatus;
   const bookingStatusColor = requirementStatus.status === 'confirmed' ? '#047857' : '#92400e';
   const bookingStatusBg = requirementStatus.status === 'confirmed' ? '#d1fae5' : '#fef3c7';
