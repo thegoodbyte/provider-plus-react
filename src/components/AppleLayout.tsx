@@ -1168,7 +1168,7 @@ const AppleLayout: React.FC = () => {
         <footer className="bg-white/70 backdrop-blur-apple border-t border-apple-gray-200 h-8">
           <div className="h-full flex items-center justify-center px-4">
             <span className="text-xs text-apple-gray-500">
-              Release: 2026-06-11_0700
+              Release: 2026-09-09_2136
             </span>
           </div>
         </footer>
