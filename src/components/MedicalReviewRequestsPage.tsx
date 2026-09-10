@@ -1626,14 +1626,17 @@ const MedicalReviewRequestsPage: React.FC = () => {
           <h1 className="text-xl font-semibold leading-tight text-gray-900 sm:text-2xl">
             {isDetailView && selected ? (
               <>
-                <span className="sm:hidden">{selectedClientName}{selectedClientAge ? ` · ${selectedClientAge} yo` : ''}{selectedClientGender ? ` · ${selectedClientGender}` : ''}</span>
+                <span className="sm:hidden">{profileHref ? <a href={profileHref} className="text-blue-700 underline" onClick={(event) => event.stopPropagation()}>{selectedClientName}</a> : selectedClientName}{getId(selected.clientId) ? ` · ID ${getId(selected.clientId)}` : ''}{selectedClientAge ? ` · ${selectedClientAge} yo` : ''}{selectedClientGender ? ` · ${selectedClientGender}` : ''}</span>
                 <span className="hidden sm:inline">Medical Review</span>
               </>
           ) : 'Medical Review Requests'}
           </h1>
               {isDetailView && selected ? (
                 <div className="mt-1">
-                  <div className="hidden text-base font-medium text-gray-900 sm:block sm:text-lg">{selectedClientName}</div>
+                  <div className="hidden text-base font-medium text-gray-900 sm:block sm:text-lg">
+                    {profileHref ? <a href={profileHref} className="text-blue-700 underline decoration-blue-200 underline-offset-2 hover:text-blue-900">{selectedClientName}</a> : selectedClientName}
+                    {getId(selected.clientId) && <span className="ml-2 text-xs font-normal text-gray-500">ID: {getId(selected.clientId)}</span>}
+                  </div>
                   <div className="text-sm text-gray-600">{formatCompactDocumentMeta(selected) || getRequestTypeLabel(selected.requestType)}</div>
                   {retreatStartDate && <div className="mt-1 text-xs font-medium text-gray-500">Retreat starts {retreatStartDate}</div>}
                   <div className="mt-2 flex flex-wrap gap-2 sm:hidden">
@@ -1808,7 +1811,16 @@ const MedicalReviewRequestsPage: React.FC = () => {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="text-sm font-semibold text-gray-900">
-                          #{request.display_id || '—'} {typeof request.clientId === 'string' ? request.clientId : request.clientId?.display_id ? `#${request.clientId.display_id}` : 'Client'}
+                          #{request.display_id || '—'}{' '}
+                          {(() => {
+                            const client = typeof request.clientId === 'object' ? request.clientId : undefined;
+                            const clientId = getId(request.clientId);
+                            const clientName = client ? `${client.firstName || ''} ${client.lastName || ''}`.trim() || client.email : 'Client';
+                            const href = clientId ? `${isMedicalRoute ? '/medical/client' : '/admin/clients'}/${clientId}` : undefined;
+                            return href
+                              ? <a href={href} onClick={(event) => event.stopPropagation()} className="text-blue-700 underline decoration-blue-200 underline-offset-2 hover:text-blue-900">{clientName} {client?.display_id ? `(#${client.display_id})` : ''}</a>
+                              : <span>{clientName}</span>;
+                          })()}
                         </div>
                         <div className="text-xs text-gray-500">
                           {formatCompactDocumentMeta(request) || getRequestTypeLabel(request.requestType)} • Attempt {request.attemptNumber || 1} • {request.source || 'Provider Plus CRM'}
