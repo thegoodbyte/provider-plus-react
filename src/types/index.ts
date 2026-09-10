@@ -1264,6 +1264,7 @@ export interface FileUpload {
 export interface MedicalReviewRequest {
   _id?: string;
   display_id?: number;
+  clientVisibleAdminNoteTranslations?: Record<string, { text: string; sourceLanguage?: string; translatedAt?: string; model?: string }>;
 
   // Medical artifact reference (NEW required field)
   medicalArtifactId: string | MedicalArtifact;

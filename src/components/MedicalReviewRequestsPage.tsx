@@ -522,6 +522,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [nextReviewPrompt, setNextReviewPrompt] = useState<{ remaining: number; nextId?: string } | null>(null);
   const [resettingReview, setResettingReview] = useState(false);
   const [clientVisibleAdminNote, setClientVisibleAdminNote] = useState('');
+  const [clientVisibleAdminNoteSource, setClientVisibleAdminNoteSource] = useState('');
   const [savingClientVisibleAdminNote, setSavingClientVisibleAdminNote] = useState(false);
   const [clientVisibleAdminNoteStatus, setClientVisibleAdminNoteStatus] = useState('');
   const [emailingClientVisibleAdminNote, setEmailingClientVisibleAdminNote] = useState(false);
@@ -600,6 +601,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
         setReviewDecision(normalizeMedicalReviewDecision(selectedItem.reviewDecision) as (typeof decisionOptions)[number] | '');
         setMedicalStaffNotes(selectedItem.medicalStaffNotes || selectedItem.overallNotes || selectedItem.reviewNotes || '');
         setClientVisibleAdminNote(selectedItem.clientVisibleAdminNote || '');
+        setClientVisibleAdminNoteSource(selectedItem.clientVisibleAdminNote || '');
         setClientVisibleAdminNoteStatus('');
         setFileReviews((selectedItem.fileReviews || []).map((review: NonNullable<MedicalReviewRequest['fileReviews']>[number]) => ({
           ...sanitizeFileReviewDraft(review),
@@ -955,11 +957,11 @@ const MedicalReviewRequestsPage: React.FC = () => {
       setClientVisibleAdminNoteStatus('');
       const response = await medicalReviewRequestsApi.updateClientVisibleAdminNote(
         selected._id,
-        clientVisibleAdminNote,
+        clientVisibleAdminNoteSource,
       );
       setSelected(response.data);
       setClientVisibleAdminNote(response.data.clientVisibleAdminNote || '');
-      setClientVisibleAdminNoteStatus(clientVisibleAdminNote.trim() ? 'Client message saved.' : 'Client message removed.');
+      setClientVisibleAdminNoteStatus(clientVisibleAdminNoteSource.trim() ? 'Client message saved.' : 'Client message removed.');
     } catch (error: any) {
       setClientVisibleAdminNoteStatus(error?.response?.data?.message || 'Unable to save the client message.');
     } finally {
@@ -968,17 +970,17 @@ const MedicalReviewRequestsPage: React.FC = () => {
   };
 
   const handleEmailClientVisibleAdminNote = async () => {
-    if (!selected?._id || !clientVisibleAdminNote.trim()) { setClientVisibleAdminNoteStatus('Save a message before emailing it.'); return; }
-    try { setEmailingClientVisibleAdminNote(true); await medicalReviewRequestsApi.updateClientVisibleAdminNote(selected._id, clientVisibleAdminNote); const response = await medicalReviewRequestsApi.emailClientVisibleAdminNote(selected._id); setClientVisibleAdminNoteStatus(response.data.message || 'Client message emailed.'); }
+    if (!selected?._id || !clientVisibleAdminNoteSource.trim()) { setClientVisibleAdminNoteStatus('Save a message before emailing it.'); return; }
+    try { setEmailingClientVisibleAdminNote(true); await medicalReviewRequestsApi.updateClientVisibleAdminNote(selected._id, clientVisibleAdminNoteSource); const response = await medicalReviewRequestsApi.emailClientVisibleAdminNote(selected._id); setClientVisibleAdminNoteStatus(response.data.message || 'Client message emailed.'); }
     catch (error: any) { setClientVisibleAdminNoteStatus(error?.response?.data?.message || 'Unable to email the client message.'); }
     finally { setEmailingClientVisibleAdminNote(false); }
   };
   const handleTranslateClientVisibleAdminNote = async () => {
-    if (!selected?._id || !clientVisibleAdminNote.trim()) { setClientVisibleAdminNoteStatus('Save an English message before translating it.'); return; }
+    if (!selected?._id || !clientVisibleAdminNoteSource.trim()) { setClientVisibleAdminNoteStatus('Save an English message before translating it.'); return; }
     const profileLanguage = String((reviewContext?.client as any)?.language || (typeof selected.clientId === 'object' ? (selected.clientId as any).language : '') || '').toLowerCase();
     const language = profileLanguage.startsWith('pl') ? 'pl' : profileLanguage.startsWith('cs') || profileLanguage.startsWith('cz') ? 'cs' : 'en';
     if (language === 'en') { setClientVisibleAdminNoteStatus('The client profile language is English.'); return; }
-    try { setTranslatingClientVisibleAdminNote(true); await medicalReviewRequestsApi.updateClientVisibleAdminNote(selected._id, clientVisibleAdminNote); const response = await medicalReviewRequestsApi.translateClientVisibleAdminNote(selected._id, language); setSelected(response.data); setClientVisibleAdminNoteStatus(`Translated to ${language === 'pl' ? 'Polish' : 'Czech'} for this client.`); } catch (error: any) { setClientVisibleAdminNoteStatus(error?.response?.data?.message || 'Unable to translate the client message.'); } finally { setTranslatingClientVisibleAdminNote(false); }
+    try { setTranslatingClientVisibleAdminNote(true); await medicalReviewRequestsApi.updateClientVisibleAdminNote(selected._id, clientVisibleAdminNoteSource); const response = await medicalReviewRequestsApi.translateClientVisibleAdminNote(selected._id, language); setSelected(response.data); const translated = response.data?.clientVisibleAdminNoteTranslations?.[language]?.text; if (translated) setClientVisibleAdminNote(translated); setClientVisibleAdminNoteStatus(`Translated to ${language === 'pl' ? 'Polish' : 'Czech'} for this client.`); } catch (error: any) { setClientVisibleAdminNoteStatus(error?.response?.data?.message || 'Unable to translate the client message.'); } finally { setTranslatingClientVisibleAdminNote(false); }
   };
 
   const handleCopyAccessLink = async (url: string) => {
@@ -1565,7 +1567,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
     <section className="rounded-md border border-indigo-200 bg-indigo-50 p-3">
       <label htmlFor="mrr-client-visible-admin-note" className="block text-sm font-semibold text-indigo-950">Client-visible admin note</label>
       <p className="mt-1 text-xs leading-relaxed text-indigo-800">This message appears below the client’s submitted medical form in IbogaReady. Medical advisor notes remain private.</p>
-      <textarea id="mrr-client-visible-admin-note" value={clientVisibleAdminNote} onChange={(event) => { setClientVisibleAdminNote(event.target.value); setClientVisibleAdminNoteStatus(''); }} rows={4} maxLength={5000} className="mt-3 w-full rounded-md border border-indigo-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" placeholder="Write the client-safe explanation here..." />
+      <textarea id="mrr-client-visible-admin-note" value={clientVisibleAdminNote} onChange={(event) => { setClientVisibleAdminNote(event.target.value); setClientVisibleAdminNoteSource(event.target.value); setClientVisibleAdminNoteStatus(''); }} rows={4} maxLength={5000} className="mt-3 w-full rounded-md border border-indigo-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200" placeholder="Write the client-safe explanation here..." />
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2"><span className="text-xs text-indigo-700">{clientVisibleAdminNoteStatus || `${clientVisibleAdminNote.length}/5000 characters`}</span><div className="flex flex-wrap gap-2"><button type="button" onClick={handleTranslateClientVisibleAdminNote} disabled={translatingClientVisibleAdminNote || savingClientVisibleAdminNote || !clientVisibleAdminNote.trim()} className="rounded-md border border-indigo-300 bg-white px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50">{translatingClientVisibleAdminNote ? 'Translating...' : 'Translate for client'}</button><button type="button" onClick={handleSaveClientVisibleAdminNote} disabled={savingClientVisibleAdminNote} className="rounded-md border border-indigo-300 bg-white px-4 py-2 text-sm font-semibold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50">{savingClientVisibleAdminNote ? 'Saving...' : 'Save message'}</button><button type="button" onClick={handleEmailClientVisibleAdminNote} disabled={emailingClientVisibleAdminNote || savingClientVisibleAdminNote || !clientVisibleAdminNote.trim()} className="rounded-md bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-800 disabled:opacity-50">{emailingClientVisibleAdminNote ? 'Emailing...' : 'Save & email client'}</button></div></div>
     </section>
   ) : null;
@@ -2525,6 +2527,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                     value={clientVisibleAdminNote}
                     onChange={(event) => {
                       setClientVisibleAdminNote(event.target.value);
+                      setClientVisibleAdminNoteSource(event.target.value);
                       setClientVisibleAdminNoteStatus('');
                     }}
                     rows={4}
