@@ -15,7 +15,26 @@ export { sentConfirmationStep } from './bookingStatusSelectors';
 
 type Props = { bookingId: string; booking: any; client: any; retreat: any; clientName: string; bookingTypeCode: string; retreatCode: string; retreatAddress: string; onEditClient: () => void; onBookingRefresh: () => void; onOpenTab?: (tab: 'payments' | 'requirements' | 'medical') => void; onSendConfirmation?: () => void; };
 const objectId = (value: any) => typeof value === 'object' ? value?._id || value?.id : value;
-const dateValue = (retreat: any, edge: 'startDate' | 'endDate') => retreat?.[edge] || retreat?.dates?.[edge];
+const dateValue = (retreat: any, edge: 'startDate' | 'endDate', booking?: any) => {
+  if (booking?.bookingType === 'booster') {
+    const candidates = edge === 'startDate'
+      ? [booking.boosterStartDate, booking.booster_start_date, booking.arrivalDate, booking.arrival_date, booking.startDate, booking.ceremonyId?.date]
+      : [booking.boosterEndDate, booking.booster_end_date, booking.departureDate, booking.departure_date, booking.endDate, booking.boosterCheckoutDate];
+    const value = candidates.find(Boolean);
+    if (value) return value;
+  }
+  return retreat?.[edge] || retreat?.dates?.[edge];
+};
+const timeValue = (retreat: any, edge: 'startTime' | 'endTime', booking?: any) => {
+  if (booking?.bookingType === 'booster') {
+    const candidates = edge === 'startTime'
+      ? [booking.boosterStartTime, booking.booster_start_time, booking.arrivalTime, booking.arrival_time, booking.startTime, booking.ceremonyId?.startTime]
+      : [booking.boosterEndTime, booking.booster_end_time, booking.departureTime, booking.departure_time, booking.endTime, booking.ceremonyId?.endTime];
+    const value = candidates.find(Boolean);
+    if (value) return value;
+  }
+  return retreat?.[edge] || retreat?.dates?.[edge] || '';
+};
 const daysUntil = (value: any) => { const date = new Date(value); if (Number.isNaN(date.getTime())) return null; return Math.ceil((date.getTime() - Date.now()) / 86400000); };
 const money = (amount: number, currency: string) => new Intl.NumberFormat('en-US', { style: 'currency', currency, maximumFractionDigits: 2 }).format(amount || 0);
 
@@ -43,7 +62,7 @@ const BookingOverviewPanel: React.FC<Props> = ({ bookingId, booking, client, ret
   const ekg = requirements.rows.find(row => row.key === 'ekg');
   const missingRows = requirements.rows.filter(row => row.required && !row.satisfied);
   const complete = Math.max(0, requirements.rows.length - missingRows.length);
-  const start = dateValue(retreat, 'startDate'); const end = dateValue(retreat, 'endDate'); const startIn = daysUntil(start);
+  const start = dateValue(retreat, 'startDate', booking); const end = dateValue(retreat, 'endDate', booking); const startTime = timeValue(retreat, 'startTime', booking); const endTime = timeValue(retreat, 'endTime', booking); const startIn = daysUntil(start);
   const attention = [
     ...(outstanding > 0 && !requests.some(isActivePaymentRequest) ? [{ icon: <AlertIcon />, title: 'Balance not requested', detail: `${money(outstanding, settlementCurrency)} outstanding and no active payment request exists yet.`, badge: 'Blocking', action: 'Create request', tab: 'payments' as const }] : []),
     ...(ekg && !ekg.satisfied ? [{ icon: <HeartIcon />, title: 'Entry EKG not received', detail: 'Required before the medical cut-off.', badge: 'Action needed', action: 'Request file', tab: 'medical' as const }] : []),
@@ -59,7 +78,7 @@ const BookingOverviewPanel: React.FC<Props> = ({ bookingId, booking, client, ret
       <section className="overview-section"><header><h2>Needs attention</h2><span>{attention.length} thing{attention.length === 1 ? '' : 's'} waiting for you</span></header>{attention.length ? <div className="attention-list">{attention.map((item, index) => <article className="attention-item" key={item.title}><b>{String(index + 1).padStart(2, '0')}</b><i>{item.icon}</i><div><strong>{item.title}</strong><span>{item.detail}</span></div><em>{item.badge}</em><button type="button" onClick={() => 'tab' in item ? onOpenTab?.(item.tab!) : onSendConfirmation?.()}>{item.action}</button></article>)}</div> : <div className="overview-empty">Nothing needs attention.</div>}</section>
       <div className="overview-card-grid"><section className="overview-card money-card"><header><h3>Money</h3><button onClick={() => onOpenTab?.('payments')}>Payments tab</button></header><small>{basis === 'USD' ? 'USD booking price' : 'Total cost'}</small><strong>{money(basis === 'USD' ? Number(totalUsd) : total, settlementCurrency)}</strong>{basis === 'USD' && <small>{money(total, currency)} original price</small>}<div className="payment-progress"><span>{overpaid > 0.005 ? `Overpaid ${money(overpaid, settlementCurrency)}` : paidInFull ? 'Paid in full' : 'Not fully paid'}</span><div><i style={{ width: `${paidPercent}%` }} /></div><b>{paidPercent}%</b></div><footer><span>Received<b>{money(received, settlementCurrency)}</b></span><span>{overpaid > 0.005 ? 'Client credit' : 'Outstanding'}<b>{money(overpaid > 0.005 ? overpaid : outstanding, settlementCurrency)}</b></span></footer></section>
       <section className="overview-card requirements-card"><header><h3>Requirements</h3><button onClick={() => onOpenTab?.('requirements')}>All {requirements.rows.length}</button></header><strong>{complete} <small>/ {requirements.rows.length} done</small></strong><div className="requirement-segments">{requirements.rows.map(row => <i key={row.key} className={row.satisfied ? 'done' : row.required ? 'missing' : ''} />)}</div>{missingRows.slice(0, 3).map(row => <div className="requirement-next" key={row.key}><span>○</span><b>{row.label}</b><small>pending</small></div>)}</section></div>
-      <section className="overview-retreat"><h3>Retreat</h3><div><b>{retreatCode}</b><strong>{formatBookingDate(start)} – {formatBookingDate(end)}</strong><span>{retreat?.name || retreatTown(retreat) || 'Retreat'}</span><em>{retreat?.capacity ? `${retreat.capacity} places` : ''}</em></div></section>
+      <section className="overview-retreat"><h3>{booking?.bookingType === 'booster' ? 'Booster booking' : 'Retreat'}</h3><div><b>{retreatCode}</b><strong>{formatBookingDate(start)}{startTime ? ` · ${startTime}` : ''} – {formatBookingDate(end)}{endTime ? ` · ${endTime}` : ''}</strong><span>{retreat?.name || retreatTown(retreat) || 'Retreat'}</span><em>{retreat?.capacity ? `${retreat.capacity} places` : ''}</em></div></section>
       <section className="overview-activity"><h3>Recent activity</h3>{activities.map((item, index) => <div key={`${item.text}-${index}`}><time>{formatHistoryDateTime(item.date)}</time><span>{item.text}</span></div>)}</section>
     </main>
     <aside className="booking-dashboard-rail"><section><header><h3>Client</h3><button onClick={onEditClient}>Edit</button></header><strong>{clientName}</strong><small>Email</small><a href={`mailto:${client?.email || ''}`}>{client?.email || 'N/A'}</a><small>Phone</small><span>{client?.phone || 'N/A'}</span><small>Country</small><span>{client?.country || 'N/A'}</span><div className="rail-actions"><a href={`mailto:${client?.email || ''}`}>Email</a><button onClick={onEditClient}>Client file</button></div></section>
