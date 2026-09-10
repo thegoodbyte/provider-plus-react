@@ -585,8 +585,13 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   const requiredDepositUsd = requiredDeposit && bookingTotalUsd
     ? roundUpCurrency((requiredDeposit / bookingTotal) * bookingTotalUsd)
     : null;
-  const retreatStartDate = parseRetreatDate(retreat?.startDate || retreat?.dates?.startDate);
-  const retreatEndDate = parseRetreatDate(retreat?.endDate || retreat?.dates?.endDate);
+  const isBoosterBooking = booking?.bookingType === 'booster';
+  const retreatStartDate = parseRetreatDate(isBoosterBooking
+    ? (booking.checkInDate || booking.check_in_date || booking.boosterStartDate || booking.booster_start_date || booking.arrivalDate || booking.arrival_date || booking.startDate || booking.ceremonyId?.date || retreat?.startDate || retreat?.dates?.startDate)
+    : (retreat?.startDate || retreat?.dates?.startDate));
+  const retreatEndDate = parseRetreatDate(isBoosterBooking
+    ? (booking.checkOutDate || booking.check_out_date || booking.boosterEndDate || booking.booster_end_date || booking.departureDate || booking.departure_date || booking.endDate || booking.boosterCheckoutDate || retreat?.endDate || retreat?.dates?.endDate)
+    : (retreat?.endDate || retreat?.dates?.endDate));
   const balanceDueDate = retreatStartDate ? addDays(retreatStartDate, -30) : null;
   const locationTown = house?.generalTown || house?.general_town || house?.city || retreat?.location_town || retreat?.locationTown || retreat?.location || house?.name || 'N/A';
   const locationAddress = house?.address || retreat?.address || 'N/A';
@@ -600,8 +605,12 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
     const trimmedTime = String(time || '').trim();
     return trimmedTime ? `${formatDate(date)} ${trimmedTime}` : formatDate(date);
   };
-  const retreatCheckIn = formatRetreatDateTime(retreatStartDate, getRetreatStartTime(retreat));
-  const retreatCheckOut = formatRetreatDateTime(retreatEndDate, getRetreatEndTime(retreat));
+  const retreatCheckIn = formatRetreatDateTime(retreatStartDate, isBoosterBooking
+    ? (booking.checkInTime || booking.check_in_time || booking.boosterStartTime || booking.booster_start_time || booking.arrivalTime || booking.arrival_time || booking.startTime || booking.ceremonyId?.startTime)
+    : getRetreatStartTime(retreat));
+  const retreatCheckOut = formatRetreatDateTime(retreatEndDate, isBoosterBooking
+    ? (booking.checkOutTime || booking.check_out_time || booking.boosterEndTime || booking.booster_end_time || booking.departureTime || booking.departure_time || booking.endTime || booking.ceremonyId?.endTime)
+    : getRetreatEndTime(retreat));
   const retreatDateRangeCompact = [
     retreatStartDate ? retreatStartDate.toLocaleDateString(getDateLocale(), { day: '2-digit', month: '2-digit' }) : null,
     retreatEndDate ? retreatEndDate.toLocaleDateString(getDateLocale(), { day: '2-digit', month: '2-digit', year: 'numeric' }) : null,
