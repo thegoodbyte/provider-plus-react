@@ -12,6 +12,13 @@ interface BookingConfirmationPDFProps {
 
 export const BOOKING_CONFIRMATION_TEMPLATE_VERSION = '2026-09-04-ecb-balances-v4';
 
+export const getBookingConfirmationPolicy = (bookingType?: string) => ({
+  booster: String(bookingType || '').toLowerCase() === 'booster',
+  contractRequired: String(bookingType || '').toLowerCase() !== 'booster',
+  ekgRequired: String(bookingType || '').toLowerCase() !== 'booster',
+  liverRequired: String(bookingType || '').toLowerCase() !== 'booster',
+});
+
 const waitForImages = async (container: HTMLElement) => {
   const images = Array.from(container.querySelectorAll('img'));
   await Promise.all(images.map((image) => {
@@ -195,7 +202,7 @@ const buildRequirementStatus = async (booking: any) => {
     missingRequirements: ['EKG review', 'liver panel review', 'signed participant agreement'],
   };
 
-  if (booking?.bookingType === 'booster') {
+  if (getBookingConfirmationPolicy(booking?.bookingType).booster) {
     return { status: 'confirmed', ekgVerified: false, liverVerified: false, contractSigned: true, missingRequirements: [] };
   }
 

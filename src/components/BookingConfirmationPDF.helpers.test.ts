@@ -1,4 +1,5 @@
 import { buildBookingConfirmationRequirementRows, buildBookingPriceRows, formatPaymentRequestDisplayLabel, fulfilledBookingFlowStatuses } from './BookingConfirmationPDF.helpers';
+import { getBookingConfirmationPolicy } from './BookingConfirmationPDF';
 
 describe('BookingConfirmationPDF helpers', () => {
   it('prefers booking flow step deadlines over fallback payment-based dates', () => {
@@ -73,5 +74,10 @@ describe('BookingConfirmationPDF helpers', () => {
       { kind: 'addition', label: 'Private bathroom', amount: 1000 },
       { kind: 'total', label: 'total', amount: 9550 },
     ]);
+  });
+
+  it('uses a distinct optional-requirements policy for booster bookings', () => {
+    expect(getBookingConfirmationPolicy('booster')).toEqual({ booster: true, contractRequired: false, ekgRequired: false, liverRequired: false });
+    expect(getBookingConfirmationPolicy('full_retreat')).toEqual({ booster: false, contractRequired: true, ekgRequired: true, liverRequired: true });
   });
 });
