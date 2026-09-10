@@ -18,8 +18,8 @@ const objectId = (value: any) => typeof value === 'object' ? value?._id || value
 const dateValue = (retreat: any, edge: 'startDate' | 'endDate', booking?: any) => {
   if (booking?.bookingType === 'booster') {
     const candidates = edge === 'startDate'
-      ? [booking.boosterStartDate, booking.booster_start_date, booking.arrivalDate, booking.arrival_date, booking.startDate, booking.ceremonyId?.date]
-      : [booking.boosterEndDate, booking.booster_end_date, booking.departureDate, booking.departure_date, booking.endDate, booking.boosterCheckoutDate];
+      ? [booking.boosterStartDate, booking.booster_start_date, booking.arrivalDate, booking.arrival_date, booking.checkInDate, booking.check_in_date, booking.startDate, booking.ceremonyId?.date]
+      : [booking.boosterEndDate, booking.booster_end_date, booking.departureDate, booking.departure_date, booking.checkOutDate, booking.check_out_date, booking.endDate, booking.boosterCheckoutDate];
     const value = candidates.find(Boolean);
     if (value) return value;
   }
@@ -28,8 +28,8 @@ const dateValue = (retreat: any, edge: 'startDate' | 'endDate', booking?: any) =
 const timeValue = (retreat: any, edge: 'startTime' | 'endTime', booking?: any) => {
   if (booking?.bookingType === 'booster') {
     const candidates = edge === 'startTime'
-      ? [booking.boosterStartTime, booking.booster_start_time, booking.arrivalTime, booking.arrival_time, booking.startTime, booking.ceremonyId?.startTime]
-      : [booking.boosterEndTime, booking.booster_end_time, booking.departureTime, booking.departure_time, booking.endTime, booking.ceremonyId?.endTime];
+      ? [booking.boosterStartTime, booking.booster_start_time, booking.arrivalTime, booking.arrival_time, booking.checkInTime, booking.check_in_time, booking.startTime, booking.ceremonyId?.startTime]
+      : [booking.boosterEndTime, booking.booster_end_time, booking.departureTime, booking.departure_time, booking.checkOutTime, booking.check_out_time, booking.endTime, booking.ceremonyId?.endTime];
     const value = candidates.find(Boolean);
     if (value) return value;
   }
