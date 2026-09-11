@@ -350,7 +350,8 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
       });
     } catch (error) {
       console.error('Error saving payment request:', error);
-      alert('Error saving payment request');
+      const apiMessage = (error as any)?.response?.data?.message;
+      setFormError(apiMessage || (error as any)?.message || 'Error saving payment request');
     } finally {
       setLoading(false);
     }
