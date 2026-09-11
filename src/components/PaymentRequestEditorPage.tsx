@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import PaymentRequestForm, { FinalPaymentRequestPreview } from './PaymentRequestForm';
 import LoadingSpinner from './LoadingSpinner';
-import { paymentRequestsApi, paymentsApi } from '../services/api';
+import { paymentRequestsApi, paymentsApi, auditLogsApi } from '../services/api';
 import { PaymentReceipt, PaymentRequest } from '../types';
 import { formatCalendarDate } from '../utils/dateFormat';
 import { QRCodeSVG } from 'qrcode.react';
@@ -61,6 +61,7 @@ const PaymentRequestEditorPage: React.FC = () => {
   );
   const [receipt, setReceipt] = useState<PaymentReceipt | null>(null);
   const [receiptError, setReceiptError] = useState('');
+  const [activity, setActivity] = useState<any[]>([]);
 
   useEffect(() => {
     const loadRequest = async () => {
@@ -74,6 +75,10 @@ const PaymentRequestEditorPage: React.FC = () => {
         setLoading(true);
         const response = await paymentRequestsApi.getOne(id);
         setPaymentRequest(response.data);
+        try {
+          const activityResponse = await auditLogsApi.getAll({ entityType: 'payment_request', entityId: id, limit: 100 });
+          setActivity(activityResponse.data?.items || []);
+        } catch { setActivity([]); }
         const receiptId = typeof response.data.receiptId === 'object' ? response.data.receiptId?._id : response.data.receiptId;
         if (receiptId) {
           try {
@@ -240,6 +245,11 @@ const PaymentRequestEditorPage: React.FC = () => {
               </div>
             </div>
           )}
+
+          <div className="mt-6 border-t border-gray-200 pt-6">
+            <h2 className="text-lg font-semibold text-gray-900">Activity</h2>
+            {activity.length ? <div className="mt-3 space-y-3">{activity.map((entry: any) => <div key={entry._id} className="rounded-md border border-gray-200 bg-gray-50 p-4 text-sm"><div className="font-semibold text-gray-900">{entry.summary}</div><div className="mt-1 text-xs text-gray-500">{entry.actorEmail || entry.actorRole || 'System'} · {entry.createdAt ? new Date(entry.createdAt).toLocaleString() : '—'}</div>{entry.metadata?.changedFields?.length ? <div className="mt-2 text-xs text-gray-600">Changed: {entry.metadata.changedFields.join(', ')}</div> : null}<div className="mt-3 grid gap-3 md:grid-cols-2"><div><div className="text-xs font-semibold uppercase text-gray-500">Previous value</div><pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap rounded bg-white p-2 text-xs text-gray-700">{JSON.stringify(entry.before || {}, null, 2)}</pre></div><div><div className="text-xs font-semibold uppercase text-gray-500">New value</div><pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap rounded bg-white p-2 text-xs text-gray-700">{JSON.stringify(entry.after || {}, null, 2)}</pre></div></div></div>)}</div> : <p className="mt-2 rounded-md bg-gray-50 p-4 text-gray-600">No changes recorded yet.</p>}
+          </div>
 
           <div className="mt-6 border-t border-gray-200 pt-6">
             <h2 className="text-lg font-semibold text-gray-900">Client payment options</h2>
