@@ -82,6 +82,18 @@ const parseDate = (value: any): Date | null => {
   return isValidDate(date) ? date : null;
 };
 
+const resolveConfirmationIssueDates = (booking: any) => {
+  const history = Array.isArray(booking?.bookingConfirmationHistory)
+    ? booking.bookingConfirmationHistory
+      .map((entry: any) => ({ ...entry, date: parseDate(entry.sentAt || entry.createdAt || entry.generatedAt) }))
+      .filter((entry: any) => entry.date)
+      .sort((a: any, b: any) => a.date.getTime() - b.date.getTime())
+    : [];
+  const issued = history[0]?.date || parseDate(booking?.createdAt) || new Date();
+  const updated = history[history.length - 1]?.date || issued;
+  return { issued, updated };
+};
+
 const parseRetreatDate = (value: any): Date | null => {
   const parsed = parseDate(value);
   if (!parsed || typeof value !== 'string' || !value.includes('T')) return parsed;
@@ -281,7 +293,8 @@ const resolveBookingRequirementRows = async (booking: any, fallbackInitialPaymen
 const translations = {
   pl: {
     title: 'Potwierdzenie wpłaty',
-    date: 'Data',
+    date: 'Data wystawienia',
+    lastUpdate: 'Ostatnia aktualizacja',
     number: 'Numer',
     participant: 'Uczestnik',
     name: 'Na imię',
@@ -332,7 +345,8 @@ const translations = {
   },
   cz: {
     title: 'Potvrzení platby',
-    date: 'Datum',
+    date: 'Datum vystavení',
+    lastUpdate: 'Poslední aktualizace',
     number: 'Číslo',
     participant: 'Účastník',
     name: 'Jméno',
@@ -383,7 +397,8 @@ const translations = {
   },
   en: {
     title: 'Payment Confirmation',
-    date: 'Date',
+    date: 'Date issued',
+    lastUpdate: 'Last update',
     number: 'Number',
     participant: 'Participant',
     name: 'Name',
@@ -439,6 +454,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   const retreat = booking.retreatId || booking.retreatDetails;
   const house = await resolveHouseForRetreat(retreat);
   const requirementStatus = await buildRequirementStatus(booking);
+  const confirmationDates = resolveConfirmationIssueDates(booking);
   const initialPaymentDate = await resolveInitialPaymentDate(booking);
   const requirementRows = await resolveBookingRequirementRows(booking, initialPaymentDate);
   const payments = await resolveBookingPayments(booking);
@@ -734,7 +750,11 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
             <table style="border: none;">
               <tr>
                 <td style="font-size: 14px; padding: 3px 0; color: #4b5563;">${t.date}:</td>
-                <td style="font-size: 14px; padding: 3px 0 3px 15px; font-weight: 600; color: #1f2937;">${new Date().toLocaleDateString(getDateLocale())}</td>
+                <td style="font-size: 14px; padding: 3px 0 3px 15px; font-weight: 600; color: #1f2937;">${formatDate(confirmationDates.issued)}</td>
+              </tr>
+              <tr>
+                <td style="font-size: 14px; padding: 3px 0; color: #4b5563;">${t.lastUpdate}:</td>
+                <td style="font-size: 14px; padding: 3px 0 3px 15px; font-weight: 600; color: #1f2937;">${formatDate(confirmationDates.updated)}</td>
               </tr>
               <tr>
                 <td style="font-size: 14px; padding: 3px 0; color: #4b5563;">${t.number}:</td>
