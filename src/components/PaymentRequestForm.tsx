@@ -65,7 +65,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     ceremonyNumber: paymentRequest?.ceremonyNumber?.toString() || '',
     paymentDate: paymentRequest?.paymentDate ? toDateInputValue(paymentRequest.paymentDate) : defaultDate(),
     paymentType: paymentRequest?.paymentType || 'Other',
-    requestType: paymentRequest?.requestType === 'additional' || paymentRequest?.requestType === 'full_payment'
+    requestType: paymentRequest?.requestType === 'additional'
       ? 'payment'
       : paymentRequest?.requestType || 'deposit',
     fullPriceQuote: paymentRequest?.fullPriceQuote?.toString() || '',
@@ -225,7 +225,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
       ? { ...item, amount: -(Math.round(subtotal * Number(item.discountPercent || 0)) / 100) }
       : item);
     const changed = recalculated.some((item, index) => item.amount !== lineItems[index].amount);
-    const fullPriceBaseline = formData.requestType === 'payment' ? Number(formData.fullPriceQuote || 0) : 0;
+    const fullPriceBaseline = ['payment', 'full_payment'].includes(formData.requestType) ? Number(formData.fullPriceQuote || 0) : 0;
     const total = fullPriceBaseline + recalculated.reduce((sum, item) => sum + Number(item.amount || 0), 0);
     setFormData(prev => ({ ...prev, requestedAmount: String(Math.round(total * 100) / 100) }));
     if (changed) setLineItems(recalculated);
@@ -241,6 +241,8 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
       if (formData.requestedAmount !== depositAmount) {
         setFormData(prev => ({ ...prev, requestedAmount: depositAmount }));
       }
+    } else if (formData.requestType === 'full_payment' && formData.requestedAmount !== String(fullPrice)) {
+      setFormData(prev => ({ ...prev, requestedAmount: String(fullPrice) }));
     }
   }, [formData.fullPriceQuote, formData.requestedAmount, formData.requestType, itemized]);
 
@@ -275,7 +277,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     setFormError('');
 
     const invoiceNumber = String(formData.invoiceNumber || '').trim();
-    if (!invoiceNumber || !formData.clientId || !formData.retreatId || !formData.paymentDate || !formData.requestedAmount || (['deposit', 'payment'].includes(formData.requestType) && !formData.fullPriceQuote)) {
+    if (!invoiceNumber || !formData.clientId || !formData.retreatId || !formData.paymentDate || !formData.requestedAmount || (['deposit', 'payment', 'full_payment'].includes(formData.requestType) && !formData.fullPriceQuote)) {
       alert('Please fill in all required fields');
       return;
     }
@@ -539,7 +541,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
               </div>
             )}
 
-            {formData.requestType === 'deposit' || formData.requestType === 'payment' ? (
+            {formData.requestType === 'deposit' || formData.requestType === 'payment' || formData.requestType === 'full_payment' ? (
               <div>
                 <label htmlFor="fullPriceQuote" className="block text-sm font-medium text-gray-700 mb-2">Full Booking Price *</label>
                 <input
@@ -553,7 +555,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                   placeholder="0.00"
                   required
                 />
-                <p className="mt-1 text-xs text-gray-500">The full price before any payment-request discount. The requested amount is calculated below it.</p>
+                <p className="mt-1 text-xs text-gray-500">{formData.requestType === 'full_payment' ? 'The complete amount due for this booking.' : 'The full price before any payment-request discount. The requested amount is calculated below it.'}</p>
               </div>
             ) : formData.requestType === 'balance' ? (
               <div>
@@ -733,7 +735,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                       <button type="button" onClick={() => setLineItems(current => [...current, { type: 'info', description: '', amount: 0 }])} className="rounded-md border border-blue-300 px-3 py-2 text-sm text-blue-700">+ Information</button>
                     </div>
                     <div className="text-right text-sm">
-                      {formData.requestType === 'payment' && <div>Full booking price: {Number(formData.fullPriceQuote || 0).toFixed(2)} {formData.currency}</div>}
+                      {['payment', 'full_payment'].includes(formData.requestType) && <div>Full booking price: {Number(formData.fullPriceQuote || 0).toFixed(2)} {formData.currency}</div>}
                       <div>Additional charges: {lineItems.filter(item => item.amount > 0).reduce((sum, item) => sum + Number(item.amount), 0).toFixed(2)} {formData.currency}</div>
                       <div>Discount: {(-lineItems.filter(item => item.amount < 0).reduce((sum, item) => sum + Number(item.amount), 0)).toFixed(2)} {formData.currency}</div>
                       <div className="font-semibold">Total: {Number(formData.requestedAmount || 0).toFixed(2)} {formData.currency}</div>
