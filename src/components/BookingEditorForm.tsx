@@ -16,7 +16,7 @@ type BookingFormData = {
   totalAmount: number;
   amountPaid: number;
   currency: 'EUR' | 'USD' | 'CZK' | 'PLN';
-  status: 'pending' | 'confirmed' | 'checked-in' | 'checked-out' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'conditional' | 'checked-in' | 'checked-out' | 'cancelled';
   bookingNumber: string;
   bookingType: 'full_retreat' | 'booster';
   ceremonyId: string;
@@ -26,7 +26,7 @@ type BookingFormData = {
   contractGateOverride: 'inherit' | 'required' | 'disabled';
 };
 
-const bookingStatusValues = ['pending', 'confirmed', 'checked-in', 'checked-out', 'cancelled'] as const;
+const bookingStatusValues = ['pending', 'confirmed', 'conditional', 'checked-in', 'checked-out', 'cancelled'] as const;
 type BookingStatus = typeof bookingStatusValues[number];
 
 const normalizeBookingStatus = (status?: string | null): BookingStatus => {
@@ -630,6 +630,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
             >
               <option value="pending">Pending</option>
               <option value="confirmed">Confirmed</option>
+              <option value="conditional">Conditional — spot available</option>
               <option value="checked-in">Checked In</option>
               <option value="checked-out">Checked Out</option>
               <option value="cancelled">Cancelled</option>
