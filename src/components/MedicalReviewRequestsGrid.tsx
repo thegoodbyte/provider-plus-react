@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { FiAlertTriangle, FiCheck, FiChevronDown, FiChevronRight, FiClock, FiCopy, FiDownload, FiEye, FiEdit2, FiFolder, FiLink, FiLock, FiMenu, FiPlus, FiRefreshCw, FiSearch, FiThumbsDown, FiThumbsUp, FiTrash2, FiUnlock, FiX, FiZap } from 'react-icons/fi';
+import { FiAlertTriangle, FiCheck, FiChevronDown, FiChevronRight, FiClock, FiCopy, FiDownload, FiEye, FiEdit2, FiFolder, FiLink, FiLock, FiMenu, FiPlus, FiRefreshCw, FiSearch, FiSend, FiThumbsDown, FiThumbsUp, FiTrash2, FiUnlock, FiX, FiZap } from 'react-icons/fi';
 import LoadingSpinner from './LoadingSpinner';
 import ClientAvatar from './ClientAvatar';
 import MedicalReviewTypeBadge from './MedicalReviewTypeBadge';
@@ -492,7 +492,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     if (!groupId) return;
     try {
       setDownloadingPacketId(groupId);
-      const response = await medicalReviewRequestsApi.downloadPendingArtifacts(groupId);
+      const response = await medicalReviewRequestsApi.downloadPendingArtifacts(groupId, true);
       // The S3 response supplies Content-Disposition with the packet filename.
       // Navigating directly avoids browsers blocking a synthetic cross-origin
       // anchor click after the asynchronous API request has completed.
@@ -501,6 +501,16 @@ const MedicalReviewRequestsGrid: React.FC = () => {
       window.alert(requestError?.response?.data?.message || 'Unable to download pending MRR artifacts.');
     } finally {
       setDownloadingPacketId('');
+    }
+  };
+
+  const markAdvisorSent = async (requestId: string) => {
+    if (!requestId) return;
+    try {
+      await medicalReviewRequestsApi.markAdvisorSent([requestId]);
+      await loadData();
+    } catch (requestError: any) {
+      window.alert(requestError?.response?.data?.message || 'Unable to mark this MRR as sent.');
     }
   };
 
@@ -1171,6 +1181,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                               #{request.display_id || '-'}
                             </button>
                             <div className="mt-1 text-xs text-gray-500">{request.requestType || 'review'}</div>
+                            <div className="mt-1 text-xs font-medium uppercase tracking-wide text-gray-400">Stage: {request.documentStage || '—'}</div>
                             <div className="mt-1 text-xs text-gray-500">Created {formatMedicalReviewCreatedAt(getRequestCreatedAt(request))}</div>
                           </div>
                           <div className="min-w-0">
@@ -1186,6 +1197,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                               {String(request.status || 'unknown').replace(/_/g, ' ')}
                             </span>
                           </div>
+                          <div className="text-xs font-medium"><span className={request.advisorDeliveryStatus === 'sent' ? 'text-emerald-700' : 'text-amber-700'}>{request.advisorDeliveryStatus === 'sent' ? 'Sent to advisor' : 'Not sent'}</span></div>
                           <div className="flex justify-start md:justify-end">
                             <div className="flex flex-nowrap gap-2">
                               <button
@@ -1195,6 +1207,9 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                               >
                                 Open review
                               </button>
+                              {canManageRequests && isPendingReview(request) && request.advisorDeliveryStatus !== 'sent' && (
+                                <button type="button" onClick={() => void markAdvisorSent(request._id || '')} className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100" title="Mark as sent to medical advisor"><Icon icon={FiSend} className="h-3.5 w-3.5" />Sent</button>
+                              )}
                               {canManageRequests && (
                                 <button
                                   type="button"
@@ -1279,6 +1294,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                             #{request.display_id || '-'}
                           </button>
                           <div className="mt-1 text-xs text-gray-500">{request.requestType || 'review'}</div>
+                          <div className="mt-1 text-xs font-medium uppercase tracking-wide text-gray-400">Stage: {request.documentStage || '—'}</div>
                           <div className="mt-1 text-xs text-gray-500">Created {formatMedicalReviewCreatedAt(getRequestCreatedAt(request))}</div>
                         </div>
                         <div className="min-w-0">
@@ -1294,6 +1310,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                             {String(request.status || 'unknown').replace(/_/g, ' ')}
                           </span>
                         </div>
+                        <div className="text-xs font-medium"><span className={request.advisorDeliveryStatus === 'sent' ? 'text-emerald-700' : 'text-amber-700'}>{request.advisorDeliveryStatus === 'sent' ? 'Sent to advisor' : 'Not sent'}</span></div>
                         <div className="flex justify-start md:justify-end">
                           <div className="flex flex-nowrap gap-2">
                             <button
@@ -1303,6 +1320,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                             >
                               Open review
                             </button>
+                            {canManageRequests && isPendingReview(request) && request.advisorDeliveryStatus !== 'sent' && <button type="button" onClick={() => void markAdvisorSent(request._id || '')} className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"><Icon icon={FiSend} className="h-3.5 w-3.5" />Sent</button>}
                             {canDeleteRequests && (
                               <button
                                 type="button"
@@ -1380,11 +1398,13 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Client</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Retreat</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Type</th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Stage</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Attempt</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Created</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Assignee</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Source</th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Advisor delivery</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Actions</th>
               </tr>
             </thead>
@@ -1402,6 +1422,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                   <td className="px-6 py-4 text-sm text-gray-900">
                     <MedicalReviewTypeBadge requestType={request.requestType} />
                   </td>
+                  <td className="px-6 py-4 text-sm capitalize text-gray-700">{String(request.documentStage || '—').replace(/_/g, ' ')}</td>
                   <td className="px-6 py-4 text-sm text-gray-900">{request.attemptNumber || 1}</td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-700">{formatMedicalReviewCreatedAt(getRequestCreatedAt(request))}</td>
                   <td className="px-6 py-4 text-sm text-gray-900">
@@ -1414,6 +1435,9 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900">{request.source || 'Provider Plus CRM'}</td>
+                  <td className="px-6 py-4 text-sm">
+                    {request.advisorDeliveryStatus === 'sent' ? <span className="font-medium text-emerald-700">Sent</span> : <button type="button" onClick={() => void markAdvisorSent(request._id || '')} disabled={!canManageRequests || !isPendingReview(request)} className="inline-flex items-center gap-1 rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700 disabled:opacity-40"><Icon icon={FiSend} className="h-3 w-3" />Mark sent</button>}
+                  </td>
                   <td className="px-6 py-4 text-sm font-medium">
                     <div className="flex items-center gap-2">
                       <button

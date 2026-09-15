@@ -1222,7 +1222,8 @@ export const medicalReviewRequestsApi = {
     return cachedGet<MedicalReviewRequest[]>(`medical-review-requests:${suffix || 'all'}`, () => api.get<MedicalReviewRequest[]>(`/medical-review-requests${suffix}`));
   },
   getQueue: () => cachedGet<MedicalReviewRequest[]>('medical-review-requests:queue', () => api.get<MedicalReviewRequest[]>('/medical-review-requests/queue')),
-  downloadPendingArtifacts: (groupId: string) => api.get<{ url: string; fileName: string; fileCount: number; expiresInSeconds: number }>(`/medical-review-requests/groups/${encodeURIComponent(groupId)}/pending-artifacts/download`),
+  downloadPendingArtifacts: (groupId: string, unsentOnly = true) => api.get<{ url: string; fileName: string; fileCount: number; expiresInSeconds: number }>(`/medical-review-requests/groups/${encodeURIComponent(groupId)}/pending-artifacts/download`, { params: { unsentOnly: unsentOnly ? 'true' : 'false' } }),
+  markAdvisorSent: (requestIds: string[]) => api.post<{ updated: number }>('/medical-review-requests/groups/mark-advisor-sent', { requestIds }),
   getOne: (id: string) => cachedGet<MedicalReviewRequest>(`medical-review-requests:${id}`, () => api.get<MedicalReviewRequest>(`/medical-review-requests/${id}`)),
   getContext: (id: string) => cachedGet<any>(`medical-review-requests:${id}:context`, () => api.get<any>(`/medical-review-requests/${id}/context`)),
   generateMedicalSummary: (id: string) => api.post<{ summary: string; generatedBy: 'rules' | 'openai'; model?: string; unavailableReason?: string; generatedAt: string }>(`/medical-review-requests/${id}/medical-summary/generate`),
