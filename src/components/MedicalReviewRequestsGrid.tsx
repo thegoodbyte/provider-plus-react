@@ -78,6 +78,17 @@ const getRequestRetreatId = (request: MedicalReviewRequest) => (
   typeof request.retreatId === 'string' ? request.retreatId : request.retreatId?._id
 );
 
+const getArtifactReceipt = (request: MedicalReviewRequest) => {
+  const artifacts: any[] = Array.isArray(request.artifactIds) ? request.artifactIds : [];
+  const artifact: any = artifacts.find((item) => item && typeof item === 'object');
+  if (!artifact) return { at: undefined, via: 'Unknown' };
+  const uploadedTimes = artifact.files?.map((file: any) => file.uploadedAt).filter(Boolean).sort() || [];
+  const at = artifact.receivedAt || uploadedTimes[uploadedTimes.length - 1];
+  const source = String(artifact.data?.uploadSource || artifact.source || '').toLowerCase();
+  const via = source.includes('ibogaready') || source === 'client_upload' ? 'Client via IbogaReady' : source.includes('admin') || source.includes('staff') ? 'Admin upload' : source ? source.replace(/_/g, ' ') : 'Unknown';
+  return { at, via };
+};
+
 const getGroupRetreatId = (group: MedicalReviewGroup) => (
   typeof group.retreatId === 'string' ? group.retreatId : group.retreatId?._id
 );
@@ -209,6 +220,8 @@ const MedicalReviewRequestsGrid: React.FC = () => {
           clientDisplayId: request.clientDisplayId || client?.display_id,
           retreatName: getRetreatCode(retreat),
           trackingFileName: tracking?.ekgFileName || tracking?.liverPanelFileName || undefined,
+          artifactReceivedAt: getArtifactReceipt(request).at,
+          artifactReceivedVia: getArtifactReceipt(request).via,
         };
       });
 
@@ -1183,6 +1196,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                             <div className="mt-1 text-xs text-gray-500">{request.requestType || 'review'}</div>
                             <div className="mt-1 text-xs font-medium uppercase tracking-wide text-gray-400">Stage: {request.documentStage || '—'}</div>
                             <div className="mt-1 text-xs text-gray-500">Created {formatMedicalReviewCreatedAt(getRequestCreatedAt(request))}</div>
+                            <div className="mt-1 text-xs text-gray-500">Received {request.artifactReceivedAt ? formatMedicalReviewCreatedAt(request.artifactReceivedAt) : '—'} · {request.artifactReceivedVia || 'Unknown'}</div>
                           </div>
                           <div className="min-w-0">
                             <div className="truncate text-sm font-medium text-gray-900">{getClientGridLabel(request)}</div>
@@ -1296,6 +1310,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                           <div className="mt-1 text-xs text-gray-500">{request.requestType || 'review'}</div>
                           <div className="mt-1 text-xs font-medium uppercase tracking-wide text-gray-400">Stage: {request.documentStage || '—'}</div>
                           <div className="mt-1 text-xs text-gray-500">Created {formatMedicalReviewCreatedAt(getRequestCreatedAt(request))}</div>
+                          <div className="mt-1 text-xs text-gray-500">Received {request.artifactReceivedAt ? formatMedicalReviewCreatedAt(request.artifactReceivedAt) : '—'} · {request.artifactReceivedVia || 'Unknown'}</div>
                         </div>
                         <div className="min-w-0">
                           <div className="truncate text-sm font-medium text-gray-900">{getClientGridLabel(request)}</div>
@@ -1401,6 +1416,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Stage</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Attempt</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Created</th>
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Artifact received</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Assignee</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500">Source</th>
@@ -1425,6 +1441,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                   <td className="px-6 py-4 text-sm capitalize text-gray-700">{String(request.documentStage || '—').replace(/_/g, ' ')}</td>
                   <td className="px-6 py-4 text-sm text-gray-900">{request.attemptNumber || 1}</td>
                   <td className="whitespace-nowrap px-6 py-4 text-sm text-gray-700">{formatMedicalReviewCreatedAt(getRequestCreatedAt(request))}</td>
+                  <td className="px-6 py-4 text-sm text-gray-700"><div>{request.artifactReceivedAt ? formatMedicalReviewCreatedAt(request.artifactReceivedAt) : '—'}</div><div className="text-xs text-gray-500">{request.artifactReceivedVia || 'Unknown'}</div></td>
                   <td className="px-6 py-4 text-sm text-gray-900">
                     <div className="font-medium">{getAssignee(request).name}</div>
                     {getAssignee(request).email && <div className="text-xs text-gray-500">{getAssignee(request).email}</div>}

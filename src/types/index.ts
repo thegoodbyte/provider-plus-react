@@ -1267,6 +1267,8 @@ export interface MedicalReviewRequest {
   advisorDeliveryStatus?: 'unsent' | 'sent';
   advisorSentAt?: string;
   advisorSentBy?: string;
+  artifactReceivedAt?: string;
+  artifactReceivedVia?: string;
   clientVisibleAdminNoteTranslations?: Record<string, { text: string; sourceLanguage?: string; translatedAt?: string; model?: string }>;
 
   // Medical artifact reference (NEW required field)
