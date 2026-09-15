@@ -276,6 +276,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
     purpose: 'general' as NonNullable<MedicalArtifact['purpose']>,
     documentStage: 'entry' as NonNullable<MedicalArtifact['documentStage']>,
     documentType: 'additional' as NonNullable<MedicalArtifact['documentType']>,
+    originalLanguage: '',
     bookingId: '',
     ceremonyNumber: '' as number | '',
   });
@@ -305,6 +306,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
           purpose: item.purpose || 'general',
           documentStage: item.documentStage || 'entry',
           documentType: item.documentType || 'additional',
+          originalLanguage: item.originalLanguage || item.data?.sourceLanguage || item.data?.language || item.files?.find((file: any) => file.variant !== 'english_translation' && file.language)?.language || '',
           bookingId: getObjectId(item.bookingId),
           ceremonyNumber: item.ceremonyNumber || '',
         });
@@ -1010,6 +1012,15 @@ const MedicalArtifactDetailPage: React.FC = () => {
                 </select>
               </label>
               <label className="block text-sm font-medium text-gray-700">
+                Original language
+                <select value={form.originalLanguage} onChange={(event) => setForm({ ...form, originalLanguage: event.target.value })} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm">
+                  <option value="">Unknown / not recorded</option>
+                  <option value="en">English</option>
+                  <option value="cs">Czech</option>
+                  <option value="pl">Polish</option>
+                </select>
+              </label>
+              <label className="block text-sm font-medium text-gray-700">
                 Booking {requiresBooking && <span className="text-red-600">*</span>}
                 <select
                   value={form.bookingId}
@@ -1075,7 +1086,7 @@ const MedicalArtifactDetailPage: React.FC = () => {
                     <h2 id="artifact-answers-heading" className="text-sm font-semibold uppercase tracking-wide text-gray-500">Submitted answers</h2>
                     <p className="mt-1 text-xs text-gray-500">Question-and-answer data saved with this medical artifact.</p>
                   </div>
-                  {artifact.data.language && <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">Language: {String(artifact.data.language).toUpperCase()}</span>}
+                  {(artifact.originalLanguage || artifact.data?.sourceLanguage || artifact.data?.language) && <span className="rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">Original language: {String(artifact.originalLanguage || artifact.data?.sourceLanguage || artifact.data?.language).toUpperCase()}</span>}
                 </div>
                 <div className="divide-y divide-gray-100 rounded-md border border-gray-200">
                   {Object.entries(artifact.data.answers as Record<string, any>).filter(([key]) => key !== 'pretty').map(([key, value]) => (

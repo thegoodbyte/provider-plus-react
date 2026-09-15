@@ -1056,6 +1056,7 @@ export interface MedicalArtifact {
   display_id?: number;
   clientId: string | Client;
   clientDisplayId?: number;
+  originalLanguage?: string;
   retreatId?: string | Retreat;
   bookingId?: string | RetreatClient;
   ceremonyId?: string;
