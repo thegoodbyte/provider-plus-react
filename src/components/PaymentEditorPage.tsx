@@ -90,8 +90,10 @@ const PaymentEditorPage: React.FC = () => {
   const [usdPreviewError, setUsdPreviewError] = useState('');
   const [bookingCurrencyLoading, setBookingCurrencyLoading] = useState(false);
   const [formError, setFormError] = useState('');
+  const [saving, setSaving] = useState(false);
   const [loadedPayment, setLoadedPayment] = useState<Payment | null>(null);
   const [reassigningReceipt, setReassigningReceipt] = useState(false);
+  const [clientOnly, setClientOnly] = useState(Boolean(clientIdFromQuery && !bookingIdFromQuery && !paymentRequestIdFromQuery));
   const [formData, setFormData] = useState({
     display_id: '',
     paymentRequestId: '',
@@ -139,6 +141,7 @@ const PaymentEditorPage: React.FC = () => {
         if (paymentResponse?.data) {
           const payment = paymentResponse.data as Payment;
           setLoadedPayment(payment);
+          setClientOnly(!payment.bookingId && !payment.paymentRequestId && !payment.retreatId);
           const populatedPaymentRequest = typeof payment.paymentRequestId === 'object' ? payment.paymentRequestId as PaymentRequest : null;
           if (populatedPaymentRequest) setSelectedPaymentRequest(populatedPaymentRequest);
           setFormData({
@@ -316,7 +319,7 @@ const PaymentEditorPage: React.FC = () => {
       bookingId,
       clientId: resolveId(booking?.clientId) || prev.clientId,
       retreatId: resolveId(booking?.retreatId) || prev.retreatId,
-      currency: (booking?.currency as typeof prev.currency) || prev.currency,
+      currency: isExisting ? prev.currency : (booking?.currency as typeof prev.currency) || prev.currency,
       amount: prev.amount || (booking?.totalAmount ? String(booking.totalAmount) : prev.amount),
     }));
   };
@@ -325,7 +328,7 @@ const PaymentEditorPage: React.FC = () => {
     e.preventDefault();
     setFormError('');
 
-    if (isView) return;
+    if (isView || saving) return;
 
     if (isSplitReceipt) {
       const enteredAmount = Math.abs(Number(formData.amount || 0));
@@ -339,13 +342,18 @@ const PaymentEditorPage: React.FC = () => {
       return;
     }
 
-    if (!isExisting && !formData.bookingId && !formData.paymentRequestId) {
+    if (!clientOnly && !formData.bookingId && !formData.paymentRequestId) {
       setFormError('Select the exact booking. A payment request is only sufficient before its booking has been created.');
       return;
     }
 
-    if (!formData.clientId || !formData.retreatId || !formData.amount) {
-      setFormError('Complete the required client, retreat, and amount fields before saving.');
+    if (clientOnly && !formData.description.trim()) {
+      setFormError('Enter a purpose for this client payment.');
+      return;
+    }
+
+    if (!formData.clientId || (!clientOnly && !formData.retreatId) || !formData.amount) {
+      setFormError(clientOnly ? 'Select a client and enter the payment amount.' : 'Complete the required client, retreat, and amount fields before saving.');
       return;
     }
 
@@ -355,26 +363,17 @@ const PaymentEditorPage: React.FC = () => {
       return;
     }
 
-    const existingPayments = await paymentsApi.getAll();
-    const duplicate = (existingPayments.data || []).find((payment: Payment) => {
-      return payment._id !== id && Number(payment.display_id) === displayId;
-    });
-    if (duplicate) {
-      setFormError(`Payment number ${displayId} already exists. Save cancelled.`);
-      return;
-    }
-
     const submitData = {
       display_id: displayId,
       paymentRequestId: formData.paymentRequestId || undefined,
       clientId: formData.clientId,
-      retreatId: formData.retreatId,
+      retreatId: clientOnly ? undefined : formData.retreatId,
       bookingId: formData.bookingId || undefined,
       amount: formData.paymentType === 'refund' ? -Math.abs(parseFloat(formData.amount)) : parseFloat(formData.amount),
       currency: formData.currency,
       status: formData.status,
       paymentMethod: formData.paymentMethod,
-      description: formData.description || undefined,
+      description: formData.description.trim() || undefined,
       transactionId: formData.transactionId || undefined,
       paymentDate: formData.paymentDate,
       notes: formData.notes || undefined,
@@ -389,7 +388,17 @@ const PaymentEditorPage: React.FC = () => {
       bookingCurrencyExchangeDate: showBookingCurrencySettlement ? (formData.bookingCurrencyExchangeDate || formData.paymentDate || undefined) : undefined,
     };
 
+    setSaving(true);
     try {
+    const existingPayments = await paymentsApi.getAll();
+    const duplicate = (existingPayments.data || []).find((payment: Payment) => {
+      return payment._id !== id && Number(payment.display_id) === displayId;
+    });
+    if (duplicate) {
+      setFormError(`Payment number ${displayId} already exists. Save cancelled.`);
+      return;
+    }
+
       if (isExisting && id) {
         await paymentsApi.update(id, submitData as any);
       } else {
@@ -399,7 +408,7 @@ const PaymentEditorPage: React.FC = () => {
     } catch (error) {
       console.error('Error saving payment:', (error as any)?.response?.data || error);
       setFormError(apiErrorMessage(error, 'The payment could not be saved.'));
-    }
+    } finally { setSaving(false); }
   };
 
   const isSplitReceipt = Boolean(loadedPayment?.receiptId && Number(loadedPayment?.allocationCount || 0) > 1);
@@ -488,6 +497,21 @@ const PaymentEditorPage: React.FC = () => {
             </div>
           )}
           <fieldset disabled={isView} className="grid grid-cols-1 md:grid-cols-2 gap-6 disabled:opacity-90">
+            {(!loadedPayment?.bookingId && !loadedPayment?.paymentRequestId) && <div className="md:col-span-2 rounded-md border border-blue-200 bg-blue-50 p-4">
+              <label className="flex items-center gap-2 font-medium">
+                <input type="checkbox" checked={clientOnly} onChange={event => {
+                  setClientOnly(event.target.checked);
+                  if (event.target.checked) {
+                    setSelectedPaymentRequest(null);
+                    setFormData(prev => ({ ...prev, bookingId: '', retreatId: '', paymentRequestId: '', bookingCurrencyAmount: '', isDeposit: false, isFinalPayment: false }));
+                  }
+                }} />
+                Client payment (no booking yet)
+              </label>
+              <p className="mt-2 text-sm">Record a payment for this client with a clear purpose. No retreat or payment request is needed. You can link it to a booking later.</p>
+              {isEdit && clientOnly && <button type="button" className="mt-2 font-semibold text-blue-700 underline" onClick={() => setClientOnly(false)}>Link to a booking</button>}
+            </div>}
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Payment Number *</label>
               <input
@@ -502,7 +526,7 @@ const PaymentEditorPage: React.FC = () => {
               <p className="mt-1 text-xs text-gray-500">Auto-filled. You can override it, but it must be unique.</p>
             </div>
 
-            <div className="md:col-span-2">
+            {!clientOnly && <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Payment Request</label>
               {isView ? (
                 formData.paymentRequestId ? (
@@ -534,20 +558,20 @@ const PaymentEditorPage: React.FC = () => {
                   </div>
                 </div>
               )}
-            </div>
+            </div>}
 
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Client *</label>
-              <SearchableClientSelect
+              {isExisting ? <p>{clients.find(client => client._id === formData.clientId)?.firstName} {clients.find(client => client._id === formData.clientId)?.lastName}</p> : <SearchableClientSelect
                 clients={clients}
                 selectedClientId={formData.clientId}
-                onClientSelect={(clientId) => handleChange('clientId', clientId)}
+                onClientSelect={(clientId) => { if (!isExisting) setFormData(prev => ({ ...prev, clientId, bookingId: '', retreatId: '', paymentRequestId: '' })); }}
                 placeholder="Search client by name, email, or display ID"
                 className="w-full"
-              />
+              />}
             </div>
 
-            <div className="md:col-span-2">
+            {!clientOnly && <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Retreat *</label>
               <SearchableRetreatSelect
                 retreats={retreats}
@@ -556,9 +580,9 @@ const PaymentEditorPage: React.FC = () => {
                 placeholder="Search retreat by name or location"
                 className="w-full"
               />
-            </div>
+            </div>}
 
-            <div className="md:col-span-2">
+            {!clientOnly && <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Booking Number {!formData.paymentRequestId && '*'}</label>
               <SearchableBookingSelect
                 bookings={bookingOptions}
@@ -571,13 +595,13 @@ const PaymentEditorPage: React.FC = () => {
               />
               {selectedBooking && (
                 <p className="mt-1 text-xs text-gray-500">
-                  Linked to booking #{selectedBooking.bookingNumber || selectedBooking._id?.slice(-6)}
+                  Payment will count toward booking #{selectedBooking.bookingNumber || selectedBooking._id?.slice(-6)}
                 </p>
               )}
               {!selectedBooking && formData.paymentRequestId && (
-                <p className="mt-1 text-xs text-amber-700">This invoice is not linked to a booking. Select the exact booking before saving the payment.</p>
+                <p className="mt-1 text-xs text-amber-700">No booking linked yet. You can save against this payment request.</p>
               )}
-            </div>
+            </div>}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">{formData.paymentType === 'refund' ? 'Refund Amount *' : 'Amount *'}</label>
@@ -585,6 +609,7 @@ const PaymentEditorPage: React.FC = () => {
                 type="number"
                 min={formData.paymentType === 'refund' ? '0.01' : undefined}
                 step="0.01"
+                aria-label="Amount"
                 value={formData.amount}
                 onChange={(e) => handleChange('amount', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -597,6 +622,7 @@ const PaymentEditorPage: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Currency *</label>
               <select
+                aria-label="Currency"
                 value={formData.currency}
                 onChange={(e) => handleChange('currency', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -660,6 +686,7 @@ const PaymentEditorPage: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Payment Method *</label>
               <select
+                aria-label="Payment method"
                 value={formData.paymentMethod}
                 onChange={(e) => handleChange('paymentMethod', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -680,6 +707,7 @@ const PaymentEditorPage: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Status *</label>
               <select
+                aria-label="Status"
                 value={formData.status}
                 onChange={(e) => handleChange('status', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -732,13 +760,15 @@ const PaymentEditorPage: React.FC = () => {
             </div>
 
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="payment-purpose">Purpose{clientOnly ? ' *' : ''}</label>
               <input
                 type="text"
+                id="payment-purpose"
+                required={clientOnly}
                 value={formData.description}
                 onChange={(e) => handleChange('description', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Brief description of the payment"
+                placeholder="e.g. Medical exam before booking"
               />
             </div>
 
@@ -785,10 +815,11 @@ const PaymentEditorPage: React.FC = () => {
             {!isView && (
               <button
                 type="submit"
+                disabled={saving}
                 className="inline-flex items-center gap-2 px-4 py-2 text-white bg-blue-600 rounded-md hover:bg-blue-700"
               >
                 <Icon icon={FiSave} className="w-4 h-4" />
-                {isEdit ? 'Update Payment' : 'Add Payment'}
+                {saving ? 'Saving…' : isEdit ? 'Update Payment' : 'Add Payment'}
               </button>
             )}
           </div>

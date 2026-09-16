@@ -172,6 +172,8 @@ const getCompletedStatus = (item: BookingFlowItem): BookingFlowItem['status'] =>
 interface ClientBookingWorkflowTabProps {
   bookings: any[];
   hideBookingSelector?: boolean;
+  focusStepId?: string;
+  onUpdated?: () => void;
 }
 
 type StepDraft = {
@@ -183,7 +185,7 @@ type StepDraft = {
 
 type StepFilter = 'all' | 'open' | 'completed';
 
-const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ bookings, hideBookingSelector = false }) => {
+const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ bookings, hideBookingSelector = false, focusStepId, onUpdated }) => {
   const navigate = useNavigate();
   const [selectedBookingId, setSelectedBookingId] = useState('');
   const [items, setItems] = useState<BookingFlowItem[]>([]);
@@ -233,6 +235,17 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
     });
     return map;
   }, [libraryTemplates]);
+
+  useEffect(() => {
+    if (!focusStepId || loading) return;
+    setExpandedStepId(focusStepId);
+    const frame = requestAnimationFrame(() => {
+      const element = document.getElementById(`booking-workflow-step-${focusStepId}`);
+      element?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+      element?.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusStepId, loading, items]);
 
   const completedCount = items.filter((item) => fulfilledStatuses.has(item.status)).length;
   const progressPercent = items.length > 0 ? Math.round((completedCount / items.length) * 100) : 0;
@@ -304,6 +317,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
       applyActionLogs(response.data.actionLogs || []);
 
       setItems(nextItems);
+      onUpdated?.();
       setExpandedStepId((current) => current || (nextItems[0] ? getItemId(nextItems[0]) : ''));
       hydrateDrafts(nextItems);
       setIsEditing(false);
@@ -335,6 +349,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
       setSavingId(item._id);
       const response = await bookingFlowApi.updateItem(item._id, data);
       setItems((current) => current.map((existing) => (existing._id === item._id ? response.data : existing)));
+      onUpdated?.();
     } finally {
       setSavingId(null);
     }
@@ -422,6 +437,7 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
         updatedItems.push(response.data);
       }
       setItems((current) => current.map((item) => updatedItems.find((updated) => updated._id === item._id) || item));
+      onUpdated?.();
       hydrateDrafts(updatedItems.length === items.length ? updatedItems : items);
       setIsEditing(false);
     } catch (saveError: any) {
@@ -777,6 +793,8 @@ const ClientBookingWorkflowTab: React.FC<ClientBookingWorkflowTabProps> = ({ boo
                 return (
                   <div
                     key={id}
+                    id={`booking-workflow-step-${id}`}
+                    tabIndex={-1}
                     className={`grid cursor-pointer gap-3 border-l-4 p-4 md:cursor-default md:px-8 ${tone.stepStripe} ${isChecked ? 'bg-green-50/80' : overdue ? 'bg-red-50/80' : dueSoon ? 'bg-amber-50/80' : tone.stepCell}`}
                     style={!isChecked && !overdue && !dueSoon ? stepStyle : undefined}
                     onClick={(event) => {

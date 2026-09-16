@@ -625,7 +625,7 @@ export interface Payment {
   receiptId?: string | PaymentReceipt;
   display_id?: number;
   clientId: string | Client;
-  retreatId: string | Retreat;
+  retreatId?: string | Retreat;
   paymentRequestId?: string | PaymentRequest;
   originalPaymentId?: string | Payment;
   bookingId?: string | RetreatClient; // Legacy - for backward compatibility

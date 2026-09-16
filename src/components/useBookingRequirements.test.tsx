@@ -91,3 +91,14 @@ describe('booking requirement hook helpers', () => {
     expect(requirementErrorMessage({}, 'fallback')).toBe('fallback');
   });
 });
+
+it('publishes resolved readiness and clears certainty while retrying failed data', async () => {
+  const onReadinessChange = jest.fn();
+  const resolved = [{ itemId: 'step', key: 'ekg', state: 'pending_review', reviewRequired: true, requiredFromClient: true }];
+  (fetchBookingRequirementSources as jest.Mock).mockResolvedValue(source({ requirements: resolved }));
+  const { result } = renderHook(() => useBookingRequirements({ bookingId: 'booking', refreshKey: 0, onReadinessChange }));
+  await waitFor(() => expect(onReadinessChange).toHaveBeenLastCalledWith(expect.objectContaining({ loading: false, requirements: resolved, error: '' })));
+  (fetchBookingRequirementSources as jest.Mock).mockRejectedValue(new Error('Offline'));
+  await act(async () => { await result.current.reload(); });
+  expect(onReadinessChange).toHaveBeenLastCalledWith(expect.objectContaining({ error: 'Offline', loading: false }));
+});

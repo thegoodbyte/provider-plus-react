@@ -581,3 +581,7 @@
   .payment-actions .refund-btn { display:none; }
   .view-payment-btn span { display:inline; }
 }
+
+.payment-history-header { flex-wrap: wrap; }
+.link-existing-payment-button { border: 1px solid #cbd5e1; border-radius: 6px; background: white; color: #1d4ed8; padding: 7px 10px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.link-existing-payment-button:hover { background: #eff6ff; }

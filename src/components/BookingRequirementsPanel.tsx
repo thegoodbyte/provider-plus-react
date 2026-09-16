@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import type { BookingReadinessSource } from './bookingNextAction';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { FiX } from 'react-icons/fi';
 import { artifactMatches, documentMatches, RequirementDefinition } from './bookingRequirementRows';
@@ -6,7 +7,7 @@ import { useBookingRequirements } from './useBookingRequirements';
 import EmailComposeModal from './EmailComposeModal';
 const CloseIcon: React.FC = () => React.createElement(FiX as any);
 
-export interface BookingRequirementsPanelProps { bookingId: string; clientId?: string; retreatId?: string; recipientEmail?: string; refreshKey: number; onStatusChange?: (status: { missing: number; total: number }) => void; }
+export interface BookingRequirementsPanelProps { bookingId: string; clientId?: string; retreatId?: string; recipientEmail?: string; refreshKey: number; focusItemId?: string; onReadinessChange?: (source: BookingReadinessSource) => void; onStatusChange?: (status: { missing: number; total: number }) => void; }
 export const routePrefixForPath = (pathname: string) => { const first = pathname.split('/').filter(Boolean)[0]; return ['admin', 'medical', 'staff', 'user'].includes(first) ? `/${first}` : ''; };
 const time = (value?: Date | string) => new Date(value || 0).getTime();
 export const formatRequirementDate = (value?: Date | string) => { if (!value) return 'N/A'; const date = new Date(value); return Number.isNaN(date.getTime()) ? 'N/A' : date.toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); };
@@ -14,6 +15,13 @@ export const formatRequirementDate = (value?: Date | string) => { if (!value) re
 const BookingRequirementsPanel: React.FC<BookingRequirementsPanelProps> = (props) => {
   const navigate = useNavigate(); const location = useLocation(); const routePrefix = useMemo(() => routePrefixForPath(location.pathname), [location.pathname]);
   const [selected, setSelected] = useState<RequirementDefinition | null>(null); const [documentSearch, setDocumentSearch] = useState(''); const [showAllDocuments, setShowAllDocuments] = useState(false); const [missingEmailOpen, setMissingEmailOpen] = useState(false); const state = useBookingRequirements(props);
+  useEffect(() => {
+    if (!props.focusItemId || state.loading) return;
+    const row = state.rows.find(row => row.relatedItems.some(item => (item._id || item.key) === props.focusItemId));
+    const element = row ? document.getElementById(`booking-requirement-${row.key}`) : null;
+    element?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+    element?.focus({ preventScroll: true });
+  }, [props.focusItemId, state.loading, state.rows]);
   const initialLoad = state.loading && state.rows.every(row => row.relatedItems.length === 0 && !row.latestArtifact && !row.latestDocument);
   const artifacts = selected ? state.libraryArtifacts.filter(item => item._id && artifactMatches(item, selected)).sort((a, b) => time(b.receivedAt || b.createdAt) - time(a.receivedAt || a.createdAt)) : [];
   const documents = selected ? state.libraryDocuments.filter(item => {
@@ -26,7 +34,7 @@ const BookingRequirementsPanel: React.FC<BookingRequirementsPanelProps> = (props
   return <div className="detail-section">
     <div className="section-header"><h3 className="pdf-section-title">Mandatory Booking Requirements</h3><div className="flex flex-wrap gap-2"><button className="edit-btn" type="button" onClick={() => setMissingEmailOpen(true)} disabled={!props.bookingId}>Email missing requirements</button><button className="edit-btn" type="button" onClick={state.reload} disabled={state.loading}>{state.loading ? 'Refreshing...' : 'Refresh'}</button></div></div>
     <p className="text-sm text-gray-600 mb-3">Driven by booking-flow requirements and linked booking artifacts/review requests.</p>{state.error && <div className="alert alert-danger">{state.error}</div>}
-    {initialLoad ? <div className="rounded border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-600">Loading booking requirements…</div> : <div className="overflow-x-auto"><table className="min-w-full divide-y divide-gray-200 text-sm"><thead className="bg-gray-50"><tr>{['Requirement', 'Required', 'Status', 'Reviewed', 'Latest File / Review'].map(label => <th className="px-3 py-2 text-left font-medium text-gray-600" key={label}>{label}</th>)}</tr></thead><tbody className="divide-y divide-gray-100 bg-white">{state.rows.map(row => { const flowStatus = row.relatedItems[0]?.status; return <tr key={row.key}>
+    {initialLoad ? <div className="rounded border border-gray-200 bg-gray-50 px-4 py-8 text-center text-sm text-gray-600">Loading booking requirements…</div> : <div className="overflow-x-auto"><table className="min-w-full divide-y divide-gray-200 text-sm"><thead className="bg-gray-50"><tr>{['Requirement', 'Required', 'Status', 'Reviewed', 'Latest File / Review'].map(label => <th className="px-3 py-2 text-left font-medium text-gray-600" key={label}>{label}</th>)}</tr></thead><tbody className="divide-y divide-gray-100 bg-white">{state.rows.map(row => { const flowStatus = row.relatedItems[0]?.status; return <tr key={row.key} id={`booking-requirement-${row.key}`} tabIndex={-1}>
       <td className="px-3 py-2 font-medium text-gray-900">{row.label}</td><td className="px-3 py-2">{row.required ? 'Yes' : 'No'}</td><td className="px-3 py-2"><span className={`status-badge ${row.satisfied ? 'badge-received' : 'badge-pending'}`}>{flowStatus || (row.uploaded ? 'received' : row.satisfied ? 'waived' : 'missing')}</span></td><td className="px-3 py-2"><span className={`status-badge ${row.reviewed ? 'badge-approved' : 'badge-pending'}`}>{row.reviewed ? (row.latestReview?.reviewDecision || row.latestReview?.status || 'reviewed') : 'pending'}</span></td><td className="px-3 py-2"><div className="flex flex-wrap gap-2">
       {row.latestArtifact?._id && <button className="text-blue-700 hover:underline" type="button" onClick={() => navigate(`${routePrefix}/medical-artifacts/${row.latestArtifact?._id}`)}>Artifact #{row.latestArtifact.display_id || row.latestArtifact._id}</button>}
       {row.latestDocument?._id && <button className="text-blue-700 hover:underline" type="button" onClick={() => navigate(`${routePrefix}/booking-documents`)}>Document #{row.latestDocument.display_id || row.latestDocument._id}</button>}

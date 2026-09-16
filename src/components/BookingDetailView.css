@@ -2150,3 +2150,21 @@
   .booking-overview-main { padding: 0; border: 0; }
   .booking-overview-aside { padding: 18px 0 0; background: #fff; }
 }
+
+.booking-next-action { margin: 0 20px 18px; padding: 18px 20px; border: 1px solid #cbd5e1; border-radius: 12px; background: #f8fafc; color: #334155; }
+.booking-next-action-heading, .booking-next-action-main, .booking-next-action-blockers li { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.booking-next-action-heading { flex-wrap: wrap; }
+.booking-next-action-heading h2 { margin: 0; font-size: 17px; }
+.booking-next-action-heading strong { padding: 4px 10px; border-radius: 999px; background: #e2e8f0; }
+.booking-next-action.is-blocked .booking-next-action-heading strong { background: #fee2e2; color: #991b1b; }
+.booking-next-action.is-ready .booking-next-action-heading strong { background: #dcfce7; color: #166534; }
+.booking-next-action.is-attention .booking-next-action-heading strong, .booking-next-action.is-waiting .booking-next-action-heading strong { background: #fef3c7; color: #92400e; }
+.booking-next-action p { margin: 6px 0; }
+.booking-next-action h3 { margin: 4px 0; font-size: 17px; }
+.booking-next-action-progress { font-size: 13px; color: #475569; padding: 8px 0; }
+.booking-next-action-main { padding: 14px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; }
+.booking-next-action-blockers { margin-top: 14px; }
+.booking-next-action-blockers summary { cursor: pointer; font-weight: 600; }
+.booking-next-action-blockers ul { list-style: none; margin: 0; padding: 0; }
+.booking-next-action-blockers li { padding: 12px 0; border-bottom: 1px solid #e2e8f0; }
+@media (max-width: 640px) { .booking-next-action { margin: 0 10px 12px; padding: 14px; } .booking-next-action-main, .booking-next-action-blockers li { align-items: stretch; flex-direction: column; } }

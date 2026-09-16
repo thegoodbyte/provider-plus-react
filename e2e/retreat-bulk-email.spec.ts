@@ -16,14 +16,14 @@ test.describe('Retreat bulk email', () => {
     });
   });
 
-  test('opens retreat email dialog and sends to all clients with email addresses', async ({ page }) => {
+  for (const useRecipientLanguage of [true, false]) test(`retreat email recipient language ${useRecipientLanguage ? 'enabled by default' : 'can be overridden'}`, async ({ page }) => {
     let postedBulkEmail: any = null;
 
     await page.route('**', async (route) => {
       const request = route.request();
       const url = new URL(request.url());
 
-      if (url.port === '3000') {
+      if (!['xhr', 'fetch'].includes(request.resourceType())) {
         await route.continue();
         return;
       }
@@ -68,6 +68,7 @@ test.describe('Retreat bulk email', () => {
               currency: 'CZK',
               clientId: {
                 _id: 'client-1',
+                language: 'pl',
                 firstName: 'Anna',
                 lastName: 'Nowak',
                 email: 'anna@example.com',
@@ -84,6 +85,7 @@ test.describe('Retreat bulk email', () => {
               currency: 'CZK',
               clientId: {
                 _id: 'client-2',
+                language: 'cs',
                 firstName: 'Bartek',
                 lastName: 'Kowal',
                 email: 'bartek@example.com',
@@ -113,6 +115,12 @@ test.describe('Retreat bulk email', () => {
         return;
       }
 
+      if (url.pathname === '/communications/templates') {
+        return route.fulfill({ json: [{ _id: 'template-pl', name: 'Arrival address Polish', templateKey: 'arrival_address', language: 'pl', active: true, subject: 'Adres', bodyText: 'Polish arrival instructions' }] });
+      }
+      if (url.pathname === '/communications/preview') {
+        return route.fulfill({ json: { subject: 'Adres', bodyText: 'Polish arrival instructions', bodyHtml: '' } });
+      }
       if (
         url.pathname === '/communications/templates' ||
         url.pathname.startsWith('/payments') ||
@@ -128,20 +136,38 @@ test.describe('Retreat bulk email', () => {
     });
 
     await page.goto(`/admin/retreats/${retreatId}`);
-    await expect(page.getByRole('button', { name: /Email Retreat \(2\)/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Email retreat clients \(2\)/ })).toBeVisible();
 
-    await page.getByRole('button', { name: /Email Retreat \(2\)/ }).click();
-    const dialog = page.getByRole('dialog', { name: /Email Everyone in BEN-10-01-26/ });
+    await page.getByRole('button', { name: /Email retreat clients \(2\)/ }).click();
+    const dialog = page.getByRole('dialog', { name: /Email retreat clients.*BEN-10-01-26/ });
     await expect(dialog).toBeVisible();
-    await expect(dialog.getByText('Current eligible recipients:')).toBeVisible();
+    const languageCheckbox = dialog.getByRole('checkbox', { name: 'Use each recipient’s preferred language' });
+    await expect(languageCheckbox).toBeChecked();
+    await languageCheckbox.uncheck();
+    await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await page.getByRole('button', { name: /Email retreat clients \(2\)/ }).click();
+    await expect(languageCheckbox).toBeChecked();
+    if (useRecipientLanguage) {
+      await dialog.getByLabel('Template', { exact: true }).click();
+      await page.getByText('Arrival address Polish · PL', { exact: true }).click();
+      await expect(dialog.getByLabel('Subject')).toHaveValue('Adres');
+      await expect(dialog.getByLabel('Message')).toHaveValue('Polish arrival instructions');
+      await expect(dialog.getByLabel('Message')).toHaveAttribute('readonly', '');
+    } else {
+      await languageCheckbox.uncheck();
+      await expect(dialog.getByLabel('Message')).not.toHaveAttribute('readonly', '');
+    }
 
-    await dialog.getByLabel('Subject').fill('Important retreat update');
-    await dialog.getByLabel('Message').fill('Please read this update before arrival.');
+    if (!useRecipientLanguage) {
+      await dialog.getByLabel('Subject').fill('Important retreat update');
+      await dialog.getByLabel('Message').fill('Please read this update before arrival.');
+    }
     await dialog.getByRole('button', { name: 'Send to 2' }).click();
 
     await expect.poll(() => postedBulkEmail).toMatchObject({
-      subject: 'Important retreat update',
-      bodyText: 'Please read this update before arrival.',
+      useRecipientLanguage,
+      subject: useRecipientLanguage ? 'Adres' : 'Important retreat update',
+      bodyText: useRecipientLanguage ? 'Polish arrival instructions' : 'Please read this update before arrival.',
     });
   });
 });

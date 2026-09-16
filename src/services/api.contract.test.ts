@@ -77,3 +77,41 @@ describe('API endpoint contracts', () => {
     );
   });
 });
+
+describe('inline loading error request isolation', () => {
+  const transports: any[] = (axios.create as jest.Mock).mock.results.map(result => result.value);
+  const transport = transports.find(candidate => candidate?.interceptors?.request?.use.mock.calls.length) || transports[transports.length - 1];
+
+  beforeEach(() => { cacheService.clear(); transport.get.mockReset(); });
+
+  it('fetches a fresh retreat summary on every refresh and preserves inline errors', async () => {
+    transport.get.mockResolvedValue({ data: { rows: [], unavailable: [] } });
+    await endpoints.bookingFlowApi.getRetreatWorkflowSummary('r1', { suppressGlobalError: true });
+    await endpoints.bookingFlowApi.getRetreatWorkflowSummary('r1', { suppressGlobalError: true });
+    expect(transport.get).toHaveBeenCalledTimes(2);
+    expect(transport.get).toHaveBeenLastCalledWith('/booking-flow/retreats/r1/workflow-summary', { suppressGlobalError: true });
+  });
+
+  it('does not share a pending global-error request with an inline-error caller', async () => {
+    let finishGlobal!: (value: any) => void;
+    transport.get.mockReturnValueOnce(new Promise(resolve => { finishGlobal = resolve; }));
+    const globalRequest = endpoints.retreatsApi.getAll();
+    transport.get.mockResolvedValueOnce({ data: [{ _id: 'fresh' }] });
+    const result = await endpoints.retreatsApi.getAll({ suppressGlobalError: true });
+    expect(transport.get).toHaveBeenCalledTimes(2);
+    expect(transport.get).toHaveBeenLastCalledWith('/retreats', { suppressGlobalError: true });
+    expect(result.data).toEqual([{ _id: 'fresh' }]);
+    finishGlobal({ data: [] });
+    await globalRequest;
+  });
+
+  it('retries the server after an inline failure and bypasses previously cached data', async () => {
+    transport.get.mockResolvedValueOnce({ data: [{ _id: 'old' }] });
+    await endpoints.retreatsApi.getAll();
+    transport.get.mockRejectedValueOnce(new Error('Offline'));
+    await expect(endpoints.retreatsApi.getAll({ suppressGlobalError: true })).rejects.toThrow('Offline');
+    transport.get.mockResolvedValueOnce({ data: [{ _id: 'new' }] });
+    expect((await endpoints.retreatsApi.getAll({ suppressGlobalError: true })).data).toEqual([{ _id: 'new' }]);
+    expect(transport.get).toHaveBeenCalledTimes(3);
+  });
+});

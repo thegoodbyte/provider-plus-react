@@ -84,7 +84,7 @@ const PaymentsPage: React.FC = () => {
           clientDisplayId: client?.display_id,
           clientEmail: client?.email,
           clientPhone: client?.phone,
-          retreatName: getRetreatCode(retreat),
+          retreatName: retreatId ? getRetreatCode(retreat) : 'Client payment',
           bookingNumber: (typeof payment.bookingId === 'object' ? payment.bookingId?.bookingNumber : undefined) || booking?.bookingNumber,
         };
       });
@@ -300,7 +300,8 @@ const PaymentsPage: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {payment.retreatName}
+                    <span>{payment.retreatName}</span>
+                    {payment.description && <div className="max-w-xs whitespace-normal text-xs text-gray-500">{payment.description}</div>}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {payment.bookingNumber && payment.bookingId ? (
@@ -313,7 +314,7 @@ const PaymentsPage: React.FC = () => {
                         #{payment.bookingNumber}
                       </button>
                     ) : (
-                      '-'
+                      'Not linked to a booking'
                     )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

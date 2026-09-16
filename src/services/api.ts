@@ -1,4 +1,5 @@
-import axios from 'axios';
+import type { RetreatWorkflowSummary } from '../types/workflowSummary';
+import axios, { AxiosRequestConfig } from 'axios';
 import { Retreat, House, Client, ContactBookEntry, RetreatClient, ClientMedical, Requirement, ClientRequirement, Reminder, ExpenseType, RetreatExpense, ExpenseSummary, Payment, PaymentSummary, PaymentRequest, ScreeningClient, Ceremony, CeremonyParticipant, MedicalItem, MedicalArtifact, MedicalArtifactCreateInput, MedicalReviewRequest, MedicalReviewGroup, FileUpload, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, BookingDocument, BookingDocumentType, BookingDocumentContent, MailSettings, EmailTemplate, EmailTemplateSeedOption, EmailAsset, SentEmail, RetreatArtifactSubmissionsResponse, BloodPressureReading, BoosterOffer } from '../types';
 import { authService } from './authService';
 import { cacheService } from './cacheService';
@@ -44,6 +45,13 @@ api.interceptors.response.use(
   }
 );
 
+export type ReadOptions = AxiosRequestConfig & { suppressGlobalError?: boolean };
+
+// Inline error owners use independent, fresh requests. Sharing a pending request
+// with a global-error caller would also share its modal/error policy.
+const readGet = <T,>(key: string, url: string, options?: ReadOptions) =>
+  options?.suppressGlobalError ? api.get<T>(url, options) : cachedGet<T>(key, () => api.get<T>(url, options));
+
 // Helper function to cache GET requests
 const cachedGet = async <T>(key: string, fetcher: () => Promise<any>, ttl: number = 60000): Promise<any> => {
   const cached = cacheService.get<T>(key);
@@ -70,7 +78,7 @@ const invalidateBookingDocumentDependents = () => {
 };
 
 export const retreatsApi = {
-  getAll: () => cachedGet<Retreat[]>('retreats:all', () => api.get<Retreat[]>('/retreats')),
+  getAll: (options?: ReadOptions) => readGet<Retreat[]>('retreats:all', '/retreats', options),
   getUpcomingRetreats: () => cachedGet<any>('retreats:upcoming', () => api.get<any>('/retreats?status=upcoming'), 30000),
   getOne: (id: string) => cachedGet<Retreat>(`retreats:${id}`, () => api.get<Retreat>(`/retreats/${id}`)),
   create: (data: Omit<Retreat, '_id'>) => {
@@ -233,7 +241,7 @@ export const clientMedicalApi = {
   getOne: (id: string) => cachedGet<ClientMedical>(`medical:${id}`, () => api.get<ClientMedical>(`/client-medical/${id}`)),
   getByClient: (clientId: string) => cachedGet<ClientMedical[]>(`medical:client:${clientId}`, () => api.get<ClientMedical[]>(`/client-medical/client/${clientId}`)),
   getByRetreat: (retreatId: string) => api.get<ClientMedical[]>(`/client-medical/retreat/${retreatId}`),
-  getByClientAndRetreat: (clientId: string, retreatId: string) => api.get<ClientMedical>(`/client-medical/client/${clientId}/retreat/${retreatId}`),
+  getByClientAndRetreat: (clientId: string, retreatId: string, options?: ReadOptions) => api.get<ClientMedical>(`/client-medical/client/${clientId}/retreat/${retreatId}`, options),
   create: (data: Omit<ClientMedical, '_id'>) => {
     cacheService.clearPattern('medical:');
     return api.post<ClientMedical>('/client-medical', data);
@@ -266,9 +274,9 @@ export const clientMedicalApi = {
 
 export const remindersApi = {
   getAll: () => cachedGet<Reminder[]>('reminders:all', () => api.get<Reminder[]>('/reminders')),
-  getPending: () => cachedGet<Reminder[]>('reminders:pending', () => api.get<Reminder[]>('/reminders?status=pending')),
+  getPending: (options?: ReadOptions) => readGet<Reminder[]>('reminders:pending', '/reminders?status=pending', options),
   getByClient: (clientId: string) => cachedGet<Reminder[]>(`reminders:client:${clientId}`, () => api.get<Reminder[]>(`/reminders/client/${clientId}`)),
-  getByRetreat: (retreatId: string) => api.get<Reminder[]>(`/reminders/retreat/${retreatId}`),
+  getByRetreat: (retreatId: string, options?: ReadOptions) => api.get<Reminder[]>(`/reminders/retreat/${retreatId}`, options),
   create: (data: Omit<Reminder, '_id'>) => api.post<Reminder>('/reminders', data),
   update: (id: string, data: Partial<Reminder>) => api.patch<Reminder>(`/reminders/${id}`, data),
   complete: (id: string) => api.patch(`/reminders/${id}/complete`, {}),
@@ -308,7 +316,7 @@ export const bookingsApi = {
   // Booking ownership can be corrected outside this browser session. Do not cache
   // this relationship: medical record creation must always see the current link.
   getByClient: (clientId: string) => api.get<RetreatClient[]>(`/bookings/client/${clientId}`),
-  getByRetreatWithDetails: (retreatId: string) => cachedGet<RetreatClient[]>(`bookings:retreat-details:${retreatId}`, () => api.get<RetreatClient[]>(`/bookings/retreat/${retreatId}/with-details`)),
+  getByRetreatWithDetails: (retreatId: string, options?: ReadOptions) => readGet<RetreatClient[]>(`bookings:retreat-details:${retreatId}`, `/bookings/retreat/${retreatId}/with-details`, options),
   getNextBookingNumber: () => api.get<number>('/bookings/next-booking-number'),
   isBookingNumberAvailable: (bookingNumber: number, excludeId?: string) => api.get<{ available: boolean }>(
     `/bookings/booking-number-available?bookingNumber=${encodeURIComponent(String(bookingNumber))}${excludeId ? `&excludeId=${encodeURIComponent(excludeId)}` : ''}`
@@ -469,7 +477,7 @@ export const paymentsApi = {
     return api.post<{ linked: number; skipped: number; reason?: string }>(`/payments/auto-link/by-booking/${bookingId}`);
   },
   getByBookingHash: (bookingHash: string) => cachedGet<Payment[]>(`payments:hash:${bookingHash}`, () => api.get<Payment[]>(`/payments/by-booking-hash/${bookingHash}`)),
-  getByClientAndRetreat: (clientId: string, retreatId: string) => cachedGet<Payment[]>(`payments:client-retreat:${clientId}-${retreatId}`, () => api.get<Payment[]>(`/payments/by-client-and-retreat?clientId=${clientId}&retreatId=${retreatId}`)),
+  getByClientAndRetreat: (clientId: string, retreatId: string, options?: ReadOptions) => readGet<Payment[]>(`payments:client-retreat:${clientId}-${retreatId}`, `/payments/by-client-and-retreat?clientId=${clientId}&retreatId=${retreatId}`, options),
   getRetreatSummary: (retreatId: string) => cachedGet<PaymentSummary>(`payments:summary:${retreatId}`, () => api.get<PaymentSummary>(`/payments/retreat-summary/${retreatId}`)),
   getNextDisplayId: () => api.get<number>('/payments/next-display-id'),
   convertToUsd: (amount: number, currency: string) => api.get<{ amount: number; currency: string; usd_amount: number }>(`/payments/convert-to-usd?amount=${encodeURIComponent(String(amount))}&currency=${encodeURIComponent(currency)}`),
@@ -518,7 +526,7 @@ export const paymentsApi = {
 
 export const paymentRequestsApi = {
   getAll: () => cachedGet<PaymentRequest[]>('payment-requests:all', () => api.get<PaymentRequest[]>('/payment-requests')),
-  getAllFresh: () => api.get<PaymentRequest[]>('/payment-requests'),
+  getAllFresh: (options?: ReadOptions) => api.get<PaymentRequest[]>('/payment-requests', options),
   getOne: (id: string) => cachedGet<PaymentRequest>(`payment-requests:${id}`, () => api.get<PaymentRequest>(`/payment-requests/${id}`)),
   getOneFresh: (id: string) => api.get<PaymentRequest>(`/payment-requests/${id}`),
   getPublicDeposit: (hash: string) => api.get(`/payment-requests/public/deposit/${hash}`),
@@ -689,6 +697,7 @@ export const communicationsApi = {
     bookingConfirmation: boolean;
   }>('/communications/preview', data),
   sendRetreatEmail: (retreatId: string, data: {
+    useRecipientLanguage?: boolean;
     subject: string;
     bodyText: string;
     bodyHtml?: string;
@@ -757,7 +766,7 @@ export const screeningClientsApi = {
 };
 
 export const requirementsApi = {
-  getAll: () => cachedGet<Requirement[]>('requirements:all', () => api.get<Requirement[]>('/requirements')),
+  getAll: (options?: ReadOptions) => readGet<Requirement[]>('requirements:all', '/requirements', options),
   getOne: (id: string) => cachedGet<Requirement>(`requirements:${id}`, () => api.get<Requirement>(`/requirements/${id}`)),
   getByCategory: (category: string) => cachedGet<Requirement[]>(`requirements:cat:${category}`, () => api.get<Requirement[]>(`/requirements/category/${category}`)),
   create: (data: Omit<Requirement, '_id'>) => api.post<Requirement>('/requirements', data),
@@ -772,7 +781,7 @@ export const clientRequirementsApi = {
   getOne: (id: string) => api.get<ClientRequirement>(`/client-requirements/${id}`),
   getByClient: (clientId: string) => api.get<ClientRequirement[]>(`/client-requirements/client/${clientId}`),
   getByRetreat: (retreatId: string) => api.get<ClientRequirement[]>(`/client-requirements/retreat/${retreatId}`),
-  getByClientAndRetreat: (clientId: string, retreatId: string) => api.get<ClientRequirement[]>(`/client-requirements/client/${clientId}/retreat/${retreatId}`),
+  getByClientAndRetreat: (clientId: string, retreatId: string, options?: ReadOptions) => api.get<ClientRequirement[]>(`/client-requirements/client/${clientId}/retreat/${retreatId}`, options),
   getRetreatOverview: (retreatId: string) => api.get<any>(`/client-requirements/retreat/${retreatId}/overview`),
   create: (data: Omit<ClientRequirement, '_id'>) => api.post<ClientRequirement>('/client-requirements', data),
   update: (id: string, data: Partial<ClientRequirement>) => api.patch<ClientRequirement>(`/client-requirements/${id}`, data),
@@ -926,13 +935,13 @@ export const medicalArtifactsApi = {
     purpose?: MedicalArtifact['purpose'];
     documentStage?: MedicalArtifact['documentStage'];
     documentType?: MedicalArtifact['documentType'];
-  } = {}) => {
+  } = {}, options?: ReadOptions) => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value) params.set(key, value);
     });
     const suffix = params.toString() ? `?${params.toString()}` : '';
-    return cachedGet<MedicalArtifact[]>(`medical-artifacts:${suffix || 'all'}`, () => api.get<MedicalArtifact[]>(`/medical-artifacts${suffix}`));
+    return readGet<MedicalArtifact[]>(`medical-artifacts:${suffix || 'all'}`, `/medical-artifacts${suffix}`, options);
   },
   getRetreatSubmissions: (filters: {
     retreat: string;
@@ -1213,13 +1222,13 @@ export const medicalReviewRequestsApi = {
     documentType?: MedicalArtifact['documentType'];
     artifactType?: MedicalArtifact['artifactType'];
     requestType?: MedicalReviewRequest['requestType'];
-  } = {}) => {
+  } = {}, options?: ReadOptions) => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value) params.set(key, value);
     });
     const suffix = params.toString() ? `?${params.toString()}` : '';
-    return cachedGet<MedicalReviewRequest[]>(`medical-review-requests:${suffix || 'all'}`, () => api.get<MedicalReviewRequest[]>(`/medical-review-requests${suffix}`));
+    return readGet<MedicalReviewRequest[]>(`medical-review-requests:${suffix || 'all'}`, `/medical-review-requests${suffix}`, options);
   },
   getQueue: () => cachedGet<MedicalReviewRequest[]>('medical-review-requests:queue', () => api.get<MedicalReviewRequest[]>('/medical-review-requests/queue')),
   downloadPendingArtifacts: (groupId: string, unsentOnly = true) => api.get<{ url: string; fileName: string; fileCount: number; expiresInSeconds: number }>(`/medical-review-requests/groups/${encodeURIComponent(groupId)}/pending-artifacts/download`, { params: { unsentOnly: unsentOnly ? 'true' : 'false' } }),
@@ -1229,7 +1238,7 @@ export const medicalReviewRequestsApi = {
   generateMedicalSummary: (id: string) => api.post<{ summary: string; generatedBy: 'rules' | 'openai'; model?: string; unavailableReason?: string; generatedAt: string }>(`/medical-review-requests/${id}/medical-summary/generate`),
   getByClientAndRetreat: (clientId: string, retreatId: string) => cachedGet<MedicalReviewRequest[]>(`medical-review-requests:${clientId}:${retreatId}`, () => api.get<MedicalReviewRequest[]>(`/medical-review-requests?clientId=${clientId}&retreatId=${retreatId}`)),
   getByMedicalTracking: (medicalTrackingId: string) => cachedGet<MedicalReviewRequest[]>(`medical-review-requests:tracking:${medicalTrackingId}`, () => api.get<MedicalReviewRequest[]>(`/medical-review-requests?medicalTrackingId=${medicalTrackingId}`)),
-  getByArtifact: (artifactId: string) => cachedGet<MedicalReviewRequest[]>(`medical-review-requests:artifact:${artifactId}`, () => api.get<MedicalReviewRequest[]>(`/medical-review-requests?artifactId=${artifactId}`)),
+  getByArtifact: (artifactId: string, options?: ReadOptions) => readGet<MedicalReviewRequest[]>(`medical-review-requests:artifact:${artifactId}`, `/medical-review-requests?artifactId=${artifactId}`, options),
   getByArtifacts: (artifactIds: string[]) => {
     const normalizedIds = Array.from(new Set(artifactIds.filter(Boolean))).sort();
     if (!normalizedIds.length) {
@@ -1364,6 +1373,7 @@ export const medicalReviewRequestsApi = {
 };
 
 export const bookingFlowApi = {
+  getRetreatWorkflowSummary: (retreatId: string, options?: ReadOptions) => api.get<RetreatWorkflowSummary>(`/booking-flow/retreats/${retreatId}/workflow-summary`, options),
   getTemplates: (retreatId: string) => cachedGet<BookingFlowTemplate[]>(`booking-flow:templates:${retreatId}`, () => api.get<BookingFlowTemplate[]>(`/booking-flow/templates?retreatId=${retreatId}`)),
   getLibraryTemplates: () => cachedGet<BookingFlowTemplate[]>(
     'booking-flow:library:templates',
@@ -1432,15 +1442,15 @@ export const bookingFlowApi = {
     cacheService.clearPattern('booking-flow:');
     return api.post<BookingFlowItem[]>(`/booking-flow/generate/retreat/${retreatId}`, {});
   },
-  getItems: (params: { bookingId?: string; retreatId?: string; clientId?: string }) => {
+  getItems: (params: { bookingId?: string; retreatId?: string; clientId?: string }, options?: ReadOptions) => {
     const query = new URLSearchParams();
     if (params.bookingId) query.set('bookingId', params.bookingId);
     if (params.retreatId) query.set('retreatId', params.retreatId);
     if (params.clientId) query.set('clientId', params.clientId);
     const key = `booking-flow:items:${query.toString()}`;
-    return cachedGet<BookingFlowItem[]>(key, () => api.get<BookingFlowItem[]>(`/booking-flow/items?${query.toString()}`));
+    return readGet<BookingFlowItem[]>(key, `/booking-flow/items?${query.toString()}`, options);
   },
-  getBookingRequirements: (bookingId: string, options: { compact?: boolean; refresh?: boolean } = {}) => {
+  getBookingRequirements: (bookingId: string, options: { compact?: boolean; refresh?: boolean; suppressGlobalError?: boolean } = {}) => {
     if (options.refresh) invalidateBookingRequirements();
     return cachedGet<{
     items: BookingFlowItem[];
@@ -1466,7 +1476,7 @@ export const bookingFlowApi = {
     }>;
   }>(
     `booking-flow:booking-requirements:${bookingId}:${options.compact ? 'compact' : 'full'}`,
-    () => api.get(`/booking-flow/bookings/${bookingId}/requirements${options.compact ? '?compact=true' : ''}`)
+    () => api.get(`/booking-flow/bookings/${bookingId}/requirements${options.compact ? '?compact=true' : ''}`, { suppressGlobalError: options.suppressGlobalError } as ReadOptions)
     );
   },
   getBookingRequirementDocumentCandidates: (bookingId: string) =>
@@ -1627,7 +1637,7 @@ export const bookingDocumentsApi = {
     cacheService.clearPattern('booking-documents:');
     return api.delete(`/booking-documents/types/${id}`);
   },
-  getAll: (params: { bookingId?: string; clientId?: string; retreatId?: string; documentType?: string; compact?: boolean } = {}) => {
+  getAll: (params: { bookingId?: string; clientId?: string; retreatId?: string; documentType?: string; compact?: boolean } = {}, options?: ReadOptions) => {
     const query = new URLSearchParams();
     if (params.bookingId) query.set('bookingId', params.bookingId);
     if (params.clientId) query.set('clientId', params.clientId);
@@ -1635,7 +1645,7 @@ export const bookingDocumentsApi = {
     if (params.documentType) query.set('documentType', params.documentType);
     if (params.compact) query.set('compact', 'true');
     const key = `booking-documents:${query.toString()}`;
-    return cachedGet<BookingDocument[]>(key, () => api.get<BookingDocument[]>(`/booking-documents?${query.toString()}`));
+    return readGet<BookingDocument[]>(key, `/booking-documents?${query.toString()}`, options);
   },
   create: (data: Partial<BookingDocument> & { bookingId: string; documentType: string }) => {
     invalidateBookingDocumentDependents();

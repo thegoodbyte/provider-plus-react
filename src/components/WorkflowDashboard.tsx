@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   AlertTriangle,
@@ -10,30 +10,25 @@ import {
 import LoadingSpinner from './LoadingSpinner';
 import CurrencyDisplay from './CurrencyDisplay';
 import {
-  bookingsApi,
-  clientMedicalApi,
+  bookingFlowApi,
   clientRequirementsApi,
   medicalArtifactsApi,
   medicalReviewRequestsApi,
   paymentsApi,
-  remindersApi,
   retreatsApi,
-  requirementsApi,
 } from '../services/api';
 import {
-  ClientMedical,
   ClientRequirement,
   Payment,
-  Reminder,
-  Requirement,
   Retreat,
-  RetreatClient,
-  Client,
   MedicalArtifact,
   MedicalReviewRequest,
 } from '../types';
 import { formatCalendarDate, parseCalendarDate } from '../utils/dateFormat';
 import './WorkflowDashboard.css';
+import type { WorkflowSummaryRow, WorkflowMedicalRequirement } from '../types/workflowSummary';
+
+const inlineErrors = { suppressGlobalError: true };
 
 const DEFAULT_MESSAGE_TEMPLATE = [
   { key: 'medications-reminder', label: 'Medication reminder', offsetDays: 30 },
@@ -44,31 +39,12 @@ const DEFAULT_MESSAGE_TEMPLATE = [
 
 type DetailTab = 'overview' | 'requirements' | 'medical' | 'payments' | 'messages';
 
-interface WorkflowBookingRow extends RetreatClient {
-  clientName: string;
-  clientEmail: string;
-  clientDisplayId?: number;
+interface WorkflowBookingRow extends WorkflowSummaryRow {
   retreatName: string;
   retreatStartDate?: string;
   retreatEndDate?: string;
-  requirements: ClientRequirement[];
-  payments: Payment[];
-  medical: ClientMedical | null;
-  medicalRequirements: BookingMedicalReviewRequirement[];
-  reminders: Reminder[];
-  readinessScore: number;
-  readinessState: 'ready' | 'attention' | 'blocked';
-  nextAction: string;
-  missingItems: string[];
 }
-
-interface BookingMedicalReviewRequirement {
-  type: 'ekg' | 'liver_panel';
-  label: string;
-  artifact?: MedicalArtifact;
-  review?: MedicalReviewRequest;
-  state: 'missing' | 'needs_review' | 'pending' | 'approved' | 'caution' | 'rejected';
-}
+type BookingMedicalReviewRequirement = WorkflowMedicalRequirement;
 
 interface WorkflowInboxItem {
   id: string;
@@ -76,7 +52,7 @@ interface WorkflowInboxItem {
   clientDisplayId?: number;
   title: string;
   detail: string;
-  state: 'ready' | 'attention' | 'blocked';
+  state: 'ready' | 'attention' | 'blocked' | 'unknown';
   dueText: string;
 }
 
@@ -136,6 +112,8 @@ const getReviewState = (artifact?: MedicalArtifact, review?: MedicalReviewReques
 
 const getMedicalRequirementLabel = (state: BookingMedicalReviewRequirement['state']) => {
   switch (state) {
+    case 'unavailable':
+      return 'Unable to load';
     case 'missing':
       return 'Missing file';
     case 'needs_review':
@@ -153,7 +131,8 @@ const getMedicalRequirementLabel = (state: BookingMedicalReviewRequirement['stat
   }
 };
 
-const getMedicalRequirementPill = (state: BookingMedicalReviewRequirement['state']): 'ready' | 'attention' | 'blocked' => {
+const getMedicalRequirementPill = (state: BookingMedicalReviewRequirement['state']): 'ready' | 'attention' | 'blocked' | 'unknown' => {
+  if (state === 'unavailable') return 'unknown';
   if (state === 'approved') return 'ready';
   if (state === 'caution' || state === 'pending' || state === 'needs_review') return 'attention';
   return 'blocked';
@@ -166,43 +145,34 @@ const WorkflowDashboard: React.FC = () => {
   const routePrefix = location.pathname.startsWith('/medical/') ? '/medical' : '/admin';
 
   const [retreats, setRetreats] = useState<Retreat[]>([]);
-  const [requirements, setRequirements] = useState<Requirement[]>([]);
+  const [loadErrors, setLoadErrors] = useState<string[]>([]);
+  const requestVersion = useRef(0);
   const [workflowRows, setWorkflowRows] = useState<WorkflowBookingRow[]>([]);
   const [selectedRetreatId, setSelectedRetreatId] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState<'all' | 'ready' | 'attention' | 'blocked'>('all');
-  const [activeTab, setActiveTab] = useState<DetailTab>('overview');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'ready' | 'attention' | 'blocked' | 'unknown'>('all');
+  const [detailTab, setDetailTab] = useState<{ bookingId?: string; tab: DetailTab }>({ bookingId, tab: 'overview' });
+  const activeTab = detailTab.bookingId === bookingId ? detailTab.tab : 'overview';
+  const setActiveTab = (tab: DetailTab) => setDetailTab({ bookingId, tab });
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    loadInitialData();
+    loadRetreatWorkflow('');
+    return () => { requestVersion.current += 1; };
+    // The initial load selects a retreat; requestVersion rejects stale responses.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    if (selectedRetreatId) {
-      loadRetreatWorkflow(selectedRetreatId);
-    }
-  }, [selectedRetreatId]);
-
-  useEffect(() => {
-    if (workflowRows.length > 0 && bookingId) {
-      const selected = workflowRows.find((row) => row._id === bookingId);
-      if (selected) {
-        setActiveTab('overview');
-      }
-    }
-  }, [bookingId, workflowRows]);
 
   const loadBookingMedicalRequirements = async (bookingIdValue?: string): Promise<BookingMedicalReviewRequirement[]> => {
     if (!bookingIdValue) {
       return [
-        { type: 'ekg', label: 'EKG', state: 'missing' },
-        { type: 'liver_panel', label: 'Liver Panel', state: 'missing' },
+        { type: 'ekg', label: 'EKG', state: 'unavailable' },
+        { type: 'liver_panel', label: 'Liver Panel', state: 'unavailable' },
       ];
     }
 
     try {
-      const artifactsResponse = await medicalArtifactsApi.getAll({ bookingId: bookingIdValue });
+      const artifactsResponse = await medicalArtifactsApi.getAll({ bookingId: bookingIdValue }, inlineErrors);
       const artifacts: MedicalArtifact[] = artifactsResponse.data || [];
       const sections: Array<{ type: 'ekg' | 'liver_panel'; label: string }> = [
         { type: 'ekg', label: 'EKG' },
@@ -218,7 +188,8 @@ const WorkflowDashboard: React.FC = () => {
           return { ...section, state: 'missing' as const };
         }
 
-        const reviewsResponse = await medicalReviewRequestsApi.getByArtifact(artifact._id).catch(() => ({ data: [] }));
+        const reviewsResponse = await medicalReviewRequestsApi.getByArtifact(artifact._id, inlineErrors).catch(() => null);
+        if (!reviewsResponse) return { ...section, artifact, state: 'unavailable' as const };
         const review = getLatestReview(reviewsResponse.data || []);
         return {
           ...section,
@@ -230,148 +201,47 @@ const WorkflowDashboard: React.FC = () => {
     } catch (error) {
       console.error('Error loading booking medical review requirements:', error);
       return [
-        { type: 'ekg', label: 'EKG', state: 'missing' },
-        { type: 'liver_panel', label: 'Liver Panel', state: 'missing' },
+        { type: 'ekg', label: 'EKG', state: 'unavailable' },
+        { type: 'liver_panel', label: 'Liver Panel', state: 'unavailable' },
       ];
     }
   };
 
-  const loadInitialData = async () => {
+  const loadRetreatWorkflow = async (requestedRetreatId: string) => {
+    const version = ++requestVersion.current;
+    const errors: string[] = [];
+    const capture = async <T,>(label: string, request: Promise<{ data: T }>): Promise<{ data: T } | null> => {
+      try { return await request; } catch { errors.push(label); return null; }
+    };
+    setIsLoading(true);
+    setLoadErrors([]);
+    setWorkflowRows([]);
     try {
-      setIsLoading(true);
-      const [retreatsResponse, requirementsResponse] = await Promise.all([
-        retreatsApi.getAll(),
-        requirementsApi.getAll(),
-      ]);
-
-      const retreatList = retreatsResponse.data || [];
-      const requirementList = requirementsResponse.data || [];
+      const retreatsResponse = await capture('Retreats', retreatsApi.getAll(inlineErrors));
+      if (version !== requestVersion.current) return;
+      const retreatList = (retreatsResponse?.data || []) as Retreat[];
       setRetreats(retreatList);
-      setRequirements(requirementList);
+      const retreatId = requestedRetreatId || (retreatList.find(item => item.status === 'upcoming' || item.status === 'active') || retreatList[0])?._id;
+      if (!retreatId) return;
+      if (!requestedRetreatId) setSelectedRetreatId(retreatId);
+      const response = await capture('Workflow data', bookingFlowApi.getRetreatWorkflowSummary(retreatId, inlineErrors));
+      if (!response || version !== requestVersion.current) return;
+      errors.push(...response.data.unavailable);
+      const retreat = retreatList.find(item => item._id === retreatId);
+      const workflow = response.data.rows.map(row => ({
+        ...row,
+        ...(!retreatsResponse ? { unavailable: [...row.unavailable, 'Retreats'], readinessState: 'unknown' as const, nextAction: 'Retry unavailable data' } : {}),
+        retreatName: retreat?.name || 'Unknown Retreat',
+        retreatStartDate: retreat?.startDate ? String(retreat.startDate) : undefined,
+        retreatEndDate: retreat?.endDate ? String(retreat.endDate) : undefined,
+      }));
 
-      const fallbackRetreat = retreatList.find((retreat: Retreat) => retreat.status === 'upcoming' || retreat.status === 'active') || retreatList[0];
-      if (fallbackRetreat?._id) {
-        setSelectedRetreatId(fallbackRetreat._id);
-      }
-    } catch (error) {
-      console.error('Error loading workflow data:', error);
-      setRetreats([]);
-      setRequirements([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const loadRetreatWorkflow = async (retreatId: string) => {
-    try {
-      setIsLoading(true);
-      const [bookingsResponse, remindersResponse] = await Promise.all([
-        bookingsApi.getByRetreatWithDetails(retreatId),
-        remindersApi.getByRetreat(retreatId).catch(() => ({ data: [] })),
-      ]);
-
-      const bookings = bookingsResponse.data || [];
-      const retreat = retreats.find((item) => item._id === retreatId);
-      const retreatReminders = remindersResponse.data || [];
-
-      const workflow = await Promise.all(
-        bookings.map(async (booking: RetreatClient) => {
-          const client = booking.clientId as Client | string;
-          const bookingClientId =
-            getId(client) ||
-            (typeof booking.clientId === 'string'
-              ? booking.clientId
-              : booking.clientId && typeof booking.clientId === 'object'
-                ? (booking.clientId as Client)._id || ''
-                : '');
-          const retreatIdValue =
-            getId(booking.retreatId) ||
-            (typeof booking.retreatId === 'string'
-              ? booking.retreatId
-              : booking.retreatId && typeof booking.retreatId === 'object'
-                ? (booking.retreatId as Retreat)._id || retreatId
-                : retreatId);
-          const clientInfo = typeof client === 'object' ? client : undefined;
-
-          const [requirementsResponse, paymentsResponse, medicalResponse, medicalRequirements] = await Promise.all([
-            clientRequirementsApi.getByClientAndRetreat(bookingClientId, retreatIdValue).catch(() => ({ data: [] })),
-            paymentsApi.getByClientAndRetreat(bookingClientId, retreatIdValue).catch(() => ({ data: [] })),
-            clientMedicalApi.getByClientAndRetreat(bookingClientId, retreatIdValue).catch(() => ({ data: null })),
-            loadBookingMedicalRequirements(booking._id),
-          ]);
-
-          const bookingRequirements: ClientRequirement[] = requirementsResponse.data || [];
-          const bookingPayments: Payment[] = paymentsResponse.data || [];
-          const medical: ClientMedical | null = medicalResponse.data || null;
-          const clientReminders: Reminder[] = retreatReminders.filter((reminder: Reminder) => reminder.clientId === bookingClientId);
-          const ekgRequirement = medicalRequirements.find((item) => item.type === 'ekg');
-          const liverRequirement = medicalRequirements.find((item) => item.type === 'liver_panel');
-
-          const requirementTotal = Math.max(requirements.filter((req) => req.isActive !== false).length, bookingRequirements.length);
-          const requirementApproved = bookingRequirements.filter((req) => req.status === 'approved').length;
-          const medicalComplete = medicalRequirements.every((item) => item.state === 'approved');
-          const depositPaid = bookingPayments.some((payment) => payment.status === 'completed' && (payment.isDeposit || payment.paymentType?.includes('deposit')));
-          const docsComplete = requirementTotal > 0 ? requirementApproved >= requirementTotal : bookingRequirements.length === 0;
-          const remindersDue = clientReminders.filter((reminder) => reminder.status !== 'completed' && reminder.status !== 'dismissed').length;
-
-          const missingItems: string[] = [];
-          if (ekgRequirement?.state !== 'approved') missingItems.push(`EKG: ${getMedicalRequirementLabel(ekgRequirement?.state || 'missing')}`);
-          if (liverRequirement?.state !== 'approved') missingItems.push(`Liver panel: ${getMedicalRequirementLabel(liverRequirement?.state || 'missing')}`);
-          if (!depositPaid) missingItems.push('Deposit payment');
-          if (!docsComplete) missingItems.push('Requirements');
-          if (remindersDue > 0) missingItems.push(`${remindersDue} reminder${remindersDue === 1 ? '' : 's'} due`);
-
-          const readinessScore = [
-            medicalComplete,
-            depositPaid,
-            docsComplete,
-            remindersDue === 0 || clientReminders.length === 0,
-          ].filter(Boolean).length;
-
-          let readinessState: 'ready' | 'attention' | 'blocked' = 'ready';
-          if (missingItems.length >= 4) readinessState = 'blocked';
-          else if (missingItems.length > 0) readinessState = 'attention';
-
-          const nextAction =
-            ekgRequirement?.state !== 'approved'
-              ? `Resolve EKG: ${getMedicalRequirementLabel(ekgRequirement?.state || 'missing')}`
-              : liverRequirement?.state !== 'approved'
-                ? `Resolve liver panel: ${getMedicalRequirementLabel(liverRequirement?.state || 'missing')}`
-                : !depositPaid
-                  ? 'Collect deposit'
-                  : !docsComplete
-                    ? 'Review outstanding requirements'
-                    : remindersDue > 0
-                      ? 'Clear reminder queue'
-                      : 'Ready for retreat';
-
-          return {
-            ...booking,
-            clientName: clientInfo ? `${clientInfo.firstName || ''} ${clientInfo.lastName || ''}`.trim() || 'Unknown Client' : 'Unknown Client',
-            clientEmail: clientInfo?.email || '',
-            clientDisplayId: clientInfo?.display_id,
-            retreatName: retreat?.name || 'Unknown Retreat',
-            retreatStartDate: retreat?.startDate ? String(retreat.startDate) : undefined,
-            retreatEndDate: retreat?.endDate ? String(retreat.endDate) : undefined,
-            requirements: bookingRequirements,
-            payments: bookingPayments,
-            medical,
-            medicalRequirements,
-            reminders: clientReminders,
-            readinessScore,
-            readinessState,
-            nextAction,
-            missingItems,
-          } as WorkflowBookingRow;
-        })
-      );
-
-      setWorkflowRows(workflow);
+      if (version === requestVersion.current) setWorkflowRows(workflow);
     } catch (error) {
       console.error('Error loading retreat workflow:', error);
-      setWorkflowRows([]);
+      errors.push('Workflow data');
     } finally {
-      setIsLoading(false);
+      if (version === requestVersion.current) { setLoadErrors(errors); setIsLoading(false); }
     }
   };
 
@@ -379,6 +249,36 @@ const WorkflowDashboard: React.FC = () => {
     () => workflowRows.find((row) => row._id === bookingId) || workflowRows[0] || null,
     [workflowRows, bookingId],
   );
+
+  const [detailRecords, setDetailRecords] = useState<{ bookingId?: string; tab?: DetailTab; requirements: ClientRequirement[]; payments: Payment[]; medicalRequirements?: WorkflowMedicalRequirement[]; error: boolean }>({ requirements: [], payments: [], error: false });
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailRetry, setDetailRetry] = useState(0);
+  useEffect(() => {
+    let current = true;
+    const tab = activeTab;
+    if (!selectedBooking || !['requirements', 'payments', 'medical'].includes(tab)) { setDetailLoading(false); return; }
+    const clientId = getId(selectedBooking.clientId);
+    const retreatId = getId(selectedBooking.retreatId);
+    setDetailLoading(true);
+    setDetailRecords({ bookingId: selectedBooking._id, tab, requirements: [], payments: [], error: false });
+    const load = async () => {
+      try {
+        if (!clientId || !retreatId) throw new Error('Missing booking context');
+        const result = tab === 'requirements'
+          ? { requirements: (await clientRequirementsApi.getByClientAndRetreat(clientId, retreatId, inlineErrors)).data || [] }
+          : tab === 'payments'
+            ? { payments: (await paymentsApi.getByClientAndRetreat(clientId, retreatId, inlineErrors)).data || [] }
+            : { medicalRequirements: await loadBookingMedicalRequirements(selectedBooking._id) };
+        if (current) setDetailRecords({ bookingId: selectedBooking._id, tab, requirements: [], payments: [], error: Boolean(result.medicalRequirements?.some(item => item.state === 'unavailable')), ...result });
+      } catch {
+        if (current) setDetailRecords({ bookingId: selectedBooking._id, tab, requirements: [], payments: [], error: true });
+      } finally { if (current) setDetailLoading(false); }
+    };
+    void load();
+    return () => { current = false; };
+    // Only the selected booking/tab fetches details; discard requests from previous selections.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBooking, activeTab, detailRetry]);
 
   const filteredRows = useMemo(() => {
     const searchLower = searchTerm.trim().toLowerCase();
@@ -458,12 +358,23 @@ const WorkflowDashboard: React.FC = () => {
       .slice(0, 8);
   }, [workflowRows]);
 
-  const detail = selectedBooking;
+  const recordsMatch = detailRecords.bookingId === selectedBooking?._id && detailRecords.tab === activeTab;
+  const detailPending = ['requirements', 'payments', 'medical'].includes(activeTab) && (detailLoading || !recordsMatch);
+  const detailError = recordsMatch && detailRecords.error;
+  const detail = useMemo(() => selectedBooking ? {
+    ...selectedBooking,
+    requirements: recordsMatch ? detailRecords.requirements : [],
+    payments: recordsMatch ? detailRecords.payments : [],
+    medicalRequirements: recordsMatch && detailRecords.medicalRequirements ? detailRecords.medicalRequirements : selectedBooking.medicalRequirements,
+    unavailable: [...selectedBooking.unavailable, ...(detailError ? [activeTab === 'requirements' ? 'Requirements' : activeTab === 'payments' ? 'Payments' : 'Medical documents / reviews'] : [])],
+  } : null, [selectedBooking, recordsMatch, detailRecords, detailError, activeTab]);
+  const incomplete = loadErrors.length > 0 || workflowRows.some(row => row.unavailable.length > 0);
+  const remindersUnavailable = loadErrors.includes('Reminders') || loadErrors.includes('Workflow data');
 
   const selectedRetreat = retreats.find((retreat) => retreat._id === selectedRetreatId);
 
   const scheduleMessages = useMemo(() => {
-    if (!detail?.retreatStartDate) return [];
+    if (!detail?.retreatStartDate || detail.unavailable.includes('Reminders')) return [];
     const retreatStart = new Date(detail.retreatStartDate);
     if (Number.isNaN(retreatStart.getTime())) return [];
 
@@ -479,7 +390,7 @@ const WorkflowDashboard: React.FC = () => {
         dueDate,
         status: matchedReminder?.status || (dueDate.getTime() < Date.now() ? 'due' : 'pending'),
         title: matchedReminder?.title || item.label,
-        notes: matchedReminder?.description || matchedReminder?.notes || '',
+        notes: matchedReminder?.description || '',
       };
     });
   }, [detail]);
@@ -504,8 +415,9 @@ const WorkflowDashboard: React.FC = () => {
           <div className="workflow-header-actions">
             <select
               className="workflow-select"
+              aria-label="Retreat"
               value={selectedRetreatId}
-              onChange={(e) => setSelectedRetreatId(e.target.value)}
+              onChange={(e) => { setSelectedRetreatId(e.target.value); loadRetreatWorkflow(e.target.value); }}
             >
               <option value="">Select retreat</option>
               {retreats.map((retreat) => (
@@ -517,7 +429,8 @@ const WorkflowDashboard: React.FC = () => {
             <button
               type="button"
               className="workflow-button secondary"
-              onClick={() => selectedRetreatId && loadRetreatWorkflow(selectedRetreatId)}
+              disabled={isLoading}
+              onClick={() => loadRetreatWorkflow(selectedRetreatId)}
             >
               <Icon icon={RefreshCw} className="w-4 h-4" />
               Refresh
@@ -525,6 +438,10 @@ const WorkflowDashboard: React.FC = () => {
           </div>
         </div>
 
+        {incomplete && <div role="alert" className="workflow-load-warning">
+          Unable to load all workflow data{loadErrors.length ? `: ${loadErrors.join(', ')}` : ''}. Readiness and counts are incomplete.
+          <button type="button" className="workflow-button secondary" disabled={isLoading} onClick={() => loadRetreatWorkflow(selectedRetreatId)}>Retry unavailable data</button>
+        </div>}
         <div className="workflow-toolbar">
           <div className="workflow-toolbar-left">
             <input
@@ -545,6 +462,7 @@ const WorkflowDashboard: React.FC = () => {
             <button className={`workflow-tab ${activeFilter === 'blocked' ? 'active' : ''}`} onClick={() => setActiveFilter('blocked')}>
               Blocked
             </button>
+            <button className={`workflow-tab ${activeFilter === 'unknown' ? 'active' : ''}`} onClick={() => setActiveFilter('unknown')}>Unknown</button>
           </div>
           <div className="workflow-toolbar-right">
             <span className="workflow-booking-sub">
@@ -553,7 +471,7 @@ const WorkflowDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="workflow-stat-grid">
+        {!loadErrors.includes('Bookings') && !loadErrors.includes('Workflow data') && !(loadErrors.includes('Retreats') && !workflowRows.length) && <><div className="workflow-stat-grid">
           <div className="workflow-stat">
             <span className="workflow-stat-label">Bookings</span>
             <div className="workflow-stat-value">{summary.total}</div>
@@ -571,7 +489,7 @@ const WorkflowDashboard: React.FC = () => {
           </div>
           <div className="workflow-stat">
             <span className="workflow-stat-label">Queue</span>
-            <div className="workflow-stat-value">{summary.reminders}</div>
+            <div className="workflow-stat-value">{remindersUnavailable ? '—' : summary.reminders}</div>
             <div className="workflow-stat-hint">Open reminders</div>
           </div>
         </div>
@@ -584,7 +502,7 @@ const WorkflowDashboard: React.FC = () => {
             </div>
             <div className="workflow-task-list">
               {taskInbox.length === 0 ? (
-                <div className="workflow-empty">No open tasks for this retreat.</div>
+                <div className="workflow-empty">{incomplete ? 'Task list incomplete. Retry unavailable data.' : 'No open tasks for this retreat.'}</div>
               ) : (
                 taskInbox.map((task) => (
                   <div key={task.id} className="workflow-task">
@@ -609,11 +527,11 @@ const WorkflowDashboard: React.FC = () => {
           <div className="workflow-card">
             <div className="workflow-section-header">
               <h3>Message queue</h3>
-              <span>{messageQueue.length} queued</span>
+              <span>{remindersUnavailable ? 'Unknown' : `${messageQueue.length} queued`}</span>
             </div>
             <div className="workflow-message-list">
               {messageQueue.length === 0 ? (
-                <div className="workflow-empty">No reminders queued for this retreat.</div>
+                <div className="workflow-empty">{remindersUnavailable ? 'Unable to load reminders.' : 'No reminders queued for this retreat.'}</div>
               ) : (
                 messageQueue.map((message) => (
                   <div key={message.id} className="workflow-message">
@@ -641,7 +559,7 @@ const WorkflowDashboard: React.FC = () => {
 
             <div className="workflow-booking-list">
               {filteredRows.length === 0 ? (
-                <div className="workflow-empty">No bookings found for this retreat.</div>
+                <div className="workflow-empty">{loadErrors.length ? 'Unable to confirm bookings.' : 'No bookings found for this retreat.'}</div>
               ) : (
                 filteredRows.map((row) => (
                   <div
@@ -665,14 +583,14 @@ const WorkflowDashboard: React.FC = () => {
                     </div>
                     <div>
                       <div className="workflow-booking-sub">Medical</div>
-                      <div className={`workflow-pill ${row.medicalRequirements.every((item) => item.state === 'approved') ? 'ready' : row.medicalRequirements.some((item) => item.state === 'missing' || item.state === 'rejected') ? 'blocked' : 'attention'}`}>
-                        {row.medicalRequirements.every((item) => item.state === 'approved') ? 'Approved' : 'Incomplete'}
+                      <div className={`workflow-pill ${row.unavailable.some(label => /Medical|documents/.test(label)) ? 'unknown' : row.medicalRequirements.every((item) => item.state === 'approved') ? 'ready' : row.medicalRequirements.some((item) => item.state === 'missing' || item.state === 'rejected') ? 'blocked' : 'attention'}`}>
+                        {row.unavailable.some(label => /Medical|documents/.test(label)) ? 'Unable to load' : row.medicalRequirements.every((item) => item.state === 'approved') ? 'Approved' : 'Incomplete'}
                       </div>
                     </div>
                     <div>
                       <div className="workflow-booking-sub">Payments</div>
-                      <div className={`workflow-pill ${row.payments.some((payment) => payment.status === 'completed' && (payment.isDeposit || payment.paymentType?.includes('deposit'))) ? 'ready' : 'blocked'}`}>
-                        {row.payments.some((payment) => payment.status === 'completed' && (payment.isDeposit || payment.paymentType?.includes('deposit'))) ? 'Deposit paid' : 'Deposit due'}
+                      <div className={`workflow-pill ${row.unavailable.includes('Payments') ? 'unknown' : row.depositPaid ? 'ready' : 'blocked'}`}>
+                        {row.unavailable.includes('Payments') ? 'Unable to load' : row.depositPaid ? 'Deposit paid' : 'Deposit due'}
                       </div>
                     </div>
                   </div>
@@ -695,6 +613,7 @@ const WorkflowDashboard: React.FC = () => {
                   </div>
                 </div>
 
+                {detail.unavailable.length > 0 && <p role="status" className="workflow-load-warning">Unable to load: {detail.unavailable.join(', ')}. Readiness unknown.</p>}
                 <div className="workflow-tabs">
                   {(['overview', 'requirements', 'medical', 'payments', 'messages'] as DetailTab[]).map((tab) => (
                     <button
@@ -712,7 +631,7 @@ const WorkflowDashboard: React.FC = () => {
                     <div className="workflow-detail-item">
                       <h4>Readiness</h4>
                       <p>{detail.nextAction}</p>
-                      <div className="workflow-progress">
+                      {!detail.unavailable.length && <><div className="workflow-progress">
                         <div
                           className="workflow-progress-bar"
                           style={{
@@ -721,7 +640,7 @@ const WorkflowDashboard: React.FC = () => {
                           }}
                         />
                       </div>
-                      <p className="workflow-booking-sub">{detail.readinessScore}/4 checkpoints complete</p>
+                      <p className="workflow-booking-sub">{detail.readinessScore}/4 checkpoints complete</p></>}
                     </div>
                     <div className="workflow-detail-item">
                       <h4>Retreat Dates</h4>
@@ -736,18 +655,20 @@ const WorkflowDashboard: React.FC = () => {
                     </div>
                     <div className="workflow-detail-item">
                       <h4>Missing items</h4>
-                      <p>{detail.missingItems.length ? detail.missingItems.join(', ') : 'No missing items'}</p>
+                      <p>{detail.missingItems.length ? detail.missingItems.join(', ') : detail.unavailable.length ? 'Unable to confirm missing items' : 'No missing items'}</p>
                     </div>
                   </div>
                 )}
 
-                {activeTab === 'requirements' && (
+                {detailPending && <p role="status">Loading {activeTab}…</p>}
+                {detailError && !detailPending && <button className="workflow-button secondary" onClick={() => setDetailRetry(value => value + 1)}>Retry details</button>}
+                {activeTab === 'requirements' && !detailPending && (
                   <div className="workflow-card">
                     <div className="workflow-section-header">
                       <h3>Requirements</h3>
-                      <span>{detail.requirements.length} records</span>
+                      <span>{detail.unavailable.includes('Requirements') ? 'Unknown' : `${detail.requirements.length} records`}</span>
                     </div>
-                    {detail.requirements.length === 0 ? (
+                    {detail.unavailable.includes('Requirements') ? <div className="workflow-empty">Unable to load requirements.</div> : detail.requirements.length === 0 ? (
                       <div className="workflow-empty">No client requirements initialized.</div>
                     ) : (
                       <div className="workflow-table">
@@ -762,7 +683,7 @@ const WorkflowDashboard: React.FC = () => {
                           <tbody>
                             {detail.requirements.map((item) => (
                               <tr key={item._id}>
-                                <td>{item.requirement?.name || requirements.find((req) => req._id === item.requirementId)?.name || item.requirementId}</td>
+                                <td>{item.requirement?.name || (typeof item.requirementId === 'object' ? (item.requirementId as any)?.name : item.requirementId)}</td>
                                 <td>{item.status || 'pending'}</td>
                                 <td>{formatDate(item.dueDate)}</td>
                               </tr>
@@ -774,11 +695,11 @@ const WorkflowDashboard: React.FC = () => {
                   </div>
                 )}
 
-                {activeTab === 'medical' && (
+                {activeTab === 'medical' && !detailPending && (
                   <div className="workflow-card">
                     <div className="workflow-section-header">
                       <h3>Medical</h3>
-                      <span>{detail.medicalRequirements.every((item) => item.state === 'approved') ? 'Ready' : 'Action required'}</span>
+                      <span>{detail.unavailable.some(label => /Medical|documents/.test(label)) ? 'Unable to load' : detail.medicalRequirements.every((item) => item.state === 'approved') ? 'Ready' : 'Action required'}</span>
                     </div>
                     <div className="workflow-detail-grid">
                       {detail.medicalRequirements.map((requirement) => (
@@ -789,23 +710,23 @@ const WorkflowDashboard: React.FC = () => {
                               {getMedicalRequirementLabel(requirement.state)}
                             </span>
                           </div>
-                          <p>Artifact: {requirement.artifact?.display_id ? `#${requirement.artifact.display_id}` : 'No artifact linked'}</p>
+                          {requirement.state !== 'unavailable' && <><p>Artifact: {requirement.artifact?.display_id ? `#${requirement.artifact.display_id}` : 'No artifact linked'}</p>
                           <p>Received: {formatDate(requirement.artifact?.receivedAt || requirement.artifact?.createdAt)}</p>
                           <p>Files: {(requirement.artifact?.files || []).map((file) => file.fileName).filter(Boolean).join(', ') || 'No files'}</p>
-                          <p>Review: {requirement.review?.display_id ? `#${requirement.review.display_id} ${requirement.review.status}` : 'No medical review request'}</p>
+                          <p>Review: {requirement.review?.display_id ? `#${requirement.review.display_id} ${requirement.review.status}` : 'No medical review request'}</p></>}
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {activeTab === 'payments' && (
+                {activeTab === 'payments' && !detailPending && (
                   <div className="workflow-card">
                     <div className="workflow-section-header">
                       <h3>Payments</h3>
-                      <span>{detail.payments.length} records</span>
+                      <span>{detail.unavailable.includes('Payments') ? 'Unknown' : `${detail.payments.length} records`}</span>
                     </div>
-                    {detail.payments.length === 0 ? (
+                    {detail.unavailable.includes('Payments') ? <div className="workflow-empty">Unable to load payments.</div> : detail.payments.length === 0 ? (
                       <div className="workflow-empty">No payments recorded for this booking.</div>
                     ) : (
                       <div className="workflow-table">
@@ -838,10 +759,10 @@ const WorkflowDashboard: React.FC = () => {
                   <div className="workflow-card">
                     <div className="workflow-section-header">
                       <h3>Message Queue</h3>
-                      <span>{detail.reminders.length} reminders</span>
+                      <span>{detail.unavailable.includes('Reminders') ? 'Unknown' : `${detail.reminders.length} reminders`}</span>
                     </div>
                     <div className="workflow-message-list">
-                      {detail.reminders.length === 0 && scheduleMessages.length === 0 ? (
+                      {detail.unavailable.includes('Reminders') ? <div className="workflow-empty">Unable to load reminders.</div> : detail.reminders.length === 0 && scheduleMessages.length === 0 ? (
                         <div className="workflow-empty">No reminders or scheduled messages yet.</div>
                       ) : (
                         <>
@@ -881,7 +802,7 @@ const WorkflowDashboard: React.FC = () => {
               </div>
             )}
           </div>
-        </div>
+        </div></>}
       </div>
     </div>
   );

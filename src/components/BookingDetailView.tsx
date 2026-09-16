@@ -6,6 +6,8 @@ import ClientBookingWorkflowTab from './ClientBookingWorkflowTab';
 import BookingDocumentsUpload from './BookingDocumentsUpload';
 import BookingConfirmationEmailDialogs from './BookingConfirmationEmailDialogs';
 import BookingOverviewPanel, { retreatTown } from './BookingOverviewPanel';
+import BookingNextActionSummary from './BookingNextActionSummary';
+import type { BookingReadinessSource } from './bookingNextAction';
 import BookingDetailShell, { BookingDetailTab } from './BookingDetailShell';
 import EmailHistoryPanel from './EmailHistoryPanel';
 import BookingActivityTimeline from './BookingActivityTimeline';
@@ -73,6 +75,9 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   const [booking, setBooking] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [pdfLanguage, setPdfLanguage] = useState<BookingConfirmationLanguage>('en');
+  const [readinessSource, setReadinessSource] = useState<BookingReadinessSource | null>(null);
+  const [focusedStepId, setFocusedStepId] = useState('');
+  const refreshReadiness = () => setRequirementsRefreshKey(current => current + 1);
   const [requirementsRefreshKey, setRequirementsRefreshKey] = useState(0);
   const [requirementsStatus, setRequirementsStatus] = useState<{ missing: number; total: number } | null>(null);
   const [activeTab, setActiveTab] = useState<BookingDetailTab>('overview');
@@ -234,6 +239,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
   return (
     <div className="booking-detail-container">
       <BookingDetailShell
+        nextActionSummary={<BookingNextActionSummary bookingId={bookingId} bookingStatus={booking.status} source={readinessSource} onRetry={refreshReadiness} onOpen={(tab, itemId) => { setFocusedStepId(itemId); setActiveTab(tab); }} />}
         bookingId={bookingId}
         bookingNumber={booking.bookingNumber}
         clientName={clientName}
@@ -304,7 +310,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
             totalAmount={booking.totalAmount || 0}
             currency={booking.currency || 'EUR'}
             pricingSummary={booking.pricingSummary}
-            onPaymentUpdate={fetchBookingDetails}
+            onPaymentUpdate={handleBookingRelatedUpdate}
           />
         )}
 
@@ -312,6 +318,9 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
 
         <div hidden={activeTab !== 'requirements'}>
           <BookingRequirementsPanel
+            key={bookingId}
+            onReadinessChange={setReadinessSource}
+            focusItemId={activeTab === 'requirements' ? focusedStepId : undefined}
             bookingId={bookingId}
             clientId={getObjectId(client)}
             retreatId={getObjectId(retreat)}
@@ -380,7 +389,7 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
 
         {activeTab === 'workflow' && (
           <div className="detail-section">
-            <ClientBookingWorkflowTab bookings={[booking]} hideBookingSelector />
+            <ClientBookingWorkflowTab key={bookingId} bookings={[booking]} hideBookingSelector focusStepId={focusedStepId} onUpdated={refreshReadiness} />
           </div>
         )}
 

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { BookingReadinessSource, ResolvedSummaryRequirement } from './bookingNextAction';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { bookingDocumentsApi, bookingFlowApi, medicalArtifactsApi } from '../services/api';
 import { BookingDocument, BookingFlowItem, MedicalArtifact, MedicalReviewRequest } from '../types';
 import { fetchBookingRequirementSources } from './bookingRequirementsLoader';
@@ -20,10 +21,15 @@ export const relevantArtifact = (artifact: MedicalArtifact, bookingId: string, r
 export const requirementErrorMessage = (cause: any, fallback: string) =>
   cause?.response?.data?.message || cause?.message || fallback;
 
-export const useBookingRequirements = ({ bookingId, clientId, retreatId, refreshKey, onStatusChange }: {
+export const useBookingRequirements = ({ bookingId, clientId, retreatId, refreshKey, onStatusChange, onReadinessChange }: {
   bookingId: string; clientId?: string; retreatId?: string; refreshKey: number;
+  onReadinessChange?: (source: BookingReadinessSource) => void;
   onStatusChange?: (status: { missing: number; total: number }) => void;
 }) => {
+  const loadVersion = useRef(0);
+  useEffect(() => () => { loadVersion.current += 1; }, []);
+  const [resolvedRequirements, setResolvedRequirements] = useState<ResolvedSummaryRequirement[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
   const [items, setItems] = useState<BookingFlowItem[]>([]); const [artifacts, setArtifacts] = useState<MedicalArtifact[]>([]);
   const [libraryArtifacts, setLibraryArtifacts] = useState<MedicalArtifact[]>([]); const [documents, setDocuments] = useState<BookingDocument[]>([]);
   const [libraryDocuments, setLibraryDocuments] = useState<BookingDocument[]>([]); const [reviews, setReviews] = useState<Record<string, MedicalReviewRequest[]>>({});
@@ -31,17 +37,20 @@ export const useBookingRequirements = ({ bookingId, clientId, retreatId, refresh
   const [libraryDocumentsLoading, setLibraryDocumentsLoading] = useState(false); const [libraryDocumentsLoaded, setLibraryDocumentsLoaded] = useState(false);
 
   const load = useCallback(async (silent = false) => {
-    if (!silent) setLoading(true); setError('');
+    const version = ++loadVersion.current;
+    if (!silent) setLoading(true); setRefreshing(true); setError('');
     try {
       const sources = await fetchBookingRequirementSources(bookingId, clientId);
+      if (version !== loadVersion.current) return;
       const allArtifacts = mergeArtifacts([sources.artifacts]);
-      setItems(sources.items); setArtifacts(allArtifacts.filter(artifact => relevantArtifact(artifact, bookingId, retreatId)));
+      setResolvedRequirements(sources.requirements || []); setItems(sources.items); setArtifacts(allArtifacts.filter(artifact => relevantArtifact(artifact, bookingId, retreatId)));
       setLibraryArtifacts(allArtifacts); setDocuments(sources.documents.filter(document => objectId(document.bookingId) === bookingId));
       setLibraryDocuments(sources.documentCandidates || sources.documents); setReviews(indexReviews(sources.reviews));
-    } catch (cause: any) { setError(requirementErrorMessage(cause, 'Unable to load booking requirements.')); }
-    finally { if (!silent) setLoading(false); }
+    } catch (cause: any) { if (version === loadVersion.current) setError(requirementErrorMessage(cause, 'Unable to load booking requirements.')); }
+    finally { if (version === loadVersion.current) { if (!silent) setLoading(false); setRefreshing(false); } }
   }, [bookingId, clientId, retreatId]);
 
+  useEffect(() => { onReadinessChange?.({ bookingId, loading: loading || refreshing, error, items, requirements: resolvedRequirements }); }, [bookingId, loading, refreshing, error, items, resolvedRequirements, onReadinessChange]);
   useEffect(() => { load(); }, [load, refreshKey]);
   const loadDocumentLibrary = useCallback(async () => {
     if (libraryDocumentsLoading || libraryDocumentsLoaded) return;

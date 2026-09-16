@@ -7,7 +7,7 @@ jest.mock('../services/api', () => ({
   paymentsApi: {
     getBookingPlan: jest.fn(), getByBooking: jest.fn(), getByBookingHash: jest.fn(),
     getTypes: jest.fn(), convertToUsd: jest.fn(), updateBookingPlan: jest.fn(),
-    updateBookingPrice: jest.fn(),
+    updateBookingPrice: jest.fn(), getByClient: jest.fn(), getUnlinkedCandidatesByBooking: jest.fn(), update: jest.fn(),
   },
   paymentRequestsApi: { getByBooking: jest.fn() },
   configSummaryApi: { get: jest.fn().mockResolvedValue({ data: {} }) },
@@ -37,6 +37,26 @@ describe('BookingPaymentManagement PPVC-493 layout', () => {
     (paymentsApi.getTypes as jest.Mock).mockResolvedValue({ data: [] });
     (paymentsApi.convertToUsd as jest.Mock).mockResolvedValue({ data: { usd_amount: 1950 } });
     (configSummaryApi.get as jest.Mock).mockResolvedValue({ data: {} });
+  });
+
+  it('keeps client-only money out of a booking without a hash until staff explicitly link it', async () => {
+    const unlinked = { ...payment, clientId: 'client-1', retreatId: undefined, description: 'Medical exam before booking' };
+    (paymentsApi.getByBooking as jest.Mock).mockResolvedValue({ data: [] });
+    (paymentsApi.getByClient as jest.Mock).mockResolvedValue({ data: [unlinked] });
+    (paymentsApi.getUnlinkedCandidatesByBooking as jest.Mock).mockResolvedValue({ data: [unlinked] });
+    (paymentsApi.update as jest.Mock).mockImplementation(async () => {
+      (paymentsApi.getByBooking as jest.Mock).mockResolvedValue({ data: [{ ...unlinked, bookingId: 'booking-1', retreatId: 'retreat-1' }] });
+      return { data: unlinked };
+    });
+    render(<MemoryRouter><BookingPaymentManagement bookingId="booking-1" clientId="client-1" retreatId="retreat-1" totalAmount={7500} currency="PLN" /></MemoryRouter>);
+    await waitFor(() => expect(paymentsApi.getByClient).toHaveBeenCalled());
+    expect(screen.queryByRole('button', { name: /view payment/i })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Link existing payment' }));
+    await screen.findByRole('option', { name: /Medical exam before booking/ });
+    fireEvent.change(screen.getByLabelText('Existing Payment'), { target: { value: 'payment-1' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Link Payment' }));
+    await waitFor(() => expect(paymentsApi.update).toHaveBeenCalledWith('payment-1', expect.objectContaining({ bookingId: 'booking-1', clientId: 'client-1', retreatId: 'retreat-1' })));
+    expect(await screen.findByRole('button', { name: /view payment/i })).toBeInTheDocument();
   });
 
   it('saves an itemized booking price and asks the parent to refresh the canonical booking', async () => {

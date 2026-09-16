@@ -1855,7 +1855,8 @@ const ClientDetailsPage: React.FC = () => {
                             {formatPaymentAmount(payment)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {paymentRetreat ? getRetreatLabel(paymentRetreat) : 'N/A'}
+                            {paymentRetreat ? getRetreatLabel(paymentRetreat) : 'Client payment — no booking linked'}
+                            {payment.description && <div className="max-w-xs whitespace-normal text-xs text-gray-500">{payment.description}</div>}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {payment.paymentRequestId ? (() => {

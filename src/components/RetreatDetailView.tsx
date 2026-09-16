@@ -207,6 +207,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [retreatEmailForm] = Form.useForm();
   const retreatEmailBodyHtml = Form.useWatch('bodyHtml', retreatEmailForm);
   const retreatEmailTemplateId = Form.useWatch('templateId', retreatEmailForm);
+  const useRetreatRecipientLanguage = Form.useWatch('useRecipientLanguage', retreatEmailForm) !== false;
   const selectedRetreatEmailTemplate = retreatEmailTemplates.find((template) => template._id === retreatEmailTemplateId);
   const selectedRetreatEmailAssets = retreatEmailAssets.filter((asset) => selectedRetreatEmailTemplate?.attachmentAssetIds?.includes(asset._id || ''));
   const filteredRetreatEmailTemplates = useMemo(
@@ -660,6 +661,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     const retreatLabel = retreat?.code || retreat?.retreatCode || retreat?.name || 'retreat';
     retreatEmailForm.setFieldsValue({
       templateId: '',
+      useRecipientLanguage: true,
       subject: `Information for ${retreatLabel}`,
       bodyText: '',
       bodyHtml: '',
@@ -739,11 +741,12 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     }
   };
 
-  const handleRetreatEmailSend = async (values: { templateId?: string; subject: string; bodyText: string; bodyHtml?: string; bookingFlowStepKey?: string; bookingFlowStatusOnSend?: string }) => {
+  const handleRetreatEmailSend = async (values: { useRecipientLanguage?: boolean; templateId?: string; subject: string; bodyText: string; bodyHtml?: string; bookingFlowStepKey?: string; bookingFlowStatusOnSend?: string }) => {
     try {
       setRetreatEmailLoading(true);
       const response = await communicationsApi.sendRetreatEmail(retreatId, {
         templateId: values.templateId || undefined,
+        useRecipientLanguage: values.useRecipientLanguage !== false,
         subject: values.subject,
         bodyText: values.bodyText,
         bodyHtml: values.bodyHtml,
@@ -1894,6 +1897,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           layout="vertical"
           onFinish={handleRetreatEmailSend}
         >
+          <Form.Item name="useRecipientLanguage" valuePropName="checked" initialValue={true} extra="When checked, each client receives the saved version of this template in their preferred language, with that version’s attachments. Clients without a language use the selected template language. Missing translations stop the entire send. Turn off to edit or send the selected message to everyone.">
+            <Checkbox onChange={(event) => { if (event.target.checked && retreatEmailTemplateId) handleRetreatEmailTemplateChange(retreatEmailTemplateId); }}>Use each recipient’s preferred language</Checkbox>
+          </Form.Item>
           <Form.Item label="Template language">
             <Select
               value={retreatEmailTemplateLanguage}
@@ -1907,12 +1913,12 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             </Select>
           </Form.Item>
 
-          <Form.Item name="templateId" label="Template">
+          <Form.Item name="templateId" label="Template" rules={[{ required: useRetreatRecipientLanguage, message: "Select a template or turn off recipient language to write a custom message." }]}>
             <Select
               allowClear
               showSearch
               optionFilterProp="label"
-              placeholder="Optional template"
+              placeholder={useRetreatRecipientLanguage ? "Select a template" : "Optional template"}
               onChange={(value) => handleRetreatEmailTemplateChange(value)}
               notFoundContent="No templates match this language or search"
             >
@@ -1930,7 +1936,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             <div className="mb-5 space-y-3">
               <div className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3 text-sm">
                 <div className="font-semibold text-gray-900">Template content</div>
-                <div className="mt-1 text-gray-600">{retreatEmailBodyHtml ? 'HTML email selected. The rendered version below will be sent.' : 'Plain-text email selected.'}</div>
+                <div className="mt-1 text-gray-600">{useRetreatRecipientLanguage ? 'Preview of the selected language only. Each recipient receives their saved language version; edits below are disabled.' : retreatEmailBodyHtml ? 'HTML email selected. The rendered version below will be sent.' : 'Plain-text email selected.'}</div>
                 <div className="mt-2 font-medium text-gray-800">Attachments: {selectedRetreatEmailAssets.length}</div>
                 {selectedRetreatEmailAssets.map((asset) => <div key={asset._id} className="mt-1 text-xs text-gray-600">📎 {asset.fileName} · {String(asset.language).toUpperCase()}</div>)}
                 {selectedRetreatEmailTemplate.attachmentAssetIds?.length && !selectedRetreatEmailAssets.length ? <div className="mt-1 text-xs text-amber-700">The template references a PDF that is not currently available.</div> : null}
@@ -1973,7 +1979,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             label="Subject"
             rules={[{ required: true, message: 'Subject is required' }]}
           >
-            <Input placeholder="Email subject" />
+            <Input placeholder="Email subject" readOnly={useRetreatRecipientLanguage} />
           </Form.Item>
 
           <Form.Item
@@ -1981,7 +1987,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
             label="Message"
             rules={[{ required: true, message: 'Message is required' }]}
           >
-            <TextArea rows={12} placeholder="Write the email that should be sent to everyone in this retreat." />
+            <TextArea readOnly={useRetreatRecipientLanguage} rows={12} placeholder="Write the email that should be sent to everyone in this retreat." />
           </Form.Item>
 
           <div className="flex justify-end gap-3">
