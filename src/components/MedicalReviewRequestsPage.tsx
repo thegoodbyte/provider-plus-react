@@ -1,3 +1,4 @@
+import { MedicalReviewAuditTrail } from './MedicalReviewAuditTrail';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import LoadingSpinner from './LoadingSpinner';
@@ -538,6 +539,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [relatedArtifacts, setRelatedArtifacts] = useState<MedicalArtifact[]>([]);
   const [reviewDecision, setReviewDecision] = useState<(typeof decisionOptions)[number] | ''>('');
   const [medicalStaffNotes, setMedicalStaffNotes] = useState('');
+  const [onBehalfOfAdvisor, setOnBehalfOfAdvisor] = useState(false);
+  const [delegationReason, setDelegationReason] = useState('');
   const [savingReview, setSavingReview] = useState(false);
   const [nextReviewPrompt, setNextReviewPrompt] = useState<{ remaining: number; nextId?: string } | null>(null);
   const [resettingReview, setResettingReview] = useState(false);
@@ -618,6 +621,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
           setRelatedArtifacts([]);
           setAccessLinks([]);
         }
+        setOnBehalfOfAdvisor(false);
+        setDelegationReason('');
         setReviewDecision(normalizeMedicalReviewDecision(selectedItem.reviewDecision) as (typeof decisionOptions)[number] | '');
         setMedicalStaffNotes(selectedItem.medicalStaffNotes || selectedItem.overallNotes || selectedItem.reviewNotes || '');
         setClientVisibleAdminNote(selectedItem.clientVisibleAdminNote || '');
@@ -901,6 +906,10 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const handleSaveReview = async (options?: { quickApprove?: boolean; redirectAfterSave?: boolean }) => {
     if (!selected?._id) return;
     setValidationError('');
+    if (onBehalfOfAdvisor && delegationReason.trim().length < 3) {
+      setValidationError('Enter a reason for recording the decision on behalf of the assigned advisor.');
+      return;
+    }
     const effectiveDecision = options?.quickApprove ? 'OK' : reviewDecision;
     const effectiveNotes = options?.quickApprove ? (medicalStaffNotes.trim() || 'no comment') : medicalStaffNotes.trim();
     if (!effectiveDecision || effectiveNotes.length < 2) {
@@ -920,7 +929,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
         overallNotes: effectiveNotes,
         medicalStaffNotes: effectiveNotes,
         fileReviews: cleanedFileReviews,
-        reviewedBy: [user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.email || 'medical_staff',
+        onBehalfOfAssignedAdvisor: onBehalfOfAdvisor,
+        delegationReason: onBehalfOfAdvisor ? delegationReason.trim() : undefined,
       });
       await loadRequests();
       if (isMedicalRoute && !options?.redirectAfterSave) {
@@ -1862,6 +1872,13 @@ const MedicalReviewRequestsPage: React.FC = () => {
             <div className="p-4 text-sm text-gray-500">Select a request to review it.</div>
           ) : (
             <>
+            {!isReadOnlyView && user?.role === 'admin' && <section className="mb-4 rounded border border-gray-200 p-3 text-sm">
+              <p>Recorded under your signed-in account: {user?.email}</p>
+              <label className="mt-2 flex items-center gap-2"><input type="checkbox" checked={onBehalfOfAdvisor} onChange={event => setOnBehalfOfAdvisor(event.target.checked)} /> Record on behalf of the assigned advisor{selected.assignedTo ? ` (${selected.assignedTo})` : ''}</label>
+              {onBehalfOfAdvisor && <label className="mt-2 block">Reason for delegated approval<textarea value={delegationReason} onChange={event => setDelegationReason(event.target.value)} maxLength={1000} className="mt-1 block w-full rounded border p-2" required /></label>}
+              {validationError && <p role="alert" className="mt-2 text-red-700">{validationError}</p>}
+            </section>}
+            <MedicalReviewAuditTrail request={selected} />
             {isDetailView && (
               <div className="space-y-3 sm:hidden">
                 <section className="mrr-mobile-artifact-section overflow-hidden">
@@ -2633,41 +2650,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="rounded-md border border-gray-200 p-3">
-                <div className="text-sm font-semibold text-gray-900">Decision history</div>
-                <div className="mt-3 space-y-2">
-                  {selected.decisionHistory?.length ? (
-                    selected.decisionHistory
-                      .slice()
-                      .reverse()
-                      .map((entry, index) => (
-                        <div key={`${entry.reviewedAt || index}`} className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm">
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="font-semibold text-gray-900">
-                              {formatMedicalReviewDecisionLabel(entry.decision)}{entry.status ? ` • ${entry.status}` : ''} • {entry.reviewedBy || 'Unknown reviewer'}
-                            </div>
-                            <span className="text-xs text-gray-500">{formatDateTime(entry.reviewedAt)}</span>
-                          </div>
-                          <div className="mt-2 rounded border border-gray-200 bg-white p-2">
-                            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">Medical staff notes</div>
-                            <div className="mt-1 whitespace-pre-wrap text-gray-700">{entry.medicalStaffNotes || entry.overallNotes || entry.notes || 'No medical staff notes'}</div>
-                          </div>
-                          {!!entry.fileReviews?.length && (
-                            <div className="mt-2 space-y-1">
-                              {entry.fileReviews.map((fileReview, fileIndex) => (
-                                <div key={`${fileReview.fileKey || fileReview.fileName || fileIndex}`} className="rounded border border-gray-200 bg-white px-2 py-1 text-xs text-gray-700">
-                                  <span className="font-semibold">{fileReview.fileName || fileReview.fileKey || `File ${fileIndex + 1}`}:</span> {fileReview.decision || 'No decision'}{fileReview.notes ? ` - ${fileReview.notes}` : ''}
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ))
-                  ) : (
-                    <div className="text-sm text-gray-500">No decision history saved yet.</div>
-                  )}
-                </div>
-              </div>
+
 
             </div>
             </>

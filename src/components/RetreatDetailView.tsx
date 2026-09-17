@@ -1,3 +1,5 @@
+import AnnouncementsPage from './AnnouncementsPage';
+import { authService } from '../services/authService';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { retreatsApi, bookingsApi, retreatExpensesApi, paymentsApi, clientsApi, housesApi, communicationsApi, contactBookApi, bookingFlowApi } from '../services/api';
@@ -68,7 +70,7 @@ interface RetreatDetailViewProps {
 // the URL-routing allowlist in AppleLayout.tsx derive from this array, so a
 // new tab can't be added to the UI while staying invisible to deep-linking
 // (the bug that silently dropped 'reserveList' and 'foodMatrix' from URLs).
-export const RETREAT_DETAIL_TABS = ['clients', 'reserveList', 'holisticView', 'tracking', 'foodMatrix', 'aiSummary', 'drugScreening', 'expenses', 'payments', 'ceremonies', 'analytics', 'tasks'] as const;
+export const RETREAT_DETAIL_TABS = ['clients', 'reserveList', 'holisticView', 'tracking', 'foodMatrix', 'aiSummary', 'drugScreening', 'expenses', 'payments', 'ceremonies', 'analytics', 'tasks', 'announcements'] as const;
 export type RetreatDetailTab = typeof RETREAT_DETAIL_TABS[number];
 
 interface QuickBookingFormData {
@@ -1122,6 +1124,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
 
       {/* Tab Navigation */}
       <div className="tab-navigation retreat-detail-tabs" role="tablist" aria-label="Retreat sections">
+        {authService.getUser()?.role === 'admin' && <button className={`tab-btn ${activeTab === 'announcements' ? 'active' : ''}`} role="tab" aria-selected={activeTab === 'announcements'} onClick={() => handleTabChange('announcements')}>Announcements</button>}
         <button
           className={`tab-btn ${activeTab === 'drugScreening' ? 'active' : ''}`}
           onClick={() => handleTabChange('drugScreening')}
@@ -1234,6 +1237,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
 
       {/* Tab Content */}
       <div className="retreat-detail-tab-content">
+        {activeTab === 'announcements' && authService.getUser()?.role === 'admin' && <AnnouncementsPage retreatId={retreatId} />}
         {activeTab === 'clients' && (
         <div className="clients-section">
           <div className="section-header">

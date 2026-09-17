@@ -66,6 +66,7 @@ const FULL_MENU_SECTIONS: MenuSection[] = [
       { id: 'booking-flow', label: 'Booking Flow', Icon: Fi.FiCheckSquare },
       { id: 'booking-step-deadlines', label: 'Step Deadlines', Icon: Fi.FiCalendar },
       { id: 'scheduled-reminders', label: 'Scheduled Reminders', Icon: Fi.FiBell },
+      { id: 'announcements', label: 'Announcement Schedule', Icon: Fi.FiMail },
       { id: 'reserve-lists', label: 'Reserve Lists', Icon: Fi.FiBookmark },
       { id: 'booking-documents', label: 'Document Library', Icon: Fi.FiFileText },
       { id: 'booking-document-types', label: 'Booking Document Types', Icon: Fi.FiSettings },

@@ -86,6 +86,7 @@ const ModuleLauncherPage: React.FC = () => {
           { id: 'bookings', label: 'Bookings', subtitle: 'Retreat seats', route: 'bookings', icon: ClipboardPaste, tone: 'blue' },
           { id: 'retreat-flow', label: 'Readiness Setup', subtitle: 'Per-retreat steps', route: 'retreat-flow', icon: LayoutGrid, tone: 'blue' },
           { id: 'retreat-flow-library', label: 'Booking Step Setup', subtitle: 'Master steps', route: 'retreat-flow-library', icon: BookOpen, tone: 'blue' },
+          { id: 'announcements', label: 'Announcement Schedule', subtitle: 'Before and after retreat emails', route: 'announcements', icon: BookOpen, tone: 'blue' },
           { id: 'booking-flow', label: 'Booking Flow', subtitle: 'Per booking', route: 'booking-flow', icon: ListTodo, tone: 'blue' },
           { id: 'booking-step-deadlines', label: 'Step Deadlines', subtitle: 'Across retreats', route: 'booking-step-deadlines', icon: CalendarDays, tone: 'blue' },
         ],

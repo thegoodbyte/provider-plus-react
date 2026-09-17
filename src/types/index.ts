@@ -1377,6 +1377,17 @@ export interface MedicalReviewRequest {
     reviewedBy?: string;
   }>;
   decisionHistory?: Array<{
+    actualActorName?: string;
+    actualActorEmail?: string;
+    actualActorUserId?: string;
+    actualActorRole?: string;
+    onBehalfOfUserId?: string;
+    onBehalfOfName?: string;
+    delegationReason?: string;
+    accessType?: string;
+    ipAddress?: string;
+    userAgent?: string;
+
     status?: 'pending' | 'in_review' | 'approved' | 'rejected' | 'caution' | 'needs_resubmission' | 'completed';
     decision?: 'OK' | 'caution' | 'more_info_needed' | 'NOT OK';
     notes?: string;

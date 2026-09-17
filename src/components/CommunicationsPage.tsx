@@ -1,3 +1,4 @@
+import EmailSafetySettings from './EmailSafetySettings';
 import React, { useEffect, useMemo, useState } from 'react';
 import { FiAlertCircle, FiCheckCircle, FiDownload, FiInbox, FiMail, FiPlus, FiRefreshCw, FiSave, FiSearch, FiSend, FiTrash2 } from 'react-icons/fi';
 import { Link, useLocation } from 'react-router-dom';
@@ -86,6 +87,7 @@ const formatSentEmailReceipt = (sentEmail: SentEmail) => {
 
 const CommunicationsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabKey>('settings');
+  const [settingsArea, setSettingsArea] = useState('safety');
   const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [settings, setSettings] = useState<MailSettings | null>(null);
@@ -558,8 +560,6 @@ const CommunicationsPage: React.FC = () => {
         clientMedicalNeedsInfoEmailsEnabled: settings?.clientMedicalNeedsInfoEmailsEnabled === true,
         clientMedicalDeclinedEmailsEnabled: settings?.clientMedicalDeclinedEmailsEnabled === true,
         medicalReviewInternalNotificationsEnabled: settings?.medicalReviewInternalNotificationsEnabled !== false,
-        medicalReviewEmailTestMode: settings?.medicalReviewEmailTestMode === true,
-        medicalReviewEmailTestRecipient: settings?.medicalReviewEmailTestRecipient || '',
         medicalReviewApprovedTemplates: settings?.medicalReviewApprovedTemplates,
         medicalReviewSubmittedTemplates: settings?.medicalReviewSubmittedTemplates,
         medicalReviewNeedsInfoTemplates: settings?.medicalReviewNeedsInfoTemplates,
@@ -736,9 +736,13 @@ const CommunicationsPage: React.FC = () => {
         </div>
       )}
 
+      {activeTab !== 'settings' && <EmailSafetySettings compact />}
       {activeTab === 'settings' && (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <section className="rounded-lg border border-gray-200 bg-white p-5 space-y-4">
+        <div>
+          <nav className="mb-5 flex flex-wrap gap-2" aria-label="Settings areas">{[['safety','Email safety'],['connection','Sender & Gmail'],['automation','Automation'],['medical','Medical notifications'],['portal','Client portal']].map(([key,label]) => <button key={key} type="button" aria-pressed={settingsArea === key} onClick={() => setSettingsArea(key)} className={`rounded border px-3 py-2 ${settingsArea === key ? 'bg-blue-700 text-white' : 'bg-white'}`}>{label}</button>)}</nav>
+          {settingsArea === 'safety' && <EmailSafetySettings />}
+
+          <section hidden={settingsArea !== 'connection'} className="rounded-lg border border-gray-200 bg-white p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-semibold text-gray-900">Gmail Connection</h2>
               <span className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${settings?.connected ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
@@ -803,49 +807,6 @@ const CommunicationsPage: React.FC = () => {
               <p className="mt-2 text-xs text-blue-900">Applied by the API to popup sends, direct sends, and retreat bulk emails.</p>
             </div>
 
-            <div className={`rounded-md border p-4 ${settings?.automatedBookingRemindersEnabled === true ? 'border-amber-300 bg-amber-50' : 'border-green-200 bg-green-50'}`}>
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="font-semibold text-gray-900">Automated booking reminders</h3>
-                  <p className="mt-1 text-sm text-gray-700">
-                    Sends deadline and overdue emails for incomplete booking requirements. This is OFF by default and must be explicitly enabled here.
-                  </p>
-                </div>
-                <label className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold">
-                  <input
-                    type="checkbox"
-                    checked={settings?.automatedBookingRemindersEnabled === true}
-                    onChange={(event) => setSettings((prev) => ({ ...(prev || {}), automatedBookingRemindersEnabled: event.target.checked }))}
-                  />
-                  {settings?.automatedBookingRemindersEnabled === true ? 'ON' : 'OFF'}
-                </label>
-              </div>
-              {settings?.automationEnvironmentKillSwitch && <p className="mt-3 rounded border border-red-300 bg-red-100 p-2 text-sm font-bold text-red-800">EMERGENCY KILL SWITCH ACTIVE — scheduled emails and escalations cannot run.</p>}
-              <p className={`mt-3 text-sm font-semibold ${settings?.automatedBookingRemindersEnabled === true ? 'text-amber-800' : 'text-green-800'}`}>
-                {settings?.automatedBookingRemindersEnabled === true
-                  ? 'Warning: the background worker may email clients automatically.'
-                  : 'Kill switch active — no automatic booking reminder emails will be sent.'}
-              </p>
-            </div>
-
-            <div className="rounded-md border border-indigo-200 bg-indigo-50 p-4">
-              <div className="flex items-start justify-between gap-4"><div><h3 className="font-semibold text-gray-900">IbogaReady contract gate</h3><p className="mt-1 text-sm text-gray-700">Require booked clients to sign the Client Agreement before accessing preparation forms and resources. Account, My Retreat, and Client Agreement remain available.</p></div><label className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={contractGate.enabled} onChange={event=>setContractGate(current=>({...current,enabled:event.target.checked}))}/>{contractGate.enabled?'ON':'OFF'}</label></div>
-              <p className="mt-3 text-xs text-indigo-800">This is enforced in both IbogaReady navigation and protected API endpoints. Pre-booking screening is not gated.</p>
-            </div>
-
-            <div className="rounded-md border border-gray-200 bg-white p-4 lg:col-span-2">
-              <div className="mb-4"><h3 className="font-semibold text-gray-900">IbogaReady access by client status</h3><p className="mt-1 text-sm text-gray-600">New registered forms appear here automatically. Available allows use; Read-only allows viewing; Locked shows a lock but blocks the page; Hidden removes it.</p></div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full border-collapse text-sm">
-                  <thead><tr><th className="sticky left-0 z-10 border bg-gray-50 px-3 py-2 text-left">Client status</th>{contractGate.portalModuleCatalog.map(module=><th key={module.key} className="min-w-[150px] border bg-gray-50 px-3 py-2 text-left"><div>{module.label}</div><div className="text-[10px] font-normal text-gray-500">{module.category}{module.requiresBooking?' · booking':''}</div></th>)}</tr></thead>
-                  <tbody>{contractGate.portalStatusCatalog.map(status=><tr key={status.key}><th className="sticky left-0 z-10 border bg-white px-3 py-2 text-left">{status.label}</th>{contractGate.portalModuleCatalog.map(module=>{
-                    const value=contractGate.portalAccessByStatus?.[status.key]?.[module.key] || 'hidden';
-                    return <td key={module.key} className="border p-2"><select aria-label={`${status.label} ${module.label}`} value={value} onChange={event=>setContractGate(current=>({...current,portalAccessByStatus:{...current.portalAccessByStatus,[status.key]:{...(current.portalAccessByStatus?.[status.key]||{}),[module.key]:event.target.value}}}))} className="w-full rounded border border-gray-300 px-2 py-1.5"><option value="available">Available</option>{module.supportsReadOnly&&<option value="read_only">Read-only</option>}<option value="locked">Locked</option><option value="hidden">Hidden</option></select></td>;
-                  })}</tr>)}</tbody>
-                </table>
-              </div>
-            </div>
-
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
@@ -882,7 +843,7 @@ const CommunicationsPage: React.FC = () => {
               </button>
             </div>
           </section>
-          <section className="rounded-lg border border-gray-200 bg-white p-5 space-y-4 lg:col-span-2">
+          <section hidden={settingsArea !== 'medical'} className="rounded-lg border border-gray-200 bg-white p-5 space-y-4 lg:col-span-2">
             <div><h2 className="text-lg font-semibold text-gray-900">Client medical-review notifications</h2><p className="text-sm text-gray-500">Emails contain only a generic status and never include reviewer notes or medical findings.</p></div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {[
@@ -892,14 +853,12 @@ const CommunicationsPage: React.FC = () => {
                 ['clientMedicalNeedsInfoEmailsEnabled', 'Needs-info emails'],
                 ['clientMedicalDeclinedEmailsEnabled', 'Declined emails'],
                 ['medicalReviewInternalNotificationsEnabled', 'Internal RE notifications'],
-                ['medicalReviewEmailTestMode', 'Test mode'],
               ].map(([key, label]) => {
                 const defaultOff = ['clientMedicalNeedsInfoEmailsEnabled', 'clientMedicalDeclinedEmailsEnabled', 'medicalReviewEmailTestMode'].includes(key);
                 const checked = defaultOff ? (settings as any)?.[key] === true : (settings as any)?.[key] !== false;
                 return <label key={key} className="flex items-center gap-2 rounded-md border p-3 text-sm font-medium"><input type="checkbox" checked={checked} onChange={(event) => setSettings((prev) => ({ ...(prev || {}), [key]: event.target.checked }))}/>{label}</label>;
               })}
             </div>
-            {settings?.medicalReviewEmailTestMode && <label className="block"><span className="text-sm font-medium">Test recipient override</span><input type="email" className="mt-1 w-full rounded-md border px-3 py-2" value={settings.medicalReviewEmailTestRecipient || ''} onChange={(event) => setSettings((prev) => ({ ...(prev || {}), medicalReviewEmailTestRecipient: event.target.value }))}/></label>}
             <div className="grid gap-3 rounded-md border border-blue-100 bg-blue-50 p-3 sm:grid-cols-[auto_1fr] sm:items-end">
               <label className="inline-flex items-center gap-2 pb-2 text-sm font-medium text-blue-950">
                 <input type="checkbox" checked={settings?.medicalReviewClientCcEnabled !== false} onChange={(event) => setSettings((prev) => ({ ...(prev || {}), medicalReviewClientCcEnabled: event.target.checked }))}/>
@@ -937,7 +896,7 @@ const CommunicationsPage: React.FC = () => {
             <button type="button" onClick={handleSettingsSave} disabled={savingSettings} className="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white">Save notification settings</button>
           </section>
 
-          <section className="rounded-lg border border-gray-200 bg-white p-5 space-y-3">
+          <section hidden={settingsArea !== 'connection'} className="rounded-lg border border-gray-200 bg-white p-5 space-y-3">
             <h2 className="text-lg font-semibold text-gray-900">Connection Status</h2>
             <div className="space-y-2 text-sm text-gray-700">
               <div>Google OAuth configured: <span className="font-medium">{settings?.oauthConfigured ? 'Yes' : 'No'}</span></div>
@@ -953,6 +912,51 @@ const CommunicationsPage: React.FC = () => {
               Configure Google OAuth redirect URI to point at <code>/communications/gmail/callback</code> on the API host. The sending domain should be an authorized Gmail or Google Workspace mailbox for <code>ibogaspirit.cz</code>.
             </div>
           </section>
+          {settingsArea === 'automation' && <section>            <div className={`rounded-md border p-4 ${settings?.automatedBookingRemindersEnabled === true ? 'border-amber-300 bg-amber-50' : 'border-green-200 bg-green-50'}`}>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="font-semibold text-gray-900">Automated booking reminders</h3>
+                  <p className="mt-1 text-sm text-gray-700">
+                    Sends deadline and overdue emails for incomplete booking requirements. This is OFF by default and must be explicitly enabled here.
+                  </p>
+                </div>
+                <label className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold">
+                  <input
+                    type="checkbox"
+                    checked={settings?.automatedBookingRemindersEnabled === true}
+                    onChange={(event) => setSettings((prev) => ({ ...(prev || {}), automatedBookingRemindersEnabled: event.target.checked }))}
+                  />
+                  {settings?.automatedBookingRemindersEnabled === true ? 'ON' : 'OFF'}
+                </label>
+              </div>
+              {settings?.automationEnvironmentKillSwitch && <p className="mt-3 rounded border border-red-300 bg-red-100 p-2 text-sm font-bold text-red-800">EMERGENCY KILL SWITCH ACTIVE — scheduled emails and escalations cannot run.</p>}
+              <p className={`mt-3 text-sm font-semibold ${settings?.automatedBookingRemindersEnabled === true ? 'text-amber-800' : 'text-green-800'}`}>
+                {settings?.automatedBookingRemindersEnabled === true
+                  ? 'Warning: the background worker may email clients automatically.'
+                  : 'Booking reminders paused — no automatic booking reminder emails will be sent.'}
+              </p>
+            </div>
+
+<button onClick={handleSettingsSave} disabled={savingSettings} className="rounded bg-blue-700 px-4 py-2 text-white">Save automation settings</button></section>}
+          {settingsArea === 'portal' && <section>            <div className="rounded-md border border-indigo-200 bg-indigo-50 p-4">
+              <div className="flex items-start justify-between gap-4"><div><h3 className="font-semibold text-gray-900">IbogaReady contract gate</h3><p className="mt-1 text-sm text-gray-700">Require booked clients to sign the Client Agreement before accessing preparation forms and resources. Account, My Retreat, and Client Agreement remain available.</p></div><label className="inline-flex shrink-0 items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={contractGate.enabled} onChange={event=>setContractGate(current=>({...current,enabled:event.target.checked}))}/>{contractGate.enabled?'ON':'OFF'}</label></div>
+              <p className="mt-3 text-xs text-indigo-800">This is enforced in both IbogaReady navigation and protected API endpoints. Pre-booking screening is not gated.</p>
+            </div>
+
+            <div className="rounded-md border border-gray-200 bg-white p-4 lg:col-span-2">
+              <div className="mb-4"><h3 className="font-semibold text-gray-900">IbogaReady access by client status</h3><p className="mt-1 text-sm text-gray-600">New registered forms appear here automatically. Available allows use; Read-only allows viewing; Locked shows a lock but blocks the page; Hidden removes it.</p></div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full border-collapse text-sm">
+                  <thead><tr><th className="sticky left-0 z-10 border bg-gray-50 px-3 py-2 text-left">Client status</th>{contractGate.portalModuleCatalog.map(module=><th key={module.key} className="min-w-[150px] border bg-gray-50 px-3 py-2 text-left"><div>{module.label}</div><div className="text-[10px] font-normal text-gray-500">{module.category}{module.requiresBooking?' · booking':''}</div></th>)}</tr></thead>
+                  <tbody>{contractGate.portalStatusCatalog.map(status=><tr key={status.key}><th className="sticky left-0 z-10 border bg-white px-3 py-2 text-left">{status.label}</th>{contractGate.portalModuleCatalog.map(module=>{
+                    const value=contractGate.portalAccessByStatus?.[status.key]?.[module.key] || 'hidden';
+                    return <td key={module.key} className="border p-2"><select aria-label={`${status.label} ${module.label}`} value={value} onChange={event=>setContractGate(current=>({...current,portalAccessByStatus:{...current.portalAccessByStatus,[status.key]:{...(current.portalAccessByStatus?.[status.key]||{}),[module.key]:event.target.value}}}))} className="w-full rounded border border-gray-300 px-2 py-1.5"><option value="available">Available</option>{module.supportsReadOnly&&<option value="read_only">Read-only</option>}<option value="locked">Locked</option><option value="hidden">Hidden</option></select></td>;
+                  })}</tr>)}</tbody>
+                </table>
+              </div>
+            </div>
+
+<button onClick={handleSettingsSave} disabled={savingSettings} className="rounded bg-blue-700 px-4 py-2 text-white">Save portal settings</button></section>}
         </div>
       )}
 

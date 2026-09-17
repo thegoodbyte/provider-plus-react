@@ -1351,6 +1351,8 @@ export const medicalReviewRequestsApi = {
     return api.post<any>('/medical-review-requests/groups', data);
   },
   review: (id: string, reviewData: {
+    onBehalfOfAssignedAdvisor?: boolean;
+    delegationReason?: string;
     status?: string;
     reviewDecision?: 'OK' | 'caution' | 'more_info_needed' | 'NOT OK';
     reviewNotes?: string;
@@ -2026,4 +2028,24 @@ export const integrationApi = {
     api.patch(`/integration/retreats/${retreatId}/checkpoints/${checkpointNumber}`, data),
   updateResponse: (responseId: string, data: { callType?: 'group' | 'individual'; status?: string; scheduledAt?: string; answers?: Record<string, string>; notes?: string }) =>
     api.patch<IntegrationTile>(`/integration/responses/${responseId}`, data),
+};
+
+export const announcementsApi = {
+  sendTest: (id: string, bookingId: string) => api.post(`/announcements/rules/${id}/test`, { bookingId }),
+  setRuleActive: (retreatId: string | undefined, ruleId: string, active: boolean) => api.patch(retreatId ? `/announcements/retreats/${retreatId}/rules/${ruleId}/active` : `/announcements/library/${ruleId}/active`, { active }),
+  get: (retreatId?: string) => api.get(retreatId ? `/announcements/retreats/${retreatId}` : '/announcements/library'),
+  save: (retreatId: string | undefined, ruleId: string | undefined, body: any) => {
+    const path = retreatId ? `/announcements/retreats/${retreatId}/rules` : '/announcements/library';
+    return ruleId ? api.patch(`${path}/${ruleId}`, body) : api.post(path, body);
+  },
+  applyDefaults: (retreatId: string) => api.post(`/announcements/retreats/${retreatId}/defaults`),
+  generate: (retreatId: string) => api.post(`/announcements/retreats/${retreatId}/generate`),
+  setEnabled: (retreatId: string, enabled: boolean) => api.patch(`/announcements/retreats/${retreatId}/settings`, { enabled }),
+  preview: (id: string, bookingId: string) => api.post(`/announcements/rules/${id}/preview`, { bookingId }),
+  updateDelivery: (id: string, action: string) => api.patch(`/announcements/deliveries/${id}`, { action }),
+};
+
+export const emailSafetyApi = {
+  get: () => api.get<{ enabled: boolean; recipient: string }>('/communications/email-safety'),
+  save: (data: { enabled: boolean; recipient: string }) => api.patch<{ enabled: boolean; recipient: string }>('/communications/email-safety', data),
 };

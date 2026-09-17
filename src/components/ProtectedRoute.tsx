@@ -30,6 +30,7 @@ const ROUTE_PERMISSIONS: Record<string, string[]> = {
   '/retreats': ['facilitator', 'medical_staff', 'admin'],
   '/workflow': ['medical_staff', 'admin'],
   '/retreat-flow': ['medical_staff', 'admin'],
+  '/announcements': ['admin'],
   '/retreat-flow-library': ['medical_staff', 'admin'],
   '/booking-flow': ['medical_staff', 'admin'],
   '/flow-tasks': ['medical_staff', 'admin'],

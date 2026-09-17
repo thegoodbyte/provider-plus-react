@@ -1,3 +1,4 @@
+import AnnouncementsPage from './AnnouncementsPage';
 import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { FiBookOpen, FiCalendar, FiChevronDown, FiCreditCard, FiGrid, FiShoppingBag, FiUsers, FiX } from 'react-icons/fi';
@@ -196,6 +197,7 @@ const AppleLayout: React.FC = () => {
     if (route === 'client') return 'medical';
     if (route === 'workflow') return 'workflow';
     if (route === 'retreat-flow') return 'retreat-flow';
+    if (route === 'announcements') return 'announcements';
     if (route === 'retreat-flow-library') return 'retreat-flow-library';
     if (route === 'booking-flow') return 'booking-flow';
     if (route === 'booking-step-deadlines') return 'booking-step-deadlines';
@@ -851,6 +853,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="retreat-flow" element={<RetreatFlowPage />} />
                       <Route path="retreat-flow/:retreatId" element={<RetreatFlowPage />} />
                       <Route path="retreat-flow-library" element={<RetreatFlowLibraryPage />} />
+                      <Route path="announcements" element={<ProtectedRoute requiredRole={['admin']}><AnnouncementsPage /></ProtectedRoute>} />
                       <Route path="integration" element={<IntegrationRetreatsPage />} />
                       <Route path="integration/:retreatId" element={<IntegrationRetreatDetailPage />} />
                       <Route path="scheduled-reminders" element={<ScheduledRemindersPage />} />
@@ -962,6 +965,7 @@ const AppleLayout: React.FC = () => {
                         <Route path="retreat-flow" element={<RetreatFlowPage />} />
                         <Route path="retreat-flow/:retreatId" element={<RetreatFlowPage />} />
                         <Route path="retreat-flow-library" element={<RetreatFlowLibraryPage />} />
+                      <Route path="announcements" element={<ProtectedRoute requiredRole={['admin']}><AnnouncementsPage /></ProtectedRoute>} />
                         <Route path="scheduled-reminders" element={<ScheduledRemindersPage />} />
                         <Route path="booking-step-deadlines" element={<BookingStepDeadlinesPage />} />
                         <Route path="bookings/:bookingId/medication-stop-plan" element={<MedicationStopPlanPage />} />

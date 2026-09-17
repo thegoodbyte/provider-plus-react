@@ -8,7 +8,7 @@ import { medicalReviewRequestsApi, medicalTrackingApi, clientsApi, retreatsApi }
 import { MedicalItem, MedicalReviewGroup, MedicalReviewRequest, Client, Retreat } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { usersApi, User } from '../services/usersApi';
-import { MedicalReviewTypeFilter, formatMedicalReviewCreatedAt, getReviewRequestFilterText, matchesReviewRequestFilters, sortMedicalReviewPacketsByExpiry, sortMedicalReviewsPendingFirst } from './MedicalReviewRequestsGrid.helpers';
+import { MedicalReviewTypeFilter, editablePacketRequests, formatMedicalReviewCreatedAt, getReviewRequestFilterText, matchesReviewRequestFilters, sortMedicalReviewPacketsByExpiry, sortMedicalReviewsPendingFirst } from './MedicalReviewRequestsGrid.helpers';
 import ResponsiveModal from './ResponsiveModal';
 import { compareMedicalReviewStatuses, isPendingMedicalReviewStatus, medicalReviewStatusPresentation } from './medicalReviewStatus';
 
@@ -571,7 +571,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     setEditingGroupTitle(group.title || '');
     setEditingGroupEndDate(toDateInputValue(group.endDate));
     setEditingGroupType((group.groupType as 'retreat' | 'ceremony' | 'custom') || 'retreat');
-    setEditingGroupRetreatId(getGroupRetreatId(group) || '');
+    setEditingGroupRetreatId(group.groupType === 'custom' ? '' : getGroupRetreatId(group) || '');
     setEditingGroupCeremonyNumber(group.ceremonyNumber ? String(group.ceremonyNumber) : '');
     setEditingGroupReviewerUserId(typeof group.reviewerUserId === 'string' ? group.reviewerUserId : group.reviewerUserId?._id || '');
     setEditingGroupRequestIds([...(group.reviewRequestIds || [])]);
@@ -615,22 +615,17 @@ const MedicalReviewRequestsGrid: React.FC = () => {
         setGroupError('Select a medical advisor.');
         return;
       }
-      await medicalReviewRequestsApi.updateGroup(editingGroupId, {
+      const response = await medicalReviewRequestsApi.updateGroup(editingGroupId, {
         title,
         groupType: editingGroupType,
-        retreatId: editingGroupRetreatId,
+        retreatId: editingGroupType === 'custom' ? '' : editingGroupRetreatId,
         ceremonyNumber: editingGroupType === 'ceremony' && editingGroupCeremonyNumber ? Number(editingGroupCeremonyNumber) : undefined,
         endDate: editingGroupEndDate || null,
         reviewerUserId: editingGroupReviewerUserId,
         replaceReviewRequestIds: editingGroupRequestIds,
       });
       setGroups((current) => current.map((group) => (
-        group._id === editingGroupId ? {
-          ...group, title, groupType: editingGroupType, retreatId: editingGroupRetreatId,
-          ceremonyNumber: editingGroupType === 'ceremony' && editingGroupCeremonyNumber ? Number(editingGroupCeremonyNumber) : undefined,
-          endDate: editingGroupEndDate || undefined, reviewerUserId: editingGroupReviewerUserId,
-          reviewRequestIds: editingGroupRequestIds,
-        } : group
+        group._id === editingGroupId ? response.data : group
       )));
       setEditingGroupId('');
     } catch (requestError: any) {
@@ -681,15 +676,9 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   );
   const editingGroupCandidates = useMemo(() => {
     const search = editingGroupSearch.trim().toLowerCase();
-    return requests.filter((request) => {
-      const requestId = getRequestId(request);
-      const isCurrent = editingGroupRequestIds.includes(requestId);
-      const isUngrouped = !groupedRequestIds.has(requestId);
-      if (!isCurrent && !isUngrouped) return false;
-      if (editingGroupRetreatId && getRequestRetreatId(request) !== editingGroupRetreatId) return false;
-      return !search || getReviewRequestFilterText(request).includes(search);
-    });
-  }, [editingGroupRequestIds, editingGroupRetreatId, editingGroupSearch, groupedRequestIds, requests]);
+    return editablePacketRequests(requests, editingGroupRequestIds, groupedRequestIds, editingGroupType === 'custom' ? '' : editingGroupRetreatId)
+      .filter(request => !search || getReviewRequestFilterText(request).includes(search));
+  }, [editingGroupRequestIds, editingGroupType, editingGroupRetreatId, editingGroupSearch, groupedRequestIds, requests]);
 
   const inferredRetreatId = useMemo(() => {
     const retreatIds = Array.from(new Set(selectedGroupRequests.map(getRequestRetreatId).filter(Boolean)));
@@ -1709,14 +1698,19 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                     <option value="retreat">Retreat</option><option value="ceremony">Ceremony</option><option value="custom">Potentials / custom (no retreat)</option>
                   </select>
                 </label>
-                {editingGroupType !== 'custom' && <label className="block">
+                <label className="block">
                   <span className="text-sm font-medium text-gray-700">Retreat</span>
-                  <select value={editingGroupRetreatId} onChange={(event) => { setEditingGroupRetreatId(event.target.value); setEditingGroupRequestIds([]); }} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm">
-                    <option value="">Select retreat</option>
+                  <select value={editingGroupRetreatId} onChange={(event) => {
+                    const retreatId = event.target.value;
+                    setEditingGroupRetreatId(retreatId);
+                    if (!retreatId) { setEditingGroupType('custom'); setEditingGroupCeremonyNumber(''); }
+                    else { if (editingGroupType === 'custom') setEditingGroupType('retreat'); setEditingGroupRequestIds([]); }
+                  }} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm">
+                    <option value="">No retreat — Potentials / custom</option>
                     {retreatOptions.map((retreat) => <option key={retreat._id} value={retreat._id}>{getRetreatCode(retreat)}</option>)}
                   </select>
-                  <span className="mt-1 block text-xs text-amber-700">Changing retreat clears the item selection so MRRs cannot silently cross retreats.</span>
-                </label>}
+                  <span className="mt-1 block text-xs text-amber-700">No retreat includes MRRs across retreats and clients without a booking. Existing selections are kept. Selecting a specific retreat clears the selection.</span>
+                </label>
                 {editingGroupType === 'ceremony' && <label className="block"><span className="text-sm font-medium text-gray-700">Ceremony #</span><input type="number" min="1" value={editingGroupCeremonyNumber} onChange={(event) => setEditingGroupCeremonyNumber(event.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" /></label>}
               </div>
               <label className="block">
@@ -1730,7 +1724,8 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                 <span className="mt-1 block text-xs text-gray-500">Packets automatically appear under Past after this date.</span>
               </label>
               <section className="rounded-md border border-gray-200 bg-gray-50 p-3">
-                <div className="flex items-center justify-between gap-3"><div><h3 className="text-sm font-semibold text-gray-900">MRRs in this packet ({editingGroupRequestIds.length})</h3><p className="text-xs text-gray-500">{editingGroupType === 'custom' ? 'Current items plus unfiled potential MRRs.' : 'Current items plus ungrouped MRRs from the selected retreat.'}</p></div></div>
+                <div className="flex items-center justify-between gap-3"><div><h3 className="text-sm font-semibold text-gray-900">MRRs in this packet ({editingGroupRequestIds.length})</h3><p className="text-xs text-gray-500">{editingGroupType === 'custom' ? 'Current items plus all unfiled MRRs, without a retreat filter.' : 'Current items plus ungrouped MRRs from the selected retreat.'}</p></div></div>
+                <button type="button" className="mt-2 text-sm font-semibold text-blue-700" onClick={() => setEditingGroupRequestIds(current => Array.from(new Set([...current, ...editingGroupCandidates.map(getRequestId)])))}>Select all shown MRRs</button>
                 <input value={editingGroupSearch} onChange={(event) => setEditingGroupSearch(event.target.value)} placeholder="Search MRR or client" className="mt-3 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm" />
                 <div className="mt-3 max-h-56 overflow-y-auto rounded-md border border-gray-200 bg-white">
                   {editingGroupCandidates.map((request) => { const requestId = getRequestId(request); return <label key={requestId} className="flex cursor-pointer items-start gap-3 border-b border-gray-100 px-3 py-3 last:border-0 hover:bg-gray-50"><input type="checkbox" checked={editingGroupRequestIds.includes(requestId)} onChange={() => setEditingGroupRequestIds((current) => current.includes(requestId) ? current.filter((id) => id !== requestId) : [...current, requestId])} className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600" /><span className="min-w-0 text-sm"><strong>MRR #{request.display_id || requestId.slice(-6)}</strong><span className="ml-2">{request.clientName}</span><span className="ml-2 text-gray-500">{request.retreatName}</span></span></label>; })}

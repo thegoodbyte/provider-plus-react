@@ -154,3 +154,15 @@ export const matchesReviewRequestFilters = (
 
   return true;
 };
+
+/** Keep current members visible; unfiled MRRs can be selected without stealing other packets' members. */
+export const editablePacketRequests = <T extends MedicalReviewRequest>(requests: T[], selectedIds: string[], groupedIds: Set<string>, retreatId: string) => {
+  const selected = new Set(selectedIds);
+  return requests.filter(request => {
+    const id = request._id || '';
+    if (selected.has(id)) return true;
+    if (groupedIds.has(id)) return false;
+    const requestRetreatId = typeof request.retreatId === 'string' ? request.retreatId : request.retreatId?._id;
+    return !retreatId || requestRetreatId === retreatId;
+  });
+};
