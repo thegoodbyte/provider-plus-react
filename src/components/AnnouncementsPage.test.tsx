@@ -204,3 +204,15 @@ it('sends an explicit announcement test using the selected participant, without 
   expect(await screen.findByText(/Test email sent to info@ibogaspirit.cz/)).toBeInTheDocument();
   expect(announcementsApi.setEnabled).not.toHaveBeenCalled();
 });
+
+it('shows skipped recipients in setup and links to their history', async () => {
+  (announcementsApi.get as jest.Mock).mockResolvedValue({ data: { ...data, deliveries: [{
+    _id: 'skipped', ruleId: 'rule', status: 'skipped', title: 'Welcome',
+    scheduledFor: rule.scheduledFor, lastError: 'Scheduled time passed before this recipient was added.',
+    history: [],
+  }] } });
+  mount('retreat');
+  expect(await screen.findByText(/1 skipped recipients/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: 'View skipped recipients' }));
+  expect(screen.getByText('Scheduled time passed before this recipient was added.')).toBeInTheDocument();
+});

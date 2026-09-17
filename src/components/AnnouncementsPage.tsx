@@ -492,6 +492,12 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
                             need attention
                           </p>
                         )}
+                        {retreatId && deliveries.some(row => row.status === 'skipped') && (
+                          <p className="announcement-error">
+                            {deliveries.filter(row => row.status === 'skipped').length} skipped recipients. Check History for the reason. To reschedule recipients who were never sent an email, edit this announcement to a future time and refresh the recipient schedule.{' '}
+                            <button onClick={() => setView('history')}>View skipped recipients</button>
+                          </p>
+                        )}
                         <div className="announcement-actions">{retreatId && <button disabled={busy || !testBookingId} onClick={() => sendTest(rule)}>Send test to safety inbox</button>}
                           <button
                             disabled={busy || loading}
