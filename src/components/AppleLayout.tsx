@@ -10,6 +10,7 @@ import UnifiedClientManager from './UnifiedClientManager';
 import HousesGrid from './HousesGrid';
 import BoosterOffersPage from './BoosterOffersPage';
 import RetreatsGrid from './RetreatsGrid';
+import RetreatStaffingPage from './RetreatStaffingPage';
 import RetreatEditorPage from './RetreatEditorPage';
 import RetreatPricingPage from './RetreatPricingPage';
 import ScreeningClientsGrid from './ScreeningClientsGrid';
@@ -206,6 +207,7 @@ const AppleLayout: React.FC = () => {
     if (route === 'reserve-lists') return 'reserve-lists';
     if (route === 'flow-tasks') return 'flow-tasks';
     if (route === 'ir-notifications') return 'ir-notifications';
+    if (route === 'retreat-staffing') return 'retreat-staffing';
     if (route === 'retreats') return 'retreats';
     if (route === 'ceremonies') return 'ceremonies';
     if (route === 'houses') return 'houses';
@@ -814,6 +816,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="screening" element={<ScreeningClientsGrid />} />
                       <Route path="potential-clients" element={<UnifiedClientManager />} />
                       <Route path="retreats" element={<RetreatsGrid />} />
+                      <Route path="retreat-staffing" element={<RetreatStaffingPage />} />
                       <Route path="retreats/:retreatId/edit" element={<RetreatEditorPage />} />
                       <Route path="retreats/:retreatId/pricing" element={<RetreatPricingPage />} />
                       <Route path="retreats/:retreatId/clients-print" element={<RetreatClientsPrintPage />} />
@@ -990,6 +993,7 @@ const AppleLayout: React.FC = () => {
                         <Route path="bookings/:bookingId" element={<BookingDetailRoute />} />
                         <Route path="bookings/:bookingId/edit" element={<BookingEditorPage mode="edit" />} />
                         <Route path="retreats" element={<RetreatsGrid />} />
+                        <Route path="retreat-staffing" element={<RetreatStaffingPage />} />
                         <Route path="retreats/:retreatId/edit" element={<RetreatEditorPage />} />
                         <Route path="retreats/:retreatId/pricing" element={<RetreatPricingPage />} />
                         <Route path="retreats/:retreatId/clients-print" element={<RetreatClientsPrintPage />} />
@@ -1029,6 +1033,7 @@ const AppleLayout: React.FC = () => {
                       <Route path="launcher" element={<ModuleLauncherPage />} />
                       <Route path="bookings" element={<BookingsGrid />} />
                       <Route path="retreats" element={<RetreatsGrid />} />
+                      <Route path="retreat-staffing" element={<RetreatStaffingPage />} />
                       <Route path="retreats/:retreatId/edit" element={<RetreatEditorPage />} />
                       <Route path="retreats/:retreatId/pricing" element={<RetreatPricingPage />} />
                       <Route path="retreats/:retreatId/clients-print" element={<RetreatClientsPrintPage />} />

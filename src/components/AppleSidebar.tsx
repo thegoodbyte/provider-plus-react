@@ -57,6 +57,7 @@ const FULL_MENU_SECTIONS: MenuSection[] = [
     Icon: Fi.FiCalendar,
     items: [
       { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
+      { id: 'retreat-staffing', label: 'Helpers & Cooks', Icon: Fi.FiUsers },
       { id: 'ceremonies', label: 'Ceremonies', Icon: Fi.FiClock },
       { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
       { id: 'houses', label: 'Houses', Icon: Fi.FiHome },
@@ -291,6 +292,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
             items: [
               { id: 'medical-retreats', label: 'Medical Retreats', Icon: Fi.FiCalendar },
               { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
+              { id: 'retreat-staffing', label: 'Helpers & Cooks', Icon: Fi.FiUsers },
               { id: 'ceremonies', label: 'Ceremonies', Icon: Fi.FiClock },
               { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
               { id: 'retreat-flow', label: 'Retreat Readiness Setup', Icon: Fi.FiCalendar },
@@ -332,6 +334,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
           { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: 'Home', Icon: Fi.FiGrid }] },
           { id: 'retreats', label: 'Retreat Operations', Icon: Fi.FiCalendar, items: [
             { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
+            { id: 'retreat-staffing', label: 'Helpers & Cooks', Icon: Fi.FiUsers },
             { id: 'ceremonies', label: 'Ceremonies', Icon: Fi.FiClock },
             { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
             { id: 'houses', label: 'Houses', Icon: Fi.FiHome },
