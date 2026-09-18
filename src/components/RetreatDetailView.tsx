@@ -188,6 +188,9 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   const [excludedRetreatEmailClientIds, setExcludedRetreatEmailClientIds] = useState<string[]>([]);
   const [metricsCollapsed, setMetricsCollapsed] = useState(true);
   const [helperAssignmentsCollapsed, setHelperAssignmentsCollapsed] = useState(true);
+  useEffect(() => {
+    if (new URLSearchParams(location.search).get('panel') === 'helpers') setHelperAssignmentsCollapsed(false);
+  }, [location.search]);
   const [showRetreatEditModal, setShowRetreatEditModal] = useState(false);
   const [houses, setHouses] = useState<House[]>([]);
   const [staffDirectory, setStaffDirectory] = useState<ContactBookEntry[]>([]);
