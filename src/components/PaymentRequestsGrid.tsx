@@ -44,7 +44,7 @@ const formatAmount = (amount: any, currency: string) => {
   return `${numericAmount.toLocaleString()} ${currency || ''}`.trim();
 };
 
-type PaymentRequestSortKey = 'invoice' | 'client' | 'retreat' | 'date' | 'paidDate' | 'quote' | 'usd' | 'currency' | 'status';
+type PaymentRequestSortKey = 'invoice' | 'client' | 'retreat' | 'date' | 'paidDate' | 'requested' | 'usd' | 'currency' | 'status';
 type SortDirection = 'asc' | 'desc';
 
 const PaymentRequestsGrid: React.FC = () => {
@@ -162,6 +162,8 @@ const PaymentRequestsGrid: React.FC = () => {
       const client = resolveClient(request.clientId);
       const retreat = resolveRetreat(request.retreatId);
       return (
+        String(paymentRequestFinancialSummary(request).requested).includes(term) ||
+        paymentRequestFinancialSummary(request).requested.toLocaleString().toLowerCase().includes(term) ||
         String(request.display_id || '').includes(term) ||
         client.name.toLowerCase().includes(term) ||
         client.displayId.toLowerCase().includes(term) ||
@@ -189,8 +191,8 @@ const PaymentRequestsGrid: React.FC = () => {
         return parseCalendarDate(request.paymentDate)?.getTime() || 0;
       case 'paidDate':
         return parseCalendarDate(request.paidDate)?.getTime() || 0;
-      case 'quote':
-        return paymentRequestFinancialSummary(request).quotedPrice;
+      case 'requested':
+        return paymentRequestFinancialSummary(request).requested;
       case 'usd':
         return Number(request.usd_amount || 0);
       case 'currency':
@@ -223,7 +225,7 @@ const PaymentRequestsGrid: React.FC = () => {
     }
 
     setSortKey(key);
-    setSortDirection(key === 'date' || key === 'invoice' || key === 'quote' || key === 'usd' ? 'desc' : 'asc');
+    setSortDirection(key === 'date' || key === 'invoice' || key === 'requested' || key === 'usd' ? 'desc' : 'asc');
   };
 
   const renderSortableHeader = (key: PaymentRequestSortKey, label: string) => (
@@ -289,7 +291,7 @@ const PaymentRequestsGrid: React.FC = () => {
                 <th className="px-4 py-3 text-left">{renderSortableHeader('retreat', 'Retreat')}</th>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('date', 'Request Date')}</th>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('paidDate', 'Paid Date')}</th>
-                <th className="px-4 py-3 text-left">{renderSortableHeader('quote', 'Quote')}</th>
+                <th className="px-4 py-3 text-left">{renderSortableHeader('requested', 'Requested amount')}</th>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('usd', 'USD')}</th>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('currency', 'Currency')}</th>
                 <th className="px-4 py-3 text-left">{renderSortableHeader('status', 'Status')}</th>
@@ -343,7 +345,7 @@ const PaymentRequestsGrid: React.FC = () => {
                       {request.paidDate ? formatCalendarDate(request.paidDate) : '-'}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
-                      {request.fullPriceQuote?.toLocaleString?.() ?? request.fullPriceQuote} {request.currency}
+                      {paymentRequestFinancialSummary(request).requested.toLocaleString()} {paymentRequestFinancialSummary(request).currency}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-700">
                       {(request.usd_amount ?? 0).toLocaleString()} USD
