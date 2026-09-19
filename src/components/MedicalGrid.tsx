@@ -51,7 +51,10 @@ const MedicalGrid: React.FC = () => {
     try {
       setIsLoading(true);
       const response = await clientMedicalApi.getAll();
-      const transformedData: MedicalGridData[] = response.data.map((record: any) => ({
+      const transformedData: MedicalGridData[] = response.data.map((record: any) => {
+        const hasEkgFile = Boolean(record.ekgFileName || record.ekgFilePath || record.ekgS3Key);
+        const hasLiverFile = Boolean(record.liverPanelFileName || record.liverPanelFilePath || record.liverPanelS3Key);
+        return ({
         _id: record._id,
         clientId: typeof record.clientId === 'string' ? record.clientId : record.clientId?._id || '',
         clientDisplayId: typeof record.clientId === 'object' ? record.clientId?.display_id || record.clientId?.clientNumber : undefined,
@@ -63,14 +66,14 @@ const MedicalGrid: React.FC = () => {
         retreatStartDate: record.retreatId?.startDate || record.retreatId?.dates?.startDate || '',
 
         // EKG Data
-        ekgStatus: record.ekgStatus || 'pending',
+        ekgStatus: record.ekgStatus === 'received' && !hasEkgFile ? 'missing_file' : record.ekgStatus || 'pending',
         ekgReceivedDate: record.ekgReceivedDate,
         ekgSentToAdvisorDate: record.ekgSentToAdvisorDate,
         ekgFileName: record.ekgFileName,
         ekgAdvisorNotes: record.ekgAdvisorNotes,
 
         // Liver Panel Data
-        liverPanelStatus: record.liverPanelStatus || 'pending',
+        liverPanelStatus: record.liverPanelStatus === 'received' && !hasLiverFile ? 'missing_file' : record.liverPanelStatus || 'pending',
         liverPanelReceivedDate: record.liverPanelReceivedDate,
         liverPanelSentToAdvisorDate: record.liverPanelSentToAdvisorDate,
         liverPanelFileName: record.liverPanelFileName,
@@ -82,7 +85,8 @@ const MedicalGrid: React.FC = () => {
         medicalClearanceNotes: record.medicalClearanceNotes,
         medicalAdvisorName: record.medicalAdvisorName,
         medicalAdvisorEmail: record.medicalAdvisorEmail
-      }));
+        });
+      });
 
       setMedicalData(transformedData);
       setFilteredData(transformedData);
@@ -130,7 +134,8 @@ const MedicalGrid: React.FC = () => {
       received: 'bg-blue-100 text-blue-800',
       reviewed: 'bg-purple-100 text-purple-800',
       approved: 'bg-green-100 text-green-800',
-      rejected: 'bg-red-100 text-red-800'
+      rejected: 'bg-red-100 text-red-800',
+      missing_file: 'bg-orange-100 text-orange-800'
     };
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
@@ -318,7 +323,7 @@ const MedicalGrid: React.FC = () => {
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(record.ekgStatus)}`}>
-                      {record.ekgStatus}
+                      {record.ekgStatus === 'missing_file' ? 'No file uploaded' : record.ekgStatus}
                     </span>
                     {record.ekgFileName && (
                       <div className="text-xs text-gray-500 mt-1 flex items-center">
@@ -332,7 +337,7 @@ const MedicalGrid: React.FC = () => {
                   </td>
                   <td className="px-4 py-4 whitespace-nowrap">
                     <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusColor(record.liverPanelStatus)}`}>
-                      {record.liverPanelStatus}
+                      {record.liverPanelStatus === 'missing_file' ? 'No file uploaded' : record.liverPanelStatus}
                     </span>
                     {record.liverPanelFileName && (
                       <div className="text-xs text-gray-500 mt-1 flex items-center">

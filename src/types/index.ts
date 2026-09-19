@@ -1155,7 +1155,7 @@ export interface MedicalArtifact {
   }>;
 
   // Legacy status field
-  status?: 'stored' | 'pending_review' | 'approved' | 'rejected' | 'needs_resubmission' | 'superseded' | 'voided';
+  status?: 'stored' | 'missing_file' | 'pending_review' | 'approved' | 'rejected' | 'needs_resubmission' | 'superseded' | 'voided';
 
   reviewFeeAmount?: number;
   reviewFeeCurrency?: 'EUR' | 'USD' | 'CZK' | 'PLN';
@@ -1182,7 +1182,7 @@ export type MedicalArtifactCreateInput = Partial<Omit<MedicalArtifact, '_id' | '
 
 export interface RetreatArtifactSubmissionRow {
   id: string;
-  status: 'missing' | 'received';
+  status: 'missing' | 'missing_file' | 'received';
   required: boolean;
   artifactType: NonNullable<MedicalArtifact['artifactType']>;
   documentStage: NonNullable<MedicalArtifact['documentStage']>;
@@ -1226,6 +1226,7 @@ export interface RetreatArtifactSubmissionsResponse {
     bookings: number;
     rows: number;
     missing: number;
+    missingFiles?: number;
     received: number;
   };
   rows: RetreatArtifactSubmissionRow[];

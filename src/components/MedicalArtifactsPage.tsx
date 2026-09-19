@@ -246,6 +246,14 @@ const SubmissionStatusBadge: React.FC<{ row: RetreatArtifactSubmissionRow }> = (
       </span>
     );
   }
+  if (row.status === 'missing_file') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2 py-1 text-xs font-semibold text-orange-800">
+        <AlertTriangle className="h-3.5 w-3.5" />
+        No file uploaded
+      </span>
+    );
+  }
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-1 text-xs font-semibold text-red-800">
       <XCircle className="h-3.5 w-3.5" />
@@ -812,7 +820,12 @@ const MedicalArtifactsPage: React.FC = () => {
                   </div>
                 </td>
                 <td className="px-4 py-3">{artifact.receivedAt ? new Date(artifact.receivedAt).toLocaleDateString() : '-'}</td>
-                <td className="px-4 py-3">{artifact.files?.length || 0}</td>
+                <td className="px-4 py-3">
+                  {(() => {
+                    const originalFileCount = artifact.files?.filter((file) => file.variant !== 'english_translation').length || 0;
+                    return originalFileCount ? originalFileCount : <span className="inline-flex items-center gap-1 rounded-full bg-orange-100 px-2 py-1 text-xs font-semibold text-orange-800"><AlertTriangle className="h-3.5 w-3.5" />No file uploaded</span>;
+                  })()}
+                </td>
               </tr>
               );
             })}
@@ -897,7 +910,7 @@ const MedicalArtifactsPage: React.FC = () => {
               <div className="flex items-center text-sm text-gray-500 xl:col-span-3">
                 {submissionData?.retreat ? (
                   <span>
-                    {submissionData.retreat.code || submissionData.retreat.name}: {submissionData.totals.bookings} bookings, {submissionData.totals.missing} missing, {submissionData.totals.received} received
+                    {submissionData.retreat.code || submissionData.retreat.name}: {submissionData.totals.bookings} bookings, {submissionData.totals.missing} missing ({submissionData.totals.missingFiles || 0} no file), {submissionData.totals.received} received
                   </span>
                 ) : (
                   <span>Enter a retreat code to see missing and received submissions.</span>
@@ -933,7 +946,7 @@ const MedicalArtifactsPage: React.FC = () => {
                   } as MedicalArtifact);
                   const clientNameClass = getClientNameBackgroundClass(row.clientId);
                   return (
-                    <tr key={row.id} className={row.status === 'missing' ? 'bg-red-50/40 hover:bg-red-50' : 'bg-green-50/40 hover:bg-green-50'}>
+                    <tr key={row.id} className={row.status === 'missing' ? 'bg-red-50/40 hover:bg-red-50' : row.status === 'missing_file' ? 'bg-orange-50/50 hover:bg-orange-50' : 'bg-green-50/40 hover:bg-green-50'}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <ClientAvatar
