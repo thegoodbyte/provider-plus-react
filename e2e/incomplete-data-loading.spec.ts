@@ -79,11 +79,11 @@ test('attention queue preserves available work and filters while retrying a fail
   await mockApi(page, failures);
   await page.goto('/admin/needs-attention');
   await expect(page.getByRole('alert')).toContainText('Payments');
-  await expect(page.getByText('Upload agreement', { exact: true })).toBeVisible();
+  await expect(page.locator('.needs-attention-desktop-table').getByText('Upload agreement', { exact: true })).toBeVisible();
   await page.getByRole('textbox', { name: 'Search', exact: true }).fill('agreement');
   failures.clear();
   await page.getByRole('button', { name: 'Retry unavailable data' }).click();
-  await expect(page.getByText('Upload agreement', { exact: true })).toBeVisible();
+  await expect(page.locator('.needs-attention-desktop-table').getByText('Upload agreement', { exact: true })).toBeVisible();
   await expect(page.getByRole('alert')).toHaveCount(0);
   await expect(page.getByRole('textbox', { name: 'Search', exact: true })).toHaveValue('agreement');
 });
@@ -96,8 +96,24 @@ test('attention queue total failure is not an empty queue and can be retried', a
   await expect(page.getByText('No open items match the current filters.')).toHaveCount(0);
   failures.clear();
   await page.getByRole('button', { name: 'Retry unavailable data' }).click();
-  await expect(page.getByText('Upload agreement', { exact: true })).toBeVisible();
+  await expect(page.locator('.needs-attention-desktop-table').getByText('Upload agreement', { exact: true })).toBeVisible();
   await expect(page.getByRole('alert')).toHaveCount(0);
+});
+
+test('attention queue uses meaningful actions and stays usable on mobile', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page, new Set());
+  await page.goto('/admin/needs-attention');
+
+  await expect(page.locator('.needs-attention-mobile-list').getByRole('button', { name: 'Review booking step for Anna Loading' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Open' })).toHaveCount(0);
+  await expect(page.getByText('Due soon', { exact: true }).first()).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+
+  await page.getByRole('textbox', { name: 'Search', exact: true }).fill('agreement');
+  await page.reload();
+  await expect(page.getByRole('textbox', { name: 'Search', exact: true })).toHaveValue('agreement');
+  await expect(page.locator('.needs-attention-mobile-list').getByRole('button', { name: 'Review booking step for Anna Loading' })).toBeVisible();
 });
 
 test('workflow initial failure offers a working retry instead of empty bookings', async ({ page }) => {

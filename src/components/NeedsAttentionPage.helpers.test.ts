@@ -1,4 +1,4 @@
-import { classifyAttention, isCompleteStatus, isPastRetreat, sortAttentionItems } from './NeedsAttentionPage.helpers';
+import { attentionActionLabel, attentionStatusLabel, classifyAttention, isCompleteStatus, isPastRetreat, sortAttentionItems } from './NeedsAttentionPage.helpers';
 
 describe('Needs Attention helpers', () => {
   it('excludes terminal statuses', () => {
@@ -29,5 +29,12 @@ describe('Needs Attention helpers', () => {
     expect(isPastRetreat('2026-07-17', now)).toBe(true);
     expect(isPastRetreat('2026-07-18', now)).toBe(false);
     expect(isPastRetreat(undefined, now)).toBe(false);
+  });
+
+  it('uses meaningful actions and text status labels for every queue category', () => {
+    expect(attentionActionLabel({ category: 'Payment', title: 'Payment request #12' })).toBe('Review payment request');
+    expect(attentionActionLabel({ category: 'Contract', title: 'Contract' })).toBe('Review contract');
+    expect(attentionActionLabel({ category: 'Follow-up', title: 'Call client' })).toBe('Open follow-up');
+    expect(attentionStatusLabel('due_soon')).toBe('Due soon');
   });
 });

@@ -11,6 +11,7 @@ export interface AttentionItem {
   dueDate?: string;
   severity: AttentionSeverity;
   href: string;
+  actionLabel?: string;
 }
 
 const severityRank: Record<AttentionSeverity, number> = { overdue: 0, blocked: 1, problem: 2, due_soon: 3 };
@@ -54,3 +55,19 @@ export const clientLabel = (value: any): string => {
   if (!value || typeof value === 'string') return '—';
   return [value.firstName, value.lastName].filter(Boolean).join(' ') || (value.display_id ? `Client #${value.display_id}` : '—');
 };
+
+export const attentionActionLabel = (item: Pick<AttentionItem, 'category' | 'title'>): string => {
+  switch (item.category) {
+    case 'Booking step': return /contract/i.test(item.title) ? 'Review contract' : 'Review booking step';
+    case 'Contract': return 'Review contract';
+    case 'Document': return 'Review document';
+    case 'Payment': return 'Review payment request';
+    case 'Medical review': return 'Review medical request';
+    case 'Follow-up': return 'Open follow-up';
+    default: return 'Review item';
+  }
+};
+
+export const attentionStatusLabel = (severity: AttentionSeverity): string => ({
+  overdue: 'Overdue', blocked: 'Blocked', problem: 'Needs attention', due_soon: 'Due soon',
+}[severity]);
