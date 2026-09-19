@@ -1,3 +1,4 @@
+import { NAVIGATION, SETTINGS_LABEL } from '../navigation/navigation';
 import React, { useState, useEffect } from 'react';
 import AppleButton from './AppleButton';
 
@@ -45,7 +46,8 @@ const AVAILABLE_PERMISSIONS: Permission[] = [
   { route: 'tasks', name: 'General Tasks', description: 'General task queue', category: 'Operations' },
   { route: 'retreat-flow', name: 'Retreat Readiness Setup', description: 'Retreat-specific readiness step setup', category: 'Operations' },
   { route: 'retreat-flow-library', name: 'Booking Step Setup', description: 'Master booking step configuration', category: 'Operations' },
-  { route: 'booking-flow', name: 'Booking Step Deadlines', description: 'Per-booking requirement deadlines and status', category: 'Operations' },
+  { route: 'workflow', name: 'Readiness Dashboard', description: 'Review readiness across a retreat', category: 'Operations' },
+  { route: 'booking-flow', name: 'Booking Requirements', description: 'Per-booking requirement deadlines and status', category: 'Operations' },
   { route: 'needs-attention', name: 'Needs Attention', description: 'Open operational work across all retreats', category: 'Operations' },
   { route: 'booking-documents', name: 'Document Library', description: 'List uploaded booking documents and files', category: 'Operations' },
   { route: 'booking-document-types', name: 'Booking Document Types', description: 'Configure booking document categories and step hooks', category: 'Operations' },
@@ -95,6 +97,7 @@ const DEFAULT_PERMISSIONS: RolePermissions = {
   'tasks': ['admin'],
   'retreat-flow': ['medical_staff', 'admin'],
   'retreat-flow-library': ['medical_staff', 'admin'],
+  'workflow': ['medical_staff', 'admin'],
   'booking-flow': ['medical_staff', 'admin'],
   'booking-documents': ['medical_staff', 'admin'],
   'booking-document-types': ['medical_staff', 'admin'],
@@ -124,7 +127,7 @@ const PermissionsMatrix: React.FC = () => {
 
   useEffect(() => {
     // Group permissions by category
-    const grouped = AVAILABLE_PERMISSIONS.reduce((acc, permission) => {
+    const grouped = AVAILABLE_PERMISSIONS.map(permission => ({ ...permission, name: NAVIGATION[permission.route]?.label || permission.name, description: NAVIGATION[permission.route]?.description || permission.description, category: NAVIGATION[permission.route]?.setup ? SETTINGS_LABEL : permission.category })).reduce((acc, permission) => {
       if (!acc[permission.category]) {
         acc[permission.category] = [];
       }

@@ -1,3 +1,4 @@
+import { NAVIGATION } from '../navigation/navigation';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus, RefreshCw, Save, Trash2 } from 'lucide-react';
 import { bookingDocumentsApi } from '../services/api';
@@ -142,7 +143,7 @@ const BookingDocumentTypesPage: React.FC = () => {
     <div className="booking-document-types-page">
       <div className="booking-document-types-header">
         <div>
-          <h1>Booking Document Types</h1>
+          <h1>{NAVIGATION['booking-document-types'].label}</h1>
           <p>Configure the document categories shown in Booking → Documents and the booking-step keys they update.</p>
         </div>
         <div className="booking-document-types-actions">

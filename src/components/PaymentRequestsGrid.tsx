@@ -1,3 +1,4 @@
+import { NAVIGATION } from '../navigation/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { paymentRequestsApi } from '../services/api';
@@ -250,8 +251,8 @@ const PaymentRequestsGrid: React.FC = () => {
     <div className="p-6">
       <div className="mb-6 flex items-start gap-4">
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-semibold text-gray-900">Payment Requests</h1>
-          <p className="text-sm text-gray-600">Invoices and payment requests for clients and retreats</p>
+          <h1 className="text-2xl font-semibold text-gray-900">{NAVIGATION['payment-requests'].label}</h1>
+          <p className="text-sm text-gray-600">{NAVIGATION['payment-requests'].description}</p>
         </div>
         <button
           onClick={() => navigate('/admin/payment-requests/types')}
@@ -266,7 +267,7 @@ const PaymentRequestsGrid: React.FC = () => {
           className="inline-flex w-auto shrink-0 items-center gap-2 whitespace-nowrap px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700"
         >
           <Icon icon={FiPlus} className="w-4 h-4" />
-          Add New Invoice
+          Add Payment Request
         </button>
       </div>
 

@@ -1,3 +1,4 @@
+import { NAVIGATION, SETTINGS_LABEL, canShowNavigation, useNavigationPreferences } from '../navigation/navigation';
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { Tooltip } from '@mui/material';
 import * as Fi from 'react-icons/fi';
@@ -36,12 +37,8 @@ type MenuSection = {
   items: MenuItem[];
 };
 
-type RolePermissions = Record<string, string[]>;
-
-const NAVIGATION_PERMISSIONS_STORAGE_KEY = 'navigationPermissions:v1';
-
 const FULL_MENU_SECTIONS: MenuSection[] = [
-  { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: 'Home', Icon: Fi.FiGrid }] },
+  { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: NAVIGATION['launcher'].label, Icon: Fi.FiGrid }] },
   {
     id: 'clients',
     label: 'Clients',
@@ -57,37 +54,39 @@ const FULL_MENU_SECTIONS: MenuSection[] = [
     Icon: Fi.FiCalendar,
     items: [
       { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
-      { id: 'retreat-staffing', label: 'Helpers & Cooks', Icon: Fi.FiUsers },
+      { id: 'retreat-staffing', label: NAVIGATION['retreat-staffing'].label, Icon: Fi.FiUsers },
       { id: 'ceremonies', label: 'Ceremonies', Icon: Fi.FiClock },
       { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
-      { id: 'houses', label: 'Houses', Icon: Fi.FiHome },
+      { id: 'houses', label: NAVIGATION['houses'].label, Icon: Fi.FiHome },
       { id: 'booster-offers', label: 'Booster Offers', Icon: Fi.FiZap },
-      { id: 'retreat-flow', label: 'Retreat Readiness Setup', Icon: Fi.FiCalendar },
-      { id: 'retreat-flow-library', label: 'Booking Step Setup', Icon: Fi.FiLayers },
-      { id: 'booking-flow', label: 'Booking Flow', Icon: Fi.FiCheckSquare },
+      { id: 'retreat-flow', label: NAVIGATION['retreat-flow'].label, Icon: Fi.FiCalendar },
+      { id: 'retreat-flow-library', label: NAVIGATION['retreat-flow-library'].label, Icon: Fi.FiLayers },
+      { id: 'booking-flow', label: NAVIGATION['booking-flow'].label, Icon: Fi.FiCheckSquare },
       { id: 'booking-step-deadlines', label: 'Step Deadlines', Icon: Fi.FiCalendar },
       { id: 'scheduled-reminders', label: 'Scheduled Reminders', Icon: Fi.FiBell },
-      { id: 'announcements', label: 'Announcement Schedule', Icon: Fi.FiMail },
+      { id: 'announcements', label: NAVIGATION['announcements'].label, Icon: Fi.FiMail },
       { id: 'reserve-lists', label: 'Reserve Lists', Icon: Fi.FiBookmark },
       { id: 'booking-documents', label: 'Document Library', Icon: Fi.FiFileText },
-      { id: 'booking-document-types', label: 'Booking Document Types', Icon: Fi.FiSettings },
+      { id: 'booking-document-types', label: NAVIGATION['booking-document-types'].label, Icon: Fi.FiSettings },
     ],
   },
   {
     id: 'workflow',
-    label: 'Readiness',
+    label: 'Booking Readiness',
     Icon: Fi.FiLayers,
-    items: [],
+    items: [
+      { id: 'workflow', label: NAVIGATION['workflow'].label, Icon: Fi.FiLayers },
+    ],
   },
   {
     id: 'medical',
     label: 'Medical',
     Icon: Fi.FiActivity,
     items: [
-      { id: 'medical-dashboard', label: 'Medical Dashboard', Icon: Fi.FiMonitor },
-      { id: 'medical-artifacts', label: 'Medical Artifacts', Icon: Fi.FiFileText },
-      { id: 'medical-tracking', label: 'Medical Readiness', Icon: Fi.FiHeart },
-      { id: 'medical-review-requests', label: 'Review Requests', Icon: Fi.FiInbox },
+      { id: 'medical-dashboard', label: NAVIGATION['medical-dashboard'].label, Icon: Fi.FiMonitor },
+      { id: 'medical-artifacts', label: NAVIGATION['medical-artifacts'].label, Icon: Fi.FiFileText },
+      { id: 'medical-tracking', label: NAVIGATION['medical-tracking'].label, Icon: Fi.FiHeart },
+      { id: 'medical-review-requests', label: NAVIGATION['medical-review-requests'].label, Icon: Fi.FiInbox },
     ],
   },
   {
@@ -95,7 +94,7 @@ const FULL_MENU_SECTIONS: MenuSection[] = [
     label: 'Client Forms',
     Icon: Fi.FiFileText,
     items: [
-      { id: 'client-forms', label: 'Forms overview', Icon: Fi.FiFileText },
+      { id: 'client-forms', label: NAVIGATION['client-forms'].label, Icon: Fi.FiFileText },
     ],
   },
   {
@@ -103,9 +102,9 @@ const FULL_MENU_SECTIONS: MenuSection[] = [
     label: 'Payments',
     Icon: Fi.FiCreditCard,
     items: [
-      { id: 'payments', label: 'Payments', Icon: Fi.FiCreditCard },
+      { id: 'payments', label: NAVIGATION['payments'].label, Icon: Fi.FiCreditCard },
       { id: 'payment-receipts', label: 'Receipts', Icon: Fi.FiFileText },
-      { id: 'payment-requests', label: 'Payment Requests', Icon: Fi.FiFileText },
+      { id: 'payment-requests', label: NAVIGATION['payment-requests'].label, Icon: Fi.FiFileText },
       { id: 'revolut-payment-links', label: 'Revolut Links', Icon: Fi.FiLink },
       { id: 'expenses', label: 'Expenses', Icon: Fi.FiDollarSign },
     ],
@@ -118,54 +117,34 @@ const FULL_MENU_SECTIONS: MenuSection[] = [
       { id: 'needs-attention', label: 'Needs Attention', Icon: Fi.FiAlertTriangle },
       { id: 'ir-notifications', label: 'Notifications', Icon: Fi.FiBell },
       { id: 'assistant', label: 'Assistant', Icon: Fi.FiCpu },
-      { id: 'tasks', label: 'General Tasks', Icon: Fi.FiCheckSquare },
+      { id: 'tasks', label: NAVIGATION['tasks'].label, Icon: Fi.FiCheckSquare },
       { id: 'reminders', label: 'Reminders', Icon: Fi.FiBell },
       { id: 'contact-book', label: 'Contact Book', Icon: Fi.FiBook },
       { id: 'referrals', label: 'Referrals', Icon: Fi.FiShare2 },
-      { id: 'communications', label: 'Communications', Icon: Fi.FiMail },
+      { id: 'communications', label: NAVIGATION['communications'].label, Icon: Fi.FiMail },
     ],
   },
   {
     id: 'misc',
-    label: 'Misc',
+    label: 'Files & Reports',
     Icon: Fi.FiMoreHorizontal,
     items: [
       { id: 'file-uploads', label: 'File Uploads', Icon: Fi.FiFolder },
-      { id: 'analytics', label: 'Analytics', Icon: Fi.FiBarChart },
+      { id: 'analytics', label: NAVIGATION['analytics'].label, Icon: Fi.FiBarChart },
     ],
   },
   {
     id: 'admin',
-    label: 'Admin',
+    label: 'Activity',
     Icon: Fi.FiShield,
     items: [
-      { id: 'permissions', label: 'Permissions', Icon: Fi.FiShield },
-      { id: 'users', label: 'Users', Icon: Fi.FiUser },
-      { id: 'audit-logs', label: 'Audit Logs', Icon: Fi.FiActivity },
-      { id: 'backups', label: 'Data Backup', Icon: Fi.FiDatabase },
+      { id: 'permissions', label: NAVIGATION['permissions'].label, Icon: Fi.FiShield },
+      { id: 'users', label: NAVIGATION['users'].label, Icon: Fi.FiUser },
+      { id: 'audit-logs', label: NAVIGATION['audit-logs'].label, Icon: Fi.FiActivity },
+      { id: 'backups', label: NAVIGATION['backups'].label, Icon: Fi.FiDatabase },
     ],
   },
 ];
-
-const getStoredNavigationPermissions = (): RolePermissions | null => {
-  const raw = localStorage.getItem(NAVIGATION_PERMISSIONS_STORAGE_KEY);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
-};
-
-const filterMenuSections = (sections: MenuSection[], allowedItems: string[]) => {
-  const allowed = new Set(allowedItems);
-  return sections
-    .map((section) => ({
-      ...section,
-      items: section.items.filter((item) => allowed.has(item.id)),
-    }))
-    .filter((section) => section.items.length > 0);
-};
 
 const getNavigationRole = (userRole?: string) => {
   return userRole;
@@ -217,7 +196,13 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
     const saved = localStorage.getItem('sidebarCollapsed');
     return saved === 'true';
   });
-  const [permissionVersion, setPermissionVersion] = useState(0);
+  const preferences = useNavigationPreferences();
+  const [mobile, setMobile] = useState(() => window.innerWidth < 768);
+  useEffect(() => {
+    const resize = () => setMobile(window.innerWidth < 768);
+    window.addEventListener('resize', resize);
+    return () => window.removeEventListener('resize', resize);
+  }, []);
   const [notificationCount, setNotificationCount] = useState(0);
   const [menuSearch, setMenuSearch] = useState('');
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
@@ -239,41 +224,24 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
     localStorage.setItem('sidebarOpenSections', JSON.stringify(openSections));
   }, [openSections]);
 
-  useEffect(() => {
-    const refreshNavigationPermissions = () => setPermissionVersion((version) => version + 1);
-    window.addEventListener('storage', refreshNavigationPermissions);
-    window.addEventListener('navigationPermissionsChange', refreshNavigationPermissions);
-    return () => {
-      window.removeEventListener('storage', refreshNavigationPermissions);
-      window.removeEventListener('navigationPermissionsChange', refreshNavigationPermissions);
-    };
-  }, []);
-
   const navigationRole = getNavigationRole(userRole);
 
   const getMenuSectionsForRole = useCallback((): MenuSection[] => {
-    void permissionVersion;
-    const configuredPermissions = getStoredNavigationPermissions();
-    const configuredItems = navigationRole ? configuredPermissions?.[navigationRole] : undefined;
-    if (configuredItems) {
-      return filterMenuSections(FULL_MENU_SECTIONS, configuredItems);
-    }
-
     switch (navigationRole) {
       case 'admin':
         return FULL_MENU_SECTIONS.filter((section) => section.items.length > 0);
       case 'medical_staff':
         return [
-          { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: 'Home', Icon: Fi.FiGrid }] },
+          { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: NAVIGATION['launcher'].label, Icon: Fi.FiGrid }] },
           {
             id: 'medical',
             label: 'Medical',
             Icon: Fi.FiActivity,
             items: [
-              { id: 'medical-dashboard', label: 'Dashboard', Icon: Fi.FiHome },
-              { id: 'medical-artifacts', label: 'Medical Artifacts', Icon: Fi.FiFileText },
-              { id: 'medical-tracking', label: 'Medical Readiness', Icon: Fi.FiHeart },
-              { id: 'review-requests', label: 'Review Requests', Icon: Fi.FiInbox },
+              { id: 'medical-dashboard', label: NAVIGATION['medical-dashboard'].label, Icon: Fi.FiHome },
+              { id: 'medical-artifacts', label: NAVIGATION['medical-artifacts'].label, Icon: Fi.FiFileText },
+              { id: 'medical-tracking', label: NAVIGATION['medical-tracking'].label, Icon: Fi.FiHeart },
+              { id: 'review-requests', label: NAVIGATION['review-requests'].label, Icon: Fi.FiInbox },
               { id: 'medical', label: 'Medical Profiles', Icon: Fi.FiActivity },
             ],
           },
@@ -282,7 +250,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
             label: 'Client Forms',
             Icon: Fi.FiFileText,
             items: [
-              { id: 'client-forms', label: 'Forms overview', Icon: Fi.FiFileText },
+              { id: 'client-forms', label: NAVIGATION['client-forms'].label, Icon: Fi.FiFileText },
             ],
           },
           {
@@ -290,18 +258,19 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
             label: 'Retreat Operations',
             Icon: Fi.FiCalendar,
             items: [
-              { id: 'medical-retreats', label: 'Medical Retreats', Icon: Fi.FiCalendar },
+              { id: 'workflow', label: NAVIGATION['workflow'].label, Icon: Fi.FiLayers },
+              { id: 'medical-retreats', label: NAVIGATION['medical-retreats'].label, Icon: Fi.FiCalendar },
               { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
-              { id: 'retreat-staffing', label: 'Helpers & Cooks', Icon: Fi.FiUsers },
+              { id: 'retreat-staffing', label: NAVIGATION['retreat-staffing'].label, Icon: Fi.FiUsers },
               { id: 'ceremonies', label: 'Ceremonies', Icon: Fi.FiClock },
               { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
-              { id: 'retreat-flow', label: 'Retreat Readiness Setup', Icon: Fi.FiCalendar },
-              { id: 'retreat-flow-library', label: 'Booking Step Setup', Icon: Fi.FiLayers },
-              { id: 'booking-flow', label: 'Booking Flow', Icon: Fi.FiCheckSquare },
+              { id: 'retreat-flow', label: NAVIGATION['retreat-flow'].label, Icon: Fi.FiCalendar },
+              { id: 'retreat-flow-library', label: NAVIGATION['retreat-flow-library'].label, Icon: Fi.FiLayers },
+              { id: 'booking-flow', label: NAVIGATION['booking-flow'].label, Icon: Fi.FiCheckSquare },
               { id: 'booking-step-deadlines', label: 'Step Deadlines', Icon: Fi.FiCalendar },
               { id: 'scheduled-reminders', label: 'Scheduled Reminders', Icon: Fi.FiBell },
               { id: 'booking-documents', label: 'Document Library', Icon: Fi.FiFileText },
-              { id: 'booking-document-types', label: 'Booking Document Types', Icon: Fi.FiSettings },
+              { id: 'booking-document-types', label: NAVIGATION['booking-document-types'].label, Icon: Fi.FiSettings },
             ],
           },
           {
@@ -315,29 +284,29 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
           },
           { id: 'operations', label: 'Operations', Icon: Fi.FiBriefcase, items: [
             { id: 'assistant', label: 'Assistant', Icon: Fi.FiCpu },
-            { id: 'communications', label: 'Communications', Icon: Fi.FiMail },
+            { id: 'communications', label: NAVIGATION['communications'].label, Icon: Fi.FiMail },
             { id: 'reminders', label: 'Reminders', Icon: Fi.FiBell },
           ] },
-          { id: 'misc', label: 'Misc', Icon: Fi.FiMoreHorizontal, items: [
+          { id: 'misc', label: 'Files & Reports', Icon: Fi.FiMoreHorizontal, items: [
             { id: 'file-uploads', label: 'File Uploads', Icon: Fi.FiFolder },
           ] },
         ];
       case 'medical_advisor':
         return [
           { id: 'medical', label: 'Medical', Icon: Fi.FiActivity, items: [
-            { id: 'medical-dashboard', label: 'Medical Dashboard', Icon: Fi.FiMonitor },
-            { id: 'review-requests', label: 'Review Requests', Icon: Fi.FiInbox },
+            { id: 'medical-dashboard', label: NAVIGATION['medical-dashboard'].label, Icon: Fi.FiMonitor },
+            { id: 'review-requests', label: NAVIGATION['review-requests'].label, Icon: Fi.FiInbox },
           ] },
         ];
       case 'facilitator':
         return [
-          { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: 'Home', Icon: Fi.FiGrid }] },
+          { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: NAVIGATION['launcher'].label, Icon: Fi.FiGrid }] },
           { id: 'retreats', label: 'Retreat Operations', Icon: Fi.FiCalendar, items: [
             { id: 'retreats', label: 'Retreats', Icon: Fi.FiCalendar },
-            { id: 'retreat-staffing', label: 'Helpers & Cooks', Icon: Fi.FiUsers },
+            { id: 'retreat-staffing', label: NAVIGATION['retreat-staffing'].label, Icon: Fi.FiUsers },
             { id: 'ceremonies', label: 'Ceremonies', Icon: Fi.FiClock },
             { id: 'bookings', label: 'Bookings', Icon: Fi.FiBookOpen },
-            { id: 'houses', label: 'Houses', Icon: Fi.FiHome },
+            { id: 'houses', label: NAVIGATION['houses'].label, Icon: Fi.FiHome },
             { id: 'booster-offers', label: 'Booster Offers', Icon: Fi.FiZap },
           ] },
           { id: 'clients', label: 'Clients', Icon: Fi.FiUsers, items: [
@@ -346,7 +315,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
           ] },
           { id: 'operations', label: 'Operations', Icon: Fi.FiBriefcase, items: [
             { id: 'reminders', label: 'Reminders', Icon: Fi.FiBell },
-            { id: 'communications', label: 'Communications', Icon: Fi.FiMail },
+            { id: 'communications', label: NAVIGATION['communications'].label, Icon: Fi.FiMail },
           ] },
         ];
       case 'helper':
@@ -362,17 +331,17 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
         ];
       case 'user':
         return [
-          { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: 'Home', Icon: Fi.FiGrid }] },
+          { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: NAVIGATION['launcher'].label, Icon: Fi.FiGrid }] },
           { id: 'clients', label: 'Clients', Icon: Fi.FiUsers, items: [{ id: 'clients', label: 'Clients', Icon: Fi.FiUsers }] },
-          { id: 'communications', label: 'Communications', Icon: Fi.FiBell, items: [{ id: 'reminders', label: 'Reminders', Icon: Fi.FiBell }] },
+          { id: 'communications', label: NAVIGATION['communications'].label, Icon: Fi.FiBell, items: [{ id: 'reminders', label: 'Reminders', Icon: Fi.FiBell }] },
         ];
       default:
         return [
-          { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: 'Home', Icon: Fi.FiGrid }] },
+          { id: 'home', label: 'Home', Icon: Fi.FiGrid, items: [{ id: 'launcher', label: NAVIGATION['launcher'].label, Icon: Fi.FiGrid }] },
           { id: 'clients', label: 'Clients', Icon: Fi.FiUsers, items: [{ id: 'clients', label: 'Clients', Icon: Fi.FiUsers }] },
         ];
     }
-  }, [navigationRole, permissionVersion]);
+  }, [navigationRole]);
 
   const menuSections = useMemo(() => {
     const roleSections = getMenuSectionsForRole();
@@ -392,8 +361,20 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
         items: [{ id: 'selected-retreat', label: 'Retreat dashboard', Icon: Fi.FiGrid }],
       }];
     }
-    return roleSections;
-  }, [appMode, getMenuSectionsForRole, selectedRetreatLabel]);
+    const setup: MenuItem[] = [];
+    const readiness: MenuItem[] = [];
+    const daily = roleSections.map(section => ({ ...section, items: section.items
+      .filter(item => canShowNavigation(item.id, navigationRole, preferences))
+      .map(item => ({ ...item, label: NAVIGATION[item.id]?.label || item.label }))
+      .filter(item => {
+        if (['workflow', 'booking-flow'].includes(item.id)) { readiness.push(item); return false; }
+        if (NAVIGATION[item.id]?.setup) { setup.push(item); return false; }
+        return true;
+      })
+    })).filter(section => section.items.length);
+    if (readiness.length) daily.splice(Math.min(3, daily.length), 0, { id: 'workflow', label: 'Booking Readiness', Icon: Fi.FiLayers, items: readiness.sort((a, b) => Number(b.id === 'workflow') - Number(a.id === 'workflow')) });
+    return [...daily, ...(setup.length ? [{ id: 'setup', label: SETTINGS_LABEL, Icon: Fi.FiSettings, items: setup }] : [])];
+  }, [appMode, getMenuSectionsForRole, selectedRetreatLabel, navigationRole, preferences]);
 
   const normalizedMenuSearch = menuSearch.trim().toLocaleLowerCase();
   const visibleMenuSections = useMemo(() => {
@@ -403,7 +384,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
       .map((section) => ({
         ...section,
         items: section.items.filter((item) =>
-          `${item.label} ${item.id.replace(/-/g, ' ')}`
+          `${item.label} ${item.id.replace(/-/g, ' ')} ${NAVIGATION[item.id]?.aliases || ''}`
             .toLocaleLowerCase()
             .includes(normalizedMenuSearch)
         ),
@@ -411,7 +392,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
       .filter((section) => section.items.length > 0);
   }, [menuSections, normalizedMenuSearch]);
 
-  const isExpanded = !isCollapsed;
+  const isExpanded = !isCollapsed || (isOpen && mobile);
   const displayName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim();
   const displayEmail = user?.email || '';
   const displayRole =
@@ -479,7 +460,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
           ${isExpanded ? 'w-64' : 'w-20'}
         `}
       >
-        <nav className="h-full flex flex-col">
+        <nav aria-label="Main navigation" className="h-full flex flex-col">
           {/* Header */}
           <div className={`px-4 py-5 border-b border-apple-gray-100 ${!isExpanded && 'px-2 py-4'}`}>
             <div className="flex items-center justify-between">
@@ -569,6 +550,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                 const sectionTextColor = getTextColor(sectionIsActive);
                 const sectionButton = (
                   <button
+                    aria-expanded={isExpanded && sectionIsOpen}
                     onClick={() => isExpanded ? toggleSection(section.id) : onItemClick(section.items[0]?.id || section.id)}
                     style={{
                       backgroundColor: 'transparent',
@@ -624,6 +606,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                           return (
                             <li key={item.id}>
                               <button
+                                title={NAVIGATION[item.id]?.description}
                                 onClick={() => {
                                   setMenuSearch('');
                                   onItemClick(item.id);
@@ -645,7 +628,7 @@ const AppleSidebar: React.FC<AppleSidebarProps> = ({
                                   className: "w-4 h-4 flex-shrink-0",
                                   style: accent ? { color: accent.color } : undefined,
                                 })}
-                                <span className={`text-sm whitespace-nowrap ${isActive ? 'font-semibold' : 'font-medium'}`}>
+                                <span className={`text-sm whitespace-normal text-left ${isActive ? 'font-semibold' : 'font-medium'}`}>
                                   {item.label}
                                 </span>
                                 {item.id === 'ir-notifications' && notificationCount > 0 && (

@@ -1,3 +1,4 @@
+import { NAVIGATION } from '../navigation/navigation';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { BadgeCheck, BellRing, CalendarCheck2, CalendarClock, ClipboardList, CreditCard, FileSearch, Flag, GripVertical, HeartPulse, KeyRound, LayoutTemplate, ListChecks, Mail, Save, Scale, ShieldCheck, Trash2, Utensils, X } from 'lucide-react';
@@ -979,7 +980,7 @@ const RetreatFlowLibraryPage: React.FC = () => {
       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-gray-900 px-7 py-5">
         <div>
           <div className="text-[10px] uppercase tracking-[0.16em] text-gray-500">Master configuration</div>
-          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-gray-900">Booking step setup</h1>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-gray-900">{NAVIGATION['retreat-flow-library'].label}</h1>
           <p className="mt-1 max-w-xl text-xs text-gray-700">One library of {templates.length} steps. Every booking created copies these definitions, then keeps its own dates, statuses and notes.</p>
         </div>
         <div className="flex max-w-2xl flex-col items-end gap-2">

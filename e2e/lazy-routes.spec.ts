@@ -1,38 +1,21 @@
 import { test, expect, Page } from '@playwright/test';
+import { mockNavigationApi } from './helpers/mock-navigation-api';
 
 // Chunk filenames and CSS extraction differ in the development server.
 test.skip(process.env.PLAYWRIGHT_PRODUCTION_BUILD !== '1', 'Run against a production build; see docs/performance/PPVC-636.md.');
 
 // Exercise actual production chunks with deterministic APIs; no real email or data writes.
-async function mockApi(page: Page) {
-  const origin = new URL(process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:3000').origin;
-  await page.route('**/*', route => {
-    const url = new URL(route.request().url());
-    if (url.origin === origin && !url.pathname.startsWith('/api/')) return route.continue();
-    const path = url.pathname.replace(/^\/api/, '');
-    if (path === '/assistant/tasks-for-today') return route.fulfill({ json: { tasks: [], retreats: [] } });
-    if (path === '/launcher-config') return route.fulfill({ json: { assignments: [] } });
-    if (path === '/communications/email-safety') return route.fulfill({ json: { enabled: true, recipient: 'test@example.test' } });
-    if (path === '/communications/settings') return route.fulfill({ json: {} });
-    if (path === '/client-contracts/gate-settings') return route.fulfill({ json: {
-      enabled: true, preContractModules: [], portalAccessByStatus: {},
-      portalStatusCatalog: [], portalModuleCatalog: [], portalAccessModes: [],
-    } });
-    if (path.startsWith('/medical-review-public/')) return route.fulfill({ json: { request: { display_id: 123, status: 'pending', clientId: 'client' }, artifacts: [] } });
-    return route.fulfill({ json: [] });
-  });
-}
 async function navigateFromMenu(page: Page, label: string) {
   await page.getByPlaceholder('Filter menu...').fill(label);
   await page.locator('nav ul ul').getByRole('button', { name: label, exact: true }).click();
 }
 
-test.beforeEach(async ({ page }) => { await mockApi(page); });
+test.beforeEach(async ({ page }) => { await mockNavigationApi(page); });
 
 const screens = [
-  { path: 'analytics', menu: 'Analytics', heading: 'Booking Price Timeline', chunk: 'AnalyticsPage' },
+  { path: 'analytics', menu: 'Analytics', heading: 'Analytics', chunk: 'AnalyticsPage' },
   { path: 'communications', menu: 'Communications', heading: 'Communications', chunk: 'CommunicationsPage' },
-  { path: 'users', menu: 'Users', heading: 'User Management', chunk: 'UserManagement' },
+  { path: 'users', menu: 'User Management', heading: 'User Management', chunk: 'UserManagement' },
   { path: 'medical-artifacts', menu: 'Medical Artifacts', heading: 'Medical Artifacts', chunk: 'MedicalArtifactsPage' },
 ];
 
@@ -42,7 +25,7 @@ test('launcher defers secondary chunks; menu transitions load them on demand and
   page.on('request', request => { if (request.resourceType() === 'script') scripts.push(request.url()); });
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/admin/launcher');
-  await expect(page.getByRole('heading', { name: 'Module Launcher', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible();
   expect(scripts.filter(url => /(?:Medical|CommunicationsPage|AnalyticsPage|UserManagement|AnnouncementsPage|CurrencySettings)/.test(url))).toEqual([]);
   for (const screen of screens) {
     await navigateFromMenu(page, screen.menu);
@@ -76,7 +59,7 @@ test('slow chunk shows a loading state while the application menu remains usable
     await expect(page.getByRole('status').filter({ hasText: 'Loading page…' })).toBeVisible();
     await expect(page.getByPlaceholder('Filter menu...')).toBeVisible();
   } finally { release(); }
-  await expect(page.getByRole('heading', { name: 'Booking Price Timeline', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Analytics', exact: true })).toBeVisible();
 });
 
 for (const extension of ['js', 'css']) {
@@ -88,7 +71,7 @@ for (const extension of ['js', 'css']) {
     await expect(page.getByPlaceholder('Filter menu...')).toBeVisible();
     await page.unroute(pattern);
     await page.getByRole('button', { name: 'Reload page' }).click();
-    await expect(page.getByRole('heading', { name: 'Booking Price Timeline', exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Analytics', exact: true })).toBeVisible();
     await expect(page).toHaveURL(/\/admin\/analytics$/);
   });
 }
@@ -97,7 +80,7 @@ test('failed chunk does not prevent navigating to another screen', async ({ page
   await page.route('**/AnalyticsPage.*.chunk.js', route => route.abort('failed'));
   await page.goto('/admin/analytics');
   await expect(page.getByRole('alert')).toContainText('This page couldn’t load');
-  await navigateFromMenu(page, 'Users');
+  await navigateFromMenu(page, 'User Management');
   await expect(page.getByRole('heading', { name: 'User Management', exact: true })).toBeVisible();
   await expect(page.getByRole('alert')).toHaveCount(0);
 });
@@ -115,7 +98,7 @@ test('restricted role cannot load an administration chunk', async ({ page }) => 
 test('medical advisor can open their dashboard directly', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('user', JSON.stringify({ id: 'advisor', role: 'medical_advisor', email: 'test@example.test' })));
   await page.goto('/medical/medical-dashboard');
-  await expect(page.getByRole('heading', { name: 'Medical Review Queue', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Medical Dashboard', exact: true })).toBeVisible();
 });
 
 test('public medical link loads without an authenticated session', async ({ page }) => {
@@ -130,7 +113,7 @@ test('core navigation remains available before and after visiting a lazy screen'
   await page.goto('/admin/launcher');
   for (const name of ['Clients', 'Retreats', 'Bookings', 'Payment Requests', 'Analytics', 'Clients']) {
     await navigateFromMenu(page, name);
-    await expect(page.getByRole('heading', { name: name === 'Analytics' ? 'Booking Price Timeline' : name, exact: true })).toBeVisible();
+    await expect(page.getByRole('heading', { name: name === 'Analytics' ? 'Analytics' : name, exact: true })).toBeVisible();
   }
   expect(errors).toEqual([]);
 });

@@ -45,7 +45,7 @@ const server = http.createServer((req, res) => {
       await session.send('Network.emulateNetworkConditions', { offline: false, latency: 50, downloadThroughput: 625000, uploadThroughput: 625000 });
       await session.send('Emulation.setCPUThrottlingRate', { rate: 4 });
       await page.goto(`${origin}/admin/launcher`);
-      await page.getByRole('heading', { name: 'Module Launcher', exact: true }).waitFor();
+      await page.getByRole('heading', { name: process.env.MEASURE_LAUNCHER_HEADING || 'Home', exact: true }).waitFor();
       runs.push(await page.evaluate(() => ({
         launcherReadyMs: Math.round(performance.now()),
         fcpMs: Math.round(performance.getEntriesByName('first-contentful-paint')[0]?.startTime || 0),

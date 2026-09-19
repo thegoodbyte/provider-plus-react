@@ -25,7 +25,7 @@ npm run build
 node scripts/measure-route-loading.cjs docs/performance/PPVC-636-after.json
 ```
 
-Set `MEASURE_BUILD_DIR` to measure another production build directory containing its assets and asset-manifest.json. Do not run other browser tests/builds concurrently with timing measurements.
+Set `MEASURE_BUILD_DIR` to measure another production build directory containing its assets and asset-manifest.json. For builds before PPVC-634 renamed the launcher heading to Home, set `MEASURE_LAUNCHER_HEADING='Module Launcher'`. Do not run other browser tests/builds concurrently with timing measurements.
 
 ## Loading and recovery
 

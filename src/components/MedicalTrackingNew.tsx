@@ -1,3 +1,4 @@
+import { NAVIGATION } from '../navigation/navigation';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { api, clientsApi, medicalTrackingApi } from '../services/api';
@@ -415,7 +416,7 @@ const MedicalTrackingNew: React.FC = () => {
       <div className="mb-6 flex flex-col gap-3 lg:flex-row lg:justify-between lg:items-center">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 flex items-center">
-            🏥 {user?.role === 'medical_advisor' ? 'Medical Tracking Review Queue' : 'Medical Tracking Records'}
+            {NAVIGATION['medical-tracking'].label}
           </h1>
           <p className="text-gray-600">
             {user?.role === 'medical_advisor'

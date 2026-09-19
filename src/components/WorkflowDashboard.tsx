@@ -1,3 +1,4 @@
+import { NAVIGATION } from '../navigation/navigation';
 import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
@@ -409,8 +410,8 @@ const WorkflowDashboard: React.FC = () => {
       <div className="workflow-shell">
         <div className="workflow-header">
           <div>
-            <h1>Workflow Dashboard</h1>
-            <p>Retreat readiness, task queue, medical approvals, payments, and outbound messages in one place.</p>
+            <h1>{NAVIGATION.workflow.label}</h1>
+            <p>{NAVIGATION.workflow.description}</p>
           </div>
           <div className="workflow-header-actions">
             <select

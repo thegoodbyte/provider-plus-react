@@ -1,3 +1,4 @@
+import { NAVIGATION, SETTINGS_LABEL, canShowNavigation, useNavigationPreferences } from '../navigation/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -72,6 +73,8 @@ const ModuleLauncherPage: React.FC = () => {
   const [editMode, setEditMode] = useState(false);
   const [assignmentMap, setAssignmentMap] = useState<Record<string, 'inner' | 'outer' | 'hidden'>>({});
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const preferences = useNavigationPreferences();
   const routePrefix = useMemo(() => getRoutePrefix(location.pathname, user?.role), [location.pathname, user?.role]);
 
   const sections = useMemo<LauncherSection[]>(() => {
@@ -84,10 +87,10 @@ const ModuleLauncherPage: React.FC = () => {
           { id: 'potential-clients', label: 'Potential', subtitle: 'Filtered clients', route: 'clients?filter=leads', icon: ClipboardList, tone: 'blue' },
           { id: 'retreats', label: 'Retreats', subtitle: 'Programs', route: 'retreats', icon: CalendarDays, tone: 'blue' },
           { id: 'bookings', label: 'Bookings', subtitle: 'Retreat seats', route: 'bookings', icon: ClipboardPaste, tone: 'blue' },
-          { id: 'retreat-flow', label: 'Readiness Setup', subtitle: 'Per-retreat steps', route: 'retreat-flow', icon: LayoutGrid, tone: 'blue' },
-          { id: 'retreat-flow-library', label: 'Booking Step Setup', subtitle: 'Master steps', route: 'retreat-flow-library', icon: BookOpen, tone: 'blue' },
-          { id: 'announcements', label: 'Announcement Schedule', subtitle: 'Before and after retreat emails', route: 'announcements', icon: BookOpen, tone: 'blue' },
-          { id: 'booking-flow', label: 'Booking Flow', subtitle: 'Per booking', route: 'booking-flow', icon: ListTodo, tone: 'blue' },
+          { id: 'retreat-flow', label: NAVIGATION['retreat-flow'].label, subtitle: 'Per-retreat steps', route: 'retreat-flow', icon: LayoutGrid, tone: 'blue' },
+          { id: 'retreat-flow-library', label: NAVIGATION['retreat-flow-library'].label, subtitle: 'Master steps', route: 'retreat-flow-library', icon: BookOpen, tone: 'blue' },
+          { id: 'announcements', label: NAVIGATION['announcements'].label, subtitle: 'Before and after retreat emails', route: 'announcements', icon: BookOpen, tone: 'blue' },
+          { id: 'booking-flow', label: NAVIGATION['booking-flow'].label, subtitle: 'Per booking', route: 'booking-flow', icon: ListTodo, tone: 'blue' },
           { id: 'booking-step-deadlines', label: 'Step Deadlines', subtitle: 'Across retreats', route: 'booking-step-deadlines', icon: CalendarDays, tone: 'blue' },
         ],
       },
@@ -95,7 +98,7 @@ const ModuleLauncherPage: React.FC = () => {
         title: 'Flow',
         tone: 'violet',
         tiles: [
-          { id: 'workflow', label: 'Workflow', subtitle: 'Readiness', route: 'workflow', icon: Workflow, tone: 'violet' },
+          { id: 'workflow', label: NAVIGATION['workflow'].label, subtitle: 'Readiness', route: 'workflow', icon: Workflow, tone: 'violet' },
           { id: 'flow-tasks', label: 'Flow Tasks', subtitle: 'Queue', route: 'flow-tasks', icon: ListTodo, tone: 'violet' },
           { id: 'integration', label: 'Integration', subtitle: 'Follow-up calls', route: 'integration', icon: PhoneCall, tone: 'violet' },
         ],
@@ -104,11 +107,11 @@ const ModuleLauncherPage: React.FC = () => {
         title: 'Medical',
         tone: 'emerald',
         tiles: [
-          { id: 'medical-dashboard', label: 'Dashboard', subtitle: 'Review queue', route: 'medical-dashboard', icon: HeartPulse, tone: 'emerald' },
-          { id: 'medical-artifacts', label: 'Artifacts', subtitle: 'Stored records', route: 'medical-artifacts', icon: FileText, tone: 'emerald' },
-          { id: 'medical-tracking', label: 'Readiness', subtitle: 'Per client status', route: 'medical-tracking', icon: Stethoscope, tone: 'emerald' },
-          { id: 'medical-review-requests', label: 'Review Requests', subtitle: 'Medical reviews', route: 'medical-review-requests', icon: Inbox, tone: 'emerald' },
-          { id: 'medical-retreats', label: 'Medical Retreats', subtitle: 'Per retreat', route: 'medical-retreats', icon: Activity, tone: 'emerald' },
+          { id: 'medical-dashboard', label: NAVIGATION['medical-dashboard'].label, subtitle: 'Review queue', route: 'medical-dashboard', icon: HeartPulse, tone: 'emerald' },
+          { id: 'medical-artifacts', label: NAVIGATION['medical-artifacts'].label, subtitle: 'Stored records', route: 'medical-artifacts', icon: FileText, tone: 'emerald' },
+          { id: 'medical-tracking', label: NAVIGATION['medical-tracking'].label, subtitle: 'Per client status', route: 'medical-tracking', icon: Stethoscope, tone: 'emerald' },
+          { id: 'medical-review-requests', label: NAVIGATION['medical-review-requests'].label, subtitle: 'Medical reviews', route: 'medical-review-requests', icon: Inbox, tone: 'emerald' },
+          { id: 'medical-retreats', label: NAVIGATION['medical-retreats'].label, subtitle: 'Per retreat', route: 'medical-retreats', icon: Activity, tone: 'emerald' },
           { id: 'booking-step-deadlines', label: 'Step Deadlines', subtitle: 'Across retreats', route: 'booking-step-deadlines', icon: CalendarDays, tone: 'emerald' },
         ],
       },
@@ -116,9 +119,9 @@ const ModuleLauncherPage: React.FC = () => {
         title: 'Money',
         tone: 'amber',
         tiles: [
-          { id: 'payments', label: 'Payments', subtitle: 'Ledger', route: 'payments', icon: CreditCard, tone: 'amber' },
-          { id: 'payment-requests', label: 'Invoices', subtitle: 'Requests', route: 'payment-requests', icon: Receipt, tone: 'amber' },
-          { id: 'communications', label: 'Comms', subtitle: 'Mail', route: 'communications', icon: Mail, tone: 'amber' },
+          { id: 'payments', label: NAVIGATION['payments'].label, subtitle: 'Ledger', route: 'payments', icon: CreditCard, tone: 'amber' },
+          { id: 'payment-requests', label: NAVIGATION['payment-requests'].label, subtitle: 'Requests', route: 'payment-requests', icon: Receipt, tone: 'amber' },
+          { id: 'communications', label: NAVIGATION['communications'].label, subtitle: 'Mail', route: 'communications', icon: Mail, tone: 'amber' },
         ],
       },
       {
@@ -126,13 +129,13 @@ const ModuleLauncherPage: React.FC = () => {
         tone: 'slate',
         tiles: [
           { id: 'reminders', label: 'Reminders', subtitle: 'Automation', route: 'reminders', icon: Bell, tone: 'slate' },
-          { id: 'requirements', label: 'Requirements', subtitle: 'Retreat rules', route: 'requirements', icon: ClipboardCheck, tone: 'slate' },
-          { id: 'client-forms', label: 'Client Forms', subtitle: 'Food, meds, questionnaires', route: 'client-forms', icon: NotebookText, tone: 'slate' },
-          { id: 'houses', label: 'Houses', subtitle: 'Assets', route: 'houses', icon: Building2, tone: 'slate' },
-          { id: 'users', label: 'Users', subtitle: 'Access', route: 'users', icon: ShieldCheck, tone: 'slate' },
-          { id: 'permissions', label: 'Permissions', subtitle: 'Roles', route: 'permissions', icon: ShieldCheck, tone: 'slate' },
-          { id: 'analytics', label: 'Analytics', subtitle: 'Reports', route: 'analytics', icon: Sparkles, tone: 'slate' },
-          { id: 'tasks', label: 'Tasks', subtitle: 'General queue', route: 'tasks', icon: FileText, tone: 'slate' },
+          { id: 'requirements', label: NAVIGATION['requirements'].label, subtitle: 'Retreat rules', route: 'requirements', icon: ClipboardCheck, tone: 'slate' },
+          { id: 'client-forms', label: NAVIGATION['client-forms'].label, subtitle: 'Food, meds, questionnaires', route: 'client-forms', icon: NotebookText, tone: 'slate' },
+          { id: 'houses', label: NAVIGATION['houses'].label, subtitle: 'Assets', route: 'houses', icon: Building2, tone: 'slate' },
+          { id: 'users', label: NAVIGATION['users'].label, subtitle: 'Access', route: 'users', icon: ShieldCheck, tone: 'slate' },
+          { id: 'permissions', label: NAVIGATION['permissions'].label, subtitle: 'Roles', route: 'permissions', icon: ShieldCheck, tone: 'slate' },
+          { id: 'analytics', label: NAVIGATION['analytics'].label, subtitle: 'Reports', route: 'analytics', icon: Sparkles, tone: 'slate' },
+          { id: 'tasks', label: NAVIGATION['tasks'].label, subtitle: 'General queue', route: 'tasks', icon: FileText, tone: 'slate' },
         ],
       },
     ];
@@ -142,18 +145,18 @@ const ModuleLauncherPage: React.FC = () => {
         title: 'Medical',
         tone: 'emerald',
         tiles: [
-          { id: 'medical-dashboard', label: 'Dashboard', subtitle: 'Queue', route: 'medical-dashboard', icon: HeartPulse, tone: 'emerald' },
-          { id: 'medical-artifacts', label: 'Artifacts', subtitle: 'Stored records', route: 'medical-artifacts', icon: FileText, tone: 'emerald' },
-          { id: 'medical-tracking', label: 'Readiness', subtitle: 'Per client status', route: 'medical-tracking', icon: Stethoscope, tone: 'emerald' },
-          { id: 'review-requests', label: 'Review Requests', subtitle: 'Approvals', route: 'review-requests', icon: Inbox, tone: 'emerald' },
-          { id: 'medical-retreats', label: 'Retreats', subtitle: 'Context', route: 'medical-retreats', icon: CalendarDays, tone: 'emerald' },
+          { id: 'medical-dashboard', label: NAVIGATION['medical-dashboard'].label, subtitle: 'Queue', route: 'medical-dashboard', icon: HeartPulse, tone: 'emerald' },
+          { id: 'medical-artifacts', label: NAVIGATION['medical-artifacts'].label, subtitle: 'Stored records', route: 'medical-artifacts', icon: FileText, tone: 'emerald' },
+          { id: 'medical-tracking', label: NAVIGATION['medical-tracking'].label, subtitle: 'Per client status', route: 'medical-tracking', icon: Stethoscope, tone: 'emerald' },
+          { id: 'review-requests', label: NAVIGATION['review-requests'].label, subtitle: 'Approvals', route: 'review-requests', icon: Inbox, tone: 'emerald' },
+          { id: 'medical-retreats', label: NAVIGATION['medical-retreats'].label, subtitle: 'Context', route: 'medical-retreats', icon: CalendarDays, tone: 'emerald' },
         ],
       },
       {
         title: 'Flow',
         tone: 'violet',
         tiles: [
-          { id: 'workflow', label: 'Workflow', subtitle: 'Readiness', route: 'workflow', icon: Workflow, tone: 'violet' },
+          { id: 'workflow', label: NAVIGATION['workflow'].label, subtitle: 'Readiness', route: 'workflow', icon: Workflow, tone: 'violet' },
           { id: 'flow-tasks', label: 'Flow Tasks', subtitle: 'Queue', route: 'flow-tasks', icon: ListTodo, tone: 'violet' },
         ],
       },
@@ -164,15 +167,15 @@ const ModuleLauncherPage: React.FC = () => {
           { id: 'clients', label: 'Clients', subtitle: 'CRM', route: 'clients', icon: Users, tone: 'blue' },
           { id: 'potential-clients', label: 'Potential', subtitle: 'Filtered clients', route: 'clients?filter=leads', icon: ClipboardList, tone: 'blue' },
           { id: 'bookings', label: 'Bookings', subtitle: 'Booking list', route: 'bookings', icon: ClipboardPaste, tone: 'blue' },
-          { id: 'retreat-flow', label: 'Readiness Setup', subtitle: 'Steps', route: 'retreat-flow', icon: LayoutGrid, tone: 'blue' },
-          { id: 'booking-flow', label: 'Booking Flow', subtitle: 'Per booking', route: 'booking-flow', icon: ListTodo, tone: 'blue' },
+          { id: 'retreat-flow', label: NAVIGATION['retreat-flow'].label, subtitle: 'Steps', route: 'retreat-flow', icon: LayoutGrid, tone: 'blue' },
+          { id: 'booking-flow', label: NAVIGATION['booking-flow'].label, subtitle: 'Per booking', route: 'booking-flow', icon: ListTodo, tone: 'blue' },
         ],
       },
       {
         title: 'Comms',
         tone: 'amber',
         tiles: [
-          { id: 'communications', label: 'Communications', subtitle: 'Templates', route: 'communications', icon: Mail, tone: 'amber' },
+          { id: 'communications', label: NAVIGATION['communications'].label, subtitle: 'Templates', route: 'communications', icon: Mail, tone: 'amber' },
           { id: 'reminders', label: 'Reminders', subtitle: 'Follow-up', route: 'reminders', icon: Bell, tone: 'amber' },
         ],
       },
@@ -185,7 +188,7 @@ const ModuleLauncherPage: React.FC = () => {
         tiles: [
           { id: 'bookings', label: 'Bookings', subtitle: 'Seats', route: 'bookings', icon: ClipboardPaste, tone: 'blue' },
           { id: 'retreats', label: 'Retreats', subtitle: 'Programs', route: 'retreats', icon: CalendarDays, tone: 'blue' },
-          { id: 'houses', label: 'Houses', subtitle: 'Locations', route: 'houses', icon: Building2, tone: 'blue' },
+          { id: 'houses', label: NAVIGATION['houses'].label, subtitle: 'Locations', route: 'houses', icon: Building2, tone: 'blue' },
           { id: 'integration', label: 'Integration', subtitle: 'Follow-up calls', route: 'integration', icon: PhoneCall, tone: 'blue' },
         ],
       },
@@ -202,7 +205,7 @@ const ModuleLauncherPage: React.FC = () => {
         tone: 'amber',
         tiles: [
           { id: 'reminders', label: 'Reminders', subtitle: 'Tasks', route: 'reminders', icon: Bell, tone: 'amber' },
-          { id: 'communications', label: 'Communications', subtitle: 'Mail', route: 'communications', icon: Mail, tone: 'amber' },
+          { id: 'communications', label: NAVIGATION['communications'].label, subtitle: 'Mail', route: 'communications', icon: Mail, tone: 'amber' },
         ],
       },
     ];
@@ -214,7 +217,7 @@ const ModuleLauncherPage: React.FC = () => {
         tiles: [
           { id: 'clients', label: 'Clients', subtitle: 'Profile', route: 'clients', icon: Users, tone: 'blue' },
           { id: 'reminders', label: 'Reminders', subtitle: 'Follow-up', route: 'reminders', icon: Bell, tone: 'blue' },
-          { id: 'communications', label: 'Communications', subtitle: 'Messages', route: 'communications', icon: Mail, tone: 'blue' },
+          { id: 'communications', label: NAVIGATION['communications'].label, subtitle: 'Messages', route: 'communications', icon: Mail, tone: 'blue' },
         ],
       },
     ];
@@ -227,48 +230,53 @@ const ModuleLauncherPage: React.FC = () => {
         return facilitatorSections;
       case 'user':
         return userSections;
-      default:
+      case 'admin':
         return adminSections;
+      default:
+        return [];
     }
   }, [user?.role]);
 
-  const tiles = useMemo(
-    () =>
-      sections.flatMap((section) =>
-        section.tiles.map((tile) => ({
-          ...tile,
-          section: section.title,
-        })),
-      ),
-    [sections],
-  );
+  const tiles = useMemo(() => {
+    const existing = sections.flatMap(section => section.tiles.map(tile => ({ ...tile, section: section.title })));
+    const additional: LauncherTile[] = [
+      { id: 'retreat-flow-library', label: NAVIGATION['retreat-flow-library'].label, route: 'retreat-flow-library', icon: BookOpen, tone: 'slate', section: SETTINGS_LABEL },
+      { id: 'booking-document-types', label: NAVIGATION['booking-document-types'].label, route: 'booking-document-types', icon: FileText, tone: 'slate', section: SETTINGS_LABEL },
+      { id: 'retreat-staffing', label: NAVIGATION['retreat-staffing'].label, route: 'retreat-staffing', icon: Users, tone: 'blue', section: 'Retreats' },
+    ];
+    return Array.from(new Map([...existing, ...additional].map(tile => [tile.id, tile])).values())
+      .filter(tile => canShowNavigation(tile.id, user?.role, preferences))
+      .map(tile => ({ ...tile, label: NAVIGATION[tile.id]?.label || tile.label, subtitle: NAVIGATION[tile.id]?.description || tile.subtitle }));
+  }, [sections, user?.role, preferences]);
 
-  const centerTile = tiles.find((tile) => tile.id === 'clients') || tiles[0];
-  const orbitTiles = tiles.filter((tile) => tile !== centerTile);
   useEffect(() => {
     launcherConfigApi.get().then(({ data }) => {
       const saved = Object.fromEntries((data.assignments || []).map((item) => [item.moduleId, item.ring]));
       setAssignmentMap(saved);
     }).catch(() => undefined);
   }, []);
-  const innerTiles = orbitTiles.filter((tile, index) => (assignmentMap[tile.id] || (index < 8 ? 'inner' : 'outer')) === 'inner');
-  const outerTiles = orbitTiles.filter((tile, index) => (assignmentMap[tile.id] || (index < 8 ? 'inner' : 'outer')) === 'outer');
-  const CenterIcon = centerTile?.icon;
-
-  const handleTileClick = (route: string) => {
-    navigate(`${routePrefix}/${route}`);
-  };
-
-  const renderTile = (tile: LauncherTile, index: number, count: number, ring: 'inner' | 'outer') => {
+  const isSetup = (tile: LauncherTile) => Boolean(NAVIGATION[tile.id]?.setup);
+  const visibleTiles = tiles.filter(tile => assignmentMap[tile.id] !== 'hidden')
+    .sort((a, b) => Number(assignmentMap[a.id] === 'outer') - Number(assignmentMap[b.id] === 'outer'));
+  const handleTileClick = (route: string) => navigate(`${routePrefix}/${route}`);
+  const renderTile = (tile: LauncherTile) => {
     const Icon = tile.icon;
-    return <button key={`${ring}-${tile.id}`} type="button" onClick={() => handleTileClick(tile.route)} className={`launcher-hex launcher-orbit-tile launcher-${ring}-tile tone-${tile.tone}`} style={{ '--launcher-index': index, '--launcher-count': count } as React.CSSProperties} title={`${tile.section} - ${tile.label}`} aria-label={`${tile.section} - ${tile.label}`}>
-      <div className="launcher-hex-content"><Icon className="launcher-hex-icon" /><div className="launcher-hex-label">{tile.label}</div>{tile.subtitle && <div className="launcher-hex-subtitle">{tile.subtitle}</div>}</div>
+    return <button key={tile.id} type="button" aria-label={tile.label} onClick={() => handleTileClick(tile.route)} className="launcher-shortcut">
+      <Icon className="launcher-shortcut-icon" aria-hidden="true" />
+      <span><strong>{tile.label}</strong>{tile.subtitle && <small>{tile.subtitle}</small>}</span>
     </button>;
   };
-
   const saveConfiguration = async () => {
     setSaving(true);
-    try { await launcherConfigApi.save(orbitTiles.map((tile, index) => ({ moduleId: tile.id, ring: assignmentMap[tile.id] || (index < 8 ? 'inner' : 'outer') }))); setEditMode(false); } finally { setSaving(false); }
+    setSaveError('');
+    try {
+      // Preserve preferences for hidden/non-visible modules and existing ring values.
+      const next = { ...assignmentMap };
+      tiles.forEach(tile => { next[tile.id] = next[tile.id] || 'inner'; });
+      await launcherConfigApi.save(Object.entries(next).map(([moduleId, ring]) => ({ moduleId, ring })));
+      setEditMode(false);
+    } catch { setSaveError('Unable to save shortcuts. Please try again.'); }
+    finally { setSaving(false); }
   };
 
   return (
@@ -279,28 +287,30 @@ const ModuleLauncherPage: React.FC = () => {
             <img src={`${process.env.PUBLIC_URL}/images/icon/retreategnine.png`} alt="RetreatEngine" />
           </div>
           <div>
-            <h1>Module Launcher</h1>
-            <p>Pick the section you need.</p>
+            <h1>{NAVIGATION.launcher.label}</h1>
+            <p>Open daily work or manage application setup.</p>
           </div>
         </div>
-        <div className="module-launcher-header-actions"><div className="module-launcher-role">{user?.role || 'admin'}</div>{user?.role === 'admin' && <button type="button" className="module-launcher-edit-button" onClick={() => setEditMode((value) => !value)}>{editMode ? 'Close editor' : 'Edit layout'}</button>}</div>
+        <div className="module-launcher-header-actions"><div className="module-launcher-role">{user?.role || 'admin'}</div>{user?.role === 'admin' && <button type="button" className="module-launcher-edit-button" onClick={() => setEditMode((value) => !value)}>{editMode ? 'Close editor' : 'Customize shortcuts'}</button>}</div>
       </div>
 
-      {editMode && user?.role === 'admin' && <section className="module-launcher-editor"><div><h2>Configure launcher circles</h2><p>Choose where each module appears. Clients remains the center hub.</p></div><div className="module-launcher-editor-grid">{orbitTiles.map((tile, index) => <label key={tile.id}>{tile.label}<select value={assignmentMap[tile.id] || (index < 8 ? 'inner' : 'outer')} onChange={(event) => setAssignmentMap((current) => ({ ...current, [tile.id]: event.target.value as 'inner' | 'outer' | 'hidden' }))}><option value="inner">Inner circle</option><option value="outer">Outer circle</option><option value="hidden">Hidden</option></select></label>)}</div><button type="button" className="module-launcher-save-button" disabled={saving} onClick={saveConfiguration}>{saving ? 'Saving…' : 'Save layout'}</button></section>}
+      {editMode && user?.role === 'admin' && <section className="module-launcher-editor"><div><h2>Customize shortcuts</h2><p>Choose primary shortcuts, additional shortcuts or hide items. Configuration stays in Settings & Setup.</p></div><div className="module-launcher-editor-grid">{tiles.map(tile => <label key={tile.id}>{tile.label}<select value={assignmentMap[tile.id] || 'inner'} onChange={(event) => setAssignmentMap((current) => ({ ...current, [tile.id]: event.target.value as 'inner' | 'outer' | 'hidden' }))}><option value="inner">Primary</option><option value="outer">More shortcuts</option><option value="hidden">Hidden</option></select></label>)}</div><button type="button" className="module-launcher-save-button" disabled={saving} onClick={saveConfiguration}>{saving ? 'Saving…' : 'Save shortcuts'}</button></section>}
 
       <TasksForTodayPanel />
 
-      <div className="module-launcher-hive-shell">
-        <div className="module-launcher-hive">
-          <div className="module-launcher-orbit module-launcher-orbit-outer" aria-hidden="true" />
-          <div className="module-launcher-orbit module-launcher-orbit-inner" aria-hidden="true" />
-          {centerTile && CenterIcon && <button type="button" onClick={() => handleTileClick(centerTile.route)} className={`launcher-hex launcher-center tone-${centerTile.tone}`} title={`${centerTile.section} - ${centerTile.label}`} aria-label={`${centerTile.section} - ${centerTile.label}`}>
-            <div className="launcher-hex-content"><CenterIcon className="launcher-hex-icon" /><div className="launcher-hex-label">{centerTile.label}</div>{centerTile.subtitle && <div className="launcher-hex-subtitle">{centerTile.subtitle}</div>}</div>
-          </button>}
-          {innerTiles.map((tile, index) => renderTile(tile, index, innerTiles.length, 'inner'))}
-          {outerTiles.map((tile, index) => renderTile(tile, index, outerTiles.length, 'outer'))}
-        </div>
-      </div>
+      {saveError && <p role="alert">{saveError}</p>}
+      <section className="launcher-area" aria-labelledby="daily-work-title">
+        <h2 id="daily-work-title">Daily Work</h2>
+        <p>Clients, bookings, retreats and the work that needs your attention.</p>
+        <div className="launcher-shortcuts">{visibleTiles.filter(tile => !isSetup(tile)).map(renderTile)}</div>
+        {!visibleTiles.some(tile => !isSetup(tile)) && <p>No daily shortcuts are visible.</p>}
+      </section>
+      {visibleTiles.some(isSetup) && <section className="launcher-area launcher-setup" aria-labelledby="setup-title">
+        <h2 id="setup-title">{SETTINGS_LABEL}</h2>
+        <p>Reusable steps, document categories and application configuration.</p>
+        <div className="launcher-shortcuts">{visibleTiles.filter(isSetup).map(renderTile)}</div>
+      </section>}
+
     </div>
   );
 };

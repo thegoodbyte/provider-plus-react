@@ -605,8 +605,8 @@ const AppleLayout: React.FC = () => {
 
       {/* Main Content */}
       <div className={`transition-all duration-300 ${sidebarCollapsed ? 'md:ml-20' : 'md:ml-64'}`}>
-        {/* Mobile floating controls keep navigation available without reserving header space. */}
-        <div className="fixed left-4 right-4 top-4 z-40 flex items-center justify-between md:hidden pointer-events-none">
+        {/* Mobile controls have their own row so they do not cover page headings or scrolled content. */}
+        <div className="relative z-30 flex h-20 items-center justify-between px-4 md:hidden">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
             className={isMedicalReviewScreen ? 'pointer-events-auto fixed right-4 top-4 z-50 inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-apple-gray-700 shadow-apple-sm backdrop-blur-apple transition-colors hover:bg-white' : 'pointer-events-auto inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/85 text-apple-gray-700 shadow-apple-sm backdrop-blur-apple transition-colors hover:bg-white'}
@@ -791,7 +791,7 @@ const AppleLayout: React.FC = () => {
         <AiHealthBanner />
 
         {/* Page Content */}
-        <main className="re-shell h-[calc(100vh-32px)] overflow-y-auto px-4 py-4 sm:px-6 lg:h-[calc(100vh-64px-32px)] lg:px-8 lg:py-6">
+        <main className="re-shell h-[calc(100dvh-112px)] overflow-y-auto px-4 py-4 sm:px-6 md:h-[calc(100vh-64px-32px)] lg:px-8 lg:py-6">
           <div className="max-w-7xl mx-auto">
             <div className="rounded-apple-lg bg-[#e7eaee] shadow-apple-sm">
               <RouteContentBoundary>

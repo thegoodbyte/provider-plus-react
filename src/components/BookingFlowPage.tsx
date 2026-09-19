@@ -1,3 +1,4 @@
+import { NAVIGATION } from '../navigation/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowDown, ArrowLeft, ArrowUp, Lock, Plus, RefreshCw, Save, Trash2, Unlock } from 'lucide-react';
@@ -326,7 +327,7 @@ const BookingFlowPage: React.FC = () => {
         <header className="flex flex-col gap-4 border-b border-gray-300 px-7 py-6 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">Operations · {new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</div>
-            <h1 className="text-3xl font-bold tracking-tight text-gray-950">Booking requirements</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-gray-950">{NAVIGATION['booking-flow'].label}</h1><p className="mt-1 text-sm text-gray-600">{NAVIGATION['booking-flow'].description}</p>
             <p className="mt-1 text-sm text-gray-600">{allItems.length - accomplishedTotal} steps still open across {new Set(allItems.map((item) => getObjectId(item.bookingId))).size} bookings. {pastDueTotal} are past their due date.</p>
           </div>
           <button onClick={loadClientFlowIndex} className="inline-flex items-center justify-center gap-2 border border-gray-900 bg-white px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50">
@@ -440,10 +441,10 @@ const BookingFlowPage: React.FC = () => {
             <Icon icon={ArrowLeft} className="h-4 w-4" />
             Back
           </button>
-          <h1 className="text-2xl font-semibold text-gray-900">Booking Requirements</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">{NAVIGATION['booking-flow'].label}</h1>
           <p className="text-sm text-gray-600">
             {(booking?.clientId as any)?.firstName ? `${(booking.clientId as any).firstName} ${(booking.clientId as any).lastName}` : 'Client'}
-            {' '}• {retreat?.name || 'Retreat'} • generated from booking step setup
+            {' '}• {retreat?.name || 'Retreat'} • generated from the Booking Step Library
           </p>
         </div>
         <div className="flex flex-wrap gap-2">

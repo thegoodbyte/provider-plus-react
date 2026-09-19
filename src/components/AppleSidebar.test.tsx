@@ -30,8 +30,8 @@ describe('AppleSidebar impersonation navigation', () => {
     expect(screen.getByText('Medical')).toBeInTheDocument();
     expect(screen.getByText('Medical Dashboard')).toBeInTheDocument();
     expect(screen.getByText('Review Requests')).toBeInTheDocument();
-    expect(screen.queryByText('Permissions')).not.toBeInTheDocument();
-    expect(screen.queryByText('Users')).not.toBeInTheDocument();
+    expect(screen.queryByText('Permission Management')).not.toBeInTheDocument();
+    expect(screen.queryByText('User Management')).not.toBeInTheDocument();
     expect(screen.queryByText('Audit Logs')).not.toBeInTheDocument();
     expect(screen.queryByText('Data Backup')).not.toBeInTheDocument();
   });
@@ -97,7 +97,7 @@ describe('AppleSidebar impersonation navigation', () => {
     expect(screen.getByText('JULY-2026')).toBeInTheDocument();
     expect(screen.getByText('Retreat dashboard')).toBeInTheDocument();
     expect(screen.queryByText('Payment Requests')).not.toBeInTheDocument();
-    expect(screen.queryByText('Users')).not.toBeInTheDocument();
+    expect(screen.queryByText('User Management')).not.toBeInTheDocument();
   });
 
   it('filters permitted menu items and keeps matching sections open', () => {
@@ -115,8 +115,8 @@ describe('AppleSidebar impersonation navigation', () => {
     fireEvent.change(screen.getByLabelText('Search menu'), { target: { value: 'booking' } });
 
     expect(screen.getByText('Bookings')).toBeInTheDocument();
-    expect(screen.getByText('Booking Step Setup')).toBeInTheDocument();
-    expect(screen.getByText('Booking Flow')).toBeInTheDocument();
+    expect(screen.getByText('Booking Step Library')).toBeInTheDocument();
+    expect(screen.getByText('Booking Requirements')).toBeInTheDocument();
     expect(screen.getByText('Booking Document Types')).toBeInTheDocument();
     expect(screen.queryByText('Clients')).not.toBeInTheDocument();
     expect(screen.queryByText('Payments')).not.toBeInTheDocument();

@@ -1,250 +1,31 @@
-.module-launcher-page {
-  min-height: 100%;
-  padding: 30px 28px 86px;
-  background: #fff;
-}
-
-.module-launcher-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 22px;
-}
-
-.module-launcher-brand {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  min-width: 0;
-}
-
-.module-launcher-mark {
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
-  overflow: hidden;
-  background: #fff;
-  border: 1px solid rgba(148, 163, 184, 0.28);
-  box-shadow: 0 10px 22px rgba(15, 23, 42, 0.08);
-  flex-shrink: 0;
-}
-
-.module-launcher-mark img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  padding: 8px;
-}
-
-.module-launcher-brand h1 {
-  margin: 0;
-  font-size: 1.85rem;
-  line-height: 1.1;
-  font-weight: 700;
-  color: #0f172a;
-}
-
-.module-launcher-brand p {
-  margin: 4px 0 0;
-  font-size: 0.95rem;
-  color: #64748b;
-}
-
-.module-launcher-role {
-  padding: 10px 14px;
-  border-radius: 999px;
-  background: rgba(15, 23, 42, 0.06);
-  color: #334155;
-  font-size: 0.82rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-.module-launcher-header-actions { display: flex; align-items: center; gap: 10px; }
-.module-launcher-edit-button, .module-launcher-save-button { border: 0; border-radius: 10px; padding: 10px 14px; background: #172033; color: #fff; font-weight: 700; cursor: pointer; }
-.module-launcher-edit-button:hover, .module-launcher-save-button:hover { background: #2563eb; }
-.module-launcher-editor { margin: 0 auto 22px; max-width: 1100px; border: 1px solid #dbe4ef; border-radius: 16px; padding: 18px; background: #f8fafc; }
-.module-launcher-editor h2 { margin: 0; font-size: 1.05rem; }
-.module-launcher-editor p { margin: 4px 0 14px; color: #64748b; font-size: .9rem; }
-.module-launcher-editor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-bottom: 14px; }
-.module-launcher-editor-grid label { display: grid; gap: 5px; color: #334155; font-size: .8rem; font-weight: 700; }
-.module-launcher-editor-grid select { width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px; background: #fff; color: #172033; }
-
-.module-launcher-hive-shell {
-  display: flex;
-  justify-content: center;
-  padding: 8px 0 42px;
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-
-.module-launcher-hive {
-  --launcher-tile-width: 112px;
-  --launcher-radius: clamp(260px, 31vw, 370px);
-  position: relative;
-  width: min(100%, 820px);
-  height: 760px;
-  min-width: 680px;
-  margin: 0 auto;
-}
-
-.module-launcher-orbit {
-  position: absolute;
-  left: 50%; top: 50%;
-  width: calc(var(--launcher-radius) * 2);
-  height: calc(var(--launcher-radius) * 2);
-  transform: translate(-50%, -50%);
-  border: 1px dashed #dbe4ef;
-  border-radius: 50%;
-}
-
-.module-launcher-orbit-inner { width: 390px; height: 390px; border-color: #e2e8f0; }
-
-.launcher-hex {
-  position: absolute;
-  left: 50%; top: 50%;
-  width: var(--launcher-tile-width);
-  height: var(--launcher-tile-width);
-  padding: 14px 10px;
-  border: 1px solid rgba(255,255,255,.45);
-  border-radius: 50%;
-  color: #fff;
-  box-shadow: 0 9px 22px rgba(31, 55, 86, .18);
-  transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
-}
-
-.launcher-orbit-tile {
-  --launcher-active-radius: var(--launcher-radius);
-  transform: translate(-50%, -50%) rotate(calc(var(--launcher-index) * (360deg / var(--launcher-count)))) translateY(calc(-1 * var(--launcher-active-radius))) rotate(calc(var(--launcher-index) * -1 * (360deg / var(--launcher-count))));
-}
-.launcher-inner-tile { --launcher-active-radius: 195px; }
-
-.launcher-center {
-  width: 170px; height: 170px;
-  transform: translate(-50%, -50%);
-  z-index: 2;
-  box-shadow: 0 15px 32px rgba(37, 99, 235, .3);
-}
-
-.launcher-hex:hover, .launcher-hex:focus-visible {
-  box-shadow: 0 14px 30px rgba(31, 55, 86, .28);
-  filter: saturate(1.08) brightness(1.04);
-  z-index: 3;
-}
-
-.launcher-hex-content {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  gap: 6px;
-}
-
-.launcher-hex-icon {
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
-}
-
-.launcher-hex-label {
-  font-size: 0.88rem;
-  font-weight: 800;
-  line-height: 1.05;
-  text-wrap: balance;
-}
-
-.launcher-hex-subtitle {
-  font-size: 0.7rem;
-  line-height: 1.15;
-  opacity: 0.92;
-  text-wrap: balance;
-}
-
-.tone-blue {
-  background: linear-gradient(145deg, #2563eb, #60a5fa);
-  color: #fff;
-}
-
-.tone-violet {
-  background: linear-gradient(145deg, #7c3aed, #a78bfa);
-  color: #fff;
-}
-
-.tone-emerald {
-  background: linear-gradient(145deg, #059669, #34d399);
-  color: #fff;
-}
-
-.tone-amber {
-  background: linear-gradient(145deg, #d97706, #fbbf24);
-  color: #fff;
-}
-
-.tone-rose {
-  background: linear-gradient(145deg, #e11d48, #fb7185);
-  color: #fff;
-}
-
-.tone-slate {
-  background: linear-gradient(145deg, #334155, #64748b);
-  color: #fff;
-}
-
-@media (max-width: 1024px) {
-  .launcher-inner-tile { --launcher-active-radius: 175px; }
-  .module-launcher-hive {
-    --launcher-tile-width: 102px;
-    --launcher-radius: 300px;
-  }
-}
-
-@media (max-width: 768px) {
-  .launcher-inner-tile { --launcher-active-radius: 155px; }
-  .module-launcher-page {
-    padding: 18px 16px 72px;
-  }
-
-  .module-launcher-header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .module-launcher-hive {
-    --launcher-tile-width: 88px;
-    --launcher-radius: 245px;
-    min-width: 560px;
-    height: 590px;
-  }
-}
-
-@media (max-width: 560px) {
-  .launcher-inner-tile { --launcher-active-radius: 130px; }
-  .module-launcher-hive {
-    --launcher-tile-width: 72px;
-    --launcher-radius: 205px;
-    min-width: 480px;
-    height: 500px;
-  }
-
-  .launcher-hex {
-    padding: 12px 10px 14px;
-  }
-
-  .launcher-hex-icon {
-    width: 20px;
-    height: 20px;
-  }
-
-  .launcher-hex-label {
-    font-size: 0.7rem;
-  }
-
-  .launcher-hex-subtitle {
-    font-size: 0.63rem;
-  }
+.module-launcher-page { min-height: 100%; padding: 24px; background: #fff; }
+.module-launcher-header, .module-launcher-brand, .module-launcher-header-actions { display: flex; align-items: center; gap: 12px; }
+.module-launcher-header { justify-content: space-between; flex-wrap: wrap; margin-bottom: 24px; }
+.module-launcher-mark { width: 44px; height: 44px; flex-shrink: 0; }
+.module-launcher-mark img { width: 100%; height: 100%; object-fit: contain; }
+.module-launcher-brand h1 { margin: 0; font-size: 1.8rem; font-weight: 700; }
+.module-launcher-brand p, .launcher-area > p { margin: 4px 0 16px; color: #64748b; font-size: .9rem; }
+.module-launcher-role { font-size: .8rem; color: #64748b; }
+.module-launcher-edit-button, .module-launcher-save-button { border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; background: #fff; color: #334155; font-weight: 600; }
+.module-launcher-editor { margin-bottom: 24px; border: 1px solid #cbd5e1; border-radius: 12px; padding: 16px; background: #f8fafc; }
+.module-launcher-editor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin: 16px 0; }
+.module-launcher-editor-grid label { display: grid; gap: 4px; }
+.module-launcher-editor-grid select { padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; }
+.launcher-area { margin-top: 24px; }
+.launcher-area h2 { font-size: 1.15rem; font-weight: 700; color: #0f172a; }
+.launcher-setup { border-top: 1px solid #cbd5e1; padding-top: 24px; }
+.launcher-shortcuts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 12px; }
+.launcher-shortcut { display: flex; align-items: flex-start; gap: 12px; min-height: 96px; min-width: 0; padding: 16px; text-align: left; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; color: #0f172a; }
+.launcher-shortcut:hover { border-color: #64748b; background: #f8fafc; }
+.launcher-shortcut:focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
+.launcher-shortcut-icon { width: 22px; height: 22px; flex-shrink: 0; color: #0f766e; }
+.launcher-shortcut strong { display: block; font-size: .95rem; }
+.launcher-shortcut small { display: block; margin-top: 4px; color: #64748b; font-size: .8rem; line-height: 1.5; }
+@media (max-width: 600px) {
+  .module-launcher-page { padding: 16px; }
+  .module-launcher-header-actions { flex-wrap: wrap; }
+  .module-launcher-role { display: none; }
+  .launcher-shortcut { min-height: 80px; }
 }
 
 .tasks-today-panel {

@@ -1,3 +1,4 @@
+import { NAVIGATION } from '../navigation/navigation';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { FiAlertTriangle, FiCheck, FiChevronDown, FiChevronRight, FiClock, FiCopy, FiDownload, FiEye, FiEdit2, FiFolder, FiLink, FiLock, FiMenu, FiPlus, FiRefreshCw, FiSearch, FiSend, FiThumbsDown, FiThumbsUp, FiTrash2, FiUnlock, FiX, FiZap } from 'react-icons/fi';
@@ -755,7 +756,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     <div className="h-full overflow-x-hidden p-6">
       <div className="mb-6 flex flex-wrap items-start gap-4">
         <div className="min-w-0 flex-1">
-          <h1 className="text-2xl font-semibold text-gray-900">Medical Review Requests</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">{NAVIGATION['medical-review-requests'].label}</h1>
           <p className="text-sm text-gray-600">Queue and audit trail for EKG and liver panel review rounds.</p>
           <div className="mt-3 inline-flex rounded-lg border border-gray-200 bg-white p-1 shadow-sm">
             <button

@@ -1,3 +1,4 @@
+import { NAVIGATION } from '../navigation/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Bar,
@@ -54,7 +55,7 @@ const AnalyticsPage: React.FC = () => {
     <div className="analytics-page">
       <header className="analytics-header">
         <div>
-          <h1>Booking Price Timeline</h1>
+          <h1>{NAVIGATION.analytics.label}</h1>
           <p>When clients book, plotted against price, so you can spot correlation between pricing and booking volume over time.</p>
         </div>
         <label className="analytics-toggle">

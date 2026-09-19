@@ -1,3 +1,4 @@
+import { NAVIGATION } from '../navigation/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, CheckCircle2, Clock3, FileText, RefreshCw, UserCheck, XCircle } from 'lucide-react';
@@ -165,7 +166,7 @@ const MedicalAdvisorDashboard: React.FC = () => {
     <div className="medical-dashboard">
       <div className="medical-dashboard-header">
         <div>
-          <h1>{isMedicalAdvisor ? 'Medical Review Queue' : 'Medical Dashboard'}</h1>
+          <h1>{NAVIGATION['medical-dashboard'].label}</h1>
           <p>
             {isMedicalAdvisor
               ? 'Reviews assigned to you. Pending items first.'

@@ -1,3 +1,4 @@
+import { NAVIGATION } from '../navigation/navigation';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { GripVertical, Mail, Plus, Save, Trash2 } from 'lucide-react';
@@ -516,8 +517,8 @@ const RetreatFlowPage: React.FC = () => {
     return (
       <div className="p-6">
         <div className="mb-6">
-          <h1 className="text-2xl font-semibold text-gray-900">Retreat Readiness Setup</h1>
-          <p className="text-sm text-gray-600">Choose a retreat to edit its readiness step setup.</p>
+          <h1 className="text-2xl font-semibold text-gray-900">{NAVIGATION['retreat-flow'].label}</h1>
+          <p className="text-sm text-gray-600">{NAVIGATION['retreat-flow'].description}</p>
         </div>
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {retreats.map((retreat) => (
@@ -542,7 +543,7 @@ const RetreatFlowPage: React.FC = () => {
     <div className="p-6">
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Retreat Readiness Setup</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">{NAVIGATION['retreat-flow'].label}</h1>
           <p className="text-sm text-gray-600">{selectedRetreat?.name || 'Selected retreat'} • configure retreat-specific steps, deadlines, emails, and colors.</p>
         </div>
         <div className="flex items-center gap-2">
@@ -556,7 +557,7 @@ const RetreatFlowPage: React.FC = () => {
       <div className="max-w-5xl">
         <div className="rounded-lg border border-gray-200 bg-white p-4">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Flow Steps</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Readiness Steps</h2>
             <div className="flex items-center gap-3">
               <span className="text-xs text-gray-500">{templates.length} templates</span>
               <button onClick={handleNewStep} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
