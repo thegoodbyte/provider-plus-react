@@ -1,5 +1,5 @@
 import { getEffectivePaidAmount, getPaymentAmountInBookingCurrency } from './retreatPaymentUtils';
-import { filterRetreatEmailTemplates, normalizeTemplateLanguage } from './retreatEmailTemplateFilters';
+import { filterRetreatEmailTemplates, normalizeTemplateLanguage, retreatEmailTemplateSearchText } from './retreatEmailTemplateFilters';
 import { Payment } from '../types';
 
 const payment = (overrides: Partial<Payment>): Payment => ({
@@ -66,5 +66,13 @@ describe('retreat email template language filtering', () => {
     expect(filterRetreatEmailTemplates(templates, 'cz').map((template) => template._id)).toEqual(['cz']);
     expect(filterRetreatEmailTemplates(templates, 'en').map((template) => template._id)).toEqual(['en', 'default']);
     expect(filterRetreatEmailTemplates(templates, 'all')).toHaveLength(4);
+  });
+
+  it('searches by template name, key, subject, display id and language', () => {
+    const template: any = { display_id: 42, name: 'Arrival address', templateKey: 'arrival_address', subject: 'Your retreat location', language: 'en' };
+    const searchText = retreatEmailTemplateSearchText(template);
+    expect(searchText).toContain('arrival_address');
+    expect(searchText).toContain('your retreat location');
+    expect(searchText).toContain('42');
   });
 });

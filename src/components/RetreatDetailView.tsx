@@ -46,7 +46,7 @@ import BiotechRoundedIcon from '@mui/icons-material/BiotechRounded';
 import './ClientsGrid.css';
 import { getPaymentAmountInBookingCurrency } from './retreatPaymentUtils';
 import { bookingFinancialSummary } from './bookingFinancialSummary';
-import { filterRetreatEmailTemplates, normalizeTemplateLanguage, RetreatEmailTemplateLanguage } from './retreatEmailTemplateFilters';
+import { filterRetreatEmailTemplates, normalizeTemplateLanguage, retreatEmailTemplateSearchText, RetreatEmailTemplateLanguage } from './retreatEmailTemplateFilters';
 import { activeRetreatClients, isCancelledBookingStatus } from './retreatClientVisibility';
 import { formatDateForInput, formatStaffRole, getHouseIdValue, getHouseTown, getRetreatTown, staffRoleOptions } from './retreatDetailUtils';
 
@@ -1927,6 +1927,10 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
               allowClear
               showSearch
               optionFilterProp="label"
+              filterOption={(input, option) => {
+                const template = filteredRetreatEmailTemplates.find((item) => item._id === option?.value);
+                return template ? retreatEmailTemplateSearchText(template).includes(input.trim().toLowerCase()) : false;
+              }}
               placeholder={useRetreatRecipientLanguage ? "Select a template" : "Optional template"}
               onChange={(value) => handleRetreatEmailTemplateChange(value)}
               notFoundContent="No templates match this language or search"

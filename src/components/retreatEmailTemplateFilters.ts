@@ -9,3 +9,12 @@ export const normalizeTemplateLanguage = (language?: string): Exclude<RetreatEma
 
 export const filterRetreatEmailTemplates = (templates: EmailTemplate[], language: RetreatEmailTemplateLanguage) =>
   language === 'all' ? templates : templates.filter((template) => normalizeTemplateLanguage(template.language) === language);
+
+export const retreatEmailTemplateSearchText = (template: EmailTemplate) => [
+  template.display_id,
+  template.name,
+  template.templateKey,
+  template.subject,
+  template.language,
+  normalizeTemplateLanguage(template.language),
+].filter(Boolean).join(' ').toLowerCase();
