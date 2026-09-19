@@ -1,0 +1,79 @@
+{
+  "measuredAt": "2026-09-19T05:31:30.496Z",
+  "browser": "147.0.7727.15",
+  "conditions": "Local gzip production server; new context/cache disabled per run; mocked APIs; CPU 4x; 5 Mbps download; 50ms latency; 5 runs",
+  "entry": [
+    {
+      "file": "static/js/main.5cf1a2b9.js",
+      "bytes": 3586810,
+      "gzipBytes": 949255
+    }
+  ],
+  "median": {
+    "launcherReadyMs": 2520,
+    "fcpMs": 2388,
+    "domContentLoadedMs": 2340
+  },
+  "runs": [
+    {
+      "launcherReadyMs": 2525,
+      "fcpMs": 2388,
+      "domContentLoadedMs": 2340,
+      "scripts": [
+        {
+          "file": "/static/js/main.5cf1a2b9.js",
+          "transferredBytes": 949555,
+          "decodedBytes": 3586810
+        }
+      ]
+    },
+    {
+      "launcherReadyMs": 2520,
+      "fcpMs": 2388,
+      "domContentLoadedMs": 2340,
+      "scripts": [
+        {
+          "file": "/static/js/main.5cf1a2b9.js",
+          "transferredBytes": 949555,
+          "decodedBytes": 3586810
+        }
+      ]
+    },
+    {
+      "launcherReadyMs": 2517,
+      "fcpMs": 2388,
+      "domContentLoadedMs": 2340,
+      "scripts": [
+        {
+          "file": "/static/js/main.5cf1a2b9.js",
+          "transferredBytes": 949555,
+          "decodedBytes": 3586810
+        }
+      ]
+    },
+    {
+      "launcherReadyMs": 2514,
+      "fcpMs": 2384,
+      "domContentLoadedMs": 2335,
+      "scripts": [
+        {
+          "file": "/static/js/main.5cf1a2b9.js",
+          "transferredBytes": 949555,
+          "decodedBytes": 3586810
+        }
+      ]
+    },
+    {
+      "launcherReadyMs": 2551,
+      "fcpMs": 2408,
+      "domContentLoadedMs": 2359,
+      "scripts": [
+        {
+          "file": "/static/js/main.5cf1a2b9.js",
+          "transferredBytes": 949555,
+          "decodedBytes": 3586810
+        }
+      ]
+    }
+  ]
+}

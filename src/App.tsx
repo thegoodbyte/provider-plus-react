@@ -1,11 +1,9 @@
-import React, { useEffect } from 'react';
+import React, { lazy, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
 import AppleLayout from './components/AppleLayout';
 import { Login } from './components/Login/Login';
 import { ForgotPassword } from './components/Login/ForgotPassword';
 import { ResetPassword } from './components/Login/ResetPassword';
-import MedicalReviewAccessPage from './components/MedicalReviewAccessPage';
-import MedicalReviewPublicPage from './components/MedicalReviewPublicPage';
 import ContractRedirectPage from './components/ContractRedirectPage';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { preloaderService } from './services/preloader';
@@ -15,6 +13,11 @@ import { installNativeDialogReplacement } from './utils/nativeDialogReplacement'
 import './App.css';
 import './styles/apple.css';
 import './styles/animations.css';
+
+import RouteContentBoundary from './components/RouteContentBoundary';
+
+const MedicalReviewAccessPage = lazy(() => import(/* webpackChunkName: "MedicalReviewAccessPage" */ './components/MedicalReviewAccessPage'));
+const MedicalReviewPublicPage = lazy(() => import(/* webpackChunkName: "MedicalReviewPublicPage" */ './components/MedicalReviewPublicPage'));
 
 installNativeDialogReplacement();
 
@@ -54,6 +57,7 @@ function AppContent() {
   // Otherwise a previously selected admin app mode can redirect and unmount the exchange page.
   if (isPublicMedicalReviewRoute || (!isAuthenticated && isPublicPasswordRoute)) {
     return (
+      <RouteContentBoundary>
       <Routes>
         <Route path="/medical-review-access/:token/:label" element={<MedicalReviewAccessPage />} />
         <Route path="/medical-review-access/:token" element={<MedicalReviewAccessPage />} />
@@ -63,6 +67,7 @@ function AppContent() {
         <Route path="/users/forgot-pasword" element={<ForgotPassword />} />
         <Route path="/users/change-password/:token" element={<ResetPassword />} />
       </Routes>
+      </RouteContentBoundary>
     );
   }
 

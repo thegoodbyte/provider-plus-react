@@ -1,4 +1,3 @@
-import AnnouncementsPage from './AnnouncementsPage';
 import React, { Suspense, lazy, useState, useEffect } from 'react';
 import { Routes, Route, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { FiBookOpen, FiCalendar, FiChevronDown, FiCreditCard, FiGrid, FiShoppingBag, FiUsers, FiX } from 'react-icons/fi';
@@ -22,17 +21,7 @@ import RetreatDetailView, { RETREAT_DETAIL_TABS, RetreatDetailTab } from './Retr
 // import ClientsGrid from './ClientsGrid'; // Now using UnifiedClientManager
 import BookingsGrid from './BookingsGrid';
 import CeremoniesPage from './CeremoniesPage';
-import MedicalGrid from './MedicalGrid';
-import MedicalTrackingNew from './MedicalTrackingNew';
-import MedicalArtifactsPage from './MedicalArtifactsPage';
-import MedicalArtifactCreatePage from './MedicalArtifactCreatePage';
-import MedicalArtifactDetailPage from './MedicalArtifactDetailPage';
-import MedicalArtifactFileViewPage from './MedicalArtifactFileViewPage';
 import FileUploadsPage from './FileUploadsPage';
-import MedicalTrackingCreatePage from './MedicalTrackingCreatePage';
-import MedicalTrackingDetail from './MedicalTrackingDetail';
-import MedicalTrackingEditPage from './MedicalTrackingEditPage';
-import MedicalTrackingFileViewPage from './MedicalTrackingFileViewPage';
 import WorkflowDashboard from './WorkflowDashboard';
 import RetreatFlowPage from './RetreatFlowPage';
 import RetreatFlowLibraryPage from './RetreatFlowLibraryPage';
@@ -43,12 +32,6 @@ import NeedsAttentionPage from './NeedsAttentionPage';
 import BookingDocumentsPage from './BookingDocumentsPage';
 import BookingDocumentTypesPage from './BookingDocumentTypesPage';
 import FlowTaskInboxPage from './FlowTaskInboxPage';
-import MedicalReviewRequestsGrid from './MedicalReviewRequestsGrid';
-import MedicalReviewRequestEditorPage from './MedicalReviewRequestEditorPage';
-import MedicalReviewRequestsPage from './MedicalReviewRequestsPage';
-import MedicalReviewAccessPage from './MedicalReviewAccessPage';
-import MedicalReviewGroupPage from './MedicalReviewGroupPage';
-import MedicalReviewPublicPage from './MedicalReviewPublicPage';
 import RemindersPage from './RemindersPage';
 import PaymentsPage from './PaymentsPage';
 import PaymentEditorPage from './PaymentEditorPage';
@@ -57,31 +40,19 @@ import PaymentReceiptsPage from './PaymentReceiptsPage';
 import PaymentRequestsGrid from './PaymentRequestsGrid';
 import PaymentRequestEditorPage from './PaymentRequestEditorPage';
 import RevolutPaymentLinksPage from './RevolutPaymentLinksPage';
-import PaymentRequestTypesSettings from './PaymentRequestTypesSettings';
 import ExpensesPage from './ExpensesPage';
 import ExpenseDetailPage from './ExpenseDetailPage';
 import ExpenseEditorPage from './ExpenseEditorPage';
-import CommunicationsPage from './CommunicationsPage';
 import ContactBookPage from './ContactBookPage';
 import ReferralsPage from './ReferralsPage';
 import AssistantPage from './AssistantPage';
 import HelperCurrentRetreatPage from './HelperCurrentRetreatPage';
 import RetreatFocusModePage from './RetreatFocusModePage';
 import RequirementsGrid from './RequirementsGrid';
-import CurrencySettings from './CurrencySettings';
-import ExpenseTypesSettings from './ExpenseTypesSettings';
-import MedicalAdvisorDashboard from './MedicalAdvisorDashboard';
-import MedicalReviewDetail from './MedicalReviewDetail';
-import MedicalRetreats from './MedicalRetreats';
-import MedicalProfile from './MedicalProfile';
-import MedicalClientView from './MedicalClientView';
-import MedicalAdvisorReview from './MedicalAdvisorReview';
 import ModuleLauncherPage from './ModuleLauncherPage';
 import ReserveListsPage from './ReserveListsPage';
 import ProtectedRoute from './ProtectedRoute';
 import Unauthorized from './Unauthorized';
-import PermissionsMatrix from './PermissionsMatrix';
-import AnalyticsPage from './AnalyticsPage';
 import ClientMedicationsGrid from './ClientMedicationsGrid';
 import ClientMedicationForm from './ClientMedicationForm';
 import ClientFoodFormsPage from './ClientFoodFormsPage';
@@ -89,9 +60,6 @@ import ClientFormsPage from './ClientFormsPage';
 import BookingStepDeadlinesPage from './BookingStepDeadlinesPage';
 import ScheduledRemindersPage from './ScheduledRemindersPage';
 import MedicationStopPlanPage from './MedicationStopPlanPage';
-import UserManagement from './UserManagement';
-import AuditLogsPage from './AuditLogsPage';
-import DataBackupPage from './DataBackupPage';
 import { Tasks } from '../pages/Tasks/Tasks';
 import { useAuth } from '../context/AuthContext';
 import { ForgotPassword } from './Login/ForgotPassword';
@@ -103,6 +71,41 @@ import { bookingsApi, retreatsApi } from '../services/api';
 import { Retreat } from '../types';
 import GlobalSearch from './GlobalSearch';
 import { APP_MODE_STORAGE_KEY, readStoredAppMode, StoredAppMode } from '../utils/appModeStorage';
+
+import RouteContentBoundary from './RouteContentBoundary';
+
+const AnnouncementsPage = lazy(() => import(/* webpackChunkName: "AnnouncementsPage" */ './AnnouncementsPage'));
+const MedicalGrid = lazy(() => import(/* webpackChunkName: "MedicalGrid" */ './MedicalGrid'));
+const MedicalTrackingNew = lazy(() => import(/* webpackChunkName: "MedicalTrackingNew" */ './MedicalTrackingNew'));
+const MedicalArtifactsPage = lazy(() => import(/* webpackChunkName: "MedicalArtifactsPage" */ './MedicalArtifactsPage'));
+const MedicalArtifactCreatePage = lazy(() => import(/* webpackChunkName: "MedicalArtifactCreatePage" */ './MedicalArtifactCreatePage'));
+const MedicalArtifactDetailPage = lazy(() => import(/* webpackChunkName: "MedicalArtifactDetailPage" */ './MedicalArtifactDetailPage'));
+const MedicalArtifactFileViewPage = lazy(() => import(/* webpackChunkName: "MedicalArtifactFileViewPage" */ './MedicalArtifactFileViewPage'));
+const MedicalTrackingCreatePage = lazy(() => import(/* webpackChunkName: "MedicalTrackingCreatePage" */ './MedicalTrackingCreatePage'));
+const MedicalTrackingDetail = lazy(() => import(/* webpackChunkName: "MedicalTrackingDetail" */ './MedicalTrackingDetail'));
+const MedicalTrackingEditPage = lazy(() => import(/* webpackChunkName: "MedicalTrackingEditPage" */ './MedicalTrackingEditPage'));
+const MedicalTrackingFileViewPage = lazy(() => import(/* webpackChunkName: "MedicalTrackingFileViewPage" */ './MedicalTrackingFileViewPage'));
+const MedicalReviewRequestsGrid = lazy(() => import(/* webpackChunkName: "MedicalReviewRequestsGrid" */ './MedicalReviewRequestsGrid'));
+const MedicalReviewRequestEditorPage = lazy(() => import(/* webpackChunkName: "MedicalReviewRequestEditorPage" */ './MedicalReviewRequestEditorPage'));
+const MedicalReviewRequestsPage = lazy(() => import(/* webpackChunkName: "MedicalReviewRequestsPage" */ './MedicalReviewRequestsPage'));
+const MedicalReviewAccessPage = lazy(() => import(/* webpackChunkName: "MedicalReviewAccessPage" */ './MedicalReviewAccessPage'));
+const MedicalReviewGroupPage = lazy(() => import(/* webpackChunkName: "MedicalReviewGroupPage" */ './MedicalReviewGroupPage'));
+const MedicalReviewPublicPage = lazy(() => import(/* webpackChunkName: "MedicalReviewPublicPage" */ './MedicalReviewPublicPage'));
+const MedicalAdvisorDashboard = lazy(() => import(/* webpackChunkName: "MedicalAdvisorDashboard" */ './MedicalAdvisorDashboard'));
+const MedicalReviewDetail = lazy(() => import(/* webpackChunkName: "MedicalReviewDetail" */ './MedicalReviewDetail'));
+const MedicalRetreats = lazy(() => import(/* webpackChunkName: "MedicalRetreats" */ './MedicalRetreats'));
+const MedicalProfile = lazy(() => import(/* webpackChunkName: "MedicalProfile" */ './MedicalProfile'));
+const MedicalClientView = lazy(() => import(/* webpackChunkName: "MedicalClientView" */ './MedicalClientView'));
+const MedicalAdvisorReview = lazy(() => import(/* webpackChunkName: "MedicalAdvisorReview" */ './MedicalAdvisorReview'));
+const CommunicationsPage = lazy(() => import(/* webpackChunkName: "CommunicationsPage" */ './CommunicationsPage'));
+const AnalyticsPage = lazy(() => import(/* webpackChunkName: "AnalyticsPage" */ './AnalyticsPage'));
+const UserManagement = lazy(() => import(/* webpackChunkName: "UserManagement" */ './UserManagement'));
+const AuditLogsPage = lazy(() => import(/* webpackChunkName: "AuditLogsPage" */ './AuditLogsPage'));
+const DataBackupPage = lazy(() => import(/* webpackChunkName: "DataBackupPage" */ './DataBackupPage'));
+const PermissionsMatrix = lazy(() => import(/* webpackChunkName: "PermissionsMatrix" */ './PermissionsMatrix'));
+const CurrencySettings = lazy(() => import(/* webpackChunkName: "CurrencySettings" */ './CurrencySettings'));
+const ExpenseTypesSettings = lazy(() => import(/* webpackChunkName: "ExpenseTypesSettings" */ './ExpenseTypesSettings'));
+const PaymentRequestTypesSettings = lazy(() => import(/* webpackChunkName: "PaymentRequestTypesSettings" */ './PaymentRequestTypesSettings'));
 
 const BookingEditorPage = lazy(() => import('./BookingEditorPage'));
 const BookingDetailView = lazy(() => import('./BookingDetailView'));
@@ -791,6 +794,7 @@ const AppleLayout: React.FC = () => {
         <main className="re-shell h-[calc(100vh-32px)] overflow-y-auto px-4 py-4 sm:px-6 lg:h-[calc(100vh-64px-32px)] lg:px-8 lg:py-6">
           <div className="max-w-7xl mx-auto">
             <div className="rounded-apple-lg bg-[#e7eaee] shadow-apple-sm">
+              <RouteContentBoundary>
               <Routes>
                 {/* Unauthorized route */}
                 <Route path="/unauthorized" element={<Unauthorized />} />
@@ -1169,6 +1173,7 @@ const AppleLayout: React.FC = () => {
                 <Route path="/expenses/:id/edit" element={<ProtectedRoute><ExpenseEditorPage /></ProtectedRoute>} />
                 <Route path="/requirements" element={<ProtectedRoute><RequirementsGrid /></ProtectedRoute>} />
               </Routes>
+              </RouteContentBoundary>
             </div>
           </div>
         </main>
@@ -1191,7 +1196,7 @@ const AppleLayout: React.FC = () => {
             onClick={() => setShowSettings(false)}
           />
           <div className="relative bg-white rounded-apple-xl shadow-apple-xl max-w-lg w-full">
-            <CurrencySettings onClose={() => setShowSettings(false)} />
+            <RouteContentBoundary><CurrencySettings onClose={() => setShowSettings(false)} /></RouteContentBoundary>
           </div>
         </div>
       )}

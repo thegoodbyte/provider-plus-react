@@ -1,6 +1,6 @@
-import AnnouncementsPage from './AnnouncementsPage';
+import RouteContentBoundary from './RouteContentBoundary';
 import { authService } from '../services/authService';
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { lazy, useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { retreatsApi, bookingsApi, retreatExpensesApi, paymentsApi, clientsApi, housesApi, communicationsApi, contactBookApi, bookingFlowApi } from '../services/api';
 import { Retreat, ExpenseSummary, House, Payment, EmailAsset, EmailTemplate, ContactBookEntry, RetreatStaffAssignment, BookingFlowTemplate } from '../types';
@@ -9,7 +9,6 @@ import PaymentsTab from './PaymentsTab';
 import ClientDetailView from './ClientDetailView';
 import ClientAvatar from './ClientAvatar';
 import CeremoniesGrid from './CeremoniesGrid';
-import CeremonyAnalytics from './CeremonyAnalytics';
 import SearchableClientSelector from './SearchableClientSelector';
 import RetreatTrackingGrid from './RetreatTrackingGrid';
 import FoodMatrixGrid from './FoodMatrixGrid';
@@ -65,6 +64,9 @@ interface RetreatDetailViewProps {
   initialTab?: RetreatDetailTab;
   onTabChange?: (tab: RetreatDetailTab) => void;
 }
+
+const AnnouncementsPage = lazy(() => import(/* webpackChunkName: "AnnouncementsPage" */ './AnnouncementsPage'));
+const CeremonyAnalytics = lazy(() => import(/* webpackChunkName: "CeremonyAnalytics" */ './CeremonyAnalytics'));
 
 // Single source of truth for every retreat detail tab -- both the type and
 // the URL-routing allowlist in AppleLayout.tsx derive from this array, so a
@@ -1240,7 +1242,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
 
       {/* Tab Content */}
       <div className="retreat-detail-tab-content">
-        {activeTab === 'announcements' && authService.getUser()?.role === 'admin' && <AnnouncementsPage retreatId={retreatId} />}
+        {activeTab === 'announcements' && authService.getUser()?.role === 'admin' && <RouteContentBoundary><AnnouncementsPage retreatId={retreatId} /></RouteContentBoundary>}
         {activeTab === 'clients' && (
         <div className="clients-section">
           <div className="section-header">
@@ -1531,7 +1533,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
 
         {activeTab === 'analytics' && (
         <div className="analytics-section">
-          <CeremonyAnalytics retreatId={retreatId} />
+          <RouteContentBoundary><CeremonyAnalytics retreatId={retreatId} /></RouteContentBoundary>
         </div>
         )}
 
