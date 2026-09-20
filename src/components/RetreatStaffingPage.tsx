@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { retreatsApi } from '../services/api';
 import { Retreat } from '../types';
-import { formatRetreatStaffingDates, formatStaffAssignmentDates, splitRetreatStaffingRetreats } from './RetreatStaffingPage.helpers';
+import { formatRetreatStaffingDates, formatStaffAssignmentDates, splitRetreatStaffingRetreats, StaffingLanguage } from './RetreatStaffingPage.helpers';
 
 const roles = [
   { key: 'cook', label: 'Cook' },
@@ -15,6 +15,7 @@ export default function RetreatStaffingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
+  const [language, setLanguage] = useState<StaffingLanguage>('en');
   const prefix = useLocation().pathname.split('/').filter(Boolean)[0] || 'admin';
   const load = async () => {
     setLoading(true);
@@ -35,10 +36,10 @@ export default function RetreatStaffingPage() {
       .filter(Boolean).join(' ').toLowerCase().includes(search.trim().toLowerCase()));
   const sections = splitRetreatStaffingRetreats(visible);
   const renderRows = (rows: Retreat[]) => rows.map(retreat => <tr key={retreat._id}>
-    <td className="p-4"><Link className="font-semibold text-teal-700" to={`/${prefix}/retreats/${retreat._id}`}>{retreat.retreatCode || retreat.code || retreat.name}</Link><p className="mt-1 text-sm text-slate-600">{formatRetreatStaffingDates(retreat)}</p><p className="mt-1 text-xs text-slate-500">{retreat.location_town || retreat.location || 'Location not set'}</p></td>
+    <td className="p-4"><Link className="font-semibold text-teal-700" to={`/${prefix}/retreats/${retreat._id}`}>{retreat.retreatCode || retreat.code || retreat.name}</Link><p className="mt-1 text-sm text-slate-600">{formatRetreatStaffingDates(retreat, language)}</p><p className="mt-1 text-xs text-slate-500">{retreat.location_town || retreat.location || 'Location not set'}</p></td>
     {roles.map(role => {
       const people = (retreat.retreatStaff || []).filter(person => (person.role || 'helper') === role.key);
-      return <td className={`p-4 ${people.length ? 'text-slate-800' : 'text-amber-700'}`} key={role.key}>{people.length ? <div className="space-y-3">{people.map((person, index) => <div key={`${person.contactId || person.name || 'staff'}-${index}`}><div className="font-medium">{person.name?.trim() || (typeof person.contactId === 'object' ? person.contactId?.name : '') || 'Assigned person — name unavailable'}</div><div className="mt-1 text-xs leading-5 text-slate-500">{formatStaffAssignmentDates(person, retreat)}</div></div>)}</div> : 'Not assigned'}</td>;
+      return <td className={`p-4 ${people.length ? 'text-slate-800' : 'text-amber-700'}`} key={role.key}>{people.length ? <div className="space-y-3">{people.map((person, index) => <div key={`${person.contactId || person.name || 'staff'}-${index}`}><div className="font-medium">{person.name?.trim() || (typeof person.contactId === 'object' ? person.contactId?.name : '') || 'Assigned person — name unavailable'}</div><div className="mt-1 text-xs leading-5 text-slate-500">{formatStaffAssignmentDates(person, retreat, language)}</div></div>)}</div> : 'Not assigned'}</td>;
     })}
     <td className="p-4"><Link className="font-medium text-teal-700 underline" to={`/${prefix}/retreats/${retreat._id}?panel=helpers`}>Manage team</Link></td>
   </tr>);
@@ -48,8 +49,9 @@ export default function RetreatStaffingPage() {
       <h1 className="text-2xl font-bold text-slate-900">Helpers &amp; Cooks</h1>
       <p className="mt-2 text-slate-600">See the team across all retreats. Choose Manage team to assign a cook or helpers.</p>
     </header>
-    <div className="mb-4 flex gap-3">
+    <div className="mb-4 flex flex-wrap items-end gap-3">
       <input aria-label="Search retreats or team members" placeholder="Search retreats or team members…" value={search} onChange={event => setSearch(event.target.value)} className="w-full max-w-lg rounded-lg border border-slate-300 px-3 py-2" />
+      <label className="text-sm font-medium text-slate-700">Weekday language<select aria-label="Weekday language" value={language} onChange={event => setLanguage(event.target.value as StaffingLanguage)} className="mt-1 block rounded-lg border border-slate-300 bg-white px-3 py-2"><option value="en">English</option><option value="pl">Polski</option><option value="cs">Čeština</option></select></label>
       <button onClick={load} disabled={loading} className="rounded-lg border border-slate-300 bg-white px-4 py-2 disabled:opacity-50">Refresh</button>
     </div>
     {loading ? <p role="status">Loading retreat staffing…</p> : error ? <p role="alert" className="rounded-lg bg-red-50 p-4 text-red-800">{error}</p> :
