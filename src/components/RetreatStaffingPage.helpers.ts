@@ -19,7 +19,8 @@ export const formatStaffingDate = (value?: string | Date, language: StaffingLang
   const weekday = new Intl.DateTimeFormat(staffingLocales[language], { weekday: 'short', timeZone: 'UTC' }).format(date);
   const parts = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' }).formatToParts(date);
   const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
-  return `${weekday}, ${values.day}/${values.month}/${values.year}`;
+  const formattedDate = language === 'en' ? `${values.month}/${values.day}/${values.year}` : `${values.day}/${values.month}/${values.year}`;
+  return `${weekday}, ${formattedDate}`;
 };
 
 export const formatRetreatStaffingDates = (retreat: Retreat, language: StaffingLanguage = 'en') => `${formatStaffingDate(retreat.startDate || retreat.dates?.startDate, language)} – ${formatStaffingDate(retreat.endDate || retreat.dates?.endDate, language)}`;
