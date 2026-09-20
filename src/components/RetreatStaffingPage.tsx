@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { retreatsApi } from '../services/api';
 import { Retreat } from '../types';
 import { formatRetreatCalendarDate } from './RetreatsGrid.helpers';
+import { splitRetreatStaffingRetreats } from './RetreatStaffingPage.helpers';
 
 const roles = [
   { key: 'cook', label: 'Cook' },
@@ -21,8 +22,7 @@ export default function RetreatStaffingPage() {
     setError('');
     try {
       const response = await retreatsApi.getAll();
-      setRetreats([...response.data].sort((a, b) =>
-        new Date(b.startDate || b.dates?.startDate || 0).getTime() - new Date(a.startDate || a.dates?.startDate || 0).getTime()));
+      setRetreats(response.data || []);
     } catch {
       setError('Unable to load retreat staffing. Please try again.');
     } finally {
@@ -34,6 +34,15 @@ export default function RetreatStaffingPage() {
     [retreat.retreatCode, retreat.code, retreat.name, retreat.location_town, retreat.location,
       ...(retreat.retreatStaff || []).map(person => person.name || (typeof person.contactId === 'object' ? person.contactId?.name : ''))]
       .filter(Boolean).join(' ').toLowerCase().includes(search.trim().toLowerCase()));
+  const sections = splitRetreatStaffingRetreats(visible);
+  const renderRows = (rows: Retreat[]) => rows.map(retreat => <tr key={retreat._id}>
+    <td className="p-4"><Link className="font-semibold text-teal-700" to={`/${prefix}/retreats/${retreat._id}`}>{retreat.retreatCode || retreat.code || retreat.name}</Link><p className="mt-1 text-sm text-slate-500">{formatRetreatCalendarDate(retreat.startDate || retreat.dates?.startDate, { year: 'numeric', month: 'short', day: 'numeric' })} · {retreat.location_town || retreat.location || 'Location not set'}</p></td>
+    {roles.map(role => {
+      const people = (retreat.retreatStaff || []).filter(person => (person.role || 'helper') === role.key);
+      return <td className={`p-4 ${people.length ? 'text-slate-800' : 'text-amber-700'}`} key={role.key}>{people.length ? people.map(person => person.name?.trim() || (typeof person.contactId === 'object' ? person.contactId?.name : '') || 'Assigned person — name unavailable').join(', ') : 'Not assigned'}</td>;
+    })}
+    <td className="p-4"><Link className="font-medium text-teal-700 underline" to={`/${prefix}/retreats/${retreat._id}?panel=helpers`}>Manage team</Link></td>
+  </tr>);
 
   return <main className="mx-auto max-w-[1500px] p-4 sm:p-6">
     <header className="mb-5">
@@ -48,14 +57,12 @@ export default function RetreatStaffingPage() {
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table className="w-full min-w-[800px] text-left">
           <thead className="bg-slate-50 text-sm text-slate-600"><tr><th className="p-4">Retreat</th>{roles.map(role => <th className="p-4" key={role.key}>{role.label}</th>)}<th className="p-4">Actions</th></tr></thead>
-          <tbody className="divide-y divide-slate-200">{visible.map(retreat => <tr key={retreat._id}>
-            <td className="p-4"><Link className="font-semibold text-teal-700" to={`/${prefix}/retreats/${retreat._id}`}>{retreat.retreatCode || retreat.code || retreat.name}</Link><p className="mt-1 text-sm text-slate-500">{formatRetreatCalendarDate(retreat.startDate || retreat.dates?.startDate, { year: 'numeric', month: 'short', day: 'numeric' })} · {retreat.location_town || retreat.location || 'Location not set'}</p></td>
-            {roles.map(role => {
-              const people = (retreat.retreatStaff || []).filter(person => (person.role || 'helper') === role.key);
-              return <td className={`p-4 ${people.length ? 'text-slate-800' : 'text-amber-700'}`} key={role.key}>{people.length ? people.map(person => person.name?.trim() || (typeof person.contactId === 'object' ? person.contactId?.name : '') || 'Assigned person — name unavailable').join(', ') : 'Not assigned'}</td>;
-            })}
-            <td className="p-4"><Link className="font-medium text-teal-700 underline" to={`/${prefix}/retreats/${retreat._id}?panel=helpers`}>Manage team</Link></td>
-          </tr>)}</tbody>
+          <tbody className="divide-y divide-slate-200">
+            {sections.currentAndUpcoming.length > 0 && <tr className="bg-teal-50"><th colSpan={5} className="p-3 text-left text-sm font-semibold uppercase tracking-wide text-teal-800">Current and upcoming retreats</th></tr>}
+            {renderRows(sections.currentAndUpcoming)}
+            {sections.past.length > 0 && <tr className="bg-slate-100"><th colSpan={5} className="p-3 text-left text-sm font-semibold uppercase tracking-wide text-slate-700">Past retreats</th></tr>}
+            {renderRows(sections.past)}
+          </tbody>
         </table>
         {!visible.length && <p className="p-6 text-slate-500">{search ? 'No retreats match your search.' : 'No retreats found.'}</p>}
       </div>}
