@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { FiDollarSign, FiSave } from 'react-icons/fi';
-import { housesApi, retreatsApi } from '../services/api';
-import { House, Retreat } from '../types';
+import { contactBookApi, housesApi, retreatsApi } from '../services/api';
+import { ContactBookEntry, House, Retreat, RetreatStaffAssignment } from '../types';
+import { formatDateForInput, staffRoleOptions } from './retreatDetailUtils';
 import LoadingSpinner from './LoadingSpinner';
 
 const Icon: React.FC<{ component: any }> = ({ component }) => React.createElement(component);
@@ -30,11 +31,12 @@ const RetreatEditorPage: React.FC = () => {
   const [websiteContentText, setWebsiteContentText] = useState('{}');
   const [plPrices, setPlPrices] = useState({ closeShared: 9500, closePrivate: 10500, closeEnsuite: 11500, midShared: 8500, midPrivate: 9500, midEnsuite: 10500, farShared: 7500, farPrivate: 8500, farEnsuite: 9500, addictionSupport: 1500 });
   const [plIncluded, setPlIncluded] = useState('');
-  const [staffText, setStaffText] = useState('[]');
+  const [staffAssignments, setStaffAssignments] = useState<RetreatStaffAssignment[]>([]);
+  const [staffDirectory, setStaffDirectory] = useState<ContactBookEntry[]>([]);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    Promise.all([retreatsApi.getOne(retreatId), housesApi.getAll()]).then(([retreatResponse, houseResponse]) => {
+    Promise.all([retreatsApi.getOne(retreatId), housesApi.getAll()]).then(async ([retreatResponse, houseResponse]) => {
       const item = retreatResponse.data;
       setRetreat(item);
       setForm({ ...item, code: item.code || item.retreatCode, retreatCode: item.code || item.retreatCode, location_town: item.location_town || item.locationTown || item.location, location: item.location_town || item.locationTown || item.location });
@@ -47,12 +49,19 @@ const RetreatEditorPage: React.FC = () => {
       setPlPrices({ closeShared: Number(close.sharedRoom ?? 9500), closePrivate: Number(close.privateRoom ?? 10500), closeEnsuite: Number(close.privateEnsuite ?? 11500), midShared: Number(mid.sharedRoom ?? 8500), midPrivate: Number(mid.privateRoom ?? 9500), midEnsuite: Number(mid.privateEnsuite ?? 10500), farShared: Number(far.sharedRoom ?? 7500), farPrivate: Number(far.privateRoom ?? 8500), farEnsuite: Number(far.privateEnsuite ?? 9500), addictionSupport: Number(pl.addictionSupport ?? 1500) });
       const included = item.websiteContent?.includedItems?.pl || (Array.isArray(item.websiteContent?.includedItems) ? item.websiteContent.includedItems : []);
       setPlIncluded((included || []).join('\n'));
-      setStaffText(JSON.stringify(item.retreatStaff || [], null, 2));
+      const defaults = { startDate: formatDateForInput(item.startDate), startTime: item.startTime || '12:00', endDate: formatDateForInput(item.endDate), endTime: item.endTime || '10:00' };
+      const assignments = (item.retreatStaff || []).map((assignment: RetreatStaffAssignment) => ({ ...assignment, contactId: idOf(assignment.contactId), startDate: formatDateForInput(assignment.startDate) || defaults.startDate, startTime: assignment.startTime || defaults.startTime, endDate: formatDateForInput(assignment.endDate) || defaults.endDate, endTime: assignment.endTime || defaults.endTime, salaryCurrency: assignment.salaryCurrency || 'CZK' }));
+      setStaffAssignments(assignments);
+      const [helpers, cooks] = await Promise.all([contactBookApi.getAll({ role: 'helper' }), contactBookApi.getAll({ role: 'cook' })]);
+      setStaffDirectory([...helpers.data, ...cooks.data].filter((person, index, all) => person.isActive !== false && all.findIndex(candidate => candidate._id === person._id) === index).sort((a, b) => a.name.localeCompare(b.name)));
       setHouses(houseResponse.data || []);
     }).catch((cause) => setError(cause?.response?.data?.message || cause?.message || 'Unable to load retreat.')).finally(() => setLoading(false));
   }, [retreatId]);
 
   const set = (patch: Partial<Retreat>) => setForm((current) => ({ ...current, ...patch }));
+  const updateStaff = (index: number, patch: Partial<RetreatStaffAssignment>) => setStaffAssignments((current) => current.map((assignment, itemIndex) => itemIndex === index ? { ...assignment, ...patch } : assignment));
+  const addStaff = () => setStaffAssignments((current) => [...current, { role: 'helper', contactId: '', startDate: formatDateForInput(form.startDate), startTime: form.startTime || '12:00', endDate: formatDateForInput(form.endDate), endTime: form.endTime || '10:00', salaryCurrency: 'CZK' }]);
+  const removeStaff = (index: number) => setStaffAssignments((current) => current.filter((_, itemIndex) => itemIndex !== index));
   const goBack = () => navigate(`${prefix}/retreats/${retreatId}`);
   const selectHouse = (houseId: string) => {
     const house = houses.find((candidate) => candidate._id === houseId);
@@ -80,8 +89,8 @@ const RetreatEditorPage: React.FC = () => {
     if (capacityValue < occupancyValue) { setError(`Capacity cannot be below current occupancy (${occupancyValue}).`); return; }
     if (commission !== null && commission !== undefined && (!Number.isFinite(Number(commission)) || Number(commission) < 0 || Number(commission) > 100)) { setError('Referral commission override must be between 0 and 100%.'); return; }
     let websitePricing: Record<string, any>, websiteContent: Record<string, any>, retreatStaff: any[];
-    try { websitePricing = JSON.parse(websitePricingText || '{}'); websiteContent = JSON.parse(websiteContentText || '{}'); retreatStaff = JSON.parse(staffText || '[]'); } catch { setError('Website pricing, content, and staff fields must contain valid JSON.'); return; }
-    if (!websitePricing || Array.isArray(websitePricing) || !websiteContent || Array.isArray(websiteContent) || !Array.isArray(retreatStaff)) { setError('Website pricing and content must be JSON objects, and staff must be a JSON array.'); return; }
+    try { websitePricing = JSON.parse(websitePricingText || '{}'); websiteContent = JSON.parse(websiteContentText || '{}'); retreatStaff = staffAssignments; } catch { setError('Website pricing and content must contain valid JSON.'); return; }
+    if (!websitePricing || Array.isArray(websitePricing) || !websiteContent || Array.isArray(websiteContent) || !Array.isArray(retreatStaff)) { setError('Website pricing and content must be JSON objects, and staff must be a list.'); return; }
     setSaving(true); setError('');
     try {
       websitePricing = { ...websitePricing, byRegion: { ...(websitePricing.byRegion || {}), pl: { ...(websitePricing.byRegion?.pl || websitePricing.pl || {}), currency: 'PLN', symbol: 'zł', format: '{price} {symbol}', addictionSupport: Number(plPrices.addictionSupport), tiers: [
@@ -157,7 +166,20 @@ const RetreatEditorPage: React.FC = () => {
         <label className="md:col-span-3"><span className={label}>Helpers / operational notes</span><textarea className={field} rows={3} value={form.helpers || ''} onChange={(e) => set({ helpers: e.target.value })} placeholder="Internal staffing or operational notes"/></label>
         <label className="md:col-span-3"><span className={label}>Referral commission override (%)</span><input className={field} type="number" min="0" max="100" step="0.01" value={form.referralCommissionPercentage ?? ''} onChange={(e) => set({ referralCommissionPercentage: e.target.value === '' ? null : Number(e.target.value) })} placeholder="Inherit referral default"/><span className="mt-1 block text-xs text-gray-500">Leave blank to inherit the referral partner’s default. A client-specific override still takes priority.</span></label>
         <label className="flex items-center gap-3 md:col-span-3"><input aria-label="Show on website" type="checkbox" checked={form.showOnSite !== false} onChange={(e) => set({ showOnSite: e.target.checked })}/><span><strong className="block text-sm">Show on public website</strong><span className="text-xs text-gray-500">Hide cancelled or private retreats without deleting them.</span></span></label>
-        <label className="md:col-span-3"><span className={label}>Retreat staff (advanced JSON)</span><textarea className={`${field} font-mono text-xs`} rows={3} value={staffText} onChange={(e) => setStaffText(e.target.value)}/></label>
+        <div className="md:col-span-6 border border-gray-300 bg-white p-4">
+          <div className="mb-3 flex items-center justify-between"><div><span className={label}>Helpers and cooks</span><p className="text-xs text-gray-500">Dates and times default to this retreat. Add Helper 2 explicitly when needed.</p></div><button type="button" onClick={addStaff} className="min-h-9 border border-gray-300 px-3 text-sm font-semibold">Add person</button></div>
+          <div className="space-y-3">
+            {staffAssignments.map((assignment, index) => <div key={`${assignment.contactId || 'staff'}-${index}`} className="border border-gray-200 bg-gray-50 p-3">
+              <div className="grid gap-3 md:grid-cols-[160px_1fr_auto]">
+                <select aria-label="Staff role" className={field} value={assignment.role || 'helper'} onChange={(e) => updateStaff(index, { role: e.target.value })}>{staffRoleOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select>
+                <select aria-label="Directory person" className={field} value={idOf(assignment.contactId)} onChange={(e) => { const contact = staffDirectory.find(person => person._id === e.target.value); updateStaff(index, { contactId: e.target.value, name: contact?.name || assignment.name, phone: contact?.phone || assignment.phone, email: contact?.email || assignment.email }); }}>{<option value="">Select helper or cook</option>}{staffDirectory.map(person => <option key={person._id} value={person._id}>{person.name} ({person.role})</option>)}</select>
+                <button type="button" onClick={() => removeStaff(index)} className="border border-red-200 px-3 text-sm text-red-700">Remove</button>
+              </div>
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 md:grid-cols-4"><label><span className={label}>From date</span><input className={field} type="date" value={formatDateForInput(assignment.startDate)} onChange={(e) => updateStaff(index, { startDate: e.target.value })}/></label><label><span className={label}>From time</span><input className={field} type="time" value={assignment.startTime || ''} onChange={(e) => updateStaff(index, { startTime: e.target.value })}/></label><label><span className={label}>To date</span><input className={field} type="date" value={formatDateForInput(assignment.endDate)} onChange={(e) => updateStaff(index, { endDate: e.target.value })}/></label><label><span className={label}>To time</span><input className={field} type="time" value={assignment.endTime || ''} onChange={(e) => updateStaff(index, { endTime: e.target.value })}/></label></div>
+            </div>)}
+            {!staffAssignments.length && <p className="text-sm text-gray-500">No helpers or cooks assigned.</p>}
+          </div>
+        </div>
       </div></section>
 
       <section className="py-6"><SectionTitle number="05" title="Website content" detail="Control public pricing/content and the hero image associated with this retreat."/><div className="grid gap-4 md:ml-14 md:grid-cols-2">

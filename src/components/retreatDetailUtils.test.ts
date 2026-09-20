@@ -14,7 +14,7 @@ describe('retreat detail utilities', () => {
   });
 
   it('formats known and custom staff roles consistently', () => {
-    expect(formatStaffRole('second_helper')).toBe('Second helper');
+    expect(formatStaffRole('second_helper')).toBe('Helper 2');
     expect(formatStaffRole('medical_advisor')).toBe('Medical Advisor');
   });
 

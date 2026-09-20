@@ -2,7 +2,7 @@ import RouteContentBoundary from './RouteContentBoundary';
 import { authService } from '../services/authService';
 import React, { lazy, useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { retreatsApi, bookingsApi, retreatExpensesApi, paymentsApi, clientsApi, housesApi, communicationsApi, contactBookApi, bookingFlowApi } from '../services/api';
+import { retreatsApi, bookingsApi, retreatExpensesApi, paymentsApi, clientsApi, communicationsApi, bookingFlowApi } from '../services/api';
 import { Retreat, ExpenseSummary, House, Payment, EmailAsset, EmailTemplate, ContactBookEntry, RetreatStaffAssignment, BookingFlowTemplate } from '../types';
 import ExpensesTab from './ExpensesTab';
 import PaymentsTab from './PaymentsTab';
@@ -194,8 +194,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     if (new URLSearchParams(location.search).get('panel') === 'helpers') setHelperAssignmentsCollapsed(false);
   }, [location.search]);
   const [showRetreatEditModal, setShowRetreatEditModal] = useState(false);
-  const [houses, setHouses] = useState<House[]>([]);
-  const [staffDirectory, setStaffDirectory] = useState<ContactBookEntry[]>([]);
+  const [houses] = useState<House[]>([]);
+  const [staffDirectory] = useState<ContactBookEntry[]>([]);
   const [retreatFormData, setRetreatFormData] = useState<Partial<Retreat>>({});
   const [sortField, setSortField] = useState<'bookingNumber' | 'clientName' | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
@@ -376,25 +376,6 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
       if (showLoading) setIsLoading(false);
     }
   }, [retreatId]);
-
-  const loadStaffDirectory = useCallback(async () => {
-    try {
-      const [helpersResponse, cooksResponse] = await Promise.all([
-        contactBookApi.getAll({ role: 'helper' }),
-        contactBookApi.getAll({ role: 'cook' }),
-      ]);
-      const byId = new Map<string, ContactBookEntry>();
-      [...(helpersResponse.data || []), ...(cooksResponse.data || [])].forEach((contact) => {
-        if (contact._id && contact.isActive !== false) {
-          byId.set(contact._id, contact);
-        }
-      });
-      setStaffDirectory(Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name)));
-    } catch (error) {
-      console.error('Error fetching helper directory:', error);
-      setStaffDirectory([]);
-    }
-  }, []);
 
   useEffect(() => {
     fetchRetreatData();
@@ -1011,33 +992,8 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           <button
             type="button"
             onClick={async () => {
-              if (houses.length === 0) {
-                try {
-                  const housesResponse = await housesApi.getAll();
-                  setHouses(housesResponse.data);
-                } catch (error) {
-                  console.error('Error fetching houses:', error);
-                }
-              }
-              if (staffDirectory.length === 0) {
-                await loadStaffDirectory();
-              }
-              setRetreatFormData({
-                ...retreat,
-                startDate: retreat?.startDate || '',
-                startTime: retreat?.startTime || '',
-                endDate: retreat?.endDate || '',
-                endTime: retreat?.endTime || '',
-                capacity: retreat?.capacity || 0,
-                retreatStaff: (retreat?.retreatStaff || []).map((assignment) => ({
-                  ...assignment,
-                  contactId: typeof assignment.contactId === 'object' ? assignment.contactId._id : assignment.contactId,
-                  startDate: formatDateForInput(assignment.startDate),
-                  endDate: formatDateForInput(assignment.endDate),
-                  salaryCurrency: assignment.salaryCurrency || 'CZK',
-                })),
-              });
-              setShowRetreatEditModal(true);
+              setHelperAssignmentsCollapsed(true);
+              navigate(`/${routePrefix}/retreats/${retreatId}/edit?panel=helpers`);
             }}
             className="rounded-md border border-gray-200 bg-white px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
