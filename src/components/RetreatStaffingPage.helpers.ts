@@ -8,7 +8,7 @@ export const formatStaffingDate = (value?: string | Date) => {
   if (!value) return 'Date not set';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return 'Date not set';
-  return new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(date);
+  return new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' }).format(date);
 };
 
 export const formatRetreatStaffingDates = (retreat: Retreat) => `${formatStaffingDate(retreat.startDate || retreat.dates?.startDate)} – ${formatStaffingDate(retreat.endDate || retreat.dates?.endDate)}`;
