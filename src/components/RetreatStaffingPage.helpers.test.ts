@@ -1,4 +1,4 @@
-import { splitRetreatStaffingRetreats } from './RetreatStaffingPage.helpers';
+import { formatRetreatStaffingDates, formatStaffAssignmentDates, splitRetreatStaffingRetreats } from './RetreatStaffingPage.helpers';
 
 describe('RetreatStaffingPage helpers', () => {
   it('orders current and past retreats ascending and keeps past retreats separate', () => {
@@ -15,5 +15,11 @@ describe('RetreatStaffingPage helpers', () => {
 
     expect(result.currentAndUpcoming.map(retreat => retreat._id)).toEqual(['current', 'upcoming-early', 'upcoming-late']);
     expect(result.past.map(retreat => retreat._id)).toEqual(['past-early', 'past-late']);
+  });
+
+  it('formats retreat and staff dates with weekdays, times, and retreat fallbacks', () => {
+    const retreat: any = { startDate: '2026-09-22T00:00:00Z', startTime: '18:00', endDate: '2026-09-29T00:00:00Z', endTime: '10:00' };
+    expect(formatRetreatStaffingDates(retreat)).toBe('Tue, 22 Sept 2026 – Tue, 29 Sept 2026');
+    expect(formatStaffAssignmentDates({}, retreat)).toBe('Tue, 22 Sept 2026 · 18:00 → Tue, 29 Sept 2026 · 10:00');
   });
 });

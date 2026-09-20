@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { retreatsApi } from '../services/api';
 import { Retreat } from '../types';
-import { formatRetreatCalendarDate } from './RetreatsGrid.helpers';
-import { splitRetreatStaffingRetreats } from './RetreatStaffingPage.helpers';
+import { formatRetreatStaffingDates, formatStaffAssignmentDates, splitRetreatStaffingRetreats } from './RetreatStaffingPage.helpers';
 
 const roles = [
   { key: 'cook', label: 'Cook' },
@@ -36,10 +35,10 @@ export default function RetreatStaffingPage() {
       .filter(Boolean).join(' ').toLowerCase().includes(search.trim().toLowerCase()));
   const sections = splitRetreatStaffingRetreats(visible);
   const renderRows = (rows: Retreat[]) => rows.map(retreat => <tr key={retreat._id}>
-    <td className="p-4"><Link className="font-semibold text-teal-700" to={`/${prefix}/retreats/${retreat._id}`}>{retreat.retreatCode || retreat.code || retreat.name}</Link><p className="mt-1 text-sm text-slate-500">{formatRetreatCalendarDate(retreat.startDate || retreat.dates?.startDate, { year: 'numeric', month: 'short', day: 'numeric' })} · {retreat.location_town || retreat.location || 'Location not set'}</p></td>
+    <td className="p-4"><Link className="font-semibold text-teal-700" to={`/${prefix}/retreats/${retreat._id}`}>{retreat.retreatCode || retreat.code || retreat.name}</Link><p className="mt-1 text-sm text-slate-600">{formatRetreatStaffingDates(retreat)}</p><p className="mt-1 text-xs text-slate-500">{retreat.location_town || retreat.location || 'Location not set'}</p></td>
     {roles.map(role => {
       const people = (retreat.retreatStaff || []).filter(person => (person.role || 'helper') === role.key);
-      return <td className={`p-4 ${people.length ? 'text-slate-800' : 'text-amber-700'}`} key={role.key}>{people.length ? people.map(person => person.name?.trim() || (typeof person.contactId === 'object' ? person.contactId?.name : '') || 'Assigned person — name unavailable').join(', ') : 'Not assigned'}</td>;
+      return <td className={`p-4 ${people.length ? 'text-slate-800' : 'text-amber-700'}`} key={role.key}>{people.length ? <div className="space-y-3">{people.map((person, index) => <div key={`${person.contactId || person.name || 'staff'}-${index}`}><div className="font-medium">{person.name?.trim() || (typeof person.contactId === 'object' ? person.contactId?.name : '') || 'Assigned person — name unavailable'}</div><div className="mt-1 text-xs leading-5 text-slate-500">{formatStaffAssignmentDates(person, retreat)}</div></div>)}</div> : 'Not assigned'}</td>;
     })}
     <td className="p-4"><Link className="font-medium text-teal-700 underline" to={`/${prefix}/retreats/${retreat._id}?panel=helpers`}>Manage team</Link></td>
   </tr>);
