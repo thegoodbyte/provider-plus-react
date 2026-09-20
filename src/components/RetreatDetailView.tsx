@@ -713,6 +713,7 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
     try {
       const response = await communicationsApi.previewEmail({
         templateId,
+        bookingId: retreatEmailRecipients[0]?._id,
         retreatId,
         variables: {
           retreatName: retreat?.name,
