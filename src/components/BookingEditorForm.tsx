@@ -24,6 +24,10 @@ type BookingFormData = {
   checkInDate: string;
   checkOutDate: string;
   contractGateOverride: 'inherit' | 'required' | 'disabled';
+  roomType: 'shared' | 'private' | 'private_ensuite' | 'unspecified';
+  roomNumber: string;
+  roomAdjustmentType: 'none' | 'discount' | 'surcharge';
+  roomAdjustmentAmount: number;
 };
 
 const bookingStatusValues = ['pending', 'confirmed', 'conditional', 'checked-in', 'checked-out', 'cancelled'] as const;
@@ -67,6 +71,10 @@ const emptyForm = (): BookingFormData => ({
   checkInDate: '',
   checkOutDate: '',
   contractGateOverride: 'inherit',
+  roomType: 'unspecified',
+  roomNumber: '',
+  roomAdjustmentType: 'none',
+  roomAdjustmentAmount: 0,
 });
 
 const toDateTimeInput = (value?: string | Date | null) => {
@@ -188,6 +196,10 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
           contractGateOverride: currentBooking.contractGateOverride === true
             ? 'required'
             : currentBooking.contractGateOverride === false ? 'disabled' : 'inherit',
+          roomType: currentBooking.roomType || 'unspecified',
+          roomNumber: currentBooking.roomNumber || '',
+          roomAdjustmentType: currentBooking.roomAdjustmentType || 'none',
+          roomAdjustmentAmount: Number(currentBooking.roomAdjustmentAmount || 0),
         });
       } else {
         setFormData({
@@ -258,6 +270,9 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
         ceremonyNumber: paymentRequest?.bookingType === 'booster'
           ? String(paymentRequest.ceremonyNumber || '')
           : prev.ceremonyNumber,
+        roomType: paymentRequest?.roomType || prev.roomType,
+        roomAdjustmentType: paymentRequest?.roomAdjustmentType || prev.roomAdjustmentType,
+        roomAdjustmentAmount: paymentRequest?.roomAdjustmentAmount ?? prev.roomAdjustmentAmount,
       };
     });
   };
@@ -333,6 +348,10 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
         contractGateOverride: formData.contractGateOverride === 'inherit'
           ? null
           : formData.contractGateOverride === 'required',
+        roomType: formData.roomType,
+        roomNumber: formData.roomNumber || undefined,
+        roomAdjustmentType: formData.roomAdjustmentType,
+        roomAdjustmentAmount: Number(formData.roomAdjustmentAmount || 0),
       };
 
       if (payload.bookingNumber != null) {
@@ -394,6 +413,10 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
     () => bookingPriceLinesForClient(selectedRequest, formData.clientId),
     [selectedRequest, formData.clientId],
   );
+  const selectedRetreat = retreats.find((retreat) => retreat._id === formData.retreatId);
+  const selectedHouse = selectedRetreat?.houseId && typeof selectedRetreat.houseId === 'object' ? selectedRetreat.houseId : undefined;
+  const houseBedrooms = (selectedHouse && Array.isArray(selectedHouse.bedrooms) ? selectedHouse.bedrooms : []) as Array<{ name: string; hasBathroom?: boolean }>;
+  const sharedRoomWarning = formData.roomType === 'shared' && selectedHouse?.allowsRoomSharing === false;
 
   if (loading) {
     return <LoadingSpinner message={mode === 'edit' ? 'Loading booking...' : 'Loading form...'} />;
@@ -505,6 +528,30 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
             This booking-level choice overrides the global setting in Communications → Settings.
           </p>
         </div>
+
+        <section className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+          <h3 className="font-semibold text-slate-900">Room and accommodation</h3>
+          <p className="mt-1 text-xs text-slate-600">Choose the accommodation agreed for this booking. The payment request choice is copied automatically when available.</p>
+          <div className="mt-3 grid gap-4 md:grid-cols-2">
+            <label className="text-sm font-medium text-gray-700">Room type
+              <select value={formData.roomType} onChange={(event) => setFormData(prev => ({ ...prev, roomType: event.target.value as BookingFormData['roomType'] }))} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2">
+                <option value="unspecified">Not decided</option><option value="shared">Shared room</option><option value="private">Private room</option><option value="private_ensuite">Private room with private bathroom</option>
+              </select>
+            </label>
+            <label className="text-sm font-medium text-gray-700">Bedroom
+              <select value={formData.roomNumber} onChange={(event) => setFormData(prev => ({ ...prev, roomNumber: event.target.value }))} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2">
+                <option value="">Not assigned</option>{houseBedrooms.map((bedroom) => <option value={bedroom.name} key={bedroom.name}>{bedroom.name}{bedroom.hasBathroom ? ' · private bathroom' : ''}</option>)}
+              </select>
+            </label>
+            <label className="text-sm font-medium text-gray-700">Price adjustment
+              <select value={formData.roomAdjustmentType} onChange={(event) => setFormData(prev => ({ ...prev, roomAdjustmentType: event.target.value as BookingFormData['roomAdjustmentType'] }))} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"><option value="none">No adjustment</option><option value="discount">Discount</option><option value="surcharge">Surcharge</option></select>
+            </label>
+            <label className="text-sm font-medium text-gray-700">Adjustment amount
+              <input type="number" min="0" step="0.01" value={formData.roomAdjustmentAmount} onChange={(event) => setFormData(prev => ({ ...prev, roomAdjustmentAmount: Number(event.target.value) }))} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" />
+            </label>
+          </div>
+          {sharedRoomWarning && <p role="alert" className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">This house does not allow shared rooms. Choose a private room or update the house configuration first.</p>}
+        </section>
 
         <div className="grid gap-4 md:grid-cols-2">
           <div>

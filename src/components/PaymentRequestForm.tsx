@@ -61,6 +61,9 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     retreatId: resolveId(paymentRequest?.retreatId),
     bookingId: resolveId(paymentRequest?.bookingId),
     bookingType: paymentRequest?.bookingType || 'full_retreat',
+    roomType: paymentRequest?.roomType || 'unspecified',
+    roomAdjustmentType: paymentRequest?.roomAdjustmentType || 'none',
+    roomAdjustmentAmount: paymentRequest?.roomAdjustmentAmount || 0,
     ceremonyId: resolveId(paymentRequest?.ceremonyId),
     ceremonyNumber: paymentRequest?.ceremonyNumber?.toString() || '',
     paymentDate: paymentRequest?.paymentDate ? toDateInputValue(paymentRequest.paymentDate) : defaultDate(),
@@ -326,6 +329,9 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
         retreatId: formData.retreatId,
         bookingId: formData.bookingId || undefined,
         bookingType: formData.bookingType as PaymentRequest['bookingType'],
+        roomType: formData.roomType as PaymentRequest['roomType'],
+        roomAdjustmentType: formData.roomAdjustmentType as PaymentRequest['roomAdjustmentType'],
+        roomAdjustmentAmount: Number(formData.roomAdjustmentAmount || 0),
         ceremonyId: formData.bookingType === 'booster' ? formData.ceremonyId : undefined,
         ceremonyNumber: formData.bookingType === 'booster' ? Number(formData.ceremonyNumber) : undefined,
         paymentDate: formData.paymentDate,
@@ -502,6 +508,16 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                 </select>
               </div>
             )}
+
+            <div className="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50 p-4">
+              <h3 className="font-semibold text-slate-900">Accommodation choice</h3>
+              <p className="mt-1 text-xs text-slate-600">This choice is copied into the booking when you create it from this payment request.</p>
+              <div className="mt-3 grid gap-4 md:grid-cols-3">
+                <label className="text-sm font-medium text-gray-700">Room type<select value={formData.roomType} onChange={event => handleChange('roomType', event.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"><option value="unspecified">Not decided</option><option value="shared">Shared room</option><option value="private">Private room</option><option value="private_ensuite">Private room with private bathroom</option></select></label>
+                <label className="text-sm font-medium text-gray-700">Adjustment<select value={formData.roomAdjustmentType} onChange={event => handleChange('roomAdjustmentType', event.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"><option value="none">No adjustment</option><option value="discount">Discount</option><option value="surcharge">Surcharge</option></select></label>
+                <label className="text-sm font-medium text-gray-700">Adjustment amount<input type="number" min="0" step="0.01" value={formData.roomAdjustmentAmount} onChange={event => handleChange('roomAdjustmentAmount', Number(event.target.value))} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" /></label>
+              </div>
+            </div>
 
             <div>
               <label htmlFor="paymentDate" className="block text-sm font-medium text-gray-700 mb-2">Request Date *</label>

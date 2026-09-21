@@ -70,6 +70,8 @@ export interface House {
   capacity?: number;
   numberOfRooms?: number;
   numberOfBathrooms?: number;
+  bedrooms?: number | Array<{ name: string; hasBathroom?: boolean; allowsSharing?: boolean }>;
+  allowsRoomSharing?: boolean;
   amenities?: string[];
   description?: string;
   status?: 'available' | 'occupied' | 'maintenance';
@@ -84,7 +86,6 @@ export interface House {
   updatedAt?: string;
   // Legacy format support
   city?: string;
-  bedrooms?: number;
   guestCapacity?: number;
 }
 
@@ -329,6 +330,11 @@ export interface RetreatClient {
   cancelledAt?: string | Date;
   cancelledBy?: string;
   roomAssignment?: string;
+  roomType?: 'shared' | 'private' | 'private_ensuite' | 'unspecified';
+  roomNumber?: string;
+  sharedWithBookingIds?: string[];
+  roomAdjustmentType?: 'none' | 'discount' | 'surcharge';
+  roomAdjustmentAmount?: number;
   specialRequests?: string;
   notes?: string;
   bookingConfirmationHistory?: BookingConfirmationHistoryEntry[];
@@ -1696,6 +1702,9 @@ export interface PaymentRequest {
   clientId: string;
   retreatId: string;
   bookingType?: 'full_retreat' | 'booster';
+  roomType?: 'shared' | 'private' | 'private_ensuite' | 'unspecified';
+  roomAdjustmentType?: 'none' | 'discount' | 'surcharge';
+  roomAdjustmentAmount?: number;
   ceremonyId?: string | Ceremony;
   ceremonyNumber?: number;
   paymentDate: Date | string;

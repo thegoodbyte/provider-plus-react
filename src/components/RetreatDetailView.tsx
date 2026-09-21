@@ -114,6 +114,10 @@ interface RetreatClientData {
   cashPaidUSD: number;
   currency: string;
   roomAssignment?: string;
+  roomType?: 'shared' | 'private' | 'private_ensuite' | 'unspecified';
+  roomNumber?: string;
+  roomAdjustmentType?: 'none' | 'discount' | 'surcharge';
+  roomAdjustmentAmount?: number;
   specialRequests?: string;
   notes?: string;
   cancellationDate?: string;
@@ -356,6 +360,10 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
           cashPaidUSD: getCashPaidUsdForBooking(booking),
           currency,
           roomAssignment: booking.roomAssignment,
+          roomType: booking.roomType || 'unspecified',
+          roomNumber: booking.roomNumber || '',
+          roomAdjustmentType: booking.roomAdjustmentType || 'none',
+          roomAdjustmentAmount: Number(booking.roomAdjustmentAmount || 0),
           specialRequests: booking.specialRequests,
           notes: booking.notes,
           cancellationDate: booking.cancellationDate,
@@ -778,6 +786,14 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
   // Sort clients based on current sort field and direction
   const visibleClients = React.useMemo(() => activeRetreatClients(clients), [clients]);
   const activeClientCount = visibleClients.length;
+  const roomGroups = useMemo(() => {
+    const groups = new Map<string, RetreatClientData[]>();
+    visibleClients.forEach((client) => {
+      const key = client.roomNumber || (client.roomType === 'private_ensuite' ? 'Private room with private bathroom' : client.roomType === 'private' ? 'Private room' : client.roomType === 'shared' ? 'Shared room — bedroom not assigned' : 'Room not assigned');
+      groups.set(key, [...(groups.get(key) || []), client]);
+    });
+    return Array.from(groups.entries());
+  }, [visibleClients]);
 
   const sortedClients = React.useMemo(() => {
     if (!sortField) return visibleClients;
@@ -1442,6 +1458,11 @@ const RetreatDetailView: React.FC<RetreatDetailViewProps> = ({ retreatId, onBack
 
         {activeTab === 'holisticView' && (
         <div className="booking-steps-section">
+          <section className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-4"><h2 className="text-xl font-semibold text-slate-900">Room allocation</h2><p className="mt-1 text-sm text-slate-600">Review who is sharing each bedroom, private-room choices, and any accommodation adjustment.</p></div>
+            <div className="grid gap-3 md:grid-cols-2">{roomGroups.map(([room, occupants]) => <div className="rounded-lg border border-slate-200 bg-slate-50 p-4" key={room}><div className="font-semibold text-slate-900">{room}</div><div className="mt-2 space-y-1 text-sm text-slate-700">{occupants.map((client) => <div key={client._id}>Guest {client.bookingNumber || '—'} · {client.clientName}{client.roomType === 'private_ensuite' ? ' · private bathroom' : ''}{client.roomAdjustmentType && client.roomAdjustmentType !== 'none' ? ` · ${client.roomAdjustmentType} ${client.roomAdjustmentAmount || 0} ${client.currency}` : ''}</div>)}</div></div>)}</div>
+            {!roomGroups.length && <p className="text-sm text-slate-500">No active bookings.</p>}
+          </section>
           <BookingStepsMatrix retreatId={retreatId} />
         </div>
         )}

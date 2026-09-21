@@ -125,7 +125,7 @@ const HousesGrid: React.FC = () => {
       ...house,
       name: house.name || house.city || '',
       capacity: house.capacity || house.guestCapacity || 0,
-      numberOfRooms: house.numberOfRooms || house.bedrooms || 0,
+      numberOfRooms: house.numberOfRooms || (typeof house.bedrooms === 'number' ? house.bedrooms : 0),
       amenities: house.amenities || []
     };
     setFormData(formattedHouse);
@@ -339,7 +339,7 @@ const HousesGrid: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {house.numberOfRooms || house.bedrooms || 0} rooms
+                    {house.numberOfRooms || (typeof house.bedrooms === 'number' ? house.bedrooms : house.bedrooms?.length || 0)} rooms
                     {house.numberOfBathrooms && ` / ${house.numberOfBathrooms} baths`}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
