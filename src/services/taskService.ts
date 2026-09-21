@@ -6,6 +6,7 @@ export interface Task {
   name: string;
   description: string;
   type: 'client' | 'booking' | 'retreat' | 'generic';
+  category?: 'medical' | 'documents' | 'financial' | 'communication' | 'operations';
   urgency: 'low' | 'medium' | 'high' | 'urgent';
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
   dueDate?: string;
@@ -63,6 +64,7 @@ export interface CreateTaskDto {
   name: string;
   description: string;
   type: 'client' | 'booking' | 'retreat' | 'generic';
+  category?: Task['category'];
   urgency: 'low' | 'medium' | 'high' | 'urgent';
   status?: Task['status'];
   dueDate?: string;

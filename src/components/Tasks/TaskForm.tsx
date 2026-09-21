@@ -31,6 +31,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
     name: '',
     description: '',
     type: initialType || 'generic',
+    category: 'operations',
     urgency: 'medium',
     dueDate: '',
     clientId: clientId || '',
@@ -63,6 +64,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         name: task.name,
         description: task.description,
         type: task.type,
+        category: task.category || 'operations',
         urgency: task.urgency,
         dueDate: task.dueDate ? new Date(task.dueDate).toISOString().split('T')[0] : '',
         clientId: typeof task.clientId === 'string' ? task.clientId : ((task.clientId as any)?._id || (task.clientId as any)?.id || clientId || ''),
@@ -270,7 +272,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
               <strong>{bookingLabel || `#${bookingId.slice(-6)}`}</strong>
             </div>
           )}
-          <div className="form-row">
+      <div className="form-row">
             <div className="form-group">
               <label htmlFor="name">Task Name *</label>
               <input
@@ -297,6 +299,17 @@ export const TaskForm: React.FC<TaskFormProps> = ({
                 <option value="client">Client Related</option>
                 <option value="booking">Booking Related</option>
                 <option value="retreat">Retreat Related</option>
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="category">Category *</label>
+              <select id="category" name="category" value={formData.category || 'operations'} onChange={handleChange} required>
+                <option value="medical">Medical</option>
+                <option value="documents">Documents</option>
+                <option value="financial">Financial</option>
+                <option value="communication">Communication</option>
+                <option value="operations">Operations</option>
               </select>
             </div>
           </div>

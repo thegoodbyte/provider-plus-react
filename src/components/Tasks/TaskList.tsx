@@ -192,6 +192,7 @@ export const TaskList: React.FC<TaskListProps> = ({
               <span className={`type-badge type-${task.type}`}>
                 {task.type.toUpperCase()}
               </span>
+              <span className="type-badge task-category-badge">{(task.category || 'operations').toUpperCase()}</span>
             </div>
 
             <div className="task-cell">

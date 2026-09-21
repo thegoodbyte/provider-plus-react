@@ -20,6 +20,7 @@ export const Tasks: React.FC = () => {
   const [viewMode, setViewMode] = useState<'list' | 'board' | 'calendar'>('list');
   const [activeContext, setActiveContext] = useState<'client' | 'booking' | 'retreat' | 'generic'>('client');
   const [originFilter, setOriginFilter] = useState<'all' | 'custom' | 'system'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | Task['category']>('all');
   const [newTaskContext, setNewTaskContext] = useState<'client' | 'booking' | 'retreat' | 'generic'>('client');
   const [newTaskSprint, setNewTaskSprint] = useState<string | null>(null);
   const [filters, setFilters] = useState<TaskFilters>({
@@ -71,8 +72,8 @@ export const Tasks: React.FC = () => {
   }), [tasks, originFilter]);
 
   const visibleTasks = useMemo(
-    () => originTasks.filter(task => taskContext(task) === activeContext),
-    [originTasks, activeContext],
+    () => originTasks.filter(task => taskContext(task) === activeContext && (categoryFilter === 'all' || (task.category || 'operations') === categoryFilter)),
+    [originTasks, activeContext, categoryFilter],
   );
 
   const contexts = [
@@ -201,6 +202,7 @@ export const Tasks: React.FC = () => {
 
       <div className="task-origin-bar">
         <div><strong>Show</strong>{(['all', 'custom', 'system'] as const).map(origin => <button key={origin} type="button" className={originFilter === origin ? 'active' : ''} onClick={() => setOriginFilter(origin)}>{origin === 'all' ? 'All' : origin === 'custom' ? 'Custom — created by me' : 'System generated'}</button>)}</div>
+        <div className="task-category-filter" aria-label="Task category"><strong>Category</strong>{(['all', 'medical', 'documents', 'financial', 'communication', 'operations'] as const).map(category => <button key={category} type="button" className={categoryFilter === category ? 'active' : ''} onClick={() => setCategoryFilter(category)}>{category === 'all' ? 'All' : category[0].toUpperCase() + category.slice(1)}</button>)}</div>
         <details><summary>Advanced filters</summary><TaskFiltersPanel filters={filters} onFiltersChange={handleFiltersChange} /></details>
       </div>
 

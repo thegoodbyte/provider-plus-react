@@ -33,10 +33,11 @@ describe('TaskForm', () => {
     expect(screen.getByText('Create New Task')).toBeInTheDocument();
     expect(screen.getByText('Please review')).toBeInTheDocument();
     fireEvent.change(screen.getByLabelText('Task Name *'), { target: { value: 'Upload EKG tonight' } });
+    fireEvent.change(screen.getByLabelText('Category *'), { target: { value: 'medical' } });
     fireEvent.change(screen.getByLabelText('Urgency *'), { target: { value: 'urgent' } });
     fireEvent.submit(screen.getByRole('button', { name: 'Create Task' }).closest('form')!);
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
-      name: 'Upload EKG tonight', description: 'Upload EKG tonight', type: 'generic', urgency: 'urgent',
+      name: 'Upload EKG tonight', description: 'Upload EKG tonight', type: 'generic', category: 'medical', urgency: 'urgent',
       dueDate: undefined, clientId: undefined, retreatId: undefined, bookingId: undefined, notes: undefined,
     }));
     fireEvent.click(screen.getByText('Cancel')); fireEvent.click(screen.getByText('×'));
