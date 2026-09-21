@@ -75,6 +75,10 @@ const PaymentRequestEditorPage: React.FC = () => {
         setLoading(true);
         const response = await paymentRequestsApi.getOne(id);
         setPaymentRequest(response.data);
+        // The editor must not wait for optional audit/receipt enrichment.
+        // Those requests can be slow or unavailable while the payment request
+        // itself is perfectly editable.
+        setLoading(false);
         try {
           const activityResponse = await auditLogsApi.getAll({ entityType: 'payment_request', entityId: id, limit: 100 });
           setActivity(activityResponse.data?.items || []);
