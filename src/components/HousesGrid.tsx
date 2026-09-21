@@ -207,6 +207,8 @@ const HousesGrid: React.FC = () => {
       if (formData.description?.trim()) cleanData.description = formData.description.trim();
       if (formData.status) cleanData.status = formData.status;
       if (formData.pricePerNight && formData.pricePerNight > 0) cleanData.pricePerNight = Number(formData.pricePerNight);
+      if (Array.isArray(formData.bedrooms)) cleanData.bedrooms = formData.bedrooms.filter((bedroom) => bedroom.name.trim()).map((bedroom) => ({ name: bedroom.name.trim(), hasBathroom: Boolean(bedroom.hasBathroom), allowsSharing: bedroom.allowsSharing !== false }));
+      cleanData.allowsRoomSharing = formData.allowsRoomSharing !== false;
 
       console.log('Cleaned house data:', cleanData);
 
@@ -647,6 +649,12 @@ const HousesGrid: React.FC = () => {
                   />
                   <span className="ml-2 text-sm text-gray-900">Paying for Electricity</span>
                 </label>
+              </div>
+
+              <div>
+                <div className="mb-2 flex items-center justify-between"><label className="block text-sm font-medium text-gray-700">Bedrooms and bathrooms</label><button type="button" className="text-sm font-semibold text-indigo-600" onClick={() => setFormData(prev => ({ ...prev, bedrooms: [...(Array.isArray(prev.bedrooms) ? prev.bedrooms : []), { name: `Room ${(Array.isArray(prev.bedrooms) ? prev.bedrooms.length : 0) + 1}`, hasBathroom: false, allowsSharing: true }] }))}>Add bedroom</button></div>
+                <label className="mb-3 flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" checked={formData.allowsRoomSharing !== false} onChange={event => setFormData(prev => ({ ...prev, allowsRoomSharing: event.target.checked }))} /> This house allows shared rooms</label>
+                <div className="space-y-2">{(Array.isArray(formData.bedrooms) ? formData.bedrooms : []).map((bedroom, index) => <div className="grid gap-2 rounded-md border border-gray-200 p-2 md:grid-cols-[1fr_auto_auto_auto]" key={`${bedroom.name}-${index}`}><input aria-label={`Bedroom ${index + 1} name`} value={bedroom.name} onChange={event => setFormData(prev => ({ ...prev, bedrooms: (Array.isArray(prev.bedrooms) ? prev.bedrooms : []).map((item, itemIndex) => itemIndex === index ? { ...item, name: event.target.value } : item) }))} className="rounded-md border border-gray-300 px-2 py-1 text-sm" /><label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={Boolean(bedroom.hasBathroom)} onChange={event => setFormData(prev => ({ ...prev, bedrooms: (Array.isArray(prev.bedrooms) ? prev.bedrooms : []).map((item, itemIndex) => itemIndex === index ? { ...item, hasBathroom: event.target.checked } : item) }))} /> Private bathroom</label><label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={bedroom.allowsSharing !== false} onChange={event => setFormData(prev => ({ ...prev, bedrooms: (Array.isArray(prev.bedrooms) ? prev.bedrooms : []).map((item, itemIndex) => itemIndex === index ? { ...item, allowsSharing: event.target.checked } : item) }))} /> Sharing</label><button type="button" className="text-xs text-red-600" onClick={() => setFormData(prev => ({ ...prev, bedrooms: (Array.isArray(prev.bedrooms) ? prev.bedrooms : []).filter((_, itemIndex) => itemIndex !== index) }))}>Remove</button></div>)}</div>
               </div>
 
               <div>
