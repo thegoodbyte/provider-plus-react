@@ -19,4 +19,22 @@ describe('booking payment-request pricing', () => {
   it('does not copy an ambiguous multi-person total into one booking', () => {
     expect(bookingPriceFromPaymentRequest(request, 'unknown')).toBeUndefined();
   });
+
+  it('uses the full retreat price when a deposit request has installment line items', () => {
+    expect(bookingPriceFromPaymentRequest({
+      requestType: 'deposit',
+      fullPrice: 9445,
+      requestedAmount: 4000,
+      lineItems: [{ type: 'charge', description: 'Deposit', amount: 4000 }],
+    } as any, 'client-1')).toBe(9445);
+  });
+
+  it('does not turn an additional medical fee into the retreat booking price', () => {
+    expect(bookingPriceFromPaymentRequest({
+      requestType: 'additional',
+      fullPrice: 25,
+      requestedAmount: 25,
+      currency: 'EUR',
+    } as any, 'client-1')).toBeUndefined();
+  });
 });

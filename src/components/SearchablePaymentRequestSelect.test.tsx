@@ -5,9 +5,9 @@ import SearchablePaymentRequestSelect from './SearchablePaymentRequestSelect';
 jest.mock('../services/api', () => ({ paymentRequestsApi: { getAllFresh: jest.fn() } }));
 const getAllFresh = paymentRequestsApi.getAllFresh as jest.Mock;
 const requests: any[] = [
-  { _id: 'p1', invoiceNumber: 'INV-100', clientId: { _id: 'c1', firstName: 'Ada', lastName: 'Lovelace' }, retreatId: { _id: 'r1', name: 'Poland', location: 'Poznan' }, fullPriceQuote: 1000, currency: 'EUR', paymentDate: '2026-08-01' },
-  { _id: 'p2', display_id: 22, clientId: 'c2', retreatId: 'r2', fullPriceQuote: 990, currency: 'USD' },
-  { _id: 'p3', clientId: {}, retreatId: {}, fullPriceQuote: 50, currency: 'PLN' },
+  { _id: 'p1', invoiceNumber: 'INV-100', clientId: { _id: 'c1', firstName: 'Ada', lastName: 'Lovelace' }, retreatId: { _id: 'r1', name: 'Poland', location: 'Poznan' }, requestedAmount: 400, fullPriceQuote: 1000, currency: 'EUR', paymentDate: '2026-08-01' },
+  { _id: 'p2', display_id: 22, clientId: 'c2', retreatId: 'r2', requestedAmount: 990, fullPriceQuote: 990, currency: 'USD' },
+  { _id: 'p3', clientId: {}, retreatId: {}, requestedAmount: 50, fullPriceQuote: 50, currency: 'PLN' },
 ];
 
 describe('SearchablePaymentRequestSelect', () => {
@@ -18,6 +18,8 @@ describe('SearchablePaymentRequestSelect', () => {
     render(<SearchablePaymentRequestSelect onPaymentRequestSelect={onSelect} className="wide" />);
     fireEvent.click(screen.getByRole('button', { name: /Search invoice/ }));
     expect(await screen.findByText('INV-100')).toBeInTheDocument();
+    expect(screen.getByText('Requested: 400 EUR')).toBeInTheDocument();
+    expect(screen.getByText('Full price: 1000 EUR')).toBeInTheDocument();
     const input = screen.getByPlaceholderText('Search invoice, client, or retreat');
     fireEvent.change(input, { target: { value: 'ada' } });
     expect(screen.getByText('Ada Lovelace - Poland - Poznan')).toBeInTheDocument();

@@ -39,6 +39,9 @@ const resolveId = (value: any) => {
   return value._id || value.id || '';
 };
 
+const requestedAmount = (request: PaymentRequestOption) => Number(request.requestedAmount ?? request.amountPaid ?? 0);
+const fullPrice = (request: PaymentRequestOption) => Number(request.fullPriceQuote ?? request.fullPrice ?? 0);
+
 const SearchablePaymentRequestSelect: React.FC<Props> = ({
   selectedPaymentRequestId = '',
   onPaymentRequestSelect,
@@ -147,7 +150,8 @@ const SearchablePaymentRequestSelect: React.FC<Props> = ({
                       </div>
                     </div>
                     <div className="shrink-0 text-sm text-gray-500">
-                      {request.fullPriceQuote} {request.currency}
+                      <div>Requested: {requestedAmount(request) || '—'} {request.currency}</div>
+                      <div className="text-xs text-gray-400">Full price: {fullPrice(request) || '—'} {request.currency}</div>
                     </div>
                   </div>
                 </button>
