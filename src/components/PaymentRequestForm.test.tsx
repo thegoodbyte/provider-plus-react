@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import PaymentRequestForm from './PaymentRequestForm';
+import PaymentRequestForm, { calculateRoomAdjustedPrice } from './PaymentRequestForm';
 import {
   bookingsApi, ceremoniesApi, clientsApi, paymentRequestsApi, paymentRequestTypesApi, paymentsApi, retreatsApi, revolutPaymentLinksApi,
 } from '../services/api';
@@ -22,6 +22,17 @@ jest.mock('./SearchableClientSelect', () => (props: any) => (
     {props.clients.map((client: any) => <option key={client._id} value={client._id}>{client.firstName} {client.lastName}</option>)}
   </select>
 ));
+
+describe('room price calculation', () => {
+  it('adds a room surcharge to the effective booking price', () => {
+    expect(calculateRoomAdjustedPrice(9500, 'surcharge', 1000)).toBe(10500);
+  });
+
+  it('subtracts a room discount without allowing a negative price', () => {
+    expect(calculateRoomAdjustedPrice(9500, 'discount', 1000)).toBe(8500);
+    expect(calculateRoomAdjustedPrice(500, 'discount', 1000)).toBe(0);
+  });
+});
 jest.mock('./SearchableRetreatSelect', () => (props: any) => (
   <select aria-label="Retreat" value={props.selectedRetreatId || ''} onChange={(event) => props.onRetreatSelect(event.target.value)}>
     <option value="">Select retreat</option>

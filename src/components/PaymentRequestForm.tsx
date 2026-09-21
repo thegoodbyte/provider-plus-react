@@ -29,6 +29,15 @@ interface PaymentRequestFormProps {
 const defaultDate = () => todayDateInputValue();
 const resolveId = (value: any) => (typeof value === 'object' && value?._id ? value._id : value || '');
 
+export const calculateRoomAdjustedPrice = (basePrice: number, adjustmentType?: string, adjustmentAmount?: number) => {
+  const base = Number(basePrice || 0);
+  const adjustment = Math.max(0, Number(adjustmentAmount || 0));
+  if (!Number.isFinite(base) || base <= 0) return 0;
+  if (adjustmentType === 'surcharge') return Math.round((base + adjustment) * 100) / 100;
+  if (adjustmentType === 'discount') return Math.max(0, Math.round((base - adjustment) * 100) / 100);
+  return Math.round(base * 100) / 100;
+};
+
 const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
   paymentRequest,
   onSave,
@@ -228,14 +237,16 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
       ? { ...item, amount: -(Math.round(subtotal * Number(item.discountPercent || 0)) / 100) }
       : item);
     const changed = recalculated.some((item, index) => item.amount !== lineItems[index].amount);
-    const fullPriceBaseline = ['payment', 'full_payment'].includes(formData.requestType) ? Number(formData.fullPriceQuote || 0) : 0;
+    const fullPriceBaseline = ['payment', 'full_payment'].includes(formData.requestType)
+      ? calculateRoomAdjustedPrice(Number(formData.fullPriceQuote || 0), formData.roomAdjustmentType, formData.roomAdjustmentAmount)
+      : 0;
     const total = fullPriceBaseline + recalculated.reduce((sum, item) => sum + Number(item.amount || 0), 0);
     setFormData(prev => ({ ...prev, requestedAmount: String(Math.round(total * 100) / 100) }));
     if (changed) setLineItems(recalculated);
-  }, [itemized, lineItems, formData.requestType, formData.fullPriceQuote]);
+  }, [itemized, lineItems, formData.requestType, formData.fullPriceQuote, formData.roomAdjustmentType, formData.roomAdjustmentAmount]);
 
   useEffect(() => {
-    const fullPrice = Number(formData.fullPriceQuote);
+    const fullPrice = calculateRoomAdjustedPrice(Number(formData.fullPriceQuote), formData.roomAdjustmentType, formData.roomAdjustmentAmount);
     if (itemized) return;
     if (!Number.isFinite(fullPrice) || fullPrice <= 0) return;
 
@@ -247,7 +258,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     } else if (formData.requestType === 'full_payment' && formData.requestedAmount !== String(fullPrice)) {
       setFormData(prev => ({ ...prev, requestedAmount: String(fullPrice) }));
     }
-  }, [formData.fullPriceQuote, formData.requestedAmount, formData.requestType, itemized]);
+  }, [formData.fullPriceQuote, formData.requestedAmount, formData.requestType, formData.roomAdjustmentType, formData.roomAdjustmentAmount, itemized]);
 
   const handleChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -262,7 +273,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     if (!showFinalPaymentRequestOption || !createFinalPaymentRequest) return null;
     const selectedRetreat = retreats.find((retreat) => retreat._id === formData.retreatId);
     const startDate = parseCalendarDate(selectedRetreat?.startDate);
-    const fullPrice = parseFloat(formData.fullPriceQuote);
+    const fullPrice = calculateRoomAdjustedPrice(parseFloat(formData.fullPriceQuote), formData.roomAdjustmentType, formData.roomAdjustmentAmount);
     const depositAmount = parseFloat(formData.requestedAmount);
     if (!startDate || !Number.isFinite(fullPrice) || !Number.isFinite(depositAmount)) return null;
     const dueDate = new Date(startDate);
@@ -312,12 +323,12 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
       }
 
       const selectedBooking = bookings.find((booking) => booking._id === formData.bookingId);
-      const fullPriceQuote = parseFloat(formData.fullPriceQuote)
+      const fullPriceQuote = calculateRoomAdjustedPrice(parseFloat(formData.fullPriceQuote), formData.roomAdjustmentType, formData.roomAdjustmentAmount)
         || Number(selectedBooking?.totalAmount)
         || parseFloat(formData.requestedAmount);
       const requestedAmount = parseFloat(formData.requestedAmount);
       if (itemized && (!lineItems.length || lineItems.some(item => !item.description.trim() || (item.type !== 'info' && !Number(item.amount))))) {
-        setFormError('Every charge or discount needs a description and amount. Informational items only need a description.');
+        setFormError('Every itemized row needs a description and amount. Informational items only need a description.');
         return;
       }
       const subtotal = lineItems.filter(item => item.amount > 0).reduce((sum, item) => sum + Number(item.amount), 0);
@@ -572,6 +583,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                   required
                 />
                 <p className="mt-1 text-xs text-gray-500">{formData.requestType === 'full_payment' ? 'The complete amount due for this booking.' : 'The full price before any payment-request discount. The requested amount is calculated below it.'}</p>
+                {formData.roomAdjustmentType !== 'none' && <p className="mt-1 text-sm font-semibold text-slate-700">Adjusted full price after room {formData.roomAdjustmentType}: {calculateRoomAdjustedPrice(Number(formData.fullPriceQuote || 0), formData.roomAdjustmentType, formData.roomAdjustmentAmount).toFixed(2)} {formData.currency}</p>}
               </div>
             ) : formData.requestType === 'balance' ? (
               <div>
@@ -751,7 +763,9 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                       <button type="button" onClick={() => setLineItems(current => [...current, { type: 'info', description: '', amount: 0 }])} className="rounded-md border border-blue-300 px-3 py-2 text-sm text-blue-700">+ Information</button>
                     </div>
                     <div className="text-right text-sm">
-                      {['payment', 'full_payment'].includes(formData.requestType) && <div>Full booking price: {Number(formData.fullPriceQuote || 0).toFixed(2)} {formData.currency}</div>}
+                      {['payment', 'full_payment'].includes(formData.requestType) && <div>Base booking price: {Number(formData.fullPriceQuote || 0).toFixed(2)} {formData.currency}</div>}
+                      {formData.roomAdjustmentType !== 'none' && <div>Room {formData.roomAdjustmentType}: {Number(formData.roomAdjustmentAmount || 0).toFixed(2)} {formData.currency}</div>}
+                      {formData.roomAdjustmentType !== 'none' && <div className="font-semibold">Adjusted booking price: {calculateRoomAdjustedPrice(Number(formData.fullPriceQuote || 0), formData.roomAdjustmentType, formData.roomAdjustmentAmount).toFixed(2)} {formData.currency}</div>}
                       <div>Additional charges: {lineItems.filter(item => item.amount > 0).reduce((sum, item) => sum + Number(item.amount), 0).toFixed(2)} {formData.currency}</div>
                       <div>Discount: {(-lineItems.filter(item => item.amount < 0).reduce((sum, item) => sum + Number(item.amount), 0)).toFixed(2)} {formData.currency}</div>
                       <div className="font-semibold">Total: {Number(formData.requestedAmount || 0).toFixed(2)} {formData.currency}</div>

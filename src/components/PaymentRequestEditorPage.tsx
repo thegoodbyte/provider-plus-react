@@ -198,6 +198,11 @@ const PaymentRequestEditorPage: React.FC = () => {
               <div className="mt-1 font-semibold text-gray-900">{formatAmount(paymentRequest.fullPriceQuote || paymentRequest.fullPrice, paymentRequest.currency)}</div>
             </div>
             <div className="rounded-md bg-gray-50 p-4">
+              <div className="text-xs font-semibold uppercase text-gray-500">Accommodation</div>
+              <div className="mt-1 font-semibold text-gray-900">{paymentRequest.roomType === 'private_ensuite' ? 'Private room with private bathroom' : paymentRequest.roomType === 'private' ? 'Private room' : paymentRequest.roomType === 'shared' ? 'Shared room' : 'Not decided'}</div>
+              {paymentRequest.roomAdjustmentType && paymentRequest.roomAdjustmentType !== 'none' && <div className="mt-1 text-sm text-gray-700">Room {paymentRequest.roomAdjustmentType}: {formatAmount(paymentRequest.roomAdjustmentAmount, paymentRequest.currency)}</div>}
+            </div>
+            <div className="rounded-md bg-gray-50 p-4">
               <div className="text-xs font-semibold uppercase text-gray-500">Status</div>
               <div className="mt-1 font-semibold text-gray-900">{paymentRequest.status || '-'}</div>
             </div>
@@ -223,11 +228,12 @@ const PaymentRequestEditorPage: React.FC = () => {
             </div>
           </div>
 
-          {Boolean(paymentRequest.lineItems?.length) && (
+          {(Boolean(paymentRequest.lineItems?.length) || (paymentRequest.roomAdjustmentType && paymentRequest.roomAdjustmentType !== 'none')) && (
             <div className="mt-6 overflow-hidden rounded-lg border border-gray-200">
               <div className="bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-800">Itemization</div>
               <div className="divide-y divide-gray-100">
-                {paymentRequest.lineItems!.map((item, index) => (
+                {paymentRequest.roomAdjustmentType && paymentRequest.roomAdjustmentType !== 'none' && <div className="flex items-start justify-between gap-4 px-4 py-3 text-sm"><div><div className="font-medium text-gray-900">{paymentRequest.roomType === 'private_ensuite' ? 'Private room with private bathroom' : paymentRequest.roomType === 'private' ? 'Private room' : paymentRequest.roomType === 'shared' ? 'Shared room' : 'Room adjustment'}</div><div className="text-xs text-gray-500">Room {paymentRequest.roomAdjustmentType}</div></div><div className="font-semibold text-gray-900">{formatAmount(paymentRequest.roomAdjustmentAmount, paymentRequest.currency)}</div></div>}
+                {(paymentRequest.lineItems || []).map((item, index) => (
                   <div key={index} className="flex items-start justify-between gap-4 px-4 py-3 text-sm">
                     <div>
                       <div className="font-medium text-gray-900">{item.description}</div>
