@@ -69,10 +69,10 @@ describe('BookingConfirmationPDF helpers', () => {
       { type: 'discount', label: '10% common room discount', amount: -950 },
       { type: 'addon', label: 'Private bathroom', amount: 1000 },
     ] } })).toEqual([
-      { kind: 'base', label: 'base', amount: 9500 },
+      { kind: 'base', label: 'Base booking price', amount: 9500 },
       { kind: 'discount', label: '10% common room discount', amount: -950 },
       { kind: 'addition', label: 'Private bathroom', amount: 1000 },
-      { kind: 'total', label: 'total', amount: 9550 },
+      { kind: 'total', label: 'Total booking price', amount: 9550 },
     ]);
   });
 

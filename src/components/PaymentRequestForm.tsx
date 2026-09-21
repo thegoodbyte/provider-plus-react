@@ -38,6 +38,12 @@ export const calculateRoomAdjustedPrice = (basePrice: number, adjustmentType?: s
   return Math.round(base * 100) / 100;
 };
 
+export const calculateBookingTotal = (basePrice: number, adjustmentType?: string, adjustmentAmount?: number, lineItems: PaymentRequestLineItem[] = []) => {
+  const roomAdjusted = calculateRoomAdjustedPrice(basePrice, adjustmentType, adjustmentAmount);
+  const bookingAdjustments = lineItems.filter(item => item.type !== 'info').reduce((sum, item) => sum + Number(item.amount || 0), 0);
+  return Math.max(0, Math.round((roomAdjusted + bookingAdjustments) * 100) / 100);
+};
+
 const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
   paymentRequest,
   onSave,
@@ -237,16 +243,15 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
       ? { ...item, amount: -(Math.round(subtotal * Number(item.discountPercent || 0)) / 100) }
       : item);
     const changed = recalculated.some((item, index) => item.amount !== lineItems[index].amount);
-    const fullPriceBaseline = ['payment', 'full_payment'].includes(formData.requestType)
-      ? calculateRoomAdjustedPrice(Number(formData.fullPriceQuote || 0), formData.roomAdjustmentType, formData.roomAdjustmentAmount)
-      : 0;
-    const total = fullPriceBaseline + recalculated.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-    setFormData(prev => ({ ...prev, requestedAmount: String(Math.round(total * 100) / 100) }));
+    const total = formData.requestType === 'deposit'
+      ? calculateBookingTotal(Number(formData.fullPriceQuote || 0), formData.roomAdjustmentType, formData.roomAdjustmentAmount, recalculated) * 0.4
+      : calculateRoomAdjustedPrice(Number(formData.fullPriceQuote || 0), formData.roomAdjustmentType, formData.roomAdjustmentAmount) + (['payment', 'full_payment'].includes(formData.requestType) ? recalculated.reduce((sum, item) => sum + Number(item.amount || 0), 0) : 0);
+    if (formData.requestType !== 'balance') setFormData(prev => ({ ...prev, requestedAmount: String(Math.round(total * 100) / 100) }));
     if (changed) setLineItems(recalculated);
   }, [itemized, lineItems, formData.requestType, formData.fullPriceQuote, formData.roomAdjustmentType, formData.roomAdjustmentAmount]);
 
   useEffect(() => {
-    const fullPrice = calculateRoomAdjustedPrice(Number(formData.fullPriceQuote), formData.roomAdjustmentType, formData.roomAdjustmentAmount);
+    const fullPrice = calculateBookingTotal(Number(formData.fullPriceQuote), formData.roomAdjustmentType, formData.roomAdjustmentAmount, itemized && formData.requestType === 'deposit' ? lineItems : []);
     if (itemized) return;
     if (!Number.isFinite(fullPrice) || fullPrice <= 0) return;
 
@@ -258,7 +263,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     } else if (formData.requestType === 'full_payment' && formData.requestedAmount !== String(fullPrice)) {
       setFormData(prev => ({ ...prev, requestedAmount: String(fullPrice) }));
     }
-  }, [formData.fullPriceQuote, formData.requestedAmount, formData.requestType, formData.roomAdjustmentType, formData.roomAdjustmentAmount, itemized]);
+  }, [formData.fullPriceQuote, formData.requestedAmount, formData.requestType, formData.roomAdjustmentType, formData.roomAdjustmentAmount, itemized, lineItems]);
 
   const handleChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -273,7 +278,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     if (!showFinalPaymentRequestOption || !createFinalPaymentRequest) return null;
     const selectedRetreat = retreats.find((retreat) => retreat._id === formData.retreatId);
     const startDate = parseCalendarDate(selectedRetreat?.startDate);
-    const fullPrice = calculateRoomAdjustedPrice(parseFloat(formData.fullPriceQuote), formData.roomAdjustmentType, formData.roomAdjustmentAmount);
+    const fullPrice = calculateBookingTotal(parseFloat(formData.fullPriceQuote), formData.roomAdjustmentType, formData.roomAdjustmentAmount, itemized && formData.requestType === 'deposit' ? lineItems : []);
     const depositAmount = parseFloat(formData.requestedAmount);
     if (!startDate || !Number.isFinite(fullPrice) || !Number.isFinite(depositAmount)) return null;
     const dueDate = new Date(startDate);
@@ -323,7 +328,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
       }
 
       const selectedBooking = bookings.find((booking) => booking._id === formData.bookingId);
-      const fullPriceQuote = calculateRoomAdjustedPrice(parseFloat(formData.fullPriceQuote), formData.roomAdjustmentType, formData.roomAdjustmentAmount)
+      const fullPriceQuote = calculateBookingTotal(parseFloat(formData.fullPriceQuote), formData.roomAdjustmentType, formData.roomAdjustmentAmount, itemized && formData.requestType === 'deposit' ? lineItems : [])
         || Number(selectedBooking?.totalAmount)
         || parseFloat(formData.requestedAmount);
       const requestedAmount = parseFloat(formData.requestedAmount);
@@ -375,6 +380,10 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
       setLoading(false);
     }
   };
+
+  const bookingTotal = calculateBookingTotal(Number(formData.fullPriceQuote || 0), formData.roomAdjustmentType, formData.roomAdjustmentAmount, itemized && formData.requestType === 'deposit' ? lineItems : []);
+  const remainingBalance = Math.max(0, bookingTotal - Number(formData.requestedAmount || 0));
+  const roomLabel = formData.roomType === 'private_ensuite' ? 'Private room with private bathroom' : formData.roomType === 'private' ? 'Private room' : formData.roomType === 'shared' ? 'Shared room' : 'Room choice';
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
@@ -568,6 +577,19 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
               </div>
             )}
 
+            <div className="md:col-span-2 rounded-md border border-slate-200 bg-slate-50 p-4">
+              <h2 className="text-base font-semibold text-slate-900">Booking price breakdown</h2>
+              <p className="mt-1 text-sm text-slate-600">This explains the complete booking price. The invoice amount below is the amount payable now.</p>
+              <div className="mt-3 space-y-2 text-sm">
+                <div className="flex justify-between gap-4"><span>Base booking price</span><span>{Number(formData.fullPriceQuote || 0).toFixed(2)} {formData.currency}</span></div>
+                {itemized && lineItems.filter(item => item.type !== 'info').map((item, index) => <div key={`price-line-${index}`} className="flex justify-between gap-4"><span>{item.description || 'Unnamed adjustment'}</span><span className={Number(item.amount || 0) < 0 ? 'text-green-700' : ''}>{Number(item.amount || 0) >= 0 ? '+' : ''}{Number(item.amount || 0).toFixed(2)} {formData.currency}</span></div>)}
+                {formData.roomAdjustmentType !== 'none' && <div className="flex justify-between gap-4"><span>{roomLabel}</span><span>{formData.roomAdjustmentType === 'discount' ? '-' : '+'}{Number(formData.roomAdjustmentAmount || 0).toFixed(2)} {formData.currency}</span></div>}
+                <div className="flex justify-between gap-4 border-t border-slate-200 pt-2 font-semibold"><span>Total booking price</span><span>{bookingTotal.toFixed(2)} {formData.currency}</span></div>
+                {formData.requestType === 'deposit' && <div className="flex justify-between gap-4 text-blue-800"><span>Deposit due on this invoice (40%)</span><span>{Number(formData.requestedAmount || 0).toFixed(2)} {formData.currency}</span></div>}
+                {formData.requestType === 'deposit' && createFinalPaymentRequest && <div className="flex justify-between gap-4 text-slate-700"><span>Remaining balance for linked final request</span><span>{remainingBalance.toFixed(2)} {formData.currency}</span></div>}
+              </div>
+            </div>
+
             {formData.requestType === 'deposit' || formData.requestType === 'payment' || formData.requestType === 'full_payment' ? (
               <div>
                 <label htmlFor="fullPriceQuote" className="block text-sm font-medium text-gray-700 mb-2">Full Booking Price *</label>
@@ -663,7 +685,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                 />
                 Itemize this payment request
               </label>
-              <p className="mt-1 text-xs text-gray-500">Use charges, discounts, or information-only lines. For a payment, the full booking price is the starting point and the lines adjust the requested amount.</p>
+              <p className="mt-1 text-xs text-gray-500">Add booking adjustments such as discounts or extra services. The invoice amount is shown separately above and is never confused with the total booking price.</p>
 
               {itemized && (
                 <div className="mt-4 space-y-3">

@@ -226,7 +226,7 @@ describe('PaymentRequestForm', () => {
 
       fireEvent.click(screen.getByLabelText('Also create the final payment request'));
 
-      expect(await screen.findByText(/600/)).toBeInTheDocument();
+      expect((await screen.findAllByText(/600/)).length).toBeGreaterThan(0);
       expect(screen.getByText(/2026-11-15/)).toBeInTheDocument();
     });
 
@@ -255,7 +255,7 @@ describe('PaymentRequestForm', () => {
       fireEvent.change(screen.getByLabelText('Full Booking Price *'), { target: { value: '1000' } });
       await waitFor(() => expect(screen.getByLabelText('Requested Amount *')).toHaveValue(400));
       fireEvent.click(screen.getByLabelText('Also create the final payment request'));
-      await screen.findByText(/600/);
+      expect((await screen.findAllByText(/600/)).length).toBeGreaterThan(0);
 
       fireEvent.click(screen.getByText('Create Request'));
 

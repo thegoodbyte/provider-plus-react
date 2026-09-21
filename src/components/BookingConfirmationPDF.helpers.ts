@@ -111,14 +111,23 @@ export const formatPaymentRequestDisplayLabel = (
 
 export const buildBookingPriceRows = (booking: any) => {
   const summary = booking?.pricingSummary;
-  if (summary?.basePrice == null) return [];
+  if (summary?.basePrice == null && booking?.totalAmount == null) return [];
+  const basePrice = Number(summary?.basePrice ?? booking?.totalAmount ?? 0);
+  const adjustments = [...(summary?.adjustments || [])].map((item: any) => ({
+    kind: item.type === 'discount' ? 'discount' : 'addition',
+    label: String(item.label || ''),
+    amount: item.type === 'discount' ? -Math.abs(Number(item.amount || 0)) : Math.abs(Number(item.amount || 0)),
+  }));
+  if (booking?.roomAdjustmentType && booking.roomAdjustmentType !== 'none' && Number(booking.roomAdjustmentAmount || 0) > 0) {
+    adjustments.push({
+      kind: booking.roomAdjustmentType === 'discount' ? 'discount' : 'addition',
+      label: booking.roomType === 'private_ensuite' ? 'Private room with private bathroom' : booking.roomType === 'private' ? 'Private room' : 'Room adjustment',
+      amount: booking.roomAdjustmentType === 'discount' ? -Math.abs(Number(booking.roomAdjustmentAmount)) : Math.abs(Number(booking.roomAdjustmentAmount)),
+    });
+  }
   return [
-    { kind: 'base', label: 'base', amount: Number(summary.basePrice || 0) },
-    ...(summary.adjustments || []).map((item: any) => ({
-      kind: item.type === 'discount' ? 'discount' : 'addition',
-      label: String(item.label || ''),
-      amount: item.type === 'discount' ? -Math.abs(Number(item.amount || 0)) : Math.abs(Number(item.amount || 0)),
-    })),
-    { kind: 'total', label: 'total', amount: Number(summary.finalPrice ?? booking.totalAmount ?? 0) },
+    { kind: 'base', label: 'Base booking price', amount: basePrice },
+    ...adjustments,
+    { kind: 'total', label: 'Total booking price', amount: Number(summary?.finalPrice ?? booking.totalAmount ?? 0) },
   ];
 };
