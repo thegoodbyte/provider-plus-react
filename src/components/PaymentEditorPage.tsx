@@ -123,7 +123,7 @@ const PaymentEditorPage: React.FC = () => {
         const [clientsResponse, retreatsResponse, bookingsResponse, paymentResponse, nextDisplayIdResponse, configResponse] = await Promise.all([
           clientsApi.getAll(),
           retreatsApi.getAll(),
-          bookingsApi.getAll(),
+          bookingsApi.getAllFresh ? bookingsApi.getAllFresh() : bookingsApi.getAll(),
           id ? paymentsApi.getOne(id) : Promise.resolve(null),
           !id ? paymentsApi.getNextDisplayId().catch(() => null) : Promise.resolve(null),
           configSummaryApi.get().catch(() => null),

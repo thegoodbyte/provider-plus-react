@@ -308,6 +308,7 @@ const refreshCanonicalBookingConfirmation = async (bookingId: string) => {
 
 export const bookingsApi = {
   getAll: () => cachedGet<RetreatClient[]>('bookings:all', () => api.get<RetreatClient[]>('/bookings')),
+  getAllFresh: () => api.get<RetreatClient[]>('/bookings', { params: { _fresh: Date.now() } }),
   getOne: (id: string) => cachedGet<RetreatClient>(`bookings:${id}`, () => api.get<RetreatClient>(`/bookings/${id}`)),
   getOneFresh: (id: string) => api.get<RetreatClient>(`/bookings/${id}`, { params: { _fresh: Date.now() } }),
   getActivity: (id: string) => api.get<import('../types').BookingActivityEvent[]>(`/bookings/${id}/activity`),
