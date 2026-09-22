@@ -59,19 +59,21 @@ const EmailHistoryPanel: React.FC<EmailHistoryPanelProps> = ({ clientId, booking
   const [sendMessage, setSendMessage] = useState('');
   const [selectedEmail, setSelectedEmail] = useState<SelectedEmail | null>(null);
   const [composerBooking, setComposerBooking] = useState<any | null>(null);
+  const [composerBookingLoading, setComposerBookingLoading] = useState(!bookingId && !!clientId);
 
   // The client-level email tab has no bookingId in its route. Resolve the
   // nearest active booking so welcome/booking templates can render retreat
   // dates, address, payment and booking number instead of blank placeholders.
   useEffect(() => {
-    if (bookingId || !clientId) { setComposerBooking(null); return undefined; }
+    if (bookingId || !clientId) { setComposerBooking(null); setComposerBookingLoading(false); return undefined; }
     let active = true;
+    setComposerBookingLoading(true);
     bookingsApi.getByClient(clientId).then((response) => {
       if (!active) return;
       const available = (response.data || []).filter((item: any) => !['cancelled', 'moved', 'declined'].includes(String(item.status || '').toLowerCase()));
       available.sort((a: any, b: any) => new Date(a.checkInDate || 0).getTime() - new Date(b.checkInDate || 0).getTime());
       setComposerBooking(available[0] || null);
-    }).catch(() => { if (active) setComposerBooking(null); });
+    }).catch(() => { if (active) setComposerBooking(null); }).finally(() => { if (active) setComposerBookingLoading(false); });
     return () => { active = false; };
   }, [bookingId, clientId]);
 
@@ -182,8 +184,8 @@ const EmailHistoryPanel: React.FC<EmailHistoryPanelProps> = ({ clientId, booking
           <p className="text-sm text-gray-500">{subtitle || 'Sent and received emails connected to this record.'}</p>
         </div>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => setComposerOpen((value) => !value)} className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700">
-            <Icon icon={FiMail} className="h-4 w-4" /> Send message <Icon icon={composerOpen ? FiChevronUp : FiChevronDown} className="h-4 w-4" />
+          <button type="button" onClick={() => setComposerOpen((value) => !value)} disabled={composerBookingLoading} className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-wait disabled:opacity-60">
+            <Icon icon={FiMail} className="h-4 w-4" /> {composerBookingLoading ? 'Loading booking…' : 'Send message'} {!composerBookingLoading && <Icon icon={composerOpen ? FiChevronUp : FiChevronDown} className="h-4 w-4" />}
           </button>
           <button type="button" onClick={() => void loadEmails()} className="inline-flex items-center gap-2 rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
             <Icon icon={FiRefreshCw} className="h-4 w-4" />

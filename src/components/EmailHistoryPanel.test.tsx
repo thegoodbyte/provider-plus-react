@@ -5,7 +5,7 @@ import { communicationsApi } from '../services/api';
 
 jest.mock('../services/api', () => ({ communicationsApi: { getSentEmails: jest.fn(), getInboundEmails: jest.fn() }, bookingsApi: { getByClient: jest.fn().mockResolvedValue({ data: [] }) } }));
 jest.mock('../services/taskService', () => ({ taskService: { createTask: jest.fn() } }));
-jest.mock('./EmailComposeModal', () => () => null);
+jest.mock('./EmailComposeModal', () => ({ initialValues }: any) => <div data-testid="email-composer">{JSON.stringify(initialValues)}</div>);
 
 const sent = communicationsApi.getSentEmails as jest.Mock;
 const inbound = communicationsApi.getInboundEmails as jest.Mock;
@@ -30,5 +30,16 @@ describe('EmailHistoryPanel email preview', () => {
     expect(within(screen.getByRole('dialog', { name: 'Email: Question' })).getByText('Can you help?')).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText('Close email preview'));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('resolves the client booking before opening the composer', async () => {
+    const { bookingsApi } = require('../services/api');
+    bookingsApi.getByClient.mockResolvedValueOnce({ data: [{ _id: 'booking-42', status: 'confirmed', checkInDate: '2026-10-01', retreatId: 'retreat-42' }] });
+    render(<EmailHistoryPanel clientId="client-42" recipientEmail="client@example.com" recipientName="Client" />);
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /Send message/i })).toBeEnabled());
+    fireEvent.click(screen.getByRole('button', { name: /Send message/i }));
+    expect(screen.getByTestId('email-composer')).toHaveTextContent('booking-42');
+    expect(screen.getByTestId('email-composer')).toHaveTextContent('retreat-42');
   });
 });
