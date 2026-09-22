@@ -136,10 +136,14 @@ const BookingDetailView: React.FC<BookingDetailViewProps> = ({ bookingId, onBack
     try {
       setIsLoading(true);
       // Fetch booking details
-      const bookingResponse = await bookingsApi.getOne(bookingId);
+      // A booking can be reassigned from the editor, payment screens, or another
+      // browser session. Always read the detail view from the API so a cached
+      // client relationship cannot make a successful reassignment look lost.
+      const bookingResponse = await bookingsApi.getOneFresh(bookingId);
       setBooking(bookingResponse.data);
-      setPdfLanguage(confirmationLanguage(bookingResponse.data?.clientId || bookingResponse.data?.clientDetails));
-      const currentRetreatId = getObjectId(bookingResponse.data?.retreatId || bookingResponse.data?.retreatDetails);
+      const bookingData: any = bookingResponse.data;
+      setPdfLanguage(confirmationLanguage(bookingData?.clientId || bookingData?.clientDetails));
+      const currentRetreatId = getObjectId(bookingData?.retreatId || bookingData?.retreatDetails);
       if (currentRetreatId) {
         try {
           const retreatBookingsResponse = await bookingsApi.getByRetreatWithDetails(currentRetreatId);

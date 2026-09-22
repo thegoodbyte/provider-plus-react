@@ -100,7 +100,8 @@ const BookingsGrid: React.FC = () => {
   const fetchBookings = async () => {
     try {
       setIsLoading(true);
-      const bookingsResponse = await bookingsApi.getAll();
+      // Do not let a cached list hide a recently reassigned client.
+      const bookingsResponse = await bookingsApi.getAllFresh();
       const loadedBookings = bookingsResponse.data || [];
 
       if (loadedBookings.length === 0) {
