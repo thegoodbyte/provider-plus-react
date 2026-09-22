@@ -115,6 +115,7 @@ const ClientDetailsPage: React.FC = () => {
   const [resettingLoginPin, setResettingLoginPin] = useState(false);
   const [loginPinMessage, setLoginPinMessage] = useState<string | null>(null);
   const [openingIbogaReady, setOpeningIbogaReady] = useState(false);
+  const [creatingPreCallLink, setCreatingPreCallLink] = useState(false);
   const [notes, setNotes] = useState<any[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [medicalRecords, setMedicalRecords] = useState<any[]>([]);
@@ -176,6 +177,20 @@ const ClientDetailsPage: React.FC = () => {
       setError(handoffError?.response?.data?.message || handoffError?.message || 'Unable to open IbogaReady client view.');
     } finally {
       setOpeningIbogaReady(false);
+    }
+  };
+
+  const handleCreatePreCallLink = async () => {
+    if (!client?._id) return;
+    try {
+      setCreatingPreCallLink(true);
+      const response = await clientsApi.createPreCallIntakeLink(client._id);
+      await navigator.clipboard?.writeText(response.data.url);
+      setError('Pre-call intake link copied to the clipboard. It expires in 30 days.');
+    } catch (linkError: any) {
+      setError(linkError?.response?.data?.message || linkError?.message || 'Unable to create the pre-call intake link.');
+    } finally {
+      setCreatingPreCallLink(false);
     }
   };
 
@@ -946,6 +961,14 @@ const ClientDetailsPage: React.FC = () => {
                 >
                   <Icon icon={FiPlus} className="h-4 w-4" />
                   Screening
+                </button>
+                <button
+                  onClick={handleCreatePreCallLink}
+                  disabled={creatingPreCallLink}
+                  className="inline-flex items-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+                >
+                  <Icon icon={FiMessageSquare} className="h-4 w-4" />
+                  {creatingPreCallLink ? 'Creating…' : 'Pre-call intake link'}
                 </button>
                 <button
                   onClick={() => navigate(`/admin/clients/${clientId}/edit`)}
