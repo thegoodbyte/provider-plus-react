@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { PaymentRequest, PaymentRequestLineItem, Client, Retreat, Ceremony } from '../types';
 import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
+import SearchableBookingSelect from './SearchableBookingSelect';
 import { bookingsApi, ceremoniesApi, clientsApi, paymentRequestsApi, paymentRequestTypesApi, PaymentRequestTypeSetting, paymentsApi, retreatsApi } from '../services/api';
 import { FiSave, FiArrowLeft } from 'react-icons/fi';
 import { parseCalendarDate, toDateInputValue, todayDateInputValue } from '../utils/dateFormat';
@@ -129,17 +130,17 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
 
   // A new request for a client should follow their active booking. This keeps
   // the retreat, quote, balance, and currency aligned with the booking ledger.
+  // Editing a payment request must be able to link it to any existing booking,
+  // including a booking whose client/retreat was corrected after the request
+  // was created. Keep this list independent of the client selector and let the
+  // searchable picker narrow it down.
   useEffect(() => {
-    if (!formData.clientId) {
-      setBookings([]);
-      return;
-    }
-    bookingsApi.getByClient(formData.clientId)
+    bookingsApi.getAllFresh()
       .then((response) => setBookings((response.data || []).filter((booking: any) =>
         !['cancelled', 'moved', 'declined'].includes(String(booking.status || '').toLowerCase()),
       )))
       .catch(() => setBookings([]));
-  }, [formData.clientId]);
+  }, []);
 
   useEffect(() => {
     if (isEdit || !formData.clientId) return;
@@ -455,30 +456,29 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
             </div>
 
             <div className="md:col-span-2">
-              <label htmlFor="bookingId" className="block text-sm font-medium text-gray-700 mb-2">Booking</label>
-              <select
-                id="bookingId"
-                value={formData.bookingId}
-                onChange={(event) => {
-                  const booking = bookings.find((item) => item._id === event.target.value);
+              <label htmlFor="bookingId" className="block text-sm font-medium text-gray-700 mb-2">Link existing booking</label>
+              <SearchableBookingSelect
+                bookings={bookings}
+                clients={clients}
+                retreats={retreats}
+                selectedBookingId={formData.bookingId}
+                onBookingSelect={(bookingId) => {
+                  const booking = bookings.find((item) => resolveId(item._id) === bookingId);
                   setFormData((prev) => ({
                     ...prev,
-                    bookingId: event.target.value,
-                    retreatId: booking ? resolveId(booking.retreatId) : prev.retreatId,
-                    bookingType: booking?.bookingType || prev.bookingType,
-                    fullPriceQuote: booking?.totalAmount ? String(booking.totalAmount) : prev.fullPriceQuote,
+                    bookingId,
+                    // Editing a link must not silently rewrite accounting data.
+                    // New requests may still inherit the booking's retreat/type.
+                    ...(isEdit ? {} : {
+                      retreatId: booking ? resolveId(booking.retreatId) : prev.retreatId,
+                      bookingType: booking?.bookingType || prev.bookingType,
+                      fullPriceQuote: booking?.totalAmount ? String(booking.totalAmount) : prev.fullPriceQuote,
+                    }),
                   }));
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">No booking linked</option>
-                {bookings.map((booking) => (
-                  <option key={booking._id} value={booking._id}>
-                    #{booking.bookingNumber || booking.display_id || booking._id} — {booking.retreat?.name || booking.retreatName || resolveId(booking.retreatId)}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-1 text-xs text-gray-500">Linking a booking includes recorded payments in its balance.</p>
+                className="w-full"
+              />
+              <p className="mt-1 text-xs text-gray-500">Search by booking number, client, or retreat. Linking changes the ledger association only; amounts stay unchanged.</p>
             </div>
 
             <div>
