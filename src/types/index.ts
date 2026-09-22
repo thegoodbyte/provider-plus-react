@@ -1372,7 +1372,7 @@ export interface MedicalReviewRequest {
   wontDoReason?: 'duplicate' | 'not_relevant' | 'mistake' | 'no_longer_needed' | 'test_request' | 'other';
   wontDoNote?: string;
   reviewChannel?: 'internal' | 'whatsapp';
-  whatsappStatus?: 'awaiting_response' | 'responded';
+  whatsappStatus?: 'not_sent' | 'awaiting_response' | 'responded';
   whatsappAdvisorUserId?: string | any;
   whatsappSentAt?: Date | string;
   whatsappRespondedAt?: Date | string;

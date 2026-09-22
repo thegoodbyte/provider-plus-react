@@ -136,7 +136,7 @@ const BookingMedicalOverviewPanel: React.FC<BookingMedicalOverviewPanelProps> = 
               <span>{review?.reviewedAt ? `Reviewed ${shortMedicalDate(review.reviewedAt)}${reviewerName(review) ? ` by ${reviewerName(review)}` : ''}` : artifact ? `Received ${shortMedicalDate(artifact.receivedAt || artifact.createdAt)}` : 'Not received'}</span>
               <div>
                 {artifact && <button type="button" onClick={() => openArtifact(artifact)}>Open file</button>}
-                {review && <button type="button" onClick={() => openReview(review)}>Review detail</button>}
+                {review && <button type="button" onClick={() => openReview(review)}>{reviewReferenceText(review)}</button>}
                 {artifact && !review && <button type="button" onClick={() => createReview(artifact)}>Create MRR</button>}
                 {clientId && retreatId && <button className="is-primary" type="button" onClick={() => requestEntryUpload(documentType === 'Liver' ? 'Liver' : 'EKG')}>{artifact ? 'Upload another' : `Upload ${documentType === 'Liver' ? 'liver panel' : 'EKG'}`}</button>}
               </div>

@@ -180,6 +180,8 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const [autoAssignSaving, setAutoAssignSaving] = useState(false);
   const [autoAssignMessage, setAutoAssignMessage] = useState('');
   const [downloadingPacketId, setDownloadingPacketId] = useState('');
+  const [downloadPacket, setDownloadPacket] = useState<MedicalReviewGroup | null>(null);
+  const [downloadIncludeSubmitted, setDownloadIncludeSubmitted] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -501,12 +503,12 @@ const MedicalReviewRequestsGrid: React.FC = () => {
     }
   };
 
-  const downloadPendingArtifacts = async (group: MedicalReviewGroup) => {
+  const downloadPendingArtifacts = async (group: MedicalReviewGroup, includeSubmitted = false) => {
     const groupId = group._id || '';
     if (!groupId) return;
     try {
       setDownloadingPacketId(groupId);
-      const response = await medicalReviewRequestsApi.downloadPendingArtifacts(groupId, true);
+      const response = await medicalReviewRequestsApi.downloadPendingArtifacts(groupId, !includeSubmitted);
       // The S3 response supplies Content-Disposition with the packet filename.
       // Navigating directly avoids browsers blocking a synthetic cross-origin
       // anchor click after the asynchronous API request has completed.
@@ -515,6 +517,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
       window.alert(requestError?.response?.data?.message || 'Unable to download pending MRR artifacts.');
     } finally {
       setDownloadingPacketId('');
+      setDownloadPacket(null);
     }
   };
 
@@ -1079,12 +1082,13 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                         type="button"
                         onClick={(event) => {
                           event.stopPropagation();
-                          void downloadPendingArtifacts(group);
+                          setDownloadIncludeSubmitted(false);
+                          setDownloadPacket(group);
                         }}
                         disabled={Boolean(downloadingPacketId)}
                         className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 disabled:opacity-60"
-                        title={`Download pending artifacts from ${group.title}`}
-                        aria-label={`Download pending artifacts from ${group.title}`}
+                        title={`Download artifacts from ${group.title}`}
+                        aria-label={`Download artifacts from ${group.title}`}
                       >
                         <Icon icon={FiDownload} className={`h-3.5 w-3.5 ${downloadingPacketId === group._id ? 'animate-pulse' : ''}`} />
                       </button>
@@ -1835,6 +1839,36 @@ const MedicalReviewRequestsGrid: React.FC = () => {
           </div>
         </div>
       )}
+
+      <ResponsiveModal
+        isOpen={Boolean(downloadPacket)}
+        onClose={() => !downloadingPacketId && setDownloadPacket(null)}
+        title="Download medical review files"
+        size="sm"
+        closeOnOverlayClick={!downloadingPacketId}
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-700">
+            Download files for <strong>{downloadPacket?.title}</strong>.
+            By default, WhatsApp reviews already sent and advisor-delivered requests are excluded.
+          </p>
+          <label className="flex items-start gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={downloadIncludeSubmitted}
+              onChange={(event) => setDownloadIncludeSubmitted(event.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600"
+            />
+            <span>Include already submitted or sent reviews</span>
+          </label>
+          <div className="flex flex-wrap justify-end gap-2">
+            <button type="button" onClick={() => setDownloadPacket(null)} disabled={Boolean(downloadingPacketId)} className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700">Cancel</button>
+            <button type="button" onClick={() => downloadPacket && void downloadPendingArtifacts(downloadPacket, downloadIncludeSubmitted)} disabled={Boolean(downloadingPacketId)} className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
+              {downloadingPacketId ? 'Preparing…' : 'Download files'}
+            </button>
+          </div>
+        </div>
+      </ResponsiveModal>
 
       <ResponsiveModal
         isOpen={Boolean(confirmAction)}
