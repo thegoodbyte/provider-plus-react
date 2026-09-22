@@ -62,6 +62,8 @@ const PaymentRequestEditorPage: React.FC = () => {
   const [receipt, setReceipt] = useState<PaymentReceipt | null>(null);
   const [receiptError, setReceiptError] = useState('');
   const [activity, setActivity] = useState<any[]>([]);
+  const [identityReview, setIdentityReview] = useState<any>(null);
+  const [identityReviewLoading, setIdentityReviewLoading] = useState(false);
 
   useEffect(() => {
     const loadRequest = async () => {
@@ -79,6 +81,10 @@ const PaymentRequestEditorPage: React.FC = () => {
         // Those requests can be slow or unavailable while the payment request
         // itself is perfectly editable.
         setLoading(false);
+        try {
+          const identityResponse = await paymentRequestsApi.getIdentityChange(id);
+          setIdentityReview(identityResponse.data);
+        } catch { setIdentityReview(null); }
         try {
           const activityResponse = await auditLogsApi.getAll({ entityType: 'payment_request', entityId: id, limit: 100 });
           setActivity(activityResponse.data?.items || []);
@@ -139,6 +145,21 @@ const PaymentRequestEditorPage: React.FC = () => {
     navigate('/admin/payment-requests');
   };
 
+  const decideIdentityChange = async (decision: 'approve' | 'reject') => {
+    if (!id || !identityReview?.change || identityReview.change.status !== 'pending') return;
+    const rejectionReason = decision === 'reject' ? window.prompt('Optional reason for rejecting this identity change:') || '' : undefined;
+    setIdentityReviewLoading(true);
+    try {
+      const response = await paymentRequestsApi.decideIdentityChange(id, decision, rejectionReason);
+      setIdentityReview((current: any) => ({ ...current, ...response.data }));
+      if (decision === 'approve') {
+        setPaymentRequest((current: any) => ({ ...current, clientId: { ...(typeof current?.clientId === 'object' ? current.clientId : {}), firstName: response.data.current.firstName, lastName: response.data.current.lastName, email: response.data.current.email } }));
+      }
+    } catch (error: any) {
+      window.alert(error?.response?.data?.message || 'Unable to review the identity change.');
+    } finally { setIdentityReviewLoading(false); }
+  };
+
   if (loading) {
     return <LoadingSpinner message={id ? 'Loading payment request...' : 'Loading form...'} />;
   }
@@ -183,6 +204,16 @@ const PaymentRequestEditorPage: React.FC = () => {
             <div className="text-sm font-semibold uppercase tracking-wide text-gray-500">Payment Request</div>
             <h1 className="mt-1 text-3xl font-semibold text-gray-900">Invoice {invoiceNumber}</h1>
           </div>
+
+          {identityReview?.change?.status === 'pending' && <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-5">
+            <div className="text-sm font-semibold uppercase tracking-wide text-amber-800">Identity change pending review</div>
+            <p className="mt-2 text-sm text-amber-900">The client submitted corrected details with the deposit consent. Review them before changing the client record.</p>
+            <div className="mt-4 grid gap-4 md:grid-cols-2">
+              <div className="rounded-md bg-white p-3 text-sm"><div className="font-semibold text-gray-700">Current client record</div><div className="mt-2">{identityReview.current.firstName} {identityReview.current.lastName}</div><div>{identityReview.current.email || 'No email'}</div></div>
+              <div className="rounded-md bg-white p-3 text-sm"><div className="font-semibold text-gray-700">Submitted details</div><div className="mt-2">{identityReview.change.proposedFirstName} {identityReview.change.proposedLastName}</div><div>{identityReview.change.proposedEmail}</div></div>
+            </div>
+            <div className="mt-4 flex gap-3"><button type="button" disabled={identityReviewLoading} onClick={() => decideIdentityChange('approve')} className="rounded-md bg-green-700 px-4 py-2 font-semibold text-white hover:bg-green-800 disabled:opacity-50">Approve and update client</button><button type="button" disabled={identityReviewLoading} onClick={() => decideIdentityChange('reject')} className="rounded-md border border-gray-300 bg-white px-4 py-2 font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50">Reject</button></div>
+          </div>}
 
           <div className="grid gap-4 md:grid-cols-2">
             <div className="rounded-md bg-gray-50 p-4">

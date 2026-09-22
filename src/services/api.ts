@@ -531,6 +531,8 @@ export const paymentRequestsApi = {
   getOneFresh: (id: string) => api.get<PaymentRequest>(`/payment-requests/${id}`),
   getPublicDeposit: (hash: string) => api.get(`/payment-requests/public/deposit/${hash}`),
   getPublicInvoice: (hash: string) => api.get(`/public/invoices/${hash}`),
+  getIdentityChange: (id: string) => api.get(`/payment-requests/${id}/identity-change`),
+  decideIdentityChange: (id: string, decision: 'approve' | 'reject', rejectionReason?: string) => api.post(`/payment-requests/${id}/identity-change/decision`, { decision, rejectionReason }),
   getNextDisplayId: () => api.get<number>('/payment-requests/next-display-id'),
   getNextDisplayIdFresh: () => api.get<number>('/payment-requests/next-display-id'),
   getByRetreat: (retreatId: string) => cachedGet<PaymentRequest[]>(`payment-requests:retreat:${retreatId}`, () => api.get<PaymentRequest[]>(`/payment-requests?retreatId=${retreatId}`)),
