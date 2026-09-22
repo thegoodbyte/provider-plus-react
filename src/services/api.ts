@@ -1211,6 +1211,10 @@ export const backupsApi = {
     api.get('/backups/logs', { params: filters }),
 };
 
+export const usersApi = {
+  findAll: () => api.get<any[]>('/users'),
+};
+
 export const medicalReviewRequestsApi = {
   getRequestTypes: () => api.get<Array<{ key: NonNullable<MedicalReviewRequest['requestType']>; label: string }>>('/medical-review-requests/request-types'),
   getAll: (filters: {

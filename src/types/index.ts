@@ -1321,7 +1321,8 @@ export interface MedicalReviewRequest {
     | 'rejected'
     | 'caution'
     | 'needs_resubmission'
-    | 'completed';
+    | 'completed'
+    | 'awaiting_whatsapp';
 
   // Additional metadata
   priority?: 'low' | 'normal' | 'high' | 'urgent';
@@ -1370,6 +1371,12 @@ export interface MedicalReviewRequest {
   reviewDecision?: 'OK' | 'caution' | 'more_info_needed' | 'NOT OK' | 'WONT_DO';
   wontDoReason?: 'duplicate' | 'not_relevant' | 'mistake' | 'no_longer_needed' | 'test_request' | 'other';
   wontDoNote?: string;
+  reviewChannel?: 'internal' | 'whatsapp';
+  whatsappStatus?: 'awaiting_response' | 'responded';
+  whatsappAdvisorUserId?: string | any;
+  whatsappSentAt?: Date | string;
+  whatsappRespondedAt?: Date | string;
+  whatsappDecision?: 'OK' | 'caution' | 'more_info_needed' | 'NOT OK' | 'WONT_DO';
   overallNotes?: string;
   medicalStaffNotes?: string;
   clientVisibleAdminNote?: string;
