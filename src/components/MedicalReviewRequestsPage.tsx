@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { medicalArtifactsApi, medicalReviewRequestsApi, usersApi } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
 import { Client, MedicalArtifact, MedicalReviewRequest, Retreat } from '../types';
-import { Activity, AlertTriangle, ChevronDown, CircleHelp, ClipboardList, Droplets, FileQuestion, FileText, HeartPulse, Pill, RotateCcw, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { Activity, AlertTriangle, Ban, ChevronDown, CircleHelp, ClipboardList, Droplets, FileQuestion, FileText, HeartPulse, Pill, RotateCcw, ThumbsDown, ThumbsUp } from 'lucide-react';
 import {
   formatMedicalReviewDecisionLabel,
   formatMedicalReviewRequestSummary,
@@ -35,6 +35,7 @@ const decisionIcons: Record<string, any> = {
   caution: AlertTriangle,
   more_info_needed: CircleHelp,
   'NOT OK': ThumbsDown,
+  WONT_DO: Ban,
 };
 
 const getDecisionButtonClass = (option: typeof decisionOptions[number], selected: boolean, size: 'sm' | 'lg' = 'sm') => {
@@ -2000,7 +2001,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                             }}
                             className={getDecisionButtonClass(option, reviewDecision === option, 'sm')}
                           >
-                            {React.createElement(decisionIcons[option], { size: 17, strokeWidth: 2.2 })}
+                            {React.createElement(decisionIcons[option] || CircleHelp, { size: 17, strokeWidth: 2.2 })}
                             <span>{decisionLabels[option]}</span>
                           </button>
                         ))}
