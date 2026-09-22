@@ -3,7 +3,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import EmailHistoryPanel from './EmailHistoryPanel';
 import { communicationsApi } from '../services/api';
 
-jest.mock('../services/api', () => ({ communicationsApi: { getSentEmails: jest.fn(), getInboundEmails: jest.fn() } }));
+jest.mock('../services/api', () => ({ communicationsApi: { getSentEmails: jest.fn(), getInboundEmails: jest.fn() }, bookingsApi: { getByClient: jest.fn().mockResolvedValue({ data: [] }) } }));
 jest.mock('../services/taskService', () => ({ taskService: { createTask: jest.fn() } }));
 jest.mock('./EmailComposeModal', () => () => null);
 

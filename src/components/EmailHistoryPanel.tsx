@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { FiChevronDown, FiChevronUp, FiInbox, FiMail, FiPaperclip, FiPlus, FiRefreshCw, FiX } from 'react-icons/fi';
-import { communicationsApi } from '../services/api';
+import { bookingsApi, communicationsApi } from '../services/api';
 import { InboundEmail, SentEmail } from '../types';
 import { taskService } from '../services/taskService';
 import EmailComposeModal from './EmailComposeModal';
@@ -58,6 +58,22 @@ const EmailHistoryPanel: React.FC<EmailHistoryPanelProps> = ({ clientId, booking
   const [composerOpen, setComposerOpen] = useState(false);
   const [sendMessage, setSendMessage] = useState('');
   const [selectedEmail, setSelectedEmail] = useState<SelectedEmail | null>(null);
+  const [composerBooking, setComposerBooking] = useState<any | null>(null);
+
+  // The client-level email tab has no bookingId in its route. Resolve the
+  // nearest active booking so welcome/booking templates can render retreat
+  // dates, address, payment and booking number instead of blank placeholders.
+  useEffect(() => {
+    if (bookingId || !clientId) { setComposerBooking(null); return undefined; }
+    let active = true;
+    bookingsApi.getByClient(clientId).then((response) => {
+      if (!active) return;
+      const available = (response.data || []).filter((item: any) => !['cancelled', 'moved', 'declined'].includes(String(item.status || '').toLowerCase()));
+      available.sort((a: any, b: any) => new Date(a.checkInDate || 0).getTime() - new Date(b.checkInDate || 0).getTime());
+      setComposerBooking(available[0] || null);
+    }).catch(() => { if (active) setComposerBooking(null); });
+    return () => { active = false; };
+  }, [bookingId, clientId]);
 
   useEffect(() => {
     if (!selectedEmail) return undefined;
@@ -207,16 +223,17 @@ const EmailHistoryPanel: React.FC<EmailHistoryPanelProps> = ({ clientId, booking
           initialValues={{
             to: recipientEmail || '',
             clientId,
-            bookingId,
-            retreatId,
-            relatedEntityType: bookingId ? 'booking' : 'client',
-            relatedEntityId: bookingId || clientId,
+            bookingId: bookingId || composerBooking?._id,
+            retreatId: retreatId || (typeof composerBooking?.retreatId === 'object' ? composerBooking.retreatId?._id : composerBooking?.retreatId),
+            relatedEntityType: bookingId || composerBooking?._id ? 'booking' : 'client',
+            relatedEntityId: bookingId || composerBooking?._id || clientId,
             variables: {
               client: {
                 id: clientId,
                 email: recipientEmail,
                 name: recipientName || '',
               },
+              ...(composerBooking?._id ? { bookingId: composerBooking._id } : {}),
             },
           }}
           onClose={() => setComposerOpen(false)}
