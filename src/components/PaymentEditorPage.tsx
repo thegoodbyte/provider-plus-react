@@ -198,14 +198,15 @@ const PaymentEditorPage: React.FC = () => {
   };
 
   const bookingOptions = useMemo(() => {
+    // Search must cover every booking. The selected client/retreat can be stale
+    // or only partially populated; selecting a booking is what establishes the
+    // authoritative client and retreat relationship for this payment.
+    if (!isExisting) return bookings;
     return bookings.filter((booking) => {
       const clientId = resolveId(booking.clientId);
-      const retreatId = resolveId(booking.retreatId);
-      if (formData.clientId && clientId && clientId !== formData.clientId) return false;
-      if (formData.retreatId && retreatId && retreatId !== formData.retreatId) return false;
-      return true;
+      return !formData.clientId || !clientId || clientId === formData.clientId;
     });
-  }, [bookings, formData.clientId, formData.retreatId]);
+  }, [bookings, formData.clientId, isExisting]);
 
   const selectedBooking = useMemo(
     () => bookings.find((booking) => booking._id === formData.bookingId),
