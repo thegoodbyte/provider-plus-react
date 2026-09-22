@@ -915,7 +915,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
       return;
     }
     const effectiveDecision = options?.quickApprove ? 'OK' : reviewDecision;
-    const effectiveNotes = options?.quickApprove ? (medicalStaffNotes.trim() || 'no comment') : medicalStaffNotes.trim();
+    const effectiveNotes = options?.quickApprove ? (medicalStaffNotes.trim() || 'no comment') : (medicalStaffNotes.trim() || (reviewDecision === 'WONT_DO' && wontDoReason ? `Won't do: ${wontDoReason}` : ''));
     if (!effectiveDecision || effectiveNotes.length < 2) {
       setValidationError('Choose a result and enter at least 2 characters before confirming.');
       reviewDecisionSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1989,7 +1989,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={() => handleSaveReview()}
-                        disabled={savingReview || !reviewDecision || medicalStaffNotes.trim().length < 2}
+                        disabled={savingReview || !reviewDecision || (reviewDecision !== 'WONT_DO' && medicalStaffNotes.trim().length < 2) || (reviewDecision === 'WONT_DO' && !wontDoReason)}
                         className="mt-2 w-full rounded-md bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {savingReview ? 'Saving...' : 'Save review'}
@@ -2067,7 +2067,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                   <div className="mrr-canvas-thumbnails">{linkedArtifacts.flatMap((artifact) => (artifact.files || []).map((file, index) => <button key={`${artifact._id}-${index}`} type="button" className="mrr-canvas-thumb" onClick={() => document.getElementById(`mrr-artifact-${artifact._id}-${index}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>PG {index + 1}</button>))}</div>
                 </div>
                 <div ref={reviewDecisionSectionRef} className="mrr-canvas-actions">
-                  {isReadOnlyView ? <div className="rounded-md bg-gray-50 p-3 text-sm"><strong>{formatMedicalReviewDecisionLabel(selected.reviewDecision)}</strong><p className="mt-1 whitespace-pre-wrap text-gray-600">{selected.medicalStaffNotes || selected.overallNotes || selected.reviewNotes || 'No notes saved.'}</p></div> : <><textarea id="desktop-medical-staff-notes" value={medicalStaffNotes} onChange={(event) => setMedicalStaffNotes(event.target.value)} rows={3} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder={reviewDecision === 'caution' ? 'Explain the caution and recommended follow-up (required)' : 'Add your review notes here...'} /><div className="mrr-decision-buttons">{decisionOptions.map((option) => <button key={option} type="button" onClick={() => { setReviewDecision(option); if (option === 'OK') setMedicalStaffNotes('OK'); else if (option === 'caution') { setMedicalStaffNotes(''); window.setTimeout(() => document.getElementById('desktop-medical-staff-notes')?.focus(), 0); } }} className={getDecisionButtonClass(option, reviewDecision === option, 'sm')}>{decisionLabels[option]}</button>)}</div><button type="button" onClick={() => handleSaveReview()} disabled={savingReview || !reviewDecision || medicalStaffNotes.trim().length < 2} className="w-fit rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{savingReview ? 'Saving...' : 'Save review'}</button></>}
+                  {isReadOnlyView ? <div className="rounded-md bg-gray-50 p-3 text-sm"><strong>{formatMedicalReviewDecisionLabel(selected.reviewDecision)}</strong><p className="mt-1 whitespace-pre-wrap text-gray-600">{selected.medicalStaffNotes || selected.overallNotes || selected.reviewNotes || 'No notes saved.'}</p></div> : <><textarea id="desktop-medical-staff-notes" value={medicalStaffNotes} onChange={(event) => setMedicalStaffNotes(event.target.value)} rows={3} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder={reviewDecision === 'caution' ? 'Explain the caution and recommended follow-up (required)' : 'Add your review notes here...'} /><div className="mrr-decision-buttons">{decisionOptions.map((option) => <button key={option} type="button" onClick={() => { setReviewDecision(option); if (option === 'OK') setMedicalStaffNotes('OK'); else if (option === 'caution') { setMedicalStaffNotes(''); window.setTimeout(() => document.getElementById('desktop-medical-staff-notes')?.focus(), 0); } }} className={getDecisionButtonClass(option, reviewDecision === option, 'sm')}>{decisionLabels[option]}</button>)}</div><button type="button" onClick={() => handleSaveReview()} disabled={savingReview || !reviewDecision || (reviewDecision !== 'WONT_DO' && medicalStaffNotes.trim().length < 2) || (reviewDecision === 'WONT_DO' && !wontDoReason)} className="w-fit rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{savingReview ? 'Saving...' : 'Save review'}</button></>}
                 </div>
                 {aiAssessmentPanel}
                 {clientVisibleAdminNotePanel}
@@ -2592,7 +2592,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleSaveReview()}
-                            disabled={savingReview || medicalStaffNotes.trim().length < 2}
+                            disabled={savingReview || (reviewDecision !== 'WONT_DO' && medicalStaffNotes.trim().length < 2) || (reviewDecision === 'WONT_DO' && !wontDoReason)}
                             className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             {savingReview ? 'Confirming...' : 'Confirm'}
