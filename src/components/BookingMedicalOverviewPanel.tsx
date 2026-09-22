@@ -80,6 +80,7 @@ const BookingMedicalOverviewPanel: React.FC<BookingMedicalOverviewPanelProps> = 
   const cautiousRequired = required.filter(item => reviewDecisionClass(item.review) === 'medical-decision-caution');
   const missingRequired = required.filter(item => !item.artifact);
   const noDecisionCount = artifacts.filter(artifact => !latestArtifactReview(artifact, reviews) || reviewDecisionText(latestArtifactReview(artifact, reviews)) === 'No decision').length;
+  const noMrrCount = required.filter(item => item.artifact && !item.review).length;
   const overallLabel = missingRequired.length ? 'Action required' : cautiousRequired.length ? 'Cleared with caution' : reviewedRequired.length === required.length ? 'Medical items cleared' : 'Review pending';
   const overallClass = missingRequired.length ? 'medical-decision-declined' : cautiousRequired.length ? 'medical-decision-caution' : reviewedRequired.length === required.length ? 'medical-decision-ok' : 'medical-decision-pending';
 
@@ -98,7 +99,7 @@ const BookingMedicalOverviewPanel: React.FC<BookingMedicalOverviewPanelProps> = 
       <div>
         <div className="booking-medical-eyebrow">Booking #{bookingNumber || bookingId}</div>
         <h2>Medical</h2>
-        <p>{reviewedRequired.length} of {required.length} required entry items reviewed. {noDecisionCount} record{noDecisionCount === 1 ? '' : 's'} still {noDecisionCount === 1 ? 'has' : 'have'} no decision.</p>
+        <p>{reviewedRequired.length} of {required.length} required entry items reviewed. {noMrrCount ? `${noMrrCount} record${noMrrCount === 1 ? '' : 's'} have no MRR. ` : ''}{noDecisionCount ? `${noDecisionCount} record${noDecisionCount === 1 ? '' : 's'} still ${noDecisionCount === 1 ? 'has' : 'have'} no decision.` : 'All records have a review decision.'}</p>
       </div>
       <div className="booking-medical-header-actions">
         <span className={`booking-medical-decision ${overallClass}`}>{overallLabel}</span>
@@ -123,9 +124,9 @@ const BookingMedicalOverviewPanel: React.FC<BookingMedicalOverviewPanelProps> = 
                 <strong>Entry {documentType === 'Liver' ? 'liver panel' : documentType}</strong>
                 <span>{artifact ? <span>Artifact #{artifact.display_id || artifact._id}</span> : 'Required document has not been uploaded'}</span>
               </div>
-              <span className={`booking-medical-decision ${decisionClass}`}>{artifact ? reviewDecisionText(review) : 'Missing'}</span>
+              <span className={`booking-medical-decision ${artifact && review ? decisionClass : 'medical-decision-pending'}`}>{artifact ? (review ? reviewDecisionText(review) : 'NO MRR') : 'Missing'}</span>
             </div>
-            <p className="booking-medical-required-notes">{artifact ? (reviewNotes(review) || (review ? 'No review notes were added.' : 'No decision recorded yet.')) : `Upload the entry ${documentType.toLowerCase()} to continue.`}</p>
+            <p className="booking-medical-required-notes">{artifact ? (reviewNotes(review) || (review ? 'No review notes were added.' : 'No medical review request exists for this artifact. Create an MRR to send it for review.')) : `Upload the entry ${documentType.toLowerCase()} to continue.`}</p>
             <div className="booking-medical-card-footer">
               <span>{review?.reviewedAt ? `Reviewed ${shortMedicalDate(review.reviewedAt)}${reviewerName(review) ? ` by ${reviewerName(review)}` : ''}` : artifact ? `Received ${shortMedicalDate(artifact.receivedAt || artifact.createdAt)}` : 'Not received'}</span>
               <div>
@@ -177,7 +178,7 @@ const BookingMedicalOverviewPanel: React.FC<BookingMedicalOverviewPanelProps> = 
                   <div><strong>#{artifact.display_id || artifact._id || 'New'} {artifactTitle(artifact)}</strong><span>{artifact.documentType || 'Medical'} · {shortMedicalDate(artifact.receivedAt || artifact.createdAt)} · {(artifact.files || []).length} file{(artifact.files || []).length === 1 ? '' : 's'}</span></div>
                 </div>
                 <span className={`booking-medical-decision ${reviewDecisionClass(review)}`}>{reviewDecisionText(review)}</span>
-                {review ? <button className="booking-medical-review-reference" type="button" onClick={() => openReview(review)}>Review #{review.display_id || review._id}</button> : <span className="booking-medical-review-reference">No review linked</span>}
+                {review ? <button className="booking-medical-review-reference" type="button" onClick={() => openReview(review)}>MRR #{review.display_id || review._id}</button> : <span className="booking-medical-review-reference">NO MRR</span>}
                 <div className="booking-medical-record-actions">
                   <button type="button" onClick={() => openArtifact(artifact)}>Open</button>
                   {review ? <button type="button" onClick={() => openReview(review)}>View review</button> : <button className="is-primary" type="button" onClick={() => createReview(artifact)}>Create MRR</button>}
