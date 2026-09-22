@@ -1356,7 +1356,9 @@ export const medicalReviewRequestsApi = {
     onBehalfOfAssignedAdvisor?: boolean;
     delegationReason?: string;
     status?: string;
-    reviewDecision?: 'OK' | 'caution' | 'more_info_needed' | 'NOT OK';
+    reviewDecision?: 'OK' | 'caution' | 'more_info_needed' | 'NOT OK' | 'WONT_DO';
+    wontDoReason?: 'duplicate' | 'not_relevant' | 'mistake' | 'no_longer_needed' | 'test_request' | 'other';
+    wontDoNote?: string;
     reviewNotes?: string;
     overallNotes?: string;
     medicalStaffNotes?: string;

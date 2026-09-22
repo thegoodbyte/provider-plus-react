@@ -1367,7 +1367,9 @@ export interface MedicalReviewRequest {
   lastNotificationSentAt?: Date | string;
   reviewedAt?: Date | string;
   reviewedBy?: string;
-  reviewDecision?: 'OK' | 'caution' | 'more_info_needed' | 'NOT OK';
+  reviewDecision?: 'OK' | 'caution' | 'more_info_needed' | 'NOT OK' | 'WONT_DO';
+  wontDoReason?: 'duplicate' | 'not_relevant' | 'mistake' | 'no_longer_needed' | 'test_request' | 'other';
+  wontDoNote?: string;
   overallNotes?: string;
   medicalStaffNotes?: string;
   clientVisibleAdminNote?: string;
@@ -1557,7 +1559,7 @@ export interface BookingFlowItem {
   emailSentAt?: Date | string;
   receivedAt?: Date | string;
   reviewedAt?: Date | string;
-  reviewDecision?: 'OK' | 'caution' | 'more_info_needed' | 'NOT OK';
+  reviewDecision?: 'OK' | 'caution' | 'more_info_needed' | 'NOT OK' | 'WONT_DO';
   reviewNotes?: string;
   reviewedBy?: string;
   approvedAt?: Date | string;

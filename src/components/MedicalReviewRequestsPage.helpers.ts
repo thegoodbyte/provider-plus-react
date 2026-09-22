@@ -1,6 +1,6 @@
 import { MedicalReviewRequest } from '../types';
 
-const decisionAliases: Record<string, 'OK' | 'caution' | 'more_info_needed' | 'NOT OK'> = {
+const decisionAliases: Record<string, 'OK' | 'caution' | 'more_info_needed' | 'NOT OK' | 'WONT_DO'> = {
   ok: 'OK',
   approve: 'OK',
   approved: 'OK',
@@ -15,15 +15,19 @@ const decisionAliases: Record<string, 'OK' | 'caution' | 'more_info_needed' | 'N
   rejected: 'NOT OK',
   reject: 'NOT OK',
   no: 'NOT OK',
+  "won't do": 'WONT_DO',
+  'wont do': 'WONT_DO',
+  wont_do: 'WONT_DO',
 };
 
-export const medicalReviewDecisionOptions = ['OK', 'caution', 'more_info_needed', 'NOT OK'] as const;
+export const medicalReviewDecisionOptions = ['OK', 'caution', 'more_info_needed', 'NOT OK', 'WONT_DO'] as const;
 
 export const medicalReviewDecisionLabels: Record<typeof medicalReviewDecisionOptions[number], string> = {
   OK: 'OK',
   caution: 'Caution',
   more_info_needed: 'More Info Needed',
   'NOT OK': 'Declined',
+  WONT_DO: "Won't do",
 };
 
 export const normalizeMedicalReviewDecision = (decision?: string | null) => {
@@ -38,6 +42,7 @@ export const getMedicalReviewDecisionTone = (decision?: string | null) => {
   if (normalized === 'caution') return 'amber';
   if (normalized === 'more_info_needed') return 'blue';
   if (normalized === 'NOT OK') return 'red';
+  if (normalized === 'WONT_DO') return 'gray';
   return 'gray';
 };
 

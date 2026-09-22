@@ -295,7 +295,7 @@ const sanitizeFileReviewDraft = (review: Partial<FileReviewDraft> & { reviewedAt
   artifactId: review.artifactId || undefined,
   fileKey: review.fileKey || undefined,
   fileName: review.fileName || undefined,
-  decision: normalizeMedicalReviewDecision(review.decision) || undefined,
+  decision: (normalizeMedicalReviewDecision(review.decision) === 'WONT_DO' ? '' : normalizeMedicalReviewDecision(review.decision)) || undefined,
   notes: review.notes || undefined,
   reviewedAt: review.reviewedAt || undefined,
   reviewedBy: review.reviewedBy || undefined,
@@ -538,6 +538,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
   const [history, setHistory] = useState<MedicalReviewRequest[]>([]);
   const [relatedArtifacts, setRelatedArtifacts] = useState<MedicalArtifact[]>([]);
   const [reviewDecision, setReviewDecision] = useState<(typeof decisionOptions)[number] | ''>('');
+  const [wontDoReason, setWontDoReason] = useState<'' | 'duplicate' | 'not_relevant' | 'mistake' | 'no_longer_needed' | 'test_request' | 'other'>('');
+  const [wontDoNote, setWontDoNote] = useState('');
   const [medicalStaffNotes, setMedicalStaffNotes] = useState('');
   const [onBehalfOfAdvisor, setOnBehalfOfAdvisor] = useState(false);
   const [delegationReason, setDelegationReason] = useState('');
@@ -624,6 +626,8 @@ const MedicalReviewRequestsPage: React.FC = () => {
         setOnBehalfOfAdvisor(false);
         setDelegationReason('');
         setReviewDecision(normalizeMedicalReviewDecision(selectedItem.reviewDecision) as (typeof decisionOptions)[number] | '');
+        setWontDoReason(selectedItem.wontDoReason || '');
+        setWontDoNote(selectedItem.wontDoNote || '');
         setMedicalStaffNotes(selectedItem.medicalStaffNotes || selectedItem.overallNotes || selectedItem.reviewNotes || '');
         setClientVisibleAdminNote(selectedItem.clientVisibleAdminNote || '');
         setClientVisibleAdminNoteSource(selectedItem.clientVisibleAdminNote || '');
@@ -917,6 +921,14 @@ const MedicalReviewRequestsPage: React.FC = () => {
       reviewDecisionSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       return;
     }
+    if (effectiveDecision === 'WONT_DO' && !wontDoReason) {
+      setValidationError("Select a reason for Won't do.");
+      return;
+    }
+    if (effectiveDecision === 'WONT_DO' && wontDoReason === 'other' && wontDoNote.trim().length < 2) {
+      setValidationError('Explain the Other reason before saving.');
+      return;
+    }
     const cleanedFileReviews = fileReviews
       .filter((review) => review.fileKey || review.fileName || review.notes || review.decision)
       .map((review) => sanitizeFileReviewDraft(review));
@@ -928,7 +940,9 @@ const MedicalReviewRequestsPage: React.FC = () => {
         reviewNotes: effectiveNotes,
         overallNotes: effectiveNotes,
         medicalStaffNotes: effectiveNotes,
-        fileReviews: cleanedFileReviews,
+        wontDoReason: effectiveDecision === 'WONT_DO' && wontDoReason ? wontDoReason : undefined,
+        wontDoNote: effectiveDecision === 'WONT_DO' ? wontDoNote.trim() : undefined,
+        fileReviews: cleanedFileReviews as any,
         onBehalfOfAssignedAdvisor: onBehalfOfAdvisor,
         delegationReason: onBehalfOfAdvisor ? delegationReason.trim() : undefined,
       });
@@ -1135,7 +1149,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 <button
                   key={option}
                   type="button"
-                  onClick={() => updateFileReview(artifact, target.file, { decision: option })}
+                  onClick={() => option !== 'WONT_DO' && updateFileReview(artifact, target.file, { decision: option })}
                   className={getDecisionButtonClass(option, fileReview.decision === option, 'sm')}
                 >
                   {decisionLabels[option]}
@@ -2439,7 +2453,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                                             <button
                                               key={option}
                                               type="button"
-                                              onClick={() => updateFileReview(artifact, file, { decision: option })}
+                                              onClick={() => option !== 'WONT_DO' && updateFileReview(artifact, file, { decision: option })}
                                               className={`rounded-full px-3 py-1 text-xs font-semibold ${fileReview.decision === option ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
                                             >
                                               {decisionLabels[option]}
@@ -2537,6 +2551,15 @@ const MedicalReviewRequestsPage: React.FC = () => {
                         </button>
                       ))}
                     </div>
+                    {reviewDecision === 'WONT_DO' && (
+                      <div className="mt-3 rounded-lg border border-gray-300 bg-gray-50 p-3">
+                        <label htmlFor="wont-do-reason" className="block text-sm font-semibold text-gray-900">Why won’t we do this?</label>
+                        <select id="wont-do-reason" value={wontDoReason} onChange={(e) => setWontDoReason(e.target.value as any)} className="mt-2 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm">
+                          <option value="">Select a reason</option><option value="duplicate">Duplicate request</option><option value="not_relevant">Not relevant</option><option value="mistake">Created by mistake</option><option value="no_longer_needed">No longer needed</option><option value="test_request">Test/demo request</option><option value="other">Other (explain below)</option>
+                        </select>
+                        {wontDoReason === 'other' && <textarea value={wontDoNote} onChange={(e) => setWontDoNote(e.target.value)} rows={2} className="mt-2 w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Explain why this will not be done" />}
+                      </div>
+                    )}
                     {isMissingOverallDecision && (
                       <div className="mt-2 text-xs font-medium text-red-700">Pick one decision before saving.</div>
                     )}
