@@ -1,7 +1,7 @@
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import BookingMedicalOverviewPanel, { artifactTitle, medicalOverviewError, medicalRoutePrefix, reviewDecisionClass, reviewDecisionText, shortMedicalDate } from './BookingMedicalOverviewPanel';
+import BookingMedicalOverviewPanel, { artifactTitle, medicalOverviewError, medicalRoutePrefix, reviewDecisionClass, reviewDecisionText, reviewReferenceText, shortMedicalDate } from './BookingMedicalOverviewPanel';
 import { loadBookingMedicalOverview } from './bookingMedicalOverviewData';
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({ ...jest.requireActual('react-router-dom'), useNavigate: () => mockNavigate }));
@@ -25,5 +25,6 @@ describe('BookingMedicalOverviewPanel', () => {
 describe('medical overview helpers', () => {
   it('handles route prefixes and errors', () => { expect(medicalRoutePrefix('/staff/x')).toBe('/staff'); expect(medicalRoutePrefix('/bookings/x')).toBe(''); expect(medicalOverviewError({ response: { data: { message: 'api' } } })).toBe('api'); expect(medicalOverviewError(new Error('local'))).toBe('local'); expect(medicalOverviewError({})).toContain('Unable'); });
   it('maps review decisions', () => { expect(reviewDecisionText()).toBe('No decision'); expect(reviewDecisionText({ decision: 'caution' } as any)).toBe('caution'); expect(reviewDecisionClass({ reviewDecision: 'approved' } as any)).toBe('medical-decision-ok'); expect(reviewDecisionClass({ decision: 'needs info' } as any)).toBe('medical-decision-caution'); expect(reviewDecisionClass({ decision: 'rejected' } as any)).toBe('medical-decision-declined'); expect(reviewDecisionClass()).toBe('medical-decision-pending'); });
+  it('shows the MRR reference when a record has a review request', () => { expect(reviewReferenceText({ _id: 'review-id', display_id: 123 } as any)).toBe('MRR #123'); expect(reviewReferenceText()).toBe('NO MRR'); });
   it('formats dates and artifact titles', () => { expect(shortMedicalDate()).toBe('N/A'); expect(shortMedicalDate('bad')).toBe('N/A'); expect(shortMedicalDate('2026-06-01')).toContain('2026'); expect(artifactTitle({ title: 'EKG', ceremonyNumber: 2 } as any)).toBe('EKG - Ceremony #2'); expect(artifactTitle({} as any)).toBe('Medical record'); });
 });

@@ -28,6 +28,7 @@ export const medicalRoutePrefix = (pathname: string) => {
 };
 export const medicalOverviewError = (error: any) => error?.response?.data?.message || error?.message || 'Unable to load booking medical records.';
 export const reviewDecisionText = (review?: MedicalReviewRequest) => review?.reviewDecision || review?.decision || (review?.status && reviewedMedicalStatuses.has(review.status) ? review.status : 'No decision');
+export const reviewReferenceText = (review?: MedicalReviewRequest) => review ? `MRR #${review.display_id || review._id || '—'}` : 'NO MRR';
 export const reviewDecisionClass = (review?: MedicalReviewRequest) => {
   const value = String(reviewDecisionText(review)).toLowerCase();
   if (value.includes('ok') || value.includes('approved') || value.includes('completed')) return 'medical-decision-ok';
@@ -124,7 +125,11 @@ const BookingMedicalOverviewPanel: React.FC<BookingMedicalOverviewPanelProps> = 
                 <strong>Entry {documentType === 'Liver' ? 'liver panel' : documentType}</strong>
                 <span>{artifact ? <span>Artifact #{artifact.display_id || artifact._id}</span> : 'Required document has not been uploaded'}</span>
               </div>
-              <span className={`booking-medical-decision ${artifact && review ? decisionClass : 'medical-decision-pending'}`}>{artifact ? (review ? reviewDecisionText(review) : 'NO MRR') : 'Missing'}</span>
+              {review ? (
+                <button type="button" className={`booking-medical-decision ${decisionClass}`} onClick={() => openReview(review)}>{reviewReferenceText(review)}</button>
+              ) : (
+                <span className={`booking-medical-decision ${artifact ? 'medical-decision-pending' : 'medical-decision-declined'}`}>{artifact ? 'NO MRR' : 'Missing'}</span>
+              )}
             </div>
             <p className="booking-medical-required-notes">{artifact ? (reviewNotes(review) || (review ? 'No review notes were added.' : 'No medical review request exists for this artifact. Create an MRR to send it for review.')) : `Upload the entry ${documentType.toLowerCase()} to continue.`}</p>
             <div className="booking-medical-card-footer">
