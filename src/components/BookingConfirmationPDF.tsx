@@ -336,6 +336,7 @@ const translations = {
     currency: 'zł',
     // Footer notes
     balanceDueNote: (date: string) => `Pozostałe saldo należy uregulować najpóźniej 30 dni przed rozpoczęciem pobytu, czyli do ${date}.`,
+    balancePaidNote: 'Cena pobytu została opłacona w całości. Nie ma pozostałego salda do zapłaty.',
     requiredDepositNote: (amount: string, usdAmount?: string) => `Wymagany zadatek do potwierdzenia rezerwacji wynosi 40% ceny pobytu: ${amount}${usdAmount ? ` (około ${usdAmount}, zaokrąglone w górę)` : ''}. Płatności w innej walucie są zaliczane według faktycznej kwoty przeliczonej przez Revolut/Wise/bank w dniu rozliczenia.`,
     footerNote3: 'Należy pamiętać, że żadna usługa nie będzie świadczona, dopóki nie zostanie ona w pełni opłacona. Dziękuję za zrozumienie',
     footerNote4: 'Aby potwierdzić rezerwację, każdy uczestnik musi dostarczyć EKG, panel wątroby i podpisać umowę uczestnika zgodnie z terminami pokazanymi powyżej.',
@@ -388,6 +389,7 @@ const translations = {
     currency: 'Kč',
     // Footer notes
     balanceDueNote: (date: string) => `Zbývající částka je splatná nejpozději 30 dní před začátkem pobytu, tedy do ${date}.`,
+    balancePaidNote: 'Cena pobytu byla uhrazena v plné výši. Nezbývá žádný nedoplatek.',
     requiredDepositNote: (amount: string, usdAmount?: string) => `Požadovaná záloha pro potvrzení rezervace je 40 % ceny pobytu: ${amount}${usdAmount ? ` (přibližně ${usdAmount}, zaokrouhleno nahoru)` : ''}. Platby v jiné měně se započítávají podle skutečné částky přepočtené přes Revolut/Wise/banku v den zúčtování.`,
     footerNote3: 'Pamatujte, že žádná služba nebude poskytována, dokud nebude plně uhrazena. Děkuji za pochopení',
     footerNote4: 'Pro potvrzení rezervace musí každý účastník dodat EKG, jaterní panel a podepsat smlouvu účastníka podle termínů uvedených výše.',
@@ -440,6 +442,7 @@ const translations = {
     currency: '€',
     // Footer notes
     balanceDueNote: (date: string) => `The remaining balance is due no later than 30 days before the retreat begins, by ${date}.`,
+    balancePaidNote: 'The retreat price has been paid in full. No balance remains due.',
     requiredDepositNote: (amount: string, usdAmount?: string) => `The deposit required to confirm the booking is 40% of the retreat price: ${amount}${usdAmount ? ` (about ${usdAmount}, rounded up)` : ''}. Payments in another currency are counted by the actual amount converted by Revolut/Wise/bank on the settlement date.`,
     footerNote3: 'Please note that no service will be provided until it is fully paid. Thank you for understanding',
     footerNote4: 'To confirm the reservation, each participant must provide EKG, liver panel results, and sign the participant agreement according to the deadlines shown above.',
@@ -606,10 +609,17 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
   const totalPaid = resolvedCompletedPayments.reduce((sum, resolvedPayment) => {
     return sum + (resolvedPayment.bookingCurrencyAmount || 0);
   }, 0);
-  const balance = bookingTotal - totalPaid;
+  // Payment allocations can contain more precision than the two decimals
+  // shown on the confirmation. Round the ledger before deriving the balance;
+  // otherwise a fully settled booking can print a misleading -0.01 balance.
+  const roundCurrency = (amount: number) => Math.round((Number(amount) + Number.EPSILON) * 100) / 100;
+  const roundedTotalPaid = roundCurrency(totalPaid);
+  const rawBalance = roundCurrency(bookingTotal - roundedTotalPaid);
+  const balance = Math.max(0, rawBalance);
+  const paidInFull = balance <= 0.01;
   // Do not subtract settlement USD values captured on different dates. Convert
   // the authoritative remaining booking-currency balance at one current rate.
-  const balanceUsd = bookingCurrency === 'USD'
+  const balanceUsd = paidInFull ? 0 : bookingCurrency === 'USD'
     ? Math.round(balance * 100) / 100
     : await convertToUsdAmount(balance, bookingCurrency);
   const requiredDeposit = bookingTotal > 0 ? bookingTotal * 0.4 : null;
@@ -852,7 +862,7 @@ export const createBookingConfirmationPdf = async ({ booking, language = 'pl' }:
       <!-- Footer notes -->
       <div style="margin-top: 18px; font-size: 11px; line-height: 1.4; color: #4b5563;">
         <table style="width:100%;border-collapse:collapse;font-size:11px;line-height:1.35;font-style:italic;"><tbody><tr>
-          <td style="width:50%;padding:0 12px 0 0;vertical-align:top;">${t.balanceDueNote(balanceDueDate ? formatDate(balanceDueDate) : retreatDateRange)}</td>
+          <td style="width:50%;padding:0 12px 0 0;vertical-align:top;">${paidInFull ? t.balancePaidNote : t.balanceDueNote(balanceDueDate ? formatDate(balanceDueDate) : retreatDateRange)}</td>
           <td style="width:50%;padding:0 0 0 12px;vertical-align:top;">${requiredDeposit ? t.requiredDepositNote(formatAmount(requiredDeposit), requiredDepositUsd ? formatAmount(requiredDepositUsd, 'USD') : undefined) : ''}</td>
         </tr></tbody></table>
 
