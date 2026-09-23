@@ -584,7 +584,10 @@ const PaymentEditorPage: React.FC = () => {
             </div>}
 
             {!clientOnly && <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Booking Number {!formData.paymentRequestId && '*'}</label>
+              <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+                <label className="block text-sm font-medium text-gray-700">Link directly to booking {!formData.paymentRequestId && '*'}</label>
+                <span className="text-xs text-gray-500">A payment request is optional; choose the exact booking here.</span>
+              </div>
               <SearchableBookingSelect
                 bookings={bookingOptions}
                 clients={clients}
