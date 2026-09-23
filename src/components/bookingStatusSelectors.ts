@@ -6,6 +6,7 @@ export const satisfiedStatuses = new Set<BookingFlowItem['status']>(['received',
 export const accomplishedStatuses = new Set<BookingFlowItem['status']>(['received', 'reviewed', 'approved', 'caution', 'completed', 'waived', 'sent']);
 export const failedStatuses = new Set<BookingFlowItem['status']>(['rejected', 'needs_resubmission', 'blocked']);
 export const attentionStatuses = new Set<BookingFlowItem['status']>(['caution', 'sent_for_review', 'in_review']);
+const PAYMENT_ROUNDING_TOLERANCE = 0.011;
 
 export const hasReceivedEvidence = (status?: BookingFlowItem['status']) => Boolean(status && evidenceReceivedStatuses.has(status));
 export const isReviewedStatus = (status?: BookingFlowItem['status']) => Boolean(status && reviewedStatuses.has(status));
@@ -43,7 +44,14 @@ export const bookingCurrencyPaymentAmount = (payment: Partial<Payment>, currency
 export const bookingPaymentSummary = (payments: Partial<Payment>[], total: number, currency: string) => {
   const received = payments.reduce((sum, payment) => sum + bookingCurrencyPaymentAmount(payment, currency), 0);
   const outstanding = Math.max(0, Number(total || 0) - received);
-  return { received, outstanding, paidPercent: total > 0 ? Math.min(100, Math.max(0, Math.round(received / total * 100))) : 0, paidInFull: total > 0 && outstanding < 0.01 };
+  const paidInFull = total > 0 && outstanding <= PAYMENT_ROUNDING_TOLERANCE;
+  // Keep the progress indicator consistent with the status badge. Currency
+  // displays round to cents, so a sub-cent/cent remainder is considered paid.
+  // Any larger remainder must never be presented as 100% paid.
+  const paidPercent = total > 0
+    ? paidInFull ? 100 : Math.min(99, Math.max(0, Math.round(received / total * 100)))
+    : 0;
+  return { received, outstanding, paidPercent, paidInFull };
 };
 
 export const bookingUsdPaymentAmount = (payment: Partial<Payment>) => {
@@ -75,7 +83,7 @@ export const bookingSettlementSummary = (payments: Partial<Payment>[], total: nu
     outstanding: Math.max(0, rawBalance),
     overpaid: Math.max(0, -rawBalance),
     paidPercent: Math.min(100, Math.max(0, Math.round(received / Number(totalUsd) * 100))),
-    paidInFull: rawBalance <= 0.005,
+    paidInFull: rawBalance <= PAYMENT_ROUNDING_TOLERANCE,
     basis: 'USD',
   };
 };

@@ -55,4 +55,28 @@ describe('canonical booking status selectors', () => {
     expect(summary.received).toBe(3000);
     expect(summary.outstanding).toBe(2000);
   });
+
+  it('treats a one-cent rounding remainder as paid and never shows 100% while unpaid', () => {
+    const roundedPaid = bookingPaymentSummary([
+      { status: 'completed', amount: 9999.99, currency: 'PLN' },
+    ] as any, 10000, 'PLN');
+    expect(roundedPaid.paidInFull).toBe(true);
+    expect(roundedPaid.paidPercent).toBe(100);
+
+    const materialBalance = bookingPaymentSummary([
+      { status: 'completed', amount: 9999, currency: 'PLN' },
+    ] as any, 10000, 'PLN');
+    expect(materialBalance.paidInFull).toBe(false);
+    expect(materialBalance.paidPercent).toBe(99);
+  });
+
+  it('uses the same cent tolerance for a mixed-currency USD settlement', () => {
+    expect(bookingSettlementSummary([
+      { status: 'completed', amount: 2372.74, currency: 'USD', usd_amount: 2372.74, bookingCurrency: 'PLN', bookingCurrencyAmount: 9000 },
+    ] as any, 9000, 'PLN', 2372.75)).toMatchObject({
+      paidInFull: true,
+      paidPercent: 100,
+      basis: 'USD',
+    });
+  });
 });
