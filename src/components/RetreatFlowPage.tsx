@@ -33,6 +33,7 @@ type TemplateForm = {
   order: number;
   createsTask: boolean;
   reviewRequired: boolean;
+  allowOneOnly: boolean;
   taskTitle: string;
   taskPriority: 'low' | 'medium' | 'high' | 'urgent';
   readinessGroup: string;
@@ -58,6 +59,7 @@ const emptyForm = (): TemplateForm => ({
   order: 0,
   createsTask: false,
   reviewRequired: false,
+  allowOneOnly: false,
   taskTitle: '',
   taskPriority: 'medium',
   readinessGroup: '',
@@ -157,6 +159,7 @@ const RetreatFlowPage: React.FC = () => {
           order: firstTemplate.order || 0,
           createsTask: !!firstTemplate.createsTask,
           reviewRequired: !!firstTemplate.reviewRequired,
+          allowOneOnly: firstTemplate.allowOneOnly ?? ['contract_signed', 'contract_received', 'client_agreement_received'].includes(firstTemplate.key),
           taskTitle: firstTemplate.taskTitle || '',
           taskPriority: firstTemplate.taskPriority || 'medium',
           readinessGroup: firstTemplate.readinessGroup || '',
@@ -208,6 +211,7 @@ const RetreatFlowPage: React.FC = () => {
       order: template.order || 0,
       createsTask: !!template.createsTask,
       reviewRequired: !!template.reviewRequired,
+      allowOneOnly: template.allowOneOnly ?? ['contract_signed', 'contract_received', 'client_agreement_received'].includes(template.key),
       taskTitle: template.taskTitle || '',
       taskPriority: template.taskPriority || 'medium',
       readinessGroup: template.readinessGroup || '',
@@ -486,6 +490,7 @@ const RetreatFlowPage: React.FC = () => {
         <label className="flex items-center gap-2"><input type="checkbox" checked={form.active} onChange={(e) => setForm({ ...form, active: e.target.checked })} /> Active</label>
         <label className="flex items-center gap-2"><input type="checkbox" checked={form.isBlocking} onChange={(e) => setForm({ ...form, isBlocking: e.target.checked })} /> Blocking</label>
         <label className="flex items-center gap-2"><input type="checkbox" checked={form.createsTask} onChange={(e) => setForm({ ...form, createsTask: e.target.checked })} /> Creates task</label>
+        <label className="flex items-center gap-2"><input type="checkbox" checked={form.allowOneOnly} onChange={(e) => setForm({ ...form, allowOneOnly: e.target.checked })} /> Allow one submission only</label>
         <label className="flex items-center gap-2"><input type="checkbox" checked={form.reviewRequired} onChange={(e) => setForm({ ...form, reviewRequired: e.target.checked })} /> Review required</label>
       </div>
 

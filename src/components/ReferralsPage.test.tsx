@@ -1,9 +1,9 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import ReferralsPage from './ReferralsPage';
-import { referralsApi } from '../services/api';
+import { api, referralsApi } from '../services/api';
 
-jest.mock('../services/api', () => ({ referralsApi: { getAll: jest.fn(), getReport: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn(), createPayout: jest.fn() } }));
+jest.mock('../services/api', () => ({ api: { get: jest.fn().mockResolvedValue({ data: null }), put: jest.fn().mockResolvedValue({ data: {} }) }, referralsApi: { getAll: jest.fn(), getReport: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn(), createPayout: jest.fn() } }));
 
 const partner = { _id: 'r1', name: 'Ada Partners', referralCode: 'AP', defaultCommissionPercentage: 10, email: 'ada@example.com', isActive: true };
 const row = (overrides: any = {}) => ({ bookingId: 'b1', bookingNumber: 101, clientId: 'c1', clientDisplayId: 501, clientName: 'Eva Novak', clientEmail: 'eva@example.com', referralId: 'r1', referralName: 'Ada Partners', referralCode: 'AP', retreatId: 't1', retreatCode: 'SEP-26', commissionPercentage: 10, amountOwed: 450, owedCurrency: 'EUR', paid: false, ...overrides });
@@ -12,6 +12,8 @@ const view = () => render(<MemoryRouter initialEntries={['/admin/referrals']}><R
 describe('ReferralsPage payout workflow', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (api.get as jest.Mock).mockResolvedValue({ data: null });
+    (api.put as jest.Mock).mockResolvedValue({ data: {} });
     (referralsApi.getAll as jest.Mock).mockResolvedValue({ data: [partner] });
     (referralsApi.getReport as jest.Mock).mockResolvedValue({ data: [row(), row({ bookingId: 'b2', bookingNumber: 102, clientName: 'Jan Kowalski', amountOwed: 300 })] });
     (referralsApi.create as jest.Mock).mockResolvedValue({ data: partner });
@@ -99,8 +101,8 @@ describe('ReferralsPage payout workflow', () => {
     expect(screen.getByText('Jan Kowalski')).toBeInTheDocument();
   });
 
-  it('shows the first payment date when available', async () => {
-    (referralsApi.getReport as jest.Mock).mockResolvedValue({ data: [row({ firstPaymentDate: '2026-07-15T00:00:00.000Z' })] });
+  it('shows the booking date used for commission selection', async () => {
+    (referralsApi.getReport as jest.Mock).mockResolvedValue({ data: [row({ registrationDate: '2026-07-15T00:00:00.000Z', firstPaymentDate: '2026-08-01T00:00:00.000Z' })] });
     view();
     await screen.findAllByText('Eva Novak');
     expect(screen.getByText(new Date('2026-07-15T00:00:00.000Z').toLocaleDateString())).toBeInTheDocument();
@@ -135,4 +137,28 @@ describe('ReferralsPage payout workflow', () => {
     expect(fromInput).toBeDefined();
     expect(toInput).toBeDefined();
   });
+  it('saves a fixed USD package with configurable booking dates', async () => {
+    view();
+    await screen.findAllByText('Eva Novak');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Ada Partners' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add commission package' }));
+    fireEvent.change(screen.getByLabelText('Key'), { target: { value: 'C' } });
+    fireEvent.change(screen.getByLabelText('Name', { exact: true }), { target: { value: 'Package C' } });
+    fireEvent.change(screen.getByLabelText('Calculation'), { target: { value: 'fixed' } });
+    fireEvent.change(screen.getByLabelText('From', { exact: true }), { target: { value: '2026-09-23' } });
+    fireEvent.change(screen.getByLabelText('Amount', { exact: true }), { target: { value: '500' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(referralsApi.update).toHaveBeenCalledWith('r1', expect.objectContaining({ commissionPackages: [expect.objectContaining({ key: 'C', effectiveFrom: '2026-09-23', kind: 'fixed', amount: 500, currency: 'USD' })] })));
+  });
+  it('provisions a separate partner account without changing the referral record', async () => {
+    view();
+    await screen.findAllByText('Eva Novak');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Ada Partners' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save portal access' })).toBeEnabled());
+    fireEvent.change(screen.getByLabelText('Initial password'), { target: { value: 'a long test password' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save portal access' }));
+    await waitFor(() => expect(api.put).toHaveBeenCalledWith('/referrals/r1/portal-account', { email: 'ada@example.com', password: 'a long test password', active: true }));
+    expect(referralsApi.update).not.toHaveBeenCalled();
+  });
+
 });

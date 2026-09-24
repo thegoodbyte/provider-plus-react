@@ -143,7 +143,8 @@ const ClientEditPage: React.FC = () => {
 
       setFormData({
         ...clientData,
-        yearOfBirth
+        yearOfBirth,
+        currentMedications: clientData.currentMedications ?? (clientData as any).medications ?? ''
       });
       // Seed the "last auto-detected" country from the loaded phone so a small edit
       // (e.g. fixing a typo) doesn't re-trigger the autofill and clobber a country/
@@ -288,16 +289,10 @@ const ClientEditPage: React.FC = () => {
           : formData.dateOfBirth.toISOString().split('T')[0];
       }
 
-      // Add optional medical fields if they exist
-      if ((formData as any).medications) {
-        (clientData as any).medications = (formData as any).medications;
-      }
-      if ((formData as any).allergies) {
-        (clientData as any).allergies = (formData as any).allergies;
-      }
-      if ((formData as any).specialRequests) {
-        (clientData as any).specialRequests = (formData as any).specialRequests;
-      }
+      // Empty strings intentionally clear previously saved optional values.
+      clientData.currentMedications = formData.currentMedications ?? '';
+      clientData.allergies = formData.allergies ?? '';
+      clientData.specialRequests = formData.specialRequests ?? '';
 
       // Update the client
       await clientsApi.update(clientId!, clientData);
@@ -668,11 +663,11 @@ const ClientEditPage: React.FC = () => {
             </div>
 
             <div>
-              <label htmlFor="medications" className="block text-sm font-medium text-gray-700 mb-1">Current Medications</label>
+              <label htmlFor="currentMedications" className="block text-sm font-medium text-gray-700 mb-1">Current Medications</label>
               <textarea
-                id="medications"
-                name="medications"
-                value={formData.medications || ''}
+                id="currentMedications"
+                name="currentMedications"
+                value={formData.currentMedications || ''}
                 onChange={handleInputChange}
                 rows={3}
                 className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"

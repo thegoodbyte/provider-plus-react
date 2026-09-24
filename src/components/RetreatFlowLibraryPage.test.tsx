@@ -87,4 +87,17 @@ describe('RetreatFlowLibraryPage client-facing name/description language tabs', 
     expect(payload.clientFacingName).toEqual({ en: 'EKG Test', pl: 'Zaktualizowane badanie EKG', cz: '' });
     expect(payload.clientFacingDescription).toEqual({ en: 'Upload your EKG results.', pl: 'Prześlij wyniki badania EKG.', cz: '' });
   });
+  it('defaults contracts to one submission without review and saves an explicit repeat override', async () => {
+    (bookingFlowApi.getLibraryTemplates as jest.Mock).mockResolvedValue({ data: [template({ key: 'contract_signed', title: 'Contract received', category: 'contract' })] });
+    view();
+    await screen.findByRole('button', { name: /Contract received/ });
+    fireEvent.click(screen.getByRole('tab', { name: /Flags/ }));
+    const oneOnly = screen.getByRole('checkbox', { name: /Allow one submission only.*IR hides/ });
+    expect(oneOnly).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /Review required.*Controls/ })).not.toBeChecked();
+    fireEvent.click(oneOnly);
+    fireEvent.click(screen.getByText('Save step'));
+    await waitFor(() => expect(bookingFlowApi.updateLibraryTemplate).toHaveBeenCalledWith('t1', expect.objectContaining({ allowOneOnly: false, reviewRequired: false })));
+  });
+
 });

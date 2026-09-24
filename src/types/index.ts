@@ -134,12 +134,19 @@ export interface ReferralRateRule {
   notes?: string;
 }
 
+export interface ReferralCommissionPackage {
+  key: string; name: string; effectiveFrom: string; effectiveTo?: string;
+  bookingCurrency: string; kind: 'percentage' | 'fixed'; ratePercent?: number;
+  tiers?: ReferralRateTier[]; amount?: number; currency?: string;
+}
+
 export interface Referral {
   _id?: string;
   name: string;
   referralCode?: string;
   defaultCommissionPercentage?: number;
   rateSchedule?: ReferralRateRule[];
+  commissionPackages?: ReferralCommissionPackage[];
   email?: string;
   phone?: string;
   notes?: string;
@@ -149,6 +156,11 @@ export interface Referral {
 }
 
 export interface ReferralReportRow {
+  signupDate?: string;
+  source?: string;
+  commissionKind?: 'percentage' | 'fixed';
+  packageName?: string;
+  commissionIssue?: string;
   bookingId: string;
   bookingNumber?: number;
   bookingStatus?: string;
@@ -286,6 +298,7 @@ export interface Client {
   suicidalThoughts?: string;
   hospitalizations?: string;
   allergies?: string;
+  specialRequests?: string;
   weightRange?: string;
   pregnancyStatus?: string;
   screeningCompletedDate?: Date | string;
@@ -1483,6 +1496,7 @@ export interface BookingFlowTemplate {
   taskPriority?: 'low' | 'medium' | 'high' | 'urgent';
   triggerType?: string;
   reviewRequired?: boolean;
+  allowOneOnly?: boolean;
   readinessGroup?: string;
   readinessGroupColor?: string;
   expectedArtifact?: string;

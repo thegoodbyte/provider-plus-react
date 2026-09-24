@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import jsPDF from 'jspdf';
+import { Utensils } from 'lucide-react';
+import { RetreatFilter, useFormSort, answerText, isEmptyFoodAnswer, highlightFoodAnswer } from './clientFormsControls';
 import { clientFoodFormsApi, ClientFoodForm } from '../services/clientFoodFormsApi';
 
 const label = (key: string) => key.replace(/([A-Z])/g, ' $1').replace(/^./, (value) => value.toUpperCase());
@@ -20,7 +22,7 @@ const shortClientName = (name: string) => {
   return parts.length > 1 ? `${parts[0]} ${parts[parts.length - 1][0]}.` : (parts[0] || '—');
 };
 
-const isEmptyAnswer = (value: string) => !value.trim() || /^(none|n\/a|—|-|no)$/i.test(value.trim());
+const isEmptyAnswer = isEmptyFoodAnswer;
 
 const ClientFoodFormsPage: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const [rows, setRows] = useState<ClientFoodForm[]>([]);
@@ -43,10 +45,16 @@ const ClientFoodFormsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
   useEffect(() => { load(); }, []);
 
   const retreatOptions = useMemo(() => Array.from(new Set(rows.map(retreatLabel).filter((value) => value !== '—'))).sort(), [rows]);
-  const visible = useMemo(() => rows.filter((row) => {
+  const { header, sortRows } = useFormSort<ClientFoodForm>({
+    Ref: row => row.display_id, Client: row => row.signature_name, Retreat: retreatLabel,
+    'Food type': row => answerText(row.answers?.dietType),
+    Submitted: row => Date.parse(row.submitted_at || '') || 0, Lang: row => row.language,
+    Status: row => row.status === 'submitted' ? 'Received' : row.status,
+  });
+  const visible = sortRows(useMemo(() => rows.filter((row) => {
     const haystack = `${row.display_id} ${row.email} ${row.signature_name} ${row.client_id} ${retreatLabel(row)}`.toLowerCase();
     return haystack.includes(search.toLowerCase()) && (!retreatFilter || retreatLabel(row) === retreatFilter);
-  }), [rows, search, retreatFilter]);
+  }), [rows, search, retreatFilter]));
   const unreviewed = visible.filter((row) => row.status === 'submitted').length;
   const matrixRows = useMemo(() => {
     const keys = new Set<string>();
@@ -54,7 +62,6 @@ const ClientFoodFormsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
     return Array.from(keys);
   }, [visible]);
   const matrixLabel = (key: string) => QUESTION_LABELS[matrixLanguage][key] || QUESTION_LABELS.en[key] || label(key);
-  const answerText = (value: unknown) => Array.isArray(value) ? value.join(', ') : String(value ?? '—');
   const matrixValue = (client: ClientFoodForm, key: string) => key === 'fullName' ? client.signature_name : answerText(client.answers?.[key]);
 
   const downloadMatrix = () => {
@@ -115,13 +122,7 @@ const ClientFoodFormsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
             Search
             <input className="mt-2 h-10 w-full border border-[#c8c5c5] bg-[#f1f0f0] px-3 font-sans text-sm outline-none focus:border-[#07516c]" placeholder="Name, email, client, or reference" value={search} onChange={(event) => setSearch(event.target.value)} />
           </label>
-          <label className="block font-sans text-sm text-[#514c4d]">
-            Retreat
-            <select className="mt-2 h-10 w-full border border-[#c8c5c5] bg-[#f1f0f0] px-3 font-sans text-sm outline-none focus:border-[#07516c]" value={retreatFilter} onChange={(event) => setRetreatFilter(event.target.value)}>
-              <option value="">All retreats</option>
-              {retreatOptions.map((retreat) => <option key={retreat} value={retreat}>{retreat}</option>)}
-            </select>
-          </label>
+          <RetreatFilter options={retreatOptions} value={retreatFilter} onChange={setRetreatFilter} />
           <div className="font-sans md:pl-1">
             <div className="text-3xl leading-none">{visible.length}</div>
             <div className="mt-1 text-xs uppercase tracking-[0.18em] text-[#777172]">of {rows.length} forms</div>
@@ -137,16 +138,17 @@ const ClientFoodFormsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
             <table className="min-w-[980px] w-full border-collapse font-sans">
               <thead>
                 <tr className="border-b border-[#d4d1d1] text-left text-[11px] uppercase tracking-[0.15em] text-[#777172]">
-                  {['Ref', 'Client', 'Retreat', 'Submitted', 'Lang', 'Status', 'Actions'].map((title) => <th key={title} className="px-2 pb-3 font-normal">{title}</th>)}
+                  {['Ref', 'Client', 'Retreat', 'Food type', 'Submitted', 'Lang', 'Status', 'Actions'].map(header)}
                 </tr>
               </thead>
               <tbody>
-                {loading && <tr><td colSpan={7} className="px-2 py-12 text-center text-sm text-[#777172]">Loading food forms…</td></tr>}
+                {loading && <tr><td colSpan={8} className="px-2 py-12 text-center text-sm text-[#777172]">Loading food forms…</td></tr>}
                 {!loading && visible.map((row) => (
                   <tr key={row._id} className="border-b border-[#dedbdb] transition-colors hover:bg-[#efeeee]">
                     <td className="px-2 py-4 text-sm">#{row.display_id}</td>
                     <td className="px-2 py-4"><div className="text-base">{row.signature_name}</div><div className="mt-1 text-xs text-[#777172]">{row.email}</div></td>
                     <td className="px-2 py-4"><span className="inline-block bg-[#e8f6fb] px-3 py-1 text-xs text-[#07516c]">{retreatLabel(row)}</span></td>
+                    <td className="px-2 py-4"><button type="button" onClick={() => setSelected(row)} aria-label={`View food questionnaire for ${row.signature_name}`} title={answerText(row.answers?.dietType)} className="flex items-center gap-2 text-sm text-[#07516c] hover:underline"><Utensils size={18} aria-hidden="true" /><span>{answerText(row.answers?.dietType)}</span></button></td>
                     <td className="whitespace-nowrap px-2 py-4 text-sm text-[#5d5859]">{row.submitted_at ? new Date(row.submitted_at).toLocaleString() : '—'}</td>
                     <td className="px-2 py-4 text-sm uppercase">{row.language === 'cs' ? 'CS' : row.language}</td>
                     <td className="px-2 py-4"><select value={row.status} onChange={(event) => setStatus(row, event.target.value as ClientFoodForm['status'])} className="h-9 min-w-[150px] border border-[#c8c5c5] bg-[#f1f0f0] px-2 text-sm"><option value="submitted">Received</option><option value="reviewed">Reviewed</option><option value="draft">Draft</option></select></td>
@@ -163,14 +165,14 @@ const ClientFoodFormsPage: React.FC<{ embedded?: boolean }> = ({ embedded = fals
       {matrixOpen && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true" aria-label="Food matrix">
         <section className="max-h-[92vh] w-full max-w-[1400px] overflow-hidden bg-white p-6 shadow-2xl">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 pb-4"><div><h2 className="font-sans text-2xl font-bold">Food matrix · {retreatFilter}</h2><p className="mt-1 text-sm text-gray-500">Clients are columns; submitted questions are rows.</p></div><div className="flex items-center gap-3"><label className="text-sm text-gray-600">Translation<select className="ml-2 border border-gray-300 px-2 py-1" value={matrixLanguage} onChange={(event) => setMatrixLanguage(event.target.value as 'en' | 'cs' | 'pl')}><option value="en">English</option><option value="cs">Čeština</option><option value="pl">Polski</option></select></label><button type="button" onClick={downloadMatrix} className="bg-[#07516c] px-4 py-2 text-sm text-white hover:bg-[#063d51]">Download PDF</button><button type="button" onClick={() => setMatrixOpen(false)} className="text-sm text-gray-600 hover:underline">Close</button></div></div>
-          <div className="max-h-[70vh] overflow-auto"><table className="min-w-full border-collapse text-sm"><thead className="sticky top-0 bg-[#e8f6fb]"><tr><th className="sticky left-0 z-10 min-w-[180px] border-b border-gray-300 bg-[#e8f6fb] p-3 text-left font-semibold">{matrixLanguage === 'cs' ? 'Otázka' : matrixLanguage === 'pl' ? 'Pytanie' : 'Question'}</th>{visible.map((client) => <th key={client._id} className="min-w-[150px] border-b border-gray-300 p-3 text-left font-semibold">{shortClientName(client.signature_name)}</th>)}</tr></thead><tbody>{matrixRows.map((key) => <tr key={key} className="border-b border-gray-200"><th className="sticky left-0 bg-white p-3 text-left font-semibold">{matrixLabel(key)}</th>{visible.map((client) => { const value = matrixValue(client, key); const highlighted = key === 'foodIntolerances' || key === 'allergies'; return <td key={`${client._id}-${key}`} className={`max-w-[240px] whitespace-pre-wrap p-3 align-top ${isEmptyAnswer(value) ? 'font-bold text-emerald-600' : highlighted ? 'bg-red-50 font-semibold text-red-800' : 'text-gray-700'}`}>{isEmptyAnswer(value) ? '✓' : value}</td>; })}</tr>)}</tbody></table></div>
+          <div className="max-h-[70vh] overflow-auto"><table className="min-w-full border-collapse text-sm"><thead className="sticky top-0 bg-[#e8f6fb]"><tr><th className="sticky left-0 z-10 min-w-[180px] border-b border-gray-300 bg-[#e8f6fb] p-3 text-left font-semibold">{matrixLanguage === 'cs' ? 'Otázka' : matrixLanguage === 'pl' ? 'Pytanie' : 'Question'}</th>{visible.map((client) => <th key={client._id} className="min-w-[150px] border-b border-gray-300 p-3 text-left font-semibold">{shortClientName(client.signature_name)}</th>)}</tr></thead><tbody>{matrixRows.map((key) => <tr key={key} className="border-b border-gray-200"><th className="sticky left-0 bg-white p-3 text-left font-semibold">{matrixLabel(key)}</th>{visible.map((client) => { const value = matrixValue(client, key); const highlighted = highlightFoodAnswer(key, client.answers?.[key]); return <td key={`${client._id}-${key}`} className={`max-w-[240px] whitespace-pre-wrap p-3 align-top ${isEmptyAnswer(value) ? 'font-bold text-emerald-600' : highlighted ? 'bg-red-50 font-semibold text-red-800' : 'text-gray-700'}`}>{isEmptyAnswer(value) ? '✓' : value}</td>; })}</tr>)}</tbody></table></div>
         </section>
       </div>}
 
       {selected && <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
         <section className="max-h-[90vh] w-full max-w-3xl overflow-auto bg-white p-6 shadow-2xl">
           <div className="mb-5 flex justify-between border-b border-gray-200 pb-4"><div><h2 className="font-sans text-2xl font-bold">Food form #{selected.display_id}</h2><p className="text-sm text-gray-500">{selected.signature_name} · {retreatLabel(selected)} · {selected.email}</p></div><div className="flex items-center gap-4">{selected.pdf_file && <a className="text-sm font-semibold text-[#07516c] hover:underline" href={clientFoodFormsApi.pdfUrl(selected._id)} target="_blank" rel="noreferrer">Download PDF</a>}<button className="text-sm text-gray-600 hover:underline" onClick={() => setSelected(null)}>Close</button></div></div>
-          <dl className="grid gap-4 sm:grid-cols-2">{Object.entries(selected.answers || {}).map(([key, value]) => <div key={key} className="bg-gray-50 p-3"><dt className="text-xs font-semibold uppercase text-gray-500">{label(key)}</dt><dd className="mt-1 whitespace-pre-wrap text-gray-900">{Array.isArray(value) ? value.join(', ') : String(value || '—')}</dd></div>)}</dl>
+          <dl className="grid gap-4 sm:grid-cols-2">{Object.entries(selected.answers || {}).map(([key, value]) => <div key={key} className={highlightFoodAnswer(key, value) ? "bg-red-50 p-3" : "bg-gray-50 p-3"}><dt className="text-xs font-semibold uppercase text-gray-500">{label(key)}</dt><dd className={`mt-1 whitespace-pre-wrap ${highlightFoodAnswer(key, value) ? "font-semibold text-red-800" : "text-gray-900"}`}>{answerText(value)}</dd></div>)}</dl>
         </section>
       </div>}
     </main>

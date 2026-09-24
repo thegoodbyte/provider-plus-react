@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { ClipboardList, Coffee, FileText, LayoutGrid, Pill } from 'lucide-react';
 import { medicalArtifactsApi } from '../services/api';
 import { MedicalArtifact } from '../types';
+import { RetreatFilter, useFormSort } from './clientFormsControls';
 import ClientFoodFormsPage from './ClientFoodFormsPage';
 import ClientMedicationsGrid from './ClientMedicationsGrid';
 
@@ -37,6 +38,12 @@ const QuestionnairesPanel: React.FC = () => {
   const [rows, setRows] = useState<MedicalArtifact[]>([]);
   const [selected, setSelected] = useState<MedicalArtifact | null>(null);
   const [search, setSearch] = useState('');
+  const [retreatFilter, setRetreatFilter] = useState('');
+  const { header, sortRows } = useFormSort<MedicalArtifact>({
+    Reference: row => row.display_id || 0, Client: clientName, Retreat: retreatName,
+    Form: row => row.title || 'Questionnaire', Submitted: row => new Date(row.receivedAt || '').getTime() || 0,
+  });
+  const retreatOptions = useMemo(() => Array.from(new Set(rows.map(retreatName).filter(name => name !== '—'))).sort(), [rows]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -46,21 +53,22 @@ const QuestionnairesPanel: React.FC = () => {
       .finally(() => setLoading(false));
   }, []);
 
-  const visible = useMemo(() => rows.filter((row) => {
+  const visible = sortRows(useMemo(() => rows.filter((row) => {
     const haystack = `${row.display_id || ''} ${row.title || ''} ${clientName(row)} ${retreatName(row)} ${row.textContent || ''}`.toLowerCase();
-    return haystack.includes(search.trim().toLowerCase());
-  }), [rows, search]);
+    return haystack.includes(search.trim().toLowerCase()) && (!retreatFilter || retreatName(row) === retreatFilter);
+  }), [rows, search, retreatFilter]));
 
   return <section>
     <div className="mb-6 flex flex-wrap items-end justify-between gap-5">
       <label className="block w-full max-w-md text-sm text-gray-600">Search questionnaires
         <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Client, retreat, reference, or answer" className="mt-2 h-10 w-full border border-gray-300 bg-white px-3 text-sm outline-none focus:border-blue-600" />
       </label>
+      <div className="w-full max-w-xs"><RetreatFilter options={retreatOptions} value={retreatFilter} onChange={setRetreatFilter} /></div>
       <div><strong className="text-3xl text-gray-900">{visible.length}</strong><span className="ml-2 text-sm text-gray-500">questionnaires</span></div>
     </div>
     <div className="overflow-x-auto border border-gray-200 bg-white">
       <table className="min-w-[850px] w-full border-collapse">
-        <thead><tr className="border-b border-gray-200 bg-gray-50 text-left text-[11px] uppercase tracking-wider text-gray-500">{['Reference', 'Client', 'Retreat', 'Form', 'Submitted', 'Action'].map((label) => <th key={label} className="px-4 py-3 font-semibold">{label}</th>)}</tr></thead>
+        <thead><tr className="border-b border-gray-200 bg-gray-50 text-left text-[11px] uppercase tracking-wider text-gray-500">{['Reference', 'Client', 'Retreat', 'Form', 'Submitted', 'Action'].map(header)}</tr></thead>
         <tbody className="divide-y divide-gray-100">
           {loading && <tr><td colSpan={6} className="p-10 text-center text-gray-500">Loading questionnaires…</td></tr>}
           {!loading && visible.map((row) => <tr key={row._id} className="hover:bg-blue-50/40">

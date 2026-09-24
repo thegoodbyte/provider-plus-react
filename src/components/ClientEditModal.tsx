@@ -36,7 +36,8 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
 
     setFormData({
       ...client,
-      yearOfBirth
+      yearOfBirth,
+      currentMedications: client.currentMedications ?? (client as any).medications ?? ''
     });
     lastAutoDetectedCountry.current = detectPhoneLocaleAutofill(client.phone || '')?.countryCode || null;
   }, [client]);
@@ -177,16 +178,10 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
           : formData.dateOfBirth.toISOString().split('T')[0];
       }
 
-      // Add optional medical fields if they exist
-      if ((formData as any).medications) {
-        (clientData as any).medications = (formData as any).medications;
-      }
-      if ((formData as any).allergies) {
-        (clientData as any).allergies = (formData as any).allergies;
-      }
-      if ((formData as any).specialRequests) {
-        (clientData as any).specialRequests = (formData as any).specialRequests;
-      }
+      // Empty strings intentionally clear previously saved optional values.
+      clientData.currentMedications = formData.currentMedications ?? '';
+      clientData.allergies = formData.allergies ?? '';
+      clientData.specialRequests = formData.specialRequests ?? '';
 
       // Update the client
       const response = await clientsApi.update(client._id!, clientData);
@@ -415,11 +410,11 @@ const ClientEditModal: React.FC<ClientEditModalProps> = ({ client, onClose, onSa
               </div>
 
               <div className="form-group">
-                <label htmlFor="medications">Current Medications:</label>
+                <label htmlFor="currentMedications">Current Medications:</label>
                 <textarea
-                  id="medications"
-                  name="medications"
-                  value={formData.medications || ''}
+                  id="currentMedications"
+                  name="currentMedications"
+                  value={formData.currentMedications || ''}
                   onChange={handleInputChange}
                   rows={3}
                 />
