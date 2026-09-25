@@ -386,7 +386,7 @@ const ArtifactInlinePreview: React.FC<{ artifactId?: string; file: ArtifactFile;
         const blob = response.data as Blob;
         objectUrl = URL.createObjectURL(blob);
         if (active) {
-          setContentType(blob.type || response.headers?.['content-type'] || file.mimeType || '');
+          setContentType(String(blob.type || response.headers?.['content-type'] || file.mimeType || ''));
           setPreviewUrl(objectUrl);
         }
       } catch (error: any) {

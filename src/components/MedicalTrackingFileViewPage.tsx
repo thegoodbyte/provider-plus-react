@@ -31,7 +31,7 @@ const MedicalTrackingFileViewPage: React.FC = () => {
 
         const response = await clientMedicalApi.getFileBlob(id, normalizedType);
         const blob = response.data as Blob;
-        setContentType(blob.type || response.headers?.['content-type'] || '');
+        setContentType(String(blob.type || response.headers?.['content-type'] || ''));
 
         if (filePath && !currentFileName) {
           setFileName(filePath.split('/').pop() || 'File');

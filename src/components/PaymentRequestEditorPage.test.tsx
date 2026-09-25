@@ -15,7 +15,7 @@ jest.mock('../services/api', () => ({
   clientsApi: { getAll: jest.fn() },
   retreatsApi: { getAll: jest.fn() },
   paymentRequestTypesApi: { getAll: jest.fn() },
-  bookingsApi: { getByClient: jest.fn() },
+  bookingsApi: { getAllFresh: jest.fn().mockResolvedValue({ data: [] }), getByClient: jest.fn() },
   ceremoniesApi: { getByRetreat: jest.fn() },
   revolutPaymentLinksApi: { list: jest.fn() },
 }));
@@ -57,6 +57,7 @@ describe('PaymentRequestEditorPage', () => {
     (paymentRequestTypesApi.getAll as jest.Mock).mockResolvedValue({ data: requestTypeCatalog });
     (paymentRequestsApi.getNextDisplayIdFresh as jest.Mock).mockResolvedValue({ data: 2001 });
     (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({ data: [] });
+    (bookingsApi.getAllFresh as jest.Mock).mockResolvedValue({ data: [] });
     (bookingsApi.getByClient as jest.Mock).mockResolvedValue({ data: [] });
     (paymentsApi.getByClient as jest.Mock).mockResolvedValue({ data: [] });
     (paymentsApi.convertToUsd as jest.Mock).mockResolvedValue({ data: { usd_amount: 100 } });
@@ -83,7 +84,7 @@ describe('PaymentRequestEditorPage', () => {
     fireEvent.change(screen.getByLabelText('Full Booking Price *'), { target: { value: '1000' } });
     await waitFor(() => expect(screen.getByLabelText('Requested Amount *')).toHaveValue(400));
     fireEvent.click(screen.getByLabelText('Also create the final payment request'));
-    await screen.findByText(/600/);
+    expect((await screen.findAllByText(/600/)).length).toBeGreaterThan(0);
 
     fireEvent.click(screen.getByText('Create Request'));
 

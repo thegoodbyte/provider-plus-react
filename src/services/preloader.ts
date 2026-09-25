@@ -1,4 +1,5 @@
 // Preloader service to eagerly fetch commonly used data
+import { cacheService } from './cacheService';
 import { clientsApi, retreatsApi, housesApi, bookingsApi } from './api';
 
 class PreloaderService {
@@ -61,7 +62,6 @@ class PreloaderService {
 
   // Clear all cached data (useful for logout or forced refresh)
   clearCache(): void {
-    const { cacheService } = require('./cacheService');
     cacheService.clear();
   }
 }

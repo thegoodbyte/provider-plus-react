@@ -16,8 +16,8 @@ import './styles/animations.css';
 
 import RouteContentBoundary from './components/RouteContentBoundary';
 
-const MedicalReviewAccessPage = lazy(() => import(/* webpackChunkName: "MedicalReviewAccessPage" */ './components/MedicalReviewAccessPage'));
-const MedicalReviewPublicPage = lazy(() => import(/* webpackChunkName: "MedicalReviewPublicPage" */ './components/MedicalReviewPublicPage'));
+const MedicalReviewAccessPage = lazy(() => import('./components/MedicalReviewAccessPage'));
+const MedicalReviewPublicPage = lazy(() => import('./components/MedicalReviewPublicPage'));
 
 installNativeDialogReplacement();
 

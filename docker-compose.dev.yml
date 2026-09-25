@@ -1,0 +1,15 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: "3000"
+      CHOKIDAR_USEPOLLING: "true"
+      REACT_APP_PROVIDER_PLUS_API_URL: http://localhost:3005
+      REACT_APP_CLIENT_PORTAL_AUTH_URL: http://localhost:3005/auth/login/apps/client-portal
+    volumes:
+      - ./src:/app/src
+      - ./public:/app/public

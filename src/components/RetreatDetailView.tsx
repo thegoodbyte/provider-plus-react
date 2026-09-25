@@ -65,8 +65,8 @@ interface RetreatDetailViewProps {
   onTabChange?: (tab: RetreatDetailTab) => void;
 }
 
-const AnnouncementsPage = lazy(() => import(/* webpackChunkName: "AnnouncementsPage" */ './AnnouncementsPage'));
-const CeremonyAnalytics = lazy(() => import(/* webpackChunkName: "CeremonyAnalytics" */ './CeremonyAnalytics'));
+const AnnouncementsPage = lazy(() => import('./AnnouncementsPage'));
+const CeremonyAnalytics = lazy(() => import('./CeremonyAnalytics'));
 
 // Single source of truth for every retreat detail tab -- both the type and
 // the URL-routing allowlist in AppleLayout.tsx derive from this array, so a
