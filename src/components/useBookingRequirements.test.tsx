@@ -10,6 +10,31 @@ const source = (overrides: any = {}) => ({ items: [], artifacts: [], documents: 
 
 describe('useBookingRequirements', () => {
   beforeEach(() => { jest.clearAllMocks(); (fetchBookingRequirementSources as jest.Mock).mockResolvedValue(source()); });
+  // PPVC-480: production #1230 has isRequirement=false but requiredFromClient=true.
+  it.each(['received', 'pending'])('shows its signed contract in Requirements with lifecycle %s', async (status) => {
+    const onStatusChange = jest.fn();
+    (fetchBookingRequirementSources as jest.Mock).mockResolvedValue(source({
+      items: [
+        { _id: 'sent', key: 'contract_sent', status: 'received', metadata: { requiredFromClient: false, readinessGroup: 'contract' } },
+        {
+          _id: 'contract-item', key: 'contract_signed', title: 'Contract received', status,
+          templateId: { isRequirement: false, requiredFromClient: true, readinessGroup: 'contract', requirementType: 'contract_signed' },
+          metadata: {
+            isRequirement: false, requiredFromClient: true, readinessGroup: 'contract',
+            requirementType: 'contract_signed', expectedArtifact: 'contract', expectedDocumentType: 'other',
+            reviewRequired: false, linkedBookingDocumentId: 'signed-document',
+          },
+        },
+      ],
+      documents: [{ _id: 'signed-document', bookingId: 'booking', documentType: 'contract', title: 'Signed Client Agreement', status: 'stored', files: [{ fileName: 'signed.pdf' }] }],
+    }));
+    const { result } = renderHook(() => useBookingRequirements({ bookingId: 'booking', refreshKey: 0, onStatusChange }));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.rows).toHaveLength(1);
+    expect(result.current.rows[0]).toMatchObject({ key: 'contract', required: true, uploaded: true, satisfied: true, latestDocument: { _id: 'signed-document' } });
+    expect(onStatusChange).toHaveBeenLastCalledWith(expect.objectContaining({ total: 1, missing: 0 }));
+  });
   it('loads, filters booking records, and reports status', async () => {
     const status = jest.fn(); (fetchBookingRequirementSources as jest.Mock).mockResolvedValue(source({ artifacts: [{ _id: 'right', bookingId: 'booking', artifactType: 'ekg', files: [{ fileName: 'x' }] }, { _id: 'wrong', bookingId: 'other', artifactType: 'ekg' }], documents: [{ _id: 'doc', bookingId: 'booking', documentType: 'contract', files: [{ fileName: 'c' }] }] }));
     const { result } = renderHook(() => useBookingRequirements({ bookingId: 'booking', refreshKey: 0, onStatusChange: status }));
