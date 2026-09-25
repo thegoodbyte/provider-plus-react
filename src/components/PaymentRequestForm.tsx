@@ -59,6 +59,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
   const [loading, setLoading] = useState(false);
   const [nextDisplayId, setNextDisplayId] = useState<number | null>(paymentRequest?.display_id || null);
   const [formError, setFormError] = useState('');
+  const [existingBalance, setExistingBalance] = useState<PaymentRequest | null>(null);
   const [revolutLinkMismatch, setRevolutLinkMismatch] = useState(false);
   const [bookingDefaultsLoading, setBookingDefaultsLoading] = useState(false);
   const [bookingDefaultsMessage, setBookingDefaultsMessage] = useState('');
@@ -99,6 +100,23 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     revolutPaymentLink: paymentRequest?.revolutPaymentLink || '',
     createdBy: paymentRequest?.createdBy || '',
   });
+
+  const createsBalance = !isEdit && Boolean(formData.bookingId) && (formData.requestType === 'balance' || (formData.requestType === 'deposit' && createFinalPaymentRequest));
+  const findExistingBalance = (requests: PaymentRequest[]) => requests.find(request =>
+    resolveId(request.bookingId) === formData.bookingId && request.requestType === 'balance' && ['pending', 'sent', 'overdue'].includes(request.status || ''),
+  );
+  const balanceConflict = createsBalance && existingBalance && resolveId(existingBalance.bookingId) === formData.bookingId ? existingBalance : null;
+
+  useEffect(() => {
+    let active = true;
+    setExistingBalance(null);
+    if (createsBalance) {
+      paymentRequestsApi.getAllFresh().then(({ data }) => {
+        if (active) setExistingBalance(findExistingBalance(data || []) || null);
+      }).catch(() => { /* The fresh pre-save check and API remain authoritative. */ });
+    }
+    return () => { active = false; };
+  }, [createsBalance, formData.bookingId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const loadOptions = async () => {
@@ -317,6 +335,13 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     setLoading(true);
     try {
       const existingRequests = await paymentRequestsApi.getAllFresh();
+      if (createsBalance) {
+        const activeBalance = findExistingBalance(existingRequests.data || []);
+        if (activeBalance) {
+          setExistingBalance(activeBalance);
+          return;
+        }
+      }
       const normalizedInvoice = invoiceNumber.toLowerCase();
       const duplicate = (existingRequests.data || []).find((request: PaymentRequest) => {
         const requestId = request._id || '';
@@ -410,6 +435,10 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-6">
+        {balanceConflict && <div role="alert" className="mb-5 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <p>This booking already has final payment request <strong>#{balanceConflict.invoiceNumber || balanceConflict.display_id}</strong> for {Number(balanceConflict.requestedAmount || 0).toLocaleString()} {balanceConflict.currency}{balanceConflict.dueDate ? `, due ${toDateInputValue(balanceConflict.dueDate)}` : ''}. Open it to review or edit the balance. Cancel the existing request first if it needs replacing.</p>
+          <a className="mt-2 inline-block font-semibold underline" href={`/admin/payment-requests/${balanceConflict._id}`}>Open existing final payment request</a>
+        </div>}
         {formError && (
           <div className="mb-5 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {formError}
@@ -923,7 +952,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || Boolean(balanceConflict)}
               className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Icon icon={FiSave} className="w-4 h-4" />

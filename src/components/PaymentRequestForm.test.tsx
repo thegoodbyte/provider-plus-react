@@ -114,6 +114,31 @@ describe('PaymentRequestForm', () => {
       expect(screen.getByText(/5,000 PLN/)).toBeInTheDocument();
     });
 
+    it('shows an existing final request before saving and links directly to it', async () => {
+      setUp({ bookings: [booking], existingRequests: [{ _id: 'request-1332', bookingId: { _id: 'booking-1' }, requestType: 'balance', status: 'pending', invoiceNumber: '1332', requestedAmount: 3500, currency: 'PLN', dueDate: '2026-10-30' }] });
+      const { onSave } = view();
+      fireEvent.change(await screen.findByLabelText('Client'), { target: { value: 'client-1' } });
+      expect(await screen.findByRole('link', { name: 'Open existing final payment request' })).toHaveAttribute('href', '/admin/payment-requests/request-1332');
+      expect(screen.getByRole('button', { name: 'Create Request' })).toBeDisabled();
+      fireEvent.submit(screen.getByRole('button', { name: 'Create Request' }).closest('form')!);
+      await waitFor(() => expect(paymentRequestsApi.getAllFresh).toHaveBeenCalled());
+      expect(onSave).not.toHaveBeenCalled();
+      fireEvent.change(screen.getByLabelText('Request Type'), { target: { value: 'deposit' } });
+      await waitFor(() => expect(screen.queryByRole('link', { name: 'Open existing final payment request' })).not.toBeInTheDocument());
+    });
+
+    it('does not treat a paid or cancelled balance request as active', async () => {
+      setUp({ bookings: [booking], existingRequests: [
+        { _id: 'paid', bookingId: 'booking-1', requestType: 'balance', status: 'paid' },
+        { _id: 'cancelled', bookingId: 'booking-1', requestType: 'balance', status: 'cancelled' },
+      ] });
+      const { onSave } = view();
+      fireEvent.change(await screen.findByLabelText('Client'), { target: { value: 'client-1' } });
+      await waitFor(() => expect(screen.getByLabelText('Retreat')).toHaveValue('retreat-1'));
+      fireEvent.click(screen.getByRole('button', { name: 'Create Request' }));
+      await waitFor(() => expect(onSave).toHaveBeenCalled());
+    });
+
     it('defaults the currency to the last completed payment on that booking, not the booking currency', async () => {
       setUp({
         bookings: [booking],
