@@ -2,10 +2,10 @@
 nixPkgs = ["nodejs_22"]
 
 [phases.install]
-cmds = ["npm ci --legacy-peer-deps"]
+cmds = ["npm ci --include=dev --legacy-peer-deps"]
 
 [phases.build]
-cmds = ["CI=false GENERATE_SOURCEMAP=false DISABLE_ESLINT_PLUGIN=true npm run build"]
+cmds = ["npm run build"]
 
 [start]
-cmd = "npx serve -s build -l $PORT"
+cmd = "npm run serve"

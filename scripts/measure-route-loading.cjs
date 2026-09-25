@@ -6,8 +6,8 @@ const http = require('node:http');
 const zlib = require('node:zlib');
 const { chromium } = require('@playwright/test');
 const root = path.resolve(process.env.MEASURE_BUILD_DIR || 'build');
-const manifest = JSON.parse(fs.readFileSync(path.join(root, 'asset-manifest.json')));
-const entry = manifest.entrypoints.filter(f => f.endsWith('.js')).map(file => {
+const manifest = JSON.parse(fs.readFileSync(path.join(root, '.vite/manifest.json')));
+const entry = Object.values(manifest).filter(item => item.isEntry).map(item => item.file).map(file => {
   const data = fs.readFileSync(path.join(root, file));
   return { file, bytes: data.length, gzipBytes: zlib.gzipSync(data).length };
 });

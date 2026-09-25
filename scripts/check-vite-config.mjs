@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import { loadConfigFromFile } from 'vite';
+process.env.REACT_APP_API_URL = 'https://api.dev.example.test';
+process.env.INTERNAL_DATABASE_PASSWORD = 'must-not-be-exposed';
+process.env.PUBLIC_URL = '/portal';
+process.env.NODE_ENV = 'production';
+const loaded = await loadConfigFromFile({ command: 'build', mode: 'production' });
+const config = loaded.config;
+const exposed = JSON.parse(config.define['process.env']);
+assert.equal(exposed.REACT_APP_API_URL, 'https://api.dev.example.test');
+assert.equal(exposed.NODE_ENV, 'production');
+assert.equal(exposed.PUBLIC_URL, '/portal');
+assert.equal(exposed.INTERNAL_DATABASE_PASSWORD, undefined);
+assert.equal(JSON.stringify(config.define).includes('must-not-be-exposed'), false);
+assert.equal(config.base, '/portal/');
+assert.equal(config.build.outDir, 'build');
+console.log('Vite environment, public URL, secret isolation, and output checks passed.');

@@ -60,7 +60,7 @@ export const useCurrency = (): CurrencyHookReturn => {
         // Keep cache size reasonable (max 100 entries)
         if (newCache.size > 100) {
           const firstKey = newCache.keys().next().value;
-          newCache.delete(firstKey);
+          if (firstKey !== undefined) newCache.delete(firstKey);
         }
         return newCache;
       });

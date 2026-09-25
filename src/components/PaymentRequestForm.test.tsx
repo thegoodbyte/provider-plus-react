@@ -10,7 +10,7 @@ jest.mock('../services/api', () => ({
   retreatsApi: { getAll: jest.fn() },
   paymentRequestTypesApi: { getAll: jest.fn() },
   paymentRequestsApi: { getNextDisplayIdFresh: jest.fn(), getAllFresh: jest.fn() },
-  bookingsApi: { getByClient: jest.fn() },
+  bookingsApi: { getAllFresh: jest.fn().mockResolvedValue({ data: [] }), getByClient: jest.fn() },
   paymentsApi: { getByClient: jest.fn(), convertToUsd: jest.fn(), convert: jest.fn() },
   ceremoniesApi: { getByRetreat: jest.fn() },
   revolutPaymentLinksApi: { list: jest.fn().mockResolvedValue({ data: [] }) },
@@ -54,6 +54,7 @@ const setUp = (overrides: Partial<Record<string, any>> = {}) => {
   (paymentRequestTypesApi.getAll as jest.Mock).mockResolvedValue({ data: overrides.requestTypes ?? requestTypeCatalog });
   (paymentRequestsApi.getNextDisplayIdFresh as jest.Mock).mockResolvedValue({ data: overrides.nextDisplayId ?? 2001 });
   (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({ data: overrides.existingRequests ?? [] });
+  (bookingsApi.getAllFresh as jest.Mock).mockResolvedValue({ data: overrides.bookings ?? [] });
   (bookingsApi.getByClient as jest.Mock).mockResolvedValue({ data: overrides.bookings ?? [] });
   (paymentsApi.getByClient as jest.Mock).mockResolvedValue({ data: overrides.payments ?? [] });
   (paymentsApi.convertToUsd as jest.Mock).mockResolvedValue({ data: { usd_amount: 100 } });
@@ -163,7 +164,7 @@ describe('PaymentRequestForm', () => {
     view();
     await screen.findByLabelText('Client');
 
-    fireEvent.click(screen.getByText('Create Request'));
+    fireEvent.submit(screen.getByText('Create Request').closest('form')!);
 
     expect(window.alert).toHaveBeenCalledWith('Please fill in all required fields');
   });

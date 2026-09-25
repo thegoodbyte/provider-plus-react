@@ -49,7 +49,7 @@ describe('TaskForm', () => {
     render(<TaskForm bookingId="booking-1" bookingLabel="Booking #1267 — Eva" onSubmit={onSubmit} onCancel={jest.fn()} />);
     expect(screen.getByText('Booking #1267 — Eva')).toBeInTheDocument();
     const select = await screen.findByLabelText('Search by booking or client...');
-    expect(select).toHaveValue('booking-1');
+    await waitFor(() => expect(select).toHaveValue('booking-1'));
     expect(screen.getByText(/Booking #1267 — Eva Novak/)).toBeInTheDocument();
     fireEvent.change(select, { target: { value: '' } });
     fireEvent.change(select, { target: { value: 'booking-1' } });

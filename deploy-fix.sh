@@ -1,19 +1,10 @@
 #!/bin/bash
-
-# Navigate to front-end directory
-cd /Users/martinhalla/websites/ISCZ-web-development/provider-plus-node-react-active-dev/front-end
-
-# Add the deployment fix files
-git add .npmrc nixpacks.toml railway.json
-
-# Commit the changes
-git commit -m "Fix Railway deployment - npm dependency conflicts
-
-- Ensure .npmrc with legacy-peer-deps flag is included
-- Ensure nixpacks.toml configuration is present
-- Configure Node.js 18.x and serve for production"
-
-# Push to production branch
-git push origin production
-
-echo "Deployment fix pushed to production branch"
+set -euo pipefail
+cd "$(dirname "$0")"
+branch=$(git branch --show-current)
+if [ "$branch" = production ]; then
+  echo "Use the reviewed develop-to-production promotion workflow; this helper never pushes production." >&2
+  exit 1
+fi
+npm run build
+git push -u origin "$branch"

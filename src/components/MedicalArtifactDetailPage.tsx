@@ -186,7 +186,7 @@ const MedicalArtifactInlinePreview: React.FC<{
         const blob = response.data as Blob;
         createdUrl = URL.createObjectURL(blob);
         if (active) {
-          setContentType(blob.type || response.headers?.['content-type'] || file.mimeType || '');
+          setContentType(String(blob.type || response.headers?.['content-type'] || file.mimeType || ''));
           setFileUrl(createdUrl);
         }
       } catch (previewError: any) {
