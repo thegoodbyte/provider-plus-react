@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Autocomplete, TextField } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { FiArrowLeft, FiPlus, FiSave, FiTrash2 } from 'react-icons/fi';
 import { bookingsApi, paymentRequestsApi, paymentsApi } from '../services/api';
@@ -18,6 +19,20 @@ const retreatName = (booking?: RetreatClient) => {
   const retreat = typeof booking?.retreatId === 'object' ? booking.retreatId as Retreat : null;
   return retreat?.retreatCode || retreat?.code || retreat?.name || 'Retreat';
 };
+
+const bookingLabel = (booking: RetreatClient) => `#${booking.bookingNumber} · ${clientName(booking)} · ${retreatName(booking)}`;
+const requestLabel = (request: PaymentRequest) => {
+  const client = typeof request.clientId === 'object' ? request.clientId as Client : null;
+  const retreat = typeof request.retreatId === 'object' ? request.retreatId as Retreat : null;
+  return [
+    request.invoiceNumber || `#${request.display_id}`,
+    client && [client.firstName, client.lastName].filter(Boolean).join(' '),
+    retreat && (retreat.retreatCode || retreat.code || retreat.name),
+    `${request.requestedAmount} ${request.currency}`,
+  ].filter(Boolean).join(' · ');
+};
+const normalizeSearch = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ł/gi, 'l').toLowerCase();
+const matchesSearch = (label: string, input: string) => normalizeSearch(input).trim().split(/\s+/).every(term => normalizeSearch(label).includes(term));
 
 const JointPaymentEditorPage: React.FC = () => {
   const navigate = useNavigate();
@@ -97,7 +112,23 @@ const JointPaymentEditorPage: React.FC = () => {
         <div className="grid gap-4 md:grid-cols-2">
           <label className="text-sm font-medium text-gray-700">Payer name<input value={form.payerName} onChange={(event) => setForm({ ...form, payerName: event.target.value })} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2" placeholder="Person who sent the money" /></label>
           <label className="text-sm font-medium text-gray-700">Transaction reference<input value={form.transactionId} onChange={(event) => setForm({ ...form, transactionId: event.target.value })} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2" placeholder="Bank, Revolut, PayPal reference" /></label>
-          <label className="text-sm font-medium text-gray-700 md:col-span-2">Payment request (optional)<select value={form.paymentRequestId} onChange={(event) => { const request = requests.find((item) => item._id === event.target.value); const total = request ? Number(request.requestedAmount) : Number(form.totalAmount); setForm({ ...form, paymentRequestId: event.target.value, totalAmount: request ? String(request.requestedAmount) : form.totalAmount, currency: request?.currency || form.currency }); if (request) { const amounts = splitPaymentEvenly(total, allocations.length); setAllocations(current => current.map((allocation, index) => ({ ...allocation, amount: amounts[index]?.toFixed(2) || '' }))); } }} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"><option value="">No payment request</option>{requests.filter((request) => request.status !== 'cancelled').map((request) => <option key={request._id} value={request._id}>{request.invoiceNumber || `#${request.display_id}`} · {request.requestedAmount} {request.currency}</option>)}</select><span className="mt-1 block text-xs font-normal text-gray-500">This sets the actual amount received—not the combined booking price—and proposes an equal split you can edit.</span></label>
+          <div className="md:col-span-2">
+            <Autocomplete
+              options={requests.filter(request => request.status !== 'cancelled')}
+              value={requests.find(request => request._id === form.paymentRequestId) || null}
+              getOptionLabel={requestLabel}
+              isOptionEqualToValue={(option, value) => option._id === value._id}
+              filterOptions={(options, { inputValue }) => options.filter(request => matchesSearch(`${requestLabel(request)} ${request.display_id || ''}`, inputValue))}
+              onChange={(_event, request) => {
+                setForm(current => ({ ...current, paymentRequestId: request?._id || '', totalAmount: request ? String(request.requestedAmount) : current.totalAmount, currency: request?.currency || current.currency }));
+                if (request) divideEvenly(Number(request.requestedAmount));
+              }}
+              noOptionsText="No payment requests match your search"
+              size="small"
+              renderInput={params => <TextField {...params} label="Payment request (optional)" placeholder="Type invoice number, client, retreat, or amount" />}
+            />
+            <span className="mt-1 block text-xs font-normal text-gray-500">This sets the actual amount received—not the combined booking price—and proposes an equal split you can edit.</span>
+          </div>
           <label className="text-sm font-medium text-gray-700">Total received *<input type="number" min="0.01" step="0.01" required value={form.totalAmount} onChange={(event) => setForm({ ...form, totalAmount: event.target.value })} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2" /></label>
           <label className="text-sm font-medium text-gray-700">Currency *<select value={form.currency} onChange={(event) => setForm({ ...form, currency: event.target.value as Payment['currency'] })} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"><option>EUR</option><option>USD</option><option>CZK</option><option>PLN</option></select></label>
           <label className="text-sm font-medium text-gray-700">Payment date *<input type="date" required value={form.paymentDate} onChange={(event) => setForm({ ...form, paymentDate: event.target.value })} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2" /></label>
@@ -111,7 +142,17 @@ const JointPaymentEditorPage: React.FC = () => {
         <div className="space-y-4">
           {allocations.map((allocation, index) => {
             return <div key={index} className="grid gap-3 rounded-lg border border-gray-200 bg-gray-50 p-4 md:grid-cols-[1.8fr_.7fr_auto]">
-              <label className="text-sm font-medium text-gray-700">Booking *<select required value={allocation.bookingId} onChange={(event) => updateAllocation(index, { bookingId: event.target.value })} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2"><option value="">Select booking</option>{bookings.map((booking) => <option key={booking._id} value={booking._id}>#{booking.bookingNumber} · {clientName(booking)} · {retreatName(booking)}</option>)}</select></label>
+              <Autocomplete
+                options={bookings}
+                value={bookings.find(booking => booking._id === allocation.bookingId) || null}
+                getOptionLabel={bookingLabel}
+                isOptionEqualToValue={(option, value) => option._id === value._id}
+                filterOptions={(options, { inputValue }) => options.filter(booking => matchesSearch(bookingLabel(booking), inputValue))}
+                onChange={(_event, booking) => updateAllocation(index, { bookingId: booking?._id || '' })}
+                noOptionsText="No bookings match your search"
+                size="small"
+                renderInput={params => <TextField {...params} label={`Booking ${index + 1}`} required={!allocation.bookingId} placeholder="Type booking number, client, or retreat" />}
+              />
               <label className="text-sm font-medium text-gray-700">Allocated amount *<input type="number" min="0.01" step="0.01" required value={allocation.amount} onChange={(event) => updateAllocation(index, { amount: event.target.value })} className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2" /></label>
               <button type="button" disabled={allocations.length <= 2} onClick={() => setAllocations(allocations.filter((_, itemIndex) => itemIndex !== index))} className="mt-6 rounded-md p-2 text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-30" title="Remove allocation"><Icon icon={FiTrash2} /></button>
             </div>;
