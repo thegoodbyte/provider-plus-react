@@ -21,7 +21,7 @@ Target domains: `dev.retreatengine.com`, existing `api.dev.retreatengine.com`, a
 
 ## Deployment
 
-Railway: `npm ci --legacy-peer-deps`, `npm run build`, `npm run serve`; `PORT` is honored. Config is in `railway.json` and `nixpacks.toml`. Set API URLs at build time. Deploy the migration branch to the development services for review, then merge to develop. Restore development services to track develop after merge. Only promote to production after approval.
+Railway: `npm ci --include=dev --legacy-peer-deps`, `npm run build`, `npm run serve`; `PORT` is honored. Config is in `railway.json` and `nixpacks.toml`. Set API URLs at build time. Deploy the migration branch to the development services for review, then merge to develop. Restore development services to track develop after merge. Only promote to production after approval.
 
 DreamHost: run `bash scripts/deploy-dreamhost.sh` with explicit `DREAMHOST_HOST`, `DREAMHOST_USER`, and `DREAMHOST_PATH`. It uploads `build/`, including the SPA `.htaccess`. No destination or production deploy is hard-coded. No DreamHost deployment was performed.
 
@@ -51,3 +51,11 @@ Measured on the same macOS machine with Node 22.20.0. One warm dependency-cache 
 Build time is essentially unchanged in these runs; development startup improves substantially. Vite bundling alone took 7.65 s (admin) and 1.60 s (portal); the remaining build time includes type checking and command startup. Source-map settings and machine load can affect comparisons.
 
 Reference: https://vite.dev/guide/env-and-mode and https://vite.dev/guide/static-deploy.html
+
+## Acceptance and release — 2026-09-25
+
+Both development domains have valid HTTPS. Real client and staff login tests passed against the isolated development API using temporary synthetic accounts in its `test` database. Verified client account data, preparation and screening-questionnaire navigation, reload/session persistence and logout; verified admin client/retreat route loading and reload with no API failures or uncaught JavaScript errors. Accounts are removed after acceptance.
+
+Development portal variables must use RE's unprefixed routes: `/auth/client-login`, `/auth`, `/client-portal`, and the API root. The obsolete `/api` prefix in development settings was corrected. Production already uses the correct routes.
+
+The reusable opt-in test is `smoke/acceptance.spec.ts` in the portal repository; set `PPVC_ACCEPTANCE_CREDENTIALS` to a local JSON file containing synthetic development account credentials. No credentials belong in Git. The user authorized PR merges and production promotion after these checks. The existing production backup branches remain available for rollback.
