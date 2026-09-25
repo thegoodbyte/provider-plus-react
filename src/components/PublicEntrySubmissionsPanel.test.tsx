@@ -1,0 +1,24 @@
+import React from 'react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import PublicEntrySubmissionsPanel from './PublicEntrySubmissionsPanel';
+import { api } from '../services/api';
+import { authService } from '../services/authService';
+jest.mock('../services/api', () => ({ api: { get: jest.fn(), post: jest.fn() } }));
+jest.mock('../services/authService', () => ({ authService: { getUser: jest.fn() } }));
+test('matching requires an explicit staff choice and attachment action', async () => {
+  const row = { _id: 'submission-1', formType: 'questionnaire', contact: { firstName: 'Jane', lastName: 'Doe', email: 'jane@example.com', phone: '123' }, source: 'iscz', state: 'needs_matching', createdAt: '2026-09-25T12:00:00Z', payload: { answers: { mainIntent: 'Seeking help' } }, matches: [{ _id: 'client-1', display_id: 10, firstName: 'Jane', lastName: 'Doe', email: 'jane@example.com' }] };
+  (authService.getUser as jest.Mock).mockReturnValue({ role: 'admin' });
+  (api.get as jest.Mock).mockImplementation(async (url: string) => ({ data: url.endsWith('/submission-1') ? row : [row] }));
+  (api.post as jest.Mock).mockResolvedValue({ data: { ...row, state: 'received', clientId: 'client-1', artifactId: 'artifact-1' } });
+  render(<MemoryRouter><PublicEntrySubmissionsPanel /></MemoryRouter>);
+  fireEvent.click(await screen.findByRole('button', { name: 'Review submission' }));
+  const choice = await screen.findByRole('combobox');
+  expect(api.post).not.toHaveBeenCalled();
+  expect(screen.getByRole('button', { name: 'Retry processing' })).toBeDisabled();
+  fireEvent.change(choice, { target: { value: 'client-1' } });
+  expect(api.post).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Attach submission to selected client' }));
+  await waitFor(() => expect(api.post).toHaveBeenCalledWith('/public-entry-forms/admin/submissions/submission-1/retry', { clientId: 'client-1' }));
+  expect(await screen.findByRole('link', { name: 'Open submitted document' })).toHaveAttribute('href', '/admin/medical-artifacts/artifact-1');
+});
