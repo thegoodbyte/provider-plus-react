@@ -672,6 +672,7 @@ export const communicationsApi = {
     fromEmail?: string;
     replyTo?: string;
     variables?: Record<string, any>;
+    languageVariants?: Record<string, { subject: string; bodyText: string; bodyHtml?: string }>;
     attachments?: Array<{
       fileName: string;
       mimeType?: string;
@@ -716,6 +717,7 @@ export const communicationsApi = {
     bookingFlowStatusOnSend?: string;
     excludedClientIds?: string[];
     variables?: Record<string, any>;
+    languageVariants?: Record<string, { subject: string; bodyText: string; bodyHtml?: string }>;
     attachments?: Array<{
       fileName: string;
       mimeType?: string;

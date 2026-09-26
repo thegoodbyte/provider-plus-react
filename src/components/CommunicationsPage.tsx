@@ -120,6 +120,13 @@ const CommunicationsPage: React.FC = () => {
   const [loadWarnings, setLoadWarnings] = useState<string[]>([]);
   const [bookingStepTemplates, setBookingStepTemplates] = useState<BookingFlowTemplate[]>([]);
   const [bookingStepSearch, setBookingStepSearch] = useState('');
+  const [futureRetreatIds, setFutureRetreatIds] = useState<string[]>([]);
+  const [futureBroadcast, setFutureBroadcast] = useState({ templateId: '', mode: 'template' as 'template' | 'custom', reviewDate: '', freerDate: '', subjects: { en: '', cz: '', pl: '' }, bodies: { en: '', cz: '', pl: '' } });
+  const [sendingFutureBroadcast, setSendingFutureBroadcast] = useState(false);
+
+  const futureRetreats = useMemo(() => retreats
+    .filter((retreat) => retreat._id && retreat.startDate && new Date(retreat.startDate).getTime() >= new Date().setHours(0, 0, 0, 0) && String(retreat.status || '').toLowerCase() !== 'cancelled')
+    .sort((a, b) => new Date(a.startDate as any).getTime() - new Date(b.startDate as any).getTime()), [retreats]);
 
   const selectedTemplate = useMemo(
     () => templates.find((template) => template._id === selectedTemplateId) || null,
@@ -486,6 +493,43 @@ const CommunicationsPage: React.FC = () => {
       subject: template?.subject || '',
       bodyText: template?.bodyText || '',
     }));
+  };
+
+  const handleFutureBroadcastTemplate = (templateId: string) => {
+    const selected = templates.find((template) => template._id === templateId);
+    const variants = templates.filter((template) => selected?.templateKey && template.templateKey === selected.templateKey && template.active !== false);
+    const byLanguage = Object.fromEntries(variants.map((template) => [String(template.language || 'en').toLowerCase() === 'cs' ? 'cz' : String(template.language || 'en').toLowerCase(), template]));
+    setFutureBroadcast((current) => ({ ...current, templateId, subjects: { en: byLanguage.en?.subject || selected?.subject || '', cz: byLanguage.cz?.subject || '', pl: byLanguage.pl?.subject || '' }, bodies: { en: byLanguage.en?.bodyText || selected?.bodyText || '', cz: byLanguage.cz?.bodyText || '', pl: byLanguage.pl?.bodyText || '' } }));
+  };
+
+  const handleFutureBroadcastSend = async () => {
+    if (!futureRetreatIds.length) return alert('Select at least one future retreat.');
+    const { subjects, bodies } = futureBroadcast;
+    if (futureBroadcast.mode === 'template' && !futureBroadcast.templateId) return alert('Select a template.');
+    if (futureBroadcast.mode === 'custom' && (Object.values(subjects).some((value) => !value.trim()) || Object.values(bodies).some((value) => !value.trim()))) return alert('Complete the English, Czech, and Polish subject and message.');
+    if (!window.confirm(`Send this update to ${futureRetreatIds.length} future retreat(s), using each client’s saved language?`)) return;
+    setSendingFutureBroadcast(true);
+    try {
+      const selectedRetreats = futureRetreats.filter((retreat) => futureRetreatIds.includes(retreat._id || ''));
+      const results = [];
+      for (const retreat of selectedRetreats) {
+        const response = await communicationsApi.sendRetreatEmail(retreat._id!, {
+          templateId: futureBroadcast.mode === 'template' ? futureBroadcast.templateId : undefined,
+          useRecipientLanguage: true,
+          subject: subjects.en,
+          bodyText: bodies.en,
+          languageVariants: futureBroadcast.mode === 'custom' ? { en: { subject: subjects.en, bodyText: bodies.en }, cz: { subject: subjects.cz, bodyText: bodies.cz }, pl: { subject: subjects.pl, bodyText: bodies.pl } } : undefined,
+          variables: { futureRetreatBroadcast: { updatesAvailableDate: futureBroadcast.reviewDate, freerAfterDate: futureBroadcast.freerDate } },
+        });
+        results.push(response.data);
+      }
+      const totals = results.reduce((sum, result) => ({ sent: sum.sent + (result.sent || 0), failed: sum.failed + (result.failed || 0), skipped: sum.skipped + (result.skipped || 0) }), { sent: 0, failed: 0, skipped: 0 });
+      alert(`Future retreat update complete. Sent: ${totals.sent}. Failed: ${totals.failed}. Skipped: ${totals.skipped}.`);
+    } catch (error: any) {
+      alert(error?.response?.data?.message || error?.message || 'The future retreat update could not be sent.');
+    } finally {
+      setSendingFutureBroadcast(false);
+    }
   };
 
   const handleClientSelect = (clientId: string) => {
@@ -1373,7 +1417,22 @@ const CommunicationsPage: React.FC = () => {
       {activeTab === 'compose' && (
         <section className="rounded-lg border border-gray-200 bg-white p-5 space-y-5">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-gray-900">Compose Email</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Compose Email</h2>
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 space-y-4">
+            <div>
+              <h3 className="font-semibold text-blue-950">Email future retreats</h3>
+              <p className="mt-1 text-sm text-blue-900">Select the retreats to contact. Each client receives the version matching their saved language; clients without a preference use English.</p>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="text-sm font-medium text-blue-950">Message source<select className="mt-1 w-full rounded-md border border-blue-200 bg-white px-3 py-2 font-normal" value={futureBroadcast.mode} onChange={(event) => setFutureBroadcast((current) => ({ ...current, mode: event.target.value as 'template' | 'custom' }))}><option value="template">Template translations</option><option value="custom">Write English, Czech, and Polish</option></select></label>
+              {futureBroadcast.mode === 'template' ? <label className="text-sm font-medium text-blue-950">Template<select className="mt-1 w-full rounded-md border border-blue-200 bg-white px-3 py-2 font-normal" value={futureBroadcast.templateId} onChange={(event) => handleFutureBroadcastTemplate(event.target.value)}><option value="">Choose a translated template</option>{templates.filter((template) => template.active !== false && template.templateKey).map((template) => <option key={template._id} value={template._id}>{template.name} · {String(template.language || 'en').toUpperCase()}</option>)}</select></label> : <div className="text-sm text-blue-900">Write all three translations below.</div>}
+            </div>
+            <div className="grid gap-3 md:grid-cols-2"><label className="text-sm font-medium text-blue-950">You will review records from<input type="date" className="mt-1 w-full rounded-md border border-blue-200 bg-white px-3 py-2 font-normal" value={futureBroadcast.reviewDate} onChange={(event) => setFutureBroadcast((current) => ({ ...current, reviewDate: event.target.value }))} /></label><label className="text-sm font-medium text-blue-950">You expect to be freer after<input type="date" className="mt-1 w-full rounded-md border border-blue-200 bg-white px-3 py-2 font-normal" value={futureBroadcast.freerDate} onChange={(event) => setFutureBroadcast((current) => ({ ...current, freerDate: event.target.value }))} /></label></div>
+            {(['en', 'cz', 'pl'] as const).map((language) => <div key={language} className="rounded-md border border-blue-100 bg-white p-3"><div className="mb-2 text-xs font-bold uppercase tracking-wide text-blue-900">{language === 'en' ? 'English' : language === 'cz' ? 'Czech' : 'Polish'}</div><input className="mb-2 w-full rounded-md border border-gray-300 px-3 py-2" placeholder="Subject" value={futureBroadcast.subjects[language]} onChange={(event) => setFutureBroadcast((current) => ({ ...current, subjects: { ...current.subjects, [language]: event.target.value } }))} /><textarea rows={5} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm" placeholder="Message" value={futureBroadcast.bodies[language]} onChange={(event) => setFutureBroadcast((current) => ({ ...current, bodies: { ...current.bodies, [language]: event.target.value } }))} /></div>)}
+            <p className="text-xs text-blue-900">Available date placeholders: <code>{'{{futureRetreatBroadcast.updatesAvailableDate}}'}</code> and <code>{'{{futureRetreatBroadcast.freerAfterDate}}'}</code>. The send is logged per booking and skips cancelled bookings, missing addresses, and duplicate addresses.</p>
+            <div className="max-h-64 space-y-2 overflow-y-auto rounded-md border border-blue-100 bg-white p-3">{futureRetreats.length ? futureRetreats.map((retreat) => <label key={retreat._id} className="flex items-center gap-3 rounded px-2 py-2 text-sm hover:bg-blue-50"><input type="checkbox" checked={futureRetreatIds.includes(retreat._id || '')} onChange={(event) => setFutureRetreatIds((current) => event.target.checked ? [...current, retreat._id!] : current.filter((id) => id !== retreat._id))} /><span className="font-medium">{retreat.name || retreat.code || retreat.retreatCode || 'Retreat'}</span><span className="text-gray-500">{retreat.startDate ? new Date(retreat.startDate).toLocaleDateString() : ''}</span></label>) : <span className="text-sm text-gray-500">No future retreats found.</span>}</div>
+            <div className="flex flex-wrap items-center justify-between gap-3"><button type="button" className="text-sm font-medium text-blue-700 underline" onClick={() => setFutureRetreatIds(futureRetreatIds.length === futureRetreats.length ? [] : futureRetreats.map((retreat) => retreat._id!))}>{futureRetreatIds.length === futureRetreats.length ? 'Clear selection' : 'Select all future retreats'}</button><button type="button" disabled={sendingFutureBroadcast || !futureRetreatIds.length} onClick={handleFutureBroadcastSend} className="inline-flex items-center gap-2 rounded-md bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"><Icon icon={FiSend} />{sendingFutureBroadcast ? 'Sending…' : `Send to ${futureRetreatIds.length} retreat${futureRetreatIds.length === 1 ? '' : 's'}`}</button></div>
+          </div>
             <div className="text-xs text-gray-500">Messages are sent through Gmail and logged as sent records.</div>
           </div>
 
