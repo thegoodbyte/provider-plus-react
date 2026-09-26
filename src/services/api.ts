@@ -1150,6 +1150,11 @@ export const auditLogsApi = {
   getOne: (id: string) => api.get(`/audit-logs/${id}`),
 };
 
+export const developmentRefreshApi = {
+  status: () => api.get('/development-refresh', { suppressGlobalError: true } as ReadOptions),
+  start: (confirmation: string) => api.post('/development-refresh', { confirmation }, { suppressGlobalError: true } as ReadOptions),
+};
+
 export const backupsApi = {
   exportBackup: (options: { redactEmails?: boolean; emailReplacement?: string; collections?: string } = {}) =>
     api.get('/backups/export', {
@@ -1190,7 +1195,7 @@ export const backupsApi = {
     prefix?: string;
     maxKeys?: number;
     continuationToken?: string;
-  } = {}) => api.get('/backups/s3/files', { params: options }),
+  } = {}) => api.get('/backups/s3/files', { params: options, suppressGlobalError: true } as ReadOptions),
   downloadS3File: (options: { bucket?: string; key: string }) =>
     api.get('/backups/s3/download', {
       params: options,
