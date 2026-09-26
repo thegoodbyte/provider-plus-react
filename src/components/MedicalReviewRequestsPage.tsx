@@ -1,3 +1,4 @@
+import MedicalDocumentTypeIcon from './MedicalDocumentTypeIcon';
 import { MedicalReviewAuditTrail } from './MedicalReviewAuditTrail';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -6,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { medicalArtifactsApi, medicalReviewRequestsApi, usersApi } from '../services/api';
 import { API_BASE_URL } from '../config/api.config';
 import { Client, MedicalArtifact, MedicalReviewRequest, Retreat } from '../types';
-import { Activity, AlertTriangle, Ban, ChevronDown, CircleHelp, ClipboardList, Droplets, FileQuestion, FileText, HeartPulse, Pill, RotateCcw, ThumbsDown, ThumbsUp } from 'lucide-react';
+import { AlertTriangle, Ban, ChevronDown, CircleHelp, FileText, RotateCcw, ThumbsDown, ThumbsUp } from 'lucide-react';
 import {
   formatMedicalReviewDecisionLabel,
   formatMedicalReviewRequestSummary,
@@ -92,17 +93,6 @@ const formatTranslatedValue = (value: unknown): string => {
     return Object.entries(parsed).map(([key, item]) => `${key.replace(/_/g, ' ')}: ${formatTranslatedValue(item)}`).join('\n');
   }
   return String(parsed);
-};
-
-const relatedRecordIcon = (label: string) => {
-  const value = label.toLowerCase();
-  if (value.includes('ekg') || value.includes('heart')) return HeartPulse;
-  if (value.includes('liver')) return Droplets;
-  if (value.includes('blood pressure') || value.includes('pressure')) return Activity;
-  if (value.includes('medication')) return Pill;
-  if (value.includes('questionnaire') || value.includes('food')) return ClipboardList;
-  if (value.includes('question')) return FileQuestion;
-  return FileText;
 };
 
 const medicalReviewTypeFilters = [
@@ -1711,7 +1701,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                     {profileHref ? <a href={profileHref} className="text-blue-700 underline decoration-blue-200 underline-offset-2 hover:text-blue-900">{selectedClientName}</a> : selectedClientName}
                     {getId(selected.clientId) && <span className="ml-2 text-xs font-normal text-gray-500">ID: {getId(selected.clientId)}</span>}
                   </div>
-                  <div className="text-sm text-gray-600">{formatCompactDocumentMeta(selected) || getRequestTypeLabel(selected.requestType)}</div>
+                  <div className="flex items-center gap-3 text-sm text-gray-600"><MedicalDocumentTypeIcon type={selected.requestType} fallbackType={selected.documentType} />{formatCompactDocumentMeta(selected) || getRequestTypeLabel(selected.requestType)}</div>
                   {retreatStartDate && <div className="mt-1 text-xs font-medium text-gray-500">Retreat starts {retreatStartDate}</div>}
                   <div className="mt-2 flex flex-wrap gap-2 sm:hidden">
                     <button type="button" className="mrr-related-mobile-toggle" onClick={() => setRelatedRecordsOpen((open) => !open)} aria-expanded={relatedRecordsOpen} aria-controls="mrr-related-records">
@@ -1794,7 +1784,7 @@ const MedicalReviewRequestsPage: React.FC = () => {
                 const item = record.item as any;
                 const shortLabel = record.label.replace(/\s+Panel$/i, '').replace(/\s+Review$/i, '');
                 return <button key={`${record.kind}-${record.id}`} type="button" className="mrr-related-record" onClick={() => record.kind === 'request' ? handleSelect(item) : navigate(`${artifactRoutePrefix}/medical-artifacts/${record.id}/edit`)} title={`${record.label}${record.date ? ` · ${formatDateTime(record.date)}` : ''}`}>
-                  <span className={`mrr-related-record-icon ${record.kind === 'request' ? 'request' : ''}`}>{React.createElement(relatedRecordIcon(record.label), { size: 20, strokeWidth: 2.1 })}</span>
+                  <MedicalDocumentTypeIcon type={record.kind === 'request' ? (record.item as MedicalReviewRequest).requestType : (record.item as MedicalArtifact).artifactType} fallbackType={record.item.documentType} />
                   <span className="mrr-related-record-text"><strong>{shortLabel}</strong><small>{record.date ? formatDateTime(record.date) : 'Date unavailable'}</small></span>
                 </button>;
               }) : <span className="mrr-related-empty">No previous or related records.</span>}

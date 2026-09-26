@@ -1,6 +1,7 @@
+import MedicalDocumentTypeIcon from './MedicalDocumentTypeIcon';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FileText, HeartPulse, Leaf, Maximize2, Minimize2, RefreshCw } from 'lucide-react';
+import { Maximize2, Minimize2, RefreshCw } from 'lucide-react';
 import { Modal } from 'antd';
 import { bookingsApi, medicalArtifactsApi, medicalReviewRequestsApi } from '../services/api';
 import { Retreat, RetreatClient } from '../types';
@@ -30,11 +31,7 @@ const getLocationPrefix = (pathname: string) => {
   return ['admin', 'medical', 'staff', 'user', 'helper'].includes(firstRouteSegment) ? firstRouteSegment : 'admin';
 };
 
-const getStageIcon = (stageKey: RetreatMedicalRow['key']) => {
-  if (stageKey === 'ekg') return <HeartPulse className="h-4 w-4" />;
-  if (stageKey === 'liver') return <Leaf className="h-4 w-4" />;
-  return <FileText className="h-4 w-4" />;
-};
+const getStageIcon = (stageKey: RetreatMedicalRow['key']) => <MedicalDocumentTypeIcon type={stageKey} />;
 
 const getStageToneClass = (cell: RetreatMedicalCell) => {
   if (cell.status === 'missing') return 'medical-cell-missing';
@@ -319,7 +316,7 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
                 <tr key={row.key} className={`medical-row ${row.accentClass}`}>
                   <td className="medical-row-label">
                     <div className="medical-row-label-inner">
-                      <span className="medical-row-icon">{getStageIcon(row.key)}</span>
+                      {getStageIcon(row.key)}
                       <div>
                         <div className="medical-row-title">{row.label}</div>
                         <div className="medical-row-subtitle">MRR · submitted · result · notes</div>
@@ -361,7 +358,7 @@ const RetreatTrackingGrid: React.FC<RetreatTrackingGridProps> = ({ retreatId }) 
                 return (
                   <section key={`${client.bookingId}-${row.key}`} className="medical-mobile-stage">
                     <div className="medical-mobile-stage-header">
-                      <span className="medical-row-icon">{getStageIcon(row.key)}</span>
+                      {getStageIcon(row.key)}
                       <span>{row.label}</span>
                     </div>
                     {renderCell(row.key, cell, client)}

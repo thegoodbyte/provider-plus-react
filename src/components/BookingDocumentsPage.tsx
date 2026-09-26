@@ -1,6 +1,7 @@
+import MedicalDocumentTypeIcon from './MedicalDocumentTypeIcon';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowUpDown, ClipboardList, Download, Eye, FileText, Pencil, Pill, RefreshCw, Scale, Search, Trash2, Utensils, X } from 'lucide-react';
+import { ArrowUpDown, Download, Eye, FileText, Pencil, RefreshCw, Search, Trash2, X } from 'lucide-react';
 import { bookingDocumentsApi } from '../services/api';
 import { BookingDocument, BookingDocumentContent, Client, Retreat, RetreatClient } from '../types';
 
@@ -99,15 +100,7 @@ const SortHeader: React.FC<{
   </button>
 );
 
-const DocumentTypeIcon: React.FC<{ type?: string }> = ({ type }) => {
-  const normalized = normalizeKey(type);
-  const Icon = normalized === 'contract' || normalized === 'contract_signed' ? Scale
-    : normalized === 'food_intake' || normalized === 'food_form' ? Utensils
-      : normalized === 'medications_form' ? Pill
-        : normalized === 'questionnaire' || normalized === 'health_questionnaire' ? ClipboardList
-          : FileText;
-  return <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#d7c9b4] bg-[#fffaf1] text-[#705d46]"><Icon className="h-4 w-4" /></span>;
-};
+const DocumentTypeIcon = MedicalDocumentTypeIcon;
 
 type BookingDocumentTranslation = NonNullable<BookingDocument['metadata']>['translation'];
 
