@@ -42,7 +42,12 @@ export function bookingNextActions(source: BookingReadinessSource, now = new Dat
         : item.category === 'message' || /_(sent|requested)$/.test(item.key) ? isAccomplishedStatus(item.status) : isSatisfiedStatus(item.status)));
     if (satisfied) { completed += 1; continue; }
     const reviewWaiting = requirement?.state === 'pending_review' || (requirement?.state === 'received' && requirement.reviewRequired) || ['sent_for_review', 'in_review'].includes(item.status);
-    const waiting = reviewWaiting || Boolean(item.automationPaused) || item.status === 'scheduled';
+    const waiting = reviewWaiting
+      || (requirement?.requiredFromClient === true
+        && requirement.state === 'missing'
+        && !['received', 'approved', 'in_review', 'sent_for_review'].includes(String(item.status)))
+      || Boolean(item.automationPaused)
+      || item.status === 'scheduled';
     const reason = item.automationPaused ? item.automationPauseReason || 'Automation paused; review this step.'
       : reviewWaiting ? 'Waiting for review.'
       : requirement?.state === 'expired' ? 'The linked document has expired.'
@@ -52,7 +57,9 @@ export function bookingNextActions(source: BookingReadinessSource, now = new Dat
       : requirement?.state === 'missing' ? 'Required information has not been received.'
       : item.description || (item.isBlocking ? 'This required step is not complete.' : 'This step is not complete.');
     const tab: BookingDetailTab = item.category === 'payment' ? 'payments' : reviewWaiting && item.category === 'medical' ? 'medical' : requirement ? 'requirements' : 'workflow';
-    const owner = item.assignedTo || (reviewWaiting ? 'Review team' : requirement?.requiredFromClient ? 'Client' : 'Unassigned');
+    const owner = reviewWaiting
+      ? item.assignedTo ? `Medical team · ${item.assignedTo}` : 'Review team'
+      : requirement?.requiredFromClient ? 'Client' : item.assignedTo || 'Unassigned';
     open.push({ id: item._id || item.key, title: item.title || item.key, reason, owner, dueDate: item.dueDate, blocking: item.isBlocking === true || item.status === 'blocked', waiting, tab, actionLabel: tab === 'payments' ? 'Open payments' : tab === 'medical' ? 'Open medical review' : tab === 'requirements' ? 'Open requirements' : 'Open booking step' });
   }
   const due = (item: BookingNextAction) => {
@@ -63,5 +70,5 @@ export function bookingNextActions(source: BookingReadinessSource, now = new Dat
   const blockers = open.filter(item => item.blocking);
   const status = source.loading || source.error || !source.items.length ? 'unknown' : blockers.length ? 'blocked' : open.length ? open.every(item => item.waiting) ? 'waiting' : 'attention' : 'ready';
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  return { status, completed, total: completed + open.length, blockers, next: open.find(item => !item.waiting) || open[0], waiting: open.filter(item => item.waiting).length, overdue: (item: BookingNextAction) => due(item) < today };
+  return { status, completed, total: completed + open.length, blockers, open, next: open.find(item => !item.waiting) || open[0], waiting: open.filter(item => item.waiting).length, overdue: (item: BookingNextAction) => due(item) < today };
 }
