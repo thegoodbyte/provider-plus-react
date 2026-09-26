@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { FiAlertTriangle, FiCheckCircle, FiDownload, FiLoader, FiRefreshCw, FiUpload } from 'react-icons/fi';
 import { backupsApi } from '../services/api';
+import DevelopmentRefreshPanel from './DevelopmentRefreshPanel';
 
 const RESTORE_CONFIRMATION = 'RESTORE_PROVIDER_PLUS';
 const Icon: React.FC<{ icon: any; className?: string }> = ({ icon: IconComponent, className }) => (
@@ -274,6 +275,8 @@ const DataBackupPage: React.FC = () => {
         <h1 className="text-2xl font-semibold text-gray-900">Data Backup</h1>
         <p className="text-sm text-gray-600">Export, upload to S3, and restore Provider Plus Mongo backups.</p>
       </div>
+
+      <DevelopmentRefreshPanel />
 
       {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
       {notice && (
