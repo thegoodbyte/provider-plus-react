@@ -54,6 +54,7 @@ const PaymentRequestsGrid: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [selectedSendRequest, setSelectedSendRequest] = useState<any | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [paymentFilter, setPaymentFilter] = useState('all');
   const [sortKey, setSortKey] = useState<PaymentRequestSortKey>('date');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
@@ -157,9 +158,15 @@ const PaymentRequestsGrid: React.FC = () => {
 
   const filteredRequests = useMemo(() => {
     const term = searchTerm.toLowerCase();
-    if (!term) return paymentRequests;
 
     return paymentRequests.filter((request) => {
+      const paid = request.status === 'paid';
+      const hasBooking = Boolean(typeof request.bookingId === 'string' ? request.bookingId.trim() : request.bookingId?._id || request.bookingId?.id)
+        || (request.lineItems || []).some((item: any) => Boolean(typeof item.bookingId === 'string' ? item.bookingId.trim() : item.bookingId?._id || item.bookingId?.id));
+      if (paymentFilter === 'paid' && !paid) return false;
+      if (paymentFilter === 'unpaid' && !['pending', 'sent', 'overdue'].includes(request.status || 'pending')) return false;
+      if (paymentFilter === 'paid-unbooked' && (!paid || hasBooking)) return false;
+      if (!term) return true;
       const client = resolveClient(request.clientId);
       const retreat = resolveRetreat(request.retreatId);
       return (
@@ -175,7 +182,7 @@ const PaymentRequestsGrid: React.FC = () => {
         (request.note || request.notes || '').toLowerCase().includes(term)
       );
     });
-  }, [paymentRequests, searchTerm]);
+  }, [paymentRequests, searchTerm, paymentFilter]);
 
   const getSortValue = (request: any, key: PaymentRequestSortKey) => {
     const client = resolveClient(request.clientId);
@@ -271,6 +278,18 @@ const PaymentRequestsGrid: React.FC = () => {
         </button>
       </div>
 
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <label className="text-sm font-medium">Payment status
+          <select aria-label="Payment status" value={paymentFilter} onChange={event => setPaymentFilter(event.target.value)} className="ml-2 rounded-md border border-gray-300 px-3 py-2">
+            <option value="all">All payment requests</option>
+            <option value="unpaid">Unpaid</option>
+            <option value="paid">Paid</option>
+            <option value="paid-unbooked">Paid without bookings</option>
+          </select>
+        </label>
+        <span className="text-sm text-gray-600" role="status">{filteredRequests.length} of {paymentRequests.length} requests</span>
+        {(paymentFilter !== 'all' || searchTerm) && <button type="button" onClick={() => { setPaymentFilter('all'); setSearchTerm(''); }} className="text-sm text-blue-700 underline">Clear filters</button>}
+      </div>
       <div className="mb-4 relative max-w-xl">
         <Icon icon={FiSearch} className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
         <input

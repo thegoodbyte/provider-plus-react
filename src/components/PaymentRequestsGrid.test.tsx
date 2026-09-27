@@ -34,3 +34,31 @@ it('sorts and searches by the requested amount', async () => {
   expect(screen.getByText('INV-DEPOSIT')).toBeInTheDocument();
   expect(screen.queryByText('INV-BALANCE')).not.toBeInTheDocument();
 });
+
+it('filters paid, unpaid and paid without any booking, including joint-request line items', async () => {
+  (paymentRequestsApi.getAllFresh as jest.Mock).mockResolvedValue({ data: [
+    { _id: 'p', invoiceNumber: 'PAID-NO-BOOKING', status: 'paid', bookingId: null },
+    { _id: 'b', invoiceNumber: 'PAID-BOOKED', status: 'paid', bookingId: { _id: 'booking' } },
+    { _id: 'j', invoiceNumber: 'PAID-JOINT', status: 'paid', lineItems: [{ bookingId: 'booking' }] },
+    { _id: 's', invoiceNumber: 'SENT', status: 'sent' },
+    { _id: 'o', invoiceNumber: 'OVERDUE', status: 'overdue' },
+    { _id: 'n', invoiceNumber: 'PENDING', status: 'pending' },
+    { _id: 'c', invoiceNumber: 'CANCELLED', status: 'cancelled' },
+  ] });
+  mount();
+  const filter = await screen.findByRole('combobox', { name: 'Payment status' });
+  fireEvent.change(filter, { target: { value: 'paid-unbooked' } });
+  expect(screen.getByText('PAID-NO-BOOKING')).toBeInTheDocument();
+  expect(screen.queryByText('PAID-BOOKED')).not.toBeInTheDocument();
+  expect(screen.queryByText('PAID-JOINT')).not.toBeInTheDocument();
+  expect(screen.getByRole('status')).toHaveTextContent('1 of 7');
+  fireEvent.change(filter, { target: { value: 'paid' } });
+  expect(screen.getByRole('status')).toHaveTextContent('3 of 7');
+  fireEvent.change(screen.getByPlaceholderText('Search by client, retreat, amount, invoice...'), { target: { value: 'JOINT' } });
+  expect(screen.getByRole('status')).toHaveTextContent('1 of 7');
+  fireEvent.click(screen.getByText('Clear filters'));
+  fireEvent.change(filter, { target: { value: 'unpaid' } });
+  expect(screen.getByRole('status')).toHaveTextContent('3 of 7');
+  expect(screen.queryByText('CANCELLED')).not.toBeInTheDocument();
+  expect(screen.queryByText('PAID-NO-BOOKING')).not.toBeInTheDocument();
+});
