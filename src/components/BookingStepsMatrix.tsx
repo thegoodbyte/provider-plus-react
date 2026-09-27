@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Filter, Lock, Save, Unlock } from 'lucide-react';
+import { Asterisk, Filter, Lock, Save, Unlock } from 'lucide-react';
 import { bookingDocumentsApi, bookingFlowApi, communicationsApi, medicalArtifactsApi, medicalReviewRequestsApi, paymentsApi } from '../services/api';
 import { usersApi, User } from '../services/usersApi';
 import { BookingDocument, BookingFlowAction, BookingFlowActionLog, BookingFlowItem, BookingFlowTemplate, MedicalArtifact, MedicalReviewRequest, Payment } from '../types';
@@ -214,7 +214,7 @@ const BookingStepsMatrix: React.FC<{ retreatId: string }> = ({ retreatId }) => {
       <thead>
         <tr>
           <th className="sticky left-0 top-0 z-40 min-w-[240px] border-b border-r border-gray-300 bg-gray-100 px-3 py-3 text-left text-xs font-semibold uppercase text-gray-600 shadow-[4px_0_10px_rgba(15,23,42,0.08)]">Name</th>
-          {rows.map((row) => <th key={row.key} className="min-w-[180px] border-b border-r border-gray-300 bg-gray-100 px-3 py-3 text-left text-xs font-semibold uppercase text-gray-600"><span className="inline-flex items-center gap-2"><BookingStepTypeIcon type={row.stepType} stepKey={row.key} className="h-4 w-4" />{row.title}</span></th>)}
+          {rows.map((row) => <th key={row.key} className="min-w-[180px] border-b border-r border-gray-300 bg-gray-100 px-3 py-3 text-left text-xs font-semibold uppercase text-gray-600"><span className="inline-flex items-center gap-2"><BookingStepTypeIcon type={row.stepType} stepKey={row.key} className="h-4 w-4" />{row.isRequirement && <span title="Required booking step"><Asterisk className="h-4 w-4 text-amber-600" aria-label="Required booking step" /></span>}{row.title}</span></th>)}
         </tr>
       </thead>
       <tbody>
