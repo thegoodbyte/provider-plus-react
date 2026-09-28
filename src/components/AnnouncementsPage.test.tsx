@@ -216,3 +216,39 @@ it('shows skipped recipients in setup and links to their history', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'View skipped recipients' }));
   expect(screen.getByText('Scheduled time passed before this recipient was added.')).toBeInTheDocument();
 });
+
+it('combines template search and language filtering and preserves the saved choice', async () => {
+  (communicationsApi.getTemplates as jest.Mock).mockResolvedValue({ data: [
+    template,
+    { ...template, _id: 'english', language: 'en', name: 'Welcome', subject: 'Arrival details' },
+    { ...template, _id: 'czech', language: 'cs', name: 'Welcome CZ', subject: 'Arrival details' },
+    { ...template, _id: 'czech-alias', language: 'cz', name: 'Welcome CZ alias', subject: 'Arrival details' },
+    { ...template, _id: 'hidden', active: false, name: 'Hidden template' },
+  ] });
+  mount('retreat');
+  fireEvent.click(await screen.findByRole('button', { name: 'Edit announcement' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+  expect(screen.queryByRole('option', { name: /Hidden template/ })).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Search email templates'), { target: { value: ' ARRIVAL ' } });
+  fireEvent.change(screen.getByLabelText('Template language'), { target: { value: 'cz' } });
+  expect(screen.getByRole('option', { name: 'Welcome CZ (CS)' })).toBeInTheDocument();
+  expect(screen.getByRole('option', { name: 'Welcome CZ alias (CZ)' })).toBeInTheDocument();
+  expect(screen.queryByRole('option', { name: 'Welcome (EN)' })).not.toBeInTheDocument();
+  expect(screen.getByLabelText('Email template')).toHaveValue('template');
+  expect(screen.getByRole('status')).toHaveTextContent('2 matching email templates');
+  fireEvent.change(screen.getByLabelText('Email template'), { target: { value: 'czech' } });
+  fireEvent.change(screen.getByLabelText('Search email templates'), { target: { value: 'no such template' } });
+  expect(screen.getByRole('status')).toHaveTextContent('No email templates match');
+  expect(screen.getByLabelText('Email template')).toHaveValue('czech');
+  fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Save announcement' }));
+  await waitFor(() => expect(announcementsApi.save).toHaveBeenCalledWith('retreat', 'rule', expect.objectContaining({
+    emailTemplateId: 'czech', useRecipientLanguage: true,
+  })));
+  fireEvent.click(await screen.findByRole('button', { name: '+ Add announcement' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+  expect(screen.getByLabelText('Search email templates')).toHaveValue('');
+  expect(screen.getByLabelText('Template language')).toHaveValue('');
+  fireEvent.change(screen.getByLabelText('Search email templates'), { target: { value: 'welcome cz alias' } });
+  expect(screen.getByRole('status')).toHaveTextContent('1 matching email template.');
+});

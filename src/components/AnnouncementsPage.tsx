@@ -72,6 +72,12 @@ const templateId = (rule: Rule) =>
   typeof rule.emailTemplateId === "string"
     ? rule.emailTemplateId
     : rule.emailTemplateId?._id || "";
+const templateLanguage = (template: EmailTemplate) => {
+  const language = (template.language || "en").trim().toLowerCase();
+  return language === "cs" ? "cz" : language;
+};
+const languageLabel = (language: string) =>
+  ({ en: "English", cz: "Czech", pl: "Polish" })[language] || language.toUpperCase();
 export const announcementTiming = (rule: Pick<Rule, "days" | "timing">) =>
   rule.timing === "before_start"
     ? rule.days === 0
@@ -106,6 +112,8 @@ const statusLabel = (status: string) =>
 const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
   const [data, setData] = useState<Data | null>(null);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [templateSearch, setTemplateSearch] = useState("");
+  const [templateLanguageFilter, setTemplateLanguageFilter] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -187,6 +195,15 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
   const selectedTemplate = templates.find(
     (item) => item._id === (editor ? templateId(editor) : ""),
   );
+  const templateLanguages = Array.from(new Set(templates.map(templateLanguage))).sort();
+  const filteredTemplates = templates.filter((template) =>
+    (!templateLanguageFilter || templateLanguage(template) === templateLanguageFilter) &&
+    [template.name, template.subject].some((value) =>
+      value?.toLowerCase().includes(templateSearch.trim().toLowerCase()),
+    ),
+  );
+  const selectedTemplateOutsideFilter = selectedTemplate &&
+    !filteredTemplates.some((template) => template._id === selectedTemplate._id);
   const rules = useMemo(
     () =>
       [...(data?.rules || [])].sort((a, b) =>
@@ -212,6 +229,8 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
   );
   const edit = (rule = newRule()) => {
     setError("");
+    setTemplateSearch("");
+    setTemplateLanguageFilter("");
     setEditor({ ...rule, emailTemplateId: templateId(rule) });
     setStep(0);
   };
@@ -778,6 +797,27 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
                   </select>
                 </label>
                 <label>
+                  Search email templates
+                  <input
+                    type="search"
+                    placeholder="Search by name or subject"
+                    value={templateSearch}
+                    onChange={(event) => setTemplateSearch(event.target.value)}
+                  />
+                </label>
+                <label>
+                  Template language
+                  <select
+                    value={templateLanguageFilter}
+                    onChange={(event) => setTemplateLanguageFilter(event.target.value)}
+                  >
+                    <option value="">All languages</option>
+                    {templateLanguages.map((language) => (
+                      <option key={language} value={language}>{languageLabel(language)}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
                   Email template
                   <select
                     value={templateId(editor)}
@@ -793,13 +833,24 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
                     }}
                   >
                     <option value="">Choose an email template</option>
-                    {templates.map((template) => (
+                    {selectedTemplateOutsideFilter && (
+                      <option value={selectedTemplate._id}>
+                        {selectedTemplate.name} ({templateLanguage(selectedTemplate).toUpperCase()}) — current selection
+                      </option>
+                    )}
+                    {filteredTemplates.map((template) => (
                       <option value={template._id} key={template._id}>
                         {template.name} ({template.language?.toUpperCase()})
                       </option>
                     ))}
                   </select>
                 </label>
+                <p role="status">
+                  {filteredTemplates.length === 0
+                    ? "No email templates match. Try another search or language."
+                    : `${filteredTemplates.length} matching email ${filteredTemplates.length === 1 ? "template" : "templates"}.`}
+                  {selectedTemplateOutsideFilter && " Your selected template is kept even though it does not match these filters."}
+                </p>
                 <p>
                   <Link
                     to="/admin/communications"
