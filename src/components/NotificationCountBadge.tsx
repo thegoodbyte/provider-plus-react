@@ -6,12 +6,15 @@ export const useNotificationCount = (scope: { clientId?: string; bookingId?: str
   const { clientId, bookingId } = scope;
   useEffect(() => {
     let active = true;
+    let requestVersion = 0;
+    setCount(0);
     const load = async () => {
+      const version = ++requestVersion;
       if (!clientId && !bookingId) return;
       try {
         const response = await api.get('/submission-notifications/unread-count', { params: { clientId, bookingId } });
-        if (active) setCount(Number(response.data?.count || 0));
-      } catch { if (active) setCount(0); }
+        if (active && version === requestVersion) setCount(Number(response.data?.count || 0));
+      } catch { if (active && version === requestVersion) setCount(0); }
     };
     load();
     window.addEventListener('notifications-updated', load);

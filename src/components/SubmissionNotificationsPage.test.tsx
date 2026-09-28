@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import SubmissionNotificationsPage, { notificationDateKey, notificationDateLabel } from './SubmissionNotificationsPage';
 import { api } from '../services/api';
@@ -68,4 +68,44 @@ describe('SubmissionNotificationsPage', () => {
     expect(await screen.findByText(/3 past-retreat notification/i)).toBeInTheDocument();
     await waitFor(() => expect(mockedApi.get).toHaveBeenCalledTimes(2));
   });
+});
+
+beforeEach(() => { jest.clearAllMocks(); });
+
+it('keeps client and booking tabs scoped and resets filters when switching records', async () => {
+  mockedApi.get.mockResolvedValue({ data: notices } as any);
+  const page = render(<MemoryRouter><SubmissionNotificationsPage clientId="c1" /></MemoryRouter>);
+  await screen.findByText('Review EKG');
+  expect(mockedApi.get).toHaveBeenLastCalledWith('/submission-notifications', { params: expect.objectContaining({ clientId: 'c1', bookingId: undefined }) });
+  expect(screen.queryByRole('button', { name: /purge past retreats/i })).not.toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText('Filter by retreat'), { target: { value: 'r1' } });
+  mockedApi.get.mockResolvedValue({ data: [notices[1]] } as any);
+  page.rerender(<MemoryRouter><SubmissionNotificationsPage bookingId="b2" /></MemoryRouter>);
+  expect(screen.queryByText('Review EKG')).not.toBeInTheDocument();
+  await screen.findByText('Review medications');
+  expect(screen.getByLabelText('Filter by retreat')).toHaveValue('');
+  expect(mockedApi.get).toHaveBeenLastCalledWith('/submission-notifications', { params: expect.objectContaining({ clientId: undefined, bookingId: 'b2' }) });
+});
+
+it('ignores a late response from an earlier filter', async () => {
+  let resolveOld: (value: any) => void = () => {};
+  mockedApi.get.mockReturnValueOnce(new Promise(resolve => { resolveOld = resolve; }));
+  mockedApi.get.mockResolvedValue({ data: [notices[1]] } as any);
+  renderPage();
+  await waitFor(() => expect(mockedApi.get).toHaveBeenCalled());
+  fireEvent.change(screen.getByLabelText('Notification view'), { target: { value: 'history' } });
+  await screen.findByText('Review medications');
+  await act(async () => { resolveOld({ data: [notices[0]] }); });
+  expect(screen.queryByText('Review EKG')).not.toBeInTheDocument();
+  expect(screen.getByText('Review medications')).toBeInTheDocument();
+});
+
+it.each(['Open source', 'Mark read', 'Reviewed'])('shows failed %s actions in the page', async (action) => {
+  mockedApi.get.mockResolvedValue({ data: [notices[0]] } as any);
+  mockedApi.patch.mockRejectedValue(new Error('offline'));
+  renderPage();
+  await screen.findByText('Review EKG');
+  fireEvent.click(screen.getByRole('button', { name: action }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Unable to update notification');
+  expect(screen.getByText('1 unread')).toBeInTheDocument();
 });
