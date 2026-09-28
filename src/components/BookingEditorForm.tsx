@@ -1,3 +1,4 @@
+import AccommodationSelect from './AccommodationSelect';
 import React, { useEffect, useMemo, useState } from 'react';
 import { bookingsApi, ceremoniesApi, clientsApi, paymentRequestsApi, retreatsApi } from '../services/api';
 import { RetreatClient, Client, Retreat, PaymentRequest, Ceremony } from '../types';
@@ -24,6 +25,7 @@ type BookingFormData = {
   checkInDate: string;
   checkOutDate: string;
   contractGateOverride: 'inherit' | 'required' | 'disabled';
+  accommodationKey?: string;
   roomType: 'shared' | 'private' | 'private_ensuite' | 'unspecified';
   roomNumber: string;
   roomAdjustmentType: 'none' | 'discount' | 'surcharge';
@@ -196,6 +198,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
           contractGateOverride: currentBooking.contractGateOverride === true
             ? 'required'
             : currentBooking.contractGateOverride === false ? 'disabled' : 'inherit',
+          accommodationKey: currentBooking.accommodationKey ?? (currentBooking.roomType === 'unspecified' ? '' : currentBooking.roomType),
           roomType: currentBooking.roomType || 'unspecified',
           roomNumber: currentBooking.roomNumber || '',
           roomAdjustmentType: currentBooking.roomAdjustmentType || 'none',
@@ -270,6 +273,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
         ceremonyNumber: paymentRequest?.bookingType === 'booster'
           ? String(paymentRequest.ceremonyNumber || '')
           : prev.ceremonyNumber,
+        accommodationKey: paymentRequest?.accommodationKey ?? (paymentRequest?.roomType && paymentRequest.roomType !== 'unspecified' ? paymentRequest.roomType : prev.accommodationKey),
         roomType: paymentRequest?.roomType || prev.roomType,
         roomAdjustmentType: paymentRequest?.roomAdjustmentType || prev.roomAdjustmentType,
         roomAdjustmentAmount: paymentRequest?.roomAdjustmentAmount ?? prev.roomAdjustmentAmount,
@@ -348,6 +352,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
         contractGateOverride: formData.contractGateOverride === 'inherit'
           ? null
           : formData.contractGateOverride === 'required',
+        accommodationKey: formData.accommodationKey,
         roomType: formData.roomType,
         roomNumber: formData.roomNumber || undefined,
         roomAdjustmentType: formData.roomAdjustmentType,
@@ -533,11 +538,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
           <h3 className="font-semibold text-slate-900">Room and accommodation</h3>
           <p className="mt-1 text-xs text-slate-600">Choose the accommodation agreed for this booking. The payment request choice is copied automatically when available.</p>
           <div className="mt-3 grid gap-4 md:grid-cols-2">
-            <label className="text-sm font-medium text-gray-700">Room type
-              <select value={formData.roomType} onChange={(event) => setFormData(prev => ({ ...prev, roomType: event.target.value as BookingFormData['roomType'] }))} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2">
-                <option value="unspecified">Not decided</option><option value="shared">Shared room</option><option value="private">Private room</option><option value="private_ensuite">Private room with private bathroom</option>
-              </select>
-            </label>
+            <AccommodationSelect clientId={formData.clientId} value={formData.accommodationKey} onChange={(key, legacy) => setFormData(prev => ({ ...prev, accommodationKey: key, roomType: legacy as BookingFormData['roomType'] }))} />
             <label className="text-sm font-medium text-gray-700">Bedroom
               <select value={formData.roomNumber} onChange={(event) => setFormData(prev => ({ ...prev, roomNumber: event.target.value }))} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2">
                 <option value="">Not assigned</option>{houseBedrooms.map((bedroom) => <option value={bedroom.name} key={bedroom.name}>{bedroom.name}{bedroom.hasBathroom ? ' · private bathroom' : ''}</option>)}

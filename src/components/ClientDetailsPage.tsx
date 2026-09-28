@@ -1261,6 +1261,7 @@ const ClientDetailsPage: React.FC = () => {
               )}
 
               {renderScreeningGrid([
+                { label: 'Desired accommodation', value: getScreeningValue('desiredAccommodationLabel', 'desiredAccommodationKey') },
                 { label: 'Screening Date', value: getScreeningValue('screeningDate') ? formatDate(getScreeningValue('screeningDate')) : '' },
                 { label: 'Year of Birth', value: screeningYearOfBirth },
                 { label: 'Age', value: getScreeningValue('age') },

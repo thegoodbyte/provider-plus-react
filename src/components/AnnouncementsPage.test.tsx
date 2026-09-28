@@ -5,6 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import AnnouncementsPage, { announcementTiming } from "./AnnouncementsPage";
 import { announcementsApi, communicationsApi } from "../services/api";
 jest.mock("../services/api", () => ({
+  api: { post: jest.fn().mockResolvedValue({data:{retreat:null,message:'No upcoming retreat is available for an example.'}}) },
   announcementsApi: {
     get: jest.fn(),
     sendTest: jest.fn(),

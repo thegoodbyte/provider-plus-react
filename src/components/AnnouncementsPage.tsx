@@ -1,3 +1,4 @@
+import AnnouncementSchedules, { AnnouncementDateExample } from './AnnouncementSchedules';
 import EmailSafetySettings from './EmailSafetySettings';
 import React, {
   useCallback,
@@ -110,6 +111,7 @@ const statusLabel = (status: string) =>
   })[status] || status;
 
 const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
+  const [scheduledTab, setScheduledTab] = useState(false);
   const [data, setData] = useState<Data | null>(null);
   const [templates, setTemplates] = useState<EmailTemplate[]>([]);
   const [templateSearch, setTemplateSearch] = useState("");
@@ -321,6 +323,9 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
           + Add announcement
         </button>
       </header>
+      <nav className="announcement-tabs" aria-label="Announcement views"><button aria-pressed={!scheduledTab} onClick={() => setScheduledTab(false)}>Announcement rules</button><button aria-pressed={scheduledTab} onClick={() => setScheduledTab(true)}>Scheduled deliveries</button></nav>
+      {scheduledTab && <AnnouncementSchedules retreatId={retreatId} />}
+      <div hidden={scheduledTab}>
       <EmailSafetySettings compact />
       {testMessage && <p role="status" className="announcement-help">{testMessage}</p>}
       {error && (
@@ -694,6 +699,7 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
           )}
         </>
       )}
+      </div>
       <dialog
         ref={dialogRef}
         className="announcement-dialog"
@@ -733,6 +739,7 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
               {announcementTiming(editor)} at {editor.sendTime}, send{" "}
               <strong>{selectedTemplate?.name || "your chosen email"}</strong>.
             </div>
+            <AnnouncementDateExample retreatId={retreatId} timing={editor.timing} days={editor.days} sendTime={editor.sendTime} />
             {step === 0 && (
               <div className="announcement-fields">
                 <label>

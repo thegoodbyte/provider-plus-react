@@ -1,3 +1,4 @@
+import AccommodationSelect from './AccommodationSelect';
 import React, { useEffect, useState } from 'react';
 import { PaymentRequest, PaymentRequestLineItem, Client, Retreat, Ceremony } from '../types';
 import SearchableClientSelect from './SearchableClientSelect';
@@ -78,6 +79,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
     retreatId: resolveId(paymentRequest?.retreatId),
     bookingId: resolveId(paymentRequest?.bookingId),
     bookingType: paymentRequest?.bookingType || 'full_retreat',
+    accommodationKey: paymentRequest?.accommodationKey ?? (paymentRequest?.roomType && paymentRequest.roomType !== 'unspecified' ? paymentRequest.roomType : paymentRequest ? '' : undefined) as string | undefined,
     roomType: paymentRequest?.roomType || 'unspecified',
     roomAdjustmentType: paymentRequest?.roomAdjustmentType || 'none',
     roomAdjustmentAmount: paymentRequest?.roomAdjustmentAmount || 0,
@@ -196,6 +198,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
         ...prev,
         bookingId,
         retreatId: resolveId(booking.retreatId),
+        accommodationKey: prev.accommodationKey ?? booking.accommodationKey ?? (booking.roomType !== 'unspecified' ? booking.roomType : undefined),
         requestType: 'balance',
         fullPriceQuote: String(fullPrice),
         requestedAmount: String(remaining),
@@ -371,6 +374,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
         retreatId: formData.retreatId,
         bookingId: formData.bookingId || undefined,
         bookingType: formData.bookingType as PaymentRequest['bookingType'],
+        accommodationKey: formData.accommodationKey,
         roomType: formData.roomType as PaymentRequest['roomType'],
         roomAdjustmentType: formData.roomAdjustmentType as PaymentRequest['roomAdjustmentType'],
         roomAdjustmentAmount: Number(formData.roomAdjustmentAmount || 0),
@@ -500,6 +504,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                     // New requests may still inherit the booking's retreat/type.
                     ...(isEdit ? {} : {
                       retreatId: booking ? resolveId(booking.retreatId) : prev.retreatId,
+                      accommodationKey: prev.accommodationKey ?? booking?.accommodationKey ?? (booking?.roomType !== 'unspecified' ? booking?.roomType : undefined),
                       bookingType: booking?.bookingType || prev.bookingType,
                       fullPriceQuote: booking?.totalAmount ? String(booking.totalAmount) : prev.fullPriceQuote,
                     }),
@@ -562,7 +567,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
               <h3 className="font-semibold text-slate-900">Accommodation choice</h3>
               <p className="mt-1 text-xs text-slate-600">This choice is copied into the booking when you create it from this payment request.</p>
               <div className="mt-3 grid gap-4 md:grid-cols-3">
-                <label className="text-sm font-medium text-gray-700">Room type<select value={formData.roomType} onChange={event => handleChange('roomType', event.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"><option value="unspecified">Not decided</option><option value="shared">Shared room</option><option value="private">Private room</option><option value="private_ensuite">Private room with private bathroom</option></select></label>
+                <AccommodationSelect clientId={formData.clientId} value={formData.accommodationKey} onChange={(key, legacy) => setFormData(prev => ({ ...prev, accommodationKey: key, roomType: legacy as NonNullable<PaymentRequest['roomType']> }))} />
                 <label className="text-sm font-medium text-gray-700">Adjustment<select value={formData.roomAdjustmentType} onChange={event => handleChange('roomAdjustmentType', event.target.value)} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"><option value="none">No adjustment</option><option value="discount">Discount</option><option value="surcharge">Surcharge</option></select></label>
                 <label className="text-sm font-medium text-gray-700">Adjustment amount<input type="number" min="0" step="0.01" value={formData.roomAdjustmentAmount} onChange={event => handleChange('roomAdjustmentAmount', Number(event.target.value))} className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2" /></label>
               </div>
