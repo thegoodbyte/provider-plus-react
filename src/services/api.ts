@@ -2067,3 +2067,21 @@ export const emailSafetyApi = {
   get: () => api.get<{ enabled: boolean; recipient: string }>('/communications/email-safety'),
   save: (data: { enabled: boolean; recipient: string }) => api.patch<{ enabled: boolean; recipient: string }>('/communications/email-safety', data),
 };
+
+export interface ReviewSourceRule {
+  enabled: boolean;
+  source: 'ir' | 'website';
+  artifactType: string;
+  advisorUserId: string;
+  packetMode: 'match' | 'fixed';
+  packetId: string;
+  notifyAdvisor: boolean;
+  notifyAdmin: boolean;
+  adminEmails: string[];
+}
+export interface ArtifactTypeConfig { key: string; label: string; requestType: string }
+export interface ReviewAutomationSettings { artifactTypes: ArtifactTypeConfig[]; rules: ReviewSourceRule[] }
+export const medicalReviewAutomationApi = {
+  get: () => api.get<ReviewAutomationSettings>('/medical-review-automation'),
+  save: (settings: ReviewAutomationSettings) => api.patch<ReviewAutomationSettings>('/medical-review-automation', settings),
+};

@@ -1,5 +1,6 @@
 import AccommodationSettings from './AccommodationSettings';
 import PortalContactSettings from './PortalContactSettings';
+import MedicalReviewAutomationSettings from './MedicalReviewAutomationSettings';
 import EmailSafetySettings from './EmailSafetySettings';
 import React, { useState, useEffect } from 'react';
 import { currencyService, ExchangeRates } from '../services/currencyService';
@@ -31,7 +32,7 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
   const [converterSource, setConverterSource] = useState<string>('');
   const [converterError, setConverterError] = useState<string | null>(null);
   const [isConverting, setIsConverting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'currency' | 'payment-types' | 'expense-types' | 'payment-plan' | 'email-safety' | 'accommodation' | 'medical-contact'>('currency');
+  const [activeTab, setActiveTab] = useState<'currency' | 'payment-types' | 'expense-types' | 'payment-plan' | 'email-safety' | 'accommodation' | 'medical-contact' | 'medical-reviews'>('currency');
   const [paymentTypes, setPaymentTypes] = useState<PaymentTypeSetting[]>([]);
   const [paymentTypesSaving, setPaymentTypesSaving] = useState(false);
   const [newPaymentType, setNewPaymentType] = useState({ key: '', label: '' });
@@ -174,7 +175,9 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
         </div>
 
         <div className="settings-tabs">
-          <button className={activeTab === 'medical-contact' ? <PortalContactSettings /> : activeTab === 'accommodation' ? 'active' : ''} onClick={() => setActiveTab('accommodation')}>Accommodation</button>
+          <button className={activeTab === 'accommodation' ? 'active' : ''} onClick={() => setActiveTab('accommodation')}>Accommodation</button>
+          <button className={activeTab === 'medical-contact' ? 'active' : ''} onClick={() => setActiveTab('medical-contact')}>IR medical contact</button>
+          <button className={activeTab === 'medical-reviews' ? 'active' : ''} onClick={() => setActiveTab('medical-reviews')}>Medical review automation</button>
           <button className={activeTab === 'email-safety' ? 'active' : ''} onClick={() => setActiveTab('email-safety')}>Email safety</button>
           <button className={activeTab === 'currency' ? 'active' : ''} onClick={() => setActiveTab('currency')}>Currency</button>
           <button className={activeTab === 'payment-types' ? 'active' : ''} onClick={() => setActiveTab('payment-types')}>Payment types</button>
@@ -182,7 +185,7 @@ const CurrencySettings: React.FC<CurrencySettingsProps> = ({ onClose }) => {
           <button className={activeTab === 'payment-plan' ? 'active' : ''} onClick={() => setActiveTab('payment-plan')}>Payment plan</button>
         </div>
 
-        {activeTab === 'medical-contact' ? <PortalContactSettings /> : activeTab === 'accommodation' ? <AccommodationSettings /> : activeTab === 'email-safety' ? <EmailSafetySettings /> : activeTab === 'payment-plan' ? (
+        {activeTab === 'medical-reviews' ? <MedicalReviewAutomationSettings /> : activeTab === 'medical-contact' ? <PortalContactSettings /> : activeTab === 'accommodation' ? <AccommodationSettings /> : activeTab === 'email-safety' ? <EmailSafetySettings /> : activeTab === 'payment-plan' ? (
           <div className="payment-types-settings payment-plan-settings">
             <h3>Booking payment plan</h3>
             <p>This rule creates one final-balance request per booking. It is updated when the booking, price, currency, or retreat date changes and cancelled when the booking is cancelled.</p>
