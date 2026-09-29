@@ -1,3 +1,4 @@
+import ArtifactReviewStatus, { useArtifactReviews } from './ArtifactReviewStatus';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { clientsApi, paymentsApi, clientMedicalApi, bookingsApi, paymentRequestsApi, retreatsApi, medicalArtifactsApi } from '../services/api';
@@ -136,6 +137,7 @@ const ClientDetailsPage: React.FC = () => {
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
   const [uploadingProfilePicture, setUploadingProfilePicture] = useState(false);
   const [medicalArtifacts, setMedicalArtifacts] = useState<MedicalArtifact[]>([]);
+  const artifactReviews = useArtifactReviews(medicalArtifacts.map(a => a._id), medicalArtifacts);
   const notificationCount = useNotificationCount({ clientId });
 
   const handleResetLoginPin = async () => {
@@ -1474,6 +1476,7 @@ const ClientDetailsPage: React.FC = () => {
                             </div>
                             {latestEkg && (
                               <>
+                                <div><dt className="text-xs text-gray-600">Medical review:</dt><dd><ArtifactReviewStatus artifactId={latestEkg._id} state={artifactReviews} /></dd></div>
                                 <div className="flex justify-between">
                                   <dt className="text-xs text-gray-600">Received:</dt>
                                   <dd className="text-xs font-medium">
@@ -1567,6 +1570,7 @@ const ClientDetailsPage: React.FC = () => {
                             </div>
                             {latestLiver && (
                               <>
+                                <div><dt className="text-xs text-gray-600">Medical review:</dt><dd><ArtifactReviewStatus artifactId={latestLiver._id} state={artifactReviews} /></dd></div>
                                 <div className="flex justify-between">
                                   <dt className="text-xs text-gray-600">Received:</dt>
                                   <dd className="text-xs font-medium">
