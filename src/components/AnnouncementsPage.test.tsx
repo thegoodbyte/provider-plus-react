@@ -12,6 +12,7 @@ jest.mock("../services/api", () => ({
     setRuleActive: jest.fn(),
     save: jest.fn(),
     applyDefaults: jest.fn(),
+    restoreDefaults: jest.fn(),
     generate: jest.fn(),
     setEnabled: jest.fn(),
     preview: jest.fn(),
@@ -136,6 +137,51 @@ it("shows the actual date even before any recipients exist", async () => {
   mount("retreat");
   expect(await screen.findByText(/Send date: 10 Oct 2026/)).toBeInTheDocument();
   expect(screen.getByText(/Cron not enabled yet/)).toBeInTheDocument();
+});
+it("shows custom versus default timing and confirms before restoring defaults", async () => {
+  const customizedData = {
+    ...data,
+    rules: [
+      {
+        ...rule,
+        sendTime: "12:05",
+        sourceRuleId: "default-rule",
+        differsFromDefault: true,
+        defaultRule: {
+          ...rule,
+          title: "Global payment due",
+          sendTime: "13:05",
+        },
+      },
+    ],
+  };
+  (announcementsApi.get as jest.Mock).mockResolvedValue({
+    data: customizedData,
+  });
+  (announcementsApi.restoreDefaults as jest.Mock).mockResolvedValue({
+    data: {},
+  });
+  const confirm = jest.spyOn(window, "confirm").mockReturnValue(true);
+  mount("retreat");
+  expect(
+    await screen.findByText("Customized from the global default"),
+  ).toBeInTheDocument();
+  const difference = screen.getByText(
+    "Customized from the global default",
+  ).parentElement;
+  const comparisonText = difference?.textContent?.replace(/\s+/g, " ");
+  expect(comparisonText).toContain("Retreat: 3 days after the retreat ends at 12:05");
+  expect(comparisonText).toContain("Default: 3 days after the retreat ends at 13:05");
+  fireEvent.click(screen.getByRole("button", { name: "Add missing defaults" }));
+  await waitFor(() =>
+    expect(announcementsApi.applyDefaults).toHaveBeenCalledWith("retreat"),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Restore defaults" }));
+  expect(confirm).toHaveBeenCalled();
+  await waitFor(() =>
+    expect(announcementsApi.restoreDefaults).toHaveBeenCalledWith("retreat"),
+  );
+  confirm.mockRestore();
 });
 it("shows failures and safe retry controls, with no automatic retry for uncertain delivery", async () => {
   (announcementsApi.get as jest.Mock).mockResolvedValue({

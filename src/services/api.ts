@@ -2057,6 +2057,7 @@ export const announcementsApi = {
     return ruleId ? api.patch(`${path}/${ruleId}`, body) : api.post(path, body);
   },
   applyDefaults: (retreatId: string) => api.post(`/announcements/retreats/${retreatId}/defaults`),
+  restoreDefaults: (retreatId: string) => api.post(`/announcements/retreats/${retreatId}/restore-defaults`),
   generate: (retreatId: string) => api.post(`/announcements/retreats/${retreatId}/generate`),
   setEnabled: (retreatId: string, enabled: boolean) => api.patch(`/announcements/retreats/${retreatId}/settings`, { enabled }),
   preview: (id: string, bookingId: string) => api.post(`/announcements/rules/${id}/preview`, { bookingId }),

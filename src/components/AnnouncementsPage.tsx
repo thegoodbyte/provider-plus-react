@@ -14,6 +14,9 @@ import "./AnnouncementsPage.css";
 
 type Rule = {
   _id?: string;
+  sourceRuleId?: string;
+  defaultRule?: Rule | null;
+  differsFromDefault?: boolean;
   scheduledFor?: string;
   schedulingError?: string;
   title: string;
@@ -87,6 +90,14 @@ export const announcementTiming = (rule: Pick<Rule, "days" | "timing">) =>
     : rule.days === 0
       ? "Departure day"
       : `${rule.days} ${rule.days === 1 ? "day" : "days"} after the retreat ends`;
+const ruleComparison = (rule: Rule, emailName?: string) =>
+  `${announcementTiming(rule)} at ${rule.sendTime}, “${rule.title}”, ${
+    emailName || "email template unavailable"
+  }, ${
+    rule.useRecipientLanguage
+      ? "recipient language"
+      : "fixed template language"
+  }, ${rule.active ? "active" : "paused"}`;
 const dateLabel = (value?: string) =>
   value
     ? new Intl.DateTimeFormat("en-GB", {
@@ -235,6 +246,14 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
     setTemplateLanguageFilter("");
     setEditor({ ...rule, emailTemplateId: templateId(rule) });
     setStep(0);
+  };
+  const restoreDefaults = () => {
+    if (!retreatId) return;
+    const confirmed = window.confirm(
+      "Restore the global defaults for this retreat? This replaces customized copies of default announcements, adds missing defaults, keeps retreat-only announcements, and does not resend past emails.",
+    );
+    if (confirmed)
+      void mutate(() => announcementsApi.restoreDefaults(retreatId));
   };
   const save = () =>
     mutate(async () => {
@@ -412,7 +431,13 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
                       mutate(() => announcementsApi.applyDefaults(retreatId))
                     }
                   >
-                    Use default schedule
+                    Add missing defaults
+                  </button>
+                  <button
+                    disabled={busy || loading}
+                    onClick={restoreDefaults}
+                  >
+                    Restore defaults
                   </button>
                   <button
                     disabled={busy || loading}
@@ -426,8 +451,9 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
                     Edit default schedule ↗
                   </Link>
                   <p>
-                    Copies missing announcements only. Edits here affect this
-                    retreat.
+                    “Add missing defaults” leaves existing rules alone. “Restore
+                    defaults” replaces copied default rules with the current
+                    global values; retreat-only rules stay unchanged.
                   </p>
                 </div>
               )}
@@ -448,6 +474,12 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
                   const template = templates.find(
                     (item) => item._id === templateId(rule),
                   );
+                  const defaultTemplate = rule.defaultRule
+                    ? templates.find(
+                        (item) =>
+                          item._id === templateId(rule.defaultRule!),
+                      )
+                    : undefined;
                   const deliveries = (data.deliveries || []).filter(
                     (row) => row.ruleId === rule._id,
                   );
@@ -495,6 +527,34 @@ const AnnouncementsPage: React.FC<{ retreatId?: string }> = ({ retreatId }) => {
                           · {template?.attachmentAssetIds?.length || 0}{" "}
                           attachments
                         </p>
+                        {retreatId && rule.defaultRule && (
+                          <div className="announcement-help" role="status">
+                            <strong>
+                              {rule.differsFromDefault
+                                ? "Customized from the global default"
+                                : "Matches the global default"}
+                            </strong>
+                            {rule.differsFromDefault && (
+                              <div>
+                                <div>
+                                  Retreat: {ruleComparison(rule, template?.name)}
+                                </div>
+                                <div>
+                                  Default: {ruleComparison(
+                                    rule.defaultRule,
+                                    defaultTemplate?.name ||
+                                      rule.defaultRule.emailTemplateId?.name,
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {retreatId && !rule.defaultRule && !rule.sourceRuleId && (
+                          <p className="announcement-help">
+                            Retreat-only announcement · no global default
+                          </p>
+                        )}
                         {retreatId && (
                           <p>
                             {`Send date: ${dateLabel(rule.scheduledFor || next?.scheduledFor)}`}{" "}
