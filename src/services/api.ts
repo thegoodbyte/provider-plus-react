@@ -2085,3 +2085,9 @@ export const medicalReviewAutomationApi = {
   get: () => api.get<ReviewAutomationSettings>('/medical-review-automation'),
   save: (settings: ReviewAutomationSettings) => api.patch<ReviewAutomationSettings>('/medical-review-automation', settings),
 };
+
+export const morningDigestApi = {
+  get: () => api.get('/morning-digest/settings'),
+  save: (settings: any) => api.put('/morning-digest/settings', settings),
+  preview: () => api.get('/morning-digest/preview'),
+};
