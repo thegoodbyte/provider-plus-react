@@ -1337,7 +1337,8 @@ export interface MedicalReviewRequest {
     | 'caution'
     | 'needs_resubmission'
     | 'completed'
-    | 'awaiting_whatsapp';
+    | 'awaiting_whatsapp'
+    | 'wont_do';
 
   // Additional metadata
   priority?: 'low' | 'normal' | 'high' | 'urgent';

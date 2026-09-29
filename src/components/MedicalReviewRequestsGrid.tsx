@@ -1,3 +1,4 @@
+import MedicalReviewWhatsAppForm from './MedicalReviewWhatsAppForm';
 import { NAVIGATION } from '../navigation/navigation';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -126,6 +127,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const basePath = location.pathname.startsWith('/medical') ? '/medical/review-requests' : '/admin/medical-review-requests';
   const canManageRequests = user?.role === 'admin' || user?.role === 'medical_staff';
   const canDeleteRequests = user?.role === 'admin';
+  const [whatsappRequest, setWhatsappRequest] = useState<EnrichedReviewRequest | null>(null);
   const [requests, setRequests] = useState<EnrichedReviewRequest[]>([]);
   const [groups, setGroups] = useState<MedicalReviewGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -182,6 +184,12 @@ const MedicalReviewRequestsGrid: React.FC = () => {
   const [downloadingPacketId, setDownloadingPacketId] = useState('');
   const [downloadPacket, setDownloadPacket] = useState<MedicalReviewGroup | null>(null);
   const [downloadIncludeSubmitted, setDownloadIncludeSubmitted] = useState(false);
+
+  const whatsappAction = (request: EnrichedReviewRequest) => canManageRequests && (
+    <button type="button" onClick={() => setWhatsappRequest(request)} className="rounded-md border border-purple-200 bg-purple-50 px-2 py-2 text-xs font-semibold text-purple-800">
+      {request.reviewChannel === 'whatsapp' ? (request.whatsappStatus === 'responded' ? 'Handled via WhatsApp' : 'WhatsApp: awaiting answer') : 'Handle via WhatsApp'}
+    </button>
+  );
 
   const loadData = useCallback(async () => {
     try {
@@ -1207,7 +1215,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                           </div>
                           <div className="text-xs font-medium"><span className={request.advisorDeliveryStatus === 'sent' ? 'text-emerald-700' : 'text-amber-700'}>{request.advisorDeliveryStatus === 'sent' ? 'Sent to advisor' : 'Not sent'}</span></div>
                           <div className="flex justify-start md:justify-end">
-                            <div className="flex flex-nowrap gap-2">
+                            <div className="flex flex-wrap gap-2 md:justify-end">
                               <button
                                 type="button"
                                 onClick={() => navigate(`${basePath}/${request._id}`)}
@@ -1215,7 +1223,8 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                               >
                                 Open review
                               </button>
-                              {canManageRequests && isPendingReview(request) && request.advisorDeliveryStatus !== 'sent' && (
+                              {whatsappAction(request)}
+                            {canManageRequests && isPendingReview(request) && request.advisorDeliveryStatus !== 'sent' && (
                                 <button type="button" onClick={() => void markAdvisorSent(request._id || '')} className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100" title="Mark as sent to medical advisor"><Icon icon={FiSend} className="h-3.5 w-3.5" />Sent</button>
                               )}
                               {canManageRequests && (
@@ -1321,7 +1330,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                         </div>
                         <div className="text-xs font-medium"><span className={request.advisorDeliveryStatus === 'sent' ? 'text-emerald-700' : 'text-amber-700'}>{request.advisorDeliveryStatus === 'sent' ? 'Sent to advisor' : 'Not sent'}</span></div>
                         <div className="flex justify-start md:justify-end">
-                          <div className="flex flex-nowrap gap-2">
+                          <div className="flex flex-wrap gap-2 md:justify-end">
                             <button
                               type="button"
                               onClick={() => navigate(`${basePath}/${request._id}`)}
@@ -1329,6 +1338,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                             >
                               Open review
                             </button>
+                            {whatsappAction(request)}
                             {canManageRequests && isPendingReview(request) && request.advisorDeliveryStatus !== 'sent' && <button type="button" onClick={() => void markAdvisorSent(request._id || '')} className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-100"><Icon icon={FiSend} className="h-3.5 w-3.5" />Sent</button>}
                             {canDeleteRequests && (
                               <button
@@ -1458,6 +1468,7 @@ const MedicalReviewRequestsGrid: React.FC = () => {
                       >
                         <Icon icon={FiEye} />
                       </button>
+                      {whatsappAction(request)}
                       {canManageRequests && (
                         <button
                           onClick={() => navigate(`${basePath}/${request._id}/edit`)}
@@ -1485,6 +1496,19 @@ const MedicalReviewRequestsGrid: React.FC = () => {
         </div>
       </div>
         </>
+      )}
+
+      {whatsappRequest && (
+        <MedicalReviewWhatsAppForm
+          key={whatsappRequest._id}
+          request={whatsappRequest}
+          advisors={advisors}
+          onClose={() => setWhatsappRequest(null)}
+          onSaved={(updated) => {
+            setRequests(current => current.map(request => request._id === updated._id ? { ...request, ...updated } : request));
+            setWhatsappRequest(null);
+          }}
+        />
       )}
 
       {groupModalOpen && (
