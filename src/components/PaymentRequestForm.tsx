@@ -624,7 +624,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
               </div>
             </div>
 
-            {formData.requestType === 'deposit' || formData.requestType === 'payment' || formData.requestType === 'full_payment' ? (
+            {formData.requestType === 'deposit' || formData.requestType === 'payment' || formData.requestType === 'full_payment' || (formData.requestType === 'balance' && !formData.bookingId) ? (
               <div>
                 <label htmlFor="fullPriceQuote" className="block text-sm font-medium text-gray-700 mb-2">Full Booking Price *</label>
                 <input
@@ -638,7 +638,7 @@ const PaymentRequestForm: React.FC<PaymentRequestFormProps> = ({
                   placeholder="0.00"
                   required
                 />
-                <p className="mt-1 text-xs text-gray-500">{formData.requestType === 'full_payment' ? 'The complete amount due for this booking.' : 'The full price before any payment-request discount. The requested amount is calculated below it.'}</p>
+                <p className="mt-1 text-xs text-gray-500">{formData.requestType === 'full_payment' ? 'The complete amount due for this booking.' : formData.requestType === 'balance' ? 'No booking is linked, so set the full price manually.' : 'The full price before any payment-request discount. The requested amount is calculated below it.'}</p>
                 {formData.roomAdjustmentType !== 'none' && <p className="mt-1 text-sm font-semibold text-slate-700">Adjusted full price after room {formData.roomAdjustmentType}: {calculateRoomAdjustedPrice(Number(formData.fullPriceQuote || 0), formData.roomAdjustmentType, formData.roomAdjustmentAmount).toFixed(2)} {formData.currency}</p>}
               </div>
             ) : formData.requestType === 'balance' ? (

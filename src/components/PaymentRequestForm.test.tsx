@@ -228,6 +228,40 @@ describe('PaymentRequestForm', () => {
     })));
   });
 
+  describe('full booking price lock (PPVC-683)', () => {
+    const linkedBooking = { _id: 'booking-1', bookingNumber: 42, clientId: 'client-1', retreatId: 'retreat-1', totalAmount: 5000, status: 'confirmed' };
+
+    it('keeps the full price read-only for a balance request while a booking is linked', async () => {
+      setUp({ bookings: [linkedBooking] });
+      view({ isEdit: true, paymentRequest: { _id: 'pr-1', display_id: 500, invoiceNumber: '500', clientId: 'client-1', retreatId: 'retreat-1', bookingId: 'booking-1', requestType: 'balance', fullPriceQuote: 5000, currency: 'EUR' } });
+      await screen.findByLabelText('Client');
+
+      expect(screen.queryByLabelText('Full Booking Price *')).not.toBeInTheDocument();
+      expect(screen.getByText(/5,000 EUR/)).toBeInTheDocument();
+    });
+
+    it('unlocks the full price for editing once the linked booking is cleared', async () => {
+      setUp({ bookings: [linkedBooking] });
+      view({ isEdit: true, paymentRequest: { _id: 'pr-1', display_id: 500, invoiceNumber: '500', clientId: 'client-1', retreatId: 'retreat-1', bookingId: 'booking-1', requestType: 'balance', fullPriceQuote: 5000, currency: 'EUR' } });
+      await screen.findByLabelText('Client');
+
+      fireEvent.click(screen.getByRole('button', { name: 'Clear booking' }));
+
+      const priceInput = await screen.findByLabelText('Full Booking Price *');
+      fireEvent.change(priceInput, { target: { value: '4200' } });
+      expect(priceInput).toHaveValue(4200);
+    });
+
+    it('leaves the full price editable for a balance request with no booking linked at all', async () => {
+      view();
+      await screen.findByLabelText('Client');
+
+      fireEvent.change(screen.getByLabelText('Request Type'), { target: { value: 'balance' } });
+
+      expect(await screen.findByLabelText('Full Booking Price *')).toBeInTheDocument();
+    });
+  });
+
   describe('final payment request checkbox', () => {
     it('is not shown when editing an existing request', async () => {
       view({ isEdit: true, paymentRequest: { _id: 'pr-1', display_id: 500, invoiceNumber: '500', requestType: 'deposit' } });
