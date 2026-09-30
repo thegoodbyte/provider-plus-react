@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import LoadingSpinner from './LoadingSpinner';
 import { housesApi } from '../services/api';
 import { House } from '../types';
+import { resolveNumberOfRooms } from './HousesGrid.helpers';
 import AppleButton from './AppleButton';
 import { FiPlus, FiEdit2, FiTrash2, FiHome, FiUsers, FiDollarSign } from 'react-icons/fi';
 
@@ -125,7 +126,7 @@ const HousesGrid: React.FC = () => {
       ...house,
       name: house.name || house.city || '',
       capacity: house.capacity || house.guestCapacity || 0,
-      numberOfRooms: house.numberOfRooms || (typeof house.bedrooms === 'number' ? house.bedrooms : 0),
+      numberOfRooms: resolveNumberOfRooms(house),
       amenities: house.amenities || []
     };
     setFormData(formattedHouse);
@@ -224,6 +225,7 @@ const HousesGrid: React.FC = () => {
     } catch (error: any) {
       console.error('Error saving house:', error);
       console.error('Error response:', error.response?.data);
+      alert(error?.response?.data?.message || error?.message || 'Failed to save house.');
     }
   };
 
