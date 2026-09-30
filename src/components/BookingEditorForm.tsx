@@ -1,6 +1,7 @@
 import AccommodationSelect from './AccommodationSelect';
 import React, { useEffect, useMemo, useState } from 'react';
 import { bookingsApi, ceremoniesApi, clientsApi, paymentRequestsApi, retreatsApi } from '../services/api';
+import { roomInventoryApi } from '../services/roomInventoryApi';
 import { RetreatClient, Client, Retreat, PaymentRequest, Ceremony } from '../types';
 import SearchableClientSelect from './SearchableClientSelect';
 import SearchableRetreatSelect from './SearchableRetreatSelect';
@@ -149,10 +150,32 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
   const [cancellationReason, setCancellationReason] = useState('');
   const [depositTreatment, setDepositTreatment] = useState<'no_refund' | 'partial_refund' | 'full_refund' | 'credit_transfer'>('no_refund');
   const [cancellationNotes, setCancellationNotes] = useState('');
+  const [roomAvailability, setRoomAvailability] = useState<{ availableToSell: number; freeBeds: number } | null>(null);
 
   useEffect(() => {
     loadData();
   }, [bookingId, initialBooking, initialBookingData, initialRetreats, mode]);
+
+  // PPVC-712: the booking editor previously had no visibility into which
+  // beds are actually free -- an admin picked shared/private/a bedroom
+  // blind, disconnected from the real room-inventory data the Rooms tab
+  // already tracks. Show a quick summary here instead of duplicating
+  // that whole tab's UI.
+  useEffect(() => {
+    if (!formData.retreatId) { setRoomAvailability(null); return; }
+    let live = true;
+    roomInventoryApi.view(formData.retreatId)
+      .then((response: any) => {
+        if (!live) return;
+        const data = response.data;
+        setRoomAvailability({
+          availableToSell: Number(data?.availableToSell || 0),
+          freeBeds: (data?.rooms || []).reduce((sum: number, room: any) => sum + Number(room.freeBeds || 0), 0),
+        });
+      })
+      .catch(() => { if (live) setRoomAvailability(null); });
+    return () => { live = false; };
+  }, [formData.retreatId]);
 
   const loadData = async () => {
     try {
@@ -537,6 +560,7 @@ const BookingEditorForm: React.FC<BookingEditorFormProps> = ({
         <section className="rounded-lg border border-slate-200 bg-slate-50 p-4">
           <h3 className="font-semibold text-slate-900">Room and accommodation</h3>
           <p className="mt-1 text-xs text-slate-600">Choose the accommodation agreed for this booking. The payment request choice is copied automatically when available.</p>
+          {roomAvailability && <p className="mt-1 text-xs font-medium text-slate-700">{roomAvailability.availableToSell} place{roomAvailability.availableToSell === 1 ? '' : 's'} available to sell · {roomAvailability.freeBeds} free bed{roomAvailability.freeBeds === 1 ? '' : 's'} in this retreat's house — see the Rooms tab for details.</p>}
           <div className="mt-3 grid gap-4 md:grid-cols-2">
             <AccommodationSelect clientId={formData.clientId} value={formData.accommodationKey} onChange={(key, legacy) => setFormData(prev => ({ ...prev, accommodationKey: key, roomType: legacy as BookingFormData['roomType'] }))} />
             <label className="text-sm font-medium text-gray-700">Bedroom
