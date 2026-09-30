@@ -20,6 +20,7 @@ export default function MedicalReviewWhatsAppForm({ request, advisors, onClose, 
   const [status, setStatus] = useState(request.whatsappStatus === 'responded' ? 'responded' : 'awaiting_response');
   const [respondedAt, setRespondedAt] = useState(dateValue(request.whatsappRespondedAt) || dateValue(new Date()));
   const [decision, setDecision] = useState(request.whatsappDecision || '');
+  const [advisorNote, setAdvisorNote] = useState(request.reviewNotes || '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const save = async (event: React.FormEvent) => {
@@ -39,7 +40,7 @@ export default function MedicalReviewWhatsAppForm({ request, advisors, onClose, 
         ...(status === 'responded' ? {
           whatsappRespondedAt: respondedAt, whatsappDecision: decision as MedicalReviewRequest['whatsappDecision'],
           reviewDecision: decision as MedicalReviewRequest['reviewDecision'], reviewedAt: respondedAt,
-          reviewNotes: 'Advisor response received via WhatsApp',
+          reviewNotes: advisorNote.trim() || 'Advisor response received via WhatsApp',
         } : {}),
       };
       const response = await medicalReviewRequestsApi.update(request._id, payload);
@@ -66,6 +67,7 @@ export default function MedicalReviewWhatsAppForm({ request, advisors, onClose, 
         {status === 'responded' && <>
           <label className="block text-sm">Date answered<input required type="date" value={respondedAt} min={sentAt} onChange={e => setRespondedAt(e.target.value)} className={fieldClass} /></label>
           <label className="block text-sm">Advisor result<select required value={decision} onChange={e => setDecision(e.target.value)} className={fieldClass}><option value="">Select result</option>{Object.entries(decisions).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+          <label className="block text-sm">What did the advisor say?<textarea value={advisorNote} onChange={e => setAdvisorNote(e.target.value)} rows={4} placeholder="Summarize the advisor's WhatsApp reply here — this is saved as the MRR's review notes." className={fieldClass} /></label>
         </>}
       </fieldset>
       {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
